@@ -225,7 +225,36 @@ group:
 16 productions collapsed to 7, and the groups cannot drift apart because each
 shape exists in exactly one place.
 
-### 5.3 Two port functions were missing, found by running a real ICL file
+### 5.3 A comment bug that only a ragged-indent sample could show
+
+Block comments keep their relative indentation across continuation lines.
+The code computed the common indent, then rebuilt each line as
+
+```cpp
+piece = base + std::string(extra, ' ') + piece.substr(common);
+```
+
+`piece.substr(common)` **already** carries the relative indent — cutting at
+`common` leaves `indent - common` leading spaces in the text. Adding `extra`
+on top counted it twice, so a comment with ragged continuation indent drifted
+right on every run:
+
+```
+input     * c        (5 spaces)
+run 1         * c    (7)
+run 2             * c(11)
+```
+
+Every existing sample had uniform continuation indent, where `extra` is 0 and
+the double count is invisible. One sample with ragged indent exposed it. Fixed
+to `piece = base + piece.substr(common)`, with three regression tests
+(ragged star comment, comment that opens with a star, comment with an internal
+blank line).
+
+This is the same lesson as §5.1 in miniature: the samples were too uniform to
+reach the bug.
+
+### 5.4 Two port functions were missing, found by running a real ICL file
 
 A Keysight application note (*IEEE 1687 Silicon Test to Board Test*) contains
 a complete ICL file for a GPIO instrument. Running it through the parser
@@ -253,7 +282,7 @@ were run and pass unchanged.
 (`a -> b -> c;`). ICL is not Verilog, and none of the three appears in any
 ICL source consulted. They are recorded here rather than added on a guess.
 
-### 5.4 The lexer's regular expressions did not match vendor ICL
+### 5.5 The lexer's regular expressions did not match vendor ICL
 
 Auditing each pattern against documented vendor syntax, not against my own
 samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
@@ -275,7 +304,7 @@ against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
 `ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
 containing a newline is rejected rather than silently spanning lines.
 
-### 5.5 Earlier in the same pass
+### 5.6 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -308,7 +337,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 141 | `make check` |
+| CLI end-to-end | 144 | `make check` |
 | LSP protocol | 25 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

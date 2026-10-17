@@ -176,6 +176,13 @@ def main():
                                  'ToTCKPort m; ToTMSPort n; ToTRSTPort o; ToShiftEnPort p; '
                                  'ToCaptureEnPort q; ToUpdateEnPort r; ToResetPort s; '
                                  'ToDoPort t; ToSelectPort u; DataInPort v; DataOutPort w; }',
+        # Multi-line comments with *ragged* continuation indent. This was a
+        # real bug: `extra` was counted twice (once by substr(common), once
+        # explicitly), so the comment drifted right on every run.
+        'ragged star comment':    'Module m {\n  /* a\n   * b\n     * c\n   */\n'
+                                 '  ScanInPort SI;\n}\n',
+        'comment opens with star': 'Module m {\n  /*\n   * x\n   */\n  ScanInPort SI;\n}\n',
+        'comment with blank line': 'Module m {\n  /* a\n\n   * b\n   */\n  ScanInPort SI;\n}\n',
         'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
         'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
                                    "1'b0 : MyTap.tdo; } }",
