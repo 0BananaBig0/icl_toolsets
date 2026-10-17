@@ -282,21 +282,18 @@ Each is marked `ponytail:` in the source, with its upgrade path. Run
 
 ## Known limitations
 
-* **Grammar coverage is built from the standard plus the samples available**,
-  not from a corpus of Tessent output. Two gaps were found and fixed this way:
-  `ScanMux` requires the standard `SelectedBy` keyword (the samples had been
-  written against an older draft that omitted it), and eight port functions
-  from the client/host split (`TRSTPort`, `ToTCKPort`, `ToTRSTPort`,
-  `ToShiftEnPort`, ...) were missing entirely. A file using an uncovered
-  construct is *rejected with a line number* rather than silently mangled —
-  if that happens, the report is enough to add the missing rule.
+Full requirement-by-requirement accounting, including what could not be done
+as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
 
-## Known limitations
-
-* The grammar is validated against the two files in `samples/`. Vendor ICL
-  (Tessent output in particular) may contain constructs not yet covered; such
-  a file is *rejected with a line number* rather than mis-formatted. Send the
-  message and the construct gets added.
+* **Grammar coverage comes from the standard plus the samples available**, not
+  from a corpus of real Tessent output. Two gaps were found and fixed exactly
+  this way: `ScanMux` requires the standard `SelectedBy` keyword (the samples
+  had been written against a pre-standard draft that omitted it), and eight
+  port functions from the client/host split (`TRSTPort`, `ToTCKPort`,
+  `ToTRSTPort`, `ToShiftEnPort`, ...) were missing entirely. A file using an
+  uncovered construct is *rejected with a line number* rather than silently
+  mangled — if that happens, the report is enough to add the missing rule.
+  A real vendor file is still the strongest test; see `REQUIREMENT.md`.
 * Attribute bodies are parsed leniently, so a misspelled *attribute name* is
   not an error — only structure is checked.
 * Column-level layout (aligning `=` across neighbouring lines) is not done.

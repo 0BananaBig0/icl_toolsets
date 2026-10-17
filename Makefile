@@ -332,7 +332,7 @@ dist: all
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	cp samples/*.icl $(DIST_DIR)/samples/ 2>/dev/null || true
 	cp tests/*.py tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
-	cp Makefile $(DIST_DIR)/Makefile
+	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar czf $(DIST_DIR).tar.gz $(DIST_DIR)
 	@rm -rf $(DIST_DIR)
