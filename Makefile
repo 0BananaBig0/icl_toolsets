@@ -309,7 +309,10 @@ coccheck: $(LSP_BIN)
 			tests/run_coc_check.sh; \
 	fi
 
+# The corpus in tests/cases/ runs first: it is the cheapest way to see a
+# regression, and a failure there names the file that broke.
 check: all unitcheck
+	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/run_tests.py --binary $(BIN)
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
 
@@ -348,6 +351,9 @@ dist: all
 	cp $(PARSER_CC) $(PARSER_HH) $(LEXER_CC) $(LEXER_HH) $(DIST_DIR)/gen/
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	cp samples/*.icl $(DIST_DIR)/samples/ 2>/dev/null || true
+	mkdir -p $(DIST_DIR)/tests/cases/pass $(DIST_DIR)/tests/cases/fail
+	cp tests/cases/pass/*.icl $(DIST_DIR)/tests/cases/pass/
+	cp tests/cases/fail/*.icl $(DIST_DIR)/tests/cases/fail/
 	cp tests/*.py tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt

@@ -1,0 +1,1 @@
+Module m { Instance i Of T { InputPort a = b.c; } }

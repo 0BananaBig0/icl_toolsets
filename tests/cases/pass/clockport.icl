@@ -1,0 +1,1 @@
+Module m { ClockPort clk; }

@@ -1,0 +1,1 @@
+Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }

@@ -1,0 +1,1 @@
+Module m { OneHotScanInterface o { Port s[3:0]; } }

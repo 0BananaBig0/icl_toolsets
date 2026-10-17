@@ -1,0 +1,1 @@
+Module m { Instance i Of M { DataRegister x = 1; } }

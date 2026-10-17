@@ -1,0 +1,1 @@
+Module m { ScanMux mx { 1'b0 : si; } }

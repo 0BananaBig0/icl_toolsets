@@ -1,0 +1,1 @@
+Module bus { Parameter MSB = 5; }

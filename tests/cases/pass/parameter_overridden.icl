@@ -1,0 +1,1 @@
+Module top { Instance i Of bus { Parameter MSB = 7; } }

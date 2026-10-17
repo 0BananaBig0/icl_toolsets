@@ -225,7 +225,28 @@ group:
 16 productions collapsed to 7, and the groups cannot drift apart because each
 shape exists in exactly one place.
 
-### 5.3 `attr_name` was a second keyword list, and it had drifted
+### 5.3 The regression corpus, and the two cases that had to be deleted
+
+The corpus now lives in `tests/cases/` — one `.icl` file per case, `pass/` and
+`fail/`, run by `tests/regression.py`. Adding a case means dropping in a file.
+See `tests/cases/README.md` for the rule on failure.
+
+Building it required exporting the inline dicts from `run_tests.py` into
+files, which immediately found two cases that should not have been there.
+Both are the second kind of "wrong case" in that README — a case that passes
+for the wrong reason:
+
+| Case | Why it had to go |
+|---|---|
+| `alias_with_iprocs` | Named for `iProcsForModule`, but that keyword had been **removed** as PDL-only (§5.1). It still passed because the text was then read as an ordinary attribute name. Substituting any nonsense word passes identically — the case could not fail, so it tested nothing. Replaced with a real nested-block case. |
+| `utf8_bom` (in `run_tests.py`) | Asserted a UTF-8 BOM survives formatting. The tool was later changed to strip it (§5.4), so the case encoded an assumption the code had deliberately reversed. |
+
+`run_tests.py` no longer holds the corpus: for a while it did, alongside
+`tests/cases/`, and the two copies disagreed within one commit — the copy in
+`run_tests.py` still asserted the BOM survives while `tests/cases/` expected
+it stripped. One corpus, one place.
+
+### 5.4 A BOM was accepted from a file and rejected from stdin
 
 The shape groups (§5.2) removed the duplicated per-element productions, but
 one list was left hand-written: `attr_name`, the keywords allowed as an
@@ -254,7 +275,7 @@ It is no longer possible for the two to disagree, because there is one list.
 This is the second time a duplicated list drifted (§5.1 was the first). The
 rule worth keeping: **if two places must agree, make them the same place.**
 
-### 5.4 A single integer field could amplify output 50,000x
+### 5.5 A single integer field could amplify output 50,000x
 
 `textDocument/formatting` honours the client's `options.tabSize`. It is
 applied per indent level, so a nested file with `tabSize: 99999` produced a
@@ -262,7 +283,7 @@ applied per indent level, so a nested file with `tabSize: 99999` produced a
 one field. Clamped to 16 (real editors send 2, 4 or 8), with a regression
 test asserting the reply stays under 10 KB regardless of what is requested.
 
-### 5.5 A comment bug that only a ragged-indent sample could show
+### 5.6 A comment bug that only a ragged-indent sample could show
 
 Block comments keep their relative indentation across continuation lines.
 The code computed the common indent, then rebuilt each line as
@@ -291,7 +312,7 @@ blank line).
 This is the same lesson as §5.1 in miniature: the samples were too uniform to
 reach the bug.
 
-### 5.6 Two port functions were missing, found by running a real ICL file
+### 5.7 Two port functions were missing, found by running a real ICL file
 
 A Keysight application note (*IEEE 1687 Silicon Test to Board Test*) contains
 a complete ICL file for a GPIO instrument. Running it through the parser
@@ -319,7 +340,7 @@ were run and pass unchanged.
 (`a -> b -> c;`). ICL is not Verilog, and none of the three appears in any
 ICL source consulted. They are recorded here rather than added on a guess.
 
-### 5.7 The lexer's regular expressions did not match vendor ICL
+### 5.8 The lexer's regular expressions did not match vendor ICL
 
 Auditing each pattern against documented vendor syntax, not against my own
 samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
@@ -341,7 +362,7 @@ against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
 `ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
 containing a newline is rejected rather than silently spanning lines.
 
-### 5.8 Earlier in the same pass
+### 5.9 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -374,7 +395,8 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 148 | `make check` |
+| Regression corpus | 87 | `tests/cases/`, run by `tests/regression.py` |
+| CLI behaviour | 49 | `tests/run_tests.py` |
 | LSP protocol | 26 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

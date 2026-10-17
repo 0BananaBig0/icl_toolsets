@@ -1,0 +1,1 @@
+Module m { LogicSignal clk { Source TCK; } }

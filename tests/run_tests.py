@@ -33,6 +33,25 @@ DataInPort DataIn[7:0]; DataOutPort DataOut[7:0] { Source reg[7:0]; }
 """
 
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def load_samples(directory):
+    """Yields (tag, text) for every `.icl` file in `directory`.
+
+    Sorted, so a failing run reports the same order every time.
+    """
+    if not os.path.isdir(directory):
+        return []
+    out = []
+    for name in sorted(os.listdir(directory)):
+        if not name.endswith('.icl'):
+            continue
+        with open(os.path.join(directory, name), 'r', encoding='utf-8') as f:
+            out.append((name[:-4], f.read()))
+    return out
+
+
 def check(name, cond, detail=''):
     (PASS if cond else FAIL).append(name)
     tag = '  [PASS] ' if cond else '  [FAIL] '
@@ -90,140 +109,12 @@ def main():
         return 2
     runner = Runner(binary)
 
-    print('=' * 72)
-    print('A. Invalid ICL must be rejected (exit 2)')
-    print('=' * 72)
-    BAD = {
-        'Module without a name':        'Module { ScanInPort SI; }',
-        'Misspelled keyword (Modul)':   'Modul m { ScanInPort SI; }',
-        'Statement without semicolon':  'Module m { ScanInPort SI }',
-        'Instance without Of':          'Module m { Instance a b { } }',
-        'Unknown construct FooBar':     'Module m { FooBar x; }',
-        'Unclosed brace':               'Module m { ScanInPort SI;',
-        'Extra closing brace':          'Module m { ScanInPort SI; } }',
-        'ScanMux without select reg':   "Module m { ScanMux mx { 1'b0 : si; } }",
-        'ScanMux without SelectedBy':   "Module m { ScanMux mx r { 1'b0 : si; } }",
-        'Connection without semicolon': 'Module m { Connection { a -> b } }',
-        'Parameter without =':          'Module m { Parameter W 8; }',
-        'Port at top level':            'ScanInPort SI;',
-        'Illegal character @':          'Module m { @ ScanInPort SI; }',
-        'PortGroup without list':       'Module m { PortGroup pg { } }',
-        'AccessLink block incomplete':  'Module m { AccessLink a Of T { BSDL_Entity } }',
-    }
-    for tag, src in BAD.items():
-        result = runner.format_text(src)
-        check('reject | %s' % tag, result.returncode == 2,
-              'accepted, output=%r' % result.stdout[:80])
-
-    print()
-    print('=' * 72)
-    print('B. Valid ICL must be accepted (grammar coverage)')
-    print('=' * 72)
-    GOOD = {
-        'empty Module':            'Module m { }',
-        'single port':             'Module m { ScanInPort SI; }',
-        'all 13 port kinds':       'Module m { ScanInPort a; ScanOutPort b; '
-                                   'ShiftEnPort c; CaptureEnPort d; UpdateEnPort e; '
-                                   'SelectPort f; ResetPort g; TCKPort h; TMSPort i; '
-                                   'ToDoPort j; ToSelectPort k; DataInPort l; '
-                                   'DataOutPort m2; }',
-        # IEEE 1687 splits port functions into client and host sides. The host
-        # side (ToTCKPort, ToTRSTPort, ...) was missing entirely.
-        'client-TAP ports':        'Module m { TCKPort tck; TMSPort tms; '
-                                   'TRSTPort trst; }',
-        'host-side ports':         'Module m { ToTCKPort a; ToTMSPort b; '
-                                   'ToTRSTPort c; ToShiftEnPort d; '
-                                   'ToCaptureEnPort e; ToUpdateEnPort f; '
-                                   'ToResetPort g; }',
-        'ports with bit ranges':   'Module m { DataInPort din[31:0]; DataOutPort dout[7:0]; }',
-        'ScanRegister range':      'Module m { ScanRegister r[7:0] { ScanInSource SI; } }',
-        'Reg and Field':           'Module m { Reg r[3:0] { WriteEnSource ue; } '
-                                   'Field f[1:0] { Attribute d = "x"; } }',
-        'Enum':                    "Module m { Enum e { IDLE = 2'b00; RUN = 2'b01; } }",
-        'Alias with iProcs':       'Module m { Alias a = b.c { iProcsForModule Top; } }',
-        'Alias without block':     'Module m { Alias a = b.c; }',
-        'ScanInterface':           'Module m { ScanInterface si { Port TDI; } }',
-        'OneHotScanInterface':     'Module m { OneHotScanInterface o { Port s[3:0]; } }',
-        # `SelectedBy` is required by IEEE 1687.1-2014; the selector may be a
-        # hierarchical name. Regression: the grammar once accepted a bare
-        # second identifier and rejected the standard keyword.
-        # IEEE 1687 Table 2 elements that were missing until the grammar was
-        # grouped by shape.
-        'DataRegister block':     'Module m { DataRegister dr[7:0] { DataInSource a; } }',
-        'DataRegister statement': 'Module m { DataRegister dr; }',
-        'DataMux':                "Module m { DataMux dm SelectedBy sel { 1'b0 : a; } }",
-        'ClockMux':               'Module m { ClockMux cm SelectedBy sel { a; b; } }',
-        'OneHotScanGroup':        'Module m { OneHotScanGroup g { Port a.SO; Port b.SO; } }',
-        'OneHotDataGroup':        'Module m { OneHotDataGroup g { Port a; } }',
-        # Parameterised ICL, verbatim from the Tessent IJTAG User's Manual
-        # ("ICL Network Extraction of Parameterized Modules"). Both the `$MSB`
-        # reference and the unsized `'b1 literal were rejected before.
-        'parameter in range':     'Module bus { DataInPort datain[ $MSB:0 ]; }',
-        'parameter in index':     'Module bus { DataOutPort dataout { Source RegD[ $MSB:0 ]; } }',
-        'parameter declared':     'Module bus { Parameter MSB = 5; }',
-        'parameter overridden':   'Module top { Instance i Of bus { Parameter MSB = 7; } }',
-        'unsized binary literal': "Module top { Instance i Of b { InputPort din = 'b1; } }",
-        'unsized hex literal':    "Module m { Attribute d = 'hFF; }",
-        'separated decimal':      'Module m { Attribute d = 1_000; }',
-        # Port functions from Tessent's "ICL Port Types" table (Table 3-14).
-        # `ClockPort` and `ToClockPort` were missing: the real-world Keysight
-        # example below was rejected because of them.
-        'ClockPort':             'Module m { ClockPort clk; }',
-        'ToClockPort':           'Module m { ToClockPort to_clk; }',
-        'all port functions':    'Module m { ScanInPort a; ScanOutPort b; ShiftEnPort c; '
-                                 'CaptureEnPort d; UpdateEnPort e; SelectPort f; ResetPort g; '
-                                 'TCKPort h; TMSPort i; TRSTPort j; ClockPort k; ToClockPort l; '
-                                 'ToTCKPort m; ToTMSPort n; ToTRSTPort o; ToShiftEnPort p; '
-                                 'ToCaptureEnPort q; ToUpdateEnPort r; ToResetPort s; '
-                                 'ToDoPort t; ToSelectPort u; DataInPort v; DataOutPort w; }',
-        # Multi-line comments with *ragged* continuation indent. This was a
-        # real bug: `extra` was counted twice (once by substr(common), once
-        # explicitly), so the comment drifted right on every run.
-        'ragged star comment':    'Module m {\n  /* a\n   * b\n     * c\n   */\n'
-                                 '  ScanInPort SI;\n}\n',
-        'comment opens with star': 'Module m {\n  /*\n   * x\n   */\n  ScanInPort SI;\n}\n',
-        'comment with blank line': 'Module m {\n  /* a\n\n   * b\n   */\n  ScanInPort SI;\n}\n',
-        # Keywords usable as attribute names. `attr_name` was a second,
-        # hand-written keyword list that drifted from the shape groups, so
-        # `ClockPort clk = x;` inside an Instance was rejected while
-        # `ClockPort clk;` at module level was accepted. It is now built from
-        # the shared groups, so this cannot happen again.
-        'keyword attr: ClockPort':    'Module m { Instance i Of M { ClockPort x = 1; } }',
-        'keyword attr: DataRegister': 'Module m { Instance i Of M { DataRegister x = 1; } }',
-        'keyword attr: OneHotScanGroup': 'Module m { Instance i Of M { OneHotScanGroup x = 1; } }',
-        'keyword attr: DataMux':      'Module m { Instance i Of M { DataMux x = 1; } }',
-        'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
-        'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
-                                   "1'b0 : MyTap.tdo; } }",
-        # Attribute values are expressions in real ICL (`ResetValue -1;`, LogicSignal terms like `TDR1[61:32] == 32'b0`), so the operators have to
-        # survive formatting unchanged.
-        'negative literal':       'Module m { Attribute d = -1; }',
-        'unary complement':       'Module m { Attribute d = ~a; }',
-        'comparison expression':  "Module m { Attribute d = a[61:32] == 32'b0; }",
-        'arithmetic expression':  'Module m { Attribute d = a + b * 2; }',
-        'parenthesised':          'Module m { Attribute d = (a + b); }',
-        'shift and logic':        'Module m { Attribute d = a << 2 || b; }',
-        'Attribute numeric value': 'Module m { Attribute d = 8; }',
-        'Attribute hierarchical':  'Module m { Attribute d = a.b.c; }',
-        'LogicSignal nested':     'Module m { LogicSignal R0_W { Select { a; } } }',
-        'LogicSignal':             'Module m { LogicSignal clk { Source TCK; } }',
-        'Connection arrows':       'Module m { Connection { a.SO -> b.SI; c -> d; } }',
-        'PortGroup comma list':    'Module m { PortGroup pg {si, so, en} }',
-        'AccessLink nested':       'Module m { AccessLink t Of STD_1149_1 { '
-                                   'BSDL_Entity E; READINSTR { ScanPath { a; b; } '
-                                   'ActiveSignals { en; } } } }',
-        'Instance port mapping':   'Module m { Instance i Of T { InputPort a = b.c; } }',
-        'indexed expressions':     "Module m { ScanRegister r[7:0] { CaptureSource a[3:0]; "
-                                   "ScanInSource b[0]; } }",
-        'sized literals':          "Module m { ScanRegister r { ResetValue 32'h0000_00FF; } }",
-        'several modules':         'Module a { } Module b { }',
-        'empty file':              '',
-        'only a comment':          '// nothing\n',
-    }
-    for tag, src in GOOD.items():
-        result = runner.format_text(src)
-        check('accept | %s' % tag, result.returncode == 0,
-              'rc=%d err=%s' % (result.returncode, result.stderr.strip()[:120]))
+    # The accept/reject corpus lives in tests/cases/ and is run by
+    # tests/regression.py, which also checks idempotence and character
+    # conservation. Duplicating it here meant a corpus change had to be made
+    # twice, and the two copies immediately disagreed: this one still asserted
+    # that a UTF-8 BOM survives formatting, while the tool had been changed to
+    # strip it. One corpus, one place.
 
     print()
     print('=' * 72)
@@ -277,34 +168,6 @@ def main():
                   'ScanInPort SI; // note' in out, out)
 
     print()
-    print('=' * 72)
-    print('E. Real ICL sample')
-    print('=' * 72)
-    samples_dir = os.path.normpath(os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), '..', 'samples'))
-    if os.path.isdir(samples_dir):
-        for name in sorted(os.listdir(samples_dir)):
-            if not name.endswith('.icl'):
-                continue
-            sample = os.path.join(samples_dir, name)
-            with open(sample, encoding='utf-8') as handle:
-                src = handle.read()
-            out = idem(runner, src, 'sample/' + name)
-            if out is None:
-                continue
-            # Keywords that the sample files exercise; a formatter that dropped
-            # or mangled any of them would be useless in practice.
-            for keyword in ['PortGroup', 'AccessLink', 'ScanPath', 'ScanMux',
-                            'ActiveSignals', 'LaunchEdge', 'ScanInPort',
-                            'ScanRegister', 'Instance']:
-                if keyword in src:
-                    check('%s | %s kept' % (name, keyword), keyword in out)
-            # Star-aligned block comments must keep their alignment.
-            if '/*' in src and '\n *' in src:
-                check('%s | star-aligned comment preserved' % name,
-                      '\n *' in out, repr(out[:200]))
-    else:
-        print('  (skipped: %s not found)' % samples_dir)
 
     print()
     print('=' * 72)

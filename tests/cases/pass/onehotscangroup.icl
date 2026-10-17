@@ -1,0 +1,1 @@
+Module m { OneHotScanGroup g { Port a.SO; Port b.SO; } }

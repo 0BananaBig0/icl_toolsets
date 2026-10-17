@@ -1,0 +1,1 @@
+Module m { ScanRegister r[7:0] { ScanInSource SI; } }

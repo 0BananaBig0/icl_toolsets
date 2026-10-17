@@ -1,0 +1,1 @@
+Module m { Attribute d = a << 2 || b; }

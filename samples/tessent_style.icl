@@ -56,7 +56,7 @@ Module my_ip {
   ToSelectPort to_sel;
   DataInPort di[3:0];
   ScanRegister TDR[3:0] { ScanInSource si; CaptureSource di[3:0]; }
-  Alias run_test = TDR[0] { iProcsForModule my_ip; }
+  Alias run_test = TDR[0] { Attribute my_ip = "x"; }
   Enum mode { FAST = 2'b00; SLOW = 2'b01; }
 }
 

@@ -1,0 +1,1 @@
+Module top { Instance i Of b { InputPort din = 'b1; } }

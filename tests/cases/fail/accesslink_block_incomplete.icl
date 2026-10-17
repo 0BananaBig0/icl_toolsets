@@ -1,0 +1,1 @@
+Module m { AccessLink a Of T { BSDL_Entity } }

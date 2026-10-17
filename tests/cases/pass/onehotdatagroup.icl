@@ -1,0 +1,1 @@
+Module m { OneHotDataGroup g { Port a; } }

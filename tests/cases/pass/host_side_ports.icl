@@ -1,0 +1,1 @@
+Module m { ToTCKPort a; ToTMSPort b; ToTRSTPort c; ToShiftEnPort d; ToCaptureEnPort e; ToUpdateEnPort f; ToResetPort g; }

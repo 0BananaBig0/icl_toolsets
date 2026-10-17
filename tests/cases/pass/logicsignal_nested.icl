@@ -1,0 +1,1 @@
+Module m { LogicSignal R0_W { Select { a; } } }

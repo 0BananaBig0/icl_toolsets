@@ -1,0 +1,1 @@
+Module m { Enum e { IDLE = 2'b00; RUN = 2'b01; } }

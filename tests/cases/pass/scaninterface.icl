@@ -1,0 +1,1 @@
+Module m { ScanInterface si { Port TDI; } }

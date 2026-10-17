@@ -1,0 +1,1 @@
+Module m { ScanInPort a; ScanOutPort b; ShiftEnPort c; CaptureEnPort d; UpdateEnPort e; SelectPort f; ResetPort g; TCKPort h; TMSPort i; TRSTPort j; ClockPort k; ToClockPort l; ToTCKPort m; ToTMSPort n; ToTRSTPort o; ToShiftEnPort p; ToCaptureEnPort q; ToUpdateEnPort r; ToResetPort s; ToDoPort t; ToSelectPort u; DataInPort v; DataOutPort w; }

@@ -1,0 +1,1 @@
+Module m { ScanMux M3 SelectedBy MyTap.M3_sel { 1'b0 : MyTap.tdo; } }

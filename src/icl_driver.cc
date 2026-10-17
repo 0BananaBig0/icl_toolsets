@@ -106,8 +106,26 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
   return true;
 }
 
-bool IclDriver::FormatText(const std::string& text, std::string* output,
+namespace {
+
+// Strip a UTF-8 BOM. It used to happen in FormatFile only, so the same bytes
+// were accepted from a file and rejected from stdin — the CLI and the LSP
+// (which always feeds the parser from memory) disagreed. Doing it here makes
+// both paths identical.
+void StripBom(std::string* text) {
+  if (text->size() >= 3 && static_cast<unsigned char>((*text)[0]) == 0xEF &&
+      static_cast<unsigned char>((*text)[1]) == 0xBB &&
+      static_cast<unsigned char>((*text)[2]) == 0xBF) {
+    text->erase(0, 3);
+  }
+}
+
+}  // namespace
+
+bool IclDriver::FormatText(const std::string& text_in, std::string* output,
                            std::string* error) {
+  std::string text = text_in;
+  StripBom(&text);
   if (!Parse(text, error)) return false;
   const std::vector<FormatNode> lines = BuildFormatTree(unit_, style_);
   *output = RenderFormatTree(lines, style_.indent_width);
@@ -118,13 +136,7 @@ bool IclDriver::FormatFile(const std::string& path, std::string* original,
                            std::string* output, std::string* error) {
   std::string text;
   if (!ReadFile(path, &text, error)) return false;
-  // Strip a UTF-8 BOM; leaving it in would put an invisible character in the
-  // middle of the output.
-  if (text.size() >= 3 && static_cast<unsigned char>(text[0]) == 0xEF &&
-      static_cast<unsigned char>(text[1]) == 0xBB &&
-      static_cast<unsigned char>(text[2]) == 0xBF) {
-    text.erase(0, 3);
-  }
+  StripBom(&text);
   *original = text;
   return FormatText(text, output, error);
 }

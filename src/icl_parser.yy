@@ -367,7 +367,16 @@ attr_item
   | attr_name EQUALS value SEMICOLON
       { $$ = driver.MakeStatement($1 + " = " + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
-  | attr_name IDENT EQUALS value SEMICOLON
+  /* The left side of an assignment is an expression, not just a name:
+     `InputPort datain[5:0] = toplevel_datain[15:10];` is verbatim from the
+     Tessent IJTAG manual's parameterised-module example, and the previous
+     `attr_name IDENT = value` form stopped dead at the `[`.
+
+     One rule replaces the name-only and name-plus-range forms: `value`
+     already covers `datain`, `datain[5:0]` and `a.b.c`. Keeping them as
+     separate productions left bison unable to decide, at the `[`, whether it
+     was a range on the name or an index in the expression. */
+  | attr_name value EQUALS value SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " = " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
   ;

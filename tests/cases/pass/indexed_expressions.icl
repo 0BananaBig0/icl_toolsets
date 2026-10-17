@@ -1,0 +1,1 @@
+Module m { ScanRegister r[7:0] { CaptureSource a[3:0]; ScanInSource b[0]; } }

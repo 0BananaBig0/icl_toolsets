@@ -1,0 +1,1 @@
+Module m { ScanRegister r { ResetValue 32'h0000_00FF; } }

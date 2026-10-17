@@ -1,0 +1,1 @@
+Module m { Reg r[3:0] { WriteEnSource ue; } Field f[1:0] { Attribute d = "x"; } }

@@ -1,0 +1,1 @@
+Module bus { DataInPort datain[ $MSB:0 ]; }

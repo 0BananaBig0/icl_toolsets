@@ -1,0 +1,1 @@
+Module bus { DataOutPort dataout { Source RegD[ $MSB:0 ]; } }

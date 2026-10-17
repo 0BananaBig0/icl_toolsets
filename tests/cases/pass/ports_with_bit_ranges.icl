@@ -1,0 +1,1 @@
+Module m { DataInPort din[31:0]; DataOutPort dout[7:0]; }

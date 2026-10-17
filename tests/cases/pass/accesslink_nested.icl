@@ -1,0 +1,1 @@
+Module m { AccessLink t Of STD_1149_1 { BSDL_Entity E; READINSTR { ScanPath { a; b; } ActiveSignals { en; } } } }
