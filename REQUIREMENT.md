@@ -225,7 +225,29 @@ group:
 16 productions collapsed to 7, and the groups cannot drift apart because each
 shape exists in exactly one place.
 
-### 5.3 Earlier in the same pass
+### 5.3 The lexer's regular expressions did not match vendor ICL
+
+Auditing each pattern against documented vendor syntax, not against my own
+samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
+Extraction of Parameterized Modules"), which is the closest thing to real
+vendor ICL available:
+
+| Pattern | Was | Now |
+|---|---|---|
+| Number literal | `{DIGIT}+'[sS]?[bBhHdDoO]...` — requires a width | width made optional; `'b1` accepted, as in the manual's `InputPort din = 'b1;` |
+| Decimal | `{DIGIT}+` | `{DIGIT}(_?{DIGIT})*` — accepts Verilog digit separators (`1_000`) |
+| Parameter reference | `$` was an illegal character | `"$"{ID}` → `PARAMREF`, usable anywhere a range bound or value is: `DataInPort datain[ $MSB:0 ];` |
+
+The parameter case matters more than the others: a parameterised module is a
+normal way to write ICL, and every range in such a file was being rejected.
+
+**Checked and found correct:** block-comment pattern against `*/` inside a
+string, `/* /*` nesting, `**/` endings, and `/**/`; keyword longest-match
+against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
+`ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
+containing a newline is rejected rather than silently spanning lines.
+
+### 5.4 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -236,6 +258,11 @@ was already green.
 | **`Json::bool_value` / `number_value` were never called.** | Deleted. Only the types actually read remain (int, string, elements). |
 | **`<vector>` included in `icl_lsp_main.cc` but unused.** | Removed. |
 | **The stdin error path duplicated the file error path** even though a stdin job is already named `<stdin>`. | Merged into one diagnostic. |
+
+**Considered and not extracted:** both front ends repeat the same five lines
+(create driver, set style, format, check for error). They genuinely diverge
+after it — the CLI writes files, the LSP returns a `TextEdit` — and two
+occurrences of a five-line pattern do not pay for a new module.
 
 **Known and deliberately not fixed:** a comment cannot appear mid-statement
 (`ScanInPort /* mid */ SI;`). Fixing it means adding an optional `COMMENT` to
@@ -253,7 +280,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 127 | `make check` |
+| CLI end-to-end | 134 | `make check` |
 | LSP protocol | 25 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

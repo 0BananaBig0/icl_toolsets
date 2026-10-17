@@ -100,6 +100,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token <std::string> NUMBER "number"
 %token <std::string> STRING "string"
 %token <std::string> COMMENT "comment"
+%token <std::string> PARAMREF "parameter reference"
 %token ARROW "->"
 %token <std::string> OPERATOR "operator"
 %token LPAREN "("
@@ -184,7 +185,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range name_block_kw range_block_kw sel_block_kw of_block_kw
+%type <std::string> opt_range range_bound name_block_kw range_block_kw sel_block_kw of_block_kw
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -322,10 +323,17 @@ port_keyword
   | DATAOUTPORT      { $$ = "DataOutPort"; }
   ;
 
+/* A range bound is a literal or a parameter reference; `$MSB:0` is how
+   parameterised ICL is written. */
+range_bound
+  : NUMBER   { $$ = $1; }
+  | PARAMREF { $$ = $1; }
+  ;
+
 opt_range
   : %empty                    { $$ = std::string(); }
-  | LBRACKET NUMBER RBRACKET            { $$ = "[" + $2 + "]"; }
-  | LBRACKET NUMBER COLON NUMBER RBRACKET { $$ = "[" + $2 + ":" + $4 + "]"; }
+  | LBRACKET range_bound RBRACKET            { $$ = "[" + $2 + "]"; }
+  | LBRACKET range_bound COLON range_bound RBRACKET { $$ = "[" + $2 + ":" + $4 + "]"; }
   ;
 
 port_decl
@@ -520,14 +528,18 @@ postfix
   : primary                           { $$ = $1; }
   | postfix DOT IDENT                 { $$ = $1 + "." + $3; }
   | postfix DOT NUMBER                { $$ = $1 + "." + $3; }
-  | postfix LBRACKET NUMBER RBRACKET            { $$ = $1 + "[" + $3 + "]"; }
-  | postfix LBRACKET NUMBER COLON NUMBER RBRACKET { $$ = $1 + "[" + $3 + ":" + $5 + "]"; }
+  /* Index bounds accept a parameter reference: `RegD[ $MSB:0 ]`. */
+  | postfix LBRACKET range_bound RBRACKET
+      { $$ = $1 + "[" + $3 + "]"; }
+  | postfix LBRACKET range_bound COLON range_bound RBRACKET
+      { $$ = $1 + "[" + $3 + ":" + $5 + "]"; }
   ;
 
 primary
-  : IDENT  { $$ = $1; }
-  | NUMBER { $$ = $1; }
-  | STRING { $$ = $1; }
+  : IDENT    { $$ = $1; }
+  | NUMBER   { $$ = $1; }
+  | STRING   { $$ = $1; }
+  | PARAMREF { $$ = $1; }
   ;
 
 %%

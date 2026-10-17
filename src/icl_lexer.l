@@ -147,14 +147,32 @@ ID      [A-Za-z_][A-Za-z_0-9]*
                       return icl::IclParser::make_STRING(
                           std::string(yytext), g_location); }
 
-  /* Verilog style sized literals: 8'b0000_0000, 32'h0000_00FF, 1'b1 ... */
+  /* Verilog style literals, sized and unsized. Tessent's IJTAG manual writes
+     `InputPort din = 'b1;` — an unsized base with no width — so the leading
+     digits must be optional. Longest match picks the sized form when both
+     apply (`8'hFF`, not `8` followed by `'hFF`). */
 {DIGIT}+'[sS]?[bBhHdDoO][0-9a-fA-F_xXzZ?]+ {
                       g_location.step();
                       return icl::IclParser::make_NUMBER(
                           std::string(yytext), g_location);
                     }
-{DIGIT}+            { g_location.step();
+'[sS]?[bBhHdDoO][0-9a-fA-F_xXzZ?]+ {
+                      g_location.step();
                       return icl::IclParser::make_NUMBER(
+                          std::string(yytext), g_location);
+                    }
+
+  /* Decimal, possibly with Verilog digit separators: 1_000. */
+{DIGIT}(_?{DIGIT})* { g_location.step();
+                      return icl::IclParser::make_NUMBER(
+                          std::string(yytext), g_location); }
+
+  /* Parameter reference: `$MSB`. Parameterised ICL declares
+     `Parameter MSB = 5;` and then writes `DataInPort datain[ $MSB:0 ];`
+     (Tessent IJTAG User's Manual, "ICL Network Extraction of Parameterized
+     Modules"). The `$` is kept in the token text so output is byte-identical. */
+"$"{ID}             { g_location.step();
+                      return icl::IclParser::make_PARAMREF(
                           std::string(yytext), g_location); }
 
 "->"                { g_location.step();

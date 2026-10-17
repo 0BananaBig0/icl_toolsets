@@ -155,6 +155,16 @@ def main():
         'ClockMux':               'Module m { ClockMux cm SelectedBy sel { a; b; } }',
         'OneHotScanGroup':        'Module m { OneHotScanGroup g { Port a.SO; Port b.SO; } }',
         'OneHotDataGroup':        'Module m { OneHotDataGroup g { Port a; } }',
+        # Parameterised ICL, verbatim from the Tessent IJTAG User's Manual
+        # ("ICL Network Extraction of Parameterized Modules"). Both the `$MSB`
+        # reference and the unsized `'b1 literal were rejected before.
+        'parameter in range':     'Module bus { DataInPort datain[ $MSB:0 ]; }',
+        'parameter in index':     'Module bus { DataOutPort dataout { Source RegD[ $MSB:0 ]; } }',
+        'parameter declared':     'Module bus { Parameter MSB = 5; }',
+        'parameter overridden':   'Module top { Instance i Of bus { Parameter MSB = 7; } }',
+        'unsized binary literal': "Module top { Instance i Of b { InputPort din = 'b1; } }",
+        'unsized hex literal':    "Module m { Attribute d = 'hFF; }",
+        'separated decimal':      'Module m { Attribute d = 1_000; }',
         'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
         'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
                                    "1'b0 : MyTap.tdo; } }",
