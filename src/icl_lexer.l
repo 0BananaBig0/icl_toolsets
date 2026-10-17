@@ -211,6 +211,8 @@ UpdateEnPort        { g_location.step(); return icl::IclParser::make_UPDATEENPOR
 SelectPort          { g_location.step(); return icl::IclParser::make_SELECTPORT(g_location); }
 ResetPort           { g_location.step(); return icl::IclParser::make_RESETPORT(g_location); }
 TCKPort             { g_location.step(); return icl::IclParser::make_TCKPORT(g_location); }
+ClockPort           { g_location.step(); return icl::IclParser::make_CLOCKPORT(g_location); }
+ToClockPort         { g_location.step(); return icl::IclParser::make_TOCLOCKPORT(g_location); }
 TMSPort             { g_location.step(); return icl::IclParser::make_TMSPORT(g_location); }
 TRSTPort            { g_location.step(); return icl::IclParser::make_TRSTPORT(g_location); }
 ToTCKPort           { g_location.step(); return icl::IclParser::make_TOTCKPORT(g_location); }

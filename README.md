@@ -302,8 +302,11 @@ as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
 
 * **Grammar coverage comes from the standard plus the samples available**, not
   from a corpus of real Tessent output. The element list is IEEE 1687's
-  Table 2 (IJTAG Tutorial, 3rd ed.); see `REQUIREMENT.md` §5 for the five
-  elements that were missing before it was checked against. Two gaps were found and fixed exactly
+  Table 2 (IJTAG Tutorial, 3rd ed.) and the port functions are Tessent's
+  Table 3-14; `REQUIREMENT.md` §5 lists what each cross-check found missing
+  (five elements, two port functions, and three lexer patterns).
+  `samples/keysight_gpio.icl` is a real third-party ICL file and is the
+  strongest sample in the tree. Two gaps were found and fixed exactly
   this way: `ScanMux` requires the standard `SelectedBy` keyword (the samples
   had been written against a pre-standard draft that omitted it), and eight
   port functions from the client/host split (`TRSTPort`, `ToTCKPort`,

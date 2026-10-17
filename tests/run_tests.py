@@ -165,6 +165,17 @@ def main():
         'unsized binary literal': "Module top { Instance i Of b { InputPort din = 'b1; } }",
         'unsized hex literal':    "Module m { Attribute d = 'hFF; }",
         'separated decimal':      'Module m { Attribute d = 1_000; }',
+        # Port functions from Tessent's "ICL Port Types" table (Table 3-14).
+        # `ClockPort` and `ToClockPort` were missing: the real-world Keysight
+        # example below was rejected because of them.
+        'ClockPort':             'Module m { ClockPort clk; }',
+        'ToClockPort':           'Module m { ToClockPort to_clk; }',
+        'all port functions':    'Module m { ScanInPort a; ScanOutPort b; ShiftEnPort c; '
+                                 'CaptureEnPort d; UpdateEnPort e; SelectPort f; ResetPort g; '
+                                 'TCKPort h; TMSPort i; TRSTPort j; ClockPort k; ToClockPort l; '
+                                 'ToTCKPort m; ToTMSPort n; ToTRSTPort o; ToShiftEnPort p; '
+                                 'ToCaptureEnPort q; ToUpdateEnPort r; ToResetPort s; '
+                                 'ToDoPort t; ToSelectPort u; DataInPort v; DataOutPort w; }',
         'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
         'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
                                    "1'b0 : MyTap.tdo; } }",

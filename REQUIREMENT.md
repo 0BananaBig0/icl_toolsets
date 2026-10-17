@@ -225,7 +225,35 @@ group:
 16 productions collapsed to 7, and the groups cannot drift apart because each
 shape exists in exactly one place.
 
-### 5.3 The lexer's regular expressions did not match vendor ICL
+### 5.3 Two port functions were missing, found by running a real ICL file
+
+A Keysight application note (*IEEE 1687 Silicon Test to Board Test*) contains
+a complete ICL file for a GPIO instrument. Running it through the parser
+rejected it at line 13:
+
+```
+ClockPort CLOCK;          ← syntax error, unexpected identifier
+```
+
+`ClockPort` and `ToClockPort` are both in Tessent's *ICL Port Types* table
+(Table 3-14, mapping `ClockPort`→`clock` input, `ToClockPort`→`to_clock`
+output) and in the ICL statement descriptions ("ClockPort declares a module's
+functional clock; non-test-clock ports are declared with ClockPort"). Neither
+was in the grammar.
+
+Both added. The file is now `samples/keysight_gpio.icl` and is checked for
+idempotence and character conservation like the other samples — it is the
+first sample in the tree that was written by someone else.
+
+Two further real-world files (a `DataMux` module and a multi-instance module)
+were run and pass unchanged.
+
+**Still rejected, and believed correct:** Verilog escaped identifiers
+(`\si `), instance arrays (`Instance i[3] Of T;`), and chained connections
+(`a -> b -> c;`). ICL is not Verilog, and none of the three appears in any
+ICL source consulted. They are recorded here rather than added on a guess.
+
+### 5.4 The lexer's regular expressions did not match vendor ICL
 
 Auditing each pattern against documented vendor syntax, not against my own
 samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
@@ -247,7 +275,7 @@ against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
 `ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
 containing a newline is rejected rather than silently spanning lines.
 
-### 5.4 Earlier in the same pass
+### 5.5 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -280,7 +308,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 134 | `make check` |
+| CLI end-to-end | 141 | `make check` |
 | LSP protocol | 25 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

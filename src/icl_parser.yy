@@ -124,6 +124,8 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token UPDATEENPORT "UpdateEnPort"
 %token SELECTPORT "SelectPort"
 %token RESETPORT "ResetPort"
+%token CLOCKPORT "ClockPort"
+%token TOCLOCKPORT "ToClockPort"
 %token TCKPORT "TCKPort"
 %token TMSPORT "TMSPort"
 %token TRSTPORT "TRSTPort"
@@ -308,6 +310,8 @@ port_keyword
   | SELECTPORT       { $$ = "SelectPort"; }
   | RESETPORT        { $$ = "ResetPort"; }
   | TCKPORT          { $$ = "TCKPort"; }
+  | CLOCKPORT        { $$ = "ClockPort"; }
+  | TOCLOCKPORT      { $$ = "ToClockPort"; }
   | TMSPORT          { $$ = "TMSPort"; }
   | TRSTPORT         { $$ = "TRSTPort"; }
   | TOTCKPORT        { $$ = "ToTCKPort"; }
