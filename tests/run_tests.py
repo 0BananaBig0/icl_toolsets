@@ -183,6 +183,15 @@ def main():
                                  '  ScanInPort SI;\n}\n',
         'comment opens with star': 'Module m {\n  /*\n   * x\n   */\n  ScanInPort SI;\n}\n',
         'comment with blank line': 'Module m {\n  /* a\n\n   * b\n   */\n  ScanInPort SI;\n}\n',
+        # Keywords usable as attribute names. `attr_name` was a second,
+        # hand-written keyword list that drifted from the shape groups, so
+        # `ClockPort clk = x;` inside an Instance was rejected while
+        # `ClockPort clk;` at module level was accepted. It is now built from
+        # the shared groups, so this cannot happen again.
+        'keyword attr: ClockPort':    'Module m { Instance i Of M { ClockPort x = 1; } }',
+        'keyword attr: DataRegister': 'Module m { Instance i Of M { DataRegister x = 1; } }',
+        'keyword attr: OneHotScanGroup': 'Module m { Instance i Of M { OneHotScanGroup x = 1; } }',
+        'keyword attr: DataMux':      'Module m { Instance i Of M { DataMux x = 1; } }',
         'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
         'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
                                    "1'b0 : MyTap.tdo; } }",

@@ -277,6 +277,23 @@ def main():
           bool(edits4) and '\n    ScanInPort SI;' in edits4[0]['newText'],
           str(edits4)[:200])
 
+    # An absurd tabSize must not become a memory amplifier: the value is
+    # applied per indent level, and tabSize=99999 on a six-level file produced
+    # a 7.8 MB reply from a 157-byte input. Clamped to 16.
+    nested = ('Module m { AccessLink t Of STD_1149_1 { READINSTR '
+              '{ ScanPath { a; } } ' + 'Nested { ' * 6 +
+              ' Attribute d = 1;' + ' }' * 6 + ' } }')
+    client.notify('textDocument/didOpen', {
+        'textDocument': {'uri': 'file:///tmp/deep.icl', 'languageId': 'icl',
+                         'version': 1, 'text': nested}})
+    client.drain()
+    response = client.request('textDocument/formatting', {
+        'textDocument': {'uri': 'file:///tmp/deep.icl'},
+        'options': {'tabSize': 99999, 'insertSpaces': True}})
+    deep = ((response or {}).get('result') or [{}])[0].get('newText', '')
+    check('absurd tabSize is clamped, not amplified',
+          0 < len(deep) < 10000, 'reply was %d bytes' % len(deep))
+
     # A file with a syntax error must come back untouched rather than mangled.
     client.notify('textDocument/didOpen', {
         'textDocument': {'uri': bad_uri, 'languageId': 'icl', 'version': 3,

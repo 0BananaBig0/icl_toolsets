@@ -187,7 +187,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range range_bound name_block_kw range_block_kw sel_block_kw of_block_kw
+%type <std::string> opt_range range_bound name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -440,48 +440,20 @@ ident_list
    an error — only structure is checked. Upgrade path: if attribute spellings
    need checking, enumerate the legal ones per enclosing block instead of
    allowing every keyword here. */
+/* Any keyword may be an attribute name or a nested-block header. Real ICL
+   writes `DataInPort DI = 8'h00;` inside an Instance and `Attribute d = "x";`
+   inside a Field, so restricting this to identifiers rejects valid files.
+   Spelling is therefore not checked — only structure (see the ponytail note
+   above).
+   Built from the groups above rather than a second hand-written list: the
+   first version of this rule listed the keywords itself and silently drifted
+   out of sync, so `ClockPort clk = x;` inside an Instance was rejected while
+   `ClockPort clk;` at module level was accepted. */
 attr_name
-  : IDENT          { $$ = $1; }
-  | MODULE         { $$ = "Module"; }
-  | PARAMETER      { $$ = "Parameter"; }
-  | ATTRIBUTE      { $$ = "Attribute"; }
-  | ALIAS          { $$ = "Alias"; }
-  | ENUM           { $$ = "Enum"; }
-  | SCANINPORT     { $$ = "ScanInPort"; }
-  | SCANOUTPORT    { $$ = "ScanOutPort"; }
-  | SHIFTENPORT    { $$ = "ShiftEnPort"; }
-  | CAPTUREENPORT  { $$ = "CaptureEnPort"; }
-  | UPDATEENPORT   { $$ = "UpdateEnPort"; }
-  | SELECTPORT     { $$ = "SelectPort"; }
-  | RESETPORT      { $$ = "ResetPort"; }
-  | TCKPORT        { $$ = "TCKPort"; }
-  | TMSPORT        { $$ = "TMSPort"; }
-  | TRSTPORT       { $$ = "TRSTPort"; }
-  | TOTCKPORT      { $$ = "ToTCKPort"; }
-  | TOTMSPORT      { $$ = "ToTMSPort"; }
-  | TOTRSTPORT     { $$ = "ToTRSTPort"; }
-  | TOSHIFTENPORT  { $$ = "ToShiftEnPort"; }
-  | TOCAPTUREENPORT{ $$ = "ToCaptureEnPort"; }
-  | TOUPDATEENPORT { $$ = "ToUpdateEnPort"; }
-  | TORESETPORT    { $$ = "ToResetPort"; }
-  | TODOPORT       { $$ = "ToDoPort"; }
-  | TOSELECTPORT   { $$ = "ToSelectPort"; }
-  | DATAINPORT     { $$ = "DataInPort"; }
-  | DATAOUTPORT    { $$ = "DataOutPort"; }
-  | SCANINTERFACE  { $$ = "ScanInterface"; }
-  | ONEHOTSCANINTERFACE { $$ = "OneHotScanInterface"; }
-  | SCANREGISTER   { $$ = "ScanRegister"; }
-  | REG            { $$ = "Reg"; }
-  | FIELD          { $$ = "Field"; }
-  | INSTANCE       { $$ = "Instance"; }
-  | SCANMUX        { $$ = "ScanMux"; }
-  | SELECTEDBY    { $$ = "SelectedBy"; }
-  | LOGICSIGNAL    { $$ = "LogicSignal"; }
-  | CONNECTION     { $$ = "Connection"; }
-  | PORTGROUP      { $$ = "PortGroup"; }
-  | ACCESSLINK     { $$ = "AccessLink"; }
-  | OF             { $$ = "Of"; }
+  : IDENT        { $$ = $1; }
+  | any_keyword  { $$ = $1; }
   ;
+
 
 /* ------------------------------------------------- keyword groups by shape */
 
@@ -509,6 +481,25 @@ sel_block_kw
 of_block_kw
   : INSTANCE             { $$ = "Instance"; }
   | ACCESSLINK           { $$ = "AccessLink"; }
+  ;
+
+/* Everything above, plus the keywords that have no block form. One place to
+   add a keyword; every list that needs "any keyword" refers to this. */
+any_keyword
+  : name_block_kw   { $$ = $1; }
+  | range_block_kw  { $$ = $1; }
+  | sel_block_kw    { $$ = $1; }
+  | of_block_kw     { $$ = $1; }
+  | port_keyword    { $$ = $1; }
+  | MODULE          { $$ = "Module"; }
+  | PARAMETER       { $$ = "Parameter"; }
+  | ATTRIBUTE       { $$ = "Attribute"; }
+  | ALIAS           { $$ = "Alias"; }
+  | SELECTEDBY      { $$ = "SelectedBy"; }
+  | LOGICSIGNAL     { $$ = "LogicSignal"; }
+  | CONNECTION      { $$ = "Connection"; }
+  | PORTGROUP       { $$ = "PortGroup"; }
+  | OF              { $$ = "Of"; }
   ;
 
 /* ------------------------------------------------------------------ values */

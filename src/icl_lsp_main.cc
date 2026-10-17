@@ -300,7 +300,12 @@ class LspServer {
     // Honour the editor's tabSize: it is the same knob the CLI exposes as -n,
     // so the two front ends agree on what "indent" means.
     const long long tab_size = GetInt(params.Find("options"), "tabSize", 2);
-    style.indent_width = tab_size > 0 ? static_cast<int>(tab_size) : 2;
+    // Clamped: the value is applied per indent level, so an absurd one is not
+    // merely ugly, it is unbounded — a 157-byte file with tabSize=99999 and
+    // six levels of nesting produced a 7.8 MB reply. Real editors send 2, 4 or
+    // 8; 16 leaves headroom without giving a buggy client a memory amplifier.
+    style.indent_width = tab_size > 0 ? static_cast<int>(
+        tab_size < 16 ? tab_size : 16) : 2;
     driver.set_style(style);
 
     std::string output;

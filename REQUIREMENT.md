@@ -225,7 +225,44 @@ group:
 16 productions collapsed to 7, and the groups cannot drift apart because each
 shape exists in exactly one place.
 
-### 5.3 A comment bug that only a ragged-indent sample could show
+### 5.3 `attr_name` was a second keyword list, and it had drifted
+
+The shape groups (§5.2) removed the duplicated per-element productions, but
+one list was left hand-written: `attr_name`, the keywords allowed as an
+attribute name or nested-block header. It had not been updated when the five
+elements and two port functions were added, so:
+
+```
+ClockPort clk;                        ← accepted (module level)
+Instance i Of M { ClockPort clk = 1; } ← rejected (inside a block)
+```
+
+Same keyword, two answers, depending only on where it appeared. Seven
+keywords were affected (`DataRegister`, `DataMux`, `ClockMux`,
+`OneHotScanGroup`, `OneHotDataGroup`, `ClockPort`, `ToClockPort`).
+
+Fixed by building `attr_name` from the groups:
+
+```
+attr_name : IDENT | any_keyword ;
+any_keyword : name_block_kw | range_block_kw | sel_block_kw
+            | of_block_kw | port_keyword | <the 9 singletons> ;
+```
+
+It is no longer possible for the two to disagree, because there is one list.
+
+This is the second time a duplicated list drifted (§5.1 was the first). The
+rule worth keeping: **if two places must agree, make them the same place.**
+
+### 5.4 A single integer field could amplify output 50,000x
+
+`textDocument/formatting` honours the client's `options.tabSize`. It is
+applied per indent level, so a nested file with `tabSize: 99999` produced a
+**7.8 MB reply from a 157-byte input**. No crash — just unbounded memory from
+one field. Clamped to 16 (real editors send 2, 4 or 8), with a regression
+test asserting the reply stays under 10 KB regardless of what is requested.
+
+### 5.5 A comment bug that only a ragged-indent sample could show
 
 Block comments keep their relative indentation across continuation lines.
 The code computed the common indent, then rebuilt each line as
@@ -254,7 +291,7 @@ blank line).
 This is the same lesson as §5.1 in miniature: the samples were too uniform to
 reach the bug.
 
-### 5.4 Two port functions were missing, found by running a real ICL file
+### 5.6 Two port functions were missing, found by running a real ICL file
 
 A Keysight application note (*IEEE 1687 Silicon Test to Board Test*) contains
 a complete ICL file for a GPIO instrument. Running it through the parser
@@ -282,7 +319,7 @@ were run and pass unchanged.
 (`a -> b -> c;`). ICL is not Verilog, and none of the three appears in any
 ICL source consulted. They are recorded here rather than added on a guess.
 
-### 5.5 The lexer's regular expressions did not match vendor ICL
+### 5.7 The lexer's regular expressions did not match vendor ICL
 
 Auditing each pattern against documented vendor syntax, not against my own
 samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
@@ -304,7 +341,7 @@ against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
 `ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
 containing a newline is rejected rather than silently spanning lines.
 
-### 5.6 Earlier in the same pass
+### 5.8 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -337,8 +374,8 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 144 | `make check` |
-| LSP protocol | 25 | scripted client, coc.nvim's message sequence |
+| CLI end-to-end | 148 | `make check` |
+| LSP protocol | 26 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |
 
