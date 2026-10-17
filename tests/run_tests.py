@@ -282,6 +282,20 @@ def main():
               result.returncode == 2 and '.icl:' in result.stderr,
               'rc=%d err=%r' % (result.returncode, result.stderr[:120]))
 
+        # Regression: the scanner's line counter is file-scope state, so a
+        # second file used to inherit the first file's line numbers and report
+        # syntax errors at the wrong line.
+        good_path = os.path.join(tmp, 'line_ok.icl')
+        with open(good_path, 'w', encoding='utf-8') as handle:
+            handle.write('Module A {\n  ScanInPort SI;\n}\n')
+        bad_path = os.path.join(tmp, 'line_bad.icl')
+        with open(bad_path, 'w', encoding='utf-8') as handle:
+            handle.write('Module B {\n  @ bad\n}\n')
+        result = runner.run([good_path, bad_path])
+        check('CLI | error line is per-file, not cumulative',
+              result.returncode == 2 and 'line 2' in result.stderr,
+              'rc=%d err=%r' % (result.returncode, result.stderr[:120]))
+
         check('CLI | missing file -> exit 2',
               runner.run([os.path.join(tmp, 'nope.icl')]).returncode == 2)
 

@@ -58,26 +58,6 @@ IclParser::symbol_type yylex(IclDriver& driver);
 // The buffer is tracked explicitly rather than via YY_CURRENT_BUFFER: that is
 // an expression macro (not an lvalue), and re-pointing the scanner at a fresh
 // empty buffer as a workaround leaks the one it just replaced.
-YY_BUFFER_STATE g_buffer = nullptr;
-
-YY_BUFFER_STATE icl_scan_bytes(const char* text, size_t size) {
-  if (g_buffer != nullptr) {
-    yy_delete_buffer(g_buffer);
-    g_buffer = nullptr;
-  }
-  g_buffer = yy_scan_bytes(text, static_cast<int>(size));
-  return g_buffer;
-}
-
-void icl_scan_end() {
-  if (g_buffer != nullptr) {
-    // flex clears YY_CURRENT_BUFFER itself when deleting the buffer that is
-    // currently active, so the scanner is left in a valid empty state.
-    yy_delete_buffer(g_buffer);
-    g_buffer = nullptr;
-  }
-}
-
 namespace {
 
 // Location of the token currently being scanned. `YY_USER_ACTION` widens it
@@ -103,6 +83,31 @@ int CountNewlines(const char* text) {
 }
 
 }  // namespace
+
+YY_BUFFER_STATE g_buffer = nullptr;
+
+YY_BUFFER_STATE icl_scan_bytes(const char* text, size_t size) {
+  // Must reset the line counter: |g_location| is file-scope, so without this a
+  // second file's line numbers continue from where the first one ended, and
+  // syntax errors are reported at the wrong line.
+  g_location.initialize();
+  if (g_buffer != nullptr) {
+    yy_delete_buffer(g_buffer);
+    g_buffer = nullptr;
+  }
+  g_buffer = yy_scan_bytes(text, static_cast<int>(size));
+  return g_buffer;
+}
+
+void icl_scan_end() {
+  if (g_buffer != nullptr) {
+    // flex clears YY_CURRENT_BUFFER itself when deleting the buffer that is
+    // currently active, so the scanner is left in a valid empty state.
+    yy_delete_buffer(g_buffer);
+    g_buffer = nullptr;
+  }
+}
+
 
 #define YY_USER_ACTION g_location.columns(static_cast<int>(yyleng));
 %}
@@ -221,14 +226,3 @@ Of                  { g_location.step(); return icl::IclParser::make_OF(g_locati
                     }
 
 %%
-
-// Resets the scanner state before each input. Location tracking is inherently
-// scanner-global in a non-reentrant flex scanner; making it thread-safe would
-// require %option reentrant, which would in turn force every rule to thread a
-// yyscan_t through bison's bridge API. Not worth it for a single-threaded CLI
-// that formats one file per process invocation.
-void icl_reset_lexer() {
-  g_location.initialize();
-  yy_delete_buffer(YY_CURRENT_BUFFER);
-  yy_switch_to_buffer(yy_scan_bytes("", 0));
-}

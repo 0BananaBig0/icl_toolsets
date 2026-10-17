@@ -14,7 +14,7 @@
 //
 // The driver ties the three passes together and owns the resulting AST:
 //
-//   input text --[bison+flex]--> AST --[layout]--> FormatTree --[render]--> text
+//   input text --[bison+flex]--> AST --[layout]--> lines --[render]--> text
 //
 // It also exposes the small factory helpers the grammar actions call, so the
 // .yy file stays readable, and it owns the parser's diagnostic state (the

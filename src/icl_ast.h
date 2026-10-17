@@ -177,7 +177,6 @@ class AstUnit {
     return raw;
   }
 
-  const std::vector<AstNode*>& top_level() const { return top_level_; }
   std::vector<AstNode*>& top_level() { return top_level_; }
 
   // Visits every top-level node in source order.

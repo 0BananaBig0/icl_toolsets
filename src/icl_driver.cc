@@ -47,8 +47,8 @@ bool ReadFile(const std::string& path, std::string* text, std::string* error) {
   return true;
 }
 
-// `--ast` printer. A visitor rather than a switch on |AstKind| so that adding
-// a node class fails to compile here instead of silently printing nothing.
+// `--ast` printer. A visitor so that adding a node class fails to compile here
+// instead of silently printing nothing.
 class AstPrinter final : public AstVisitor {
  public:
   explicit AstPrinter(int depth = 0) : depth_(depth) {}

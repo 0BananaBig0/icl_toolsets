@@ -127,24 +127,25 @@ enumerators. ICL output defaults to 2 spaces (`-n` to change).
 ## Design notes
 
 The AST has exactly three node shapes: comment, one-line statement, and
-`header { body }` block. Module, Port and PortGroup used to be separate
-classes, but each was just a header plus a body (or a one-line text), and
-nothing downstream distinguishes them — so they collapsed into the general
+`header { body }` block. Module, Port and PortGroup started as separate
+classes, but each was just a header plus a body (or a one-line text) and
+nothing downstream distinguishes them, so they collapsed into the general
 shapes. Same for the four-value `FormatKind` enum (only "blank separator" was
 ever read) and the `FormatTree` wrapper around a plain vector.
 
 Beyond style, a few decisions are load-bearing:
 
-* **Dispatch is by static type, never by `AstKind`.** Every traversal is an
-  `AstVisitor`. `AstKind` exists for diagnostics and `--ast` only. It is *not*
-  a 1:1 map onto the C++ classes: `Alias`, `ScanRegister`, `Reg` and `Field`
-  each have both a one-line form (`Alias a = b;`) and a block form
-  (`Alias a = b { ... }`), which are different classes sharing one kind value.
-  Switching on kind and down-casting crashed on exactly those; with a visitor,
-  adding a node class is a compile error until it is handled.
-* **No global mutable state.** Parser diagnostics live on `IclDriver` (bison's
-  `%param` puts it in scope). The only file-scope variable left is the flex
-  scanner's location, which is inherent to a non-reentrant scanner.
+* **Dispatch is by static type.** Every traversal is an `AstVisitor`, one
+  overload per node class. It used to switch on a kind tag and down-cast,
+  which crashed: `Alias`, `ScanRegister`, `Reg` and `Field` each have both a
+  one-line form (`Alias a = b;`) and a block form (`Alias a = b { ... }`), so
+  no tag value identifies a class. With a visitor, adding a node class is a
+  compile error until it is handled — no runtime cast can be wrong.
+* **No global mutable state, except the scanner's line counter.** Parser
+  diagnostics live on `IclDriver` (bison's `%param` puts it in scope). Flex's
+  location is file-scope because the scanner is not reentrant; it is reset on
+  every `icl_scan_bytes`, which is what keeps error line numbers correct when
+  several files are processed in one run.
 * **Nodes are non-copyable** and owned by an `AstUnit` arena; children hold
   non-owning pointers. Copying would break ownership and slice derived parts.
 * **AST and layout take plain line numbers**, not Bison's location type, so
