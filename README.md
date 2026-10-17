@@ -59,11 +59,13 @@ scanner, so the target machine needs no bison at all.
 ```bash
 make                 # builds all four binaries (see below)
 make dynamic         # only the dynamically linked pair (no static libc needed)
-make check           # unit tests (10) + CLI suite (115) + LSP suite (25)
+make check           # unit tests (10) + CLI suite (121) + LSP suite (25)
 make unitcheck       # unit tests only: AST + layout, no bison/flex needed
 make nvimcheck       # drive icl-lsp from neovim's built-in LSP client (needs nvim)
 make coccheck        # the full vim -> coc.nvim -> icl-lsp chain (see below)
-make install         # installs into $HOME/.local
+make install         # same as install-dynamic
+make install-dynamic # smaller; needs the host's libstdc++/glibc
+make install-static  # self-contained; runs on any Linux regardless of glibc
 make uninstall       # removes exactly what install added
 ```
 
@@ -80,13 +82,26 @@ flavour:
 Both programs link the **same parser front end**, so a grammar fix reaches the
 CLI and the editor at once and neither can drift from the other.
 
+### Choosing a build at install time
+
+`make` builds both flavours; installing is a separate decision. Both targets
+install the programs under the **same names**, so an editor config that says
+`"command": "icl-lsp"` works either way — pick the one that suits the machine:
+
+| Target | Size | Needs |
+|---|---|---|
+| `make install-dynamic` | ~172 KB + ~231 KB | the host's libstdc++ and glibc |
+| `make install-static` | ~2.6 MB + ~2.7 MB | nothing — runs on any Linux |
+
+On a machine you control, dynamic is enough. Use static when the binary has to
+run somewhere whose glibc differs from where it was built (Rocky 8 hosts
+building for Rocky 9, a container, a tool box).
+
 Install layout (GNU conventions, default `prefix = $(HOME)/.local`):
 
 ```
 $(prefix)/bin/icl-format
-$(prefix)/bin/icl-format-static
 $(prefix)/bin/icl-lsp
-$(prefix)/bin/icl-lsp-static
 $(prefix)/include/icl-format/{icl_ast.h,icl_driver.h,format_tree.h,json.h}
 $(prefix)/share/doc/icl-format/
 $(prefix)/share/man/man1/icl-format.1
@@ -297,6 +312,11 @@ as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
 * Attribute bodies are parsed leniently, so a misspelled *attribute name* is
   not an error — only structure is checked.
 * Column-level layout (aligning `=` across neighbouring lines) is not done.
+* **A comment cannot appear in the middle of a statement.**
+  `ScanInPort /* mid */ SI;` and `Module m /* c */ {` are rejected. Comments
+  before a statement, after one, and inside a block all work. Accepting them
+  inside one would mean adding an optional COMMENT to nearly every production
+  — a large change for a rare spelling.
 
 ## License
 

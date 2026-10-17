@@ -23,6 +23,7 @@ Asked for, as a single specification:
 | 5 | Target **Rocky Linux 8+** | `Makefile` | Met with a caveat (§4) |
 | 6 | Install default `$HOME/.local/bin`, libraries to the matching `$HOME/.local` directories | `Makefile` (`prefix ?= $(HOME)/.local`) | Met |
 | 7 | `make uninstall` must remove what was installed | `Makefile` manifest | Met, verified by round trip |
+| 7b | *(added later)* Build both flavours, but **install them as separate options** | `install-dynamic` / `install-static` | Met — both install under the same names, so it is a straight choice |
 | 8 | **Google** naming and formatting conventions | all sources | Met |
 | 9 | *(added later)* Produce **two programs**, `icl-format` and `icl-lsp`, each in **static and dynamic** form | `Makefile` | Met — 4 binaries |
 | 10 | *(added later)* The LSP server must work with **coc.nvim**, driven as vim → coc → icl-lsp | `src/icl_lsp_main.cc`, `tests/coc_vim_check.vim` | Met, verified in a real editor |
@@ -185,14 +186,35 @@ Stated here because each is a place where I decided rather than asked.
 
 ---
 
-## 5. What was verified, and what was not
+## 5. Later rounds: coverage gaps found by probing
+
+Running the standard's constructs against the parser, after the initial build
+was already green.
+
+| Gap | Fix |
+|---|---|
+| **Operators were missing entirely from the lexer.** `-1`, `~a`, `a == b`, `a << 2` were all "illegal character" — real ICL attribute values are expressions (`ResetValue -1;`, LogicSignal terms like `TDR1[61:32] == 32'b0`), so legal files were being rejected. | One `OPERATOR` token carrying its own spelling, plus unary/binary/parenthesised `value` rules. `%left OPERATOR` resolves the 2 shift/reduce conflicts left-to-right grouping produces. Not a token per operator: the formatter only needs the text back unchanged. |
+| **`Json::bool_value` / `number_value` were never called.** | Deleted. Only the types actually read remain (int, string, elements). |
+| **`<vector>` included in `icl_lsp_main.cc` but unused.** | Removed. |
+| **The stdin error path duplicated the file error path** even though a stdin job is already named `<stdin>`. | Merged into one diagnostic. |
+
+**Known and deliberately not fixed:** a comment cannot appear mid-statement
+(`ScanInPort /* mid */ SI;`). Fixing it means adding an optional `COMMENT` to
+nearly every production — a large change for a rare spelling. It is recorded
+under Known limitations in `README.md`, and the failure is a rejection with a
+line number, never a silent misformat.
+
+`Instance` nested inside another `Instance` block is also rejected, which is
+correct per the standard — `Instance` belongs at module level only.
+
+## 6. What was verified, and what was not
 
 **Verified**
 
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 115 | `make check` |
+| CLI end-to-end | 121 | `make check` |
 | LSP protocol | 25 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |
@@ -213,7 +235,7 @@ no residue; 230 KB / 9,000 modules in 11 ms.
 
 ---
 
-## 6. If you pick one thing up from this file
+## 7. If you pick one thing up from this file
 
 The two bugs in §3.4 — `SelectedBy` and the eight missing port functions —
 were not found by reading code or by writing more tests. They were found by

@@ -150,6 +150,14 @@ def main():
         'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
         'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
                                    "1'b0 : MyTap.tdo; } }",
+        # Attribute values are expressions in real ICL (`ResetValue -1;`, LogicSignal terms like `TDR1[61:32] == 32'b0`), so the operators have to
+        # survive formatting unchanged.
+        'negative literal':       'Module m { Attribute d = -1; }',
+        'unary complement':       'Module m { Attribute d = ~a; }',
+        'comparison expression':  "Module m { Attribute d = a[61:32] == 32'b0; }",
+        'arithmetic expression':  'Module m { Attribute d = a + b * 2; }',
+        'parenthesised':          'Module m { Attribute d = (a + b); }',
+        'shift and logic':        'Module m { Attribute d = a << 2 || b; }',
         'Attribute numeric value': 'Module m { Attribute d = 8; }',
         'Attribute hierarchical':  'Module m { Attribute d = a.b.c; }',
         'LogicSignal nested':     'Module m { LogicSignal R0_W { Select { a; } } }',

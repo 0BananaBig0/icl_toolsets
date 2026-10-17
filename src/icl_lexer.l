@@ -160,6 +160,25 @@ ID      [A-Za-z_][A-Za-z_0-9]*
 "->"                { g_location.step();
                       return icl::IclParser::make_ARROW(g_location); }
 
+  /* Operators, returned as one token carrying its own spelling.
+     ICL attribute values are expressions in practice — `ResetValue -1;`,
+     `Source ~a;`, LogicSignal terms like `TDR1[61:32] == 32'b0`. Modelling
+     them as dozens of distinct tokens would add a terminal per operator and a
+     precedence table to resolve them; the formatter only needs the text back
+     unchanged, so one token whose spelling is preserved is enough.
+     Longest forms first, or `==` would lex as two `=`. */
+"=="|"!="|"<="|">="|"<<="|">>="|"<<"|">>"|"&&"|"||" {
+                      g_location.step();
+                      return icl::IclParser::make_OPERATOR(
+                          std::string(yytext), g_location); }
+[-+*/%&|^~!<>]      { g_location.step();
+                      return icl::IclParser::make_OPERATOR(
+                          std::string(yytext), g_location); }
+"("                 { g_location.step();
+                      return icl::IclParser::make_LPAREN(g_location); }
+")"                 { g_location.step();
+                      return icl::IclParser::make_RPAREN(g_location); }
+
   /* IEEE 1687 keywords (case sensitive). */
 Module              { g_location.step(); return icl::IclParser::make_MODULE(g_location); }
 Parameter           { g_location.step(); return icl::IclParser::make_PARAMETER(g_location); }

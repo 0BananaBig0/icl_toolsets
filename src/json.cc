@@ -341,16 +341,8 @@ const Json* Json::Find(const std::string& key) const {
   return nullptr;
 }
 
-bool Json::bool_value(bool fallback) const {
-  return type_ == Type::kBool ? bool_ : fallback;
-}
-
 long long Json::int_value(long long fallback) const {
   return type_ == Type::kNumber ? static_cast<long long>(number_) : fallback;
-}
-
-double Json::number_value(double fallback) const {
-  return type_ == Type::kNumber ? number_ : fallback;
 }
 
 std::string Json::string_value(const std::string& fallback) const {

@@ -56,9 +56,11 @@ class Json {
   // Typed accessors, each returning |fallback| when the value has another
   // type. LSP clients differ in optional fields; being lenient on read keeps
   // one code path instead of a type check per field.
-  bool bool_value(bool fallback = false) const;
+  //
+  // Only the types this server actually reads exist: int for ids and tabSize,
+  // string for methods and uris, elements for contentChanges. Adding a
+  // bool_value the day a bool field is read is cheaper than carrying one now.
   long long int_value(long long fallback = 0) const;
-  double number_value(double fallback = 0.0) const;
   std::string string_value(const std::string& fallback = "") const;
   const Elements& elements() const { return elements_; }
 

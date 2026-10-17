@@ -123,7 +123,7 @@ OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 # dlopen and no locale-dependent APIs. Upgrade path: if any of those appear,
 # drop `-static` (or switch to musl) rather than shipping a subtly broken
 # binary.
-.PHONY: all dynamic static install uninstall check nvimcheck coccheck clean distclean version dist check-tools
+.PHONY: all dynamic static install install-dynamic install-static uninstall check nvimcheck coccheck clean distclean version dist check-tools
 .DEFAULT_GOAL := all
 
 # ---- toolchain requirements ----
@@ -221,36 +221,60 @@ $(BUILD_DIR):
 # already in the target directory.
 MANIFEST := $(BUILD_DIR)/install_manifest.txt
 
-install: all
+# Both install targets put the programs under the *same* names, so the choice
+# is purely "which build do I want on PATH" — an editor config that says
+# `"command": "icl-lsp"` works either way. `make` builds both; installing is a
+# separate decision.
+#
+#   install-dynamic  smaller; needs the host's libstdc++/glibc
+#   install-static   self-contained; runs on any Linux regardless of glibc
+#
+# Because both write the same paths, the manifest is correct whichever ran.
+HEADERS := $(SRC_DIR)/icl_ast.h $(SRC_DIR)/icl_driver.h \
+           $(SRC_DIR)/format_tree.h $(SRC_DIR)/json.h
+
+install: install-dynamic
+
+install-dynamic: $(BIN) $(LSP_BIN)
 	@mkdir -p $(bindir) $(includedir)/$(PACKAGE) $(docdir) $(man1dir)
 	$(INSTALL_PROGRAM) $(BIN) $(bindir)/$(PACKAGE)
-	$(INSTALL_PROGRAM) $(STATIC_BIN) $(bindir)/$(PACKAGE)-static
 	$(INSTALL_PROGRAM) $(LSP_BIN) $(bindir)/icl-lsp
-	$(INSTALL_PROGRAM) $(LSP_STATIC_BIN) $(bindir)/icl-lsp-static
-	$(INSTALL_DATA) $(SRC_DIR)/icl_ast.h $(includedir)/$(PACKAGE)/icl_ast.h
-	$(INSTALL_DATA) $(SRC_DIR)/icl_driver.h $(includedir)/$(PACKAGE)/icl_driver.h
-	$(INSTALL_DATA) $(SRC_DIR)/format_tree.h $(includedir)/$(PACKAGE)/format_tree.h
-	$(INSTALL_DATA) $(SRC_DIR)/json.h $(includedir)/$(PACKAGE)/json.h
+	@for h in $(HEADERS); do \
+		$(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
+	done
 	@if [ -f $(PACKAGE).1 ]; then $(INSTALL_DATA) $(PACKAGE).1 $(man1dir)/; fi
 	@: > $(MANIFEST)
 	@echo $(bindir)/$(PACKAGE) >> $(MANIFEST)
-	@echo $(bindir)/$(PACKAGE)-static >> $(MANIFEST)
 	@echo $(bindir)/icl-lsp >> $(MANIFEST)
-	@echo $(bindir)/icl-lsp-static >> $(MANIFEST)
-	@echo $(includedir)/$(PACKAGE)/icl_ast.h >> $(MANIFEST)
-	@echo $(includedir)/$(PACKAGE)/icl_driver.h >> $(MANIFEST)
-	@echo $(includedir)/$(PACKAGE)/format_tree.h >> $(MANIFEST)
-	@echo $(includedir)/$(PACKAGE)/json.h >> $(MANIFEST)
+	@for h in $(HEADERS); do \
+		echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
+	done
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
-	@echo "installed $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+	@echo "installed (dynamic) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+	@echo "for a glibc-independent build: make install-static"
+
+install-static: $(STATIC_BIN) $(LSP_STATIC_BIN)
+	@mkdir -p $(bindir) $(includedir)/$(PACKAGE) $(docdir) $(man1dir)
+	$(INSTALL_PROGRAM) $(STATIC_BIN) $(bindir)/$(PACKAGE)
+	$(INSTALL_PROGRAM) $(LSP_STATIC_BIN) $(bindir)/icl-lsp
+	@for h in $(HEADERS); do \
+		$(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
+	done
+	@if [ -f $(PACKAGE).1 ]; then $(INSTALL_DATA) $(PACKAGE).1 $(man1dir)/; fi
+	@: > $(MANIFEST)
+	@echo $(bindir)/$(PACKAGE) >> $(MANIFEST)
+	@echo $(bindir)/icl-lsp >> $(MANIFEST)
+	@for h in $(HEADERS); do \
+		echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
+	done
+	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
+	@echo "installed (static) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
 
 uninstall:
 	@if [ ! -f $(MANIFEST) ]; then \
 		echo "no manifest at $(MANIFEST); removing known targets instead" >&2; \
 		rm -f $(bindir)/$(PACKAGE); \
-		rm -f $(bindir)/$(PACKAGE)-static; \
 		rm -f $(bindir)/icl-lsp; \
-		rm -f $(bindir)/icl-lsp-static; \
 		rm -rf $(includedir)/$(PACKAGE); \
 		rm -rf $(docdir); \
 		rm -f $(man1dir)/$(PACKAGE).1; \

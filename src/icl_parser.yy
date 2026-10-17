@@ -101,6 +101,15 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token <std::string> STRING "string"
 %token <std::string> COMMENT "comment"
 %token ARROW "->"
+%token <std::string> OPERATOR "operator"
+%token LPAREN "("
+%token RPAREN ")"
+
+/* Left associative and all at one level: `a - b - c` must group
+   (a - b) - c, and there is no precedence between operators because
+   the formatter reproduces them as written rather than evaluating
+   them. Without this bison reports 2 shift/reduce conflicts. */
+%left OPERATOR
 
 %token MODULE "Module"
 %token PARAMETER "Parameter"
@@ -470,6 +479,12 @@ conn_expr
 
 value
   : postfix { $$ = $1; }
+  /* Unary: `ResetValue -1;`, `Source ~a;`. */
+  | OPERATOR value { $$ = $1 + $2; }
+  /* Binary. No precedence table: the formatter reproduces the operators as
+     written, so left-to-right grouping is enough and unambiguous. */
+  | value OPERATOR value { $$ = $1 + " " + $2 + " " + $3; }
+  | LPAREN value RPAREN { $$ = "(" + $2 + ")"; }
   ;
 
 postfix

@@ -28,7 +28,6 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <vector>
 
 #include "icl_driver.h"
 #include "json.h"

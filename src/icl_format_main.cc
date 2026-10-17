@@ -198,6 +198,7 @@ int main(int argc, char** argv) {
     driver.set_style(style);
     std::string original;
     std::string output;
+    // A stdin job is named "<stdin>", so the diagnostic needs no special case.
     if (job.from_file) {
       if (!driver.FormatFile(job.name, &original, &output, &error)) {
         std::cerr << "icl-format: " << job.name << ": " << error << "\n";
@@ -207,7 +208,7 @@ int main(int argc, char** argv) {
     } else {
       original = job.text;
       if (!driver.FormatText(job.text, &output, &error)) {
-        std::cerr << "icl-format: <stdin>: " << error << "\n";
+        std::cerr << "icl-format: " << job.name << ": " << error << "\n";
         had_error = true;
         continue;
       }
