@@ -242,12 +242,15 @@ module_item
   | ATTRIBUTE IDENT EQUALS value SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
-  | ALIAS IDENT EQUALS value SEMICOLON
-      { $$ = driver.MakeStatement("Alias " + $2 + " = " + $4 + ";",
-                                 SpanOf(@1.begin.line, @5.end.line)); }
-  | ALIAS IDENT EQUALS value LBRACE attr_body RBRACE
+  /* The alias name may carry a bit range: `Alias mode[1:0] = DI[6:5];` —
+     both the bare and the ranged form occur in real instrument modules. */
+  | ALIAS IDENT opt_range EQUALS value SEMICOLON
+      { $$ = driver.MakeStatement("Alias " + $2 + $3 + " = " + $5 + ";",
+                                 SpanOf(@1.begin.line, @6.end.line)); }
+  | ALIAS IDENT opt_range EQUALS value LBRACE attr_body RBRACE
       {
-        $$ = driver.MakeBlock("Alias " + $2 + " = " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
+        $$ = driver.MakeBlock("Alias " + $2 + $3 + " = " + $5, std::move($7),
+                              SpanOf(@1.begin.line, @8.end.line));
       }
   /* Everything below is grouped by *shape*, not by keyword. Five shapes cover
      all 13 ICL description elements, so a new keyword is one line in the right
@@ -379,6 +382,17 @@ attr_item
   | attr_name value EQUALS value SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " = " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
+  /* A *named* nested block. IEEE 1687's formal syntax requires it for `Chain`:
+     scanInterfaceChain_def : 'Chain' scanInterfaceChain_name '{'
+     scanInterfaceChain_item+ '}' — a ScanInterface with several scan chains
+     declares one Chain per chain.
+     This form was once added on speculation and withdrawn for want of
+     evidence; the standard's own BNF is the evidence. */
+  | attr_name IDENT LBRACE attr_body RBRACE
+      {
+        $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
+                              SpanOf(@1.begin.line, @5.end.line));
+      }
   ;
 
 

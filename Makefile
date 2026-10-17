@@ -87,9 +87,14 @@ CPPFLAGS  += -I$(SRC_DIR) -I$(GEN_DIR) -D$(shell echo $(PACKAGE) | tr a-z- A-Z_)
 #
 # The parser front end is shared: icl-lsp links the same objects as
 # icl-format, so a grammar fix reaches both and neither can drift.
+#
+# format_job.cc is the shared *job* layer: everything between "an indent width
+# was requested" and "here is the formatted text". Both binaries link it, so
+# the two front ends cannot disagree about style clamping or error phrasing.
 SHARED_SOURCES := \
 	$(SRC_DIR)/icl_driver.cc \
-	$(SRC_DIR)/format_tree.cc
+	$(SRC_DIR)/format_tree.cc \
+	$(SRC_DIR)/format_job.cc
 
 CLI_SOURCES := $(SRC_DIR)/icl_format_main.cc
 LSP_SOURCES := $(SRC_DIR)/json.cc $(SRC_DIR)/icl_lsp_main.cc

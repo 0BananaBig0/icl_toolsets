@@ -117,6 +117,21 @@ def main():
     # strip it. One corpus, one place.
 
     print()
+    # The two front ends share format_job.cc, so these must hold for both.
+    # The clamp used to exist only in the LSP (a 157-byte file with
+    # tabSize=99999 produced a 7.8 MB reply); sharing it means -n is bounded
+    # the same way.
+    plain = "Module m {\n ScanInPort SI;\n}\n"
+    wide = runner.run(['-n', '99999'], stdin_text=plain)
+    narrow = runner.run(['-n', '2'], stdin_text=plain)
+    check('CLI | -n is clamped like the LSP tabSize',
+          wide.returncode == 0 and len(wide.stdout) < 10000,
+          '-n 99999 produced %d bytes' % len(wide.stdout))
+    check('CLI | -n 99999 == -n 16',
+          wide.stdout == runner.run(['-n', '16'],
+                                    stdin_text=plain).stdout)
+    check('CLI | -n 2 still works', narrow.returncode == 0)
+
     print('=' * 72)
     print('C. Formatting invariants')
     print('=' * 72)

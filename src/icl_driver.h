@@ -39,14 +39,7 @@ class IclDriver {
   IclDriver& operator=(const IclDriver&) = delete;
 
   // Runs the whole pipeline. Returns false and fills |error| when the input is
-  // not valid IEEE 1687 ICL, or when it cannot be read.
-  //
-  // |original| receives the file as read (BOM stripped), so that callers which
-  // need to know whether formatting changed anything (`--check`, `-w`) do not
-  // have to read the file a second time.
-  bool FormatFile(const std::string& path, std::string* original,
-                  std::string* output, std::string* error);
-
+  // not valid IEEE 1687 ICL.
   bool FormatText(const std::string& text, std::string* output,
                   std::string* error);
 
@@ -92,8 +85,9 @@ class IclDriver {
 
   void set_style(const FormatStyle& style) { style_ = style; }
 
-  // Dumps the AST to stdout; used by `--ast`.
-  void DumpAst() const;
+  // The AST as text (`--ast`). Returned rather than printed, so that the
+  // shared job layer can hand it to either front end without doing I/O.
+  std::string AstToString() const;
 
  private:
   bool Parse(const std::string& text, std::string* error);

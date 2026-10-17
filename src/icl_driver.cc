@@ -14,7 +14,6 @@
 
 #include "icl_driver.h"
 
-#include <fstream>
 #include <iostream>
 #include <sstream>
 
@@ -26,32 +25,14 @@ void icl_scan_end();
 
 namespace icl {
 namespace {
-
-// Reads a whole file. Returns false when the file cannot be opened or is not
-// valid UTF-8-ish text (binary input must never be silently reformatted).
-bool ReadFile(const std::string& path, std::string* text, std::string* error) {
-  std::ifstream stream(path, std::ios::binary);
-  if (!stream) {
-    *error = "cannot open '" + path + "'";
-    return false;
-  }
-  std::ostringstream buffer;
-  buffer << stream.rdbuf();
-  *text = buffer.str();
-  // Reject files containing NUL bytes: they are not source text, and writing
-  // them back would corrupt them.
-  if (text->find('\0') != std::string::npos) {
-    *error = "not a text file (contains NUL bytes): '" + path + "'";
-    return false;
-  }
-  return true;
-}
-
 // `--ast` printer. A visitor so that adding a node class fails to compile here
 // instead of silently printing nothing.
+//
+// Writes to a stream rather than straight to stdout: the dump is now produced
+// by the shared job layer, which has no business doing I/O of its own.
 class AstPrinter final : public AstVisitor {
  public:
-  explicit AstPrinter(int depth = 0) : depth_(depth) {}
+  AstPrinter(std::ostream* out, int depth = 0) : out_(out), depth_(depth) {}
 
   void Visit(const AstComment& node) override {
     std::string text = node.text();
@@ -59,6 +40,8 @@ class AstPrinter final : public AstVisitor {
     if (newline != std::string::npos) text = text.substr(0, newline) + "...";
     Print("Comment " + text);
   }
+
+  AstPrinter Child() { return AstPrinter(out_, depth_ + 1); }
 
   void Visit(const AstStatement& node) override {
     // |text| already carries its own keyword ("Source sr;"), so a kind prefix
@@ -75,16 +58,17 @@ class AstPrinter final : public AstVisitor {
 
  private:
   void Print(const std::string& text) const {
-    std::cout << std::string(depth_ * 2, ' ') << text << "\n";
+    *out_ << std::string(depth_ * 2, ' ') << text << "\n";
   }
 
   void VisitChildren(const std::vector<AstNode*>& body) {
-    AstPrinter child(depth_ + 1);
+    AstPrinter child = Child();
     for (const AstNode* node : body) {
       node->Accept(child);
     }
   }
 
+  std::ostream* out_;
   int depth_;
 };
 
@@ -108,10 +92,10 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
 
 namespace {
 
-// Strip a UTF-8 BOM. It used to happen in FormatFile only, so the same bytes
-// were accepted from a file and rejected from stdin — the CLI and the LSP
-// (which always feeds the parser from memory) disagreed. Doing it here makes
-// both paths identical.
+// Strip a UTF-8 BOM. It used to happen on the file-reading path only, so the
+// same bytes were accepted from a file and rejected from stdin — and the LSP,
+// which always feeds the parser from memory, rejected them too. Doing it here
+// makes every path identical.
 void StripBom(std::string* text) {
   if (text->size() >= 3 && static_cast<unsigned char>((*text)[0]) == 0xEF &&
       static_cast<unsigned char>((*text)[1]) == 0xBB &&
@@ -132,18 +116,11 @@ bool IclDriver::FormatText(const std::string& text_in, std::string* output,
   return true;
 }
 
-bool IclDriver::FormatFile(const std::string& path, std::string* original,
-                           std::string* output, std::string* error) {
-  std::string text;
-  if (!ReadFile(path, &text, error)) return false;
-  StripBom(&text);
-  *original = text;
-  return FormatText(text, output, error);
-}
-
-void IclDriver::DumpAst() const {
-  AstPrinter printer;
+std::string IclDriver::AstToString() const {
+  std::ostringstream out;
+  AstPrinter printer(&out);
   unit_.Accept(printer);
+  return out.str();
 }
 
 }  // namespace icl

@@ -225,7 +225,57 @@ group:
 16 productions collapsed to 7, and the groups cannot drift apart because each
 shape exists in exactly one place.
 
-### 5.3 The regression corpus, and the two cases that had to be deleted
+### 5.3 Architecture: how deep the shared chain goes
+
+Both binaries are required to share the AST and the layout pass. They do, and
+they now share more than that. The chain, and where it splits:
+
+```
+CLI:  argv --ParseArgs--> indent --+
+                                   |
+LSP:  JSON --> options.tabSize ----+--> FormatDocument --> consume
+                                   |    (format_job.cc)
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^   ^^^^^^^^
+      genuinely different              shared              differs
+```
+
+`format_job.cc` holds everything between "an indent width was requested" and
+"here is the result": style construction, clamping, parse, AST, layout,
+render, and the phrasing of the failure. The front ends differ only in where
+the options come from and what they do with the outcome — the CLI writes
+files, the LSP returns a `TextEdit` or a diagnostic.
+
+Two things this bought immediately, both of which had already gone wrong:
+
+| | |
+|---|---|
+| **Clamping** | `tabSize` was clamped in the LSP but `-n` was not. Shared now, so `-n 99999` is bounded exactly like the editor's `tabSize`. |
+| **Error phrasing** | The CLI printed `name: line N: msg`; the LSP rebuilt the parts itself. `FormatOutcome::Diagnostic()` is the one source. |
+
+`IclDriver::FormatFile` was deleted. File reading is the one step the LSP
+never performs, so it belongs to the CLI, and the BOM stripping it used to
+hide has moved into `FormatText` where every path gets it.
+
+### 5.3b Two constructs the standard's BNF requires, and a real module needs
+
+Checking the grammar against IEEE 1687's *formal* syntax (the BNF in the
+ScanInterface clause) rather than against prose descriptions:
+
+| Construct | Standard says | Was |
+|---|---|---|
+| `Chain name { Port ...; DefaultLoadValue ...; }` | `scanInterfaceChain_def` — required when a ScanInterface has more than one scan chain | rejected: `syntax error, unexpected {` |
+| `Alias mode[1:0] = DI[6:5];` | the alias name may carry a bit range | rejected: `unexpected [, expecting =` |
+
+Both added; a real instrument module that uses `Alias ... {RefEnum ...;}`
+with ranged names now parses, and is in the corpus as
+`instrument_with_refenum.icl`.
+
+Worth noting: the named-nested-block form was added once before **on
+speculation** and withdrawn for want of evidence. The standard's BNF is that
+evidence. Same rule, added twice — the difference is only whether it was
+guessed or read.
+
+### 5.4 The regression corpus, and the two cases that had to be deleted
 
 The corpus now lives in `tests/cases/` — one `.icl` file per case, `pass/` and
 `fail/`, run by `tests/regression.py`. Adding a case means dropping in a file.
@@ -246,7 +296,7 @@ for the wrong reason:
 `run_tests.py` still asserted the BOM survives while `tests/cases/` expected
 it stripped. One corpus, one place.
 
-### 5.4 A BOM was accepted from a file and rejected from stdin
+### 5.5 A BOM was accepted from a file and rejected from stdin
 
 The shape groups (§5.2) removed the duplicated per-element productions, but
 one list was left hand-written: `attr_name`, the keywords allowed as an
@@ -275,7 +325,7 @@ It is no longer possible for the two to disagree, because there is one list.
 This is the second time a duplicated list drifted (§5.1 was the first). The
 rule worth keeping: **if two places must agree, make them the same place.**
 
-### 5.5 A single integer field could amplify output 50,000x
+### 5.6 A single integer field could amplify output 50,000x
 
 `textDocument/formatting` honours the client's `options.tabSize`. It is
 applied per indent level, so a nested file with `tabSize: 99999` produced a
@@ -283,7 +333,7 @@ applied per indent level, so a nested file with `tabSize: 99999` produced a
 one field. Clamped to 16 (real editors send 2, 4 or 8), with a regression
 test asserting the reply stays under 10 KB regardless of what is requested.
 
-### 5.6 A comment bug that only a ragged-indent sample could show
+### 5.7 A comment bug that only a ragged-indent sample could show
 
 Block comments keep their relative indentation across continuation lines.
 The code computed the common indent, then rebuilt each line as
@@ -312,7 +362,7 @@ blank line).
 This is the same lesson as §5.1 in miniature: the samples were too uniform to
 reach the bug.
 
-### 5.7 Two port functions were missing, found by running a real ICL file
+### 5.8 Two port functions were missing, found by running a real ICL file
 
 A Keysight application note (*IEEE 1687 Silicon Test to Board Test*) contains
 a complete ICL file for a GPIO instrument. Running it through the parser
@@ -340,7 +390,7 @@ were run and pass unchanged.
 (`a -> b -> c;`). ICL is not Verilog, and none of the three appears in any
 ICL source consulted. They are recorded here rather than added on a guess.
 
-### 5.8 The lexer's regular expressions did not match vendor ICL
+### 5.9 The lexer's regular expressions did not match vendor ICL
 
 Auditing each pattern against documented vendor syntax, not against my own
 samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
@@ -362,7 +412,7 @@ against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
 `ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
 containing a newline is rejected rather than silently spanning lines.
 
-### 5.9 Earlier in the same pass
+### 5.10 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -395,8 +445,8 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 87 | `tests/cases/`, run by `tests/regression.py` |
-| CLI behaviour | 49 | `tests/run_tests.py` |
+| Regression corpus | 90 | `tests/cases/`, run by `tests/regression.py` |
+| CLI behaviour | 52 | `tests/run_tests.py` |
 | LSP protocol | 26 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

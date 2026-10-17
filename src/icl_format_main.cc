@@ -23,10 +23,11 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
-#include "icl_driver.h"
+#include "format_job.h"
 
 namespace {
 
@@ -137,6 +138,28 @@ bool WriteFile(const std::string& path, const std::string& data) {
   return true;
 }
 
+// Reads a whole file. This stays in the CLI because it is the one step the
+// LSP never performs: the server holds documents in memory already.
+//
+// Returns false when the file cannot be opened or is not text — binary input
+// must never be silently reformatted.
+bool ReadInput(const std::string& path, std::string* text,
+               std::string* error) {
+  std::ifstream stream(path, std::ios::binary);
+  if (!stream) {
+    *error = "cannot open '" + path + "'";
+    return false;
+  }
+  std::ostringstream buffer;
+  buffer << stream.rdbuf();
+  *text = buffer.str();
+  if (text->find('\0') != std::string::npos) {
+    *error = "not a text file (contains NUL bytes): '" + path + "'";
+    return false;
+  }
+  return true;
+}
+
 // Dispatches one formatted result according to the mode. Returns false only
 // when a write failed.
 bool Emit(const std::string& name, const std::string& original,
@@ -164,9 +187,6 @@ bool Emit(const std::string& name, const std::string& original,
 }  // namespace
 
 int main(int argc, char** argv) {
-  using icl::FormatStyle;
-  using icl::IclDriver;
-
   Options options;
   std::string error;
   if (!ParseArgs(argc, argv, &options, &error)) {
@@ -174,8 +194,12 @@ int main(int argc, char** argv) {
     return 2;
   }
 
-  FormatStyle style;
-  style.indent_width = options.indent_width;
+  // Everything past this point that is not about *files* is shared with the
+  // LSP server: building the request, running the pipeline, and phrasing the
+  // failure. See format_job.h.
+  icl::FormatRequest request;
+  request.indent_width = options.indent_width;
+  request.with_ast_dump = options.dump_ast;
 
   // stdin and named files go through the same pipeline and the same output
   // handling; the only difference is where the text comes from and whether
@@ -194,30 +218,27 @@ int main(int argc, char** argv) {
   bool would_change = false;
   bool had_error = false;
   for (const Job& job : jobs) {
-    IclDriver driver;
-    driver.set_style(style);
-    std::string original;
-    std::string output;
-    // A stdin job is named "<stdin>", so the diagnostic needs no special case.
-    if (job.from_file) {
-      if (!driver.FormatFile(job.name, &original, &output, &error)) {
-        std::cerr << "icl-format: " << job.name << ": " << error << "\n";
-        had_error = true;
-        continue;
-      }
-    } else {
-      original = job.text;
-      if (!driver.FormatText(job.text, &output, &error)) {
-        std::cerr << "icl-format: " << job.name << ": " << error << "\n";
-        had_error = true;
-        continue;
-      }
-    }
-    if (options.dump_ast) {
-      driver.DumpAst();
+    // Reading is the one genuinely file-shaped step, so it stays here. A
+    // stdin job already carries its text.
+    std::string original = job.text;
+    if (job.from_file && !ReadInput(job.name, &original, &error)) {
+      std::cerr << "icl-format: " << error << "\n";
+      had_error = true;
       continue;
     }
-    if (!Emit(job.name, original, output, job.from_file, options,
+
+    const icl::FormatOutcome outcome = icl::FormatDocument(original, request);
+    if (!outcome.ok) {
+      // A stdin job is named "<stdin>", so the diagnostic needs no case here.
+      std::cerr << "icl-format: " << outcome.Diagnostic(job.name) << "\n";
+      had_error = true;
+      continue;
+    }
+    if (options.dump_ast) {
+      std::cout << outcome.ast_dump;
+      continue;
+    }
+    if (!Emit(job.name, original, outcome.text, job.from_file, options,
               &would_change)) {
       had_error = true;
     }

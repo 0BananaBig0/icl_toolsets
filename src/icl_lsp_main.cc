@@ -29,7 +29,7 @@
 #include <map>
 #include <string>
 
-#include "icl_driver.h"
+#include "format_job.h"
 #include "json.h"
 
 #ifndef ICL_FORMAT_VERSION
@@ -263,21 +263,23 @@ class LspServer {
   }
 
   void PublishDiagnostics(const std::string& uri, const std::string& text) {
-    icl::IclDriver driver;
-    std::string output;
-    std::string error;
+    // Same pipeline the CLI runs, same diagnostics. Diagnostics do not care
+    // about indentation, so the default width is fine — and the request has
+    // no tabSize to honour here.
+    const icl::FormatOutcome outcome =
+        icl::FormatDocument(text, icl::FormatRequest());
     Json::Elements diagnostics;
-    if (!driver.FormatText(text, &output, &error)) {
-      // The driver's line is 1-based; LSP positions are 0-based.
-      const long long line = driver.error_line() > 0 ? driver.error_line() - 1
-                                                     : 0;
+    if (!outcome.ok) {
+      // The job's line is 1-based; LSP positions are 0-based.
+      const long long line = outcome.error_line > 0 ? outcome.error_line - 1
+                                                    : 0;
       diagnostics.push_back(Json::Object({
           {"range", Json::Object({{"start", Position(line, 0)},
                                   {"end",
                                    Position(line, LineLength(text, line))}})},
           {"severity", Json::Int(1)},  // 1 = Error.
           {"source", Json::String("icl-lsp")},
-          {"message", Json::String(driver.error_message())},
+          {"message", Json::String(outcome.error_message)},
       }));
     }
     WriteMessage(Json::Object(
@@ -295,24 +297,19 @@ class LspServer {
     if (it == documents_.end()) return Json::Array({});
     const std::string& text = it->second;
 
-    icl::IclDriver driver;
-    icl::FormatStyle style;
     // Honour the editor's tabSize: it is the same knob the CLI exposes as -n,
-    // so the two front ends agree on what "indent" means.
-    const long long tab_size = GetInt(params.Find("options"), "tabSize", 2);
-    // Clamped: the value is applied per indent level, so an absurd one is not
-    // merely ugly, it is unbounded — a 157-byte file with tabSize=99999 and
-    // six levels of nesting produced a 7.8 MB reply. Real editors send 2, 4 or
-    // 8; 16 leaves headroom without giving a buggy client a memory amplifier.
-    style.indent_width = tab_size > 0 ? static_cast<int>(
-        tab_size < 16 ? tab_size : 16) : 2;
-    driver.set_style(style);
+    // so the two front ends agree on what "indent" means. Clamping is shared
+    // (see format_job.h) rather than done here, so the CLI's -n and this path
+    // cannot end up with different limits.
+    icl::FormatRequest request;
+    request.indent_width = static_cast<int>(
+        GetInt(params.Find("options"), "tabSize", 2));
 
-    std::string output;
-    std::string error;
+    const icl::FormatOutcome outcome = icl::FormatDocument(text, request);
     // A file with a syntax error is left untouched: returning no edits is the
     // only safe answer, since there is no formatted form to hand back.
-    if (!driver.FormatText(text, &output, &error)) return Json::Array({});
+    if (!outcome.ok) return Json::Array({});
+    const std::string& output = outcome.text;
 
     long long end_line = 0;
     long long end_character = 0;
