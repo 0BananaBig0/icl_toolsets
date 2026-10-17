@@ -19,7 +19,7 @@ Module SIB_mux {
     CaptureSource 1'b0;
     ResetValue 1'b0;
   }
-  ScanMux mux1 sr {
+  ScanMux mux1 SelectedBy sr {
     1'b0 : si;
     1'b1 : fso;
   }

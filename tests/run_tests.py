@@ -102,6 +102,7 @@ def main():
         'Unclosed brace':               'Module m { ScanInPort SI;',
         'Extra closing brace':          'Module m { ScanInPort SI; } }',
         'ScanMux without select reg':   "Module m { ScanMux mx { 1'b0 : si; } }",
+        'ScanMux without SelectedBy':   "Module m { ScanMux mx r { 1'b0 : si; } }",
         'Connection without semicolon': 'Module m { Connection { a -> b } }',
         'Parameter without =':          'Module m { Parameter W 8; }',
         'Port at top level':            'ScanInPort SI;',
@@ -126,6 +127,14 @@ def main():
                                    'SelectPort f; ResetPort g; TCKPort h; TMSPort i; '
                                    'ToDoPort j; ToSelectPort k; DataInPort l; '
                                    'DataOutPort m2; }',
+        # IEEE 1687 splits port functions into client and host sides. The host
+        # side (ToTCKPort, ToTRSTPort, ...) was missing entirely.
+        'client-TAP ports':        'Module m { TCKPort tck; TMSPort tms; '
+                                   'TRSTPort trst; }',
+        'host-side ports':         'Module m { ToTCKPort a; ToTMSPort b; '
+                                   'ToTRSTPort c; ToShiftEnPort d; '
+                                   'ToCaptureEnPort e; ToUpdateEnPort f; '
+                                   'ToResetPort g; }',
         'ports with bit ranges':   'Module m { DataInPort din[31:0]; DataOutPort dout[7:0]; }',
         'ScanRegister range':      'Module m { ScanRegister r[7:0] { ScanInSource SI; } }',
         'Reg and Field':           'Module m { Reg r[3:0] { WriteEnSource ue; } '
@@ -135,7 +144,15 @@ def main():
         'Alias without block':     'Module m { Alias a = b.c; }',
         'ScanInterface':           'Module m { ScanInterface si { Port TDI; } }',
         'OneHotScanInterface':     'Module m { OneHotScanInterface o { Port s[3:0]; } }',
-        'ScanMux table':           "Module m { ScanMux mx r { 1'b0 : si; 1'b1 : fso; } }",
+        # `SelectedBy` is required by IEEE 1687.1-2014; the selector may be a
+        # hierarchical name. Regression: the grammar once accepted a bare
+        # second identifier and rejected the standard keyword.
+        'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
+        'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
+                                   "1'b0 : MyTap.tdo; } }",
+        'Attribute numeric value': 'Module m { Attribute d = 8; }',
+        'Attribute hierarchical':  'Module m { Attribute d = a.b.c; }',
+        'LogicSignal nested':     'Module m { LogicSignal R0_W { Select { a; } } }',
         'LogicSignal':             'Module m { LogicSignal clk { Source TCK; } }',
         'Connection arrows':       'Module m { Connection { a.SO -> b.SI; c -> d; } }',
         'PortGroup comma list':    'Module m { PortGroup pg {si, so, en} }',

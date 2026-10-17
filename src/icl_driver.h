@@ -24,6 +24,7 @@
 #define ICL_FORMAT_SRC_ICL_DRIVER_H_
 
 #include <string>
+#include <vector>
 
 #include "format_tree.h"
 #include "icl_ast.h"
@@ -57,8 +58,13 @@ class IclDriver {
     return unit_.Make<AstStatement>(text, span);
   }
 
-  AstBlock* MakeBlock(const std::string& header, SourceSpan span) {
-    return unit_.Make<AstBlock>(header, span);
+  // Takes |body| too: every grammar action assigned the body on the very next
+  // line, so keeping them apart only added a named temporary and two lines.
+  AstBlock* MakeBlock(const std::string& header, std::vector<AstNode*> body,
+                      SourceSpan span) {
+    AstBlock* block = unit_.Make<AstBlock>(header, span);
+    block->body() = std::move(body);
+    return block;
   }
 
   AstNode* AddComment(const std::string& text, SourceSpan span) {

@@ -108,6 +108,14 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token RESETPORT "ResetPort"
 %token TCKPORT "TCKPort"
 %token TMSPORT "TMSPort"
+%token TRSTPORT "TRSTPort"
+%token TOTCKPORT "ToTCKPort"
+%token TOTMSPORT "ToTMSPort"
+%token TOTRSTPORT "ToTRSTPort"
+%token TOSHIFTENPORT "ToShiftEnPort"
+%token TOCAPTUREENPORT "ToCaptureEnPort"
+%token TOUPDATEENPORT "ToUpdateEnPort"
+%token TORESETPORT "ToResetPort"
 %token TODOPORT "ToDoPort"
 %token TOSELECTPORT "ToSelectPort"
 %token DATAINPORT "DataInPort"
@@ -119,6 +127,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token FIELD "Field"
 %token INSTANCE "Instance"
 %token SCANMUX "ScanMux"
+%token SELECTEDBY "SelectedBy"
 %token LOGICSIGNAL "LogicSignal"
 %token CONNECTION "Connection"
 %token PORTGROUP "PortGroup"
@@ -158,7 +167,6 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::vector<AstNode*>> attr_body
 %type <std::vector<AstNode*>> mux_body
 %type <std::vector<AstNode*>> conn_body
-%type <std::vector<AstNode*>> al_body
 
 %printer { yyoutput << $$; } <std::string>;
 
@@ -184,10 +192,7 @@ file
 module_def
   : MODULE IDENT LBRACE module_item_list RBRACE
       {
-        AstBlock* module = driver.MakeBlock("Module " + $2,
-                                            SpanOf(@1.begin.line, @5.end.line));
-        module->body() = std::move($4);
-        $$ = module;
+        $$ = driver.MakeBlock("Module " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
       }
   ;
 
@@ -203,7 +208,7 @@ module_item
   | PARAMETER IDENT EQUALS value SEMICOLON
       { $$ = driver.MakeStatement("Parameter " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
-  | ATTRIBUTE IDENT EQUALS STRING SEMICOLON
+  | ATTRIBUTE IDENT EQUALS value SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
   | ALIAS IDENT EQUALS value SEMICOLON
@@ -211,103 +216,70 @@ module_item
                                  SpanOf(@1.begin.line, @5.end.line)); }
   | ALIAS IDENT EQUALS value LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("Alias " + $2 + " = " + $4,
-                                          SpanOf(@1.begin.line, @7.end.line));
-        block->body() = std::move($6);
-        $$ = block;
+        $$ = driver.MakeBlock("Alias " + $2 + " = " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
       }
   | ENUM IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("Enum " + $2,
-                                          SpanOf(@1.begin.line, @5.end.line));
-        block->body() = std::move($4);
-        $$ = block;
+        $$ = driver.MakeBlock("Enum " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
       }
   | port_decl { $$ = $1; }
   | SCANINTERFACE IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("ScanInterface " + $2,
-                                          SpanOf(@1.begin.line, @5.end.line));
-        block->body() = std::move($4);
-        $$ = block;
+        $$ = driver.MakeBlock("ScanInterface " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
       }
   | ONEHOTSCANINTERFACE IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("OneHotScanInterface " + $2,
-                                          SpanOf(@1.begin.line, @5.end.line));
-        block->body() = std::move($4);
-        $$ = block;
+        $$ = driver.MakeBlock("OneHotScanInterface " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
       }
   | SCANREGISTER IDENT opt_range LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("ScanRegister " + $2 + $3,
-                                          SpanOf(@1.begin.line, @6.end.line));
-        block->body() = std::move($5);
-        $$ = block;
+        $$ = driver.MakeBlock("ScanRegister " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
       }
   | SCANREGISTER IDENT opt_range SEMICOLON
       { $$ = driver.MakeStatement("ScanRegister " + $2 + $3 + ";",
                                  SpanOf(@1.begin.line, @4.end.line)); }
   | REG IDENT opt_range LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("Reg " + $2 + $3,
-                                          SpanOf(@1.begin.line, @6.end.line));
-        block->body() = std::move($5);
-        $$ = block;
+        $$ = driver.MakeBlock("Reg " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
       }
   | REG IDENT opt_range SEMICOLON
       { $$ = driver.MakeStatement( "Reg " + $2 + $3 + ";",
                                  SpanOf(@1.begin.line, @4.end.line)); }
   | FIELD IDENT opt_range OF IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("Field " + $2 + $3 + " Of " + $5,
-                                          SpanOf(@1.begin.line, @8.end.line));
-        block->body() = std::move($7);
-        $$ = block;
+        $$ = driver.MakeBlock("Field " + $2 + $3 + " Of " + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line));
       }
   | FIELD IDENT opt_range OF IDENT SEMICOLON
       { $$ = driver.MakeStatement( "Field " + $2 + $3 + " Of " + $5 + ";",
                                  SpanOf(@1.begin.line, @6.end.line)); }
   | INSTANCE IDENT OF IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("Instance " + $2 + " Of " + $4,
-                                          SpanOf(@1.begin.line, @7.end.line));
-        block->body() = std::move($6);
-        $$ = block;
+        $$ = driver.MakeBlock("Instance " + $2 + " Of " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
       }
   | INSTANCE IDENT OF IDENT SEMICOLON
       { $$ = driver.MakeStatement("Instance " + $2 + " Of " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
-  | SCANMUX IDENT IDENT LBRACE mux_body RBRACE
+  | SCANMUX IDENT SELECTEDBY value LBRACE mux_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("ScanMux " + $2 + " " + $3,
-                                          SpanOf(@1.begin.line, @6.end.line));
-        block->body() = std::move($5);
-        $$ = block;
+        // `SelectedBy` is part of the standard (IEEE 1687.1-2014); the
+        // selector may be a hierarchical name such as `MyTap.M3_sel`, hence
+        // |value| rather than a bare IDENT.
+        $$ = driver.MakeBlock("ScanMux " + $2 + " SelectedBy " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
       }
   | LOGICSIGNAL IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("LogicSignal " + $2,
-                                          SpanOf(@1.begin.line, @5.end.line));
-        block->body() = std::move($4);
-        $$ = block;
+        $$ = driver.MakeBlock("LogicSignal " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
       }
   | CONNECTION LBRACE conn_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("Connection",
-                                          SpanOf(@1.begin.line, @4.end.line));
-        block->body() = std::move($3);
-        $$ = block;
+        $$ = driver.MakeBlock("Connection", std::move($3), SpanOf(@1.begin.line, @4.end.line));
       }
   | PORTGROUP IDENT LBRACE ident_list RBRACE
       { $$ = driver.MakeStatement("PortGroup " + $2 + " {" + $4 + "}",
                                   SpanOf(@1.begin.line, @5.end.line)); }
-  | ACCESSLINK IDENT OF IDENT LBRACE al_body RBRACE
+  | ACCESSLINK IDENT OF IDENT LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock("AccessLink " + $2 + " Of " + $4,
-                                          SpanOf(@1.begin.line, @7.end.line));
-        block->body() = std::move($6);
-        $$ = block;
+        $$ = driver.MakeBlock("AccessLink " + $2 + " Of " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
       }
   ;
 
@@ -323,6 +295,14 @@ port_keyword
   | RESETPORT        { $$ = "ResetPort"; }
   | TCKPORT          { $$ = "TCKPort"; }
   | TMSPORT          { $$ = "TMSPort"; }
+  | TRSTPORT         { $$ = "TRSTPort"; }
+  | TOTCKPORT        { $$ = "ToTCKPort"; }
+  | TOTMSPORT        { $$ = "ToTMSPort"; }
+  | TOTRSTPORT       { $$ = "ToTRSTPort"; }
+  | TOSHIFTENPORT    { $$ = "ToShiftEnPort"; }
+  | TOCAPTUREENPORT  { $$ = "ToCaptureEnPort"; }
+  | TOUPDATEENPORT   { $$ = "ToUpdateEnPort"; }
+  | TORESETPORT      { $$ = "ToResetPort"; }
   | TODOPORT         { $$ = "ToDoPort"; }
   | TOSELECTPORT     { $$ = "ToSelectPort"; }
   | DATAINPORT       { $$ = "DataInPort"; }
@@ -343,10 +323,7 @@ port_decl
       }
   | port_keyword IDENT opt_range LBRACE attr_body RBRACE
       {
-        AstBlock* port = driver.MakeBlock($1 + " " + $2 + $3,
-                                          SpanOf(@1.begin.line, @6.end.line));
-        port->body() = std::move($5);
-        $$ = port;
+        $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
       }
   ;
 
@@ -370,16 +347,7 @@ attr_item
                                   SpanOf(@1.begin.line, @5.end.line)); }
   ;
 
-attr_body
-  : %empty
-      { $$ = std::vector<AstNode*>(); }
-  | attr_body COMMENT
-      { $$ = std::move($1);
-        $$.push_back(driver.AddComment($2,
-                                       SpanOf(@2.begin.line, @2.end.line))); }
-  | attr_body attr_item
-      { $$ = std::move($1); $$.push_back($2); }
-  ;
+
 
 mux_body
   : %empty
@@ -404,22 +372,25 @@ conn_body
   ;
 
 /* 1149.1 sub-structures inside `AccessLink ... { ... }`. */
-al_body
+/* One body rule for every `HEADER { ... }` construct, AccessLink included.
+   There used to be a second, block-less variant for ordinary blocks, but
+   LogicSignal and friends nest a block inside an attribute position
+   (`Select { ... }`), so the nesting form is the general one. */
+attr_body
   : %empty
       { $$ = std::vector<AstNode*>(); }
-  | al_body COMMENT
+  | attr_body COMMENT
       { $$ = std::move($1);
         $$.push_back(driver.AddComment($2,
                                        SpanOf(@2.begin.line, @2.end.line))); }
-  | al_body attr_item
+  | attr_body attr_item
       { $$ = std::move($1); $$.push_back($2); }
-  | al_body attr_name LBRACE al_body RBRACE
+  | attr_body attr_name LBRACE attr_body RBRACE
       {
-        AstBlock* block = driver.MakeBlock($2,
+        AstBlock* nested = driver.MakeBlock($2, std::move($4),
                                            SpanOf(@2.begin.line, @5.end.line));
-        block->body() = std::move($4);
         $$ = std::move($1);
-        $$.push_back(block);
+        $$.push_back(nested);
       }
   ;
 
@@ -454,6 +425,14 @@ attr_name
   | RESETPORT      { $$ = "ResetPort"; }
   | TCKPORT        { $$ = "TCKPort"; }
   | TMSPORT        { $$ = "TMSPort"; }
+  | TRSTPORT       { $$ = "TRSTPort"; }
+  | TOTCKPORT      { $$ = "ToTCKPort"; }
+  | TOTMSPORT      { $$ = "ToTMSPort"; }
+  | TOTRSTPORT     { $$ = "ToTRSTPort"; }
+  | TOSHIFTENPORT  { $$ = "ToShiftEnPort"; }
+  | TOCAPTUREENPORT{ $$ = "ToCaptureEnPort"; }
+  | TOUPDATEENPORT { $$ = "ToUpdateEnPort"; }
+  | TORESETPORT    { $$ = "ToResetPort"; }
   | TODOPORT       { $$ = "ToDoPort"; }
   | TOSELECTPORT   { $$ = "ToSelectPort"; }
   | DATAINPORT     { $$ = "DataInPort"; }
@@ -465,6 +444,7 @@ attr_name
   | FIELD          { $$ = "Field"; }
   | INSTANCE       { $$ = "Instance"; }
   | SCANMUX        { $$ = "ScanMux"; }
+  | SELECTEDBY    { $$ = "SelectedBy"; }
   | LOGICSIGNAL    { $$ = "LogicSignal"; }
   | CONNECTION     { $$ = "Connection"; }
   | PORTGROUP      { $$ = "PortGroup"; }

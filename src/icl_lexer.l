@@ -175,6 +175,14 @@ SelectPort          { g_location.step(); return icl::IclParser::make_SELECTPORT(
 ResetPort           { g_location.step(); return icl::IclParser::make_RESETPORT(g_location); }
 TCKPort             { g_location.step(); return icl::IclParser::make_TCKPORT(g_location); }
 TMSPort             { g_location.step(); return icl::IclParser::make_TMSPORT(g_location); }
+TRSTPort            { g_location.step(); return icl::IclParser::make_TRSTPORT(g_location); }
+ToTCKPort           { g_location.step(); return icl::IclParser::make_TOTCKPORT(g_location); }
+ToTMSPort           { g_location.step(); return icl::IclParser::make_TOTMSPORT(g_location); }
+ToTRSTPort          { g_location.step(); return icl::IclParser::make_TOTRSTPORT(g_location); }
+ToShiftEnPort       { g_location.step(); return icl::IclParser::make_TOSHIFTENPORT(g_location); }
+ToCaptureEnPort     { g_location.step(); return icl::IclParser::make_TOCAPTUREENPORT(g_location); }
+ToUpdateEnPort      { g_location.step(); return icl::IclParser::make_TOUPDATEENPORT(g_location); }
+ToResetPort         { g_location.step(); return icl::IclParser::make_TORESETPORT(g_location); }
 ToDoPort            { g_location.step(); return icl::IclParser::make_TODOPORT(g_location); }
 ToSelectPort        { g_location.step(); return icl::IclParser::make_TOSELECTPORT(g_location); }
 DataInPort          { g_location.step(); return icl::IclParser::make_DATAINPORT(g_location); }
@@ -186,6 +194,7 @@ Reg                 { g_location.step(); return icl::IclParser::make_REG(g_locat
 Field               { g_location.step(); return icl::IclParser::make_FIELD(g_location); }
 Instance            { g_location.step(); return icl::IclParser::make_INSTANCE(g_location); }
 ScanMux             { g_location.step(); return icl::IclParser::make_SCANMUX(g_location); }
+SelectedBy          { g_location.step(); return icl::IclParser::make_SELECTEDBY(g_location); }
 LogicSignal         { g_location.step(); return icl::IclParser::make_LOGICSIGNAL(g_location); }
 Connection          { g_location.step(); return icl::IclParser::make_CONNECTION(g_location); }
 PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
