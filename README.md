@@ -57,19 +57,35 @@ scanner, so the target machine needs no bison at all.
 ## Build and install
 
 ```bash
-make                 # builds ./build/icl-format
-make check           # unit tests (10) + end-to-end suite (107)
+make                 # builds all four binaries (see below)
+make dynamic         # only the dynamically linked pair (no static libc needed)
+make check           # unit tests (10) + CLI suite (115) + LSP suite (25)
 make unitcheck       # unit tests only: AST + layout, no bison/flex needed
 make install         # installs into $HOME/.local
 make uninstall       # removes exactly what install added
-make static          # fully static binary (runs on any Linux, no glibc req.)
 ```
+
+`make` produces two programs, each in a dynamically linked and a fully static
+flavour:
+
+| Binary | Links | What it is |
+|---|---|---|
+| `icl-format` | dynamic | command line formatter |
+| `icl-format-static` | static | same, runs on any Linux regardless of glibc |
+| `icl-lsp` | dynamic | Language Server for editors |
+| `icl-lsp-static` | static | same |
+
+Both programs link the **same parser front end**, so a grammar fix reaches the
+CLI and the editor at once and neither can drift from the other.
 
 Install layout (GNU conventions, default `prefix = $(HOME)/.local`):
 
 ```
 $(prefix)/bin/icl-format
-$(prefix)/include/icl-format/{icl_ast.h,icl_driver.h,format_tree.h}
+$(prefix)/bin/icl-format-static
+$(prefix)/bin/icl-lsp
+$(prefix)/bin/icl-lsp-static
+$(prefix)/include/icl-format/{icl_ast.h,icl_driver.h,format_tree.h,json.h}
 $(prefix)/share/doc/icl-format/
 $(prefix)/share/man/man1/icl-format.1
 ```
@@ -100,6 +116,68 @@ Exit codes:
 
 Only files whose content actually changes are rewritten, so mtimes (and build
 systems) stay quiet on an already-formatted tree.
+
+## Editor integration: icl-lsp
+
+`icl-lsp` is a Language Server speaking LSP over stdio. It offers two features,
+both derived from the same front end the CLI uses:
+
+| Feature | How |
+|---|---|
+| Syntax diagnostics | `FormatText` fails → publish one diagnostic at the line the parser stopped on |
+| Whole-document formatting | `FormatText` succeeds → one `TextEdit` covering the document |
+
+There is no second parser. `options.tabSize` from the client becomes the
+formatter's indent width, so the editor's setting and `icl-format -n` are the
+same knob — set `shiftwidth=2` to match the CLI default.
+
+A file with a syntax error is **left untouched**: the server returns no edits
+rather than a best-effort reformat.
+
+### coc.nvim
+
+1. Make sure `~/.local/bin` is on `PATH` (it is where `make install` puts the
+   binaries).
+2. Add the server to `:CocConfig` (`~/.vim/coc-settings.json`):
+
+```json
+{
+  "languageserver": {
+    "icl": {
+      "command": "icl-lsp",
+      "filetypes": ["icl"],
+      "settings": {}
+    }
+  }
+}
+```
+
+3. Teach vim that `*.icl` is ICL, and set the indent width you want. The
+   server takes its indentation from the client's `tabSize`, which vim derives
+   from `shiftwidth` — so with the default `shiftwidth=8` you get 8-space
+   indent, not the CLI's 2:
+
+```vim
+autocmd BufNewFile,BufRead *.icl setfiletype icl
+autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab
+```
+
+That is enough for `:call CocAction('format')` and for diagnostics to show
+inline. To format on save:
+
+```vim
+autocmd FileType icl autocmd BufWritePre <buffer> call CocAction('format')
+```
+
+If the server does not start, `:CocCommand workspace.showOutput` opens its
+channel log — the LSP handshake and any stderr from the server appear there.
+
+### Other clients
+
+Any client that can launch a stdio command works. The advertised capabilities
+are `textDocumentSync: 1` (full) and `documentFormattingProvider: true`;
+everything else is answered with `-32601`, and unknown notifications are
+ignored, so a client probing for features the server lacks stays healthy.
 
 ## Grammar design: strict where it counts
 
@@ -172,6 +250,17 @@ Each is marked `ponytail:` in the source, with its upgrade path. Run
   block. Structure is checked, spelling is not.
 * **`-static`** is safe only because the tool uses no NSS, no `dlopen` and no
   locale APIs.
+
+## Known limitations
+
+* **Grammar coverage is built from the standard plus the samples available**,
+  not from a corpus of Tessent output. Two gaps were found and fixed this way:
+  `ScanMux` requires the standard `SelectedBy` keyword (the samples had been
+  written against an older draft that omitted it), and eight port functions
+  from the client/host split (`TRSTPort`, `ToTCKPort`, `ToTRSTPort`,
+  `ToShiftEnPort`, ...) were missing entirely. A file using an uncovered
+  construct is *rejected with a line number* rather than silently mangled —
+  if that happens, the report is enough to add the missing rule.
 
 ## Known limitations
 

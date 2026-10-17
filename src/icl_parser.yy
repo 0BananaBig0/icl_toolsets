@@ -44,6 +44,14 @@
 %define api.token.constructor
 %define api.value.type variant
 %define parse.assert
+// `detailed` turns "syntax error" into "syntax error, unexpected '}',
+// expecting ';' or '{'". A formatter that rejects a file has to say why, and
+// the expected-token list is what makes an LSP diagnostic actionable.
+%define parse.error detailed
+// Lookahead correction: detect the error as soon as the offending token is
+// seen instead of after further reductions, so the reported line is the one
+// the token is actually on.
+%define parse.lac full
 %define parse.trace
 %defines
 %verbose

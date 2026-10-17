@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Builds icl-format: an IEEE 1687-2014 (IJTAG) ICL formatter.
+# Builds two programs for IEEE 1687-2014 (IJTAG) ICL:
+#   icl-format  command line formatter
+#   icl-lsp     Language Server (diagnostics + formatting) for editors
+# Each is produced dynamically linked and fully static, so `make` yields four
+# binaries.
 #
-# Pipeline:  text --(flex/bison)--> AST --(layout)--> FormatTree --(render)--> text
+# Pipeline:  text --(flex/bison)--> AST --(layout)--> lines --(render)--> text
+# Both programs link the same front end, so a grammar fix reaches both.
 #
 # Targets:
-#   make            build ./build/icl-format
+#   make            build all four binaries
+#   make dynamic    build only the dynamically linked pair
 #   make install    install into $(prefix) (default: $HOME/.local)
 #   make uninstall  remove exactly what install put there
 #   make check      run the test suite
@@ -63,7 +69,14 @@ else
 GEN_DIR   := $(BUILD_DIR)/gen
 endif
 
-BIN       := $(BUILD_DIR)/$(PACKAGE)
+# Two programs, built from the same front end:
+#   icl-format  the command line formatter
+#   icl-lsp     a Language Server (diagnostics + formatting) for editors
+# Each is produced both dynamically linked and fully static.
+BIN            := $(BUILD_DIR)/$(PACKAGE)
+LSP_BIN        := $(BUILD_DIR)/icl-lsp
+STATIC_BIN     := $(BUILD_DIR)/$(PACKAGE)-static
+LSP_STATIC_BIN := $(BUILD_DIR)/icl-lsp-static
 
 CXXFLAGS  ?= -O2
 CXXSTD    := -std=c++17
@@ -71,10 +84,17 @@ WARNINGS  := -Wall -Wextra -Wno-unused-parameter
 CPPFLAGS  += -I$(SRC_DIR) -I$(GEN_DIR) -D$(shell echo $(PACKAGE) | tr a-z- A-Z_)_VERSION='"$(VERSION)"'
 
 # Hand-written sources.
-SOURCES := \
+#
+# The parser front end is shared: icl-lsp links the same objects as
+# icl-format, so a grammar fix reaches both and neither can drift.
+SHARED_SOURCES := \
 	$(SRC_DIR)/icl_driver.cc \
-	$(SRC_DIR)/format_tree.cc \
-	$(SRC_DIR)/icl_format_main.cc
+	$(SRC_DIR)/format_tree.cc
+
+CLI_SOURCES := $(SRC_DIR)/icl_format_main.cc
+LSP_SOURCES := $(SRC_DIR)/json.cc $(SRC_DIR)/icl_lsp_main.cc
+
+SOURCES := $(SHARED_SOURCES) $(CLI_SOURCES) $(LSP_SOURCES)
 
 # bison / flex outputs. Kept in $(GEN_DIR) so that `make clean` cannot leave a
 # stale generated parser behind a hand-edited .yy file.
@@ -84,8 +104,13 @@ LEXER_CC   := $(GEN_DIR)/icl_lexer.cc
 LEXER_HH   := $(GEN_DIR)/icl_lexer.hh
 
 GEN_SOURCES := $(PARSER_CC) $(LEXER_CC)
-OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SOURCES)) \
-           $(patsubst $(GEN_DIR)/%.cc,$(BUILD_DIR)/%.o,$(GEN_SOURCES))
+
+SHARED_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SHARED_SOURCES)) \
+                  $(patsubst $(GEN_DIR)/%.cc,$(BUILD_DIR)/%.o,$(GEN_SOURCES))
+CLI_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(CLI_SOURCES))
+LSP_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(LSP_SOURCES))
+
+OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 
 # ---- statically linked binary ----
 #
@@ -98,14 +123,7 @@ OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SOURCES)) \
 # dlopen and no locale-dependent APIs. Upgrade path: if any of those appear,
 # drop `-static` (or switch to musl) rather than shipping a subtly broken
 # binary.
-STATIC_BIN := $(BUILD_DIR)/$(PACKAGE)-static
-
-static: check-tools $(OBJECTS)
-	@mkdir -p $(@D)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $(OBJECTS) -o $(STATIC_BIN)
-	@echo "built $(STATIC_BIN)" && ls -la $(STATIC_BIN)
-
-.PHONY: all install uninstall check clean distclean version dist check-tools static
+.PHONY: all dynamic static install uninstall check nvimcheck clean distclean version dist check-tools
 .DEFAULT_GOAL := all
 
 # ---- toolchain requirements ----
@@ -141,11 +159,29 @@ else
 	@echo "toolchain: bison $(BISON_MAJOR).$(BISON_MINOR), $(CXX) $(shell $(CXX) --version | head -1)"
 endif
 
-all: check-tools $(BIN)
+all: check-tools $(BIN) $(LSP_BIN) $(STATIC_BIN) $(LSP_STATIC_BIN)
 
-$(BIN): $(OBJECTS)
+# For a box without the static C runtime installed (glibc-static / libstdc++
+# -static): build the two dynamic binaries only.
+dynamic: check-tools $(BIN) $(LSP_BIN)
+
+$(BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ -o $@
+
+$(LSP_BIN): $(SHARED_OBJECTS) $(LSP_OBJECTS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ -o $@
+
+static: check-tools $(STATIC_BIN) $(LSP_STATIC_BIN)
+
+$(STATIC_BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ -o $@
+
+$(LSP_STATIC_BIN): $(SHARED_OBJECTS) $(LSP_OBJECTS)
+	@mkdir -p $(@D)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc $(PARSER_HH) | $(BUILD_DIR)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -c $< -o $@
@@ -188,22 +224,33 @@ MANIFEST := $(BUILD_DIR)/install_manifest.txt
 install: all
 	@mkdir -p $(bindir) $(includedir)/$(PACKAGE) $(docdir) $(man1dir)
 	$(INSTALL_PROGRAM) $(BIN) $(bindir)/$(PACKAGE)
+	$(INSTALL_PROGRAM) $(STATIC_BIN) $(bindir)/$(PACKAGE)-static
+	$(INSTALL_PROGRAM) $(LSP_BIN) $(bindir)/icl-lsp
+	$(INSTALL_PROGRAM) $(LSP_STATIC_BIN) $(bindir)/icl-lsp-static
 	$(INSTALL_DATA) $(SRC_DIR)/icl_ast.h $(includedir)/$(PACKAGE)/icl_ast.h
 	$(INSTALL_DATA) $(SRC_DIR)/icl_driver.h $(includedir)/$(PACKAGE)/icl_driver.h
 	$(INSTALL_DATA) $(SRC_DIR)/format_tree.h $(includedir)/$(PACKAGE)/format_tree.h
+	$(INSTALL_DATA) $(SRC_DIR)/json.h $(includedir)/$(PACKAGE)/json.h
 	@if [ -f $(PACKAGE).1 ]; then $(INSTALL_DATA) $(PACKAGE).1 $(man1dir)/; fi
 	@: > $(MANIFEST)
 	@echo $(bindir)/$(PACKAGE) >> $(MANIFEST)
+	@echo $(bindir)/$(PACKAGE)-static >> $(MANIFEST)
+	@echo $(bindir)/icl-lsp >> $(MANIFEST)
+	@echo $(bindir)/icl-lsp-static >> $(MANIFEST)
 	@echo $(includedir)/$(PACKAGE)/icl_ast.h >> $(MANIFEST)
 	@echo $(includedir)/$(PACKAGE)/icl_driver.h >> $(MANIFEST)
 	@echo $(includedir)/$(PACKAGE)/format_tree.h >> $(MANIFEST)
+	@echo $(includedir)/$(PACKAGE)/json.h >> $(MANIFEST)
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
-	@echo "installed $(PACKAGE) $(VERSION) into $(prefix)"
+	@echo "installed $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
 
 uninstall:
 	@if [ ! -f $(MANIFEST) ]; then \
 		echo "no manifest at $(MANIFEST); removing known targets instead" >&2; \
 		rm -f $(bindir)/$(PACKAGE); \
+		rm -f $(bindir)/$(PACKAGE)-static; \
+		rm -f $(bindir)/icl-lsp; \
+		rm -f $(bindir)/icl-lsp-static; \
 		rm -rf $(includedir)/$(PACKAGE); \
 		rm -rf $(docdir); \
 		rm -f $(man1dir)/$(PACKAGE).1; \
@@ -217,8 +264,21 @@ uninstall:
 	@-rmdir $(includedir)/$(PACKAGE) $(docdir) 2>/dev/null || true
 	@echo "uninstalled $(PACKAGE) from $(prefix)"
 
+# Optional: exercise the server from neovim's built-in LSP client. This is a
+# real client doing the real handshake, not a scripted replay, so it catches
+# things a hand-written test can miss (it is how the tabSize behaviour below was
+# found). Skipped when nvim is absent.
+nvimcheck: $(LSP_BIN)
+	@if command -v nvim >/dev/null 2>&1; then \
+		LSPBIN=$(CURDIR)/$(LSP_BIN) nvim --headless -u NONE \
+			-c "luafile tests/nvim_lsp_check.lua"; \
+	else \
+		echo "nvim not installed; skipping the live client check"; \
+	fi
+
 check: all unitcheck
 	@python3 tests/run_tests.py --binary $(BIN)
+	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
 
 # ---- unit tests ----
 #
@@ -251,7 +311,7 @@ dist: all
 	cp $(PARSER_CC) $(PARSER_HH) $(LEXER_CC) $(LEXER_HH) $(DIST_DIR)/gen/
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	cp samples/*.icl $(DIST_DIR)/samples/ 2>/dev/null || true
-	cp tests/run_tests.py $(DIST_DIR)/tests/
+	cp tests/run_tests.py tests/lsp_test.py $(DIST_DIR)/tests/
 	cp Makefile $(DIST_DIR)/Makefile
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar czf $(DIST_DIR).tar.gz $(DIST_DIR)

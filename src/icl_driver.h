@@ -73,8 +73,6 @@ class IclDriver {
 
   // ---- parser diagnostics ----
   //
-  // Read back by Parse() below, which owns this driver's own state; no public
-  // accessors, because nothing outside reads them.
   // Called by the bison error hook. Only the *first* error is kept: later ones
   // are almost always cascades of it, and reporting them buries the cause.
   void SetParseDiagnostic(int line, const std::string& message) {
@@ -83,6 +81,14 @@ class IclDriver {
     error_line_ = line;
     error_message_ = message;
   }
+
+  // Structured form, for callers that need the parts rather than the
+  // pre-formatted CLI string: the LSP server turns these into a diagnostic
+  // range plus message. |error_line| is 1-based, like every other line number
+  // in this code base.
+  bool has_error() const { return has_error_; }
+  int error_line() const { return error_line_; }
+  const std::string& error_message() const { return error_message_; }
 
   void set_style(const FormatStyle& style) { style_ = style; }
 
