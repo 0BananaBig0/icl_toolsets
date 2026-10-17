@@ -123,7 +123,7 @@ OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 # dlopen and no locale-dependent APIs. Upgrade path: if any of those appear,
 # drop `-static` (or switch to musl) rather than shipping a subtly broken
 # binary.
-.PHONY: all dynamic static install uninstall check nvimcheck clean distclean version dist check-tools
+.PHONY: all dynamic static install uninstall check nvimcheck coccheck clean distclean version dist check-tools
 .DEFAULT_GOAL := all
 
 # ---- toolchain requirements ----
@@ -276,9 +276,29 @@ nvimcheck: $(LSP_BIN)
 		echo "nvim not installed; skipping the live client check"; \
 	fi
 
+# Optional: drive the server from vim through coc.nvim — the full chain
+# (vim -> coc.nvim -> icl-lsp) with nothing simulated. Needs coc.nvim, which
+# setup_coc.sh fetches, and vim 9+.
+#
+# This is how three real problems were found that no unit test could see: coc
+# needs vim 9 (vim 8.2 rejects its vim9script), `setfiletype` loses to vim's
+# built-in `*.icl -> clean` mapping, and the editor's shiftwidth is what
+# decides indent width. Skipped when the pieces are absent.
+coccheck: $(LSP_BIN)
+	@if [ ! -d "$(COC_PLUGIN)" ]; then \
+		echo "coc.nvim not prepared; run tests/setup_coc.sh first"; \
+	else \
+		COC_ROOT=$(COC_ROOT) COC_PLUGIN=$(COC_PLUGIN) COC_VIM=$(COC_VIM) \
+			tests/run_coc_check.sh; \
+	fi
+
 check: all unitcheck
 	@python3 tests/run_tests.py --binary $(BIN)
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
+
+COC_ROOT   ?= /tmp/cocvim
+COC_PLUGIN ?= $(COC_ROOT)/coc.nvim
+COC_VIM    ?= /usr/local/vim9/bin/vim
 
 # ---- unit tests ----
 #
@@ -311,7 +331,7 @@ dist: all
 	cp $(PARSER_CC) $(PARSER_HH) $(LEXER_CC) $(LEXER_HH) $(DIST_DIR)/gen/
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	cp samples/*.icl $(DIST_DIR)/samples/ 2>/dev/null || true
-	cp tests/run_tests.py tests/lsp_test.py $(DIST_DIR)/tests/
+	cp tests/*.py tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile $(DIST_DIR)/Makefile
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar czf $(DIST_DIR).tar.gz $(DIST_DIR)

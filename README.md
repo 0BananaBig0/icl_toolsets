@@ -61,6 +61,8 @@ make                 # builds all four binaries (see below)
 make dynamic         # only the dynamically linked pair (no static libc needed)
 make check           # unit tests (10) + CLI suite (115) + LSP suite (25)
 make unitcheck       # unit tests only: AST + layout, no bison/flex needed
+make nvimcheck       # drive icl-lsp from neovim's built-in LSP client (needs nvim)
+make coccheck        # the full vim -> coc.nvim -> icl-lsp chain (see below)
 make install         # installs into $HOME/.local
 make uninstall       # removes exactly what install added
 ```
@@ -136,9 +138,45 @@ rather than a best-effort reformat.
 
 ### coc.nvim
 
-1. Make sure `~/.local/bin` is on `PATH` (it is where `make install` puts the
-   binaries).
-2. Add the server to `:CocConfig` (`~/.vim/coc-settings.json`):
+`make coccheck` runs the whole chain against a real editor — nothing is
+simulated. Verified with vim 9.1 + coc.nvim 0.0.82: vim loads coc, coc starts
+its own node server, that server reads `coc-settings.json` and launches
+`icl-lsp`, and diagnostics plus formatting come back through coc's API.
+
+```bash
+tests/setup_coc.sh          # fetches coc.nvim and builds vim 9 if needed
+make coccheck
+```
+
+It is a separate target rather than part of `make check` because it needs
+coc.nvim and vim 9, neither of which the build otherwise requires.
+
+Three things that are easy to get wrong, all found by actually running it:
+
+**1. coc.nvim needs vim 9 or newer.** `autoload/coc/api.vim` is written in
+vim9script and uses `:export`; vim 8.2 rejects it with
+`E1043: Invalid command after :export`, after which coc starts its node
+process but never finishes its handshake and `CocAction` throws
+`coc.nvim not ready`. Nothing looks broken until you check
+`g:coc_service_initialized`. Neovim is unaffected (coc takes a different code
+path there).
+
+**2. `setfiletype` is not enough for `*.icl`.** vim's own `filetype.vim` maps
+`*.icl` to `clean` (the Clean programming language), and `setfiletype` is a
+no-op once a filetype is set — so the gentle form silently loses and no
+language server is ever started. Use the overriding form:
+
+```vim
+autocmd BufNewFile,BufRead *.icl set filetype=icl
+autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab
+```
+
+**3. Indent width comes from vim.** coc forwards the buffer's `shiftwidth` as
+the LSP `tabSize`, and vim's default is 8 — so without the `shiftwidth=2` line
+above you get 8-space indent in the editor and 2-space from the CLI. Same knob,
+two front ends; set it to keep them in agreement.
+
+Configuration, in `:CocConfig` (`~/.vim/coc-settings.json`):
 
 ```json
 {
@@ -152,25 +190,16 @@ rather than a best-effort reformat.
 }
 ```
 
-3. Teach vim that `*.icl` is ICL, and set the indent width you want. The
-   server takes its indentation from the client's `tabSize`, which vim derives
-   from `shiftwidth` — so with the default `shiftwidth=8` you get 8-space
-   indent, not the CLI's 2:
-
-```vim
-autocmd BufNewFile,BufRead *.icl setfiletype icl
-autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab
-```
-
-That is enough for `:call CocAction('format')` and for diagnostics to show
+Then `:call CocAction('format')` reformats the buffer, and diagnostics appear
 inline. To format on save:
 
 ```vim
 autocmd FileType icl autocmd BufWritePre <buffer> call CocAction('format')
 ```
 
-If the server does not start, `:CocCommand workspace.showOutput` opens its
-channel log — the LSP handshake and any stderr from the server appear there.
+If the server does not start, `:CocCommand workspace.showOutput` shows the
+channel log; a useful first check is `:echo CocAction('services')`, which
+should list `languageserver.icl` with `state: "running"`.
 
 ### Other clients
 
