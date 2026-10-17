@@ -209,6 +209,11 @@ DataOutPort         { g_location.step(); return icl::IclParser::make_DATAOUTPORT
 ScanInterface       { g_location.step(); return icl::IclParser::make_SCANINTERFACE(g_location); }
 OneHotScanInterface { g_location.step(); return icl::IclParser::make_ONEHOTSCANINTERFACE(g_location); }
 ScanRegister        { g_location.step(); return icl::IclParser::make_SCANREGISTER(g_location); }
+DataRegister        { g_location.step(); return icl::IclParser::make_DATAREGISTER(g_location); }
+DataMux             { g_location.step(); return icl::IclParser::make_DATAMUX(g_location); }
+ClockMux            { g_location.step(); return icl::IclParser::make_CLOCKMUX(g_location); }
+OneHotScanGroup     { g_location.step(); return icl::IclParser::make_ONEHOTSCANGROUP(g_location); }
+OneHotDataGroup     { g_location.step(); return icl::IclParser::make_ONEHOTDATAGROUP(g_location); }
 Reg                 { g_location.step(); return icl::IclParser::make_REG(g_location); }
 Field               { g_location.step(); return icl::IclParser::make_FIELD(g_location); }
 Instance            { g_location.step(); return icl::IclParser::make_INSTANCE(g_location); }
@@ -218,7 +223,6 @@ LogicSignal         { g_location.step(); return icl::IclParser::make_LOGICSIGNAL
 Connection          { g_location.step(); return icl::IclParser::make_CONNECTION(g_location); }
 PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
 AccessLink          { g_location.step(); return icl::IclParser::make_ACCESSLINK(g_location); }
-iProcsForModule     { g_location.step(); return icl::IclParser::make_IPROCSFORMODULE(g_location); }
 Of                  { g_location.step(); return icl::IclParser::make_OF(g_location); }
 
 {ID}                { g_location.step();

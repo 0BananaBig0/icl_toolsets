@@ -139,17 +139,28 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token DATAOUTPORT "DataOutPort"
 %token SCANINTERFACE "ScanInterface"
 %token ONEHOTSCANINTERFACE "OneHotScanInterface"
+/* IEEE 1687 Table 2 (IJTAG Tutorial, 3rd ed.) lists the ICL description
+   elements. The ones that take a register-style body are:
+     ScanRegister, DataRegister, DataMux, ClockMux, OneHotScanGroup,
+     OneHotDataGroup
+   `Reg`, `Field` and `OneHotScanInterface` are not in that list; they
+   are accepted anyway because rejecting a file we cannot check is the
+   worse failure for a formatter. */
 %token SCANREGISTER "ScanRegister"
+%token DATAREGISTER "DataRegister"
 %token REG "Reg"
 %token FIELD "Field"
 %token INSTANCE "Instance"
 %token SCANMUX "ScanMux"
+%token DATAMUX "DataMux"
+%token CLOCKMUX "ClockMux"
+%token ONEHOTSCANGROUP "OneHotScanGroup"
+%token ONEHOTDATAGROUP "OneHotDataGroup"
 %token SELECTEDBY "SelectedBy"
 %token LOGICSIGNAL "LogicSignal"
 %token CONNECTION "Connection"
 %token PORTGROUP "PortGroup"
 %token ACCESSLINK "AccessLink"
-%token IPROCSFORMODULE "iProcsForModule"
 %token OF "Of"
 
 %token END 0 "end of file"
@@ -173,7 +184,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range
+%type <std::string> opt_range name_block_kw range_block_kw sel_block_kw of_block_kw
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -235,69 +246,54 @@ module_item
       {
         $$ = driver.MakeBlock("Alias " + $2 + " = " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
       }
-  | ENUM IDENT LBRACE attr_body RBRACE
+  /* Everything below is grouped by *shape*, not by keyword. Five shapes cover
+     all 13 ICL description elements, so a new keyword is one line in the right
+     group rather than two new productions — and the groups cannot drift apart,
+     because there is only one copy of each shape. */
+  | name_block_kw IDENT LBRACE attr_body RBRACE
       {
-        $$ = driver.MakeBlock("Enum " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
+        $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
+                              SpanOf(@1.begin.line, @5.end.line));
       }
+  | range_block_kw IDENT opt_range LBRACE attr_body RBRACE
+      {
+        $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
+                              SpanOf(@1.begin.line, @6.end.line));
+      }
+  | range_block_kw IDENT opt_range SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
+                                  SpanOf(@1.begin.line, @4.end.line)); }
   | port_decl { $$ = $1; }
-  | SCANINTERFACE IDENT LBRACE attr_body RBRACE
+  | sel_block_kw IDENT SELECTEDBY value LBRACE mux_body RBRACE
       {
-        $$ = driver.MakeBlock("ScanInterface " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
+        // `SelectedBy` is part of the standard; the selector may be a
+        // hierarchical name such as `MyTap.M3_sel`, hence |value| rather than
+        // a bare IDENT.
+        $$ = driver.MakeBlock($1 + " " + $2 + " SelectedBy " + $4,
+                              std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line));
       }
-  | ONEHOTSCANINTERFACE IDENT LBRACE attr_body RBRACE
+  | of_block_kw IDENT OF IDENT LBRACE attr_body RBRACE
       {
-        $$ = driver.MakeBlock("OneHotScanInterface " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
+        $$ = driver.MakeBlock($1 + " " + $2 + " Of " + $4, std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line));
       }
-  | SCANREGISTER IDENT opt_range LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock("ScanRegister " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
-      }
-  | SCANREGISTER IDENT opt_range SEMICOLON
-      { $$ = driver.MakeStatement("ScanRegister " + $2 + $3 + ";",
-                                 SpanOf(@1.begin.line, @4.end.line)); }
-  | REG IDENT opt_range LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock("Reg " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
-      }
-  | REG IDENT opt_range SEMICOLON
-      { $$ = driver.MakeStatement( "Reg " + $2 + $3 + ";",
-                                 SpanOf(@1.begin.line, @4.end.line)); }
-  | FIELD IDENT opt_range OF IDENT LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock("Field " + $2 + $3 + " Of " + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line));
-      }
-  | FIELD IDENT opt_range OF IDENT SEMICOLON
-      { $$ = driver.MakeStatement( "Field " + $2 + $3 + " Of " + $5 + ";",
-                                 SpanOf(@1.begin.line, @6.end.line)); }
-  | INSTANCE IDENT OF IDENT LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock("Instance " + $2 + " Of " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
-      }
-  | INSTANCE IDENT OF IDENT SEMICOLON
-      { $$ = driver.MakeStatement("Instance " + $2 + " Of " + $4 + ";",
-                                 SpanOf(@1.begin.line, @5.end.line)); }
-  | SCANMUX IDENT SELECTEDBY value LBRACE mux_body RBRACE
-      {
-        // `SelectedBy` is part of the standard (IEEE 1687.1-2014); the
-        // selector may be a hierarchical name such as `MyTap.M3_sel`, hence
-        // |value| rather than a bare IDENT.
-        $$ = driver.MakeBlock("ScanMux " + $2 + " SelectedBy " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
-      }
+  | of_block_kw IDENT OF IDENT SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + " Of " + $4 + ";",
+                                  SpanOf(@1.begin.line, @5.end.line)); }
   | LOGICSIGNAL IDENT LBRACE attr_body RBRACE
       {
-        $$ = driver.MakeBlock("LogicSignal " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
+        $$ = driver.MakeBlock("LogicSignal " + $2, std::move($4),
+                              SpanOf(@1.begin.line, @5.end.line));
       }
   | CONNECTION LBRACE conn_body RBRACE
       {
-        $$ = driver.MakeBlock("Connection", std::move($3), SpanOf(@1.begin.line, @4.end.line));
+        $$ = driver.MakeBlock("Connection", std::move($3),
+                              SpanOf(@1.begin.line, @4.end.line));
       }
   | PORTGROUP IDENT LBRACE ident_list RBRACE
       { $$ = driver.MakeStatement("PortGroup " + $2 + " {" + $4 + "}",
                                   SpanOf(@1.begin.line, @5.end.line)); }
-  | ACCESSLINK IDENT OF IDENT LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock("AccessLink " + $2 + " Of " + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
-      }
   ;
 
 /* -------------------------------------------------------------------- ports */
@@ -375,6 +371,12 @@ mux_body
       { $$ = std::move($1);
         $$.push_back(driver.MakeStatement($2 + " : " + $4 + ";",
                                           SpanOf(@2.begin.line, @5.end.line))); }
+  /* A bare entry with no selector. ClockMux and DataMux list their sources
+     this way, whereas ScanMux always pairs a selector with a source. */
+  | mux_body value SEMICOLON
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2 + ";",
+                                          SpanOf(@2.begin.line, @3.end.line))); }
   ;
 
 conn_body
@@ -466,8 +468,35 @@ attr_name
   | CONNECTION     { $$ = "Connection"; }
   | PORTGROUP      { $$ = "PortGroup"; }
   | ACCESSLINK     { $$ = "AccessLink"; }
-  | IPROCSFORMODULE { $$ = "iProcsForModule"; }
   | OF             { $$ = "Of"; }
+  ;
+
+/* ------------------------------------------------- keyword groups by shape */
+
+name_block_kw
+  : ENUM                 { $$ = "Enum"; }
+  | SCANINTERFACE        { $$ = "ScanInterface"; }
+  | ONEHOTSCANINTERFACE  { $$ = "OneHotScanInterface"; }
+  | ONEHOTSCANGROUP      { $$ = "OneHotScanGroup"; }
+  | ONEHOTDATAGROUP      { $$ = "OneHotDataGroup"; }
+  ;
+
+range_block_kw
+  : SCANREGISTER         { $$ = "ScanRegister"; }
+  | DATAREGISTER         { $$ = "DataRegister"; }
+  | REG                  { $$ = "Reg"; }
+  | FIELD                { $$ = "Field"; }
+  ;
+
+sel_block_kw
+  : SCANMUX              { $$ = "ScanMux"; }
+  | DATAMUX              { $$ = "DataMux"; }
+  | CLOCKMUX             { $$ = "ClockMux"; }
+  ;
+
+of_block_kw
+  : INSTANCE             { $$ = "Instance"; }
+  | ACCESSLINK           { $$ = "AccessLink"; }
   ;
 
 /* ------------------------------------------------------------------ values */

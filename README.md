@@ -301,7 +301,9 @@ Full requirement-by-requirement accounting, including what could not be done
 as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
 
 * **Grammar coverage comes from the standard plus the samples available**, not
-  from a corpus of real Tessent output. Two gaps were found and fixed exactly
+  from a corpus of real Tessent output. The element list is IEEE 1687's
+  Table 2 (IJTAG Tutorial, 3rd ed.); see `REQUIREMENT.md` §5 for the five
+  elements that were missing before it was checked against. Two gaps were found and fixed exactly
   this way: `ScanMux` requires the standard `SelectedBy` keyword (the samples
   had been written against a pre-standard draft that omitted it), and eight
   port functions from the client/host split (`TRSTPort`, `ToTCKPort`,

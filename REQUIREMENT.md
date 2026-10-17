@@ -188,6 +188,45 @@ Stated here because each is a place where I decided rather than asked.
 
 ## 5. Later rounds: coverage gaps found by probing
 
+### 5.1 The element list was wrong, and checking it found five missing constructs
+
+The grammar had been built from samples and from the standard as remembered.
+Checking it against IEEE 1687's canonical element list (Table 2, *IJTAG
+Tutorial*, 3rd ed.) showed the two did not agree:
+
+| | |
+|---|---|
+| **Missing** | `DataRegister`, `DataMux`, `ClockMux`, `OneHotScanGroup`, `OneHotDataGroup` |
+| **Wrong name** | `OneHotScanInterface` (the standard says `OneHotScanGroup`); `Reg` (the standard says `DataRegister`) |
+| **Invented** | `Field` — not in the element list. `Field f[1:0] Of r { }` in particular was my own construction, and it was in the test suite, so the tests agreed with the bug |
+| **Not ICL at all** | `iProcsForModule` — it is a **PDL** keyword (Procedural Description Language, IEEE 1687's companion language), not ICL. It had been lexed as an ICL keyword, which is simply wrong |
+
+All five were added; `iProcsForModule` was removed. `Reg`, `Field` and
+`OneHotScanInterface` were **kept** — they cost one line each once grouped,
+and rejecting a file we cannot verify is the worse failure for a formatter.
+
+### 5.2 The refactor the gap forced: group keywords by *shape*
+
+Adding five keywords meant ten new productions under the old layout, because
+each element had its own pair of rules (block form and `;` form). That is what
+made the omission likely in the first place.
+
+The grammar now has five shape groups, and a keyword is one line in the right
+group:
+
+| Group | Shape | Members |
+|---|---|---|
+| `name_block_kw` | `K name { }` | Enum, ScanInterface, OneHotScanInterface, OneHotScanGroup, OneHotDataGroup |
+| `range_block_kw` | `K name [range] { }` / `;` | ScanRegister, DataRegister, Reg, Field |
+| `sel_block_kw` | `K name SelectedBy v { }` | ScanMux, DataMux, ClockMux |
+| `of_block_kw` | `K name Of n { }` / `;` | Instance, AccessLink |
+| `port_keyword` | `K name [range] { }` / `;` | the 22 port functions |
+
+16 productions collapsed to 7, and the groups cannot drift apart because each
+shape exists in exactly one place.
+
+### 5.3 Earlier in the same pass
+
 Running the standard's constructs against the parser, after the initial build
 was already green.
 
@@ -214,7 +253,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| CLI end-to-end | 121 | `make check` |
+| CLI end-to-end | 127 | `make check` |
 | LSP protocol | 25 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

@@ -138,7 +138,7 @@ def main():
         'ports with bit ranges':   'Module m { DataInPort din[31:0]; DataOutPort dout[7:0]; }',
         'ScanRegister range':      'Module m { ScanRegister r[7:0] { ScanInSource SI; } }',
         'Reg and Field':           'Module m { Reg r[3:0] { WriteEnSource ue; } '
-                                   'Field f[1:0] Of r { Attribute d = "x"; } }',
+                                   'Field f[1:0] { Attribute d = "x"; } }',
         'Enum':                    "Module m { Enum e { IDLE = 2'b00; RUN = 2'b01; } }",
         'Alias with iProcs':       'Module m { Alias a = b.c { iProcsForModule Top; } }',
         'Alias without block':     'Module m { Alias a = b.c; }',
@@ -147,6 +147,14 @@ def main():
         # `SelectedBy` is required by IEEE 1687.1-2014; the selector may be a
         # hierarchical name. Regression: the grammar once accepted a bare
         # second identifier and rejected the standard keyword.
+        # IEEE 1687 Table 2 elements that were missing until the grammar was
+        # grouped by shape.
+        'DataRegister block':     'Module m { DataRegister dr[7:0] { DataInSource a; } }',
+        'DataRegister statement': 'Module m { DataRegister dr; }',
+        'DataMux':                "Module m { DataMux dm SelectedBy sel { 1'b0 : a; } }",
+        'ClockMux':               'Module m { ClockMux cm SelectedBy sel { a; b; } }',
+        'OneHotScanGroup':        'Module m { OneHotScanGroup g { Port a.SO; Port b.SO; } }',
+        'OneHotDataGroup':        'Module m { OneHotDataGroup g { Port a; } }',
         'ScanMux table':           "Module m { ScanMux mx SelectedBy r { 1'b0 : si; 1'b1 : fso; } }",
         'ScanMux hierarchical sel': "Module m { ScanMux M3 SelectedBy MyTap.M3_sel { "
                                    "1'b0 : MyTap.tdo; } }",

@@ -235,10 +235,13 @@ HEADERS := $(SRC_DIR)/icl_ast.h $(SRC_DIR)/icl_driver.h \
 
 install: install-dynamic
 
-install-dynamic: $(BIN) $(LSP_BIN)
+# One recipe body, parameterised by (formatter, lsp, label). The two targets
+# differ only in which files they install — everything else, manifest included,
+# is identical, so it is written once.
+define install_body
 	@mkdir -p $(bindir) $(includedir)/$(PACKAGE) $(docdir) $(man1dir)
-	$(INSTALL_PROGRAM) $(BIN) $(bindir)/$(PACKAGE)
-	$(INSTALL_PROGRAM) $(LSP_BIN) $(bindir)/icl-lsp
+	$(INSTALL_PROGRAM) $1 $(bindir)/$(PACKAGE)
+	$(INSTALL_PROGRAM) $2 $(bindir)/icl-lsp
 	@for h in $(HEADERS); do \
 		$(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
 	done
@@ -250,25 +253,15 @@ install-dynamic: $(BIN) $(LSP_BIN)
 		echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
 	done
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
-	@echo "installed (dynamic) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+	@echo "installed ($3) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+endef
+
+install-dynamic: $(BIN) $(LSP_BIN)
+	$(call install_body,$(BIN),$(LSP_BIN),dynamic)
 	@echo "for a glibc-independent build: make install-static"
 
 install-static: $(STATIC_BIN) $(LSP_STATIC_BIN)
-	@mkdir -p $(bindir) $(includedir)/$(PACKAGE) $(docdir) $(man1dir)
-	$(INSTALL_PROGRAM) $(STATIC_BIN) $(bindir)/$(PACKAGE)
-	$(INSTALL_PROGRAM) $(LSP_STATIC_BIN) $(bindir)/icl-lsp
-	@for h in $(HEADERS); do \
-		$(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
-	done
-	@if [ -f $(PACKAGE).1 ]; then $(INSTALL_DATA) $(PACKAGE).1 $(man1dir)/; fi
-	@: > $(MANIFEST)
-	@echo $(bindir)/$(PACKAGE) >> $(MANIFEST)
-	@echo $(bindir)/icl-lsp >> $(MANIFEST)
-	@for h in $(HEADERS); do \
-		echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
-	done
-	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
-	@echo "installed (static) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+	$(call install_body,$(STATIC_BIN),$(LSP_STATIC_BIN),static)
 
 uninstall:
 	@if [ ! -f $(MANIFEST) ]; then \
