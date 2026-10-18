@@ -37,6 +37,12 @@
  */
 
 %skeleton "lalr1.cc"
+/* IELR, not LALR: with LALR the states for an attribute body and for
+   LogicSignal's expression body get merged, and a lookahead that is valid in
+   one looks valid in the other — producing a reduce/reduce conflict that no
+   amount of rearranging removes. IELR splits those states, and the grammar
+   is then conflict-free with no duplicated expression rules. */
+%define lr.type ielr
 %require "3.8"
 %language "c++"
 %define api.namespace {icl}
@@ -187,12 +193,13 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range attr_stmt_name value_list name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range attr_stmt_name value_list attr_value value_no_lead_op name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
 %type <std::string> attr_name
 %type <std::string> conn_expr
+%type <std::vector<AstNode*>> logic_body
 %type <std::string> ident_list
 %type <AstNode*> attr_item
 %type <std::vector<AstNode*>> attr_body
@@ -236,10 +243,10 @@ module_item_list
 
 module_item
   : COMMENT { $$ = driver.AddComment($1, SpanOf(@1.begin.line, @1.end.line)); }
-  | PARAMETER IDENT EQUALS value SEMICOLON
+  | PARAMETER IDENT EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Parameter " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
-  | ATTRIBUTE IDENT EQUALS value SEMICOLON
+  | ATTRIBUTE IDENT EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
   /* The alias name may carry a bit range: `Alias mode[1:0] = DI[6:5];` —
@@ -275,11 +282,13 @@ module_item
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
   | port_decl { $$ = $1; }
-  | sel_block_kw IDENT SELECTEDBY value LBRACE mux_body RBRACE
+  | sel_block_kw IDENT SELECTEDBY value_list LBRACE mux_body RBRACE
       {
         // `SelectedBy` is part of the standard; the selector may be a
-        // hierarchical name such as `MyTap.M3_sel`, hence |value| rather than
-        // a bare IDENT.
+        // hierarchical name such as `MyTap.M3_sel`, hence |value_list| rather
+        // than a bare IDENT — and a *list*, because Tessent writes
+        // `SelectedBy config_sib_shift_reg, enable_shift_reg` when a mux is
+        // selected by more than one signal.
         $$ = driver.MakeBlock($1 + " " + $2 + " SelectedBy " + $4,
                               std::move($6),
                               SpanOf(@1.begin.line, @7.end.line));
@@ -305,7 +314,13 @@ module_item
   | of_block_kw IDENT OF IDENT SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " Of " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
-  | LOGICSIGNAL IDENT LBRACE attr_body RBRACE
+  /* LogicSignal holds a *boolean expression*, not a list of attributes:
+     `LogicSignal x { a && b; }`, `LogicSignal y { enable, sib == 2'b11; }`.
+     The general attribute body cannot hold either — in `a && b`, LALR(1)
+     cannot tell at the operator whether `a` is an attribute name followed by
+     a unary value or the start of an expression. Rather than leave that to
+     bison's rule ordering, LogicSignal gets a body of its own. */
+  | LOGICSIGNAL IDENT LBRACE logic_body RBRACE
       {
         $$ = driver.MakeBlock("LogicSignal " + $2, std::move($4),
                               SpanOf(@1.begin.line, @5.end.line));
@@ -348,6 +363,51 @@ port_keyword
   | DATAOUTPORT      { $$ = "DataOutPort"; }
   ;
 
+
+/* A comma-separated run of values that does not start with an operator.
+   Used for attribute values, where `name - 1` must not be read as an
+   expression. */
+attr_value
+  : value_no_lead_op                    { $$ = $1; }
+  | attr_value COMMA value_no_lead_op   { $$ = std::move($1) + ", " + $3; }
+  ;
+
+value_no_lead_op
+  : postfix              { $$ = $1; }
+  | LPAREN value RPAREN  { $$ = "(" + $2 + ")"; }
+  ;
+
+/* The body of a LogicSignal: expression statements and the attribute forms
+   that cannot be confused with them. Comments too, so a documented
+   expression keeps its comment. */
+logic_body
+  : %empty
+      { $$ = std::vector<AstNode*>(); }
+  | logic_body COMMENT
+      { $$ = std::move($1);
+        $$.push_back(driver.AddComment($2,
+                                       SpanOf(@2.begin.line, @2.end.line))); }
+  | logic_body value_list SEMICOLON
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2 + ";",
+                                          SpanOf(@2.begin.line, @3.end.line))); }
+  | logic_body attr_name EQUALS value_list SEMICOLON
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2 + " = " + $4 + ";",
+                                          SpanOf(@2.begin.line, @5.end.line))); }
+  /* A LogicSignal also carries ordinary attributes — `Source TCK;` — and
+     nested blocks such as `Select { ... }`. Both are unambiguous against an
+     expression: two adjacent names are not a valid expression, and `{`
+     cannot follow one. */
+  | logic_body attr_name value_no_lead_op SEMICOLON
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2 + " " + $3 + ";",
+                                          SpanOf(@2.begin.line, @4.end.line))); }
+  | logic_body attr_name LBRACE attr_body RBRACE
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeBlock($2, std::move($4),
+                                      SpanOf(@2.begin.line, @5.end.line))); }
+  ;
 
 /* One or more comma-separated expressions. Built as a string rather than a
    vector because the only consumer is the rendered text.
@@ -393,11 +453,24 @@ attr_item
                                   SpanOf(@1.begin.line, @2.end.line)); }
   /* A value list, not a single value: `CaptureSource Temp, tdr[2:0];`, from
      Tessent's own output. Without this the formatter refused the file at the
-     comma. */
-  | attr_name value_list SEMICOLON
+     comma.
+
+     `attr_value` rather than `value_list`: a value here may not *start* with
+     an operator, so that `name - 1` is unambiguously an attribute followed by
+     a value and never the start of an expression. Expression statements live
+     in logic_body, which has no such restriction. */
+  | attr_name attr_value SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + ";",
                                   SpanOf(@1.begin.line, @3.end.line)); }
-  | attr_name EQUALS value SEMICOLON
+  /* An attribute whose value is a unary expression: `ResetValue -1;`,
+     `Source ~a;`. Separate from the case above, and rendered with no space
+     after the operator, because `- 1` and `-1` differ to the reader. */
+  | attr_name OPERATOR value SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
+                                  SpanOf(@1.begin.line, @4.end.line)); }
+  /* Also a list: Tessent writes `Attribute x = "a", "b";` for a pin list
+     too long for one line. */
+  | attr_name EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " = " + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
   /* The left side of an assignment is an expression, not just a name:
@@ -409,7 +482,7 @@ attr_item
      already covers `datain`, `datain[5:0]` and `a.b.c`. Keeping them as
      separate productions left bison unable to decide, at the `[`, whether it
      was a range on the name or an index in the expression. */
-  | attr_name value EQUALS value SEMICOLON
+  | attr_name value EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " = " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
   /* A *named* nested block. IEEE 1687's formal syntax requires it for `Chain`:
@@ -432,7 +505,10 @@ mux_body
       { $$ = std::vector<AstNode*>(); }
   | mux_body COMMENT
       { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
-  | mux_body value COLON value SEMICOLON
+  /* Both sides may be comma-separated: Tessent writes
+     `1'b1, 3'b00x : STEP_COUNTER_REG[0];` when one selection covers several
+     selector codes. */
+  | mux_body value_list COLON value_list SEMICOLON
       { $$ = std::move($1);
         $$.push_back(driver.MakeStatement($2 + " : " + $4 + ";",
                                           SpanOf(@2.begin.line, @5.end.line))); }
@@ -442,6 +518,23 @@ mux_body
       { $$ = std::move($1);
         $$.push_back(driver.MakeStatement($2 + ";",
                                           SpanOf(@2.begin.line, @3.end.line))); }
+  /* A mux body can also carry attributes: Tessent puts
+     `Attribute exclude_codes_from_icl_verify = "{2'b01}";` among the
+     selection entries. Only the `name = value` and `name ;` forms are
+     allowed here — a full attribute body would make `2'b10 : x;` ambiguous,
+     since both an attribute value and a selector can start the same way.
+     Not `name ;`: that collides with a bare mux entry, which is also a single
+     name followed by `;`. */
+  | mux_body attr_name EQUALS value_list SEMICOLON
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2 + " = " + $4 + ";",
+                                          SpanOf(@2.begin.line, @5.end.line))); }
+  /* ...and the `Attribute name = value;` spelling, which is a keyword, then
+     the attribute's own name, then `=`. */
+  | mux_body attr_name IDENT EQUALS value_list SEMICOLON
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2 + " " + $3 + " = " + $5 + ";",
+                                          SpanOf(@2.begin.line, @6.end.line))); }
   ;
 
 conn_body

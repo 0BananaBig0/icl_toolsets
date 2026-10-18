@@ -275,6 +275,33 @@ Verified by injecting a keyword into the scanner only:
 [FAIL] every scanner keyword works as an attribute name -> drifted: ['Zznewkw']
 ```
 
+### 5.3y Two merged Tessent files (2945 and 3431 lines): five gaps
+
+Running the two merged files found five things, four of them the same shape —
+**a comma where the grammar expected a single value**:
+
+| Construct | Real form |
+|---|---|
+| `LogicSignal` body | `a && b;`, `(x && y) \|\| (!z && !w);`, `enable, sib == 2'b11;` |
+| attribute value | `Attribute p = "cell_0/A", "cell_1/A";` |
+| `SelectedBy` | `SelectedBy config_sib_shift_reg, enable_shift_reg` |
+| mux selection | `1'b1, 3'b00x : STEP_COUNTER_REG[0];` |
+| mux body | an `Attribute ...;` line among the selection entries |
+
+**The LogicSignal one needed a structural change, not another production.**
+`a && b` in an attribute body is genuinely ambiguous: `a` is either an
+attribute name followed by a unary value (`ResetValue -1;`) or the start of an
+expression. LALR(1) sees only the operator. So LogicSignal got its own body,
+where expressions are unrestricted and there are no attribute values to be
+ambiguous with.
+
+That still would not compile: LALR **merges** the attribute-body and
+expression-body states, so a lookahead legal in one looks legal in the other.
+Switching to **IELR** (`%define lr.type ielr`) splits them, and the grammar is
+conflict-free with no duplicated expression rules. (The alternative — a second
+copy of the expression grammar used only by LogicSignal — would have been
+~25 duplicated lines and two things to keep in sync.)
+
 ### 5.3a A real Tessent file: two more gaps, one of them a layout bug
 
 `chip_top.txt` is Tessent Shell 2024.2 output — the first genuine Tessent
@@ -565,7 +592,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 100 | `tests/cases/`, run by `tests/regression.py` |
+| Regression corpus | 105 | `tests/cases/`, run by `tests/regression.py` |
 | CLI behaviour | 54 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
