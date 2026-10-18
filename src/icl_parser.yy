@@ -404,7 +404,24 @@ port_keyword
    expression. */
 attr_value
   : value_no_lead_op                    { $$ = $1; }
+  /* A leading `::` at the *start* of the value, as in an iProc namespace:
+     `iProc_namespace : (namespace_name? '::')? ref_module_name ...`, where
+     the prefix is optional, so `::mod` names a module in the global
+     namespace and `WriteCallBack ::mod p <R>;` is legal. Placed here rather
+     than in `value_no_lead_op` because there it is genuinely ambiguous: `a
+     :: b` would be either one qualified name or two space-separated values,
+     and those render differently. At the start of a value there is nothing
+     before it to attach to, so there is only one reading — and, unlike the
+     change to `value_no_lead_op`, this one adds no conflicts. */
+  | DCOLON value_no_lead_op             { $$ = "::" + $2; }
   | attr_value COMMA value_no_lead_op   { $$ = std::move($1) + ", " + $3; }
+  /* A later element may carry a unary operator of its own. Every signal type
+     in the standard is written `'~'? signal` and the concatenation rules put
+     that per element (`concat_data_signal : data_signal (',' data_signal)*`),
+     so `Source ~a, b;` and `Source a, ~b;` are both legal and were both
+     rejected — the list accepted an operator only in first position. */
+  | attr_value COMMA OPERATOR value_no_lead_op
+      { $$ = std::move($1) + ", " + $3 + $4; }
   /* Also space-separated: `ReadCallBack m::p <D>;`, where a name, a
      namespace-qualified name and iProc arguments follow the keyword with
      nothing between them. */
@@ -507,7 +524,7 @@ attr_item
   /* An attribute whose value is a unary expression: `ResetValue -1;`,
      `Source ~a;`. Separate from the case above, and rendered with no space
      after the operator, because `- 1` and `-1` differ to the reader. */
-  | attr_name OPERATOR value SEMICOLON
+  | attr_name OPERATOR value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
   /* Also a list: Tessent writes `Attribute x = "a", "b";` for a pin list

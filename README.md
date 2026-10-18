@@ -308,7 +308,7 @@ Three different things are measured, because they fail differently.
 |---|---|---|
 | lines of hand-written C++ | `make coverage` (gcov) | 100% |
 | branches of hand-written C++ | `make coverage` (gcov) | 92.6% |
-| rules of `icl_parser.yy` | `make gramcov` (bison `-t`) | 155/155 |
+| rules of `icl_parser.yy` | `make gramcov` (bison `-t`) | 157/157 |
 | rules of `icl_lexer.l` | `make gramcov` (flex `-d`) | 82/82 |
 
 `make coverage` instruments the sources with gcov and runs every suite against

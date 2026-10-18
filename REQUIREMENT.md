@@ -875,6 +875,48 @@ the sweep reported 42 failures that were all the same mistake in the sweep
 itself: it generated `ScanMux n { ... }` without the `SelectedBy` clause the
 standard requires. The sweep was corrected before any conclusion was drawn.
 
+### 5.17 Cross-checking against the icl_parser repository's tests
+
+`github.com/Honza255/icl_parser` carries an ANTLR grammar (`icl.g4`, 440 lines)
+and eight ICL test files. Both were used as a reference.
+
+**The eight ICL files are all already in the corpus** (verified by content
+hash, not by name): `Instruments.icl` — whose header says it contains snippets
+from IEEE 1687-2014 Appendix E — `scan_mux_001/002`, `test_icl_instance`,
+`test_icl_scan_register`, and `test_icl_syntax_5/6/7`. All pass.
+
+**Its Python tests are semantic, not syntactic**: they build a scan graph and
+assert the driver of a register, or run cocotb simulations and assert register
+values. None of that applies to a formatter, so none of it was ported as-is.
+What *was* taken from them is the input space they exercise — in particular
+`test_icl_number.py`, which works through `'b11_00` (unsized, with a digit
+separator), `x`/`z` digits, and unsized numbers in a concatenation.
+
+Working through `icl.g4` block by block then found two real gaps:
+
+* **A `~` on any element of a signal list was rejected.** Every signal type is
+  written `'~'? signal` and the concatenation rules put that per element
+  (`concat_data_signal : data_signal (',' data_signal)*`), so both
+  `Source ~a, b;` and `Source a, ~b;` are legal. The value list accepted a
+  leading operator only in first position. Fixed by letting a comma element
+  carry its own operator, and by letting the unary-attribute rule take a list.
+* **A leading `::` in an iProc namespace was rejected.** `iProc_namespace` is
+  `(namespace_name? '::')? ref_module_name ...`, the prefix optional, so
+  `WriteCallBack ::mod p <R>;` is legal. Placed at the *start* of an attribute
+  value rather than inside `value_no_lead_op`: there, `a :: b` is genuinely
+  ambiguous between one qualified name and two space-separated values, and
+  those render differently. At the start of a value there is nothing before it
+  to attach to, so there is one reading and no new conflicts.
+
+One deliberate deviation, unchanged from before: `Enum E { }` with an empty
+body is accepted here, where `enum_item+` requires at least one. For a
+formatter, accepting one more shape costs nothing and rejecting a real file
+would cost a great deal; the same reasoning already covers tolerating
+draft-era `ScanMux` without `SelectedBy`.
+
+The repository's `benchmarks` submodule (a suite of IEEE 1687 benchmark
+networks, on GitLab) could not be fetched — 403.
+
 ## 6. What was verified, and what was not
 
 **Verified**
