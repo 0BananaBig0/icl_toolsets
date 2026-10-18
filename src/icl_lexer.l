@@ -153,6 +153,14 @@ ID      [A-Za-z_][A-Za-z_0-9]*
      digits: IEEE 1687-2014 Appendix E writes `Attribute lic = 'h ef931832;`,
      and the standard's own examples must not be rejected. Longest match picks the sized form when both
      apply (`8'hFF`, not `8` followed by `'hFF`). */
+  /* The width may itself be a parameter reference: the published grammar has
+     `size : pos_int | '$' SCALAR_ID`, and `$W'd5` is how a module whose width
+     is a parameter writes a literal. */
+"$"{ID}[ \t]*'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
+                      g_location.step();
+                      return icl::IclParser::make_NUMBER(
+                          std::string(yytext), g_location);
+                    }
 {DIGIT}+'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
                       g_location.step();
                       return icl::IclParser::make_NUMBER(

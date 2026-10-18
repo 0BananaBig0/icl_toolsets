@@ -605,6 +605,42 @@ def main():
     raw2.stop()
     raw.stop()
 
+    # Header shapes no client built from json.dumps happens to send. Each one
+    # exercises a different arm of the reader: a line with no colon at all, a
+    # lower-case header name, and a message with no Content-Length.
+    headers = Client(args.binary)
+    body = b'{"jsonrpc":"2.0","id":40,"method":"initialize","params":{}}'
+    headers.proc.stdin.write(b'X-No-Colon\r\n' +
+                             b'Content-Length: %d\r\n\r\n' % len(body) + body)
+    headers.proc.stdin.flush()
+    check('header line without a colon is skipped',
+          headers.wait(lambda m: m.get('id') == 40, 'reply') is not None)
+
+    body2 = b'{"jsonrpc":"2.0","id":41,"method":"initialize","params":{}}'
+    headers.proc.stdin.write(b'Content-Length: %d\r\n\r\n' % len(body2) + body2)
+    headers.proc.stdin.flush()
+    check('a second message after a skipped header is still served',
+          headers.wait(lambda m: m.get('id') == 41, 'reply') is not None)
+
+    # A lower-case header name. The header block is HTTP-shaped, so names are
+    # case-insensitive; comparing exactly against "Content-Length" used to drop
+    # such a message entirely, because a frame with no length cannot be read.
+    headers2 = Client(args.binary)
+    body_lc = b'{"jsonrpc":"2.0","id":43,"method":"initialize","params":{}}'
+    headers2.proc.stdin.write(b'content-LENGTH: %d\r\n\r\n' % len(body_lc) + body_lc)
+    headers2.proc.stdin.flush()
+    check('header name is matched case-insensitively',
+          headers2.wait(lambda m: m.get('id') == 43, 'reply') is not None)
+    headers2.stop()
+
+    # No Content-Length at all: the reader cannot know the body size, so it
+    # must give up on this message rather than read the next one as a body.
+    headers.send_raw(b'{"jsonrpc":"2.0","id":42,"method":"initialize"}')
+    check('a message with no Content-Length does not wedge the server',
+          headers.request('initialize', {'processId': None,
+                                        'capabilities': {}}) is not None)
+    headers.stop()
+
     # didOpen and didClose, which the earlier tests skipped: they went straight
     # to didChange.
     lifecycle = Client(args.binary)

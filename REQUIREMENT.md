@@ -773,6 +773,47 @@ nothing once a filetype is set — which leaves coc never starting the server.
 `shiftwidth=2` is included because coc forwards it as LSP `tabSize`; vim
 defaults to 8, so without it the editor and the CLI disagree on indentation.
 
+### 5.14 Cross-checking block by block against the published grammar
+
+The request was to work through one syntactic block at a time — finish `Enum`
+before moving to `DataOutPort` — rather than auditing the grammar as a whole.
+That is what was done: all 55 `*_def` rules in the published grammar were
+enumerated and each was checked separately.
+
+Results, in the order the blocks were worked:
+
+* **Every port form.** All 26 ports in `port_def`, each in four shapes —
+  `name;`, `name { }`, `name[3:0];`, `name[3:0] { }`. 104 combinations, all
+  accepted.
+* **The element bodies.** Enum, ScanRegister, DataRegister (selectable /
+  addressable / readCallBack / writeCallBack variants), ScanInterface and its
+  named `Chain`, the three muxes with comma lists on both sides of `:`, Alias
+  with its item forms, Instance with every `instance_item`, the two one-hot
+  groups, LogicSignal, NameSpace / UseNameSpace with and without a name,
+  Parameter / LocalParameter, Attribute with and without a value, AccessLink
+  for both 1149.1 years, ToClockPort with all six item kinds, ResetPort and
+  ToResetPort polarity. 41 cases, all accepted.
+* **iProc callbacks.** `iProc_namespace` allows an optional leading `::`, and
+  `iProc_args` may repeat: `WriteCallBack m::p <D> <R> 5 "s" $X;` — all
+  accepted.
+
+Two things came out of it:
+
+* **One real gap: a literal sized by a parameter.** `size : pos_int | '$'
+  SCALAR_ID` in the published grammar, so `$W'd5` is how a module
+  parameterised on width writes a literal. The scanner only accepted digits
+  before the base. Fixed, with a corpus case.
+* **One LSP bug found while testing header handling.** `Content-Length` was
+  compared exactly, but header names are case-insensitive — so `content-length:`
+  made the frame unreadable and the server silently dropped the whole message
+  and moved to the next. Now folded to lower case, with an assertion.
+
+One asymmetry was left deliberately. The published grammar allows a leading
+`::` after `Of` (global namespace) but not in a signal reference; allowing it
+in both was tried and costs three shift/reduce conflicts, because `attr_value`
+also permits space-separated values and a bare `::` then has two readings. The
+standard's asymmetry is kept, and the reason is recorded in the grammar.
+
 ## 6. What was verified, and what was not
 
 **Verified**

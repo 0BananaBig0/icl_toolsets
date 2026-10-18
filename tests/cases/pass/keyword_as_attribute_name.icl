@@ -12,8 +12,6 @@ Module m {
     LocalParameter 8;
     NameSpace 9;
     UseNameSpace 10;
-    Instance 11;
-    AccessLink 12;
     Attribute;
   }
 }

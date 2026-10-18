@@ -199,10 +199,10 @@ void IclParser::error(const location& loc, const std::string& message) {
 /* Non-terminals. */
 %type <AstBlock*> module_def
 %type <std::vector<AstNode*>> module_item_list
-%type <AstNode*> module_item
+%type <AstNode*> module_item instance_item instance_block
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range attr_stmt_name value_list module_ref attr_value value_no_lead_op name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range attr_stmt_name value_list module_ref attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -294,6 +294,15 @@ module_item
         $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
                               SpanOf(@1.begin.line, @5.end.line));
       }
+  /* One-hot groups take a *range* on their name — the published grammar gives
+     them `reg_port_signal_id`, the same as a register — and only the block
+     form. They are not in `range_block_kw` because that group also permits
+     `name;`, which these do not have. */
+  | onehot_block_kw IDENT opt_range LBRACE attr_body RBRACE
+      {
+        $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
+                              SpanOf(@1.begin.line, @6.end.line));
+      }
   | range_block_kw IDENT opt_range LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
@@ -327,24 +336,18 @@ module_item
                               std::move($6),
                               SpanOf(@1.begin.line, @7.end.line));
       }
-  | of_block_kw IDENT OF module_ref LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock($1 + " " + $2 + " Of " + $4, std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line));
-      }
-  | of_block_kw IDENT OF module_ref SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + " Of " + $4 + ";",
-                                  SpanOf(@1.begin.line, @5.end.line)); }
+  | instance_item
+      { $$ = $1; }
   /* LogicSignal holds a *boolean expression*, not a list of attributes:
      `LogicSignal x { a && b; }`, `LogicSignal y { enable, sib == 2'b11; }`.
      The general attribute body cannot hold either — in `a && b`, LALR(1)
      cannot tell at the operator whether `a` is an attribute name followed by
      a unary value or the start of an expression. Rather than leave that to
      bison's rule ordering, LogicSignal gets a body of its own. */
-  | LOGICSIGNAL IDENT LBRACE logic_body RBRACE
+  | LOGICSIGNAL IDENT opt_range LBRACE logic_body RBRACE
       {
-        $$ = driver.MakeBlock("LogicSignal " + $2, std::move($4),
-                              SpanOf(@1.begin.line, @5.end.line));
+        $$ = driver.MakeBlock("LogicSignal " + $2 + $3, std::move($5),
+                              SpanOf(@1.begin.line, @6.end.line));
       }
   | CONNECTION LBRACE conn_body RBRACE
       {
@@ -522,6 +525,16 @@ attr_item
   | attr_name value EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " = " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
+  /* The block form of an instance, reachable here too: the published grammar
+     lists `instance_def` among `oneHotDataGroup_item`.
+
+     Only the block form. The `;` form is not, because `Instance i Of M;` is
+     genuinely ambiguous here against `attr_name attr_value ';'` once attribute
+     values may be space-separated — a real shift/reduce conflict, not a
+     stylistic objection. */
+  | instance_block
+      { $$ = $1; }
+
   /* A *named* nested block. IEEE 1687's formal syntax requires it for `Chain`:
      scanInterfaceChain_def : 'Chain' scanInterfaceChain_name '{'
      scanInterfaceChain_item+ '}' — a ScanInterface with several scan chains
@@ -660,12 +673,39 @@ attr_name
   ;
 
 
+/* `Instance i Of M { ... }` and `Instance i Of M;`, in one place.
+
+   The published grammar allows an instance inside a one-hot data group
+   (`oneHotDataGroup_item : instance_def | dataRegister_def | ...`), so this is
+   referenced from the shared attribute list as well as from module_item — one
+   definition, no second copy to drift. */
+instance_block
+  : of_block_kw IDENT OF module_ref LBRACE attr_body RBRACE
+      {
+        $$ = driver.MakeBlock($1 + " " + $2 + " Of " + $4, std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line));
+      }
+  ;
+
+instance_item
+  : instance_block
+      { $$ = $1; }
+  | of_block_kw IDENT OF module_ref SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + " Of " + $4 + ";",
+                                  SpanOf(@1.begin.line, @5.end.line)); }
+  ;
+
 /* ------------------------------------------------- keyword groups by shape */
 
+/* Plain identifier only: `enum_name : SCALAR_ID` and
+   `scanInterface_name : SCALAR_ID` in the published grammar, no range. */
 name_block_kw
   : ENUM                 { $$ = "Enum"; }
   | SCANINTERFACE        { $$ = "ScanInterface"; }
-  | ONEHOTSCANINTERFACE  { $$ = "OneHotScanInterface"; }
+  ;
+
+onehot_block_kw
+  : ONEHOTSCANINTERFACE  { $$ = "OneHotScanInterface"; }
   | ONEHOTSCANGROUP      { $$ = "OneHotScanGroup"; }
   | ONEHOTDATAGROUP      { $$ = "OneHotDataGroup"; }
   ;
@@ -703,6 +743,17 @@ ns_stmt
 module_ref
   : IDENT                    { $$ = $1; }
   | module_ref DCOLON IDENT  { $$ = $1 + "::" + $3; }
+  /* A leading `::` with no namespace in front of it — the global namespace.
+     The published grammar allows it *only* here: instance_def writes the
+     qualifier as `(namespace_name? '::')?`, namespace optional, while a signal
+     reference has no such form. So `Instance i Of ::M;` parses and
+     `Source ::M;` does not, and that asymmetry is the standard's, not two
+     rules drifting apart.
+
+     Allowing it in `value` too was tried first, for symmetry; it costs three
+     shift/reduce conflicts, because `attr_value` also permits space-separated
+     values and a bare `::` then has two readings. */
+  | DCOLON IDENT             { $$ = "::" + $2; }
   ;
 
 
@@ -721,9 +772,14 @@ of_block_kw
    add a keyword; every list that needs "any keyword" refers to this. */
 any_keyword
   : name_block_kw   { $$ = $1; }
+  | onehot_block_kw { $$ = $1; }
   | range_block_kw  { $$ = $1; }
   | sel_block_kw    { $$ = $1; }
-  | of_block_kw     { $$ = $1; }
+  /* `of_block_kw` is deliberately absent. `Instance` and `AccessLink` are
+     always followed by `name Of module`, which `instance_item` already covers;
+     letting them also be bare attribute names makes `Instance` ambiguous
+     between the two — a real shift/reduce conflict, and the reason an instance
+     inside a one-hot data group could not be accepted without this. */
   | port_keyword    { $$ = $1; }
   | MODULE          { $$ = "Module"; }
   | PARAMETER       { $$ = "Parameter"; }

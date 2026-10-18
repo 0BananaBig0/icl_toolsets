@@ -73,7 +73,15 @@ bool ReadMessage(std::string* body) {
     while (!value.empty() && (value.back() == ' ' || value.back() == '\t')) {
       value.pop_back();
     }
-    if (key == "Content-Length") {
+    // Header names are case-insensitive (the header block is HTTP-shaped).
+    // Comparing exactly meant `content-length:` — which a client is entitled
+    // to send — silently dropped the whole message, because a frame with no
+    // length cannot be read and the loop moved on to the next one.
+    std::string lower = key;
+    for (char& c : lower) {
+      if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
+    }
+    if (lower == "content-length") {
       length = std::strtol(value.c_str(), nullptr, 10);
     }
     // Content-Type is sent by some clients; ignored on purpose.
