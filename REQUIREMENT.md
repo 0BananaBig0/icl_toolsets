@@ -256,6 +256,43 @@ Two things this bought immediately, both of which had already gone wrong:
 never performs, so it belongs to the CLI, and the BOM stripping it used to
 hide has moved into `FormatText` where every path gets it.
 
+### 5.3a A real Tessent file: two more gaps, one of them a layout bug
+
+`chip_top.txt` is Tessent Shell 2024.2 output — the first genuine Tessent
+file this tool has ever been run on. It was rejected on the first try:
+
+```
+line 412: syntax error, unexpected ,
+    CaptureSource Temp, tdr[2:0];
+```
+
+**Gap 1 — a comma-separated value list.** Fixed with `value_list`, and
+`CaptureSource`, `ScanInSource` and `Source` all accept it now.
+
+**Gap 2 — a blank line after every wrapped statement.** Found while checking
+the fix, and it had nothing to do with commas:
+
+```
+input                        output (before)
+  CaptureSource a,             CaptureSource a, b;
+      b;                    <-- spurious blank line
+  }                            }
+```
+
+`Append()` advanced `last_source_line_` to the line a node *started* on. A
+statement that wraps across source lines renders as one line, so the lines it
+consumed looked like gaps before the next node. `Append()` now takes the end
+line as well: the gap to the previous node is measured from the start, the gap
+to the next one from the end.
+
+Worth noting this is invisible in every hand-written sample: they are all
+already one-statement-per-line. Only a file produced by a tool that wraps
+long lines reaches it — and Tessent does exactly that.
+
+Both files (`tessent_chip_top`, `wrapped_pmm_ip`) are in the corpus, each
+checked for character conservation and idempotence: 415 and 72 source lines,
+both round-trip exactly.
+
 ### 5.3b Three gaps found by running two more published ICL files
 
 The Gitee repository (`git@gitee.com:banana33/test.git`) could not be read —
@@ -494,7 +531,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 95 | `tests/cases/`, run by `tests/regression.py` |
+| Regression corpus | 98 | `tests/cases/`, run by `tests/regression.py` |
 | CLI behaviour | 52 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |

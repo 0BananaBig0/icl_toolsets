@@ -77,7 +77,8 @@ class FormatTreeBuilder final : public AstVisitor {
     // would pull it up onto its own predecessor.
     if (!nodes.empty() && node.span().first_line == nodes.back().source_line() &&
         !node.is_multiline()) {
-      Append(node.text(), depth_, node.span().first_line);
+      Append(node.text(), depth_, node.span().first_line,
+             node.span().last_line);
       lines_.back().set_trailing(true);
       return;
     }
@@ -113,13 +114,18 @@ class FormatTreeBuilder final : public AstVisitor {
         (void)indent;
         piece = base + piece.substr(common);
       }
-      Append(piece, depth_,
+      Append(piece, depth_, node.span().first_line + static_cast<int>(i),
              node.span().first_line + static_cast<int>(i));
     }
   }
 
   void Visit(const AstStatement& node) override {
-    Append(node.text(), depth_, node.span().first_line);
+    // The statement may span several source lines (`CaptureSource a,` /
+    // `b;`) and is emitted as one output line. |last_source_line_| must be
+    // advanced to the *last* source line, not the first: otherwise the lines
+    // the statement itself consumed look like gaps before the next node, and
+    // a blank line appears after every wrapped statement.
+    Append(node.text(), depth_, node.span().first_line, node.span().last_line);
   }
 
   void Visit(const AstBlock& node) override {
@@ -129,18 +135,24 @@ class FormatTreeBuilder final : public AstVisitor {
  private:
   void EmitGroup(const std::string& header,
                  const std::vector<AstNode*>& body, const SourceSpan& span) {
-    Append(header + " {", depth_, span.first_line);
+    Append(header + " {", depth_, span.first_line, span.first_line);
     ++depth_;
     for (const AstNode* child : body) {
       child->Accept(*this);
     }
     --depth_;
-    Append("}", depth_, span.last_line);
+    Append("}", depth_, span.last_line, span.last_line);
   }
 
   // Appends one output line, inserting blank-line markers first if the source
   // had them between the previous line and this one.
-  void Append(const std::string& text, int depth, int source_line) {
+  //
+  // |source_line| is where the node *starts*, which is what the gap to the
+  // previous node is measured from. |end_line| is where it finishes in the
+  // source, which is what the next gap is measured from — the two differ for
+  // anything that wraps across source lines but renders as one.
+  void Append(const std::string& text, int depth, int source_line,
+              int end_line) {
     const int blanks = BlankLinesBetween(last_source_line_, source_line,
                                          style_.max_blank_lines);
     for (int i = 0; i < blanks; ++i) {
@@ -151,7 +163,7 @@ class FormatTreeBuilder final : public AstVisitor {
     FormatNode node(false, text, depth);
     node.set_source_line(source_line);
     lines_.push_back(std::move(node));
-    last_source_line_ = std::max(last_source_line_, source_line);
+    last_source_line_ = std::max(last_source_line_, end_line);
   }
 
   const FormatStyle& style_;

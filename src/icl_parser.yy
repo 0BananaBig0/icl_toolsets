@@ -187,7 +187,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range attr_stmt_name name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range attr_stmt_name value_list name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -344,6 +344,17 @@ port_keyword
   ;
 
 
+/* One or more comma-separated expressions. Built as a string rather than a
+   vector because the only consumer is the rendered text.
+
+   Kept separate from `ident_list` (which is `PortGroup {a, b}`): that one has
+   no `=` and lives in braces, and joining the two would only make both
+   harder to read. */
+value_list
+  : value                     { $$ = $1; }
+  | value_list COMMA value    { $$ = std::move($1) + ", " + $3; }
+  ;
+
 /* A range bound is any expression: a literal, a parameter reference
    (`$MSB`), or a computed bound (`r[-1]`, `top.MSB`). One rule rather
    than a list of literal forms, because any narrower set eventually
@@ -375,7 +386,10 @@ attr_item
   : attr_stmt_name SEMICOLON
       { $$ = driver.MakeStatement($1 + ";",
                                   SpanOf(@1.begin.line, @2.end.line)); }
-  | attr_name value SEMICOLON
+  /* A value list, not a single value: `CaptureSource Temp, tdr[2:0];`, from
+     Tessent's own output. Without this the formatter refused the file at the
+     comma. */
+  | attr_name value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + ";",
                                   SpanOf(@1.begin.line, @3.end.line)); }
   | attr_name EQUALS value SEMICOLON

@@ -300,6 +300,11 @@ Each is marked `ponytail:` in the source, with its upgrade path. Run
 Full requirement-by-requirement accounting, including what could not be done
 as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
 
+* **Real Tessent output was only available late.** `tests/cases/pass/`
+  includes `tessent_chip_top.icl` (Tessent Shell 2024.2) and
+  `wrapped_pmm_ip.icl`; both revealed grammar gaps that no hand-written
+  sample had. See `REQUIREMENT.md` §5.3a.
+
 * **Grammar coverage comes from the standard plus the samples available**, not
   from a corpus of real Tessent output. The element list is IEEE 1687's
   Table 2 (IJTAG Tutorial, 3rd ed.) and the port functions are Tessent's
