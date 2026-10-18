@@ -844,6 +844,37 @@ the code where they bite:
 This construct appears nowhere in the ~7,000 lines of real tool output in the
 corpus; it was found by testing rather than by observation.
 
+### 5.16 Block-by-block sweep: comments in every position
+
+The corpus has never contained a comment inside a `PortGroup` list, nor in
+several other positions, so each construct was swept separately rather than
+relying on the files on hand.
+
+* **14 element blocks** (Enum, ScanRegister, DataRegister, ScanInterface,
+  Alias, LogicSignal, Instance, both one-hot groups, the three muxes,
+  AccessLink, Module): with and without a range, in both `;` and `{ }` form,
+  and with a comment before the block, at the top, in the middle and after an
+  item. 0 failures.
+* **26 ports × 4 shapes** (with/without range, `;`/`{ }`) plus five comment
+  positions = 260 cases. 0 failures.
+* **Recursion and nesting**: parentheses at 10/100/300 levels, blocks at
+  50/100, 50 chained indices, a range whose bounds are themselves indexed or
+  expressions, nested unary operators, `::` chains 20 long, a `Chain` inside a
+  `Chain`. Depth costs memory, not C stack: all complete in milliseconds.
+* **Regular expressions**: escapes, `//` and `/*` inside strings, empty
+  strings, `/*` inside a block comment, `**/`, `/**/`, a space after the base
+  (`'h ef931832`), digit separators, a parameter as the width (`$W'd5`), time
+  units, BOM, CRLF, tabs. The five malformed shapes (unterminated comment,
+  unterminated string, illegal character, stray brace, missing semicolon) are
+  correctly rejected rather than silently reformatted.
+
+Two notes on what "failure" means here. The BOM is stripped by design, so it
+shows as a difference against the input — that is the intended behaviour, and
+the corpus says so explicitly (`bom_stripped_not_kept.icl`). And an early run of
+the sweep reported 42 failures that were all the same mistake in the sweep
+itself: it generated `ScanMux n { ... }` without the `SelectedBy` clause the
+standard requires. The sweep was corrected before any conclusion was drawn.
+
 ## 6. What was verified, and what was not
 
 **Verified**

@@ -489,6 +489,24 @@ def main():
     check('json | upper- and lower-case hex both accepted',
           raw.wait(lambda m: m.get('id') == 2, 'reply') is not None)
 
+    # Numbers the LSP wire does not normally carry, so that the branches for a
+    # fraction and an exponent are reached at all.
+    raw.send_raw('{"jsonrpc":"2.0","id":21,"method":"initialize","params":'
+                 '{"processId":1.5}}')
+    check('json | a number with a fraction parses',
+          raw.wait(lambda m: m.get('id') == 21, 'reply') is not None)
+
+    raw.send_raw('{"jsonrpc":"2.0","id":22,"method":"initialize","params":'
+                 '{"processId":1e3}}')
+    check('json | a number in exponent notation parses',
+          raw.wait(lambda m: m.get('id') == 22, 'reply') is not None)
+
+    raw.send_raw('{"jsonrpc":"2.0","id":23,"method":"initialize","params":'
+                 '{"processId":-7}}')
+    check('json | a negative number parses',
+          raw.wait(lambda m: m.get('id') == 23, 'reply') is not None)
+
+
     # r-string on purpose: in a normal string Python would turn \b \f \r \t
     # \n into real control characters, which are not legal inside a JSON
     # string. What has to reach the server is the two-character escape.
