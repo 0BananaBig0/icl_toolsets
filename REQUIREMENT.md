@@ -256,6 +256,25 @@ Two things this bought immediately, both of which had already gone wrong:
 never performs, so it belongs to the CLI, and the BOM stripping it used to
 hide has moved into `FormatText` where every path gets it.
 
+### 5.3z A generated test for the one bug class that keeps recurring
+
+The single recurring failure mode in this project is **two lists that must
+agree and don't** — the element list (§5.1), the `attr_name` keyword list
+(§5.2's aftermath). A manual review catches it once; it does not stop it
+coming back.
+
+So the scanner is now the source of truth and the grammar is checked against
+it: `run_tests.py` parses the keyword rules out of `icl_lexer.l` and asserts
+that **every one of them** (46 today) works as an attribute name inside an
+`Instance`. Add a keyword to the scanner and forget `any_keyword` in the
+grammar, and the test names the keyword.
+
+Verified by injecting a keyword into the scanner only:
+
+```
+[FAIL] every scanner keyword works as an attribute name -> drifted: ['Zznewkw']
+```
+
 ### 5.3a A real Tessent file: two more gaps, one of them a layout bug
 
 `chip_top.txt` is Tessent Shell 2024.2 output — the first genuine Tessent
@@ -293,7 +312,22 @@ Both files (`tessent_chip_top`, `wrapped_pmm_ip`) are in the corpus, each
 checked for character conservation and idempotence: 415 and 72 source lines,
 both round-trip exactly.
 
-### 5.3b Three gaps found by running two more published ICL files
+### 5.3b Alias is a concatenation list, per the standard BNF
+
+`alias_def : 'Alias' alias_name '=' concat_hier_data_signal ...`, and
+`concat_hier_data_signal : '~'? hier_data_signal (',' '~'? hier_data_signal)*`.
+So the right side is a *list*:
+
+```
+Alias MyName1[2:0] = u1.a[2], u2.u3.b[1:0];
+Alias CNTL[42:0]   = ADDR[7:0], ~DATA[31:0], CMD[2:0] { AccessTogether; }
+```
+
+Both rejected at the comma. Fixed by giving Alias `value_list`, the same
+nonterminal §5.3a added for `CaptureSource` — a second caller, no second
+rule.
+
+### 5.3c Three gaps found by running two more published ICL files
 
 The Gitee repository (`git@gitee.com:banana33/test.git`) could not be read —
 HTTPS, SSH and the web UI all return 403 at the network egress, so it was not
@@ -322,7 +356,7 @@ deliberately, so the case was wrong, not the code.
 A module-level `Chain` is *rejected*, and a case asserts that: per the BNF,
 `scanInterfaceChain_def` only appears inside a `ScanInterface`.
 
-### 5.3c Range bounds are expressions, not a fixed list
+### 5.3d Range bounds are expressions, not a fixed list
 
 `r[-1]` was rejected: range bounds were `NUMBER | PARAMREF`. Adding a third
 literal form would have meant a third name and two more productions, and the
@@ -335,14 +369,14 @@ pure alias and was deleted.
 Any narrower set eventually turns out to be too narrow — that is the general
 form of §5.3b's two findings, and of the operators gap before them.
 
-### 5.3d "Did it change?" is a question about the result, not the front end
+### 5.3e "Did it change?" is a question about the result, not the front end
 
 `ChangedFrom()` moved into the shared layer. `--check` and `-w` both need it,
 and the LSP now uses the same fact to return **no edit at all** for an
 already-formatted document, instead of an edit that replaces the text with
 itself and marks the buffer dirty for nothing. Three callers, one definition.
 
-### 5.3e Two constructs the standard's BNF requires, and a real module needs
+### 5.3f Two constructs the standard's BNF requires, and a real module needs
 
 Checking the grammar against IEEE 1687's *formal* syntax (the BNF in the
 ScanInterface clause) rather than against prose descriptions:
@@ -531,8 +565,8 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 98 | `tests/cases/`, run by `tests/regression.py` |
-| CLI behaviour | 52 | `tests/run_tests.py` |
+| Regression corpus | 100 | `tests/cases/`, run by `tests/regression.py` |
+| CLI behaviour | 54 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
 | vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |

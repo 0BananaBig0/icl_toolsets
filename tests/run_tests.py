@@ -15,6 +15,7 @@ Usage:  python3 run_tests.py --binary build/icl-format
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -117,6 +118,28 @@ def main():
     # strip it. One corpus, one place.
 
     print()
+    # Every keyword the scanner knows must be usable as an attribute name.
+    # This is generated from the scanner itself rather than written out, so a
+    # new keyword cannot silently miss `any_keyword` in the grammar — which is
+    # exactly what happened twice: `attr_name` was a second, hand-written list
+    # that drifted, and `ClockPort clk = x;` inside an Instance was rejected
+    # while `ClockPort clk;` at module level was accepted.
+    scanner = os.path.join(HERE, '..', 'src', 'icl_lexer.l')
+    keyword_re = re.compile(r'^([A-Z][A-Za-z0-9_]*)\s+\{[^}]*make_[A-Z_]+\(',
+                            re.M)
+    with open(scanner, 'r', encoding='utf-8') as f:
+        keywords = keyword_re.findall(f.read())
+    check('scanner keyword list was parsed', len(keywords) >= 40,
+          'found %d' % len(keywords))
+    drifted = []
+    for keyword in keywords:
+        result = runner.format_text(
+            'Module m { Instance i Of T { %s x = 1; } }' % keyword)
+        if result.returncode != 0:
+            drifted.append(keyword)
+    check('every scanner keyword works as an attribute name',
+          not drifted, 'drifted: %r' % drifted[:6])
+
     # The two front ends share format_job.cc, so these must hold for both.
     # The clamp used to exist only in the LSP (a 157-byte file with
     # tabSize=99999 produced a 7.8 MB reply); sharing it means -n is bounded

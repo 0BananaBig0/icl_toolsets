@@ -244,10 +244,15 @@ module_item
                                  SpanOf(@1.begin.line, @5.end.line)); }
   /* The alias name may carry a bit range: `Alias mode[1:0] = DI[6:5];` —
      both the bare and the ranged form occur in real instrument modules. */
-  | ALIAS IDENT opt_range EQUALS value SEMICOLON
+  /* The right side is a *concatenation*, not a single signal:
+     concat_hier_data_signal : '~'? hier_data_signal (',' '~'?
+     hier_data_signal)* — so `Alias MyName1[2:0] = u1.a[2], u2.u3.b[1:0];`
+     and `Alias CNTL[42:0] = ADDR[7:0], DATA[31:0] { AccessTogether; }` are
+     both standard forms, and both were rejected at the comma. */
+  | ALIAS IDENT opt_range EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Alias " + $2 + $3 + " = " + $5 + ";",
                                  SpanOf(@1.begin.line, @6.end.line)); }
-  | ALIAS IDENT opt_range EQUALS value LBRACE attr_body RBRACE
+  | ALIAS IDENT opt_range EQUALS value_list LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock("Alias " + $2 + $3 + " = " + $5, std::move($7),
                               SpanOf(@1.begin.line, @8.end.line));
