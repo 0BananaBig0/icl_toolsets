@@ -491,8 +491,15 @@ attr_item
      declares one Chain per chain.
      This form was once added on speculation and withdrawn for want of
      evidence; the standard's own BNF is the evidence. */
-  | attr_name IDENT LBRACE attr_body RBRACE
+  | attr_name postfix LBRACE attr_body RBRACE
       {
+        // `postfix`, not `IDENT opt_range`: the name may be indexed
+        // (`Field f[3:0] { ... }`), and using the same nonterminal as an
+        // expression means the parser decides between "block" and
+        // "statement" at `{` versus `;` — one token. Spelling it
+        // `IDENT opt_range` instead makes it decide at `[`, which is one
+        // token too early, and that is a real shift/reduce conflict: both
+        // `Source a[3:0];` and `Field f[3:0] { }` start the same way.
         $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
                               SpanOf(@1.begin.line, @5.end.line));
       }

@@ -275,6 +275,41 @@ Verified by injecting a keyword into the scanner only:
 [FAIL] every scanner keyword works as an attribute name -> drifted: ['Zznewkw']
 ```
 
+### 5.3x Recursion and nesting, checked deliberately
+
+Flagged as worth checking explicitly, so enumerated rather than assumed:
+
+| Kind | Depth verified | Result |
+|---|---|---|
+| parenthesised expressions | 10 / 50 / 100 / 300 | all fine, 3 ms |
+| nested blocks | 10 / 50 / 100 | all fine, 3 ms |
+| chained indexes `a[0][1]`, `a[(i)]` | 50 | fine |
+| ranges holding expressions `r[a+1:b-1]`, `r[p[0]:0]` | — | fine |
+| unterminated block comment / string (10 KB) | — | rejected, no crash |
+| 100 KB single line | — | 5 ms |
+
+No stack growth on depth: the parser stack is heap-allocated, so nesting
+costs memory, not a fixed-size C stack.
+
+**One real gap found here.** A named nested block could not carry a bit
+range:
+
+```
+Reg r { Field f[3:0] { ... } }   ← rejected
+Reg r { Field f     { ... } }   ← accepted
+```
+
+The rule was `attr_name IDENT opt_range '{' ...`, which forces the decision
+at `[` — one token too early, and genuinely ambiguous, because
+`Source a[3:0];` and `Field f[3:0] {` start identically. Spelled as
+`attr_name postfix '{'`, the decision moves to `{` vs `;`, where it is
+unambiguous. (Written as `IDENT opt_range` it is a real shift/reduce
+conflict, not a stylistic choice.)
+
+**Block comments do not nest, and that is correct.** `/* a /* b */ c */`
+ends at the first `*/`, matching C and Verilog. A test case asserting
+nesting was written and then deleted — it encoded a wrong expectation.
+
 ### 5.3y Two merged Tessent files (2945 and 3431 lines): five gaps
 
 Running the two merged files found five things, four of them the same shape —
@@ -592,7 +627,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 105 | `tests/cases/`, run by `tests/regression.py` |
+| Regression corpus | 108 | `tests/cases/`, run by `tests/regression.py` |
 | CLI behaviour | 54 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
