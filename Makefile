@@ -188,11 +188,19 @@ $(LSP_STATIC_BIN): $(SHARED_OBJECTS) $(LSP_OBJECTS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ -o $@
 
+# -MMD -MP: write a .d file listing the headers each object depends on, and
+# emit a phony target for every one of them. Without this, editing a header
+# leaves stale objects in place — which is not a subtle bug: changing a
+# private member of Json and running `make` produced a binary that segfaulted
+# on its first message, because icl_lsp_main.o still used the old layout.
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc $(PARSER_HH) | $(BUILD_DIR)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(GEN_DIR)/%.cc | $(BUILD_DIR)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
+
+# Generated dependencies. `-` so the first build, before any .d exists, is fine.
+-include $(OBJECTS:.o=.d) $(GEN_OBJECTS:.o=.d)
 
 # ---- generated sources ----
 ifeq ($(PREBUILT),1)
@@ -242,6 +250,117 @@ codegraph: $(ALL_OBJECTS)
 	@python3 tests/deps_to_dot.py docs/codegraph
 	@echo "codegraph: docs/codegraph/ refreshed"
 
+# ---- coverage ----
+#
+# Builds every binary with --coverage into $(COV_DIR), runs all three suites
+# against them, then reports line and branch coverage of the C++ sources.
+#
+# Both numbers are reported because neither implies the other: a line counts
+# as covered when it runs once, which says nothing about whether the other arm
+# of its `if` was ever taken. Branch coverage is the one that finds the case a
+# test forgot.
+#
+# Unit tests are linked against the same instrumented objects, so their counts
+# merge with the end-to-end runs instead of being measured separately.
+COV_DIR := $(BUILD_DIR)/cov
+COV_CXXFLAGS := -fprofile-arcs -ftest-coverage -g -O0
+
+# One set of instrumented objects, linked three ways. Each binary has its own
+# `main`, so the other two mains are filtered out rather than listed by hand.
+COV_SHARED := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(SHARED_SOURCES)) \
+              $(patsubst $(GEN_DIR)/%.cc,$(COV_DIR)/%.o,$(GEN_SOURCES))
+COV_CLI := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(CLI_SOURCES))
+COV_LSP := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(LSP_SOURCES))
+COV_UNIT := $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/unit_tests.o
+COV_BINARIES := $(COV_DIR)/icl-format $(COV_DIR)/icl-lsp $(COV_DIR)/unittests
+COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
+                       $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
+
+$(COV_DIR):
+	mkdir -p $(COV_DIR)
+
+$(COV_DIR)/%.o: $(SRC_DIR)/%.cc $(PARSER_HH) | $(COV_DIR)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(COV_DIR)/%.o: $(GEN_DIR)/%.cc | $(COV_DIR)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(COV_DIR)/unit_tests.o: tests/unit_tests.cc $(PARSER_HH) | $(COV_DIR)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(COV_DIR)/icl-format: $(COV_CLI)
+	$(CXX) $(CXXSTD) --coverage $^ -o $@
+
+$(COV_DIR)/icl-lsp: $(COV_LSP)
+	$(CXX) $(CXXSTD) --coverage $^ -o $@
+
+$(COV_DIR)/unittests: $(COV_UNIT)
+	$(CXX) $(CXXSTD) --coverage $^ -o $@
+
+coverage: $(COV_BINARIES)
+	@rm -f $(COV_DIR)/*.gcda *.gcov
+	@python3 tests/regression.py --binary $(COV_DIR)/icl-format
+	@python3 tests/run_tests.py --binary $(COV_DIR)/icl-format
+	@python3 tests/lsp_test.py --binary $(COV_DIR)/icl-lsp \
+		--cli $(COV_DIR)/icl-format
+	@$(COV_DIR)/unittests
+	@gcov -b -c -o $(COV_DIR) $(COV_REPORT_OBJECTS) > /dev/null
+	@python3 tests/coverage.py --min-line 100 --min-branch 90 --strict
+
+# ---- grammar and scanner coverage ----
+#
+# Measures which *lines of the hand-written files* the corpus exercises:
+# src/icl_parser.yy and src/icl_lexer.l. The generated C++ is not measured —
+# it is machine-written and nobody can act on its line numbers — but a rule in
+# the .y/.l that no test ever reaches is a rule nobody knows works.
+#
+# Both numbers come from the generators themselves rather than an instrumenter
+# of ours: `bison -t` prints "Reducing stack by rule N (line L)" for every
+# reduction, and `flex -d` prints "--accepting rule at line N" for every token.
+# The authoritative set of rule lines is read back out of the generated tables
+# (yyrline[] and yy_rule_linenum[]), so the report cannot drift from the
+# grammar.
+GRAMCOV_DIR := $(BUILD_DIR)/gramcov
+GRAMCOV_PARSER := $(GRAMCOV_DIR)/icl_parser.cc
+GRAMCOV_LEXER := $(GRAMCOV_DIR)/icl_lexer.cc
+GRAMCOV_BIN := $(GRAMCOV_DIR)/icl-format
+GRAMCOV_SRCS := $(SHARED_SOURCES) $(CLI_SOURCES)
+GRAMCOV_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(GRAMCOV_DIR)/%.o,$(GRAMCOV_SRCS)) \
+                $(GRAMCOV_DIR)/icl_parser.o $(GRAMCOV_DIR)/icl_lexer.o
+
+$(GRAMCOV_DIR):
+	mkdir -p $(GRAMCOV_DIR)
+
+$(GRAMCOV_PARSER): $(SRC_DIR)/icl_parser.yy | $(GRAMCOV_DIR)
+	$(BISON) -t --output=$(GRAMCOV_PARSER) --defines=$(GRAMCOV_DIR)/icl_parser.hh $<
+
+# bison writes the header alongside the .cc, so it has no recipe of its own;
+# an empty one keeps make from concluding the target is impossible.
+$(GRAMCOV_DIR)/icl_parser.hh: $(GRAMCOV_PARSER) ;
+$(GRAMCOV_DIR)/icl_lexer.h: $(GRAMCOV_LEXER) ;
+
+$(GRAMCOV_LEXER): $(SRC_DIR)/icl_lexer.l $(GRAMCOV_DIR)/icl_parser.hh
+	$(FLEX) -d --outfile=$(GRAMCOV_LEXER) --header-file=$(GRAMCOV_DIR)/icl_lexer.h $<
+
+$(GRAMCOV_DIR)/%.o: $(SRC_DIR)/%.cc $(GRAMCOV_DIR)/icl_parser.hh | $(GRAMCOV_DIR)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
+		$(CPPFLAGS) -c $< -o $@
+
+$(GRAMCOV_DIR)/icl_parser.o: $(GRAMCOV_PARSER) | $(GRAMCOV_DIR)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
+		$(CPPFLAGS) -c $< -o $@
+
+$(GRAMCOV_DIR)/icl_lexer.o: $(GRAMCOV_LEXER) | $(GRAMCOV_DIR)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
+		$(CPPFLAGS) -c $< -o $@
+
+$(GRAMCOV_BIN): $(GRAMCOV_OBJS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ -o $@
+
+gramcov: $(GRAMCOV_BIN)
+	@python3 tests/grammar_coverage.py --binary $(GRAMCOV_BIN) \
+		--parser $(GRAMCOV_PARSER) --lexer $(GRAMCOV_LEXER)
+
 # ---- installation ----
 #
 # `make install` writes a manifest so that `make uninstall` removes exactly the
@@ -282,6 +401,59 @@ define install_body
 	done
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
 	@echo "installed ($3) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+	@$(call coc_body,$3)
+endef
+
+# Printed after every install: the editor config is the one thing a user has to
+# write by hand, and it differs between the two programs, so guessing it is
+# where people get stuck. Both snippets are emitted together because a real
+# setup uses icl-lsp for live diagnostics and icl-format for batch runs.
+#
+# `set filetype=icl` — not `setfiletype` — is deliberate: vim's own filetype.vim
+# maps *.icl to the Clean language, and setfiletype silently does nothing once
+# a filetype is already set, which leaves coc never starting the server.
+define coc_body
+	@echo ""
+	@echo "=== coc.nvim configuration ==="
+	@echo ""
+	@echo "1) Add to coc-settings.json (open it with :CocConfig):"
+	@echo ""
+	@echo '  {'
+	@echo '    "languageserver": {'
+	@echo '      "icl": {'
+	@echo '        "command": "icl-lsp",'
+	@echo '        "filetypes": ["icl"],'
+	@echo '        "settings": {}'
+	@echo '      }'
+	@echo '    },'
+	@echo '    "coc.preferences.formatOnSave": true'
+	@echo '  }'
+	@echo ""
+	@echo "2) Add to vimrc — both lines matter:"
+	@echo ""
+	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
+	@echo '  autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab'
+	@echo ""
+	@echo "   shiftwidth is what coc forwards as LSP tabSize, so the editor and"
+	@echo "   the CLI agree only if it is 2 — vim defaults to 8."
+	@echo ""
+	@echo "3) icl-lsp is now active. Check with :CocCommand workspace.showOutput;"
+	@echo "   formatting is :call CocAction('format')."
+	@echo ""
+	@echo "4) icl-format is the batch tool — same grammar, no editor needed:"
+	@echo ""
+	@echo '    icl-format file.icl              # print formatted'
+	@echo '    icl-format -w file.icl           # rewrite in place'
+	@echo '    icl-format --check file.icl      # exit 1 if it would change'
+	@echo '    icl-format --ast file.icl        # show the syntax tree'
+	@echo ""
+	@echo "   To run icl-format from vim on the current buffer instead:"
+	@echo ""
+	@echo '  autocmd FileType icl nnoremap <buffer> <leader>f \'
+	@echo '        :%!icl-format<CR>'
+	@echo ""
+	@echo "Installed variant: $1; binaries are at $(bindir)/$(PACKAGE)"
+	@echo "and $(bindir)/icl-lsp."
 endef
 
 install-dynamic: $(BIN) $(LSP_BIN)
@@ -343,6 +515,7 @@ check: all unitcheck
 	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/run_tests.py --binary $(BIN)
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
+	@$(MAKE) --no-print-directory gramcov
 
 COC_ROOT   ?= /tmp/cocvim
 COC_PLUGIN ?= $(COC_ROOT)/coc.nvim
@@ -358,10 +531,12 @@ UNIT_BIN := $(BUILD_DIR)/unit_tests
 unitcheck: $(UNIT_BIN)
 	@$(UNIT_BIN)
 
-$(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc $(SRC_DIR)/icl_ast.h $(SRC_DIR)/format_tree.h
+$(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc \
+             $(SRC_DIR)/json.cc $(SRC_DIR)/icl_ast.h $(SRC_DIR)/format_tree.h \
+             $(SRC_DIR)/json.h
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) \
-		tests/unit_tests.cc $(SRC_DIR)/format_tree.cc -o $@
+		tests/unit_tests.cc $(SRC_DIR)/format_tree.cc $(SRC_DIR)/json.cc -o $@
 
 # ---- source distribution with the parser pre-generated ----
 #

@@ -38,11 +38,11 @@ bool FormatOutcome::ChangedFrom(const std::string& original) const {
 }
 
 std::string FormatOutcome::Diagnostic(const std::string& name) const {
-  if (error_line > 0) {
-    return name + ": line " + std::to_string(error_line) + ": " +
-           error_message;
-  }
-  return name + ": " + error_message;
+  // No branch for a missing line number: the only way this runs is a failed
+  // parse, and every parse failure comes through SetParseDiagnostic, which
+  // always carries a 1-based line. Coverage confirmed the fall-back was
+  // unreachable, so it was removed rather than left as a guess.
+  return name + ": line " + std::to_string(error_line) + ": " + error_message;
 }
 
 FormatOutcome FormatDocument(const std::string& text,

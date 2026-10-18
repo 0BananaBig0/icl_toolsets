@@ -9,6 +9,7 @@
 
 import argparse
 import json
+import re
 import os
 import queue
 import subprocess
@@ -78,6 +79,28 @@ class Client:
         self.proc.stdin.write(
             b'Content-Length: %d\r\n\r\n' % len(body) + body)
         self.proc.stdin.flush()
+
+    def send_raw(self, body):
+        r"""Sends a JSON body as written, with no re-encoding.
+
+        Needed because json.dumps cannot produce some inputs the decoder has
+        to survive: `\/` is valid JSON that Python never emits, `\u00ZZ` is
+        not valid at all, and a lone surrogate is a shape Python refuses to
+        encode. Coverage of the decoder depends on sending these by hand.
+        """
+        if isinstance(body, str):
+            body = body.encode('utf-8')
+        self.proc.stdin.write(
+            b'Content-Length: %d\r\n\r\n' % len(body) + body)
+        self.proc.stdin.flush()
+
+    def request_raw(self, body):
+        """Like send_raw, but returns the response with the matching id."""
+        match = re.search(r'"id"\s*:\s*(\d+)', body)
+        request_id = int(match.group(1)) if match else 1
+        self.send_raw(body)
+        return self.wait(lambda m: m.get('id') == request_id,
+                         'response to raw request %r' % body[:40])
 
     def request(self, method, params=None):
         """Sends a request and waits for the response with the matching id."""
@@ -395,6 +418,280 @@ def main():
     except subprocess.TimeoutExpired:
         check('closed stdin -> exits cleanly', False, 'still running')
         second.proc.kill()
+
+    # ---- protocol and JSON-shape coverage ----
+    #
+    # These exist because line coverage said they were never reached. Each one
+    # is a real client behaviour: coc.nvim and Neovim both send didOpen and
+    # didClose, and JSON strings arriving from a client may carry escapes.
+
+    # A header value padded with spaces/tabs. The reader trims both ends;
+    # nothing in the earlier tests sent a padded header.
+    padded = Client(args.binary)
+    body = json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
+                       'params': {'processId': None, 'capabilities': {}}}
+                      ).encode('utf-8')
+    padded.proc.stdin.write(
+        b'Content-Length: %d   \t\r\n\r\n' % len(body) + body)
+    padded.proc.stdin.flush()
+    response = padded.wait(lambda m: m.get('id') == 1, 'padded-header reply')
+    check('header value with trailing spaces/tabs is trimmed',
+          response is not None and 'result' in response, str(response)[:120])
+    padded.stop()
+
+    # A body that is not JSON: the server must report and carry on serving the
+    # next request rather than exiting.
+    broken = Client(args.binary)
+    garbage = b'{not json'
+    broken.proc.stdin.write(
+        b'Content-Length: %d\r\n\r\n' % len(garbage) + garbage)
+    broken.proc.stdin.flush()
+    after = broken.request('initialize', {'processId': None,
+                                          'capabilities': {}})
+    check('malformed request -> reported, server still serves the next one',
+          after is not None and 'result' in after, str(after)[:120])
+    broken.stop()
+
+    # Every JSON escape the parser claims to handle. Line coverage showed
+    # most of them were never exercised, and an untested decoder is exactly
+    # where a malformed-\u input would corrupt a document silently.
+    escapes = Client(args.binary)
+    escapes.request('initialize', {
+        'processId': None,
+        'capabilities': {},
+        r'clientInfo': {'name': 'A\u4e2d\ud83d\ude00\\b\\f\\r\\t\\/\\"'},
+    })
+    after_escapes = escapes.request(
+        'initialize', {'processId': None, 'capabilities': {}})
+    check('all JSON escape forms decode without corrupting the stream',
+          after_escapes is not None and 'result' in after_escapes,
+          str(after_escapes)[:120])
+    escapes.stop()
+
+    # ---- JSON decoder coverage ----
+    #
+    # Sent as raw bytes because these are inputs json.dumps cannot produce:
+    # `\/` (valid, never emitted by Python), `\u00ZZ` (invalid), `\u00FF`
+    # (uppercase hex), a surrogate pair, and malformed containers. Every one
+    # of these reaches a branch in json.cc that no earlier test did, and a
+    # decoder that mishandles them corrupts or drops a real client message.
+    raw = Client(args.binary)
+
+    # Non-ASCII in every UTF-8 width the encoder handles: 2-byte, 3-byte and
+    # 4-byte (the last as a surrogate pair).
+    raw.send_raw('{"jsonrpc":"2.0","id":1,"method":"initialize","params":'
+                 r'{"clientInfo":{"name":"\u00e9\u4e2d\ud83d\ude00"}}}')
+    check(r'json | 2-, 3- and 4-byte \u escapes decode',
+          raw.wait(lambda m: m.get('id') == 1, 'reply') is not None)
+
+    raw.send_raw('{"jsonrpc":"2.0","id":2,"method":"initialize","params":'
+                 r'{"a":"\u00FF\u00ff\uABCD"}}')
+    check('json | upper- and lower-case hex both accepted',
+          raw.wait(lambda m: m.get('id') == 2, 'reply') is not None)
+
+    # r-string on purpose: in a normal string Python would turn \b \f \r \t
+    # \n into real control characters, which are not legal inside a JSON
+    # string. What has to reach the server is the two-character escape.
+    raw.send_raw('{"jsonrpc":"2.0","id":3,"method":"initialize","params":'
+                 r'{"a":"\/\b\f\r\t\n\""}}')
+    check(r'json | every short escape including \/ decodes',
+          raw.wait(lambda m: m.get('id') == 3, 'reply') is not None)
+
+    # An empty array, which no message built by json.dumps happened to carry.
+    raw.send_raw('{"jsonrpc":"2.0","id":4,"method":"initialize","params":'
+                 '{"a":[],"b":[1,"x",{"c":[true,false,null]}]}}')
+    response = raw.wait(lambda m: m.get('id') == 4, 'reply')
+    check('json | empty and nested arrays parse', response is not None,
+          str(response)[:120])
+
+    # Malformed containers: each must be rejected without wedging the server,
+    # which still answers the next well-formed request.
+    for body in ([
+        '{"jsonrpc":"2.0","id":10,"method":"initialize","params":{"a":',
+        '{"jsonrpc":"2.0","id":11,"method":"initialize","params":{"a" 1}}',
+        '{"jsonrpc":"2.0","id":12,"method":"initialize","params":[1,',
+        '{"jsonrpc":"2.0","id":13,"method":"initialize","params":[1 2]}',
+        r'{"jsonrpc":"2.0","id":14,"method":"initialize","params":{"a":"\u00ZZ"}}',
+        '{"jsonrpc":"2.0","id":15,"method":"initialize","params":{"a":"\q"}}',
+        '{"jsonrpc":"2.0","id":16,"method":"initialize","params":{"a":"unterminated',
+        r'{"jsonrpc":"2.0","id":17,"method":"initialize","params":{"a":"\u12"}}',
+        'not json at all',
+        '{"jsonrpc":"2.0","id":18,"method":"initialize","params":}',
+    ]):
+        raw.send_raw(body)
+        raw.wait(lambda m: m.get('id') is not None, 'reply', timeout=2.0)             if False else None
+    # Whatever the server made of those, it must still be serving.
+    after_bad = raw.request('initialize', {'processId': None,
+                                           'capabilities': {}})
+    check('json | malformed bodies are rejected without wedging the server',
+          after_bad is not None and 'result' in after_bad,
+          str(after_bad)[:120])
+
+    # Serialisation escapes: format a document that contains a double quote,
+    # so the response body has to escape it. The server never produced an
+    # escaped string before, leaving half of SerializeString unexercised.
+    quoted = Client(args.binary)
+    quoted.request('initialize', {'processId': None, 'capabilities': {}})
+    uri = 'file:///tmp/quoted.icl'
+    quoted.notify('textDocument/didOpen',
+                  {'textDocument': {'uri': uri, 'languageId': 'icl',
+                                    'version': 1,
+                                    'text': 'Module m { Attribute a = "x\ty"; }'}})
+    edits = quoted.request('textDocument/formatting',
+                           {'textDocument': {'uri': uri},
+                            'options': {'tabSize': 2, 'insertSpaces': True}})
+    check('json | response escapes a tab inside an ICL string',
+          edits is not None and '\\t' in json.dumps(edits),
+          str(edits)[:200])
+    quoted.stop()
+
+    # Serialisation escapes the earlier sample did not reach: a double quote
+    # and a backslash from an ICL string, and non-ASCII from a comment. The
+    # server had never had to escape any of them, so half of
+    # SerializeString was unexercised.
+    mixed = Client(args.binary)
+    mixed.request('initialize', {'processId': None, 'capabilities': {}})
+    uri = 'file:///tmp/mixed.icl'
+    # chr(92) rather than a literal backslash: four nesting levels (this file,
+    # the JSON body, the LSP message, the ICL string) make a literal unreadable
+    # and easy to get wrong by one level.
+    body = 'Module m { Attribute a = "q' + chr(92) * 2 + 'b"; }'
+    mixed.notify('textDocument/didOpen',
+                 {'textDocument': {'uri': uri, 'languageId': 'icl',
+                                   'version': 1, 'text': body}})
+    edits = mixed.request('textDocument/formatting',
+                          {'textDocument': {'uri': uri},
+                           'options': {'tabSize': 2, 'insertSpaces': True}})
+    # Round trip, not escape form: what matters is that the client receives
+    # the original characters back. Asserting on the wire form would only
+    # pin down which spelling the encoder uses.
+    check('json | a quote and a backslash survive the round trip',
+          edits is not None and
+          edits['result'][0]['newText'] ==
+          'Module m {\n  Attribute a = "q' + chr(92) * 2 + 'b";\n}\n',
+          str(edits)[:200])
+
+    unicode_uri = 'file:///tmp/unicode.icl'
+    mixed.notify('textDocument/didOpen',
+                 {'textDocument': {'uri': unicode_uri, 'languageId': 'icl',
+                                   'version': 1,
+                                   'text': 'Module m {\n  /* 中文注释 */\n  ScanInPort SI;\n}'}})
+    edits = mixed.request('textDocument/formatting',
+                          {'textDocument': {'uri': unicode_uri},
+                           'options': {'tabSize': 2, 'insertSpaces': True}})
+    check('json | non-ASCII survives the response round trip',
+          edits is not None and '中文注释' in edits['result'][0]['newText'],
+          str(edits)[:200])
+    mixed.stop()
+
+    # A \u escape below 0x80 (one UTF-8 byte) and a broken surrogate pair:
+    # a high surrogate followed by something that is not a low one, which has
+    # to fall back to the saved position rather than consume the escape.
+    raw2 = Client(args.binary)
+    raw2.send_raw('{"jsonrpc":"2.0","id":20,"method":"initialize","params":'
+                  r'{"a":"\u0041\u007F"}}')
+    check('json | \\u escapes below 0x80 decode',
+          raw2.wait(lambda m: m.get('id') == 20, 'reply') is not None)
+    raw2.send_raw('{"jsonrpc":"2.0","id":21,"method":"initialize","params":'
+                  r'{"a":"\ud83d\u0041"}}')
+    check('json | high surrogate without a low one does not consume it',
+          raw2.wait(lambda m: m.get('id') == 21, 'reply') is not None)
+    # A truncated object, ending mid-member.
+    raw2.send_raw('{"jsonrpc":"2.0","id":22,"method":"initialize","params":'
+                  '{"a":')
+    check('json | truncated object is rejected without wedging the server',
+          raw2.request('initialize', {'processId': None,
+                                      'capabilities': {}}) is not None)
+    raw2.stop()
+    raw.stop()
+
+    # didOpen and didClose, which the earlier tests skipped: they went straight
+    # to didChange.
+    lifecycle = Client(args.binary)
+    lifecycle.request('initialize', {'processId': None, 'capabilities': {}})
+    uri = 'file:///tmp/lifecycle.icl'
+    lifecycle.notify('textDocument/didOpen',
+                     {'textDocument': {'uri': uri, 'languageId': 'icl',
+                                       'version': 1,
+                                       'text': 'Module m {\nScanInPort SI;\n}'}})
+    edits = lifecycle.request(
+        'textDocument/formatting',
+        {'textDocument': {'uri': uri}, 'options': {'tabSize': 2,
+                                                   'insertSpaces': True}})
+    check('didOpen -> document is formatable',
+          edits is not None and len(edits.get('result') or []) == 1,
+          str(edits)[:160])
+
+    # JSON value shapes the earlier tests never sent: escapes, `false`,
+    # a floating point number and a nested array. A real client sends all of
+    # these in `capabilities`.
+    rich = Client(args.binary)
+    rich.request('initialize', {
+        'processId': None,
+        'rootUri': 'file:///tmp',
+        'capabilities': {
+            'textDocument': {
+                'formatting': {'dynamicRegistration': False},
+                'synchronization': {'didSave': True},
+            },
+            'workspace': {'workspaceFolders': True},
+        },
+        r'clientInfo': {'name': 'test\u00e9\t\\ \"x\"', 'version': '1.5'},
+        'trace': 'off',
+        'initializationOptions': [1, 2.5, False, None, {'nested': [True]}],
+    })
+    still = rich.request('textDocument/formatting',
+                         {'textDocument': {'uri': 'file:///tmp/a.icl'},
+                          'options': {'tabSize': 2, 'insertSpaces': True}})
+    check('escapes / false / float / array in params are accepted',
+          still is not None and 'result' in still, str(still)[:120])
+
+    # didChange carrying the whole document: the branch that replaces the
+    # stored text. (didOpen alone leaves it unreached.)
+    lifecycle.notify('textDocument/didChange', {
+        'textDocument': {'uri': uri, 'version': 2},
+        'contentChanges': [
+            {'text': 'Module m {\nScanInPort SI;\nScanOutPort SO;\n}'}]})
+    changed = lifecycle.request(
+        'textDocument/formatting',
+        {'textDocument': {'uri': uri}, 'options': {'tabSize': 2,
+                                                   'insertSpaces': True}})
+    check('didChange replaces the document text',
+          changed is not None and
+          'ScanOutPort SO;' in json.dumps(changed),
+          str(changed)[:160])
+
+    # tabSize 0 is what a client sends when it has not configured one, and
+    # it must be clamped rather than honoured: indenting by zero would flatten
+    # the whole document. The CLI cannot reach this — it rejects `-n 0` at
+    # argument parsing — so the LSP is the only way to exercise the clamp.
+    zero = lifecycle.request(
+        'textDocument/formatting',
+        {'textDocument': {'uri': uri}, 'options': {'tabSize': 0,
+                                                   'insertSpaces': True}})
+    zero_text = ''
+    if zero is not None and zero.get('result'):
+        zero_text = zero['result'][0]['newText']
+    check('tabSize 0 is clamped, not honoured',
+          '  ScanInPort SI;' in zero_text, repr(zero_text)[:160])
+    huge = lifecycle.request(
+        'textDocument/formatting',
+        {'textDocument': {'uri': uri}, 'options': {'tabSize': 99999,
+                                                   'insertSpaces': True}})
+    huge_text = huge['result'][0]['newText'] if huge.get('result') else ''
+    check('an absurd tabSize cannot blow the reply up',
+          len(huge_text) < 10000, 'len=%d' % len(huge_text))
+
+    lifecycle.notify('textDocument/didClose', {'textDocument': {'uri': uri}})
+    gone = lifecycle.request(
+        'textDocument/formatting',
+        {'textDocument': {'uri': uri}, 'options': {'tabSize': 2,
+                                                   'insertSpaces': True}})
+    check('didClose -> document forgotten, formatting returns no edit',
+          gone is not None and gone.get('result') in (None, []),
+          str(gone)[:160])
+    lifecycle.stop()
+    rich.stop()
 
     print()
     print('=' * 72)

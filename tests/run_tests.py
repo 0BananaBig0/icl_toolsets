@@ -268,6 +268,63 @@ def main():
               runner.run([paths[0], '--ast']).returncode == 0)
         check('CLI | --version works', runner.run(['--version']).returncode == 0)
 
+        # Every argument-rejection path. These are the messages a user sees
+        # when they mistype a flag, so each one is asserted separately rather
+        # than lumped into "exit != 0" — a wrong message is a real defect even
+        # when the exit code is right.
+        okay = paths[0]
+        check('CLI | --help exits 0', runner.run(['--help']).returncode == 0)
+        check('CLI | -n without a value rejected',
+              runner.run([okay, '-n']).returncode == 2)
+        check('CLI | -n 0 rejected',
+              runner.run([okay, '-n', '0']).returncode == 2)
+        check('CLI | -n abc rejected',
+              runner.run([okay, '-n', 'abc']).returncode == 2)
+        check('CLI | -o without a value rejected',
+              runner.run([okay, '-o']).returncode == 2)
+        check('CLI | unknown option rejected',
+              runner.run([okay, '--bogus']).returncode == 2)
+        result = runner.run([okay, '-o', '/nonexistent-dir-icl-test/out.icl'])
+        check('CLI | -o to an unwritable path rejected',
+              result.returncode == 2 and 'cannot write' in result.stderr,
+              'rc=%d err=%r' % (result.returncode, result.stderr[:120]))
+
+        # A batch containing one bad file must still fail overall.
+        check('CLI | good + bad in one run -> exit 2',
+              runner.run([okay, bad]).returncode == 2)
+
+        # Two scanner edge cases no sample file happened to contain.
+        #
+        # A single-line comment under --ast: the printer elides only multi-line
+        # ones, so the branch that leaves the text alone was never taken.
+        single = os.path.join(tmp, 'single_comment.icl')
+        with open(single, 'w', encoding='utf-8') as handle:
+            handle.write('Module m {\n  // one line\n  ScanInPort SI;\n}\n')
+        result = runner.run([single, '--ast'])
+        check('CLI | --ast keeps a single-line comment whole',
+              result.returncode == 0 and '// one line' in result.stdout,
+              'rc=%d out=%r' % (result.returncode, result.stdout[:160]))
+
+        # Bytes that begin like a BOM but are not one: the check must fall
+        # through on the second byte rather than assume.
+        fake_bom = os.path.join(tmp, 'fake_bom.icl')
+        with open(fake_bom, 'wb') as handle:
+            handle.write(b'\xef\x00\x00Module m {}\n')
+        result = runner.run([fake_bom])
+        check('CLI | bytes that only start like a BOM are not stripped',
+              result.returncode != 0, 'rc=%d' % result.returncode)
+
+        # `--ast` on a comment spanning lines: the dump prints only the first
+        # line and marks the elision, which is the one branch of the AST
+        # printer no single-line sample reaches.
+        multiline = os.path.join(tmp, 'multiline_comment.icl')
+        with open(multiline, 'w', encoding='utf-8') as handle:
+            handle.write('Module m {\n  /* a\n     b */\n  ScanInPort SI;\n}\n')
+        result = runner.run([multiline, '--ast'])
+        check('CLI | --ast elides a multi-line comment',
+              result.returncode == 0 and '/* a...' in result.stdout,
+              'rc=%d out=%r' % (result.returncode, result.stdout[:160]))
+
     print()
     print('=' * 72)
     print('TOTAL: PASS=%d  FAIL=%d' % (len(PASS), len(FAIL)))

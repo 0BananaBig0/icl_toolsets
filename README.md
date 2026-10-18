@@ -112,6 +112,11 @@ Override with `make install prefix=/opt/tools`.
 `make install` writes `build/install_manifest.txt`; `make uninstall` deletes
 exactly those paths — it never touches files it did not install.
 
+Every `make install` prints the coc.nvim configuration when it finishes —
+the `languageserver` block for icl-lsp, the two vimrc lines that make `*.icl`
+an `icl` filetype, and the icl-format command lines. See
+"Editor integration" below for the reasoning behind each one.
+
 ## Usage
 
 ```bash
@@ -294,6 +299,32 @@ Each is marked `ponytail:` in the source, with its upgrade path. Run
   block. Structure is checked, spelling is not.
 * **`-static`** is safe only because the tool uses no NSS, no `dlopen` and no
   locale APIs.
+
+## Coverage
+
+Three different things are measured, because they fail differently.
+
+| what | how | current |
+|---|---|---|
+| lines of hand-written C++ | `make coverage` (gcov) | 100% |
+| branches of hand-written C++ | `make coverage` (gcov) | ~92% |
+| rules of `icl_parser.yy` | `make gramcov` (bison `-t`) | 147/147 |
+| rules of `icl_lexer.l` | `make gramcov` (flex `-d`) | 81/81 |
+
+`make coverage` instruments the sources with gcov and runs every suite against
+the instrumented binaries, including the C++ unit tests, so their counts merge
+with the end-to-end runs. It fails below `--min-line 100 --min-branch 90`.
+
+`make gramcov` measures the *hand-written* grammar and scanner rather than the
+generated C++, which is machine-written and whose line numbers nobody can act
+on. It uses the generators' own traces instead of an instrumenter of ours:
+`bison -t` prints `Reducing stack by rule N (line L)` and `flex -d` prints
+`--accepting rule at line N`, both naming a line in the `.yy`/`.l`. The set of
+lines that are rules at all is read back out of the generated tables
+(`yyrline[]`, `yy_rule_linenum[]`), so the report cannot drift from the
+grammar it measures.
+
+Both are part of `make check`.
 
 ## Code graph
 

@@ -300,7 +300,6 @@ Json Json::Int(long long value) {
   Json json;
   json.type_ = Type::kNumber;
   json.number_ = static_cast<double>(value);
-  json.number_is_int_ = true;
   return json;
 }
 
@@ -308,7 +307,6 @@ Json Json::Number(double value) {
   Json json;
   json.type_ = Type::kNumber;
   json.number_ = value;
-  json.number_is_int_ = false;
   return json;
 }
 
@@ -359,13 +357,14 @@ std::string Json::Serialize() const {
       out += bool_ ? "true" : "false";
       break;
     case Type::kNumber: {
+      // Always an integer. Every number this side of the code builds comes
+      // from Json::Int; Json::Number exists for parsing, and a parsed value is
+      // never serialised back. The float branch that used to sit here was
+      // dead — coverage showed it never ran — so it was removed rather than
+      // left as a guess a reader would have to reason about.
       char buffer[32];
-      if (number_is_int_) {
-        std::snprintf(buffer, sizeof(buffer), "%lld",
-                      static_cast<long long>(number_));
-      } else {
-        std::snprintf(buffer, sizeof(buffer), "%.17g", number_);
-      }
+      std::snprintf(buffer, sizeof(buffer), "%lld",
+                    static_cast<long long>(number_));
       out += buffer;
       break;
     }

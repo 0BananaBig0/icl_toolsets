@@ -721,6 +721,58 @@ line number, never a silent misformat.
 `Instance` nested inside another `Instance` block is also rejected, which is
 correct per the standard — `Instance` belongs at module level only.
 
+### 5.12 Coverage of the grammar and scanner files
+
+The instruction was: the generated C++ from bison and flex need not be
+covered, but every line of the hand-written `.y` and `.l` should be — and the
+coverage of my own code should be as high as possible.
+
+Measured with `make gramcov`, using the generators' own traces rather than an
+instrumenter written for the purpose: `bison -t` prints
+`Reducing stack by rule N (line L)` for each reduction, `flex -d` prints
+`--accepting rule at line N` for each token. The set of lines that count as
+rules comes from the generated `yyrline[]` and `yy_rule_linenum[]` tables, so
+the expected set cannot drift from the grammar.
+
+It started at 127/150 grammar rules and found three kinds of thing:
+
+* **Two productions the standard does not have.** `postfix DOT NUMBER`
+  (`a.0`) — the published grammar's `hier_port` is
+  `(instance_name '.')+ port_name`, an identifier after every dot, and no file
+  in the corpus used it. And `value_no_lead_op : LPAREN value_list RPAREN`,
+  duplicating `value : LPAREN value_list RPAREN`. Both deleted; zero conflicts
+  afterwards.
+* **Constructs with no test.** Comments and assignments inside mux, logic and
+  connection bodies; a unary attribute value (`Source ~a;`); keywords used as
+  attribute names; a bare `UseNameSpace;`; `Instance i Of M;` with no body.
+  All legal — the published grammar allows the semicolon form of `instance_def`
+  — so five corpus files were added rather than the rules deleted.
+* **One real inconsistency.** `Instance i Of a::b::c;` was rejected while
+  `Source a::b::c;` was accepted, because the two positions used different
+  rules and only one allowed more than one `::`. `module_ref` is now left
+  recursive, like `value`.
+
+Result: 147/147 grammar rules, 81/81 scanner rules.
+
+For the hand-written C++, `make coverage` reports lines and branches
+separately, because a line counts as covered once it runs at all, which says
+nothing about the other arm of its `if`. Current: 100% of lines, ~92% of
+branches. Two branches remain that no test reaches, and both are documented in
+the code where they sit.
+
+### 5.13 `make install` prints the editor configuration
+
+The coc.nvim snippet is the only thing a user has to write by hand, and it
+differs between the two programs, so it is emitted at the end of every install:
+the `languageserver` block for icl-lsp, the `icl-format` command lines, and the
+two vimrc lines.
+
+`set filetype=icl` rather than `setfiletype icl`, because vim's own
+filetype.vim maps `*.icl` to the Clean language and `setfiletype` silently does
+nothing once a filetype is set — which leaves coc never starting the server.
+`shiftwidth=2` is included because coc forwards it as LSP `tabSize`; vim
+defaults to 8, so without it the editor and the CLI disagree on indentation.
+
 ## 6. What was verified, and what was not
 
 **Verified**

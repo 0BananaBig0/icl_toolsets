@@ -412,7 +412,6 @@ value_no_lead_op
      `a::b::c`. An iProc namespace is `ns::module::sub` in the grammar, so
      two separators occur in one name, and there is no reason to stop there. */
   | value_no_lead_op DCOLON postfix { $$ = $1 + "::" + $3; }
-  | LPAREN value_list RPAREN  { $$ = "(" + $2 + ")"; }
   ;
 
 /* The body of a LogicSignal: expression statements and the attribute forms
@@ -694,9 +693,16 @@ ns_stmt
 
 /* A module reference: `TDR`, or `ns::TDR`. IEEE 1687-2014 Appendix E writes
    `Instance aa Of X::x {`. */
+/* The module a construct refers to, optionally namespace-qualified.
+
+   Left recursive, like `value`, so `a::b::c` parses: a namespace may nest and
+   there is no reason to stop at two segments. It used to allow exactly one
+   `::`, which meant `Instance i Of a::b::c;` was rejected while
+   `Source a::b::c;` — going through `value` — was accepted. Same shape, two
+   answers; now there is one. */
 module_ref
-  : IDENT              { $$ = $1; }
-  | IDENT DCOLON IDENT { $$ = $1 + "::" + $3; }
+  : IDENT                    { $$ = $1; }
+  | module_ref DCOLON IDENT  { $$ = $1 + "::" + $3; }
   ;
 
 
@@ -752,7 +758,6 @@ value
 postfix
   : primary                           { $$ = $1; }
   | postfix DOT IDENT                 { $$ = $1 + "." + $3; }
-  | postfix DOT NUMBER                { $$ = $1 + "." + $3; }
   /* Index bounds accept a parameter reference: `RegD[ $MSB:0 ]`. */
   | postfix LBRACKET value RBRACKET
       { $$ = $1 + "[" + $3 + "]"; }

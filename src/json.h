@@ -73,7 +73,6 @@ class Json {
   Type type_ = Type::kNull;
   bool bool_ = false;
   double number_ = 0.0;
-  bool number_is_int_ = false;
   std::string string_;
   Elements elements_;
   Members members_;

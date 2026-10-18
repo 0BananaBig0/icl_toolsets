@@ -25,6 +25,7 @@
 
 #include "format_tree.h"
 #include "icl_ast.h"
+#include "json.h"
 
 namespace icl {
 namespace {
@@ -212,6 +213,100 @@ void TestRenderIsStable() {
   Check("rendering the same tree twice is identical", first == second);
 }
 
+// The escaping table in SerializeString. Reached through Json::String rather
+// than the server, because no LSP response ever carries these characters —
+// ICL with a control character in it is rejected by the scanner long before a
+// document is formatted. They are still part of JSON, so they are tested here
+// instead of left unexercised.
+void TestJsonEscapes() {
+  Check("serialize escapes a double quote",
+        Json::String("a\"b").Serialize() == "\"a\\\"b\"");
+  Check("serialize escapes a backslash",
+        Json::String("a\\b").Serialize() == "\"a\\\\b\"");
+  Check("serialize escapes a backspace",
+        Json::String("a\bb").Serialize() == "\"a\\bb\"");
+  Check("serialize escapes a form feed",
+        Json::String("a\fb").Serialize() == "\"a\\fb\"");
+  Check("serialize escapes a carriage return",
+        Json::String("a\rb").Serialize() == "\"a\\rb\"");
+  Check("serialize escapes a newline",
+        Json::String("a\nb").Serialize() == "\"a\\nb\"");
+  Check("serialize escapes a tab",
+        Json::String("a\tb").Serialize() == "\"a\\tb\"");
+  // 0x01 is the branch no real message reaches: a control character with no
+  // short escape, so it has to become \u0001.
+  Check("serialize escapes any other control character",
+        Json::String(std::string("a") + static_cast<char>(0x01) + "b")
+            .Serialize() == "\"a\\u0001b\"");
+  Check("serialize leaves printable ASCII alone",
+        Json::String("plain").Serialize() == "\"plain\"");
+  Check("serialize passes non-ASCII through as UTF-8",
+        Json::String("\xe4\xb8\xad").Serialize() == "\"\xe4\xb8\xad\"");
+
+  // Numbers and the container shapes, which is everything Serialize can see.
+  Check("serialize an integer", Json::Int(42).Serialize() == "42");
+  Check("serialize a negative integer", Json::Int(-7).Serialize() == "-7");
+  Check("serialize true and false",
+        Json::Bool(true).Serialize() == "true" &&
+            Json::Bool(false).Serialize() == "false");
+  Check("serialize null", Json::Null().Serialize() == "null");
+  Check("serialize an empty array", Json::Array({}).Serialize() == "[]");
+  Check("serialize an array of one element",
+        Json::Array({Json::Int(1)}).Serialize() == "[1]");
+  Check("serialize an object",
+        Json::Object({{"a", Json::Int(1)}}).Serialize() == "{\"a\":1}");
+}
+
+// The decoder's rejection paths, which the LSP tests reach only indirectly:
+// a server cannot answer a message it failed to parse, so "still serving the
+// next request" is the strongest observable. Here the return value is direct.
+void TestJsonRejects() {
+  Json out;
+  std::string error;
+  Check("rejects an empty document", !Json::Parse("", &out, &error));
+  // A bare value is valid JSON (RFC 8259 allows any value at the top level),
+  // so this is accepted and then falls out as an unknown method.
+  Check("accepts a bare value at the top level",
+        Json::Parse("1", &out, &error));
+  Check("rejects an unclosed object", !Json::Parse("{\"a\":1", &out, &error));
+  Check("rejects a member with no value",
+        !Json::Parse("{\"a\":", &out, &error));
+  Check("rejects a missing colon", !Json::Parse("{\"a\" 1}", &out, &error));
+  // Two members with nothing between them: the branch that ends the object
+  // loop via `return false` rather than `,`/`}`.
+  Check("rejects two members with no comma",
+        !Json::Parse("{\"a\":1 \"b\":2}", &out, &error));
+  Check("rejects an unclosed array", !Json::Parse("[1", &out, &error));
+  Check("rejects an array with no comma",
+        !Json::Parse("[1 2]", &out, &error));
+  Check("rejects an invalid \\u escape",
+        !Json::Parse("{\"a\":\"\\u00ZZ\"}", &out, &error));
+  Check("rejects a truncated \\u escape",
+        !Json::Parse("{\"a\":\"\\u12\"}", &out, &error));
+  Check("rejects an unknown escape",
+        !Json::Parse("{\"a\":\"\\q\"}", &out, &error));
+  Check("rejects an unterminated string",
+        !Json::Parse("{\"a\":\"abc}", &out, &error));
+  Check("every rejection reports why", !error.empty(), error);
+
+  // And the shapes it accepts, including ones json.dumps never emits.
+  Json parsed;
+  Check("accepts \\/ as a solidus",
+        Json::Parse("{\"a\":\"\\/\"}", &parsed, &error) &&
+            parsed.Find("a")->string_value() == "/");
+  Json pair;
+  Check("accepts a surrogate pair",
+        Json::Parse("{\"a\":\"\\ud83d\\ude00\"}", &pair, &error) &&
+            pair.Find("a")->string_value() == "\xf0\x9f\x98\x80");
+  Json lone;
+  Check("accepts a high surrogate with no partner",
+        Json::Parse("{\"a\":\"\\ud83d\\u0041\"}", &lone, &error));
+  Json nested;
+  Check("accepts an empty array",
+        Json::Parse("{\"a\":[]}", &nested, &error) &&
+            nested.Find("a")->elements().empty());
+}
+
 }  // namespace
 }  // namespace icl
 
@@ -227,6 +322,8 @@ int main() {
   TestBlankLines();
   TestTrailingComment();
   TestRenderIsStable();
+  TestJsonEscapes();
+  TestJsonRejects();
   std::cout << "========================================================\n";
   std::cout << "PASS=" << icl::g_pass << "  FAIL=" << icl::g_fail << "\n";
   std::cout << "========================================================\n";

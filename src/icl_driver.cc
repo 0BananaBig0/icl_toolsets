@@ -80,6 +80,16 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
   icl_scan_bytes(text.data(), text.size());
 
   IclParser parser(*this);
+#ifdef ICL_PARSER_TRACE
+  // Only compiled by the `gramcov` target, which pairs a bison `-t` parser
+  // with a flex `-d` scanner. The two trace these builds print are how the
+  // grammar and scanner rules get coverage-measured: every reduction names
+  // the line in icl_parser.yy it came from, and every accepted token names
+  // the line in icl_lexer.l. Turning it on here rather than in a test file
+  // is what keeps one grammar shared by both binaries — there is no second
+  // parser to instrument.
+  parser.set_debug_level(1);
+#endif
   parser.parse();
   icl_scan_end();
 
