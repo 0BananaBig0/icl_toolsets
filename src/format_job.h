@@ -70,6 +70,12 @@ struct FormatOutcome {
   // "name: line 3: ..." — the one-line form both front ends need, so they
   // cannot drift into phrasing it differently.
   std::string Diagnostic(const std::string& name) const;
+
+  // Whether formatting changed anything. Shared because it is a question
+  // about the result, not about the front end: `--check` and `-w` both need
+  // it, and the LSP uses the same fact to decide whether to send an edit at
+  // all rather than an edit that replaces the text with itself.
+  bool ChangedFrom(const std::string& original) const;
 };
 
 // Runs parse -> AST -> layout -> render, and nothing else.

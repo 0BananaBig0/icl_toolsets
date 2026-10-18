@@ -187,7 +187,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range range_bound name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -330,17 +330,15 @@ port_keyword
   | DATAOUTPORT      { $$ = "DataOutPort"; }
   ;
 
-/* A range bound is a literal or a parameter reference; `$MSB:0` is how
-   parameterised ICL is written. */
-range_bound
-  : NUMBER   { $$ = $1; }
-  | PARAMREF { $$ = $1; }
-  ;
 
+/* A range bound is any expression: a literal, a parameter reference
+   (`$MSB`), or a computed bound (`r[-1]`, `top.MSB`). One rule rather
+   than a list of literal forms, because any narrower set eventually
+   turns out to be too narrow. */
 opt_range
   : %empty                    { $$ = std::string(); }
-  | LBRACKET range_bound RBRACKET            { $$ = "[" + $2 + "]"; }
-  | LBRACKET range_bound COLON range_bound RBRACKET { $$ = "[" + $2 + ":" + $4 + "]"; }
+  | LBRACKET value RBRACKET            { $$ = "[" + $2 + "]"; }
+  | LBRACKET value COLON value RBRACKET { $$ = "[" + $2 + ":" + $4 + "]"; }
   ;
 
 port_decl
@@ -547,9 +545,9 @@ postfix
   | postfix DOT IDENT                 { $$ = $1 + "." + $3; }
   | postfix DOT NUMBER                { $$ = $1 + "." + $3; }
   /* Index bounds accept a parameter reference: `RegD[ $MSB:0 ]`. */
-  | postfix LBRACKET range_bound RBRACKET
+  | postfix LBRACKET value RBRACKET
       { $$ = $1 + "[" + $3 + "]"; }
-  | postfix LBRACKET range_bound COLON range_bound RBRACKET
+  | postfix LBRACKET value COLON value RBRACKET
       { $$ = $1 + "[" + $3 + ":" + $5 + "]"; }
   ;
 

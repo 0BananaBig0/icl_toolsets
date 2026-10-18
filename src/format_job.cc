@@ -30,6 +30,13 @@ int ClampIndentWidth(int requested) {
                                                       : requested);
 }
 
+bool FormatOutcome::ChangedFrom(const std::string& original) const {
+  // Only meaningful on success: a document that failed to parse has no
+  // formatted form to compare against, and answering "changed" there would
+  // make `--check` flag files it could not even read.
+  return ok && text != original;
+}
+
 std::string FormatOutcome::Diagnostic(const std::string& name) const {
   if (error_line > 0) {
     return name + ": line " + std::to_string(error_line) + ": " +

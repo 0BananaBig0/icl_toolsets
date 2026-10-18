@@ -163,24 +163,25 @@ bool ReadInput(const std::string& path, std::string* text,
 // Dispatches one formatted result according to the mode. Returns false only
 // when a write failed.
 bool Emit(const std::string& name, const std::string& original,
-          const std::string& output, bool writable, const Options& options,
-          bool* would_change) {
+          const icl::FormatOutcome& outcome, bool writable,
+          const Options& options, bool* would_change) {
   if (options.check) {
-    if (output != original) {
+    if (outcome.ChangedFrom(original)) {
       std::cout << name << "\n";
       *would_change = true;
     }
     return true;
   }
   if (!options.output_path.empty()) {
-    return WriteFile(options.output_path, output);
+    return WriteFile(options.output_path, outcome.text);
   }
   if (options.write && writable) {
     // Only touch the file when the content actually changes; this keeps
     // mtimes (and build systems) quiet on already-formatted trees.
-    return output == original ? true : WriteFile(name, output);
+    return outcome.ChangedFrom(original) ? WriteFile(name, outcome.text)
+                                        : true;
   }
-  std::cout << output;
+  std::cout << outcome.text;
   return true;
 }
 
@@ -238,7 +239,7 @@ int main(int argc, char** argv) {
       std::cout << outcome.ast_dump;
       continue;
     }
-    if (!Emit(job.name, original, outcome.text, job.from_file, options,
+    if (!Emit(job.name, original, outcome, job.from_file, options,
               &would_change)) {
       had_error = true;
     }

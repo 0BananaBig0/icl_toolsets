@@ -305,6 +305,20 @@ def main():
     check('syntax error -> no edits, not mangled output',
           (response or {}).get('result') == [], str(response)[:200])
 
+    # A document that is already formatted must come back with no edits at
+    # all: an edit that replaces the text with itself marks the buffer dirty
+    # for nothing. `ChangedFrom` is shared with the CLI's --check / -w, so the
+    # two agree on what "changed" means.
+    client.notify('textDocument/didOpen', {
+        'textDocument': {'uri': 'file:///tmp/clean.icl', 'languageId': 'icl',
+                         'version': 1, 'text': 'Module m {\n  ScanInPort SI;\n}\n'}})
+    client.drain()
+    response = client.request('textDocument/formatting', {
+        'textDocument': {'uri': 'file:///tmp/clean.icl'},
+        'options': {'tabSize': 2, 'insertSpaces': True}})
+    check('already formatted -> no edits',
+          (response or {}).get('result') == [], str(response)[:160])
+
     # An incremental change (range, no text) must not blank the document. We
     # advertise full sync, but a client that ignores that must not be able to
     # destroy the buffer.

@@ -307,8 +307,10 @@ class LspServer {
 
     const icl::FormatOutcome outcome = icl::FormatDocument(text, request);
     // A file with a syntax error is left untouched: returning no edits is the
-    // only safe answer, since there is no formatted form to hand back.
-    if (!outcome.ok) return Json::Array({});
+    // only safe answer, since there is no formatted form to hand back. So is
+    // a file that is already formatted — sending an edit that replaces the
+    // text with itself makes the editor mark the buffer dirty for nothing.
+    if (!outcome.ok || !outcome.ChangedFrom(text)) return Json::Array({});
     const std::string& output = outcome.text;
 
     long long end_line = 0;
