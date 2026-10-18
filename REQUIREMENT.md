@@ -917,6 +917,51 @@ draft-era `ScanMux` without `SelectedBy`.
 The repository's `benchmarks` submodule (a suite of IEEE 1687 benchmark
 networks, on GitLab) could not be fetched — 403.
 
+### 5.17 Cross-check against the ANTLR grammar's test suite
+
+The request was to look at what `Honza255/icl_parser` tests and check whether
+we test the same things. The repository's tests are of three kinds, and only
+the first is comparable:
+
+* **Eight ICL files** under `tests/test_icls/` (Instruments.icl, which carries
+  code from IEEE 1687-2014 Appendix E, plus scan_mux_001/002,
+  test_icl_instance, test_icl_scan_register and three benchmark conversions).
+  All eight are in our corpus and all eight pass, idempotent and
+  character-preserving. Run against them directly, not against our copies.
+* **`test_icl_number.py`**, which exercises literal spellings rather than files.
+  Every spelling it uses was tried: `'b11_00`, `'B11`, `xx01_x11`, `'d13`,
+  `'HE`, `1_2_3`, `0235`, `'d 134`, `'h 23ff`, `'b0101`, `'D 3`, `'b0_1x`,
+  `'hx`, `'h3`, `'o7`, `'sd5`, `16'shFF`. All accepted.
+* **Semantic tests** — retargeting, scan-graph construction, driver values.
+  These have no counterpart here, because a formatter checks structure and
+  reproduces text; it does not build a network or simulate it.
+
+Two constructs came out of reading the grammar's rules rather than its tests,
+and both were added to the corpus:
+
+* **A mux selection separated by `|`.** The grammar writes `concat_number_list
+  : concat_number ('|' concat_number)*`, so `1'b0 | 2'b01 : si_a;` is the
+  standard spelling and `,` is the variant. Both are accepted, and neither is
+  rewritten into the other.
+* **`ScanOutPort` takes an `Enable`**, which the other port blocks do not.
+  Our port sweep had covered 26 ports × 4 shapes but not the extra item on
+  this one.
+
+Also checked: integer expressions in range bounds (`+ - * / %`, parentheses,
+parameter references — `bus[$W - 1:0]`, `[(1 + 2) * 2:0]`), `DefaultLoadValue`
+taking an enum symbol, and `RefEnum` on Alias and DataInPort.
+
+One shape is rejected and stays rejected: a parenthesised expression as a
+literal's width, `($W+1)'d3`. The grammar's `size` is `pos_int | '$' SCALAR_ID`;
+it does not allow one either.
+
+**What could not be obtained.** The benchmark ICL files (BasicSCB, Mingle,
+TreeFlat, the Classic set — about twenty files listed in `tests/config.py`) live
+in a GitLab submodule, and that host is unreachable from here; there is no
+GitHub mirror. That remains the largest gap in coverage: everything above is
+the published grammar plus eight files, and a formatter meets the standard by
+meeting real output.
+
 ## 6. What was verified, and what was not
 
 **Verified**
