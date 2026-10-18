@@ -43,6 +43,7 @@
 
 namespace icl {
 
+
 class AstComment;
 class AstStatement;
 class AstBlock;
@@ -161,6 +162,42 @@ class AstBlock : public AstNode {
 };
 
 // Owns every node of one parsed file, and hands out non-owning pointers.
+// One element of a `PortGroup { ... }` list: a name, a comment, or a comma.
+// The comma is kept as an item so that folding it onto the preceding name is a
+// decision made once here, not a special case in the grammar actions.
+struct PortGroupItem {
+  bool is_name = false;
+  bool is_comma = false;
+  std::string text;     // name, with any comma already folded on
+  AstNode* node = nullptr;  // set only for a comment
+  // Each item keeps the span of *its own* token. Giving every item the span of
+  // the whole group was wrong: the layout pass decides whether a comment is
+  // trailing by comparing it with the previous node's end line, and with one
+  // shared span a comment always looked attached to the group, so `a, // c`
+  // was emitted trailing and then moved to its own line on the next pass —
+  // never settling.
+  SourceSpan span;
+
+  static PortGroupItem Name(std::string t, SourceSpan span) {
+    PortGroupItem item;
+    item.is_name = true;
+    item.text = std::move(t);
+    item.span = span;
+    return item;
+  }
+  static PortGroupItem Comment(AstNode* n, SourceSpan span) {
+    PortGroupItem item;
+    item.node = n;
+    item.span = span;
+    return item;
+  }
+  static PortGroupItem Comma() {
+    PortGroupItem item;
+    item.is_comma = true;
+    return item;
+  }
+};
+
 class AstUnit {
  public:
   AstUnit() = default;

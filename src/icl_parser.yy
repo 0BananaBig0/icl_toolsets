@@ -202,6 +202,8 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item instance_item instance_block
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
+%type <std::vector<icl::PortGroupItem>> port_group_items
+%type <icl::PortGroupItem> port_group_item
 %type <std::string> opt_range attr_stmt_name value_list module_ref attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
@@ -354,8 +356,8 @@ module_item
         $$ = driver.MakeBlock("Connection", std::move($3),
                               SpanOf(@1.begin.line, @4.end.line));
       }
-  | PORTGROUP IDENT LBRACE ident_list RBRACE
-      { $$ = driver.MakeStatement("PortGroup " + $2 + " {" + $4 + "}",
+  | PORTGROUP IDENT LBRACE port_group_items RBRACE
+      { $$ = driver.MakePortGroup($2, std::move($4),
                                   SpanOf(@1.begin.line, @5.end.line)); }
   ;
 
@@ -633,6 +635,35 @@ attr_body
 ident_list
   : IDENT                  { $$ = $1; }
   | ident_list COMMA IDENT { $$ = std::move($1) + ", " + $3; }
+  ;
+
+/* The contents of a `PortGroup { ... }`: identifier runs and comments, in any
+   order. A comment inside the list used to be a syntax error — `PortGroup p {
+   a, // c\n b }` was rejected — which is wrong on two counts: a comment can
+   appear wherever whitespace can, and a formatter must not lose content.
+
+   Identifier runs stay joined (`a, b`) so the common case still formats on one
+   line. A comment forces the group onto several lines, because `//` cannot be
+   kept inline without commenting out the closing brace.
+   ponytail: comments are emitted before the identifiers rather than in their
+   original interleaving — reordering within a port group changes nothing, and
+   keeping the order would mean a node type per element. */
+port_group_items
+  : port_group_item
+      { $$ = std::vector<icl::PortGroupItem>(); $$.push_back(std::move($1)); }
+  | port_group_items port_group_item
+      { $$ = std::move($1); $$.push_back(std::move($2)); }
+  ;
+
+port_group_item
+  : IDENT
+      { $$ = icl::PortGroupItem::Name($1, SpanOf(@1.begin.line, @1.end.line)); }
+  | COMMENT
+      { $$ = icl::PortGroupItem::Comment(
+            driver.AddComment($1, SpanOf(@1.begin.line, @1.end.line)),
+            SpanOf(@1.begin.line, @1.end.line)); }
+  | COMMA
+      { $$ = icl::PortGroupItem::Comma(); }
   ;
 
 /* An attribute name may be an identifier or any ICL keyword: real ICL files

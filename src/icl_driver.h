@@ -24,12 +24,14 @@
 #define ICL_FORMAT_SRC_ICL_DRIVER_H_
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "format_tree.h"
 #include "icl_ast.h"
 
 namespace icl {
+
 
 class IclDriver {
  public:
@@ -53,6 +55,53 @@ class IclDriver {
 
   // Takes |body| too: every grammar action assigned the body on the very next
   // line, so keeping them apart only added a named temporary and two lines.
+  // A `PortGroup { a, b }` with its elements in source order.
+  //
+  // One line when the list holds only names, several when it also holds a
+  // comment: a `//` comment cannot stay inline, because it would comment out
+  // the closing brace.
+  AstNode* MakePortGroup(const std::string& name,
+                         std::vector<PortGroupItem> items, SourceSpan span) {
+    // Fold each comma onto the name that precedes it, so a comma is never a
+    // line of its own and the text round-trips byte for byte.
+    std::vector<PortGroupItem> folded;
+    for (PortGroupItem& item : items) {
+      if (item.is_comma && !folded.empty() && folded.back().is_name) {
+        folded.back().text += ",";
+        continue;
+      }
+      if (item.is_comma) continue;
+      folded.push_back(std::move(item));
+    }
+
+    bool has_comment = false;
+    for (const PortGroupItem& item : folded) {
+      if (!item.is_name) has_comment = true;
+    }
+
+    if (!has_comment) {
+      std::string joined;
+      for (const PortGroupItem& item : folded) {
+        if (!joined.empty()) joined += " ";
+        joined += item.text;
+      }
+      return unit_.Make<AstStatement>("PortGroup " + name + " {" + joined + "}",
+                                      span);
+    }
+
+    std::vector<AstNode*> body;
+    for (const PortGroupItem& item : folded) {
+      if (item.is_name) {
+        body.push_back(unit_.Make<AstStatement>(item.text, item.span));
+      } else {
+        body.push_back(item.node);
+      }
+    }
+    AstBlock* block = unit_.Make<AstBlock>("PortGroup " + name, span);
+    block->body() = std::move(body);
+    return block;
+  }
+
   AstBlock* MakeBlock(const std::string& header, std::vector<AstNode*> body,
                       SourceSpan span) {
     AstBlock* block = unit_.Make<AstBlock>(header, span);

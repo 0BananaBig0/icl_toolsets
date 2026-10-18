@@ -814,6 +814,36 @@ in both was tried and costs three shift/reduce conflicts, because `attr_value`
 also permits space-separated values and a bare `::` then has two readings. The
 standard's asymmetry is kept, and the reason is recorded in the grammar.
 
+### 5.15 A comment inside a PortGroup list was a syntax error
+
+Found while working through the blocks one at a time, testing each construct
+with a comment in every position.
+
+`PortGroup p { a, // c\n b }` was rejected: the list was parsed as
+`ident_list`, which is names and commas only. Two things were wrong about
+that — a comment can appear wherever whitespace can, and a formatter must not
+lose content — so the list now holds names, commas and comments in source
+order.
+
+When a comment is present the group is emitted across several lines, because a
+`//` comment cannot stay inline without commenting out the closing brace.
+Groups without a comment still format on one line, exactly as before.
+
+Two things had to be right for the output to settle, and both are recorded in
+the code where they bite:
+
+* **The comma is folded onto the name before it.** Kept as its own list item it
+  would have become a line of its own, and the text would not round-trip.
+* **Each item carries the span of its own token.** Giving every item the span of
+  the whole group was silently wrong in a way only idempotency testing caught:
+  the layout pass decides whether a comment is trailing by comparing it with the
+  previous node's end line, so with one shared span a comment always looked
+  attached to the group. `a, // c` was emitted trailing on the first pass and
+  moved to its own line on the second, and never settled.
+
+This construct appears nowhere in the ~7,000 lines of real tool output in the
+corpus; it was found by testing rather than by observation.
+
 ## 6. What was verified, and what was not
 
 **Verified**
