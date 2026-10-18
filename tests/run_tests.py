@@ -37,20 +37,6 @@ DataInPort DataIn[7:0]; DataOutPort DataOut[7:0] { Source reg[7:0]; }
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-def load_samples(directory):
-    """Yields (tag, text) for every `.icl` file in `directory`.
-
-    Sorted, so a failing run reports the same order every time.
-    """
-    if not os.path.isdir(directory):
-        return []
-    out = []
-    for name in sorted(os.listdir(directory)):
-        if not name.endswith('.icl'):
-            continue
-        with open(os.path.join(directory, name), 'r', encoding='utf-8') as f:
-            out.append((name[:-4], f.read()))
-    return out
 
 
 def check(name, cond, detail=''):

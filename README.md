@@ -295,6 +295,19 @@ Each is marked `ponytail:` in the source, with its upgrade path. Run
 * **`-static`** is safe only because the tool uses no NSS, no `dlopen` and no
   locale APIs.
 
+## Code graph
+
+`make codegraph` refreshes `docs/codegraph/`:
+
+| File | What | Produced by |
+|---|---|---|
+| `tests_codegraph.html` / `.csv` | Python test helpers | `codegraph` (pip) |
+| `cpp_deps.makefile` | raw header dependencies | `g++ -MM` |
+| `cpp_deps.dot` / `.csv` / `.svg` | C++ dependency graph | from the above |
+
+`codegraph` parses with Python's tokenizer, so it covers only the Python half;
+the C++ half comes from the compiler. See REQUIREMENT.md §5.3u.
+
 ## Known limitations
 
 Full requirement-by-requirement accounting, including what could not be done

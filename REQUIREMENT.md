@@ -275,6 +275,66 @@ Verified by injecting a keyword into the scanner only:
 [FAIL] every scanner keyword works as an attribute name -> drifted: ['Zznewkw']
 ```
 
+### 5.3v Four more gaps, found by reading the ANTLR grammar rule by rule
+
+Comparing the published `icl.g4` production by production rather than by
+keyword list surfaced four things keyword comparison missed:
+
+| Gap | Evidence |
+|---|---|
+| `Period 10ns;` — a number with a time unit | `period_def` allows `s/ms/us/ns/ps/fs/as` |
+| `ReadCallBack m::p <D>;` — iProc argument markers | `iProc_args : '<D>' \| '<R>' \| number \| STRING \| parameter_ref` |
+| `a::b::c` — more than one `::` in a name | `iProc_namespace` has two separators |
+| space-separated values after an attribute name | `ReadCallBack` takes name + namespace + args with nothing between |
+
+The first two are **lexer** gaps, and worth stating precisely: `10ns` lexed as
+NUMBER followed by IDENT, and `<D>` as `<` `D` `>`, so both reached the parser
+as tokens no rule can join — a valid literal rejected for a lexing reason.
+Fixed where they arise, one rule each.
+
+The last two are grammar. `attr_value` gained a space-separated alternative and
+`::` became left-recursive. **Both are zero-conflict**, which is what made them
+cheap to accept; a change that had cost a conflict would have been weighed
+against the fact that no real file here uses `ReadCallBack` at all.
+
+**Deliberately not added:** `Instance` inside `OneHotDataGroup`, which `g4`
+permits. No file here uses it, and allowing it means allowing `Instance` deep
+inside any block — contradicting the (verified) rule that Instance is a
+module-level construct. One real file would settle it.
+
+### 5.3u codegraph, and what it can and cannot see here
+
+`pip install codegraph` gives version 1.2.0. It parses with **Python's own
+tokenizer**, so it only sees `.py` files — pointed at `src/` it returns an
+empty graph. It is genuinely useful on `tests/` (three helpers), and there it
+found a real dead function:
+
+```
+load_samples    run_tests.py    links_in=0  out=0  14 lines
+```
+
+Left over from when the corpus lived in `samples/`; deleted.
+
+It also misreports `check` in `run_tests.py` as `links_in=0` when it is called
+28 times — same-named functions in different modules confuse its resolution.
+So: worth running, not worth trusting without a grep.
+
+**The C++ half comes from the compiler instead.** `g++ -MM` already knows every
+header each translation unit includes, so `make codegraph` uses that — no
+second parser to keep in sync. This is the ponytail ladder applied: reuse what
+the platform already computes.
+
+The output answers the architecture question directly:
+
+```
+icl_format_main.cc -> format_job.h
+icl_lsp_main.cc    -> format_job.h, json.h
+```
+
+Neither main includes `icl_ast.h`, `icl_driver.h` or `format_tree.h`. The
+split is at the outermost point there is: both binaries call one function, and
+differ only in where the options came from and what they do with the result.
+
 ### 5.3w Eleven ICL files from two IJTAG repositories: nine more gaps
 
 `Honza255/icl_parser` and `bradfordvt/P2654Simulations` were reachable through
@@ -668,7 +728,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 123 | `tests/cases/`, run by `tests/regression.py` |
+| Regression corpus | 124 | `tests/cases/`, run by `tests/regression.py` |
 | CLI behaviour | 54 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |

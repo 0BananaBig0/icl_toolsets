@@ -219,6 +219,29 @@ endif
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
+# ---- code graph ----
+#
+# `make codegraph` refreshes docs/codegraph/. Both inputs are external tools;
+# the point of the target is that the committed artefacts can be reproduced.
+#
+#   * tests_codegraph.html / .csv — `codegraph` over the Python test helpers.
+#     codegraph (1.2.0) parses with Python's own tokenizer, so it only sees
+#     .py files; it reports nothing for the C++ sources.
+#   * cpp_deps.* — the C++ half, taken from the compiler: `g++ -MM` already
+#     knows every header each translation unit includes, so there is no
+#     second parser to keep in sync.
+codegraph: $(ALL_OBJECTS)
+	@mkdir -p docs/codegraph
+	@command -v codegraph >/dev/null 2>&1 || { \
+		echo "error: codegraph not installed (pip install codegraph)" >&2; exit 1; }
+	codegraph tests --output docs/codegraph/tests_codegraph.html \
+		--csv docs/codegraph/tests_codegraph.csv
+	@for f in $(SRC_DIR)/*.cc; do \
+		$(CXX) $(CXXSTD) -I$(SRC_DIR) -I$(GEN_DIR) -MM $$f; \
+	done > docs/codegraph/cpp_deps.makefile
+	@python3 tests/deps_to_dot.py docs/codegraph
+	@echo "codegraph: docs/codegraph/ refreshed"
+
 # ---- installation ----
 #
 # `make install` writes a manifest so that `make uninstall` removes exactly the

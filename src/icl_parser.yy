@@ -107,6 +107,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token <std::string> STRING "string"
 %token <std::string> COMMENT "comment"
 %token <std::string> PARAMREF "parameter reference"
+%token <std::string> IPROCARG "<D>/<R>"
 %token DCOLON "::"
 %token TOIRSELECTPORT "ToIRSelectPort"
 %token ADDRESSPORT "AddressPort"
@@ -399,10 +400,18 @@ port_keyword
 attr_value
   : value_no_lead_op                    { $$ = $1; }
   | attr_value COMMA value_no_lead_op   { $$ = std::move($1) + ", " + $3; }
+  /* Also space-separated: `ReadCallBack m::p <D>;`, where a name, a
+     namespace-qualified name and iProc arguments follow the keyword with
+     nothing between them. */
+  | attr_value value_no_lead_op         { $$ = std::move($1) + " " + $2; }
   ;
 
 value_no_lead_op
   : postfix                   { $$ = $1; }
+  /* Left recursive, so a qualified name may have any number of segments:
+     `a::b::c`. An iProc namespace is `ns::module::sub` in the grammar, so
+     two separators occur in one name, and there is no reason to stop there. */
+  | value_no_lead_op DCOLON postfix { $$ = $1 + "::" + $3; }
   | LPAREN value_list RPAREN  { $$ = "(" + $2 + ")"; }
   ;
 
@@ -756,6 +765,8 @@ primary
   | NUMBER   { $$ = $1; }
   | STRING   { $$ = $1; }
   | PARAMREF { $$ = $1; }
+  /* `ReadCallBack m::p <D>;` — an iProc argument marker. */
+  | IPROCARG { $$ = $1; }
   ;
 
 %%

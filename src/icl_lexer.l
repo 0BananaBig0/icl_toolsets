@@ -169,6 +169,23 @@ ID      [A-Za-z_][A-Za-z_0-9]*
                       return icl::IclParser::make_NUMBER(
                           std::string(yytext), g_location); }
 
+  /* A number with a time unit: `Period 10ns;`. The unit is part of the
+     literal, not a separate identifier — otherwise `10ns` lexes as NUMBER
+     followed by IDENT and no rule accepts two adjacent values there.
+     Longest match keeps a bare `10` on the rule above. */
+{DIGIT}(_?{DIGIT})*(as|fs|ps|ns|us|ms|s) {
+                      g_location.step();
+                      return icl::IclParser::make_NUMBER(
+                          std::string(yytext), g_location); }
+
+  /* iProc arguments: `ReadCallBack m::p <D>;`. `<` and `>` are operators
+     everywhere else, so `<D>` would lex as three tokens and no rule accepts
+     `<` without a value on its left. Lexed as one token because that is what
+     it is — a fixed marker, not an operator applied to `D`. */
+"<D>"|"<R>"        { g_location.step();
+                      return icl::IclParser::make_IPROCARG(
+                          std::string(yytext), g_location); }
+
   /* Parameter reference: `$MSB`. Parameterised ICL declares
      `Parameter MSB = 5;` and then writes `DataInPort datain[ $MSB:0 ];`
      (Tessent IJTAG User's Manual, "ICL Network Extraction of Parameterized
