@@ -187,7 +187,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range attr_stmt_name name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -279,6 +279,19 @@ module_item
                               std::move($6),
                               SpanOf(@1.begin.line, @7.end.line));
       }
+  /* The same thing without `SelectedBy`: `ScanMux mux1 sr { ... }`. Not the
+     standard form — IEEE 1687.1 requires the keyword — but it is how the
+     pre-standard drafts wrote it, and it survives in published ICL (e.g. the
+     SIB module in "Reusing and Retargeting On-Chip Instrument Access
+     Procedures in IEEE P1687", 2012). Tolerated for the same reason `Reg` and
+     `Field` are: refusing to format a file we can format is worse than
+     accepting one that predates the keyword. */
+  | sel_block_kw IDENT value LBRACE mux_body RBRACE
+      {
+        $$ = driver.MakeBlock($1 + " " + $2 + " " + $3,
+                              std::move($5),
+                              SpanOf(@1.begin.line, @6.end.line));
+      }
   | of_block_kw IDENT OF IDENT LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + " Of " + $4, std::move($6),
@@ -359,7 +372,7 @@ port_decl
    bodies. Factored out because the two bodies accepted the same forms, so
    duplicating them only made the grammar longer and easy to let drift. */
 attr_item
-  : attr_name SEMICOLON
+  : attr_stmt_name SEMICOLON
       { $$ = driver.MakeStatement($1 + ";",
                                   SpanOf(@1.begin.line, @2.end.line)); }
   | attr_name value SEMICOLON
@@ -461,6 +474,21 @@ ident_list
    an error — only structure is checked. Upgrade path: if attribute spellings
    need checking, enumerate the legal ones per enclosing block instead of
    allowing every keyword here. */
+/* The name in a bare `name;` statement. Wider than `attr_name`: it must also
+   accept a qualified or indexed name, because real ICL writes a bare
+   hierarchical name as a statement — `ScanInterface { Top.Gateway; }`, from a
+   ScanWorks example. `attr_name` deliberately stays narrow (`IDENT | keyword`)
+   so that `attr_name value ;` is unambiguous.
+
+   One nonterminal rather than two competing rules (`attr_name ;` plus
+   `value ;`): those reduce the same input two ways, and a bare identifier
+   would be a genuine reduce/reduce conflict. Here `IDENT` has exactly one
+   path. */
+attr_stmt_name
+  : any_keyword { $$ = $1; }
+  | postfix     { $$ = $1; }
+  ;
+
 /* Any keyword may be an attribute name or a nested-block header. Real ICL
    writes `DataInPort DI = 8'h00;` inside an Instance and `Attribute d = "x";`
    inside a Field, so restricting this to identifiers rejects valid files.

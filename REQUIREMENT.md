@@ -256,7 +256,36 @@ Two things this bought immediately, both of which had already gone wrong:
 never performs, so it belongs to the CLI, and the BOM stripping it used to
 hide has moved into `FormatText` where every path gets it.
 
-### 5.3b Range bounds are expressions, not a fixed list
+### 5.3b Three gaps found by running two more published ICL files
+
+The Gitee repository (`git@gitee.com:banana33/test.git`) could not be read —
+HTTPS, SSH and the web UI all return 403 at the network egress, so it was not
+a permissions problem on the repository side. Two further real files were
+found by search instead, and both were rejected:
+
+```
+ScanMux mux1 sr { ... }          ← "Reusing and Retargeting On-Chip
+                                    Instrument Access Procedures in IEEE
+                                    P1687" (2012): the SIB module
+ScanInterface { Top.Gateway; }   ← an ASSET/ScanWorks AccessLink example
+```
+
+| Gap | Fix |
+|---|---|
+| `ScanMux` without `SelectedBy` | Tolerated. The keyword *is* required by IEEE 1687.1, but the bare form is how pre-standard drafts wrote it and it survives in published ICL. Same reasoning as tolerating `Reg` and `Field`. |
+| A bare qualified name as a statement | `attr_stmt_name : any_keyword \| postfix`, replacing `attr_name ;`. `attr_name` stays narrow (`IDENT \| keyword`) so `attr_name value ;` stays unambiguous; one nonterminal rather than two competing rules, because `attr_name ;` plus `value ;` would reduce a bare identifier two ways. |
+
+That second one is worth spelling out: **`Source a.b.c;` worked but `a.b.c;`
+did not.** They look like the same shape, and my samples only ever had the
+first.
+
+`fail/scanmux_without_selectedby.icl` was deleted — the code's answer changed
+deliberately, so the case was wrong, not the code.
+
+A module-level `Chain` is *rejected*, and a case asserts that: per the BNF,
+`scanInterfaceChain_def` only appears inside a `ScanInterface`.
+
+### 5.3c Range bounds are expressions, not a fixed list
 
 `r[-1]` was rejected: range bounds were `NUMBER | PARAMREF`. Adding a third
 literal form would have meant a third name and two more productions, and the
@@ -269,14 +298,14 @@ pure alias and was deleted.
 Any narrower set eventually turns out to be too narrow — that is the general
 form of §5.3b's two findings, and of the operators gap before them.
 
-### 5.3c "Did it change?" is a question about the result, not the front end
+### 5.3d "Did it change?" is a question about the result, not the front end
 
 `ChangedFrom()` moved into the shared layer. `--check` and `-w` both need it,
 and the LSP now uses the same fact to return **no edit at all** for an
 already-formatted document, instead of an edit that replaces the text with
 itself and marks the buffer dirty for nothing. Three callers, one definition.
 
-### 5.3d Two constructs the standard's BNF requires, and a real module needs
+### 5.3e Two constructs the standard's BNF requires, and a real module needs
 
 Checking the grammar against IEEE 1687's *formal* syntax (the BNF in the
 ScanInterface clause) rather than against prose descriptions:
@@ -295,7 +324,7 @@ speculation** and withdrawn for want of evidence. The standard's BNF is that
 evidence. Same rule, added twice — the difference is only whether it was
 guessed or read.
 
-### 5.4 The regression corpus, and the two cases that had to be deleted
+### 5.5 The regression corpus, and the two cases that had to be deleted
 
 The corpus now lives in `tests/cases/` — one `.icl` file per case, `pass/` and
 `fail/`, run by `tests/regression.py`. Adding a case means dropping in a file.
@@ -316,7 +345,7 @@ for the wrong reason:
 `run_tests.py` still asserted the BOM survives while `tests/cases/` expected
 it stripped. One corpus, one place.
 
-### 5.5 A BOM was accepted from a file and rejected from stdin
+### 5.6 A BOM was accepted from a file and rejected from stdin
 
 The shape groups (§5.2) removed the duplicated per-element productions, but
 one list was left hand-written: `attr_name`, the keywords allowed as an
@@ -345,7 +374,7 @@ It is no longer possible for the two to disagree, because there is one list.
 This is the second time a duplicated list drifted (§5.1 was the first). The
 rule worth keeping: **if two places must agree, make them the same place.**
 
-### 5.6 A single integer field could amplify output 50,000x
+### 5.7 A single integer field could amplify output 50,000x
 
 `textDocument/formatting` honours the client's `options.tabSize`. It is
 applied per indent level, so a nested file with `tabSize: 99999` produced a
@@ -353,7 +382,7 @@ applied per indent level, so a nested file with `tabSize: 99999` produced a
 one field. Clamped to 16 (real editors send 2, 4 or 8), with a regression
 test asserting the reply stays under 10 KB regardless of what is requested.
 
-### 5.7 A comment bug that only a ragged-indent sample could show
+### 5.8 A comment bug that only a ragged-indent sample could show
 
 Block comments keep their relative indentation across continuation lines.
 The code computed the common indent, then rebuilt each line as
@@ -382,7 +411,7 @@ blank line).
 This is the same lesson as §5.1 in miniature: the samples were too uniform to
 reach the bug.
 
-### 5.8 Two port functions were missing, found by running a real ICL file
+### 5.9 Two port functions were missing, found by running a real ICL file
 
 A Keysight application note (*IEEE 1687 Silicon Test to Board Test*) contains
 a complete ICL file for a GPIO instrument. Running it through the parser
@@ -410,7 +439,7 @@ were run and pass unchanged.
 (`a -> b -> c;`). ICL is not Verilog, and none of the three appears in any
 ICL source consulted. They are recorded here rather than added on a guess.
 
-### 5.9 The lexer's regular expressions did not match vendor ICL
+### 5.10 The lexer's regular expressions did not match vendor ICL
 
 Auditing each pattern against documented vendor syntax, not against my own
 samples. Two gaps, both from the Tessent IJTAG User's Manual (§"ICL Network
@@ -432,7 +461,7 @@ against names that begin with a keyword (`Regs`, `Modules`, `Instance1`,
 `ScanInPortd` all lex as one identifier); BOM, CRLF and tab input; a string
 containing a newline is rejected rather than silently spanning lines.
 
-### 5.10 Earlier in the same pass
+### 5.11 Earlier in the same pass
 
 Running the standard's constructs against the parser, after the initial build
 was already green.
@@ -465,7 +494,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 92 | `tests/cases/`, run by `tests/regression.py` |
+| Regression corpus | 95 | `tests/cases/`, run by `tests/regression.py` |
 | CLI behaviour | 52 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |
