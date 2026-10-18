@@ -107,6 +107,14 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token <std::string> STRING "string"
 %token <std::string> COMMENT "comment"
 %token <std::string> PARAMREF "parameter reference"
+%token DCOLON "::"
+%token TOIRSELECTPORT "ToIRSelectPort"
+%token ADDRESSPORT "AddressPort"
+%token WRITEENPORT "WriteEnPort"
+%token READENPORT "ReadEnPort"
+%token NAMESPACE "NameSpace"
+%token USENAMESPACE "UseNameSpace"
+%token LOCALPARAMETER "LocalParameter"
 %token ARROW "->"
 %token <std::string> OPERATOR "operator"
 %token LPAREN "("
@@ -193,13 +201,13 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item
 %type <AstNode*> port_decl
 %type <std::string> port_keyword
-%type <std::string> opt_range attr_stmt_name value_list attr_value value_no_lead_op name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range attr_stmt_name value_list module_ref attr_value value_no_lead_op name_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
 %type <std::string> attr_name
-%type <std::string> conn_expr
 %type <std::vector<AstNode*>> logic_body
+%type <AstNode*> ns_stmt
 %type <std::string> ident_list
 %type <AstNode*> attr_item
 %type <std::vector<AstNode*>> attr_body
@@ -217,6 +225,8 @@ void IclParser::error(const location& loc, const std::string& message) {
 file
   : %empty
   | file module_def
+      { driver.unit().top_level().push_back($2); }
+  | file ns_stmt
       { driver.unit().top_level().push_back($2); }
   | file COMMENT
       {
@@ -246,9 +256,19 @@ module_item
   | PARAMETER IDENT EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Parameter " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
+  | LOCALPARAMETER IDENT EQUALS value_list SEMICOLON
+      { $$ = driver.MakeStatement("LocalParameter " + $2 + " = " + $4 + ";",
+                                 SpanOf(@1.begin.line, @5.end.line)); }
+  | ns_stmt { $$ = $1; }
   | ATTRIBUTE IDENT EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
+  /* Without a value: the grammar makes `= value` optional —
+     attribute_def : 'Attribute' attribute_name ('=' attribute_value)? ';'
+     so a bare `Attribute foo;` is legal. */
+  | ATTRIBUTE IDENT SEMICOLON
+      { $$ = driver.MakeStatement("Attribute " + $2 + ";",
+                                  SpanOf(@1.begin.line, @3.end.line)); }
   /* The alias name may carry a bit range: `Alias mode[1:0] = DI[6:5];` —
      both the bare and the ranged form occur in real instrument modules. */
   /* The right side is a *concatenation*, not a single signal:
@@ -282,16 +302,16 @@ module_item
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
   | port_decl { $$ = $1; }
-  | sel_block_kw IDENT SELECTEDBY value_list LBRACE mux_body RBRACE
+  | sel_block_kw IDENT opt_range SELECTEDBY value_list LBRACE mux_body RBRACE
       {
         // `SelectedBy` is part of the standard; the selector may be a
         // hierarchical name such as `MyTap.M3_sel`, hence |value_list| rather
         // than a bare IDENT — and a *list*, because Tessent writes
         // `SelectedBy config_sib_shift_reg, enable_shift_reg` when a mux is
         // selected by more than one signal.
-        $$ = driver.MakeBlock($1 + " " + $2 + " SelectedBy " + $4,
-                              std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line));
+        $$ = driver.MakeBlock($1 + " " + $2 + $3 + " SelectedBy " + $5,
+                              std::move($7),
+                              SpanOf(@1.begin.line, @8.end.line));
       }
   /* The same thing without `SelectedBy`: `ScanMux mux1 sr { ... }`. Not the
      standard form — IEEE 1687.1 requires the keyword — but it is how the
@@ -300,18 +320,18 @@ module_item
      Procedures in IEEE P1687", 2012). Tolerated for the same reason `Reg` and
      `Field` are: refusing to format a file we can format is worse than
      accepting one that predates the keyword. */
-  | sel_block_kw IDENT value LBRACE mux_body RBRACE
+  | sel_block_kw IDENT opt_range value LBRACE mux_body RBRACE
       {
-        $$ = driver.MakeBlock($1 + " " + $2 + " " + $3,
-                              std::move($5),
-                              SpanOf(@1.begin.line, @6.end.line));
+        $$ = driver.MakeBlock($1 + " " + $2 + $3 + " " + $4,
+                              std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line));
       }
-  | of_block_kw IDENT OF IDENT LBRACE attr_body RBRACE
+  | of_block_kw IDENT OF module_ref LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + " Of " + $4, std::move($6),
                               SpanOf(@1.begin.line, @7.end.line));
       }
-  | of_block_kw IDENT OF IDENT SEMICOLON
+  | of_block_kw IDENT OF module_ref SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " Of " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
   /* LogicSignal holds a *boolean expression*, not a list of attributes:
@@ -339,6 +359,15 @@ module_item
 
 port_keyword
   : SCANINPORT       { $$ = "ScanInPort"; }
+  /* These four are in the ICL grammar (the `port_def` list of a published
+     ANTLR grammar for 1687) though not in any file available here. Added
+     together because they are the same kind of thing, and a formatter that
+     refuses a legal port declaration is worse than one that accepts an
+     unusual one. */
+  | TOIRSELECTPORT   { $$ = "ToIRSelectPort"; }
+  | ADDRESSPORT      { $$ = "AddressPort"; }
+  | WRITEENPORT      { $$ = "WriteEnPort"; }
+  | READENPORT       { $$ = "ReadEnPort"; }
   | SCANOUTPORT      { $$ = "ScanOutPort"; }
   | SHIFTENPORT      { $$ = "ShiftEnPort"; }
   | CAPTUREENPORT    { $$ = "CaptureEnPort"; }
@@ -373,8 +402,8 @@ attr_value
   ;
 
 value_no_lead_op
-  : postfix              { $$ = $1; }
-  | LPAREN value RPAREN  { $$ = "(" + $2 + ")"; }
+  : postfix                   { $$ = $1; }
+  | LPAREN value_list RPAREN  { $$ = "(" + $2 + ")"; }
   ;
 
 /* The body of a LogicSignal: expression statements and the attribute forms
@@ -549,9 +578,9 @@ conn_body
       { $$ = std::vector<AstNode*>(); }
   | conn_body COMMENT
       { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
-  | conn_body conn_expr SEMICOLON
+  | conn_body value_list SEMICOLON
       { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement( $2 + ";",
+        $$.push_back(driver.MakeStatement($2 + ";",
                                           SpanOf(@2.begin.line, @3.end.line))); }
   ;
 
@@ -640,6 +669,28 @@ range_block_kw
   | FIELD                { $$ = "Field"; }
   ;
 
+/* `NameSpace x;` and `UseNameSpace x;` — declared at file scope and, for
+   UseNameSpace, inside a module too. The name is optional: IEEE 1687-2014
+   Appendix E writes both `NameSpace X;` and a bare `NameSpace;`. */
+ns_stmt
+  : NAMESPACE SEMICOLON          { $$ = driver.MakeStatement("NameSpace;",
+                                     SpanOf(@1.begin.line, @2.end.line)); }
+  | NAMESPACE IDENT SEMICOLON    { $$ = driver.MakeStatement("NameSpace " + $2 + ";",
+                                     SpanOf(@1.begin.line, @3.end.line)); }
+  | USENAMESPACE SEMICOLON       { $$ = driver.MakeStatement("UseNameSpace;",
+                                     SpanOf(@1.begin.line, @2.end.line)); }
+  | USENAMESPACE IDENT SEMICOLON { $$ = driver.MakeStatement("UseNameSpace " + $2 + ";",
+                                     SpanOf(@1.begin.line, @3.end.line)); }
+  ;
+
+/* A module reference: `TDR`, or `ns::TDR`. IEEE 1687-2014 Appendix E writes
+   `Instance aa Of X::x {`. */
+module_ref
+  : IDENT              { $$ = $1; }
+  | IDENT DCOLON IDENT { $$ = $1 + "::" + $3; }
+  ;
+
+
 sel_block_kw
   : SCANMUX              { $$ = "ScanMux"; }
   | DATAMUX              { $$ = "DataMux"; }
@@ -668,23 +719,25 @@ any_keyword
   | CONNECTION      { $$ = "Connection"; }
   | PORTGROUP       { $$ = "PortGroup"; }
   | OF              { $$ = "Of"; }
+  | LOCALPARAMETER  { $$ = "LocalParameter"; }
+  | NAMESPACE       { $$ = "NameSpace"; }
+  | USENAMESPACE    { $$ = "UseNameSpace"; }
   ;
 
 /* ------------------------------------------------------------------ values */
 
-conn_expr
-  : postfix              { $$ = $1; }
-  | postfix ARROW postfix { $$ = $1 + " -> " + $3; }
-  ;
-
 value
   : postfix { $$ = $1; }
+  /* A connection edge, `a -> b`, is only written inside `Connection`, but
+     living here keeps one expression grammar. Split out as `conn_expr` it
+     used to cost a second nonterminal and a reduce/reduce conflict. */
+  | postfix ARROW postfix { $$ = $1 + " -> " + $3; }
   /* Unary: `ResetValue -1;`, `Source ~a;`. */
   | OPERATOR value { $$ = $1 + $2; }
   /* Binary. No precedence table: the formatter reproduces the operators as
      written, so left-to-right grouping is enough and unambiguous. */
   | value OPERATOR value { $$ = $1 + " " + $2 + " " + $3; }
-  | LPAREN value RPAREN { $$ = "(" + $2 + ")"; }
+  | LPAREN value_list RPAREN { $$ = "(" + $2 + ")"; }
   ;
 
 postfix

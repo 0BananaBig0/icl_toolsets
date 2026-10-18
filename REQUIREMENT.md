@@ -275,6 +275,47 @@ Verified by injecting a keyword into the scanner only:
 [FAIL] every scanner keyword works as an attribute name -> drifted: ['Zznewkw']
 ```
 
+### 5.3w Eleven ICL files from two IJTAG repositories: nine more gaps
+
+`Honza255/icl_parser` and `bradfordvt/P2654Simulations` were reachable through
+`codeload.github.com` even though plain GitHub is blocked. They contain
+**eleven `.icl` files**, and — decisively — `icl_parser` ships an **ANTLR
+grammar for ICL** (`src/icl_parser/icl.g4`, 440 lines). `Instruments.icl`
+states in its header that it holds snippets from **IEEE 1687-2014 Appendix E**,
+so at last there are samples that are the standard's own.
+
+Six of eleven files were rejected. Nine gaps, each traced to that evidence:
+
+| Gap | Evidence |
+|---|---|
+| `Attribute lic = 'h ef931832;` — space after the base | Appendix E, verbatim |
+| `Instance aa Of X::x` — namespace-qualified module | Appendix E |
+| `NameSpace X;`, bare `NameSpace;`, `UseNameSpace ns;` | Appendix E; g4 makes the name optional |
+| `LocalParameter ABC = 4;` | Appendix E |
+| `ToIRSelectPort` | `port_def` in g4, used in a file |
+| `ScanMux mx[1:0] SelectedBy ...` — a mux with a bit range | g4 `scanMux_name : reg_port_signal_id` |
+| `LogicSignal x { \|(~(a), b); }` — reduction op + parenthesised list | g4 `logic_expr_lvl2` |
+| `Attribute foo;` — attribute with no value | g4 makes `= value` optional |
+| `AddressPort` / `WriteEnPort` / `ReadEnPort` | `port_def` in g4 (no file here uses them) |
+
+All eleven files now round-trip: character conservation and idempotence
+verified for each.
+
+**The generated keyword test earned its keep.** After adding the three
+statement keywords it failed:
+
+```
+[FAIL] every scanner keyword works as an attribute name
+    -> drifted: ['NameSpace', 'UseNameSpace', 'LocalParameter']
+```
+
+Exactly the bug class it was written for (§5.3z), caught automatically rather
+than by review.
+
+**Also confirmed, and deliberately unchanged:** the g4 lexes block comments
+as `'/*' .*? '*/'` — non-greedy, so comments do **not** nest, which is what
+this formatter does.
+
 ### 5.3x Recursion and nesting, checked deliberately
 
 Flagged as worth checking explicitly, so enumerated rather than assumed:
@@ -627,7 +668,7 @@ correct per the standard — `Instance` belongs at module level only.
 | Suite | Count | How |
 |---|---|---|
 | C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 108 | `tests/cases/`, run by `tests/regression.py` |
+| Regression corpus | 123 | `tests/cases/`, run by `tests/regression.py` |
 | CLI behaviour | 54 | `tests/run_tests.py` |
 | LSP protocol | 27 | scripted client, coc.nvim's message sequence |
 | neovim built-in client | 10 | real client, real handshake |

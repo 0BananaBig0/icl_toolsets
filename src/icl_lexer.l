@@ -149,14 +149,16 @@ ID      [A-Za-z_][A-Za-z_0-9]*
 
   /* Verilog style literals, sized and unsized. Tessent's IJTAG manual writes
      `InputPort din = 'b1;` — an unsized base with no width — so the leading
-     digits must be optional. Longest match picks the sized form when both
+     digits must be optional. Whitespace is allowed between the base and the
+     digits: IEEE 1687-2014 Appendix E writes `Attribute lic = 'h ef931832;`,
+     and the standard's own examples must not be rejected. Longest match picks the sized form when both
      apply (`8'hFF`, not `8` followed by `'hFF`). */
-{DIGIT}+'[sS]?[bBhHdDoO][0-9a-fA-F_xXzZ?]+ {
+{DIGIT}+'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
                       g_location.step();
                       return icl::IclParser::make_NUMBER(
                           std::string(yytext), g_location);
                     }
-'[sS]?[bBhHdDoO][0-9a-fA-F_xXzZ?]+ {
+'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
                       g_location.step();
                       return icl::IclParser::make_NUMBER(
                           std::string(yytext), g_location);
@@ -224,6 +226,10 @@ ToUpdateEnPort      { g_location.step(); return icl::IclParser::make_TOUPDATEENP
 ToResetPort         { g_location.step(); return icl::IclParser::make_TORESETPORT(g_location); }
 ToDoPort            { g_location.step(); return icl::IclParser::make_TODOPORT(g_location); }
 ToSelectPort        { g_location.step(); return icl::IclParser::make_TOSELECTPORT(g_location); }
+ToIRSelectPort      { g_location.step(); return icl::IclParser::make_TOIRSELECTPORT(g_location); }
+AddressPort         { g_location.step(); return icl::IclParser::make_ADDRESSPORT(g_location); }
+WriteEnPort         { g_location.step(); return icl::IclParser::make_WRITEENPORT(g_location); }
+ReadEnPort          { g_location.step(); return icl::IclParser::make_READENPORT(g_location); }
 DataInPort          { g_location.step(); return icl::IclParser::make_DATAINPORT(g_location); }
 DataOutPort         { g_location.step(); return icl::IclParser::make_DATAOUTPORT(g_location); }
 ScanInterface       { g_location.step(); return icl::IclParser::make_SCANINTERFACE(g_location); }
@@ -244,6 +250,9 @@ Connection          { g_location.step(); return icl::IclParser::make_CONNECTION(
 PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
 AccessLink          { g_location.step(); return icl::IclParser::make_ACCESSLINK(g_location); }
 Of                  { g_location.step(); return icl::IclParser::make_OF(g_location); }
+NameSpace           { g_location.step(); return icl::IclParser::make_NAMESPACE(g_location); }
+UseNameSpace        { g_location.step(); return icl::IclParser::make_USENAMESPACE(g_location); }
+LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAMETER(g_location); }
 
 {ID}                { g_location.step();
                       return icl::IclParser::make_IDENT(std::string(yytext),
@@ -253,6 +262,7 @@ Of                  { g_location.step(); return icl::IclParser::make_OF(g_locati
      Each is written as a quoted literal rather than a bracket character class:
      it keeps the escaping unambiguous, and returning an arbitrary character
      code for anything else would trip Bison's symbol_type assertion. */
+"::" { g_location.step(); return icl::IclParser::make_DCOLON(g_location); }
 "{"  { g_location.step(); return icl::IclParser::make_LBRACE(g_location); }
 "}"  { g_location.step(); return icl::IclParser::make_RBRACE(g_location); }
 "["  { g_location.step(); return icl::IclParser::make_LBRACKET(g_location); }
