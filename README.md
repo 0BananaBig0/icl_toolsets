@@ -339,6 +339,21 @@ Both are part of `make check`.
 `codegraph` parses with Python's tokenizer, so it covers only the Python half;
 the C++ half comes from the compiler. See REQUIREMENT.md §5.3u.
 
+* **A string literal may not span a line.** The published scanner rule is
+  `'"' (~('"'|'\\')|'\\\\'|'\\"')* '"'`, where `~('"'|'\\')` includes a
+  newline — so a string crossing a line break is legal to it. We reject it,
+  because a formatter that accepted one would have to reproduce the break
+  exactly, and no real file in the corpus has one. Rejected with a line
+  number, not silently reformatted.
+
+* **A bare `name value;` statement is a block item, not a module item.**
+  Module level admits only `attribute_def`, which begins with the keyword
+  `Attribute`; inside a block an attribute name may be any keyword or
+  identifier, so `Width 8;` is accepted there and rejected at module level.
+  This matters because a misspelled port keyword — `CaptureEnport CE;` for
+  `CaptureEnPort CE;` — is exactly such a statement, and is refused with a
+  line number rather than silently reformatted.
+
 ## Known limitations
 
 Full requirement-by-requirement accounting, including what could not be done

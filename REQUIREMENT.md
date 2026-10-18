@@ -962,6 +962,40 @@ GitHub mirror. That remains the largest gap in coverage: everything above is
 the published grammar plus eight files, and a formatter meets the standard by
 meeting real output.
 
+### 5.18 Completing the standard's and the manual's partial examples
+
+Publications rarely print a whole ICL file: they show a fragment, with the
+rest elided or implied. Fragments cannot be fed to a formatter, so each was
+completed into a file, and completing them is what exposed the questions
+worth answering.
+
+| Source | Fragment | What completing it required |
+|---|---|---|
+| IEEE 1687-2014 §6.5.2 | four `Alias` examples | the signals each aliases — `u1.a`, `ADDR/DATA/CMD`, `TDR1[63]` — are declared nowhere in the standard, so a module was written around each |
+| Tessent IJTAG manual, parameterised modules | `Module bus`, two `Instance`s | the instances are printed outside any module; `Instance` is module-level, so they were placed in a top module, and `toplevel_datain` declared |
+| Tessent IJTAG manual, ICL extraction | `Module block1 { ... DataInPort din { Attribute connection_rule_option = ... } ... }` | the elided ports and registers |
+| SemiWiki, IEEE P1687 | `Module TDR` | the instrument's surroundings |
+| A Chinese ICL/PDL tutorial | `Module my_instr` with `Connection` | see below |
+
+Two things came out of this that reading the fragments did not show:
+
+**`Instance` outside a module is rejected.** The manual prints the instances
+at file scope because it is illustrating them one at a time. In a file they
+must sit inside a module. The corpus entry says so, rather than silently
+moving them.
+
+**`CaptureEnport CE;` — a misspelled port keyword — is refused at module
+level, and that is correct.** The SemiWiki article prints it with a
+lower-case p. Module level admits only `attribute_def`, which begins with the
+keyword `Attribute`, so a bare `name value;` is not a module item there. The
+same line is accepted inside a block, where an attribute name may be any
+identifier. The asymmetry is recorded under Known limitations; both
+directions are now pinned by cases (`pass/semiwiki_tdr_module.icl`,
+`fail/module_level_bare_attribute.icl`).
+
+The tutorial's `DataIn sc;` / `DataOut so;` hit the same rule, and are
+exercised where they are legal — inside a block.
+
 ## 6. What was verified, and what was not
 
 **Verified**

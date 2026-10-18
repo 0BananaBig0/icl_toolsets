@@ -1,0 +1,1 @@
+Module m { Foo x; }
