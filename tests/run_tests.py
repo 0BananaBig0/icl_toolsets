@@ -14,6 +14,7 @@ Usage:  python3 run_tests.py --binary build/icl-format
 """
 
 import argparse
+import hashlib
 import os
 import re
 import subprocess
@@ -85,6 +86,31 @@ def idem(runner, src, tag, extra=None):
     return out
 
 
+def test_baseline_files_unmodified():
+    """The Tessent files are pinned; see pass/tessent/CHECKSUMS.md.
+
+    A reflowed copy is weaker evidence than the original, because it has
+    already been through the formatter once. So the check is not paranoia
+    about edits — it is about noticing when the baseline quietly becomes a
+    derived artefact.
+    """
+    path = os.path.join(HERE, 'cases', 'pass', 'tessent', 'CHECKSUMS.md')
+    if not os.path.exists(path):
+        return False, 'no CHECKSUMS.md'
+    for match in re.finditer(r'\| `([^`]+\.icl)` \| (\d+) \| `([0-9a-f]{32})` \|',
+                             open(path, encoding='utf-8').read()):
+        name, size, digest = match.group(1), int(match.group(2)), match.group(3)
+        target = os.path.join(HERE, 'cases', 'pass', 'tessent', name)
+        if not os.path.exists(target):
+            return False, 'missing baseline file %s' % name
+        data = open(target, 'rb').read()
+        if len(data) != size or hashlib.md5(data).hexdigest() != digest:
+            return False, ('baseline file %s changed — it has been reflowed, '
+                           'so it no longer shows what the formatter does to '
+                           'the original' % name)
+    return True, 'all pinned baseline files are byte-identical'
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', required=True)
@@ -104,6 +130,9 @@ def main():
     # strip it. One corpus, one place.
 
     print()
+    ok, detail = test_baseline_files_unmodified()
+    check('Tessent baseline files are byte-identical', ok, detail)
+
     # Every keyword the scanner knows must be usable as an attribute name.
     # This is generated from the scanner itself rather than written out, so a
     # new keyword cannot silently miss `any_keyword` in the grammar — which is

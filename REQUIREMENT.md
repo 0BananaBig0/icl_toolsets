@@ -1464,6 +1464,76 @@ separator; a parameter as a size; an index that is itself an index; `|` in a
 mux selection; `~` on any element of a concatenation; three-segment iProc
 namespaces; `Enable` with one signal or a list.
 
+### 5.36 What the two Tessent files actually cover
+
+They are the only real tool output available, so they were measured rather
+than assumed. Run through the instrumented build and counting only those two
+files:
+
+| | reached |
+|---|---|
+| grammar rules | **108 / 195 (55%)** |
+| scanner rules | **63 / 112 (56%)** |
+
+So they cover most of the *content* and about half the *grammar*. The other
+half is constructs Tessent never emits — `NameSpace`, `Alias`, `Connection`,
+`PortGroup`, one-hot groups, `AccessLink`, iProc callbacks — which come from
+the standard and the other corpora.
+
+The number that matters more is the other direction: **of the 108 rules the
+Tessent files reach, how many do they reach that nothing else does?** Zero.
+Every rule they exercise is also exercised by the other 202 files. So no rule
+depends on the two big files being present, and losing them would not lower
+rule coverage at all.
+
+That was then checked at the level of shapes rather than rules, because rule
+granularity is coarse. The distinctive Tessent spellings — `Alias x[13:0] = a,
+b { RefEnum E; }`, a `SelectedBy` list wrapped across lines before the `{`,
+`LogicSignal` using `==` and a bare `&`, `3'bx0x` as an enum value, an
+attribute string containing `{...}` — were each grepped for outside the
+Tessent directory. Each has a focused case already.
+
+### 5.37 Real tool output contains no comments inside blocks
+
+Both merged files have comments — 73 and 70 `//` lines. None is inside a
+block. They are the annotations added when the files were merged: `// Source:
+...`, `// Created by ICL extraction`, at top level between modules.
+
+The instrumented run confirms it: of the four rules that hold a comment inside
+a body — `attr_body COMMENT`, `logic_body COMMENT`, `mux_body COMMENT`,
+`conn_body COMMENT` — **Tessent reaches none**.
+
+So every comment-placement behaviour in this formatter is validated only by
+cases written here. That is the honest status of the most delicate part of the
+layout code, and it is why those cases exist in such numbers. If a Tessent
+file with comments ever shows up, it should go straight into `pass/tessent/`.
+
+### 5.38 The fuzzer now mutates real Tessent output
+
+The mutation fuzzer previously skipped any file over 4 KB, on the grounds that
+a mutant of a 25 000-line file tells you little. It was right about the
+localisation and wrong about the cost: it meant the input this tool exists for
+was never mutated.
+
+Large files are now cut into their top-level items by brace depth, and each
+item is mutated as a separate case. A chunk still parses, so the mutant starts
+from something the tool accepts — which is the branch worth fuzzing — and a
+failure lands in a few hundred lines instead of a few thousand. The Tessent
+files contribute 78 chunks to the pool.
+
+The chunks are written to the temp directory, not into `tests/cases/`: 78
+generated files sitting next to the hand-written ones would be one more thing
+that looks like a case but is not.
+
+### 5.39 The Tessent baseline is pinned
+
+`pass/tessent/CHECKSUMS.md` holds the size and md5 of all six files, and a
+test checks them. Reflowed copies are not equivalent evidence — a file that
+has already been through the formatter cannot show what the formatter does to
+the original, which is exactly what these two files are for. Verified by
+appending a byte to one of them: the check fails, names the file, and passes
+again once restored.
+
 ## 6. What was verified, and what was not
 
 **Verified**

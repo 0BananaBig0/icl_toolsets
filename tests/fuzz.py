@@ -27,6 +27,7 @@ reproducible and can be added to `tests/cases/` as a regression case.
 import argparse
 import glob
 import os
+import tempfile
 import random
 import re
 import subprocess
@@ -47,8 +48,33 @@ def strip_ws(text):
     return ''.join(text.lstrip('\ufeff').split())
 
 
+def top_level_chunks(text):
+    """Splits a file into its top-level items, keeping each one whole.
+
+    A 25 000-line file is a bad thing to mutate: a mutant of it is still
+    25 000 lines, and whatever the failure is, it is somewhere in there. But
+    skipping those files means never mutating the real Tessent output, which
+    is the input this tool exists for.
+
+    So large files are cut into their top-level items — one module, one
+    namespace — by brace depth. Each chunk still parses, so the mutant starts
+    from something the tool accepts, and if it stops accepting it the reason
+    is in a few hundred lines rather than a few thousand.
+    """
+    chunks, current, depth = [], [], 0
+    for line in text.split('\n'):
+        current.append(line)
+        depth += line.count('{') - line.count('}')
+        if depth <= 0 and line.rstrip().endswith('}'):
+            chunks.append('\n'.join(current))
+            current, depth = [], 0
+    if current and any(x.strip() for x in current):
+        chunks.append('\n'.join(current))
+    return [c for c in chunks if c.strip()]
+
+
 def sources():
-    """Small corpus files: a mutant of a 25k-line file tells you little."""
+    """Small files whole, large files one top-level item at a time."""
     out = []
     for root, dirs, files in os.walk(CASES):
         dirs.sort()
@@ -58,6 +84,20 @@ def sources():
             path = os.path.join(root, name)
             if os.path.getsize(path) < 4000:
                 out.append(path)
+                continue
+            for index, chunk in enumerate(top_level_chunks(
+                    open(path, encoding='utf-8', errors='replace').read())):
+                if len(chunk) > 60000:      # one module in FlexScan is bigger
+                    continue                # than that; skip rather than slow
+                # Written next to the runner's temp dir, not into the
+                # corpus: a chunk is a derivative of a case, and leaving
+                # 78 generated files under tests/cases/ would be one more
+                # thing that looks like a hand-written case but is not.
+                target = os.path.join(tempfile.gettempdir(),
+                                      'icl_fuzz_%s_%03d.icl'
+                                      % (os.path.basename(path), index))
+                open(target, 'w', encoding='utf-8').write(chunk)
+                out.append(target)
     return out
 
 
