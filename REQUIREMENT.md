@@ -1085,6 +1085,40 @@ reaches — the comma inside a JSON array of more than one element, since both
 arrays the LSP sends hold at most one entry — are now covered by unit tests
 on `Serialize` directly.
 
+### 5.21 Counting, not reading: keyword coverage against the published grammar
+
+Reading a grammar and asking "do we support this?" tends to find what one
+already believes. Counting is less polite: it lists what is there and asks what
+the corpus never mentions.
+
+So every keyword literal in the ANTLR grammar — 81 of them — was counted
+against the whole corpus. Five had **zero** occurrences: four time units
+(`fs`, `ps`, `us`, `ms`; only `ns` had ever appeared in a file) and
+`STD_1149_1_2013` (only the 2001 revision had been exercised). All five work;
+they were simply never written down. They are now pinned by
+`pass/standard/time_units_and_2013_accesslink.icl`.
+
+The same was done one level up: for every alternative of every rule, the first
+keyword was counted. Zero gaps. And for the 55 `*_def` rules — one per ICL
+construct — zero gaps.
+
+**The upstream number test became a file.** `tests/test_icl_number.py` calls
+`IclNumber(text, base, width)` directly, so it supplies the base as a argument
+rather than in the text — `'bxx` rather than the `("xx", "bin")` the test
+writes. Transcribing each of those values into how it would appear in a file
+gave `pass/upstream/number_literals_from_upstream.icl`: unsized unknown-digit
+literals, a space after the base, an upper-case base, underscore separators,
+and a neighbour's `1_2_3`.
+
+**What the upstream repository uses that we cannot have.** Its benchmark
+directory is a GitLab submodule (now `Honza255/benchmarks`, formerly
+`gitlab.com/IJTAG/benchmarks`), and gitlab.com is unreachable from here — every
+archive URL returns 403. That is where `N17D3`, `N32D6`, `N73D14`, `N132D4`,
+`NE600P150`, `NE1200P430`, `E30` and `TreeBalanced`'s `H953` live. These are the
+large synthetic networks: NE1200P430 carries 1,629 instruments. The 26 files of
+`IJTAG-Ecosystem/Benchmarks` on GitHub overlap with that set but do not contain
+them. So the Advanced category is represented by FlexScan and TrapOrFlap only.
+
 ## 6. What was verified, and what was not
 
 **Verified**
