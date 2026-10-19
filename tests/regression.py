@@ -25,6 +25,7 @@ Exit code 0 when every case passes, 1 otherwise.
 
 import argparse
 import os
+import tempfile
 import subprocess
 import sys
 
@@ -64,6 +65,27 @@ def run(binary, path):
     return subprocess.run([binary, path], capture_output=True)
 
 
+def run_as_file(binary, text):
+    """Run the tool on a real file, not just on stdin.
+
+    Every case used to go through stdin only, so a defect that appeared solely
+    when reading a named file — the BOM was one: stripped from a file, rejected
+    from stdin — was invisible to the whole corpus. Each case is now run both
+    ways, and both must agree.
+    """
+    with tempfile.NamedTemporaryFile('w', suffix='.icl', delete=False,
+                                     encoding='utf-8') as f:
+        f.write(text)
+        path = f.name
+    try:
+        result = subprocess.run([binary, path], capture_output=True)
+    finally:
+        os.unlink(path)
+    result.stdout = result.stdout.decode('utf-8', 'replace')
+    result.stderr = result.stderr.decode('utf-8', 'replace')
+    return result
+
+
 def run_stdin(binary, text):
     # Bytes, not text: the corpus deliberately includes a BOM and non-UTF-8
     # byte sequences, and decoding them here would crash the runner instead of
@@ -99,33 +121,35 @@ def main():
     print('FAIL: invalid ICL must be rejected (exit 2)')
     print('=' * 72)
     for name, text in cases('fail'):
-        result = run_stdin(args.binary, text)
-        check(name, result.returncode == 2,
-              'rc=%d output=%r' % (result.returncode, result.stdout[:60]))
+        for label, result in (('stdin', run_stdin(args.binary, text)),
+                              ('file', run_as_file(args.binary, text))):
+            check('%s [%s]' % (name, label), result.returncode == 2,
+                  'rc=%d output=%r' % (result.returncode, result.stdout[:60]))
 
     print()
     print('=' * 72)
     print('PASS: valid ICL must format cleanly')
     print('=' * 72)
     for name, text in cases('pass'):
-        result = run_stdin(args.binary, text)
-        if not check(name, result.returncode == 0,
-                     'rc=%d err=%s' % (result.returncode,
-                                       result.stderr.strip()[:70])):
-            continue
-        passed += 0  # counting happens inside check
-        output = result.stdout
-        if strip_ws(text) != strip_ws(output):
-            check(name + ' | no char lost', False,
-                  'input=%r output=%r' % (strip_ws(text)[:40],
-                                          strip_ws(output)[:40]))
-            continue
-        second = run_stdin(args.binary, output)
-        if second.returncode != 0 or second.stdout != output:
-            check(name + ' | idempotent', False,
-                  'second run differs (rc=%d)' % second.returncode)
-            continue
-        check(name + ' | clean', True)
+        for label, result in (('stdin', run_stdin(args.binary, text)),
+                              ('file', run_as_file(args.binary, text))):
+            tag = '%s [%s]' % (name, label)
+            if not check(tag, result.returncode == 0,
+                         'rc=%d err=%s' % (result.returncode,
+                                           result.stderr.strip()[:70])):
+                continue
+            output = result.stdout
+            if strip_ws(text) != strip_ws(output):
+                check(tag + ' | no char lost', False,
+                      'input=%r output=%r' % (strip_ws(text)[:40],
+                                              strip_ws(output)[:40]))
+                continue
+            second = run_stdin(args.binary, output)
+            if second.returncode != 0 or second.stdout != output:
+                check(tag + ' | idempotent', False,
+                      'second run differs (rc=%d)' % second.returncode)
+                continue
+            check(tag + ' | clean', True)
 
     print()
     print('TOTAL: PASS=%d  FAIL=%d' % (passed, len(failed)))

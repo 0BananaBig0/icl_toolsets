@@ -369,7 +369,8 @@ as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
   Table 2 (IJTAG Tutorial, 3rd ed.) and the port functions are Tessent's
   Table 3-14; `REQUIREMENT.md` §5 lists what each cross-check found missing
   (five elements, two port functions, and three lexer patterns).
-  `samples/keysight_gpio.icl` is a real third-party ICL file and is the
+  `tests/cases/pass/published/keysight_gpio.icl` is a real third-party ICL
+  file and is the
   strongest sample in the tree. Two gaps were found and fixed exactly
   this way: `ScanMux` requires the standard `SelectedBy` keyword (the samples
   had been written against a pre-standard draft that omitted it), and eight

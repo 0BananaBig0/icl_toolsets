@@ -1040,6 +1040,51 @@ comma, and `&` in a LogicSignal — are collected into
 `pass/benchmark_derived_spellings.icl`, so a regression names the construct
 rather than a 25k-line file.
 
+### 5.20 Sorting the corpus by source — and two bugs the sorting exposed
+
+The corpus is now arranged by where each case came from, with a manifest in
+`tests/cases/SOURCES.md`:
+
+| directory | origin | files |
+|---|---|---|
+| `pass/standard/` | IEEE 1687-2014 itself: clause text and Appendix E | 2 |
+| `pass/tessent/` | Tessent Shell output and manual fragments, completed | 7 |
+| `pass/benchmark/` | IJTAG-Ecosystem/Benchmarks | 26 |
+| `pass/upstream/` | the test files of Honza255/icl_parser | 8 |
+| `pass/published/` | papers, application notes, articles | 11 |
+| `pass/ours/` | written here | 103 |
+| `fail/standard/`, `fail/ours/` | must be rejected | 2, 15 |
+
+Upstream and benchmark files were verified byte-identical to their
+repositories by content hash, so the directories say more than a comment
+could. Three files that were exact duplicates of others were dropped: two
+BOM cases that differed only in how they were read (now one case run both
+ways), and one that had been copied under two names.
+
+**Sorting them exposed two bugs in the tooling, both of the "reports success
+without doing the work" kind.**
+
+`grammar_coverage.py` listed only the direct children of `pass/`, so once the
+files moved into subdirectories it found nothing — and printed "no .icl cases
+found" only because it happened to check. A version that did not check would
+have printed 157/157 on an empty corpus. The `Makefile`'s `dist` target had
+the same shape: `cp tests/cases/pass/*.icl` would have shipped an empty
+corpus and reported success. Both now walk subdirectories.
+
+**And one in the tool itself.** With every case running through a real file
+as well as stdin, `SplitLines` in `format_tree.cc` turned out to loop with
+`start <= text.size()` rather than `<`. At `start == text.size()` every
+character has been consumed, and one more pass appended the trailing segment
+a second time: `"a\n"` split into three entries instead of one. Unreachable
+in practice — a comment token never ends in a newline — but it is a real
+off-by-one and the branch was flagged as never-taken, which is how it was
+found.
+
+Branch coverage rose to 92.8% with it. Two branches that no server response
+reaches — the comma inside a JSON array of more than one element, since both
+arrays the LSP sends hold at most one entry — are now covered by unit tests
+on `Serialize` directly.
+
 ## 6. What was verified, and what was not
 
 **Verified**

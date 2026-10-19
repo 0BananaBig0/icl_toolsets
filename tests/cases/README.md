@@ -1,37 +1,38 @@
-# Regression corpus
+# Test corpus
 
-Every file here is one test case. Adding a case is dropping a `.icl` file in;
-no test code changes.
+Every `.icl` file here is a regression case. The directory it sits in says
+where it came from — see `SOURCES.md` for the full list.
 
-| Directory | Rule |
-|---|---|
-| `pass/` | accepted (exit 0), idempotent `f(f(x)) == f(x)`, and character-preserving (input and output match once all whitespace is stripped) |
-| `fail/` | rejected with exit 2 |
+```
+pass/standard/    IEEE 1687-2014 itself (clauses and Appendix E)
+pass/tessent/     Tessent: real tool output and manual fragments, completed
+pass/benchmark/   IJTAG-Ecosystem/Benchmarks, the standard benchmark networks
+pass/upstream/    the test files of Honza255/icl_parser
+pass/published/   papers, application notes, articles
+pass/ours/        written here, each pinning one behaviour
+fail/standard/    rejects a construct the standard does not allow
+fail/ours/        rejects malformed input
+```
 
-Run it with `make check` (or `python3 tests/regression.py`).
+## What every case must do
 
-## What to do when an old case fails
+`pass/` — exit 0, and the output must be **idempotent** (formatting it again
+changes nothing) and **character-preserving** (stripping all whitespace, input
+and output are identical). Those two properties are what make a formatter
+trustworthy; a case that only checked "it parses" would miss both the
+comment-indent drift bug and the stray-blank-line bug.
 
-A failure is investigated, never skipped. There are exactly two outcomes:
+`fail/` — exit 2, with a line number. Never a silent reformat.
 
-1. **The code is wrong** — fix the code. The case stays.
-2. **The case is wrong** — fix or delete it, and say which in the commit
-   message along with why.
+Both are run twice: once through **stdin** and once through a **real file**.
+That matters — the BOM was once stripped from a file but rejected from stdin,
+and with stdin alone the corpus could not have seen it.
 
-"Wrong case" has two common shapes:
+## Adding a case
 
-- it encoded an assumption the code has since deliberately changed (e.g. a
-  case asserting a UTF-8 BOM survives formatting, after the tool was changed
-  to strip it);
-- it never tested what its name claims (e.g. a case named for `iProcsForModule`
-  that passed only because the parser had no such keyword, so the text was
-  read as an ordinary attribute name — a case that cannot fail is not a test).
+Put the file in the directory matching its origin. The runner walks
+subdirectories, so nothing else needs editing.
 
-Both were removed from this corpus, and both removals are recorded in
-`REQUIREMENT.md`.
-
-## Naming
-
-File name = what is being tested, lower case, `_` for spaces. A name that
-describes the failure it guards is more useful than one that describes the
-input, because it tells you what was being protected when it breaks.
+If the source is a publication that prints only a fragment, complete it into a
+whole file and say so in a comment — what should be tested is what the
+publication actually wrote, and a fragment is not valid input.

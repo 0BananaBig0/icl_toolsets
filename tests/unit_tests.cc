@@ -253,6 +253,27 @@ void TestJsonEscapes() {
   Check("serialize an empty array", Json::Array({}).Serialize() == "[]");
   Check("serialize an array of one element",
         Json::Array({Json::Int(1)}).Serialize() == "[1]");
+  // Two elements and more: the comma between them is the branch no server
+  // response reaches. Both arrays the LSP sends — diagnostics and edits —
+  // hold at most one entry, because a parse stops at the first error and a
+  // document is replaced in a single edit. The separator is still part of
+  // Serialize, so it is exercised here rather than left untravelled.
+  Check("serialize an array of two elements",
+        Json::Array({Json::Int(1), Json::Int(2)}).Serialize() == "[1,2]");
+  Check("serialize an array of three elements",
+        Json::Array({Json::Int(1), Json::Int(2), Json::Int(3)})
+            .Serialize() == "[1,2,3]");
+  Check("serialize an array of mixed element types",
+        Json::Array({Json::Int(1), Json::String("s"), Json::Bool(true),
+                     Json::Null()})
+            .Serialize() == "[1,\"s\",true,null]");
+  Check("serialize nested arrays",
+        Json::Array({Json::Array({Json::Int(1), Json::Int(2)}),
+                     Json::Array({Json::Int(3)})})
+            .Serialize() == "[[1,2],[3]]");
+  Check("serialize an object of two members",
+        Json::Object({{"a", Json::Int(1)}, {"b", Json::Int(2)}})
+            .Serialize() == "{\"a\":1,\"b\":2}");
   Check("serialize an object",
         Json::Object({{"a", Json::Int(1)}}).Serialize() == "{\"a\":1}");
 }

@@ -53,14 +53,22 @@ def rule_lines(path, array_name):
 
 
 def corpus_files():
+    """Every `.icl` case, recursively.
+
+    Recursive for the same reason the regression runner is: the corpus is now
+    sorted into per-source subdirectories, and a flat listing would find
+    nothing and report success on an empty set.
+    """
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cases')
     names = []
     for sub in ('pass', 'fail'):
         directory = os.path.join(root, sub)
         if not os.path.isdir(directory):
             continue
-        names += [os.path.join(directory, n)
-                  for n in sorted(os.listdir(directory)) if n.endswith('.icl')]
+        for dirpath, dirnames, filenames in os.walk(directory):
+            dirnames.sort()
+            names += [os.path.join(dirpath, n)
+                      for n in sorted(filenames) if n.endswith('.icl')]
     return names
 
 

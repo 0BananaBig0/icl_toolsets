@@ -553,10 +553,9 @@ dist: all
 	cp $(SRC_DIR)/icl_parser.yy $(SRC_DIR)/icl_lexer.l $(DIST_DIR)/src/
 	cp $(PARSER_CC) $(PARSER_HH) $(LEXER_CC) $(LEXER_HH) $(DIST_DIR)/gen/
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
-	cp samples/*.icl $(DIST_DIR)/samples/ 2>/dev/null || true
-	mkdir -p $(DIST_DIR)/tests/cases/pass $(DIST_DIR)/tests/cases/fail
-	cp tests/cases/pass/*.icl $(DIST_DIR)/tests/cases/pass/
-	cp tests/cases/fail/*.icl $(DIST_DIR)/tests/cases/fail/
+	# Recursive: the corpus is sorted into per-source subdirectories, and a
+	# flat copy would ship an empty set while appearing to succeed.
+	cp -r tests/cases $(DIST_DIR)/tests/cases
 	cp tests/*.py tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt

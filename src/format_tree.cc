@@ -36,7 +36,11 @@ int BlankLinesBetween(int previous_end_line, int next_start_line,
 std::vector<std::string> SplitLines(const std::string& text) {
   std::vector<std::string> lines;
   size_t start = 0;
-  while (start <= text.size()) {
+  // `<`, not `<=`: at `start == text.size()` every character has been
+  // consumed, and going round once more would append the trailing segment a
+  // second time — `"a\n"` split into three entries instead of one. Stopping
+  // here is also what makes the trailing-newline promise above hold.
+  while (start < text.size()) {
     const size_t end = text.find('\n', start);
     if (end == std::string::npos) {
       lines.push_back(text.substr(start));
@@ -44,7 +48,6 @@ std::vector<std::string> SplitLines(const std::string& text) {
     }
     lines.push_back(text.substr(start, end - start));
     start = end + 1;
-    if (start == text.size()) lines.emplace_back();  // Trailing newline.
   }
   return lines;
 }
