@@ -225,6 +225,7 @@ ID      [A-Za-z_][A-Za-z_0-9]*
                       return icl::IclParser::make_RPAREN(g_location); }
 
   /* IEEE 1687 keywords (case sensitive). */
+"#include"           { g_location.step(); return icl::IclParser::make_INCLUDE(g_location); }
 Module              { g_location.step(); return icl::IclParser::make_MODULE(g_location); }
 Parameter           { g_location.step(); return icl::IclParser::make_PARAMETER(g_location); }
 Attribute           { g_location.step(); return icl::IclParser::make_ATTRIBUTE(g_location); }
@@ -303,6 +304,7 @@ Connection          { g_location.step(); return icl::IclParser::make_CONNECTION(
 PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
 AccessLink          { g_location.step(); return icl::IclParser::make_ACCESSLINK(g_location); }
 Of                  { g_location.step(); return icl::IclParser::make_OF(g_location); }
+of                   { g_location.step(); return icl::IclParser::make_OFLOWER(g_location); }
 NameSpace           { g_location.step(); return icl::IclParser::make_NAMESPACE(g_location); }
 UseNameSpace        { g_location.step(); return icl::IclParser::make_USENAMESPACE(g_location); }
 LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAMETER(g_location); }

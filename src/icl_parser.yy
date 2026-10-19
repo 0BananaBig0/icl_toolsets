@@ -208,6 +208,8 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token PORTGROUP "PortGroup"
 %token ACCESSLINK "AccessLink"
 %token OF "Of"
+%token OFLOWER "of"
+%token INCLUDE "#include"
 
 %token END 0 "end of file"
 
@@ -232,7 +234,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> port_keyword
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -265,6 +267,24 @@ file
         driver.unit().top_level().push_back(
             driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line)));
       }
+  /* `#include "file.icl"`, with or without a trailing semicolon.
+
+     Not IEEE 1687: the standard's icl_source has no such item. It is Origen's
+     extension — `include_def : "#include" S path:STRING s ";"? s` in its
+     treetop grammar — and 16 of its 21 example ICL files use it, so a
+     formatter that cannot read the line cannot read the file.
+
+     Kept verbatim and kept at top level, which is where that grammar puts it.
+     The path is not opened: this tool formats one document and does not follow
+     references. */
+  | file INCLUDE STRING
+      { driver.unit().top_level().push_back(
+            driver.MakeStatement("#include " + $3,
+                                 SpanOf(@2.begin.line, @3.end.line))); }
+  | file INCLUDE STRING SEMICOLON
+      { driver.unit().top_level().push_back(
+            driver.MakeStatement("#include " + $3 + ";",
+                                 SpanOf(@2.begin.line, @4.end.line))); }
   ;
 
 module_def
@@ -775,9 +795,9 @@ attr_name
    referenced from the shared attribute list as well as from module_item — one
    definition, no second copy to drift. */
 instance_block
-  : of_block_kw IDENT OF module_ref LBRACE attr_body RBRACE
+  : of_block_kw IDENT of_kw module_ref LBRACE attr_body RBRACE
       {
-        $$ = driver.MakeBlock($1 + " " + $2 + " Of " + $4, std::move($6),
+        $$ = driver.MakeBlock($1 + " " + $2 + " " + $3 + " " + $4, std::move($6),
                               SpanOf(@1.begin.line, @7.end.line));
       }
   ;
@@ -785,8 +805,8 @@ instance_block
 instance_item
   : instance_block
       { $$ = $1; }
-  | of_block_kw IDENT OF module_ref SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + " Of " + $4 + ";",
+  | of_block_kw IDENT of_kw module_ref SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + " " + $3 + " " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
   ;
 
@@ -843,6 +863,26 @@ ns_stmt
 std_tap_kw
   : STD1149_1_2001 { $$ = "STD_1149_1_2001"; }
   | STD1149_1_2013 { $$ = "STD_1149_1_2013"; }
+  ;
+
+/* `Of`, and the lowercase spelling.
+
+   The published grammar writes `'Of'` alone, and so does the standard. But
+   Origen's ICL grammar — an independent implementation, and the interface the
+   upstream repository lists under "Repositories associated with IJTAG" —
+   spells the alternative out:
+
+       instance_def : 'Instance' S name S ('Of' / 'of') S mod ...
+
+   and three of its 21 example files use the lowercase form. Rejecting them
+   rejects a real file. The spelling is preserved, not normalised: the
+   formatter reproduces what was written.
+
+   A group rather than two inline alternatives, so the two instance rules
+   (`;` and `{ }`) each mention it once and cannot fall out of step. */
+of_kw
+  : OF      { $$ = "Of"; }
+  | OFLOWER { $$ = "of"; }
   ;
 
 module_ref
@@ -924,6 +964,7 @@ any_keyword
   | CONNECTION      { $$ = "Connection"; }
   | PORTGROUP       { $$ = "PortGroup"; }
   | OF              { $$ = "Of"; }
+  | OFLOWER        { $$ = "of"; }
   | LOCALPARAMETER  { $$ = "LocalParameter"; }
   | NAMESPACE       { $$ = "NameSpace"; }
   | USENAMESPACE    { $$ = "UseNameSpace"; }

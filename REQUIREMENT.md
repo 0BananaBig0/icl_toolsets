@@ -1316,6 +1316,47 @@ Verified by content hash rather than by filename: all eight files from
 the same check that caught the misattributed P2654 files (§5.25), and it is
 the reason new upstream files are copied rather than retyped.
 
+### 5.30 Origen: 17 of 21 files rejected, two constructs
+
+`Honza255/icl_parser` lists "Repositories associated with IJTAG". One of them,
+`Origen-SDK/ijtag`, is reachable and carries 21 example ICL files plus a
+complete ICL grammar in Treetop. Running all 21 through this formatter: **4
+passed, 17 were rejected**. Two constructs accounted for every failure.
+
+**`#include "file.icl"`** — 16 files. Not IEEE 1687; the standard's
+`icl_source` has no such item. It is Origen's extension, spelled out in its
+grammar as `include_def : "#include" S path:STRING s ";"? s`, semicolon
+optional. Added at top level, reproduced verbatim, path not followed — this
+tool formats one document.
+
+**`Instance p1 of SRegP1`** — 3 files, lowercase `of`. Both the standard and
+the ANTLR grammar write `'Of'` only; Origen's grammar spells the alternative
+`('Of' / 'of')`. Added as a group, `of_kw`, so the `;` and `{ }` forms of an
+instance cannot fall out of step. The spelling is preserved, not normalised —
+a formatter that rewrites `of` to `Of` is editing, not formatting.
+
+One thing was deliberately **not** implemented: Origen's
+`single_quoted_string`, `'...'`. No example file uses it, and it would collide
+with the based-number literals `'b`, `'d`, `'h`, which are everywhere.
+
+### 5.31 The fuzzer reported a decision as a bug
+
+After adding the Origen files the mutation fuzzer produced its first failure in
+several rounds: "accepted but lost characters". The mutant was a 34-byte file
+whose first three bytes were a BOM.
+
+The formatter strips a BOM by decision, and `bom_stripped_not_kept.icl` pins
+that. So a mutant descended from that file carries a BOM into the comparison
+and reads as "lost characters". The fuzzer was right about the bytes and wrong
+about the meaning — the same false-positive shape as §5.19's runner bug, one
+level up: a check comparing two things that are not comparable.
+
+Fixed by stripping the BOM on both sides. While in there, its failure message
+claimed mutants were written to `/tmp/fuzz_fail_*.icl` on *every* failure,
+including ones where nothing is written — a message that would send you
+looking for a file that does not exist. Now it lists what was actually
+written.
+
 ## 6. What was verified, and what was not
 
 **Verified**

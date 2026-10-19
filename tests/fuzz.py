@@ -25,6 +25,7 @@ reproducible and can be added to `tests/cases/` as a regression case.
 """
 
 import argparse
+import glob
 import os
 import random
 import re
@@ -39,7 +40,11 @@ TOKENS = ['{', '}', ';', ',', '[', ']', ':', '=', '::', "'b1", '~', '//',
 
 
 def strip_ws(text):
-    return ''.join(text.split())
+    # The BOM is not content. The formatter strips it by decision, and
+    # bom_stripped_not_kept.icl pins that — so a mutant descended from that
+    # file carries a BOM into the comparison and reads as "lost characters".
+    # Remove it on both sides, or the fuzzer reports a decision as a bug.
+    return ''.join(text.lstrip('\ufeff').split())
 
 
 def sources():
@@ -138,7 +143,9 @@ def main():
     for line in failures[:10]:
         print('  [FAIL] ' + line)
     if failures:
-        print('  (mutants written to /tmp/fuzz_fail_*.icl)')
+        written = sorted(glob.glob('/tmp/fuzz_fail_*.icl'))
+        if written:
+            print('  (mutants written to %s)' % ', '.join(written))
         return 1
     print('No crashes; every mutant was either formatted or cleanly rejected.')
     return 0

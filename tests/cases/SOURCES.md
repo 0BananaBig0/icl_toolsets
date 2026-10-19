@@ -92,6 +92,38 @@ Its eight test ICL files (byte-identical, verified by hash) and the number liter
 
 10 files.
 
+## pass/origen — Origen-SDK/ijtag — the Origen interface/driver for IEEE 1687
+
+21 files from examples/, byte-identical to the upstream repository. 17 of them were rejected before this directory existed: 16 use `#include` and 3 use a lowercase `of`. Both are Origen extensions, spelled out in its treetop grammar. See origen/README.md.
+
+
+| file | constructs it exercises |
+|---|---|
+| `e1.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e10.icl` | Parameter, Module, Instance, InputPort, ScanInPort, ScanOutPort, DataInPort, DataOutPort, ShiftEnPort… |
+| `e11.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e13.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e14.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e15.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e16.icl` | Parameter, Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `e17.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e18.icl` | Parameter, Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `e19.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, DataInPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `e2.icl` | Module, DataInPort, DataOutPort, Alias, Enum, RefEnum |
+| `e20.icl` | Parameter, Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `e21.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, DataInPort, TCKPort, ToShiftEnPort, ToCaptureEnPort… |
+| `e22.icl` | Module, DataInPort, DataOutPort |
+| `e3.icl` | Parameter, Module, Instance, ScanInPort, ScanOutPort, DataInPort, DataOutPort, ShiftEnPort, CaptureEnPort… |
+| `e4.icl` | Parameter, Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `e5.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e6.icl` | Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort, TCKPort… |
+| `e7.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e8.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort… |
+| `e9.icl` | Parameter, Module, Instance, InputPort, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `include_semicolon_and_of_as_name.icl` | Module, Instance, ScanInPort, ScanOutPort, Source |
+
+22 files.
+
 ## pass/p2654 — bradfordvt/P2654Simulations — IEEE P2654 modelling work
 
 Three files under icl/standards/s1687: SReg.icl, sib_mux_pre.icl and sib_mux_post.icl. Verified byte-identical to the upstream repository by content hash.
