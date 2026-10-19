@@ -131,6 +131,33 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token PARAMETER "Parameter"
 %token ATTRIBUTE "Attribute"
 %token ALLOWBROADCAST "AllowBroadcastOnScanInterface"
+%token ACCESSTOGETHER "AccessTogether"
+%token ACTIVEPOLARITY "ActivePolarity"
+%token ACTIVESIGNALS "ActiveSignals"
+%token ADDRESSVALUE "AddressValue"
+%token BSDLENTITY "BSDLEntity"
+%token CAPTURESOURCE "CaptureSource"
+%token CHAIN "Chain"
+%token DEFAULTLOADVALUE "DefaultLoadValue"
+%token DIFFERENTIALINVOF "DifferentialInvOf"
+%token ENABLE "Enable"
+%token FREQDIVIDER "FreqDivider"
+%token FREQMULTIPLIER "FreqMultiplier"
+%token PERIOD "Period"
+%token INPUTPORT "InputPort"
+%token PORT "Port"
+%token READCALLBACK "ReadCallBack"
+%token READDATASOURCE "ReadDataSource"
+%token REFENUM "RefEnum"
+%token RESETVALUE "ResetValue"
+%token STD1149_1_2001 "STD_1149_1_2001"
+%token STD1149_1_2013 "STD_1149_1_2013"
+%token SCANINSOURCE "ScanInSource"
+%token SOURCE "Source"
+%token WRITECALLBACK "WriteCallBack"
+%token WRITEDATASOURCE "WriteDataSource"
+%token WRITEENSOURCE "WriteEnSource"
+%token IAPPLYENDSTATE "iApplyEndState"
 %token ALIAS "Alias"
 %token ENUM "Enum"
 %token SCANINPORT "ScanInPort"
@@ -205,7 +232,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> port_keyword
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> opt_range attr_stmt_name value_list module_ref attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -789,8 +816,19 @@ ns_stmt
    `::`, which meant `Instance i Of a::b::c;` was rejected while
    `Source a::b::c;` — going through `value` — was accepted. Same shape, two
    answers; now there is one. */
+/* The two standard TAP module names. `AccessLink t Of STD_1149_1_2001 { ... }`
+   names a module, and the name is spelled as a reserved word — so once the
+   scanner recognised it as a keyword, `module_ref` (which is identifiers only)
+   stopped matching and three corpus files broke. They are a group of one
+   shape, in one place, for the same reason every other keyword is grouped. */
+std_tap_kw
+  : STD1149_1_2001 { $$ = "STD_1149_1_2001"; }
+  | STD1149_1_2013 { $$ = "STD_1149_1_2013"; }
+  ;
+
 module_ref
   : IDENT                    { $$ = $1; }
+  | std_tap_kw               { $$ = $1; }
   | module_ref DCOLON IDENT  { $$ = $1 + "::" + $3; }
   /* A leading `::` with no namespace in front of it — the global namespace.
      The published grammar allows it *only* here: instance_def writes the
@@ -834,6 +872,33 @@ any_keyword
   | PARAMETER       { $$ = "Parameter"; }
   | ATTRIBUTE       { $$ = "Attribute"; }
   | ALLOWBROADCAST  { $$ = "AllowBroadcastOnScanInterface"; }
+  | ACCESSTOGETHER  { $$ = "AccessTogether"; }
+  | ACTIVEPOLARITY  { $$ = "ActivePolarity"; }
+  | ACTIVESIGNALS   { $$ = "ActiveSignals"; }
+  | ADDRESSVALUE    { $$ = "AddressValue"; }
+  | BSDLENTITY      { $$ = "BSDLEntity"; }
+  | CAPTURESOURCE   { $$ = "CaptureSource"; }
+  | CHAIN           { $$ = "Chain"; }
+  | DEFAULTLOADVALUE { $$ = "DefaultLoadValue"; }
+  | DIFFERENTIALINVOF { $$ = "DifferentialInvOf"; }
+  | ENABLE          { $$ = "Enable"; }
+  | FREQDIVIDER     { $$ = "FreqDivider"; }
+  | FREQMULTIPLIER  { $$ = "FreqMultiplier"; }
+  | PERIOD          { $$ = "Period"; }
+  | INPUTPORT       { $$ = "InputPort"; }
+  | PORT            { $$ = "Port"; }
+  | READCALLBACK    { $$ = "ReadCallBack"; }
+  | READDATASOURCE  { $$ = "ReadDataSource"; }
+  | REFENUM         { $$ = "RefEnum"; }
+  | RESETVALUE      { $$ = "ResetValue"; }
+  | STD1149_1_2001  { $$ = "STD_1149_1_2001"; }
+  | STD1149_1_2013  { $$ = "STD_1149_1_2013"; }
+  | SCANINSOURCE    { $$ = "ScanInSource"; }
+  | SOURCE          { $$ = "Source"; }
+  | WRITECALLBACK   { $$ = "WriteCallBack"; }
+  | WRITEDATASOURCE { $$ = "WriteDataSource"; }
+  | WRITEENSOURCE   { $$ = "WriteEnSource"; }
+  | IAPPLYENDSTATE  { $$ = "iApplyEndState"; }
   | ALIAS           { $$ = "Alias"; }
   | SELECTEDBY      { $$ = "SelectedBy"; }
   | LOGICSIGNAL     { $$ = "LogicSignal"; }

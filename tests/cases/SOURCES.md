@@ -5,17 +5,19 @@ Every file under `tests/cases/` sits in a directory naming where it came from. `
 
 ## pass/standard — IEEE 1687-2014 — the standard itself
 
-Clause and appendix text: the four Alias examples of §6.5.2, the spellings from Appendix E that the scanner has to accept, and the time units with the 2013-revision AccessLink target.
+Clause and appendix text: the four Alias examples of §6.5.2, the spellings from Appendix E, the accessLink1149_def BNF with its two examples, the time units, and the 2013-revision AccessLink target.
 
 
 | file | constructs it exercises |
 |---|---|
+| `accesslink_1149_bnf.icl` | Module, ScanInterface, AccessLink, Port, BSDL_Entity, BSDLEntity, ActiveSignals, STD_1149_1_2001, STD_1149_1_2013 |
 | `allow_broadcast_on_scaninterface.icl` | Module, ScanInterface, Port, AllowBroadcastOnScanInterface |
 | `standard_alias_examples.icl` | Module, Instance, InputPort, ScanInPort, DataInPort, DataOutPort, ScanRegister, DataRegister, Alias… |
 | `standard_regex_samples.icl` | NameSpace, UseNameSpace, LocalParameter, Parameter, Attribute, Module, Instance, InputPort, DataInPort… |
-| `time_units_and_2013_accesslink.icl` | Module, ToClockPort, AccessLink, Period, BSDL_Entity |
+| `std_tap_names_as_attribute_names.icl` | Module, Instance, AccessLink, STD_1149_1_2001, STD_1149_1_2013 |
+| `time_units_and_2013_accesslink.icl` | Module, ToClockPort, AccessLink, Period, BSDL_Entity, STD_1149_1_2001, STD_1149_1_2013 |
 
-4 files.
+6 files.
 
 ## pass/tessent — Tessent — Siemens EDA
 
@@ -104,7 +106,7 @@ Three files under icl/standards/s1687: SReg.icl, sib_mux_pre.icl and sib_mux_pos
 
 ## pass/published — Papers, application notes and articles
 
-ICL printed in a publication: the ASSET InterTech ICL/PDL article, Keysight's "Silicon Test to Board Test" application note, ScanWorks AccessLink examples, the LiU P1687 paper Listing 8, SemiWiki, and a Chinese ICL/PDL tutorial.
+ICL printed in a publication: the ASSET InterTech ICL/PDL article, Keysight's "Silicon Test to Board Test" application note, ScanWorks AccessLink examples, the LiU P1687 paper Listing 8, and a Chinese ICL/PDL tutorial.
 
 
 | file | constructs it exercises |
@@ -128,7 +130,7 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 
 | file | constructs it exercises |
 |---|---|
-| `accesslink_nested.icl` | Module, AccessLink, BSDL_Entity |
+| `accesslink_nested.icl` | Module, AccessLink, BSDL_Entity, ActiveSignals |
 | `alias_bit_range.icl` | Module, Alias |
 | `alias_concat_list.icl` | Module, Alias, RefEnum, AccessTogether, iApplyEndState |
 | `alias_nested_block.icl` | Attribute, Module, Alias |
@@ -170,7 +172,7 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 | `extra_ports.icl` | Module, ToIRSelectPort, AddressPort, WriteEnPort, ReadEnPort |
 | `host_side_ports.icl` | Module, ToTCKPort, ToTMSPort, ToTRSTPort, ToShiftEnPort, ToCaptureEnPort, ToUpdateEnPort, ToResetPort |
 | `indexed_expressions.icl` | Module, ScanRegister, ScanInSource, CaptureSource |
-| `instance_of_no_body.icl` | Module, Instance, AccessLink |
+| `instance_of_no_body.icl` | Module, Instance, AccessLink, STD_1149_1_2001 |
 | `instance_port_mapping.icl` | Module, Instance, InputPort |
 | `instrument_with_refenum.icl` | Module, DataInPort, DataOutPort, ClockPort, Alias, Enum, RefEnum |
 | `integer_expr_in_range.icl` | Parameter, Module, DataInPort, Reg, RefEnum, Source, ResetValue, DefaultLoadValue |
@@ -263,5 +265,5 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 
 ## Adding a case
 
-Drop a `.icl` file into the directory matching its origin. Nothing else needs editing: the runner walks subdirectories. Complete a file rather than pasting a fragment — a fragment is not valid input, and the point of a case from a publication is that the publication's own words are what gets parsed.
+Drop a `.icl` file into the directory matching its origin. Nothing else needs editing: the runner walks subdirectories.
 

@@ -1215,6 +1215,62 @@ The second fork of `Honza255/icl_parser` (the repository page shows two) could
 not be identified — only `ranaumarnadeem/icl_parser` is reachable, and it has
 fewer ICL files than upstream, not more.
 
+### 5.26 The keyword comparison: 27 it defines that we did not
+
+Comparing the two scanners keyword by keyword — the ANTLR grammar's 81 literal
+keywords against the 55 rules of our `.l` — left 48 names present there and
+absent here. They split into two groups.
+
+**21 are not keywords at all.** Single letters (`A`, `b`, `h`, `x`, `s`, `f`…)
+that are lexer fragments in that grammar: the alternatives of `BIN_BASE`,
+`DEC_BASE`, `HEX_BASE`, `HEX_DIGIT`, `UNKNOWN_DIGIT` and `SCALAR_ID`. Plus the
+seven time units `as fs ps ns us ms s`, which `period_def` spells as separate
+literals. Our scanner handles all of them inside the number and identifier
+regexes instead — `10ns` is one token, `'h23ff` one token — which is why
+`Period 10s;` already worked even though `s` was never a rule of its own.
+
+**27 are real ICL keywords**, and the standard's own BNF confirms the spelling
+of several. `accessLink1149_def` reads:
+
+```
+'AccessLink' accessLink_name 'Of' ('STD_1149_1_2001' | 'STD_1149_1_2013')
+'{' 'BSDLEntity' bsdlEntity_name ';' bsdl_instr_ref+ '}'
+bsdl_instr_selected_item : 'ScanInterface' '{' … '}'
+                           ('ActiveSignals' '{' … '}') ;
+```
+
+Note **BSDLEntity**, with no underscore — the benchmark files use that
+spelling, and we had been tolerating it as an identifier. The others:
+AccessTogether, ActivePolarity, AddressValue, CaptureSource, Chain,
+DefaultLoadValue, DifferentialInvOf, Enable, FreqDivider, FreqMultiplier,
+Period, InputPort, Port, ReadCallBack, ReadDataSource, RefEnum, ResetValue,
+ScanInSource, Source, WriteCallBack, WriteDataSource, WriteEnSource,
+iApplyEndState.
+
+**All 27 already parsed.** That is the honest part: because `attr_name` accepts
+any identifier, `Source s;` parsed the same way whether `Source` was a keyword
+or not. So this is not 27 bug fixes. What changes is that they are now
+*reserved*, which is what the standard says they are.
+
+Making them reserved broke three corpus files immediately:
+`AccessLink t Of STD_1149_1_2001` stopped matching, because `module_ref` is
+identifiers only. They now have their own group, `std_tap_kw`, used by
+`module_ref` — a group rather than an inline alternative, for the same reason
+every other keyword family here is a group.
+
+### 5.27 Two unreached rules, and why a strange file was written for them
+
+After the change, grammar coverage was 187/189. The two unreached rules were
+the `any_keyword` alternatives for the two STD names — nothing uses them as an
+attribute name, because in real ICL they only ever follow `Of`.
+
+The tempting fix is to exempt them, growing the exception list in the generative
+keyword test from two entries to four. That is the wrong direction: that list
+*is* the drift detector, and every name added to it is a name that can silently
+fall out of sync again. So instead both are treated like every other keyword —
+one uniform rule — and `std_tap_names_as_attribute_names.icl` pins the uniform
+treatment. The file looks odd on purpose, and says why.
+
 ## 6. What was verified, and what was not
 
 **Verified**
