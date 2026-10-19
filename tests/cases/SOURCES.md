@@ -92,6 +92,18 @@ Its eight test ICL files (byte-identical, verified by hash) and the number liter
 
 10 files.
 
+## pass/treesitter — dtrodr/tree-sitter-icl
+
+20 test cases extracted from `corpus/{basics,declarations,ports}.txt` of an
+independent ICL grammar written for tree-sitter. Its test format is a name, an
+input, `---`, then the expected parse tree as an S-expression; the inputs are
+whole `source_file`s, so each is a complete input for this formatter too.
+Extracted mechanically, not retyped. See `pass/treesitter/README.md`.
+
+One case was not carried over — `Attribute foo;` at top level. That grammar's
+own comment calls it "Illegal by the spec but makes the testing much simpler",
+so it is a `fail/` case instead (`fail/treesitter/top_level_attribute.icl`).
+
 ## pass/origen — Origen-SDK/ijtag — the Origen interface/driver for IEEE 1687
 
 21 files from examples/, byte-identical to the upstream repository. 17 of them were rejected before this directory existed: 16 use `#include` and 3 use a lowercase `of`. Both are Origen extensions, spelled out in its treetop grammar. See origen/README.md.

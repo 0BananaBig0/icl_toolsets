@@ -1357,6 +1357,52 @@ including ones where nothing is written — a message that would send you
 looking for a file that does not exist. Now it lists what was actually
 written.
 
+### 5.32 Two more independent grammars found through the README
+
+The upstream README lists "Repositories associated with IJTAG". Guessing their
+paths failed — every guess was 404 — but `api.github.com` answers, so the
+repositories were found by listing what actually exists. Two of them carry
+independent ICL grammars:
+
+**`dtrodr/tree-sitter-icl`** — a tree-sitter grammar with 89 keyword literals
+and a test corpus in tree-sitter's own format: name, input, `---`, expected
+parse tree. Its keyword set matches ours on every reserved word; the only
+literal keywords it has that we do not are the seven time units, which our
+scanner folds into the number token (`Period 10ns` is one token).
+
+The 20 corpus inputs were extracted mechanically and all 20 pass. The 21st does
+not, and its rejection is the interesting part:
+
+```
+source_file: $ => repeat(choice(
+    $._icl_source_items,
+    // Illegal by the spec but makes the testing much simpler
+    $._module_statement,
+)),
+```
+
+That author admits `_module_statement` at top level for testing convenience and
+marks it illegal himself. IEEE 1687's `iclSource_items` is `nameSpace_def |
+useNameSpace_def | module_def`. So `Attribute foo;` at top level stays
+rejected — the first time a "gap" was closed by the reference implementation's
+own comment rather than by adding a rule.
+
+**`CeleritasCelery/icl-mode`** — an Emacs major mode, useful because its
+font-lock rules are regular expressions, the layer this review otherwise
+reaches only through the scanner. Three observations:
+
+- Its module-name regex allows `-` in identifiers: `(1+ (any alnum "_-"))`.
+  We reject `Module foo-bar { }`, and IEEE 1687's `SCALAR_ID` does too. But the
+  same file's *other* rule — the one for the name after `Module`/`Instance`/
+  `Enum` — allows only `(any alnum "_")`, no `-`. The file contradicts itself;
+  the stricter reading is the standard's, and ours.
+- Its keyword regex is `(or (and upper lower) "TRST" "TCK" "TMS") (1+ alnum)`
+  — PascalCase, with the three all-caps prefixes special-cased. All 26 standard
+  port keywords fall out of it, and all 26 are in our scanner.
+- Its number regex, `(char " [':+-")` followed by optional `b`/`h` and digits,
+  names the positions where a number can start: after a space, `[`, `'`, `:`,
+  `+` or `-`. All six are handled, including `-1` and `'b0`.
+
 ## 6. What was verified, and what was not
 
 **Verified**
