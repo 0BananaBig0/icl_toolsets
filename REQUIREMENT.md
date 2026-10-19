@@ -1534,6 +1534,76 @@ the original, which is exactly what these two files are for. Verified by
 appending a byte to one of them: the check fails, names the file, and passes
 again once restored.
 
+### 5.40 The upstream commit pinned, and two lists read against it
+
+The repository's rendered page shows only link text; taking it as raw markdown
+gave the current commit, `333f8bc` (Sep 23 2026), which was pulled and checked
+directly rather than through a mirror.
+
+**All eight of its `.icl` files are byte-identical to the copies in our
+corpus** — by md5, not by name. Five sit in `tests/test_icls/` and three in
+`tests/test_icls/benchmarks_conv/ICL/`.
+
+That third directory matters. Its name says the files are *converted*
+benchmarks, and `tests/test_icls/benchmarks/` — the submodule — is **empty** in
+the archive. So three files derived from the benchmark suite were reachable all
+along, inside the repository, while the submodule pointing at the full suite
+was not. An earlier round reported the benchmark set as entirely out of reach;
+three of its members were present the whole time, mis-filed as ordinary
+`ijtag_*` upstream cases. They are now identified in
+`SOURCES.md` as benchmark-derived.
+
+`.gitmodules` finally gives the authoritative URL the earlier guesses missed:
+`https://gitlab.com/Honza255/benchmarks.git`. It is 403 here — both the git
+protocol endpoint and the API — so the gap is now precisely located: not a
+wrong guess, but an unreachable host.
+
+### 5.41 "Not supported" is about retargeting, not parsing
+
+The upstream README lists eight things the tool does not support. Read as
+grammar gaps they would be gaps in us, so each was checked against the grammar:
+
+| not supported | in its grammar? |
+|---|---|
+| Local reset | yes — `resetPort_def`, `scanRegister_resetValue` |
+| Local update | yes — `updateEnPort_def`, `toUpdateEnPort_def` |
+| Local capture | yes — `captureEnPort_def`, `scanRegister_captureSource` |
+| Data registers | yes — `dataRegister_def` |
+| Broadcast | yes — `allowBroadcast_def` |
+| Retargeting for data in/out ports | yes — `dataInPort_def`, `dataOutPort_def` |
+| Retargeting for data registers | yes — as above |
+| **Parked TMS** | **no rule at all** |
+
+Seven of the eight are parsed by that grammar and simply not *retargeted*, so
+they say nothing about syntax and nothing needed adding. But the eighth,
+**"Parked TMS", has zero rules** — and a grammar with no rule for something
+cannot reveal it to a diff against that grammar. That is the limit of the
+method used since §5.29 worth stating plainly: comparing against a reference
+finds only what the reference has.
+
+So Parked TMS was chased on its own. It has no ICL syntax to add. It is an
+architectural property of an embedded TAP: the Select signal holds embedded TMS
+low, which keeps the eTAP parked in Run-Test/Idle. ICL describes such a network
+with the port blocks it already has — `ToTMSPort`, `ToTCKPort`, `ToSelectPort`
+— and there is no keyword for the parked state. Adding one would be invention,
+so nothing was added, and the reason is recorded here rather than left as an
+unanswered "gap".
+
+### 5.42 Two independent notes on `*.icl`
+
+**The extension belongs to another language.** GitHub's own language breakdown
+for this repository reports 1.2% Clean. Clean's source extension is `.icl`.
+This is independent confirmation of the pitfall behind the coc configuration:
+`*.icl` is genuinely claimed by another language, which is why vim's
+`filetype.vim` maps it to Clean and why `setfiletype icl` — which is a no-op
+once a filetype is already set — silently leaves the buffer as Clean and coc
+never starts. `set filetype=icl` is required.
+
+**The reference grammar is a prototype.** Its README says "Note: Work may still
+be in progress", and it has 6 stars and 24 commits. It is the most complete
+ICL grammar publicly available and it has been worth checking against, but it
+is not a standard, and §5.41 shows one way that shows.
+
 ## 6. What was verified, and what was not
 
 **Verified**
