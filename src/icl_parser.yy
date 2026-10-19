@@ -130,6 +130,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token MODULE "Module"
 %token PARAMETER "Parameter"
 %token ATTRIBUTE "Attribute"
+%token ALLOWBROADCAST "AllowBroadcastOnScanInterface"
 %token ALIAS "Alias"
 %token ENUM "Enum"
 %token SCANINPORT "ScanInPort"
@@ -270,6 +271,13 @@ module_item
      so a bare `Attribute foo;` is legal. */
   | ATTRIBUTE IDENT SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + ";",
+                                  SpanOf(@1.begin.line, @3.end.line)); }
+  /* allowBroadcast_def : 'AllowBroadcastOnScanInterface' scanInterface_name ';'
+     Marks a scan interface as allowing broadcast writes. It takes a single
+     name, not a list — scanInterface_name is one SCALAR_ID — so there is no
+     comma form. */
+  | ALLOWBROADCAST IDENT SEMICOLON
+      { $$ = driver.MakeStatement("AllowBroadcastOnScanInterface " + $2 + ";",
                                   SpanOf(@1.begin.line, @3.end.line)); }
   /* The alias name may carry a bit range: `Alias mode[1:0] = DI[6:5];` —
      both the bare and the ranged form occur in real instrument modules. */
@@ -825,6 +833,7 @@ any_keyword
   | MODULE          { $$ = "Module"; }
   | PARAMETER       { $$ = "Parameter"; }
   | ATTRIBUTE       { $$ = "Attribute"; }
+  | ALLOWBROADCAST  { $$ = "AllowBroadcastOnScanInterface"; }
   | ALIAS           { $$ = "Alias"; }
   | SELECTEDBY      { $$ = "SelectedBy"; }
   | LOGICSIGNAL     { $$ = "LogicSignal"; }

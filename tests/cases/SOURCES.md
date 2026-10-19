@@ -5,15 +5,17 @@ Every file under `tests/cases/` sits in a directory naming where it came from. `
 
 ## pass/standard — IEEE 1687-2014 — the standard itself
 
-Clause and appendix text: the four Alias examples of §6.5.2, and the spellings from Appendix E that the scanner has to accept.
+Clause and appendix text: the four Alias examples of §6.5.2, the spellings from Appendix E that the scanner has to accept, and the time units with the 2013-revision AccessLink target.
 
 
 | file | constructs it exercises |
 |---|---|
+| `allow_broadcast_on_scaninterface.icl` | Module, ScanInterface, Port, AllowBroadcastOnScanInterface |
 | `standard_alias_examples.icl` | Module, Instance, InputPort, ScanInPort, DataInPort, DataOutPort, ScanRegister, DataRegister, Alias… |
 | `standard_regex_samples.icl` | NameSpace, UseNameSpace, LocalParameter, Parameter, Attribute, Module, Instance, InputPort, DataInPort… |
+| `time_units_and_2013_accesslink.icl` | Module, ToClockPort, AccessLink, Period, BSDL_Entity |
 
-2 files.
+4 files.
 
 ## pass/tessent — Tessent — Siemens EDA
 
@@ -70,7 +72,7 @@ Real tool output supplied by the user (Tessent Shell 2024.2, and two merged file
 
 ## pass/upstream — Honza255/icl_parser — an ICL parser built on an ANTLR grammar
 
-Its eight test ICL files. Instruments.icl carries code from IEEE 1687-2014 Appendix E. Verified byte-identical to the upstream repository by content hash.
+Its eight test ICL files, plus the number literal spellings that its test_icl_number.py feeds to IclNumber, transcribed into how they look in a file. Instruments.icl carries code from IEEE 1687-2014 Appendix E.
 
 
 | file | constructs it exercises |
@@ -83,19 +85,32 @@ Its eight test ICL files. Instruments.icl carries code from IEEE 1687-2014 Appen
 | `ijtag_test_icl_syntax_5.icl` | Parameter, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
 | `ijtag_test_icl_syntax_6.icl` | Parameter, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
 | `ijtag_test_icl_syntax_7.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, TCKPort, ToShiftEnPort, ToCaptureEnPort, ToUpdateEnPort… |
+| `number_literals_from_upstream.icl` | Attribute, Module, ScanRegister, ScanInSource, CaptureSource, ResetValue, DefaultLoadValue |
 
-8 files.
+9 files.
+
+## pass/p2654 — bradfordvt/P2654Simulations — IEEE P2654 modelling work
+
+Three files under icl/standards/s1687: SReg.icl, sib_mux_pre.icl and sib_mux_post.icl. Verified byte-identical to the upstream repository by content hash.
+
+
+| file | constructs it exercises |
+|---|---|
+| `SReg.icl` | Attribute, Module, ScanInPort, ScanOutPort, DataInPort, DataOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
+| `sib_mux_post.icl` | Attribute, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
+| `sib_mux_pre.icl` | Attribute, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
+
+3 files.
 
 ## pass/published — Papers, application notes and articles
 
-ICL printed in a publication: the ASSET InterTech ICL/PDL article, Keysight's "Silicon Test to Board Test" application note, ScanWorks AccessLink examples, the LiU P1687 paper's Listing 8, SemiWiki, and a Chinese ICL/PDL tutorial.
+ICL printed in a publication: the ASSET InterTech ICL/PDL article, Keysight's "Silicon Test to Board Test" application note, ScanWorks AccessLink examples, the LiU P1687 paper Listing 8, SemiWiki, and a Chinese ICL/PDL tutorial.
 
 
 | file | constructs it exercises |
 |---|---|
 | `asset_ijtag_demo_network.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, DataInPort, DataOutPort, ScanRegister, ScanMux… |
 | `connection_instrument_module.icl` | Attribute, Module, DataInPort, DataOutPort, Reg, ScanInterface, Connection, Port |
-| `ijtag_sib_mux_post.icl` | Attribute, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
 | `keysight_datamux_module.icl` | Module, DataInPort, DataOutPort, DataMux, SelectedBy, Source |
 | `keysight_gpio.icl` | Attribute, Module, ScanInPort, ScanOutPort, DataInPort, DataOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
 | `liu_sib_and_chip_icl.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, SelectPort, ToSelectPort, ScanRegister, ScanMux… |
@@ -103,9 +118,8 @@ ICL printed in a publication: the ASSET InterTech ICL/PDL article, Keysight's "S
 | `real.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, SelectPort, ToSelectPort, ScanRegister, ScanMux… |
 | `scanworks_accesslink_nested.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, DataOutPort, ScanInterface, AccessLink, Port… |
 | `semiwiki_tdr_module.icl` | Attribute, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, TCKPort… |
-| `sib_mux_pre.icl` | Attribute, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
 
-11 files.
+9 files.
 
 ## pass/ours — Written here
 
@@ -129,6 +143,7 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 | `bare_hierarchical_name_statement.icl` | Module, ScanRegister, Source |
 | `bare_use_namespace.icl` | NameSpace, UseNameSpace, Module |
 | `benchmark_derived_spellings.icl` | Parameter, Module, ScanInPort, ScanOutPort, DataInPort, DataOutPort, DataRegister, ScanMux, DataMux… |
+| `block_review_shapes.icl` | Parameter, Attribute, Module, Instance, InputPort, OutputPort, DataOutPort, ShiftEnPort, CaptureEnPort… |
 | `bodies_with_comments_and_assignments.icl` | Module, ScanMux, LogicSignal, Connection, SelectedBy |
 | `bom_stripped_not_kept.icl` | Module, ScanInPort |
 | `client_tap_ports.icl` | Module, TCKPort |
@@ -210,7 +225,6 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 | `shift_and_logic.icl` | Attribute, Module |
 | `single_port.icl` | Module, ScanInPort |
 | `sized_literals.icl` | Module, ScanRegister, ResetValue |
-| `sreg_module.icl` | Attribute, Module, ScanInPort, ScanOutPort, DataInPort, DataOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort… |
 | `toclockport.icl` | Module, ToClockPort |
 | `unary_attribute_value.icl` | Module, Reg, Source, CaptureSource, ResetValue |
 | `unary_complement.icl` | Attribute, Module |

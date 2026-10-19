@@ -228,6 +228,7 @@ ID      [A-Za-z_][A-Za-z_0-9]*
 Module              { g_location.step(); return icl::IclParser::make_MODULE(g_location); }
 Parameter           { g_location.step(); return icl::IclParser::make_PARAMETER(g_location); }
 Attribute           { g_location.step(); return icl::IclParser::make_ATTRIBUTE(g_location); }
+AllowBroadcastOnScanInterface { g_location.step(); return icl::IclParser::make_ALLOWBROADCAST(g_location); }
 Alias               { g_location.step(); return icl::IclParser::make_ALIAS(g_location); }
 Enum                { g_location.step(); return icl::IclParser::make_ENUM(g_location); }
 ScanInPort          { g_location.step(); return icl::IclParser::make_SCANINPORT(g_location); }

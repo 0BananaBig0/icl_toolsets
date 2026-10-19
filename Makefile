@@ -449,6 +449,10 @@ define coc_body
 	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
 	@echo '  autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab'
 	@echo ""
+	@echo "   coc.nvim needs vim 9 — its api.vim is vim9script. vim 9.2 is what"
+	@echo "   tests/setup_coc.sh builds (VIM_VERSION=v9.2.0000); vim 8.2 fails"
+	@echo "   to start the server without saying why."
+	@echo ""
 	@echo "   shiftwidth is what coc forwards as LSP tabSize, so the editor and"
 	@echo "   the CLI agree only if it is 2 — vim defaults to 8."
 	@echo ""
@@ -513,7 +517,7 @@ nvimcheck: $(LSP_BIN)
 # setup_coc.sh fetches, and vim 9+.
 #
 # This is how three real problems were found that no unit test could see: coc
-# needs vim 9 (vim 8.2 rejects its vim9script), `setfiletype` loses to vim's
+# needs vim 9.2 (vim 8.2 rejects its vim9script), `setfiletype` loses to vim's
 # built-in `*.icl -> clean` mapping, and the editor's shiftwidth is what
 # decides indent width. Skipped when the pieces are absent.
 coccheck: $(LSP_BIN)

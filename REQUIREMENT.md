@@ -1172,6 +1172,49 @@ The upstream repository's own `USERGUIDE` settles it: `N17D3`, `N32D6`,
 ADDED"**. They were never published in that repository. It also references
 `E30.icl`, which the repository does not contain.
 
+### 5.24 One more gap from the 55 blocks: AllowBroadcastOnScanInterface
+
+Going through the 55 `*_def` rules of the published grammar one at a time,
+rather than asking "do we support this?", turned up one construct that was
+rejected outright:
+
+```
+allowBroadcast_def : 'AllowBroadcastOnScanInterface' scanInterface_name ';' ;
+```
+
+The keyword was not in the scanner at all, so it arrived as an identifier and
+then failed as a module item. Added as a keyword, a module-level statement, and
+a member of `any_keyword` so it can still be an attribute name inside a block —
+the same treatment every other keyword gets.
+
+Note the name is a single `SCALAR_ID`, not a list: there is no comma form. So
+`AllowBroadcastOnScanInterface si_a, si_b;` is not ICL, and remains rejected.
+
+Two things the same pass confirmed as **correctly rejected**, recorded so they
+are not "fixed" later:
+
+* `ScanInterface si;` — `scanInterface_def` requires `'{' item+ '}'`, so a bare
+  semicolon form does not exist.
+* A `Module` nested inside a `Module` — `module_def` appears only in
+  `iclSource_items`, never in `module_item`.
+
+### 5.25 Provenance corrected: three files were misattributed
+
+The P2654 files were in the corpus but under the wrong directories —
+`SReg.icl` under `ours/` (it is not ours) and the two `sib_mux_*` files under
+`published/` with an `ijtag_` prefix implying the other repository. All three
+were also reflowed: same tokens, different line breaks, so a byte comparison
+with upstream failed and only a whitespace-insensitive one matched.
+
+They now live in `pass/p2654/`, byte-identical to
+`bradfordvt/P2654Simulations/icl/standards/s1687/`, and the reflowed copies are
+gone. Byte-identity is what makes a directory name a claim rather than an
+assertion.
+
+The second fork of `Honza255/icl_parser` (the repository page shows two) could
+not be identified — only `ranaumarnadeem/icl_parser` is reachable, and it has
+fewer ICL files than upstream, not more.
+
 ## 6. What was verified, and what was not
 
 **Verified**

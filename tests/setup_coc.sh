@@ -17,6 +17,8 @@ set -euo pipefail
 
 ROOT="${1:-/tmp/cocvim}"
 COC_VERSION="${COC_VERSION:-release}"
+# vim 9.2. coc.nvim needs vim 9 for its vim9script; 9.2 is the current major.
+VIM_VERSION="${VIM_VERSION:-v9.2.0000}"
 mkdir -p "$ROOT/config" "$ROOT/data" "$ROOT/test"
 
 # ---- icl-lsp has to be findable on PATH ------------------------------------
@@ -88,9 +90,9 @@ if [ -z "$VIM" ]; then
     { echo "need a C compiler (and ncurses headers) to build vim" >&2; exit 1; }
   work="$(mktemp -d)"
   curl -fsSL -o "$work/vim.tar.gz" \
-    "https://codeload.github.com/vim/vim/tar.gz/refs/tags/v9.1.1000"
+    "https://codeload.github.com/vim/vim/tar.gz/refs/tags/$VIM_VERSION"
   tar xzf "$work/vim.tar.gz" -C "$work"
-  ( cd "$work"/vim-9.1.1000 &&
+  ( cd "$work"/vim-"$VIM_VERSION" &&
     ./configure --with-features=huge --disable-gui --without-x \
                 --disable-perlinterp --disable-rubyinterp --disable-luainterp \
                 --prefix=/usr/local/vim9 >/dev/null &&
