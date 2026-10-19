@@ -100,6 +100,12 @@ input, `---`, then the expected parse tree as an S-expression; the inputs are
 whole `source_file`s, so each is a complete input for this formatter too.
 Extracted mechanically, not retyped. See `pass/treesitter/README.md`.
 
+`regex_boundaries.icl` is written by us but derived from that grammar's
+regular expressions, one construct per regex — both escape sequences, `Period`
+with and without a unit, a parameter as a size, an index that is itself an
+index, `|` in a mux selection, `~` on any element of a concatenation,
+three-segment iProc namespaces.
+
 One case was not carried over — `Attribute foo;` at top level. That grammar's
 own comment calls it "Illegal by the spec but makes the testing much simpler",
 so it is a `fail/` case instead (`fail/treesitter/top_level_attribute.icl`).
