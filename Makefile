@@ -211,17 +211,32 @@ else
 # --report=all writes $(GEN_DIR)/icl_parser.output, which is where shift/reduce
 # and reduce/reduce conflicts show up. A conflict is a grammar bug, so fail the
 # build instead of silently letting bison pick a resolution.
+# -Wall catches more than conflicts: a nonterminal or rule that no derivation
+# can reach ("useless in grammar") is dead code in the .y file, which is
+# exactly what -Werror=other refuses to tolerate. The grammar once carried a
+# dead `ident_list` (left behind when PortGroup was rewritten to accept
+# comments) and the conflict check below did not notice, because it only ever
+# greps for conflicts.
+BISON_FLAGS = -Wall -Werror=other --report=all
+
 $(PARSER_CC) $(PARSER_HH): $(SRC_DIR)/icl_parser.yy
 	@mkdir -p $(GEN_DIR)
-	$(BISON) --report=all --output=$(PARSER_CC) --defines=$(PARSER_HH) $<
+	$(BISON) $(BISON_FLAGS) --output=$(PARSER_CC) --defines=$(PARSER_HH) $<
 	@if grep -q "conflict" $(GEN_DIR)/icl_parser.output 2>/dev/null; then \
 		echo "error: grammar has conflicts; see $(GEN_DIR)/icl_parser.output" >&2; \
 		exit 1; \
 	fi
 
+# flex reports "rule cannot be matched" — a scanner rule shadowed by an
+# earlier one, so it can never fire. Silent today, and invisible tomorrow.
 $(LEXER_CC) $(LEXER_HH): $(SRC_DIR)/icl_lexer.l $(PARSER_HH)
 	@mkdir -p $(GEN_DIR)
-	$(FLEX) --outfile=$(LEXER_CC) --header-file=$(LEXER_HH) $<
+	$(FLEX) --outfile=$(LEXER_CC) --header-file=$(LEXER_HH) $< 2> $(GEN_DIR)/flex.log
+	@if grep -qiE "warning|rule cannot be matched" $(GEN_DIR)/flex.log 2>/dev/null; then \
+		echo "error: flex reported warnings:" >&2; \
+		cat $(GEN_DIR)/flex.log >&2; \
+		exit 1; \
+	fi
 endif
 
 $(BUILD_DIR):
@@ -513,6 +528,8 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all unitcheck
 	@python3 tests/regression.py --binary $(BIN)
+	@python3 tests/golden_test.py --binary $(BIN)
+	@python3 tests/fuzz.py --binary $(BIN)
 	@python3 tests/run_tests.py --binary $(BIN)
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
 	@$(MAKE) --no-print-directory gramcov
@@ -555,7 +572,7 @@ dist: all
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	# Recursive: the corpus is sorted into per-source subdirectories, and a
 	# flat copy would ship an empty set while appearing to succeed.
-	cp -r tests/cases $(DIST_DIR)/tests/cases
+	cp -r tests/cases tests/golden $(DIST_DIR)/tests/
 	cp tests/*.py tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt

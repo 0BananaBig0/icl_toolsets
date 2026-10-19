@@ -211,7 +211,6 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> attr_name
 %type <std::vector<AstNode*>> logic_body
 %type <AstNode*> ns_stmt
-%type <std::string> ident_list
 %type <AstNode*> attr_item
 %type <std::vector<AstNode*>> attr_body
 %type <std::vector<AstNode*>> mux_body
@@ -471,9 +470,10 @@ logic_body
 /* One or more comma-separated expressions. Built as a string rather than a
    vector because the only consumer is the rendered text.
 
-   Kept separate from `ident_list` (which is `PortGroup {a, b}`): that one has
-   no `=` and lives in braces, and joining the two would only make both
-   harder to read. */
+   Kept separate from the `PortGroup { a, b }` list: that one has no `=` and
+   lives in braces, and it also has to accept comments between the names,
+   which an expression list has no business doing. Joining the two would
+   only make both harder to read. */
 value_list
   : value                     { $$ = $1; }
   | value_list COMMA value    { $$ = std::move($1) + ", " + $3; }
@@ -645,13 +645,6 @@ attr_body
         $$ = std::move($1);
         $$.push_back(nested);
       }
-  ;
-
-// Built as a string rather than a vector: the only consumer needs the joined
-// text, and C++17 has no std::join.
-ident_list
-  : IDENT                  { $$ = $1; }
-  | ident_list COMMA IDENT { $$ = std::move($1) + ", " + $3; }
   ;
 
 /* The contents of a `PortGroup { ... }`: identifier runs and comments, in any

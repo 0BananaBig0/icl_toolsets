@@ -1,0 +1,7 @@
+Module m {
+ScanInPort SI;
+ScanRegister sr[7:0] {
+ScanInSource SI;
+CaptureSource 1'b0;
+}
+}

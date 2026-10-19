@@ -1119,6 +1119,59 @@ large synthetic networks: NE1200P430 carries 1,629 instruments. The 26 files of
 `IJTAG-Ecosystem/Benchmarks` on GitHub overlap with that set but do not contain
 them. So the Advanced category is represented by FlexScan and TrapOrFlap only.
 
+### 5.22 What the invariants cannot see, and the three tests that fix it
+
+The corpus checks two invariants: formatting is idempotent, and stripping all
+whitespace from input and output gives the same string. Both are necessary.
+**Neither is sufficient.** A formatter that put every token on one line, or
+dropped all indentation, satisfies both — it is idempotent, and the whitespace
+comparison still matches. What the invariants cannot see is whether the output
+looks right.
+
+Three tests were added, each for one blind spot:
+
+**Golden files** (`tests/golden/`, 12 cases). Input and expected output stored
+side by side, compared byte for byte. This is what gofmt, clang-format and
+prettier do. `--update` re-records the expectations; that is for after an
+intentional change, and the diff it produces is the thing to review, not a way
+to silence a failure. The cases cover what the invariants are blind to: two
+space indent, blank line collapsing, comments in five positions, star alignment
+and ragged stars, PortGroup with a comment, a wrapped statement, a mux table.
+
+**Mutation fuzzing** (`tests/fuzz.py`, 600 mutants, fixed seed). Mutations are
+derived from real corpus files rather than generated from scratch, so each
+mutant starts from something the grammar accepts — that is where the
+boundaries are. The contract is narrow but absolute: exit 0 or 2, never a
+signal, never an abort; if accepted, both invariants still hold; if rejected,
+the message names a line. A crash would also be a rejection, just an unusable
+one, and it is what makes "rejected with a line number" worth saying. It was
+verified against a binary that raises SIGSEGV on every input, to confirm it
+fails when it should.
+
+**Dead grammar rules now fail the build.** `-Wall -Werror=other` on bison and a
+warning check on flex. The grammar carried a dead `ident_list` — left behind
+when PortGroup was rewritten to accept comments between names — and the
+previous check did not notice, because it only greps for conflicts. flex warns
+on "rule cannot be matched", a scanner rule shadowed by an earlier one. Verified
+by injecting a dead rule and watching the build fail.
+
+### 5.23 Forks and mirrors: the benchmark submodule does not exist
+
+Checked as suggested. `Honza255/benchmarks` — the repository the submodule
+points at — returns **404** from codeload, while the same user's `icl_parser`
+returns 200 from the same host, so the URL form is right and the repository is
+not there. The only fork, `ranaumarnadeem/icl_parser`, was downloaded
+successfully but contains **6** ICL files (fewer than upstream's 8) and none of
+the missing networks. Every mirror tried — ghproxy.com, gh-proxy.com,
+mirror.ghproxy.com, gh.llkk.cc, gitclone.com, ghfast.top — returns a 403 whose
+body is byte-identical to gitlab.com's (`policy_default_denied`, `main-policy`),
+so the block is the egress proxy, not the mirror.
+
+The upstream repository's own `USERGUIDE` settles it: `N17D3`, `N32D6`,
+`N73D14`, `N132D4`, `NE600P150` and `NE1200P430` are each marked **"TO BE
+ADDED"**. They were never published in that repository. It also references
+`E30.icl`, which the repository does not contain.
+
 ## 6. What was verified, and what was not
 
 **Verified**

@@ -1,0 +1,7 @@
+Module m {
+Enum E {
+a = 1;
+b = 2, 3;
+}
+ScanRegister sr { RefEnum E; ResetValue a; }
+}
