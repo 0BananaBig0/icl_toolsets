@@ -37,16 +37,27 @@ def strip_ws(text):
 
 
 def cases(folder):
-    """Sorted (name, text) for every `.icl` file in `folder`."""
+    """Sorted (name, text) for every `.icl` file under `folder`, recursively.
+
+    Recursive, not just the direct children: the benchmark networks live in
+    `pass/benchmarks/`, and a runner that read only the top level would have
+    reported them as passing without ever opening them. Names are relative to
+    `folder` so a failure in a subdirectory is identifiable.
+    """
     path = os.path.join(CASES, folder)
     if not os.path.isdir(path):
         return []
     out = []
-    for name in sorted(os.listdir(path)):
-        if name.endswith('.icl'):
-            with open(os.path.join(path, name), 'r', encoding='utf-8') as f:
-                out.append((name, f.read()))
-    return out
+    for root, dirs, files in os.walk(path):
+        dirs.sort()
+        for name in sorted(files):
+            if not name.endswith('.icl'):
+                continue
+            full = os.path.join(root, name)
+            rel = os.path.relpath(full, path)
+            with open(full, 'r', encoding='utf-8') as f:
+                out.append((rel, f.read()))
+    return sorted(out)
 
 
 def run(binary, path):

@@ -996,6 +996,50 @@ directions are now pinned by cases (`pass/semiwiki_tdr_module.icl`,
 The tutorial's `DataIn sc;` / `DataOut so;` hit the same rule, and are
 exercised where they are legal — inside a block.
 
+### 5.19 The benchmark suite — and a bug in the runner that hid it
+
+`IJTAG-Ecosystem/Benchmarks` is *A Suite of IEEE 1687 Benchmark Networks*, the
+reference set the research community uses. Its GitLab mirror is unreachable
+from here, but the GitHub copy is not, and it carries **26 ICL files** across
+five categories: Basic (BasicSCB, Mingle, TreeFlat, TreeFlat_Ex,
+TreeBalanced, TreeUnbalanced), Classic (a586710, p22810, p34392, p93791,
+q12710, t512505), ITC02, Standard (CAD, Kernel, MultiCoreAccessLink, MultiTAP,
+SOC_DAP), Advanced (FlexScan, TrapOrFlap), plus Instruments.icl,
+NetworkStructs.icl and ScanCell.icl.
+
+All 26 pass — idempotent and character-preserving. FlexScan is 25,492 lines
+and formats in 0.08 s. This is the largest body of real ICL the formatter has
+been checked against, and it is all now in the corpus under
+`tests/cases/pass/benchmarks/`.
+
+**Adding them exposed a bug in the test runner itself.** `cases()` listed only
+the direct children of `pass/`, so the 26 files sat in a subdirectory and were
+never opened — the run reported 151 cases and all green, with the new files
+making no contribution at all. It now walks subdirectories and reports names
+relative to the folder. Verified by dropping a deliberately broken file into
+`benchmarks/` and confirming it is named in the failure, then removing it.
+
+The count is now 177.
+
+Two things worth keeping from reading the benchmark files themselves:
+
+* **They write `BSDLEntity`, where the standard says `BSDL_Entity`.** Both are
+  accepted — `BSDLEntity` as an identifier, `BSDL_Entity` as a keyword. Had it
+  been pinned to the standard spelling, 2 of the 26 files would fail.
+* **34 of the ANTLR grammar's keyword literals are not keywords here** —
+  `Source`, `Port`, `ResetValue`, `InputPort`, `RefEnum`, `Enable` and the
+  rest are plain identifiers. That is deliberate and it is why typos and
+  variant spellings survive, but it has a cost: a genuinely misspelled keyword
+  is not reported. Both directions are pinned by cases.
+
+Spellings found in the benchmarks but in no file of ours — a data register
+sized by a parameter expression, a one-hot group containing a whole data
+register, a mux with two selection signals, an indexed signal as a selector,
+a bare integer as a mux selection, a concatenation with no space after the
+comma, and `&` in a LogicSignal — are collected into
+`pass/benchmark_derived_spellings.icl`, so a regression names the construct
+rather than a 25k-line file.
+
 ## 6. What was verified, and what was not
 
 **Verified**
