@@ -1403,6 +1403,67 @@ reaches only through the scanner. Three observations:
   names the positions where a number can start: after a space, `[`, `'`, `:`,
   `+` or `-`. All six are handled, including `-1` and `'b0`.
 
+### 5.33 The three retargeting repositories hold no ICL
+
+The README's "Repositories associated with IJTAG" list was guessed at first and
+every guess 404'd. Taking the README's *raw* markdown through the API — the
+rendered page shows the link text, not the target — gave the real URLs, and
+they are not where the guesses put them: `abraralaa92/structured_retargeting`,
+`abraralaa92/adaptive_retargeting`, `abraralaa92/Structural_SAT_Retargeting`
+(not bradfordvt), and `mast-opensource` on
+`gricad-gitlab.univ-grenoble-alpes.fr`, not GitHub at all.
+
+All three GitHub ones were downloaded. None contains a `.icl` file. They do not
+parse ICL: they read network descriptions already extracted from it
+(`NW_clauses.txt`, `NW_TDRs.txt`), so ICL parsing happened upstream of them.
+They contribute nothing to a grammar comparison, and nothing was manufactured
+to make them look useful.
+
+mast-opensource and `gitlab.com/IJTAG/` both return 403 through this network,
+mirrors included.
+
+### 5.34 Upstream tests re-pulled: no change
+
+The README shows a newer commit than the copy in hand (Sep 23, 2026, "Fixed
+test icl_syntax_3..."). Re-pulled and compared: the `tests/` tree is identical,
+and all eight `test_icls` files match by content hash. So the answer to "does
+it have a case we do not" is still: no — and it is now re-checked against the
+current commit rather than assumed.
+
+### 5.35 Three grammars now, and one of them is quoting C
+
+With tree-sitter's `grammar.js` there are three independent ICL grammars to
+check against. Its 168 rules were walked the same way the ANTLR ones were.
+
+Every port block crossed with every port item — 26 ports x 10 items, 260
+combinations — passes. That is the tolerance rule working, not a gap in the
+test: any keyword may be an attribute name here, so a disagreement between the
+grammars needs no side to be chosen. The two grammars do disagree, for
+instance, on whether `ResetPort` may have a `Source`; this formatter accepts
+both readings.
+
+Two constructs it accepts are rejected here, and the reason is worth recording:
+
+```
+enum_name           : /[a-zA-Z][a-zA-Z0-9_$]*/
+parameter_reference : /\$[a-zA-Z][a-zA-Z0-9_$]*/
+    // from: https://github.com/tree-sitter/tree-sitter-c/blob/master/grammar.js
+```
+
+The comment is in its own file. Those regexes are copied from the **C**
+grammar, and `$` is a C leftover — not an ICL identifier character. The
+published ANTLR grammar writes `enum_name : SCALAR_ID` and `parameter_ref :
+'$'(SCALAR_ID)`. So `Enum E$x { ... }` and `$a$b` stay rejected, and this is
+not a case of two implementations disagreeing where one has to be picked: one
+of them is quoting a rule from another language.
+
+Its remaining regexes all agree with ours, and each is now pinned by
+`pass/treesitter/regex_boundaries.icl`: the two escape sequences `\\` and
+`\"` and only those; `Period 10` with the unit absent; `Period 1_0ns` with a
+separator; a parameter as a size; an index that is itself an index; `|` in a
+mux selection; `~` on any element of a concatenation; three-segment iProc
+namespaces; `Enable` with one signal or a list.
+
 ## 6. What was verified, and what was not
 
 **Verified**
