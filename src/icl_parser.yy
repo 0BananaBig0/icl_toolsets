@@ -460,6 +460,13 @@ attr_value
      namespace-qualified name and iProc arguments follow the keyword with
      nothing between them. */
   | attr_value value_no_lead_op         { $$ = std::move($1) + " " + $2; }
+  /* A binary operator inside an attribute value. `signal : (number |
+     reg_port_signal_id | hier_port)` and `number : ... | integer_expr`, so
+     `Source 1 + 1;` is reachable in the published grammar. Costs nothing now
+     that the left side of an assignment is `postfix`: `value_no_lead_op`
+     cannot start with an operator, so `a + b` has one reading only. */
+  | attr_value OPERATOR value_no_lead_op
+      { $$ = std::move($1) + " " + $2 + " " + $3; }
   ;
 
 value_no_lead_op
@@ -576,7 +583,13 @@ attr_item
      already covers `datain`, `datain[5:0]` and `a.b.c`. Keeping them as
      separate productions left bison unable to decide, at the `[`, whether it
      was a range on the name or an index in the expression. */
-  | attr_name value EQUALS value_list SEMICOLON
+  /* `postfix`, not `value`. As the left side of an assignment only a name, a
+     range or a hierarchical name ever appears (`InputPort datain[5:0] = ...`),
+     and narrowing it here is what lets an attribute *value* contain a binary
+     operator: with `value` on both sides the parser could not decide, at
+     `name postfix` with an operator ahead, whether it was reducing the left
+     side of an assignment or the first operand of an expression. */
+  | attr_name postfix EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " = " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
   /* The block form of an instance, reachable here too: the published grammar
@@ -586,7 +599,13 @@ attr_item
      genuinely ambiguous here against `attr_name attr_value ';'` once attribute
      values may be space-separated — a real shift/reduce conflict, not a
      stylistic objection. */
-  | instance_block
+  /* `instance_item`, not `instance_block`: an instance without a body —
+     `Instance i Of M;` — is one of the two forms the published grammar gives
+     (the other being `{ ... }`), and oneHotDataGroup_item admits an
+     instance_def. Referencing only the braced rule meant the semicolon form
+     worked at module level and failed inside a block, which is the same
+     asymmetry this shared rule exists to prevent. */
+  | instance_item
       { $$ = $1; }
 
   /* A *named* nested block. IEEE 1687's formal syntax requires it for `Chain`:

@@ -1271,6 +1271,51 @@ fall out of sync again. So instead both are treated like every other keyword —
 one uniform rule — and `std_tap_names_as_attribute_names.icl` pins the uniform
 treatment. The file looks odd on purpose, and says why.
 
+### 5.28 Matching ability: two constructs the reference grammar reaches and we did not
+
+Keyword coverage answers "which words do we know". It does not answer "which
+inputs can we match". Walking the g4 rules one at a time and asking what each
+can match — rather than asking whether we support a keyword — found two
+constructs with no way through our grammar at all.
+
+**1. An integer expression as a signal.** `signal : (number |
+reg_port_signal_id | hier_port)` and `number : unsized_number | sized_number |
+integer_expr`, so `Source 1 + 1;` is reachable. It was rejected: binary
+operators were allowed to the right of `=` but not inside an attribute value.
+
+The fix was not to add the operator. Adding `attr_value OPERATOR
+value_no_lead_op` alone produced a reduce/reduce conflict, and bison's
+counterexample named it: at `attr_name postfix <operator>` it could not decide
+whether it was reducing the left side of an assignment or the first operand of
+an expression. Both were `value`.
+
+So the left side of an assignment was narrowed from `value` to `postfix`. Only
+a name, a range or a hierarchical name ever appears there —
+`InputPort datain[5:0] = toplevel_datain[15:10];` is the widest real form — so
+the narrowing costs nothing, and it removes the ambiguity at its source. The
+operator then adds no conflicts.
+
+**2. An instance without a body, inside a block.** `oneHotDataGroup_item :
+instance_def | dataRegister_def | oneHotDataGroup_portSource`, and
+`instance_def` has two bodies, `(';' | ('{' instance_item* '}'))`. The
+semicolon form worked at module level and failed inside a block, because the
+shared attribute list referenced only the braced rule.
+
+Referencing `instance_item` instead of `instance_block` fixes it. The comment
+on that rule previously claimed the `;` form was "genuinely ambiguous here" —
+it is not, once attribute values are what they now are; it was merely not
+referenced. The comment is corrected.
+
+Both are pinned by `upstream/matching_ability_gaps.icl`.
+
+### 5.29 The eight upstream ICL files are byte-identical
+
+Verified by content hash rather than by filename: all eight files from
+`Honza255/icl_parser/tests/test_icls/` — including three under
+`benchmarks_conv/ICL/` — are in the corpus unchanged, not reflowed. This is
+the same check that caught the misattributed P2654 files (§5.25), and it is
+the reason new upstream files are copied rather than retyped.
+
 ## 6. What was verified, and what was not
 
 **Verified**

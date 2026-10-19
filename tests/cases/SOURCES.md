@@ -74,7 +74,7 @@ Real tool output supplied by the user (Tessent Shell 2024.2, and two merged file
 
 ## pass/upstream — Honza255/icl_parser — an ICL parser built on an ANTLR grammar
 
-Its eight test ICL files, plus the number literal spellings that its test_icl_number.py feeds to IclNumber, transcribed into how they look in a file. Instruments.icl carries code from IEEE 1687-2014 Appendix E.
+Its eight test ICL files (byte-identical, verified by hash) and the number literal spellings its test_icl_number.py feeds to IclNumber, transcribed into how they look in a file. Instruments.icl carries code from IEEE 1687-2014 Appendix E. Also matching_ability_gaps.icl: two constructs reachable through the reference grammar that this formatter could not match at all.
 
 
 | file | constructs it exercises |
@@ -87,9 +87,10 @@ Its eight test ICL files, plus the number literal spellings that its test_icl_nu
 | `ijtag_test_icl_syntax_5.icl` | Parameter, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
 | `ijtag_test_icl_syntax_6.icl` | Parameter, Module, ScanInPort, ScanOutPort, ShiftEnPort, CaptureEnPort, UpdateEnPort, SelectPort, ResetPort… |
 | `ijtag_test_icl_syntax_7.icl` | Module, Instance, InputPort, ScanInPort, ScanOutPort, TCKPort, ToShiftEnPort, ToCaptureEnPort, ToUpdateEnPort… |
+| `matching_ability_gaps.icl` | Module, Instance, InputPort, ScanOutPort, DataRegister, OneHotDataGroup, Port, Source, AddressValue |
 | `number_literals_from_upstream.icl` | Attribute, Module, ScanRegister, ScanInSource, CaptureSource, ResetValue, DefaultLoadValue |
 
-9 files.
+10 files.
 
 ## pass/p2654 — bradfordvt/P2654Simulations — IEEE P2654 modelling work
 
