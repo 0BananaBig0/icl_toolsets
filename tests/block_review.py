@@ -61,6 +61,12 @@ def run(binary, source):
 def blocks():
     b = []
 
+    # `TOP` separates a top-level statement from the module that follows it.
+    # `chr(10)` rather than an inline "\n": an escaped newline written inside
+    # a case string is easy to misread as part of the case, and a real
+    # newline in the source breaks the literal outright.
+    TOP = chr(10)
+
     # ---- module ----
     # module_def : 'Module' module_name '{' module_item* '}'
     # `module_item` has eighteen alternatives in the published grammar, and
@@ -667,6 +673,64 @@ def blocks():
         'Module m { Alias a = i1.i2.b; }',
         'Module m { ScanRegister sr { ScanInSource a; } }',
         'Module m { ScanRegister sr { ScanInSource i1.a; } }',
+    ]))
+
+    # ---- the name families ----
+    # Which names may carry a subscript is not uniform, and the rules differ
+    # by one character:
+    #
+    #   port_name     : SCALAR_ID | vector_id ;   <- may
+    #   register_name : SCALAR_ID | vector_id ;   <- may
+    #   reg_port_signal_id : SCALAR_ID | vector_id ;  <- may
+    #   instance_name : SCALAR_ID ;               <- may NOT
+    #   module_name   : SCALAR_ID ;               <- may NOT
+    #
+    # So `Instance i[3:0] Of M;` is not legal, even though
+    # `ScanRegister sr[3:0]` sitting two lines below it is. The rejection is
+    # cased in tests/cases/fail/ours/ as well as here, because widening
+    # instance_name to match its neighbours would cost nothing at the grammar
+    # level and would be a silent change to what the tool accepts.
+    #
+    # `hier_port : (instance_name '.')+ port_name` needs at least one dot,
+    # while `hier_data_signal : (instance_name '.')*` needs none — which is
+    # why `Alias a = b;` is legal with no hierarchy at all.
+    b.append(('names', [
+        'Module m { Instance i Of M; }',
+        'Module m { ScanInPort si[3:0]; }',
+        'Module m { ScanRegister sr[3:0] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[$W] { ScanInSource si; } }',
+        "Module m { ScanRegister sr { ResetValue $W'd5; } }",
+        # alias_name and the four shapes of its right-hand side
+        'Module m { Alias a = b; }',
+        'Module m { Alias a[3:0] = b[3:0]; }',
+        'Module m { Alias a = b, c; }',
+        'Module m { Alias a = i.b; }',
+        'Module m { Alias a = i1.i2.i3.b; }',
+        'Module m { Alias a = i.b[3:0]; }',
+        # parameter_override : parameter_def — an Instance body may redefine
+        # a parameter of the module it instantiates.
+        'Module m { Instance i Of M { Parameter W = 8; } }',
+        'Module m { Instance i Of M { Parameter W = "s"; } }',
+        'Module m { Instance i Of M { InputPort a = b; } }',
+        'Module m { Instance i Of M { AddressValue 5; } }',
+        'Module m { Instance i Of M { Attribute a = 1; } }',
+        'Module m { Instance i Of M { AllowBroadcastOnScanInterface s; } }',
+        'Module m { Instance i Of M { } }',
+        # defaultLoad_def : 'DefaultLoadValue' concat_number ';' — a list.
+        'Module m { ScanRegister sr { DefaultLoadValue 0; } }',
+        'Module m { ScanRegister sr { DefaultLoadValue 1, 0; } }',
+        "Module m { ScanRegister sr { DefaultLoadValue 4'b1010; } }",
+        # nameSpace_def / useNameSpace_def — the name is optional on both,
+        # and UseNameSpace is a module item as well as a top-level one.
+        'NameSpace ns;' + TOP + 'Module m { ScanInPort si; }',
+        'NameSpace;' + TOP + 'Module m { ScanInPort si; }',
+        'UseNameSpace ns;' + TOP + 'Module m { ScanInPort si; }',
+        'UseNameSpace;' + TOP + 'Module m { ScanInPort si; }',
+        'Module m { UseNameSpace ns; }',
+        'Module m { UseNameSpace; }',
+        # A vector or an index as a signal reference.
+        'Module m { ScanOutPort so { Source sr[3:0]; } }',
+        'Module m { ScanOutPort so { Source sr[0]; } }',
     ]))
 
     # ---- the attribute machinery ----

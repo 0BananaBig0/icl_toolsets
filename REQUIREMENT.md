@@ -2577,6 +2577,53 @@ Moving it exposed a bug in the move: `CODEGRAPH_DIR` was first defined
 thankfully, rather than writing somewhere unintended. It does not depend on
 how the parser was built, so it now sits outside the conditional.
 
+### 5.75 The reference repo ships two generated parsers, and one is stale
+
+`src/` contains **two** ANTLR output directories:
+
+```
+src/icl_parser/iclParser.py   16212 lines   <- imported by every module
+src/parser/iclParser.py       15945 lines   <- imported by nothing
+```
+
+Diffing their `.interp` files shows the second is generated from an **older**
+grammar: it lacks `unknown_signal` and `concat_unknown_signal` — exactly the
+two rules by which `inputPort_source` was later widened (§5.63). So the
+repository holds three snapshots of the same grammar: `src/icl_parser/`
+(current), `src/parser/` (one change behind), and the two forks (two behind,
+§5.63).
+
+This matters only as a hazard: `src/parser/` is dead code that looks
+authoritative. Every comparison in this document reads `src/icl_parser/icl.g4`
+and `src/icl_parser/iclParser.py`, and says so. Had the older copy been read
+instead, `InputPort` would have looked narrower than it is, and the difference
+would have been reported as a gap in this tool rather than as a stale artefact
+upstream.
+
+### 5.76 Which names may carry a subscript is not uniform
+
+```
+port_name           : SCALAR_ID | vector_id ;   <- may
+register_name       : SCALAR_ID | vector_id ;   <- may
+reg_port_signal_id  : SCALAR_ID | vector_id ;   <- may
+instance_name       : SCALAR_ID ;               <- may NOT
+module_name         : SCALAR_ID ;               <- may NOT
+```
+
+So `ScanRegister sr[3:0]` is legal and `Instance i[3:0] Of M;` is not — two
+lines apart in the same module, looking like the same kind of declaration.
+Widening `instance_name` would cost nothing at the grammar level, which is
+exactly why the rejection is pinned in `fail/ours/` rather than left to be
+"fixed" later. This pairs with §5.69: `module_name` is narrow for the same
+reason, and `ref_module_name` in an iProc reference is wide.
+
+Also cased: `parameter_override : parameter_def`, so an Instance body may
+redefine a parameter of the module it instantiates; `defaultLoad_def` taking a
+**concat list** rather than a single number; `hier_port` needing at least one
+dot while `hier_data_signal` needs none, which is why `Alias a = b;` is legal;
+and `NameSpace` / `UseNameSpace` with the name **omitted** on both, at top
+level and inside a module.
+
 ## 6. What was verified, and what was not
 
 **Verified**
