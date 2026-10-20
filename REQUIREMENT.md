@@ -1948,6 +1948,73 @@ The README's first "Repositories associated with IJTAG" entry — the Library of
 Reconfigurable Scan Network Designs — is still unreachable (gitlab.com/IJTAG,
 403), and searching GitHub finds no copy of it.
 
+### 5.54 Two hundred lines of grammar here have no counterpart, and should not
+
+The reference repository ships **two** grammars:
+
+```
+src/icl_parser/icl.g4   440 lines
+src/pdl_parser/pdl.g4   210 lines
+```
+
+PDL is the other half of IEEE 1687 — the language the `iProc` callbacks are
+written in — and it is a separate file type. So 210 lines of that grammar
+have no counterpart here at all. Unlike every other gap in these notes, this
+one is not something to close: a PDL file is not an ICL file, and this tool
+formats ICL.
+
+Worth recording anyway, for two reasons.
+
+**It is not finished upstream either.** Issue #4, *"Compile the bundled PDL
+grammar into a real Python parser"*, is still open — the grammar is present
+but never compiled, so PDL is as much a stub there as it is here.
+
+**Their lexers sit side by side and share a lot**, which makes the
+differences a test of whether PDL has leaked into the ICL scanner:
+
+| | PDL | ICL | here |
+|---|---|---|---|
+| comment | `'#' ...` | `//` and `/* */` | `#` rejected — correct |
+| numbers | `0x10`, `0b10` | `8'h10`, `4'b0011` | see below |
+| statement end | `eoc : SEMICOLON \| NL` | `;` only | newline rejected — correct |
+| iScan literal | `'{' '0x' ... '}'` | — | rejected — correct |
+
+Shared, and identical here: `SCALAR_ID`, `ARGUMENT_REF : '$' SCALAR_ID`, and
+`TSUFFIX : 's'|'ms'|'us'|'ns'|'ps'|'fs'|'as'`.
+
+Three of the four differences are pinned by
+`fail/upstream/pdl_hash_comment.icl` and the notes in
+`pass/upstream/pdl_shared_lexer.icl`. The fourth is the interesting one:
+
+```
+ResetValue 0x10;   →   ResetValue 0 x10;
+```
+
+`0x10` is not ICL — there is no `0x` form. It is accepted anyway and rendered
+as two values, because the scanner cuts it into NUMBER then IDENT and the
+space-separated value list takes both. Characters are conserved and the
+output is idempotent, so no invariant catches it; only comparing against the
+PDL lexer shows that the input was wrong to begin with.
+
+It stays permissive on purpose. Tightening `NUMBER IDENT` would also reject
+`Period 10 ns;` with the space in it, which real files write and which is
+accepted today. That trade is recorded rather than resolved, because the
+choice depends on which input is more likely in a file nobody has produced
+yet.
+
+### 5.55 Issues and pull requests, as a source
+
+The repository's issues were not looked at in earlier rounds — only its files.
+Four of them, and one changes a conclusion:
+
+- **#4 (open)** — the bundled PDL grammar is never compiled. See §5.54.
+- **#1 (closed)** — *"Fix retargeting-graph crash on width>1 scan registers."*
+  Their bug, not ours, but it names an input shape worth checking: a scan
+  register wider than one bit. `ScanRegister sr[7:0]`, `sr[1:0]`, `sr[31:0]`
+  and a `ScanMux` selected by `s[1:0]` all pass, idempotent and
+  character-preserving.
+- **#2, #3** — internal to their Python, no ICL bearing.
+
 ## 6. What was verified, and what was not
 
 **Verified**

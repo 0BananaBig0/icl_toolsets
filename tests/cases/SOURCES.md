@@ -351,3 +351,12 @@ controller and SIB — hand-written, and notably containing no Enum, Alias,
 Attribute or AccessLink), 1 from `du2693742095/IJTAG_extension` (mostly
 commented-out modules, which the formatter must reproduce byte for byte).
 See REQUIREMENT.md §5.53.
+
+## A note on PDL
+
+The reference repository ships `pdl.g4` (210 lines) alongside `icl.g4`. PDL is
+the other half of IEEE 1687 and a separate file type, so this corpus has no
+PDL cases and this tool has no PDL support — see REQUIREMENT.md §5.54. What is
+covered is the boundary: `fail/upstream/pdl_hash_comment.icl` (`#` is not an
+ICL comment) and `pass/upstream/pdl_shared_lexer.icl` (shared `SCALAR_ID`,
+`$arg`, time units; and the `0x` spelling that ICL does not have).
