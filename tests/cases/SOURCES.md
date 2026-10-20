@@ -343,3 +343,11 @@ named in the upstream README, whose other DFT repository (OpenTestability)
 has no ICL. These are golden fixtures — input plus expected output — and are
 hand-written rather than tool-generated, so they are a kind the corpus did not
 have. See REQUIREMENT.md §5.51.
+
+## published2/ — found by searching, not by following links
+
+4 files: 3 from `sklp-eda-lab/ieee_jtag_ijtag_reference` (a picorv32 TAP
+controller and SIB — hand-written, and notably containing no Enum, Alias,
+Attribute or AccessLink), 1 from `du2693742095/IJTAG_extension` (mostly
+commented-out modules, which the formatter must reproduce byte for byte).
+See REQUIREMENT.md §5.53.

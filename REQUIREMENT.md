@@ -1897,6 +1897,57 @@ character-preserving, filed under `pass/warptap/`.
 The other DFT repository by the same author, `OpenTestability`, has 284 files
 and no ICL.
 
+### 5.52 A PortGroup name may carry a range — it could not
+
+```
+PortGroup g { si[3:0] }      →  was rejected
+ScanInterface { Port si[3:0]; }  →  accepted all along
+```
+
+Both name a port, and a port name may be a vector:
+
+```
+port_name : SCALAR_ID | vector_id ;
+vector_id : SCALAR_ID '[' (index | rangex) ']' ;
+```
+
+The list rule took a bare `IDENT`, so the two forms disagreed about the same
+port. `port_group_item` now takes `IDENT opt_range`; no new conflicts
+(bison runs with `-Werror=other`).
+
+Found by checking the list rule against `port_name`, not by a file that broke —
+the real file writes `PortGroup tap_side {si, so, en}` with bare names only.
+Which is the honest way round: a gap this kind of check can find, and a corpus
+of a hundred files cannot.
+
+### 5.53 Two more ICL sources, from searching rather than following links
+
+Every source so far came from a link in some README. Searching GitHub for
+IJTAG turns up 24 repositories, and two of them ship ICL that none of the
+links led to:
+
+| repository | ICL | note |
+|---|---|---|
+| `sklp-eda-lab/ieee_jtag_ijtag_reference` | 3 | an IEEE JTAG/IJTAG reference around a picorv32 |
+| `du2693742095/IJTAG_extension` | 1 | `test/featureTest.icl` |
+
+The first is hand-written ICL describing a real TAP controller and a real SIB.
+Its silences are as useful as its content: **no `Enum`, no `Alias`, no
+`Attribute`, no `AccessLink`** — three files exercising only the ordinary port
+and register blocks, which is what most hand-written ICL actually looks like.
+Corpus files that all use the exotic blocks would make the common ones look
+better covered than they are tested.
+
+The second is mostly commented out — several complete module definitions
+inside `//`. That shape is a case in itself, and not a gentle one: the
+formatter cannot re-emit commented-out modules from a tree, so it has to
+reproduce them exactly. It does; the file is idempotent and
+character-preserving.
+
+The README's first "Repositories associated with IJTAG" entry — the Library of
+Reconfigurable Scan Network Designs — is still unreachable (gitlab.com/IJTAG,
+403), and searching GitHub finds no copy of it.
+
 ## 6. What was verified, and what was not
 
 **Verified**

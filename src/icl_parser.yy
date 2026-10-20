@@ -721,9 +721,18 @@ attr_body
       }
   ;
 
-/* The contents of a `PortGroup { ... }`: identifier runs and comments, in any
-   order. A comment inside the list used to be a syntax error — `PortGroup p {
-   a, // c\n b }` was rejected — which is wrong on two counts: a comment can
+/* The contents of a `PortGroup { ... }`: port names and comments, in any
+   order.
+
+   A name may carry a range, because a port name may:
+       port_name : SCALAR_ID | vector_id ;
+       vector_id : SCALAR_ID '[' (index | rangex) ']' ;
+   so `PortGroup g { si[3:0] }` names the same port that
+   `ScanInterface si { Port si[3:0]; }` names — and that second form was
+   already accepted. The two disagreed until this was noticed.
+
+   A comment inside the list used to be a syntax error — `PortGroup p { a,
+   // c\n b }` was rejected — which is wrong on two counts: a comment can
    appear wherever whitespace can, and a formatter must not lose content.
 
    Identifier runs stay joined (`a, b`) so the common case still formats on one
@@ -740,8 +749,9 @@ port_group_items
   ;
 
 port_group_item
-  : IDENT
-      { $$ = icl::PortGroupItem::Name($1, SpanOf(@1.begin.line, @1.end.line)); }
+  : IDENT opt_range
+      { $$ = icl::PortGroupItem::Name($1 + $2,
+                                      SpanOf(@1.begin.line, @2.end.line)); }
   | COMMENT
       { $$ = icl::PortGroupItem::Comment(
             driver.AddComment($1, SpanOf(@1.begin.line, @1.end.line)),

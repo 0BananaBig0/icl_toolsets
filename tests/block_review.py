@@ -381,6 +381,11 @@ def blocks():
         'Module m { PortGroup g { a } }',
         'Module m { PortGroup g { a, b } }',
         'Module m { PortGroup g {\n  a, // the first\n  b\n} }',
+        # A name here is a port name, and port_name : SCALAR_ID | vector_id,
+        # so it may carry a range — the same port that
+        # `ScanInterface { Port si[3:0]; }` names.
+        'Module m { PortGroup g { si[3:0] } }',
+        'Module m { PortGroup g { si[3:0], so, en[1] } }',
     ]))
 
     # ---- module-level statements from the standard ----
