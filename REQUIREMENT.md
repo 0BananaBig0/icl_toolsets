@@ -1685,6 +1685,55 @@ file. `Module` inside `Module` is the single exception, and it is structural —
 `pass/ours/arbitrary_nested_blocks.icl` and
 `fail/ours/module_inside_module.icl`.
 
+### 5.46 The block-by-block walk is now a test, not a script
+
+Each round it was redone by hand and then thrown away. `tests/block_review.py`
+does it and runs in `make check`: 388 cases, one group per block, every case a
+whole file, each checked three ways — parses, is idempotent, keeps every
+character. It is separate from the corpus on purpose. The corpus is files
+somebody found; a failure there names a file. These are generated per block
+from the published grammar, so a failure names the construct, and neither
+depends on the other.
+
+Running it the first time, **9 of my own cases were wrong**, and all nine were
+the interesting kind — assertions I had written down as true:
+
+| case I wrote | what the grammar says |
+|---|---|
+| `Enum e {...}` at top level | `iclSource_items : nameSpace_def \| useNameSpace_def \| module_def` |
+| `Alias a { AccessTogether; }` | `alias_def : 'Alias' name '=' signal` — `=` is not optional |
+| `AccessLink ...` at top level | it is a `module_item` |
+| `b.INSTRUCTION.EXTEST { ... }` | `bsdl_instr_name : SCALAR_ID` — no dots |
+| `Parameter p = 4;` at top level | it is a `module_item` |
+| `PortGroup g { a; }` | PortGroup is not in the published grammar; a real file writes `PortGroup tap_side {si, so, en}` — no semicolon |
+| `Attribute a = a::b::c::d;` | `::` is not part of an attribute value |
+
+The formatter was right in all nine. In one of them my own comment asserted
+the opposite of what the grammar says, in writing. The three top-level shapes
+are now pinned as `fail/standard/top_level_{enum,parameter,accesslink}.icl`,
+because inside the block walk they would read as cases that should parse.
+
+### 5.47 Where `::` is accepted, stated as a list
+
+The seventh row above is not a gap either, but it is the least obvious
+behaviour here, so it is now stated plainly rather than left in §5.15:
+
+| position | `a::b` |
+|---|---|
+| `Source`, `CaptureSource`, `ScanInSource` | accepted |
+| `Instance i Of a::b` | accepted, including a leading `::` |
+| iProc `WriteCallBack a::b::c <D>` | accepted, three segments |
+| **`Attribute a = b::c;`** | **rejected** |
+| **`Parameter p = b::c;`** | **rejected** |
+| **`Alias x = b::c;`** | **rejected** |
+
+Both reference grammars put `::` in the iProc namespace rule and nowhere else
+— the ANTLR `signal` rule has no `::` at all, and its `hier_port` uses `.`.
+So this formatter is already more permissive than either where a signal is
+expected, and less permissive in an attribute value. Making the two sides
+alike was tried in §5.15 and cost three conflicts. It is a difference in
+tolerance, not a defect, and it is now written out instead of inferred.
+
 ## 6. What was verified, and what was not
 
 **Verified**
