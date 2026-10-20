@@ -63,12 +63,55 @@ def blocks():
 
     # ---- module ----
     # module_def : 'Module' module_name '{' module_item* '}'
+    # `module_item` has eighteen alternatives in the published grammar, and
+    # module level is the one place most of them can appear. Rather than
+    # assume the set was covered by whichever case happened to use each one,
+    # all eighteen are listed here — one item, one module, so a failure names
+    # the alternative rather than a file that happens to contain it.
+    #
+    #   module_item : useNameSpace_def | port_def | instance_def
+    #               | scanRegister_def | dataRegister_def | logicSignal_def
+    #               | scanMux_def | dataMux_def | clockMux_def
+    #               | oneHotDataGroup_def | oneHotScanGroup_def
+    #               | scanInterface_def | accessLink_def | alias_def
+    #               | enum_def | parameter_def | localParameter_def
+    #               | attribute_def ;
+    #
+    # `Connection` is not among them — it is Tessent's, like PortGroup — but
+    # it is a module item here and is exercised below.
     b.append(('module', [
         'Module m { }',
         'Module m {\n}\n',
         'Module m { Attribute a = 1; }',
         'Module m { ScanInPort si; }',
         'Module m {\n  ScanInPort si;\n  ScanOutPort so;\n}\n',
+        'Module m { UseNameSpace ns; }',
+        'Module m { Instance i Of M; }',
+        'Module m { ScanRegister sr { ScanInSource si; } }',
+        'Module m { DataRegister dr { WriteEnPort we; } }',
+        'Module m { LogicSignal ls { a & b; } }',
+        "Module m { ScanMux mx SelectedBy s { 1'b0 : a; } }",
+        "Module m { DataMux mx SelectedBy s { 1'b0 : a; } }",
+        "Module m { ClockMux mx SelectedBy s { 1'b0 : a; } }",
+        'Module m { OneHotDataGroup g { Port d; } }',
+        'Module m { OneHotScanGroup g { Port a; } }',
+        'Module m { ScanInterface si { Port si; } }',
+        'Module m { AccessLink al Of STD_1149_1_2001 { BSDLEntity b; } }',
+        'Module m { Alias a = b; }',
+        'Module m { Enum E { a = 1; } }',
+        'Module m { Parameter p = 4; }',
+        'Module m { LocalParameter lp = 4; }',
+        # Two whose value or name is optional:
+        #   attribute_def : 'Attribute' attribute_name ('=' attribute_value)? ;
+        #   useNameSpace_def : 'UseNameSpace' namespace_name? ';' ;
+        'Module m { Attribute x; }',
+        'Module m { UseNameSpace; }',
+        # Tessent's, not the standard's: `->` edges.
+        'Module m { Connection { a.SO -> b.SI; } }',
+        'Module m { Connection {\n  // a comment at the head of the body\n'
+        '  a -> b;\n} }',
+        'Module m { Connection { ~a -> b; } }',
+        'Module m { Connection { } }',
     ]))
 
     # ---- namespace ----
@@ -98,6 +141,11 @@ def blocks():
         "Module m { Enum e { a = 1'b0, 1'b1; } }",
         # RefEnum pointing at it, which is how an enum is used
         'Module m {\n  Enum e { a = 1; }\n  DataInPort di { RefEnum e; }\n}\n',
+        # concat_number is `'~'? number (',' '~'? number)*`, so a value may
+        # carry `~` on any element, not only the first.
+        'Module m { Enum e { a = ~1; } }',
+        'Module m { Enum e { a = 1, ~2; } }',
+        'Module m { Enum e {\n  // the values\n  a = 1;\n} }',
     ]))
     # Deliberately absent: `Enum e { a = 1; }` at top level. The published
     # grammar has
@@ -256,6 +304,12 @@ def blocks():
 
     # ---- muxes ----
     # scanMux_def | dataMux_def | clockMux_def
+    # The three mux kinds have identical shapes —
+    #   scanMux_def : 'ScanMux' scanMux_name 'SelectedBy' scanMux_select
+    #                 '{' scanMux_selection+ '}'
+    # — and scanMux_name : reg_port_signal_id, so the name and the select may
+    # each carry a range. Checked per kind rather than once, because the three
+    # used to be three rules and only one of them was ever exercised.
     b.append(('mux', [
         "Module m { ScanMux mx SelectedBy s { 1'b0 : a; } }",
         "Module m { ScanMux mx SelectedBy s { 1'b0 : a; 1'b1 : b; } }",
@@ -267,6 +321,19 @@ def blocks():
         "Module m { ScanMux mx SelectedBy s, t { 1'b0 : a; } }",
         "Module m { ScanMux mx[1:0] SelectedBy s { 1'b0 : a; } }",
         "Module m { ScanMux mx SelectedBy s { 0 : a; } }",
+        # Name and select with a range, for each of the three kinds.
+        "Module m { DataMux mx[1:0] SelectedBy s { 2'b00 : a; } }",
+        "Module m { ClockMux mx[1:0] SelectedBy s { 2'b00 : a; } }",
+        "Module m { DataMux mx SelectedBy s[1:0] { 2'b00 : a; } }",
+        "Module m { ClockMux mx SelectedBy s[1:0] { 2'b00 : a; } }",
+        # concat_number_list : concat_number ('|' concat_number)*
+        "Module m { DataMux mx SelectedBy s { 1'b0 | 2'b01 : a; } }",
+        "Module m { ClockMux mx SelectedBy s { 1'b0 | 2'b01 : a; } }",
+        # `~` on a selection, and an attribute among the selections.
+        "Module m { ScanMux mx SelectedBy s { ~1'b0 : a; } }",
+        "Module m { ScanMux mx SelectedBy s { Attribute x = 1; 1'b0 : a; } }",
+        "Module m { ScanMux mx SelectedBy s {\n  // the table\n  1'b0 : a;\n} }",
+        "Module m { ScanMux mx SelectedBy s {\n  1'b0 : a; // after\n} }",
         # a comment among the selections
         "Module m { ScanMux mx SelectedBy s {\n"
         "  1'b0 : a;\n"
@@ -430,10 +497,43 @@ def blocks():
     ]))
 
     # ---- module-level statements from the standard ----
+    # Keywords are not reserved, so a declared name may be one. Every
+    # declaration position takes decl_name : IDENT | any_keyword now; the
+    # one that does not is an Instance name, where `Instance Of Of M;` would
+    # be genuinely ambiguous (see pass/ours/keyword_as_declared_name.icl).
+    b.append(('keywordName', [
+        'Module Source { }',
+        'Module m { ScanInPort Source; }',
+        'Module m { ScanInPort Port; }',
+        'Module m { ScanOutPort Source { Source si; } }',
+        'Module m { DataInPort Enum[3:0]; }',
+        'Module m { ScanRegister Source { ScanInSource si; } }',
+        'Module m { Enum Source { a = 1; } }',
+        'Module m { Alias Port = si; }',
+        'Module m { Parameter Source = 1; }',
+        'Module m { Attribute Source = 1; }',
+        'Module m { Attribute Port; }',
+        "Module m { ScanMux Port SelectedBy s { 1'b0 : a; } }",
+        'Module m { LogicSignal Port { a & b; } }',
+        'Module m { OneHotScanGroup Port { Port si; } }',
+        'Module m { PortGroup Port { si } }',
+        'Module m { AllowBroadcastOnScanInterface Port; }',
+    ]))
+
     b.append(('moduleStatements', [
         'Module m { AllowBroadcastOnScanInterface si; }',
         'Module m { Reg r { Width 4; } }',
         'Module m { Field f { Width 4; } }',
+        # concat_hier_data_signal : '~'? hier_data_signal (',' '~'?
+        # hier_data_signal)* — the list takes `~` on any element.
+        'Module m { Alias a = ~b; }',
+        'Module m { Alias a = b, ~c; }',
+        # parameter_value : concat_string | concat_number
+        'Module m { Parameter p = "x", "y"; }',
+        'Module m { LocalParameter lp = "x"; }',
+        # attribute_value likewise, and the value is optional.
+        'Module m { Attribute a = "x", "y"; }',
+        'Module m { Attribute a = 1, 2; }',
     ]))
 
     # ---- recursion and nesting ----

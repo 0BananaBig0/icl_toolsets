@@ -234,7 +234,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> port_keyword
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -288,7 +288,7 @@ file
   ;
 
 module_def
-  : MODULE IDENT LBRACE module_item_list RBRACE
+  : MODULE decl_name LBRACE module_item_list RBRACE
       {
         $$ = driver.MakeBlock("Module " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
       }
@@ -303,27 +303,27 @@ module_item_list
 
 module_item
   : COMMENT { $$ = driver.AddComment($1, SpanOf(@1.begin.line, @1.end.line)); }
-  | PARAMETER IDENT EQUALS value_list SEMICOLON
+  | PARAMETER decl_name EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Parameter " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
-  | LOCALPARAMETER IDENT EQUALS value_list SEMICOLON
+  | LOCALPARAMETER decl_name EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("LocalParameter " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
   | ns_stmt { $$ = $1; }
-  | ATTRIBUTE IDENT EQUALS value_list SEMICOLON
+  | ATTRIBUTE decl_name EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + " = " + $4 + ";",
                                  SpanOf(@1.begin.line, @5.end.line)); }
   /* Without a value: the grammar makes `= value` optional —
      attribute_def : 'Attribute' attribute_name ('=' attribute_value)? ';'
      so a bare `Attribute foo;` is legal. */
-  | ATTRIBUTE IDENT SEMICOLON
+  | ATTRIBUTE decl_name SEMICOLON
       { $$ = driver.MakeStatement("Attribute " + $2 + ";",
                                   SpanOf(@1.begin.line, @3.end.line)); }
   /* allowBroadcast_def : 'AllowBroadcastOnScanInterface' scanInterface_name ';'
      Marks a scan interface as allowing broadcast writes. It takes a single
      name, not a list — scanInterface_name is one SCALAR_ID — so there is no
      comma form. */
-  | ALLOWBROADCAST IDENT SEMICOLON
+  | ALLOWBROADCAST decl_name SEMICOLON
       { $$ = driver.MakeStatement("AllowBroadcastOnScanInterface " + $2 + ";",
                                   SpanOf(@1.begin.line, @3.end.line)); }
   /* The alias name may carry a bit range: `Alias mode[1:0] = DI[6:5];` —
@@ -333,10 +333,10 @@ module_item
      hier_data_signal)* — so `Alias MyName1[2:0] = u1.a[2], u2.u3.b[1:0];`
      and `Alias CNTL[42:0] = ADDR[7:0], DATA[31:0] { AccessTogether; }` are
      both standard forms, and both were rejected at the comma. */
-  | ALIAS IDENT opt_range EQUALS value_list SEMICOLON
+  | ALIAS decl_name opt_range EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement("Alias " + $2 + $3 + " = " + $5 + ";",
                                  SpanOf(@1.begin.line, @6.end.line)); }
-  | ALIAS IDENT opt_range EQUALS value_list LBRACE attr_body RBRACE
+  | ALIAS decl_name opt_range EQUALS value_list LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock("Alias " + $2 + $3 + " = " + $5, std::move($7),
                               SpanOf(@1.begin.line, @8.end.line));
@@ -345,7 +345,7 @@ module_item
      all 13 ICL description elements, so a new keyword is one line in the right
      group rather than two new productions — and the groups cannot drift apart,
      because there is only one copy of each shape. */
-  | name_block_kw IDENT LBRACE attr_body RBRACE
+  | name_block_kw decl_name LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
                               SpanOf(@1.begin.line, @5.end.line));
@@ -354,21 +354,21 @@ module_item
      them `reg_port_signal_id`, the same as a register — and only the block
      form. They are not in `range_block_kw` because that group also permits
      `name;`, which these do not have. */
-  | onehot_block_kw IDENT opt_range LBRACE attr_body RBRACE
+  | onehot_block_kw decl_name opt_range LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
                               SpanOf(@1.begin.line, @6.end.line));
       }
-  | range_block_kw IDENT opt_range LBRACE attr_body RBRACE
+  | range_block_kw decl_name opt_range LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
                               SpanOf(@1.begin.line, @6.end.line));
       }
-  | range_block_kw IDENT opt_range SEMICOLON
+  | range_block_kw decl_name opt_range SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
   | port_decl { $$ = $1; }
-  | sel_block_kw IDENT opt_range SELECTEDBY value_list LBRACE mux_body RBRACE
+  | sel_block_kw decl_name opt_range SELECTEDBY value_list LBRACE mux_body RBRACE
       {
         // `SelectedBy` is part of the standard; the selector may be a
         // hierarchical name such as `MyTap.M3_sel`, hence |value_list| rather
@@ -386,7 +386,7 @@ module_item
      Procedures in IEEE P1687", 2012). Tolerated for the same reason `Reg` and
      `Field` are: refusing to format a file we can format is worse than
      accepting one that predates the keyword. */
-  | sel_block_kw IDENT opt_range value LBRACE mux_body RBRACE
+  | sel_block_kw decl_name opt_range value LBRACE mux_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + $3 + " " + $4,
                               std::move($6),
@@ -400,7 +400,7 @@ module_item
      cannot tell at the operator whether `a` is an attribute name followed by
      a unary value or the start of an expression. Rather than leave that to
      bison's rule ordering, LogicSignal gets a body of its own. */
-  | LOGICSIGNAL IDENT opt_range LBRACE logic_body RBRACE
+  | LOGICSIGNAL decl_name opt_range LBRACE logic_body RBRACE
       {
         $$ = driver.MakeBlock("LogicSignal " + $2 + $3, std::move($5),
                               SpanOf(@1.begin.line, @6.end.line));
@@ -410,7 +410,7 @@ module_item
         $$ = driver.MakeBlock("Connection", std::move($3),
                               SpanOf(@1.begin.line, @4.end.line));
       }
-  | PORTGROUP IDENT LBRACE port_group_items RBRACE
+  | PORTGROUP decl_name LBRACE port_group_items RBRACE
       { $$ = driver.MakePortGroup($2, std::move($4),
                                   SpanOf(@1.begin.line, @5.end.line)); }
   ;
@@ -552,12 +552,12 @@ opt_range
   ;
 
 port_decl
-  : port_keyword IDENT opt_range SEMICOLON
+  : port_keyword decl_name opt_range SEMICOLON
       {
         $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line));
       }
-  | port_keyword IDENT opt_range LBRACE attr_body RBRACE
+  | port_keyword decl_name opt_range LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
       }
@@ -749,7 +749,7 @@ port_group_items
   ;
 
 port_group_item
-  : IDENT opt_range
+  : decl_name opt_range
       { $$ = icl::PortGroupItem::Name($1 + $2,
                                       SpanOf(@1.begin.line, @2.end.line)); }
   | COMMENT
@@ -792,6 +792,20 @@ attr_stmt_name
    first version of this rule listed the keywords itself and silently drifted
    out of sync, so `ClockPort clk = x;` inside an Instance was rejected while
    `ClockPort clk;` at module level was accepted. */
+/* A declared name: an identifier, or any ICL keyword.
+   The reference grammar says so in a comment at the top of icl.g4:
+     "ANTLR4 has all keywords reserved. Since ICL keywords are not
+      reserved, an additional rule will be required to properly handle."
+   `attr_name` already accepted keywords inside blocks (§5.32); this brings
+   the *declaration* positions — port names, module names, register names,
+   mux names — to the same rule, so `ScanInPort Source;` is a name like any
+   other rather than a syntax error.
+*/
+decl_name
+  : IDENT        { $$ = $1; }
+  | any_keyword  { $$ = $1; }
+  ;
+
 attr_name
   : IDENT        { $$ = $1; }
   | any_keyword  { $$ = $1; }

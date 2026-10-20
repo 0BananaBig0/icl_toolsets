@@ -2085,6 +2085,62 @@ Two details worth keeping, both of which were wrong the first time:
 117 files (the ones without comments, since reflowing inside a comment is not
 meaningful) pass.
 
+### 5.58 Counting the cases per block, and what the thinnest one hid
+
+Previous rounds asked "does this block have a case?" This one asked "how
+many?" — and the counts are not even:
+
+| category | cases |
+|---|---|
+| connection | 3 |
+| moduleStatements | 3 |
+| module | 5 |
+| portGroup | 5 |
+| namespace | 6 |
+| enum | 7 |
+| mux | 7 |
+| accessLink | 27 |
+
+`module` having five cases is the surprising one, because `module_item` has
+**eighteen** alternatives in the published grammar:
+
+```
+module_item : useNameSpace_def | port_def | instance_def | scanRegister_def
+            | dataRegister_def | logicSignal_def | scanMux_def | dataMux_def
+            | clockMux_def | oneHotDataGroup_def | oneHotScanGroup_def
+            | scanInterface_def | accessLink_def | alias_def | enum_def
+            | parameter_def | localParameter_def | attribute_def ;
+```
+
+All eighteen are now one case each — one item, one module, so a failure names
+the alternative instead of a file that happens to contain it. Two get a second
+case for their optional parts (`Attribute x;`, `UseNameSpace;`). `Connection`
+is not among the eighteen — it is Tessent's, like PortGroup — but is a module
+item here and is exercised too.
+
+Doing the same for the other thin categories found no gaps in the code, only
+gaps in the cases:
+
+- `enum_value : concat_number`, and `concat_number` is
+  `'~'? number (',' '~'? number)*` — so a value may be a list and may carry
+  `~`. Neither was cased.
+- `concat_hier_data_signal` has the same shape, so `Alias a = b, ~c;` was
+  never tried.
+- `parameter_value : concat_string | concat_number` — a *string list* was
+  never tried.
+- All three mux kinds share one shape with `reg_port_signal_id` names, so name
+  and select may each carry a range; only `ScanMux` was ever checked that
+  way, and `|` selections only for `ScanMux`.
+
+**Three cases "failed" and all three were the test's fault.** The recurring
+one: writing `ScanInPort a,b;` to declare two ports, which is not legal
+(`expecting { or [ or ;`). The new one: a hand-written brace count that left
+one `}` too many, so `Connection { ... }` was closed twice. Both were caught
+by re-running the input on its own — the cheapest way to tell a real failure
+from a bad case. This is the fourth round in which a "gap" turned out to be
+the check, which is an argument for keeping the corpus and the generated
+cases separate: a generated case is only evidence if the input was right.
+
 ## 6. What was verified, and what was not
 
 **Verified**
