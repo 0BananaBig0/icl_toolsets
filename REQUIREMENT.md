@@ -2141,6 +2141,62 @@ from a bad case. This is the fourth round in which a "gap" turned out to be
 the check, which is an argument for keeping the corpus and the generated
 cases separate: a generated case is only evidence if the input was right.
 
+### 5.59 The 26-port sweep could not see this: the ports do not share a body
+
+§5.35 swept **26 ports × 4 shapes**, and every one passed. What that sweep
+cannot see is that the ports do *not* share a body. Reading all 56 `*_def`
+rules instead, they fall into three groups:
+
+**1. Thirteen whose body is `attribute_def*` only** — so in the published
+grammar every statement inside must begin with the keyword `Attribute`:
+
+```
+ScanInPort  ShiftEnPort  CaptureEnPort  UpdateEnPort  SelectPort
+TMSPort     ToIRSelectPort  TCKPort  ToTCKPort  TRSTPort
+AddressPort WriteEnPort ReadEnPort
+```
+
+**2. Ports with their own items**, each `attribute_def | <something>`:
+
+| port | besides Attribute |
+|---|---|
+| scanOutPort | source, enable |
+| resetPort | polarity |
+| toResetPort | source, polarity |
+| clockPort | diffPort |
+| toClockPort | source, freqMultiplier, freqDivider, diffInvOf, period |
+| toShiftEnPort, toCaptureEnPort, toUpdateEnPort, toSelectPort, toTMSPort, toTRSTPort | source |
+
+**3. Bodies that are `item+`, not `item*`** — so empty is illegal:
+`toSelectPort`, `toResetPort`, `toClockPort`, `toTRSTPort`.
+
+Here any keyword may be an attribute name (§5.32), so group 1 accepting
+`Source` is deliberate. Whether that is safe is checkable rather than
+arguable: **292 statements live inside those thirteen port bodies across the
+whole corpus, and 289 of them do begin with `Attribute`.** The three that do
+not are ours, testing nested blocks (`ScanInPort { ScanInPort { ... } }`).
+So the strict reading would cost nothing on real files, and the permissive
+one costs nothing either — it is what makes arbitrary nesting work.
+
+Group 3 is the opposite direction: empty bodies are illegal there and
+accepted here, on the same reasoning as `Enum E { }` (§5.45).
+
+Two spellings worth recording, because the rule names and the keywords
+disagree:
+
+```
+toTmsPort_def  : 'ToTMSPort'  ...    rule says Tms, keyword says TMS
+toTrstPort_def : 'ToTRSTPort' ...    rule says Trst, keyword says TRST
+```
+
+Copying the rule name gives a keyword that does not exist. Two cases did
+exactly that and were rejected; they are corrected, with a comment saying
+why, rather than silently fixed.
+
+`logicSignal_def` has only the braced form —
+`'LogicSignal' logicSignal_name '{' logic_expr ';' '}'` — so `LogicSignal ls;`
+is not legal, and is rejected here too.
+
 ## 6. What was verified, and what was not
 
 **Verified**

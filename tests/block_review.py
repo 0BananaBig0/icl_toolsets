@@ -451,6 +451,78 @@ def blocks():
     # They belong to ToClockPort alone — no other port block has a frequency
     # or a differential item — so they sat outside the 26-port sweep above,
     # which covers only what every port shares.
+    # The 26-port sweep checked what every port shares — name, range, `;`,
+    # `{}`. What it could not see is that the ports do *not* share a body.
+    # There are three groups:
+    #
+    #   1. thirteen whose body is `attribute_def*` only, so in the published
+    #      grammar every statement inside must begin with `Attribute`:
+    #        ScanInPort ShiftEnPort CaptureEnPort UpdateEnPort SelectPort
+    #        TMSPort ToIRSelectPort TCKPort ToTCKPort TRSTPort
+    #        AddressPort WriteEnPort ReadEnPort
+    #   2. ports with their own items, each `attribute_def | <something>`:
+    #        scanOutPort  source, enable
+    #        resetPort    polarity        toResetPort  source, polarity
+    #        clockPort    diffPort        toClockPort  six items (below)
+    #        toShiftEnPort / toCaptureEnPort / toUpdateEnPort / toSelectPort
+    #        / toTmsPort / toTrstPort   source
+    #   3. bodies that are `item+` rather than `item*`, so empty is illegal:
+    #        toSelectPort toResetPort toClockPort toTrstPort
+    #
+    # Here anything may be an attribute name (§5.32), so group 1 accepting
+    # `Source` is deliberate — and the corpus backs it: 292 statements inside
+    # those thirteen port bodies, 289 of them do begin with `Attribute`. The
+    # three that do not are ours, testing nested blocks.
+    b.append(('portItems', [
+        # Group 1: in the published grammar these admit Attribute only.
+        'Module m { ScanInPort si { Attribute x = 1; } }',
+        'Module m { TCKPort tck { Attribute x = 1; } }',
+        'Module m { TRSTPort trst { Attribute x = 1; } }',
+        'Module m { WriteEnPort we { Attribute x = 1; } }',
+        'Module m { ReadEnPort re { Attribute x = 1; } }',
+        'Module m { AddressPort ap { Attribute x = 1; } }',
+        'Module m { ToIRSelectPort irs { Attribute x = 1; } }',
+        # Group 2: their own items.
+        'Module m { ScanOutPort so { Source a; } }',
+        'Module m { ScanOutPort so { Enable a; } }',
+        'Module m { ScanOutPort so { Source a; Enable b; } }',
+        # resetPort_polarity : 'ActivePolarity' ('0' | '1') — a bare 0 or 1,
+        # not a sized number.
+        'Module m { ResetPort rp { ActivePolarity 0; } }',
+        'Module m { ResetPort rp { ActivePolarity 1; } }',
+        'Module m { ToResetPort trp { ActivePolarity 1; Source s; } }',
+        # clockPort_item : attribute_def | clockPort_diffPort, and
+        # clockPort_diffPort is 'DifferentialInvOf' concat_clock_signal —
+        # the same shape as ToClockPort's, so it takes a list.
+        'Module m { ClockPort cp { DifferentialInvOf c; } }',
+        'Module m { ClockPort cp { DifferentialInvOf c, d; } }',
+        'Module m { ToSelectPort tsp { Source s; } }',
+        # The rule names say toTmsPort / toTrstPort, but the keywords are
+        # 'ToTMSPort' and 'ToTRSTPort' — the acronym is upper case in the
+        # spelling and lower case in the rule name. Writing the rule name
+        # instead of the spelling is the easiest mistake to make here, and
+        # the two files that failed for exactly that reason are why these
+        # are spelled out.
+        'Module m { ToTMSPort tms { Source s; } }',
+        'Module m { ToTRSTPort trst { Source s; } }',
+        'Module m { ToShiftEnPort se { Source s; } }',
+        'Module m { ToCaptureEnPort ce { Source s; } }',
+        'Module m { ToUpdateEnPort ue { Source s; } }',
+        # Group 3: `item+`, so empty is illegal in the published grammar.
+        # Accepted here; see §5.59.
+        'Module m { ToSelectPort tsp { } }',
+        'Module m { ToResetPort trp { } }',
+        'Module m { ToTRSTPort trst { } }',
+        # scanInterfacePort_def : 'Port' reg_port_signal_id ';' — no body
+        # form, and the name may carry a range.
+        'Module m { ScanInterface si { Port a; } }',
+        'Module m { ScanInterface si { Port a[3:0]; } }',
+        # logicSignal_def has only the braced form:
+        #   'LogicSignal' logicSignal_name '{' logic_expr ';' '}'
+        # so `LogicSignal ls;` is not legal, and is rejected.
+        'Module m { LogicSignal ls { a & b; } }',
+    ]))
+
     b.append(('toClockPortItems', [
         'Module m { ToClockPort c { FreqMultiplier 4; } }',
         'Module m { ToClockPort c { FreqDivider 2; } }',
