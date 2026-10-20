@@ -2490,6 +2490,19 @@ the four DataRegister types each reached through their own item. Note that
 `WriteDataSource` takes a **concat list** — the same single-versus-list
 asymmetry already recorded in §5.62, appearing again inside one block.
 
+### 5.70 The delivered tarball contained another tarball
+
+`make dist` wrote its output to the **source root**, so every archive of the
+tree swept it up: the hand-me-down `icl-format.tar.gz` (670 KB) contained
+`icl-format-1.0.0.tar.gz` (375 KB) — more than half its size was a build
+product of itself.
+
+Fixed at the cause rather than by excluding it at archive time: the dist
+output now goes to `build/dist/`, which is both excluded from source archives
+and removed by `distclean`. `distclean` also removes a stray
+`$(DIST_DIR).tar.gz` left by older runs. Re-verified that the relocated
+tarball still builds and self-checks with bison/flex replaced by stubs.
+
 ## 6. What was verified, and what was not
 
 **Verified**

@@ -567,9 +567,16 @@ $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc \
 # bison 3.0.4) build with nothing but g++. The tarball contains the generated
 # parser and scanner sources plus a stub Makefile that skips the generators.
 DIST_DIR := $(PACKAGE)-$(VERSION)
+# The tarball is a build product, so it goes under build/ rather than next to
+# the sources. It used to land in the source root, where it was then swept up
+# by anything that archived the tree — a hand-me-down tarball containing
+# another tarball, more than half its size. build/ is excluded from source
+# archives and cleaned by `distclean`, so this cannot happen again.
+DIST_OUT := $(BUILD_DIR)/dist
 
 dist: all
 	@rm -rf $(DIST_DIR)
+	@mkdir -p $(DIST_OUT)
 	@mkdir -p $(DIST_DIR)/src $(DIST_DIR)/samples $(DIST_DIR)/tests $(DIST_DIR)/gen
 	cp $(SOURCES) $(DIST_DIR)/src/
 	cp $(SRC_DIR)/*.h $(DIST_DIR)/src/
@@ -585,9 +592,9 @@ dist: all
 	cp tests/*.py tests/*.cc tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
-	tar czf $(DIST_DIR).tar.gz $(DIST_DIR)
+	tar czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
 	@rm -rf $(DIST_DIR)
-	@echo "created $(DIST_DIR).tar.gz (build with only g++: no bison/flex needed)"
+	@echo "created $(DIST_OUT)/$(DIST_DIR).tar.gz (build with only g++: no bison/flex needed)"
 
 version:
 	@echo $(VERSION)
@@ -596,4 +603,4 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 distclean: clean
-	rm -rf $(GEN_DIR)
+	rm -rf $(GEN_DIR) $(DIST_OUT) $(DIST_DIR) $(DIST_DIR).tar.gz
