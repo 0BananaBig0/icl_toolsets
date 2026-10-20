@@ -2197,6 +2197,63 @@ why, rather than silently fixed.
 `'LogicSignal' logicSignal_name '{' logic_expr ';' '}'` — so `LogicSignal ls;`
 is not legal, and is rejected here too.
 
+### 5.60 The integer expression, block by block
+
+`number` is where the grammar is most recursive, and earlier rounds touched it
+only in passing — usually as whatever a range needed. Taking the rule apart:
+
+```
+number            : unsized_number | sized_number | integer_expr ;
+integer_expr      : integer_expr_lvl1 ;
+integer_expr_lvl1 : integer_expr_lvl2 (('+'|'-') integer_expr_lvl1)? ;
+integer_expr_lvl2 : integer_expr_arg (('*'|'/'|'%') integer_expr_lvl2)? ;
+integer_expr_arg  : integer_expr_paren | pos_int | parameter_ref ;
+integer_expr_paren: '(' integer_expr ')' ;
+pos_int           : '0' | '1' | POS_INT ;
+parameter_ref     : '$' SCALAR_ID ;
+index             : integer_expr ;
+rangex            : index ':' index ;
+```
+
+Three things fall out of reading it rather than sampling it:
+
+**The operand set is narrow.** `integer_expr_arg` has no `unsized_number`
+and no `sized_number` — only a parenthesised expression, a positive integer,
+or `$param`. So `1'b0 + 1` is not legal, and there is no unary minus, so `-1`
+is not legal either. **Both are accepted here.** 33 cases cover the rule;
+both shapes are the deliberate-extra-shape kind, not an oversight.
+
+**Both levels recurse on themselves, not on each other.** `1 - 2 - 3` groups
+as `1 - (2 - 3)`, which is not how subtraction associates. That is the
+published grammar's choice, reproduced here rather than corrected — a
+formatter emits the text it was given, so the grouping never surfaces.
+
+**`index` and `rangex` are full expressions**, which is the only reason
+`sr[$W - 1:0]` parses at all, and why both ends of a range take one.
+
+Depth: 300 `+` terms and 200 nested parentheses, both fine at ~4 ms.
+
+### 5.61 A correction: "index chains to 50 levels" was misleading
+
+An earlier round reported that index chains were accepted to 50 levels. That
+is true only of one of two different things, and the report did not say
+which:
+
+| form | legal? | here |
+|---|---|---|
+| `sr[0][1]` — two subscripts on one name | no: `vector_id : SCALAR_ID '[' (index \| rangex) ']'` | **rejected** |
+| `sr[a[0][1][2]]` — subscripts inside the one index | no, but `index : integer_expr` and integer_expr takes a name with postfixes | **accepted** |
+
+Only the second was ever measured. `sr[0][1]` is rejected, and now has a
+`fail/` case so it stays that way — the risk being that someone reads the
+earlier claim and "fixes" the rejection.
+
+The form that *is* genuinely rejected and should be: `(1+1)'d3`, because
+`size : pos_int | '$' SCALAR_ID` and not an expression. Also now a `fail/`
+case, next to the two forms `size` does allow.
+
+Both new fail cases are in `fail/ours/`, and the regression picks them up.
+
 ## 6. What was verified, and what was not
 
 **Verified**

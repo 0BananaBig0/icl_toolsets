@@ -610,6 +610,86 @@ def blocks():
 
     # ---- recursion and nesting ----
     # The recursive rules, checked at depth: nesting costs heap, not C stack.
+    # ---- integer expressions ----
+    # The expression grammar in the published grammar is two levels, both
+    # right-recursive, and the operand set is deliberately narrow:
+    #
+    #   integer_expr_lvl1 : integer_expr_lvl2 (('+'|'-') integer_expr_lvl1)? ;
+    #   integer_expr_lvl2 : integer_expr_arg (('*'|'/'|'%') integer_expr_lvl2)? ;
+    #   integer_expr_arg  : integer_expr_paren | pos_int | parameter_ref ;
+    #   integer_expr_paren: '(' integer_expr ')' ;
+    #   pos_int           : '0' | '1' | POS_INT ;
+    #   parameter_ref     : '$' SCALAR_ID ;
+    #
+    # Two consequences that are easy to miss:
+    #
+    # - `integer_expr_arg` does **not** include unsized_number or
+    #   sized_number, so `1'b0 + 1` is not legal, and there is no unary minus,
+    #   so `-1` is not legal either. Both are accepted here (see below).
+    # - Both levels recurse on themselves, not on each other, so
+    #   `1 - 2 - 3` groups as `1 - (2 - 3)`. A formatter reproduces the text
+    #   either way, so this matters only as a record of what the grammar does.
+    #
+    # `index : integer_expr` and `rangex : index ':' index`, so both ends of
+    # a range are full expressions — which is what makes `sr[$W - 1:0]` legal.
+    b.append(('integerExpr', [
+        'Module m { Parameter p = 1 + 2; }',
+        'Module m { Parameter p = 5 - 3; }',
+        'Module m { Parameter p = 1 + 2 + 3; }',
+        'Module m { Parameter p = 9 - 3 - 1; }',
+        'Module m { Parameter p = 1 + 2 - 3; }',
+        'Module m { Parameter p = 2 * 3; }',
+        'Module m { Parameter p = 6 / 2; }',
+        'Module m { Parameter p = 7 % 2; }',
+        'Module m { Parameter p = 2 * 3 * 4; }',
+        # lvl2 binds tighter than lvl1, in both orders.
+        'Module m { Parameter p = 1 + 2 * 3; }',
+        'Module m { Parameter p = 2 * 3 + 1; }',
+        'Module m { Parameter p = (1 + 2) * 3; }',
+        'Module m { Parameter p = ((1 + 2)); }',
+        'Module m { Parameter p = ((((1)))); }',
+        # parameter_ref as an operand, which is the point of the whole rule.
+        'Module m { Parameter p = $W + 1; }',
+        'Module m { Parameter p = $W * $H; }',
+        'Module m { Parameter p = ($W - 1); }',
+        'Module m { Parameter p = 0 + 1; }',
+        'Module m { Parameter p = 1_000 + 2; }',
+        # index and rangex are full expressions.
+        'Module m { ScanRegister sr[$W - 1:0] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[(1 + 2) * 2:0] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[(3)] { ScanInSource si; } }',
+        # DefaultLoadValue and ResetValue take concat_number, hence an
+        # expression; inside ScanRegister they also take a bare enum symbol,
+        # which the separate defaultLoad_def (used by ScanInterface) does not:
+        #   scanRegister_defaultLoadValue : 'DefaultLoadValue'
+        #                                   (concat_number | enum_symbol) ';' ;
+        #   defaultLoad_def               : 'DefaultLoadValue' concat_number ';' ;
+        'Module m { ScanRegister sr { DefaultLoadValue 1 + 2; } }',
+        'Module m { ScanRegister sr { DefaultLoadValue SYM; } }',
+        'Module m { ScanRegister sr { ResetValue 1 + 2; } }',
+        'Module m { ScanRegister sr { ResetValue SYM; } }',
+        'Module m { ScanInterface si { Port a; DefaultLoadValue 1 + 2; } }',
+        'Module m { ScanRegister sr { Width 4 + 1; } }',
+        # Recursion, at depth: 300 terms and 200 nested parens.
+        'Module m { Parameter p = ' + ' + '.join(['1'] * 300) + '; }',
+        'Module m { Parameter p = ' + '(' * 200 + '1' + ')' * 200 + '; }',
+        # Accepted although the published grammar would not: a unary minus,
+        # and a sized number as an operand. Both are more shapes than the
+        # operand rule allows; §5.60.
+        'Module m { Parameter p = -1; }',
+        "Module m { Parameter p = 1'b0 + 1; }",
+    ]))
+
+    # A vector name has exactly one subscript in the published grammar —
+    # `vector_id : SCALAR_ID '[' (index | rangex) ']'` — so `sr[0][1]` is not
+    # legal, and is rejected here.
+    #
+    # What *is* accepted is a subscript *inside* an index, `sr[a[0][1][2]]`,
+    # because `index : integer_expr` and this implementation's integer_expr
+    # takes a name with postfixes. That asymmetry is worth stating plainly:
+    # an earlier round reported "index chains to 50 levels" as passing, which
+    # was true only of the inner form and gave the wrong impression about
+    # `sr[0][1]`. Both are now cased.
     b.append(('recursion', [
         'Module m { LogicSignal ls { ' + '(' * 50 + 'a' + ')' * 50 + '; } }',
         'Module m { LogicSignal ls { ' + '(' * 100 + 'a' + ')' * 100 + '; } }',
@@ -618,6 +698,9 @@ def blocks():
         'Module m {\n' + '  Reg r0 {\n' * 40 + '  Width 1;\n'
         + '  }\n' * 40 + '}\n',
         'Module m { ScanRegister sr[a[0]]; }',
+        # One subscript on a name; two is not legal (vector_id has one).
+        'Module m { ScanRegister sr[0]; }',
+        # But a subscript inside an index is accepted — see integerExpr above.
         'Module m { ScanRegister sr[a[0][1][2]]; }',
         'Module m { ScanRegister sr[$W - 1:0]; }',
         # `::` chains: accepted where a signal or a module reference is
