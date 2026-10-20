@@ -2503,6 +2503,35 @@ and removed by `distclean`. `distclean` also removes a stray
 `$(DIST_DIR).tar.gz` left by older runs. Re-verified that the relocated
 tarball still builds and self-checks with bison/flex replaced by stubs.
 
+### 5.71 `samples/` was a leftover, and it was duplicated
+
+`samples/` held three ICL files — `keysight_gpio.icl`, `real.icl`,
+`tessent_style.icl` — and **all three are byte-identical to files already in
+`tests/cases/`** (`pass/published/` ×2 and `pass/tessent/` ×1). Nothing in the
+tests, the Makefile, or the docs referenced the directory. It survived from
+when the corpus used to live there; the loader was deleted at the time (§"Left
+over from when the corpus lived in `samples/`") but the directory was not.
+
+Worse, `make dist` did `mkdir -p $(DIST_DIR)/samples` and then never copied
+anything into it — so every tarball carried an **empty `samples/`
+directory**. That is the same shape as §5.19/§5.20/§5.70: create it, report
+success, never fill it.
+
+Deleted, and the `mkdir` removed.
+
+### 5.72 The repository history carried generated build products
+
+Including `.git` in the delivered archive made its size legible: 9.8 MB of
+history for ~330 KB of source, because early commits had added `build/` —
+generated parser/scanner sources (each ~200 KB of bison tables) and `.o`
+files. The archive excluded `build/` from the working tree while the history
+still contained it, which is contradictory.
+
+Purged with `git filter-repo --invert-paths --path build/`, then repacked:
+**9.8 MB → 6.7 MB**, 74 commits preserved, working tree clean, full suite
+re-verified after the rewrite. This rewrites commit hashes; the repository is
+local with no remote, so nothing external refers to the old ones.
+
 ## 6. What was verified, and what was not
 
 **Verified**
