@@ -533,6 +533,7 @@ coccheck: $(LSP_BIN)
 # The corpus in tests/cases/ runs first: it is the cheapest way to see a
 # regression, and a failure there names the file that broke.
 check: all unitcheck
+	@python3 tests/tree_clean_test.py
 	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/golden_test.py --binary $(BIN)
 	@python3 tests/whitespace_test.py --binary $(BIN)
