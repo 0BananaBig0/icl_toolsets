@@ -2015,6 +2015,43 @@ Four of them, and one changes a conclusion:
   character-preserving.
 - **#2, #3** — internal to their Python, no ICL bearing.
 
+### 5.56 A formatter property that four checks missed
+
+There were four checks on the output, and none of them asks the question a
+formatter exists to answer:
+
+| check | what it compares |
+|---|---|
+| corpus | one input, formatted twice (idempotence) |
+| corpus | tokens in against tokens out (character preservation) |
+| golden | one input against one expected output |
+| fuzz | mutated input, only that it does not crash |
+
+A formatter whose indentation keyed off the original line breaks would pass
+all four. So `tests/whitespace_test.py` adds the missing one: **two inputs
+that differ only in whitespace must format to the same thing.** Every corpus
+file is reflowed two ways — all onto one line, and every `{`, `}`, `;` onto
+its own line — and the three must agree.
+
+Blank lines are exempt, and that is a conclusion rather than a convenience.
+The formatter preserves blank lines on purpose (`BlankLinesBetween`, from
+source line numbers, capped by `max_blank_lines`). Compacting a file onto one
+line destroys that information, so comparing blank lines would compare two
+different inputs. Non-blank lines only.
+
+Two details worth keeping, both of which were wrong the first time:
+
+- Reflowing has to respect strings and comments. The first version split
+  `"{cell_0/A}"` across lines and turned it into an unterminated string, then
+  reported the two files containing such strings as failures. The bug was in
+  the check.
+- The check was verified by injection: making indentation depend on
+  `source_line % 2` — exactly the failure mode it is for — it reported 117
+  files and exited 1. Reverted, exit 0.
+
+117 files (the ones without comments, since reflowing inside a comment is not
+meaningful) pass.
+
 ## 6. What was verified, and what was not
 
 **Verified**

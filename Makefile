@@ -533,6 +533,7 @@ coccheck: $(LSP_BIN)
 check: all unitcheck
 	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/golden_test.py --binary $(BIN)
+	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)
 	@python3 tests/block_review.py --binary $(BIN)
 	@python3 tests/run_tests.py --binary $(BIN)
