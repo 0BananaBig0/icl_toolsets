@@ -1604,6 +1604,87 @@ be in progress", and it has 6 stars and 24 commits. It is the most complete
 ICL grammar publicly available and it has been worth checking against, but it
 is not a standard, and §5.41 shows one way that shows.
 
+### 5.43 The benchmark files the upstream tests need are the ones we have
+
+`tests/config.py` was not read in earlier rounds; the tests were compared by
+the eight checked-in files only. It turns out to hold the full list of ICL the
+test suite loads, and nearly all of it is the benchmark submodule:
+
+```
+COMMON_ICL_BLOCKS = ["test_icls/benchmarks/ICL/EmptyModule.icl",
+                     "test_icls/benchmarks/ICL/Instruments.icl",
+                     "test_icls/benchmarks/ICL/NetworkStructs.icl"]
+```
+
+So `test_icl_syntax_1`, `_3` and `_4` — which have no `.icl` of their own in
+the repository — load their input from the submodule, and the submodule is
+empty here. That is why they could not be run.
+
+But 34 benchmark paths are named across the tests, and **26 of them are files
+we already have**, byte-identical: the official `IJTAG-Ecosystem/Benchmarks`
+set. The eight we do not have are unchanged from §5.32 — the six large
+Advanced networks and `Standard/E30.icl` and `Standard/A586710.icl`.
+
+Two things worth noting from the paths themselves. They put `H953.icl` under
+`Basic/TreeBalanced/`, `G1023.icl` under `Basic/TreeFlat_Ex/` and `A586710.icl`
+under `Basic/TreeUnbalanced/`, while the official repository puts all three
+under `ITC02/`. Same files, filed differently: ITC02 is where the circuits came
+from, the Basic directory is what each is used for. And `Standard/E30.icl` is
+named by `config.py` but absent from the official set, which settles §5.33 —
+it is not only the USERGUIDE's dangling reference, the test configuration
+depends on a file the upstream published set does not contain.
+
+### 5.44 "chainScanData" is not ICL syntax
+
+The README's latest commit message reads "chainScanData can have multiple data
+for multiple SI -> SO ports". Read as a grammar change that would be a
+construct to support. It is not one: `chainScanData` is a Python class in
+`src/icl_common.py` holding one `(tdi_port, tdo_port, in_data, exp_data)`
+tuple, and `stepScanData` holds a dict of them keyed by chain name — so one
+retargeting step can drive several scan chains.
+
+The ICL side of the same idea is real, though, and is what the sentence
+implies: a `ScanInterface` may carry more than one named `Chain`, each with its
+own `Port` set. That follows from
+
+```
+scanInterface_item : ... | scanInterfaceChain_def ;
+scanInterfaceChain_def : 'Chain' scanInterfaceChain_name '{'
+                         scanInterfaceChain_item+ '}' ;
+```
+
+and it is why `Chain` takes a name at all — without one the pairs could not be
+told apart. All eight shapes were checked (one pair, several pairs, two chains,
+a chain mixed with direct ports, each of the three items in both places) and
+all pass; they are pinned in `pass/upstream/scaninterface_multiple_si_so_pairs.icl`
+and `pass/standard/scaninterface_chain_items.icl`.
+
+### 5.45 Nested blocks are accepted more widely than the standard allows
+
+Checking the Chain items one by one, a `Chain` inside a `Chain` was expected to
+be rejected — `scanInterfaceChain_item` does not include
+`scanInterfaceChain_def`. It was accepted. So were `Reg` inside `Reg`, `Enum`
+inside `Enum`, and a port block inside a port block.
+
+This is not four decisions. The grammar has one rule for a named block,
+
+```
+attr_name postfix '{' attr_body '}'
+```
+
+and `attr_body` contains the same rule again, so any keyword can open a block
+anywhere a block opens. Rejecting `Chain { Chain {` would take a second,
+Chain-specific copy of `attr_body`, and the two lists would then have to be
+kept in step — which is the failure mode recorded in §5.3 and repeated since.
+
+So the trade is the one already made for `Enum E { }`: accepting a shape the
+standard excludes costs nothing, while rejecting a real file costs the whole
+file. `Module` inside `Module` is the single exception, and it is structural —
+`module_def` appears only in `iclSource_items`, so it is unreachable from
+`attr_body`. Both behaviours are pinned:
+`pass/ours/arbitrary_nested_blocks.icl` and
+`fail/ours/module_inside_module.icl`.
+
 ## 6. What was verified, and what was not
 
 **Verified**
