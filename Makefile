@@ -244,8 +244,10 @@ $(BUILD_DIR):
 
 # ---- code graph ----
 #
-# `make codegraph` refreshes docs/codegraph/. Both inputs are external tools;
-# the point of the target is that the committed artefacts can be reproduced.
+# `make codegraph` regenerates docs/codegraph/ from src/ and tests/. Both
+# inputs are external tools (see below). The output is a build product and is
+# gitignored — it was committed once, and every `make codegraph` then left the
+# tree dirty.
 #
 #   * tests_codegraph.html / .csv — `codegraph` over the Python test helpers.
 #     codegraph (1.2.0) parses with Python's own tokenizer, so it only sees

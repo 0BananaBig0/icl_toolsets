@@ -1,2 +1,26 @@
-build/
-*.tar.gz
+# ---- build products ----
+#
+# Everything below is produced by `make`, by a test run, or by a coverage or
+# packaging step. None of it is hand-written, so none of it belongs in git or
+# in a source archive. Each entry says what makes it.
+build/                # all object files, binaries, and gen/ when PREBUILT=0
+gen/                  # parser/scanner shipped with a `make dist` tarball
+.prebuilt             # the marker that switches the build to ./gen
+*.o
+*.a
+*.gcda                # gcov run data, written by executing an instrumented binary
+*.gcno                # gcov notes, written at instrumented compile time
+*.gcov                # gcov annotated source, written by `gcov`
+*.tar.gz              # `make dist` writes to build/dist/, but older runs
+*.tgz                 #   left one in the source root; ignore both spellings
+*.zip
+
+# `make codegraph` regenerates this from src/ and tests/ via two external
+# tools. It was committed once, which meant every `make codegraph` left the
+# tree dirty.
+docs/codegraph/
+
+# ---- editor and OS noise ----
+*.swp
+*~
+.DS_Store
