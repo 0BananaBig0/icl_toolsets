@@ -669,6 +669,103 @@ def blocks():
         'Module m { ScanRegister sr { ScanInSource i1.a; } }',
     ]))
 
+    # ---- the attribute machinery ----
+    # `Attribute` is the most-used block and the least rule-bound one:
+    #
+    #   attribute_def   : 'Attribute' attribute_name ('=' attribute_value)? ';' ;
+    #   attribute_name  : SCALAR_ID ;
+    #   attribute_value : (concat_string | concat_number) ;
+    #   parameter_value : concat_string | concat_number ;
+    #
+    # **An attribute value is a string list or a number list — nothing else.**
+    # `Attribute foo = abc;` is not in the grammar, because `abc` is neither.
+    # It is accepted here. That is not a rounding error: this is the single
+    # most consequential piece of permissiveness in the tool, and it is what
+    # lets any keyword appear as an attribute name (§5.32) and lets Tessent
+    # spellings survive. Casing `Attribute foo = abc;` does not celebrate it —
+    # it pins it, so that a later attempt to "tighten" attribute_value has to
+    # confront the 292 real statements counted in §5.59.
+    #
+    # `concat_number` is `'~'? number (',' '~'? number)*` and `number`
+    # includes integer_expr, which is why `= 1 + 2` and `= $P` are legal.
+    # `concat_string` is `(STRING | parameter_ref)` comma-separated, which is
+    # why `= "s", $P` mixes.
+    b.append(('attribute', [
+        'Module m { Attribute foo; }',
+        'Module m { Attribute foo = 1; }',
+        'Module m { Attribute foo = 1, 2; }',
+        "Module m { Attribute foo = 3'b010; }",
+        'Module m { Attribute foo = "s"; }',
+        'Module m { Attribute foo = "s", "t"; }',
+        'Module m { Attribute foo = $P; }',
+        'Module m { Attribute foo = 1 + 2; }',
+        'Module m { Attribute foo = ~1; }',
+        'Module m { Attribute foo = "s", $P; }',
+        # Not in the grammar: a bare name as a value. Accepted, on purpose.
+        'Module m { Attribute foo = abc; }',
+        # parameter_value is the same union, on both spellings of parameter.
+        'Module m { Parameter p = "s"; }',
+        'Module m { Parameter p = 1, 2; }',
+        'Module m { LocalParameter p = 1; }',
+        'Module m { LocalParameter p = "s"; }',
+        # enum_value : concat_number — so an enum symbol takes a list.
+        'Module m { Enum E { a = 1, 2; } }',
+        # Alias's own items, including the bare-flag shape.
+        'Module m { Alias a = b { AccessTogether; } }',
+        'Module m { Alias a = b { iApplyEndState 1, 0; } }',
+        'Module m { Alias a = b { RefEnum E; } }',
+        # period_def : 'Period' pos_int (unit)? ';' — the unit is optional,
+        # and there are seven of them, `as` included.
+        'Module m { ToClockPort c { Period 10; } }',
+        'Module m { ToClockPort c { Period 10s; } }',
+        'Module m { ToClockPort c { Period 10ms; } }',
+        'Module m { ToClockPort c { Period 10us; } }',
+        'Module m { ToClockPort c { Period 10ns; } }',
+        'Module m { ToClockPort c { Period 10ps; } }',
+        'Module m { ToClockPort c { Period 10fs; } }',
+        'Module m { ToClockPort c { Period 10as; } }',
+    ]))
+
+    # ---- iProc callbacks ----
+    #
+    #   dataRegister_writeCallBack : 'WriteCallBack' iProc_namespace
+    #                                iProc_name iProc_args* ';' ;
+    #   iProc_namespace : (namespace_name? '::')? ref_module_name
+    #                     ('::' sub_namespace)? ;
+    #   ref_module_name : SCALAR_ID | parameter_ref ;
+    #   sub_namespace   : SCALAR_ID | parameter_ref ;
+    #   iProc_name      : SCALAR_ID | parameter_ref ;
+    #   iProc_args      : '<D>' | '<R>' | number | STRING | parameter_ref ;
+    #
+    # Two asymmetries worth casing explicitly.
+    #
+    # **A module reference here may be `$param`; in `Instance ... Of` it may
+    # not.** `instance_def` uses `module_name : SCALAR_ID`, so
+    # `Instance i Of $MOD;` is rejected — and that rejection is correct, not a
+    # gap. Both directions are cased so neither gets "fixed" by accident.
+    #
+    # **`iProc_args` is `number`**, and number includes integer_expr, so an
+    # argument can be arithmetic.
+    b.append(('iProc', [
+        'Module m { DataRegister d { WriteCallBack m::p <D>; } }',
+        'Module m { DataRegister d { WriteCallBack $M::$P <D>; } }',
+        'Module m { DataRegister d { WriteCallBack ::m::p <R>; } }',
+        'Module m { DataRegister d { WriteCallBack m::sub::p <D>; } }',
+        'Module m { DataRegister d { WriteCallBack p <D>; } }',
+        'Module m { DataRegister d { WriteCallBack m::p <D> <R> 5 "s" $X; } }',
+        'Module m { DataRegister d { WriteCallBack m::p 1 + 2; } }',
+        'Module m { DataRegister d { ReadCallBack m::p <R>; } }',
+        # The four DataRegister types, each through its own item.
+        'Module m { DataRegister d { WriteEnSource ~a; } }',
+        'Module m { DataRegister d { WriteDataSource a, b; } }',
+        'Module m { DataRegister d { AddressValue 5; } }',
+        'Module m { DataRegister d { ReadDataSource a; } }',
+        # Enable is a single data_signal, not a list, on both ports that
+        # have it.
+        'Module m { ScanOutPort so { Enable en; } }',
+        'Module m { DataOutPort d { Enable en; } }',
+    ]))
+
     # ---- syntactically legal, semantically invalid ----
     # The reference repo has 13 modules it labels `not_ok_*`, spread over two
     # files: seven in `test_icl_instance.icl` and six in

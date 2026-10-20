@@ -2435,6 +2435,61 @@ and it keeps recurring because the shape is always "reports success, or
 reports a plausible-looking failure, while doing something other than what it
 claims."
 
+### 5.68 The attribute machinery: the most-used block, and the loosest
+
+```
+attribute_def   : 'Attribute' attribute_name ('=' attribute_value)? ';' ;
+attribute_name  : SCALAR_ID ;
+attribute_value : (concat_string | concat_number) ;
+parameter_value : concat_string | concat_number ;
+```
+
+**An attribute value is a string list or a number list — and nothing else.**
+`Attribute foo = abc;` is *not* in the grammar, because a bare name is
+neither. It is accepted here.
+
+That is not a rounding error to be tidied later; it is the single most
+consequential permissiveness in the tool. It is what lets any keyword appear
+as an attribute name (§5.32) and what lets Tessent spellings survive. The
+case does not celebrate it — it pins it, so that any later attempt to tighten
+`attribute_value` has to confront the 292 real statements counted in §5.59.
+
+Because `concat_number` is `'~'? number (',' '~'? number)*` and `number`
+includes integer_expr, `= 1 + 2` and `= $P` are legal. Because
+`concat_string` is `(STRING | parameter_ref)` comma-separated, `= "s", $P`
+mixes. Both cased, along with `LocalParameter`, and with `enum_value :
+concat_number` (so an enum symbol takes a list).
+
+`period_def : 'Period' pos_int ('s'|'ms'|'us'|'ns'|'ps'|'fs'|'as')? ';'`
+— the unit is **optional**, and there are **seven**, `as` included. Both
+facts are cased; an earlier round said six.
+
+### 5.69 Two asymmetries in the iProc reference
+
+```
+iProc_namespace : (namespace_name? '::')? ref_module_name
+                  ('::' sub_namespace)? ;
+ref_module_name : SCALAR_ID | parameter_ref ;
+iProc_name      : SCALAR_ID | parameter_ref ;
+iProc_args      : '<D>' | '<R>' | number | STRING | parameter_ref ;
+```
+
+**A module reference may be `$param` here, but not in `Instance ... Of`.**
+`instance_def` uses `module_name : SCALAR_ID` — a plain identifier only — so
+`Instance i Of $MOD;` is **rejected**, and that rejection is correct. It
+would be very easy to "fix": both rules look like a module reference, and
+widening `module_name` costs nothing at the grammar level. It is now a
+`fail/` case, with the contrast written into the file.
+
+**`iProc_args` is `number`**, and `number` includes integer_expr, so an
+argument can be arithmetic: `WriteCallBack m::p 1 + 2;`.
+
+Also cased: the leading `::` (global namespace), the trailing `::sub`, and
+the four DataRegister types each reached through their own item. Note that
+`WriteEnSource` takes a **single** `'~'? data_signal` while
+`WriteDataSource` takes a **concat list** — the same single-versus-list
+asymmetry already recorded in §5.62, appearing again inside one block.
+
 ## 6. What was verified, and what was not
 
 **Verified**
