@@ -69,6 +69,12 @@ else
 GEN_DIR   := $(BUILD_DIR)/gen
 endif
 
+# Output of `make codegraph`. Outside the PREBUILT conditional above on
+# purpose: it does not depend on how the parser was built, and putting it
+# inside meant it was empty in the normal build, so `mkdir -p $(CODEGRAPH_DIR)`
+# expanded to a bare `mkdir` and failed.
+CODEGRAPH_DIR := .codegraph
+
 # Two programs, built from the same front end:
 #   icl-format  the command line formatter
 #   icl-lsp     a Language Server (diagnostics + formatting) for editors
@@ -244,10 +250,12 @@ $(BUILD_DIR):
 
 # ---- code graph ----
 #
-# `make codegraph` regenerates docs/codegraph/ from src/ and tests/. Both
+# `make codegraph` regenerates $(CODEGRAPH_DIR)/ from src/ and tests/. Both
 # inputs are external tools (see below). The output is a build product and is
 # gitignored — it was committed once, and every `make codegraph` then left the
-# tree dirty.
+# tree dirty. It is a dot-directory rather than docs/ so that it sits with the
+# other generated output (build/, gen/) instead of looking like prose meant
+# for a reader.
 #
 #   * tests_codegraph.html / .csv — `codegraph` over the Python test helpers.
 #     codegraph (1.2.0) parses with Python's own tokenizer, so it only sees
@@ -256,16 +264,16 @@ $(BUILD_DIR):
 #     knows every header each translation unit includes, so there is no
 #     second parser to keep in sync.
 codegraph: $(ALL_OBJECTS)
-	@mkdir -p docs/codegraph
+	@mkdir -p $(CODEGRAPH_DIR)
 	@command -v codegraph >/dev/null 2>&1 || { \
 		echo "error: codegraph not installed (pip install codegraph)" >&2; exit 1; }
-	codegraph tests --output docs/codegraph/tests_codegraph.html \
-		--csv docs/codegraph/tests_codegraph.csv
+	codegraph tests --output $(CODEGRAPH_DIR)/tests_codegraph.html \
+		--csv $(CODEGRAPH_DIR)/tests_codegraph.csv
 	@for f in $(SRC_DIR)/*.cc; do \
 		$(CXX) $(CXXSTD) -I$(SRC_DIR) -I$(GEN_DIR) -MM $$f; \
-	done > docs/codegraph/cpp_deps.makefile
-	@python3 tests/deps_to_dot.py docs/codegraph
-	@echo "codegraph: docs/codegraph/ refreshed"
+	done > $(CODEGRAPH_DIR)/cpp_deps.makefile
+	@python3 tests/deps_to_dot.py $(CODEGRAPH_DIR)
+	@echo "codegraph: $(CODEGRAPH_DIR)/ refreshed"
 
 # ---- coverage ----
 #

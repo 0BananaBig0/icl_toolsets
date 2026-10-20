@@ -328,7 +328,7 @@ Both are part of `make check`.
 
 ## Code graph
 
-`make codegraph` refreshes `docs/codegraph/`:
+`make codegraph` refreshes `.codegraph/`:
 
 | File | What | Produced by |
 |---|---|---|

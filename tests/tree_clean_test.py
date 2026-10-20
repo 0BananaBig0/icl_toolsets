@@ -4,8 +4,8 @@
 Generated artefacts have been committed twice in this project's history, and
 both times it was invisible until something else made it visible: `build/`
 showed up as 9.8 MB of history behind 330 KB of source, and
-`docs/codegraph/` showed up because every `make codegraph` left the tree
-dirty. Neither was noticed by reading the file list — only by measuring.
+`.codegraph/` (then `docs/codegraph/`) showed up because every
+`make codegraph` left the tree dirty. Neither was noticed by reading the file list — only by measuring.
 
 So this is a test rather than a note. It checks two things:
 
@@ -39,7 +39,7 @@ GENERATED_SUFFIXES = (
     '.tar.gz', '.tgz', '.zip',
 )
 GENERATED_PREFIXES = (
-    'build/', 'gen/', 'docs/codegraph/',
+    'build/', 'gen/', '.codegraph/',
 )
 
 

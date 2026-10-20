@@ -34,8 +34,9 @@ gen/
 *.zip
 
 # `make codegraph` regenerates this from src/ and tests/. It was committed
-# once, so every `make codegraph` left the tree dirty.
-docs/codegraph/
+# once, so every `make codegraph` left the tree dirty. A dot-directory
+# because it is build output, not prose for a reader.
+.codegraph/
 
 *.swp
 *~
