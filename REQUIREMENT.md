@@ -2002,20 +2002,53 @@ accepted today. That trade is recorded rather than resolved, because the
 choice depends on which input is more likely in a file nobody has produced
 yet.
 
-### 5.55 Issues and pull requests, as a source
+### 5.55 Pull requests, not issues — and a correction
 
-The repository's issues were not looked at in earlier rounds — only its files.
-Four of them, and one changes a conclusion:
+Earlier rounds looked only at the repository's files, never at its
+discussions. Doing so now turns up a correction to §5.54: **#3 and #4 are
+pull requests, not issues.** The repository has *two open PRs and zero
+issues* — the navigation bar shows a count beside "Pull requests" and none
+beside "Issues".
 
-- **#4 (open)** — the bundled PDL grammar is never compiled. See §5.54.
+The API is what misled me: `/repos/.../issues` returns PRs alongside issues,
+because GitHub models a PR as an issue with extra fields. Reading that
+response without checking for a `pull_request` key turns every PR into an
+issue, which is exactly what happened here and in §5.54's first draft. A
+count of zero is the cheaper signal.
+
+For the record, all four are PRs:
+
+- **#4 (open, PR)** — the bundled PDL grammar is never compiled. See §5.54.
 - **#1 (closed)** — *"Fix retargeting-graph crash on width>1 scan registers."*
   Their bug, not ours, but it names an input shape worth checking: a scan
   register wider than one bit. `ScanRegister sr[7:0]`, `sr[1:0]`, `sr[31:0]`
   and a `ScanMux` selected by `s[1:0]` all pass, idempotent and
   character-preserving.
-- **#2, #3** — internal to their Python, no ICL bearing.
+- **#2** — internal to their Python, no ICL bearing.
 
-### 5.56 A formatter property that four checks missed
+### 5.56 The newest upstream commit changes nothing here, and that is worth knowing
+
+`333f8bc` (Sep 23, 2026), the commit this comparison is pinned to, is
+*"Fixed test icl_syntax_3 by fixing substitution pattern in icl_retargeting"*.
+
+It is worth checking what the newest commit does, because if it added
+syntax, this comparison would be a revision behind. It did not:
+`test_icl_syntax_3` is a **cocotb simulation** — it builds `TrapOrFlap.sv`,
+drives it with a clock, and asserts register values through `iWrite`/`iRead`.
+The fix was in how retargeting substitutes a target name, which is semantics,
+not grammar.
+
+Its inputs are another matter, and they are covered: `COMMON_ICL_BLOCKS`
+(`EmptyModule.icl`, `Instruments.icl`, `NetworkStructs.icl`) plus
+`Advanced/TrapOrFlap.icl`. All four are in `pass/benchmark/`.
+
+So the newest commit is a reminder of the division that has held throughout:
+their tests are about *what the network does*, and this tool is about *what
+the text is*. Half their suite drives a simulator; none of it can be
+transplanted. What is transplantable is the set of inputs their tests load,
+and that is now enumerated from `config.py` (§5.43) rather than guessed.
+
+### 5.57 A formatter property that four checks missed
 
 There were four checks on the output, and none of them asks the question a
 formatter exists to answer:

@@ -276,12 +276,53 @@ def blocks():
     ]))
 
     # ---- one-hot groups ----
+    # The two one-hot groups look alike and are not. Their names match
+    # (`oneHotScanGroup_name : reg_port_signal_id`), but their contents do
+    # not, and it is easy to assume they share a body:
+    #
+    #   oneHotScanGroup_item : 'Port' concat_scan_signal ';' ;
+    #   oneHotDataGroup_item : instance_def | dataRegister_def
+    #                        | oneHotDataGroup_portSource ;
+    #
+    # So a scan group holds only `Port` items, while a data group holds
+    # instances and data registers as well. Both are `item+` — at least one.
+    # Both take a vector name, because reg_port_signal_id is
+    # `SCALAR_ID | vector_id`.
     b.append(('onehot', [
         'Module m { OneHotScanGroup g { a; b; } }',
         'Module m { OneHotScanGroup g[3:0] { a; } }',
         'Module m { OneHotDataGroup g { DataRegister d; } }',
         'Module m { OneHotDataGroup g { Instance i Of M; } }',
         'Module m { OneHotScanInterface g { a; } }',
+        # Both names are reg_port_signal_id, so both take an index as well as
+        # a range.
+        'Module m { OneHotScanGroup g[1] { a; } }',
+        'Module m { OneHotDataGroup g[2:0] { d; } }',
+        # A scan group's only item is Port, and concat_scan_signal means the
+        # list takes `~` on any element, not just the first.
+        'Module m { ScanInPort a; ScanInPort b; '
+        'OneHotScanGroup g { Port a, b; } }',
+        'Module m { ScanInPort a; ScanInPort b; '
+        'OneHotScanGroup g { Port ~a, b; } }',
+        'Module m { ScanInPort a; ScanInPort b; '
+        'OneHotScanGroup g { Port ~a, ~b; } }',
+        'Module m { ScanInPort a; ScanInPort b; '
+        'OneHotScanGroup g { Port a; Port b; } }',
+        "Module m { OneHotScanGroup g { Port 1'b0; } }",
+        # A data group's Port is concat_data_signal, and it also holds
+        # instances and data registers — in both the `;` and `{}` forms of
+        # instance (§5.29).
+        'Module m { DataInPort d; DataInPort e; '
+        'OneHotDataGroup g { Port d, e; } }',
+        'Module m { DataInPort d; OneHotDataGroup g { '
+        'DataRegister dr { WriteEnPort w; } Port d; } }',
+        'Module m { DataInPort d; OneHotDataGroup g { '
+        'Instance i Of M { InputPort x = d; } Port d; } }',
+        # Comments, in the two positions that matter.
+        'Module m { DataInPort d; OneHotDataGroup g {\n'
+        '  Port d; // the data side\n} }',
+        'Module m { DataInPort d; OneHotDataGroup g {\n'
+        '  // first\n  Port d;\n} }',
     ]))
 
     # ---- access link ----
