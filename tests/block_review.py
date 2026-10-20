@@ -669,6 +669,66 @@ def blocks():
         'Module m { ScanRegister sr { ScanInSource i1.a; } }',
     ]))
 
+    # ---- syntactically legal, semantically invalid ----
+    # The reference repo has 13 modules it labels `not_ok_*`, spread over two
+    # files: seven in `test_icl_instance.icl` and six in
+    # `test_icl_scan_register.icl`. Every one of them is **valid ICL**. They
+    # fail upstream for semantic reasons only — a width that does not match,
+    # an index out of range, an input assigned twice, an input never
+    # assigned.
+    #
+    # That makes them the most useful cases in the whole repository for a
+    # formatter, and the easiest to get wrong in the dangerous direction: a
+    # formatter that tried to check semantics would reject them. The contract
+    # here is the opposite — accept anything the grammar allows and reproduce
+    # it exactly. So the shapes those modules use are lifted out and cased
+    # individually, each with a note on why it is not this tool's business.
+    b.append(('syntaxNotSemantics', [
+        # `ScanRegister ScanReg0[0:7]` — rangex is index ':' index with two
+        # independent expressions, so a descending range and an ascending one
+        # are both just text. Upstream calls [0:7] an error in one module and
+        # accepts it in another (ok_4, ok_5); the difference is semantic.
+        'Module m { ScanRegister sr[0:7] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[1:0] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[0:$MSB] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[$MSB:0] { ScanInSource si; } }',
+        'Module m { ScanRegister sr[$A:$B] { ScanInSource si; } }',
+        # `InputPort SI[1] = ...` — inputPort_name : port_name, and port_name
+        # includes vector_id, so a subscripted name is legal. Upstream
+        # rejects `SI[2]` on a 2-bit port and `SI[0]` alone (leaving bit 1
+        # unassigned); both are width arithmetic, not syntax.
+        "Module m { Instance i Of M { InputPort SI[1] = 1'b0; } }",
+        "Module m { Instance i Of M { InputPort SI[1:0] = 1'b0, tdi; } }",
+        "Module m { Instance i Of M { InputPort SI = 1'b0, tdi; } }",
+        # An unsized number as an InputPort source, and a bare 0.
+        "Module m { Instance i Of M { InputPort SI = 'b0, tdi; } }",
+        'Module m { Instance i Of M { InputPort DI = 0; } }',
+        # `Parameter MSB = $Size-1;` — no spaces around the operator. The
+        # scanner splits `$Size` from `-1` on the operator, so both spellings
+        # work; upstream's own file uses the tight one.
+        'Module m { Parameter MSB = $Size-1; }',
+        'Module m { Parameter MSB = $Size - 1; }',
+        'Module m { Parameter MSB = $Size+1; }',
+        # Unknown bits in a reset/load value, from test_icl_syntax_6.icl.
+        # The "bad" module there has 'b10 and 'b11 on an 8-bit register —
+        # too narrow, which upstream rejects — while the good one has
+        # 'b1x00x01x. Both are just numbers here.
+        "Module m { ScanRegister sr { ResetValue 'b1x00x01x; } }",
+        "Module m { ScanRegister sr { DefaultLoadValue 'bxx0x1010; } }",
+        "Module m { ScanRegister sr { ResetValue 'b10; } }",
+        # A register capturing itself — legal text, and upstream's ok_* do it.
+        'Module m { ScanRegister sr { CaptureSource sr; } }',
+        # Ranged and indexed signals as sources.
+        'Module m { ScanRegister sr[1:0] { ScanInSource si[1:0]; } }',
+        'Module m { ScanOutPort so[1:0] { Source sr[1:0]; } }',
+        'Module m { ScanOutPort so[1:0] { Source sr1[0], sr0[0]; } }',
+        # Two Chains in one ScanInterface, each with its own pair of Ports —
+        # the shape behind "multiple SI -> SO ports" in the README.
+        'Module m { ScanInterface s { Port a; '
+        'Chain c0 { Port si[0]; Port so[0]; } '
+        'Chain c1 { Port si[1]; Port so[1]; } } }',
+    ]))
+
     # ---- LogicSignal expressions ----
     # The other recursive block, and the one with the most surprises. Four
     # levels, and each one has a different shape:

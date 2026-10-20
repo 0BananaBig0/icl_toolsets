@@ -2379,6 +2379,62 @@ Running total of repositories searched: the ones named in the README, both
 forks, and eight found by search. `gitlab.com/IJTAG/benchmarks` remains
 unreachable.
 
+### 5.66 The most useful cases upstream are the ones it expects to fail
+
+Upstream has 13 modules named `not_ok_*` — seven in
+`tests/test_icls/test_icl_instance.icl`, six in `test_icl_scan_register.icl`.
+Their tests assert that constructing the network **raises**.
+
+**Every one of those 13 modules is valid ICL.** They fail for semantic
+reasons only — a width that does not match, an index past the end, an input
+assigned twice, an input never assigned at all:
+
+| module | why upstream rejects it |
+|---|---|
+| `not_ok_icl_instace_0/1` | `SI[1]` / `SI[2]` on a port already wholly assigned |
+| `not_ok_icl_instace_2` | `SI` assigned twice |
+| `not_ok_icl_instace_3` | three values into a 2-bit port |
+| `not_ok_icl_instace_4` | `SI[0]` assigned, leaving bit 1 unassigned |
+| `not_ok_icl_instace_5/6` | one input of two never assigned |
+| `not_ok_1..6` (register) | ScanInSource width or index does not match |
+
+That makes them the single most useful thing in the repository for a
+formatter — and the easiest thing to get wrong in the dangerous direction.
+**A formatter that checked semantics would reject them.** The contract here
+is the opposite: accept everything the grammar allows, reproduce it exactly.
+So the shapes those modules use are lifted out into a `syntaxNotSemantics`
+category, 21 cases, each annotated with why it is not this tool's business.
+
+Two of the shapes are worth naming because nothing else in the corpus
+produces them:
+
+- `ScanRegister ScanReg0[0:7]` — a **descending** range. `rangex : index ':'
+  index` with two independent expressions, so `[0:7]` and `[7:0]` are both
+  only text. Upstream itself calls `[0:7]` an error in one module and accepts
+  it in `ok_4`; the difference is entirely semantic.
+- `Parameter MSB = $Size-1;` — **no spaces around the operator**. Upstream's
+  own file is written that way; the scanner splits `$Size` from `-1` on the
+  operator, so both spellings work.
+
+### 5.67 A near miss: the corpus check nearly reported a false gap
+
+Re-checking the eight upstream ICL files against the corpus, the first script
+matched by bare filename and reported **six of eight missing**. They are
+present and byte-identical — the corpus files carry an `ijtag_` prefix, so
+`-name "Instruments.icl"` misses `ijtag_Instruments.icl` while still matching
+the *different* `Instruments.icl` that lives in `pass/benchmark/`.
+
+That last part is what makes it dangerous: the match was not empty, it was
+**wrong**. A comparison against the wrong file reported "content differs",
+which reads like a real finding. Matching the actual names gives 8/8
+byte-identical.
+
+This is the same failure as §5.19 (a runner that could not see
+subdirectories) and §5.20 (a `dist` target that packaged an empty corpus),
+and it keeps recurring because the shape is always "reports success, or
+reports a plausible-looking failure, while doing something other than what it
+claims."
+
 ## 6. What was verified, and what was not
 
 **Verified**
