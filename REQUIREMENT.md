@@ -2315,6 +2315,70 @@ and the direction of change is upstream *widening* the rule.
 Neither fork contributes syntax upstream lacks; the widening was already
 handled when upstream was first read.
 
+### 5.64 LogicSignal expressions: four levels, four surprises
+
+The second recursive block, and the less obvious of the two:
+
+```
+logic_expr_lvl1 : logic_expr_lvl2 (('&&'|'||') logic_expr_lvl1)? ;
+logic_expr_lvl2 : logic_expr_lvl3 (('&'|'|'|'^') logic_expr_lvl2)?
+                | (('&'|'|'|'^') logic_expr_lvl2) ;      <- leading operator
+logic_expr_lvl3 : logic_expr_lvl4 (('=='|'!=') logic_expr_num_arg)? ;
+logic_expr_lvl4 : logic_expr_arg (',' logic_expr_lvl4)? ;
+logic_expr_arg  : logic_expr_paren | logic_unary_expr | concat_data_signal ;
+logic_unary_expr: ('~'|'!') logic_expr_arg ;
+logic_expr_num_arg : concat_number | enum_name | '(' logic_expr_num_arg ')' ;
+```
+
+1. **lvl2 can open with its own operator.** `LogicSignal ls { & a; }` is
+   legal. No sample file does this — it is here because the rule allows it.
+2. **`==` and `!=` compare against a number, not a signal.** The right side
+   is `logic_expr_num_arg`, which is `concat_number | enum_name | (...)`.
+   Since `enum_name : SCALAR_ID`, `a == b` parses with `b` as an *enum name*.
+   Both readings render identically, so this is a note, not a behaviour.
+3. **`,` is an operator at lvl4**, so `a, b` is a legal expression — and
+   `concat_data_signal` also takes commas, so `a, b` has two parses.
+4. **Literals reach an expression through `signal`**, not through
+   `logic_expr_arg`: `signal : number | reg_port_signal_id | hier_port`. So
+   `1 & a` and `1'b0 & a` are expressions with a literal on the left.
+
+39 cases. Depth: 100 nested parens, 50 unary operators, 200 `&` terms.
+
+### 5.65 Two sources traced, and one sibling language that is not ICL
+
+The README's "P2654 Simulations" link resolves to
+**`bradfordvt/P2654Simulations`**, which had never been fetched. It contains
+`icl/standards/s1687/` with exactly three files — `SReg.icl`,
+`sib_mux_pre.icl`, `sib_mux_post.icl` — and **all three are byte-identical to
+the files already in `pass/p2654/`**. So that directory's attribution is now
+confirmed against its origin rather than inferred from a filename.
+
+Its sibling **`bradfordvt/P2654Languages`** has a `STAM/STAM.g4`: a different
+language that borrows ICL's outer skeleton —
+
+```
+stamSource_items : nameSpace_def | useNameSpace_def | module_def ;
+```
+
+— and then diverges completely: `clientInterface_def`, `hostInterface_list`,
+`commandInterface_def`, `transformLibrary_def`, `injectLibrary_def`,
+`commandLibrary_def`, `debugLibrary_def`, `parameter_list`. **Zero ICL
+keywords.** Worth recording for the opposite reason to every other grammar
+here: it is a shape that must *not* be added. Those module items would be
+accepted here anyway, as attribute names (§5.32), which is the accepted cost
+of that permissiveness.
+
+A search for `ijtag` also turned up six further repositories; five contain no
+ICL. The sixth, **`BoulosMansour/ijtag-sensor-tool`**, has one —
+`sensors/thermal_sensor_blueprint.icl`, hand-written for a VHDL thermal
+sensor, its own header citing the Origen examples. It is the only file in the
+corpus that names a `client` ScanInterface and uses `SelectPort` for TMS.
+Added to `pass/published/`.
+
+Running total of repositories searched: the ones named in the README, both
+forks, and eight found by search. `gitlab.com/IJTAG/benchmarks` remains
+unreachable.
+
 ## 6. What was verified, and what was not
 
 **Verified**

@@ -669,6 +669,89 @@ def blocks():
         'Module m { ScanRegister sr { ScanInSource i1.a; } }',
     ]))
 
+    # ---- LogicSignal expressions ----
+    # The other recursive block, and the one with the most surprises. Four
+    # levels, and each one has a different shape:
+    #
+    #   logic_expr_lvl1 : logic_expr_lvl2 (('&&'|'||') logic_expr_lvl1)? ;
+    #   logic_expr_lvl2 : logic_expr_lvl3 (('&'|'|'|'^') logic_expr_lvl2)?
+    #                   | (('&'|'|'|'^') logic_expr_lvl2) ;   <- leading op!
+    #   logic_expr_lvl3 : logic_expr_lvl4 (('=='|'!=') logic_expr_num_arg)? ;
+    #   logic_expr_lvl4 : logic_expr_arg (',' logic_expr_lvl4)? ;
+    #   logic_expr_arg  : logic_expr_paren | logic_unary_expr
+    #                   | concat_data_signal ;
+    #   logic_unary_expr: ('~'|'!') logic_expr_arg ;
+    #   logic_expr_num_arg : concat_number | enum_name | '(' logic_expr_num_arg ')' ;
+    #
+    # Four things worth recording.
+    #
+    # 1. **lvl2 has a second alternative with a leading operator**, so
+    #    `LogicSignal ls { & a; }` is legal — an expression that begins with
+    #    its own operator. No sample file does this; it is here because the
+    #    rule allows it.
+    #
+    # 2. **`==` and `!=` compare against a number, not a signal.**
+    #    `logic_expr_num_arg` is `concat_number | enum_name | (...)` — an
+    #    enum_name being a bare SCALAR_ID, so `a == b` parses with `b` as an
+    #    enum name rather than a signal. The two readings render identically,
+    #    so this matters only as a note on what the grammar says.
+    #
+    # 3. **`,` is an operator at lvl4**, so `LogicSignal ls { a, b; }` is
+    #    legal — and `concat_data_signal` also takes commas, so `a, b` has two
+    #    parses. Again, identical output.
+    #
+    # 4. **Numbers reach an expression through `signal`**, not directly:
+    #    `signal : number | reg_port_signal_id | hier_port`. So `1 & a` and
+    #    `1'b0 & a` are both expressions whose left operand is a literal.
+    b.append(('logicExpr', [
+        'Module m { LogicSignal ls { a && b; } }',
+        'Module m { LogicSignal ls { a || b; } }',
+        'Module m { LogicSignal ls { a && b || c; } }',
+        'Module m { LogicSignal ls { a & b; } }',
+        'Module m { LogicSignal ls { a | b; } }',
+        'Module m { LogicSignal ls { a ^ b; } }',
+        'Module m { LogicSignal ls { a & b & c; } }',
+        # lvl2's second alternative: the expression opens with an operator.
+        'Module m { LogicSignal ls { & a; } }',
+        'Module m { LogicSignal ls { | a; } }',
+        'Module m { LogicSignal ls { ^ a; } }',
+        # `==` / `!=` against logic_expr_num_arg.
+        'Module m { LogicSignal ls { a == 1; } }',
+        "Module m { LogicSignal ls { a == 3'b010; } }",
+        'Module m { LogicSignal ls { a == ENUM; } }',
+        'Module m { LogicSignal ls { a != 1; } }',
+        'Module m { LogicSignal ls { (a == 1); } }',
+        'Module m { LogicSignal ls { a == (1); } }',
+        'Module m { LogicSignal ls { a == b; } }',
+        # `,` as an operator at lvl4.
+        'Module m { LogicSignal ls { a, b; } }',
+        'Module m { LogicSignal ls { a & b, c; } }',
+        # Unary, and unary applied repeatedly.
+        'Module m { LogicSignal ls { ~a; } }',
+        'Module m { LogicSignal ls { !a; } }',
+        'Module m { LogicSignal ls { ~a & b; } }',
+        'Module m { LogicSignal ls { !(a & b); } }',
+        'Module m { LogicSignal ls { ~~a; } }',
+        'Module m { LogicSignal ls { !!a; } }',
+        # Parentheses, and precedence made explicit.
+        'Module m { LogicSignal ls { (a & b); } }',
+        'Module m { LogicSignal ls { ((a)); } }',
+        'Module m { LogicSignal ls { (a & b) | c; } }',
+        'Module m { LogicSignal ls { a & b == 1; } }',
+        'Module m { LogicSignal ls { a == 1 && b; } }',
+        # A literal as an operand: signal : number | ...
+        "Module m { LogicSignal ls { 1'b0 & a; } }",
+        'Module m { LogicSignal ls { 1 & a; } }',
+        # Hierarchical and indexed operands.
+        'Module m { LogicSignal ls { i1.a & b; } }',
+        'Module m { LogicSignal ls { a[0] & b; } }',
+        'Module m { LogicSignal ls { a[3:0] & b; } }',
+        # Depth: 100 nested parens, 50 unary operators, 200 terms.
+        'Module m { LogicSignal ls { ' + '(' * 100 + 'a' + ')' * 100 + '; } }',
+        'Module m { LogicSignal ls { ' + '!' * 50 + 'a; } }',
+        'Module m { LogicSignal ls { ' + ' & '.join(['a'] * 200) + '; } }',
+    ]))
+
     # ---- integer expressions ----
     # The expression grammar in the published grammar is two levels, both
     # right-recursive, and the operand set is deliberately narrow:

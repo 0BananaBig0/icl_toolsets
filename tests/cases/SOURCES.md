@@ -360,3 +360,10 @@ PDL cases and this tool has no PDL support — see REQUIREMENT.md §5.54. What i
 covered is the boundary: `fail/upstream/pdl_hash_comment.icl` (`#` is not an
 ICL comment) and `pass/upstream/pdl_shared_lexer.icl` (shared `SCALAR_ID`,
 `$arg`, time units; and the `0x` spelling that ICL does not have).
+
+## published — papers, application notes, tutorials
+
+- `thermal_sensor_blueprint.icl` — from `BoulosMansour/ijtag-sensor-tool`
+  (`sensors/`). Written by hand for a VHDL thermal-sensor entity, and its
+  own header says it follows the Origen-SDK/ijtag examples. It is the only
+  file that names a `client` ScanInterface and uses `SelectPort` for TMS.
