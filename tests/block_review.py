@@ -610,6 +610,65 @@ def blocks():
 
     # ---- recursion and nesting ----
     # The recursive rules, checked at depth: nesting costs heap, not C stack.
+    # ---- the signal family ----
+    # Nine signal rules, and they are not the same rule. Five carry `~`:
+    #
+    #   data_signal scan_signal clock_signal reset_signal unknown_signal
+    #       : '~'? signal ;
+    #
+    # Six do not — they are a bare `signal`, so `~` is not legal on them:
+    #
+    #   tck_signal tms_signal trst_signal
+    #   shiftEn_signal captureEn_signal updateEn_signal
+    #       : signal ;
+    #
+    # So `ToTMSPort { Source ~s; }` is not in the published grammar. It is
+    # accepted here, which is the deliberate-extra-shape rule again; the point
+    # of casing it is that the two halves must not be "harmonised" later
+    # without noticing that the grammar really does treat them differently.
+    #
+    # A second asymmetry, this one inside the published grammar itself:
+    # some sources are `concat_*` (a comma list) and some are a single
+    # signal, with no apparent reason:
+    #
+    #   scanRegister_scanInSource  : 'ScanInSource' scan_signal ';'      single
+    #   scanRegister_captureSource : 'CaptureSource' (concat_data_signal
+    #                                | enum_symbol) ';'                 list
+    #   toShiftEnPort_source       : 'Source' concat_shiftEn_signal ';'  list
+    #   toCaptureEnPort_source     : 'Source' captureEn_signal ';'       single
+    #   toUpdateEnPort_source      : 'Source' updateEn_signal ';'        single
+    #
+    # Both forms are accepted here, and both are cased.
+    b.append(('signalFamily', [
+        # The five that take `~`.
+        'Module m { DataOutPort d { Source ~a; } }',
+        'Module m { ScanOutPort so { Source ~a; } }',
+        'Module m { ToClockPort c { Source ~a; } }',
+        'Module m { ToResetPort r { Source ~a; } }',
+        'Module m { Instance i Of M { InputPort p = ~a; } }',
+        # The six that do not.
+        'Module m { ToTMSPort t { Source ~a; } }',
+        'Module m { ToTRSTPort t { Source ~a; } }',
+        'Module m { ToShiftEnPort s { Source ~a; } }',
+        'Module m { ToCaptureEnPort c { Source ~a; } }',
+        'Module m { ToUpdateEnPort u { Source ~a; } }',
+        # Single versus list, both ways.
+        'Module m { ScanRegister sr { ScanInSource a; } }',
+        'Module m { ScanRegister sr { ScanInSource a, b; } }',
+        'Module m { ScanRegister sr { CaptureSource a, b; } }',
+        'Module m { ToShiftEnPort s { Source a, b; } }',
+        'Module m { ToCaptureEnPort c { Source a, b; } }',
+        'Module m { ToUpdateEnPort u { Source a, b; } }',
+        # hier_data_signal is `(instance_name '.')* reg_port_signal_id` —
+        # zero or more, so no dot at all is fine. hier_port is `+`, so it
+        # needs at least one; both work because a bare name is a
+        # reg_port_signal_id anyway.
+        'Module m { Alias a = b; }',
+        'Module m { Alias a = i1.i2.b; }',
+        'Module m { ScanRegister sr { ScanInSource a; } }',
+        'Module m { ScanRegister sr { ScanInSource i1.a; } }',
+    ]))
+
     # ---- integer expressions ----
     # The expression grammar in the published grammar is two levels, both
     # right-recursive, and the operand set is deliberately narrow:

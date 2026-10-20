@@ -2254,6 +2254,67 @@ case, next to the two forms `size` does allow.
 
 Both new fail cases are in `fail/ours/`, and the regression picks them up.
 
+### 5.62 The signal family: nine rules, and `~` is not universal
+
+`signal` is shared, but the nine rules that wrap it are not the same rule:
+
+```
+data_signal scan_signal clock_signal reset_signal unknown_signal
+    : '~'? signal ;          <- `~` allowed
+
+tck_signal tms_signal trst_signal
+shiftEn_signal captureEn_signal updateEn_signal
+    : signal ;               <- `~` not allowed
+```
+
+So in the published grammar `ToTMSPort { Source ~s; }` is not legal, while
+`ScanOutPort { Source ~s; }` is. **Both are accepted here.** The value of
+casing this is not that it works — it is that the two halves must not later
+be "harmonised" in either direction without noticing that the grammar
+genuinely treats them differently.
+
+A second asymmetry, this one *inside* the published grammar — some sources
+are comma lists and some are single, with no pattern to it:
+
+| source | form |
+|---|---|
+| `scanRegister_scanInSource` | `scan_signal` — single |
+| `scanRegister_captureSource` | `concat_data_signal \| enum_symbol` — list |
+| `toShiftEnPort_source` | `concat_shiftEn_signal` — list |
+| `toCaptureEnPort_source` | `captureEn_signal` — single |
+| `toUpdateEnPort_source` | `updateEn_signal` — single |
+
+Both forms accepted, both cased.
+
+Also recorded: `hier_data_signal` is `(instance_name '.')*` — zero or more,
+so `Alias a = b;` needs no dot — while `hier_port` is `+`, requiring one.
+
+### 5.63 A correction: the two forks are the same revision, not two opinions
+
+An earlier round described `xiaoweish/icl_parser` as a fork whose grammar
+differs from upstream "in the opposite direction". Having now downloaded
+both forks, that framing was wrong:
+
+- Both forks exist and both contain a `src/icl_parser/icl.g4`.
+- **They are byte-identical to each other.**
+- Both differ from upstream `333f8bc` in exactly one place: `inputPort_source`.
+
+Upstream (newer) has:
+
+```
+unknown_signal        : '~'? signal ;
+concat_unknown_signal : unknown_signal (',' unknown_signal)* ;
+inputPort_source      : concat_unknown_signal ;
+```
+
+Both forks (older) instead enumerate eight specific `concat_*_signal`
+alternatives, and lack `unknown_signal` entirely. So it is **one older
+revision preserved twice**, not two independent readings of the standard —
+and the direction of change is upstream *widening* the rule.
+
+Neither fork contributes syntax upstream lacks; the widening was already
+handled when upstream was first read.
+
 ## 6. What was verified, and what was not
 
 **Verified**
