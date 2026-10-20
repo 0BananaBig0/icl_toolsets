@@ -318,3 +318,20 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 
 Drop a `.icl` file into the directory matching its origin. Nothing else needs editing: the runner walks subdirectories.
 
+## benchmark/ — IJTAG-Ecosystem/Benchmarks, and what the upstream tests load
+
+26 files, byte-identical to the official repository (verified by md5), filed
+as `Category_Name.icl` matching its `Category/Name.icl`.
+
+The upstream parser's `tests/config.py` names 34 benchmark paths across its
+test suite; 26 of them are these files. `test_icl_syntax_1`, `_3` and `_4` have
+no `.icl` of their own — they load `COMMON_ICL_BLOCKS` plus a network from the
+submodule, which is empty here. The eight paths we do not have are the six
+large Advanced networks (N17D3, N32D6, N73D14, N132D4, NE600P150, NE1200P430)
+plus `Standard/E30.icl` and `Standard/A586710.icl`.
+
+Note that the two repositories file three files differently: the upstream paths
+put `H953.icl` under `Basic/TreeBalanced/`, `G1023.icl` under
+`Basic/TreeFlat_Ex/` and `A586710.icl` under `Basic/TreeUnbalanced/`, while the
+official set puts all three under `ITC02/`. ITC02 is the source of the
+circuits; the Basic directory is what each is used for.
