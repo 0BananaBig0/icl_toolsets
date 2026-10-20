@@ -578,7 +578,10 @@ dist: all
 	# Recursive: the corpus is sorted into per-source subdirectories, and a
 	# flat copy would ship an empty set while appearing to succeed.
 	cp -r tests/cases tests/golden $(DIST_DIR)/tests/
-	cp tests/*.py tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
+	# unit_tests.cc is part of `make check` (the `unitcheck` target builds it),
+	# so a tarball without it cannot run its own test suite. The copy list was
+	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.
+	cp tests/*.py tests/*.cc tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar czf $(DIST_DIR).tar.gz $(DIST_DIR)

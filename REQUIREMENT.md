@@ -1805,6 +1805,30 @@ round added the leading form for `Of` only, because allowing it in a signal
 position costs three conflicts (§5.30). Both work; only one position allows
 the bare leading form.
 
+### 5.49 The dist tarball could not run its own tests
+
+`make dist` ships the prebuilt parser and scanner so the tarball builds with
+g++ alone — no bison, no flex. That was verified by unpacking it with stubs on
+PATH that fail loudly if either tool is invoked. It got as far as:
+
+```
+toolchain: prebuilt parser/scanner in gen/ — bison/flex not required
+make: *** No rule to make target 'tests/unit_tests.cc', needed by 'build/unit_tests'.
+```
+
+The copy list was `tests/*.py tests/*.vim tests/*.sh tests/*.lua`, and
+`unit_tests.cc` is not any of those — but `make check` builds it. So every
+tarball shipped could build the binary and could not run the suite, and
+`make dist` printed "created ..." either way.
+
+It is the same shape as §5.19 and §5.20: a step that reports success while
+doing less than it claims. Here it was caught only because the tarball was
+actually exercised with the tools removed, which is the one way to find it.
+
+Fixed, and the tarball is now checked that way: unpacked, bison and flex
+replaced with stubs that exit 127, `make check` run to completion — 436 corpus
+cases, 388 block cases, 67 CLI, 54 LSP, 49 unit, 12 golden, 600 mutants.
+
 ## 6. What was verified, and what was not
 
 **Verified**
