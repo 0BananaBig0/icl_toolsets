@@ -1734,6 +1734,77 @@ expected, and less permissive in an attribute value. Making the two sides
 alike was tried in §5.15 and cost three conflicts. It is a difference in
 tolerance, not a defect, and it is now written out instead of inferred.
 
+### 5.46 Which grammar rules the reference tool actually reads
+
+The grammar defines 249 rules; the Python walks 131 of them. Reading which
+ones is a different kind of evidence from reading the grammar itself — the
+grammar says what is *accepted*, the visitor says what is *used*. A rule that
+is defined but never visited is a rule nobody depends on, so a gap there would
+not show up in any test of that tool either.
+
+Every `*_def` rule it visits has a counterpart here, checked in §5.32. What
+this pass added is per-rule coverage at the shape level for AccessLink, which
+the earlier port-by-port sweep did not reach:
+
+```
+accessLink1149_def : 'AccessLink' accessLink_name 'Of'
+    ('STD_1149_1_2001' | 'STD_1149_1_2013')
+    '{' 'BSDLEntity' bsdlEntity_name ';' bsdl_instr_ref+ '}' ;
+```
+
+The `+` on `bsdl_instr_ref` is the part the existing standard case missed — it
+has one instruction per link, while several instructions per link is the
+ordinary shape in a chip-level file, and each may carry `ScanInterface`,
+`ActiveSignals`, or both, each of which is a list rather than a single name.
+Hierarchical `ScanInterface { inst.si; }` and indexed `ActiveSignals {
+bus[3:0]; }` are the other two forms that follow from the sub-rules. All pass,
+pinned in `pass/upstream/accesslink_1149_full_forms.icl`.
+
+**A gap that turned out not to be one:** a first attempt put the AccessLink at
+file scope and it was rejected. That is correct. `iclSource_items` is
+`nameSpace_def | useNameSpace_def | module_def` in *its* grammar as well, so a
+link belongs inside a module. The rejection is recorded as such rather than
+"fixed".
+
+### 5.47 The one AccessLink shape stayed rejected, and why
+
+The two reference grammars disagree about the generic (non-1149.1) link:
+
+```
+Honza255 : AccessLinkGeneric_def : 'AccessLink' SCALAR_ID 'Of' SCALAR_ID ;
+           fragment AccessLinkGeneric_block : ...  // Not used in ANTLR parser
+tree-sitter : access_generic_link_definition : 'AccessLink' id 'Of' id '{'
+                  repeat($._access_generic_link_item) '}' ;
+              _access_generic_link_item : // Is this legal? seq('{',...)
+                                          $.access_generic_link_text | $.string
+```
+
+One has no body at all; the other has a body of free text and strings, and its
+author is unsure the body is legal.
+
+Here a body is accepted, but it must contain ICL — `AccessLink g Of t {
+MyScanInterface; }` works. Unstructured prose does not. The reason is not
+standard interpretation but what this tool is: it reproduces tokens, and there
+is no rule for keeping arbitrary prose aligned. That is a limitation, and
+`fail/upstream/accesslink_generic_free_text.icl` states it as one rather than
+letting it look like a bug.
+
+### 5.48 "Supported: Parameters, Hierarchy" checked as blocks
+
+The README lists ICL TAP, Parameters and Hierarchy as supported. Those are
+capability claims, not syntax, so each was turned into shapes and run: 17 in
+all — a parameter as a width, an instance overriding one, `LocalParameter`,
+concatenated and string-list parameter values, an instance's `InputPort`
+connection and `Attribute`, a three-level hierarchical name, `a.b.c` as a
+source, `Alias` over `i1.sel, i2.sel`, all four `NameSpace`/`UseNameSpace`
+spellings (named and unnamed, at file scope and inside a module), and instance
+references both qualified (`ns::M`) and global (`::M`). All pass.
+
+The two `::` forms are worth naming: they are the same rule, and an earlier
+round added the leading form for `Of` only, because allowing it in a signal
+position costs three conflicts (§5.30). Both work; only one position allows
+the bare leading form.
+
 ## 6. What was verified, and what was not
 
 **Verified**
