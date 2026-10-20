@@ -330,6 +330,39 @@ def blocks():
     # Absent on purpose: `Parameter p = 4;` at top level — parameter_def is a
     # module_item. Pinned in fail/standard/top_level_parameter.icl.
 
+    # ---- toClockPort items ----
+    # The three blocks that nothing else in this file reaches, from
+    #
+    #   toClockPort_item : attribute_def | toClockPort_source
+    #                    | freqMultiplier_def | freqDivider_def
+    #                    | differentialInvOf_def | period_def ;
+    #   freqMultiplier_def    : 'FreqMultiplier' pos_int ';' ;
+    #   freqDivider_def       : 'FreqDivider' pos_int ';' ;
+    #   differentialInvOf_def : 'DifferentialInvOf' concat_clock_signal ';' ;
+    #
+    # They belong to ToClockPort alone — no other port block has a frequency
+    # or a differential item — so they sat outside the 26-port sweep above,
+    # which covers only what every port shares.
+    b.append(('toClockPortItems', [
+        'Module m { ToClockPort c { FreqMultiplier 4; } }',
+        'Module m { ToClockPort c { FreqDivider 2; } }',
+        'Module m { ToClockPort c { DifferentialInvOf clk; } }',
+        # concat_clock_signal, so the differential item takes a list
+        'Module m { ToClockPort c { DifferentialInvOf clk, clkb; } }',
+        'Module m { ToClockPort c { Period 10ns; } }',
+        'Module m { ToClockPort c { Source clk; } }',
+        'Module m { ToClockPort c { Attribute a = 1; } }',
+        'Module m { ToClockPort c {\n'
+        '  Source clk;\n'
+        '  FreqMultiplier 2;\n'
+        '  FreqDivider 4;\n'
+        '  DifferentialInvOf clkb;\n'
+        '  Period 10ns;\n'
+        '}\n}',
+        'Module m { ToClockPort c[1:0] { Period 10ns; } }',
+        'Module m { ToClockPort c; }',
+    ]))
+
     # ---- connection ----
     b.append(('connection', [
         'Module m { Connection { a; } }',
@@ -404,6 +437,49 @@ def blocks():
     return b
 
 
+# Every block keyword in the reference grammar — Honza255/icl_parser,
+# commit 333f8bc, `src/icl_parser/icl.g4` — taken mechanically, not typed:
+# every rule named `*_def`, its first quoted literal. 53 keywords from 54
+# rules (AccessLink appears in two).
+#
+# Mechanical matters here. An earlier version of this list was written by
+# hand and contained `OutputPort`, `Reg`, `Connection` and `PortGroup` as if
+# the grammar had them. It does not:
+#
+#   port_def : scanInPort_def | scanOutPort_def | ... | readEnPort_def
+#
+# has 26 alternatives and neither OutputPort nor Reg is among them, and
+# Connection and PortGroup are Tessent extensions with no rule at all. So
+# that list asserted four things that were false — the same mistake as the
+# nine wrong cases in §5.46, one level up.
+#
+# Those four are supported here anyway, and `blocks()` still covers them;
+# they are simply not claimed as coming from the grammar.
+EXPECTED_BLOCK_KEYWORDS = [
+    'AccessLink', 'AddressPort', 'Alias', 'AllowBroadcastOnScanInterface',
+    'Attribute', 'CaptureEnPort', 'Chain', 'ClockMux', 'ClockPort',
+    'DataInPort', 'DataMux', 'DataOutPort', 'DataRegister',
+    'DefaultLoadValue', 'DifferentialInvOf', 'Enum', 'FreqDivider',
+    'FreqMultiplier', 'Instance', 'LocalParameter', 'LogicSignal', 'Module',
+    'NameSpace', 'OneHotDataGroup', 'OneHotScanGroup', 'Parameter', 'Period',
+    'Port', 'ReadEnPort', 'ResetPort', 'ScanInPort', 'ScanInterface',
+    'ScanMux', 'ScanOutPort', 'ScanRegister', 'SelectPort', 'ShiftEnPort',
+    'TCKPort', 'TMSPort', 'TRSTPort', 'ToCaptureEnPort', 'ToClockPort',
+    'ToIRSelectPort', 'ToResetPort', 'ToSelectPort', 'ToShiftEnPort',
+    'ToTCKPort', 'ToTMSPort', 'ToTRSTPort', 'ToUpdateEnPort',
+    'UpdateEnPort', 'UseNameSpace', 'WriteEnPort',
+]
+
+
+def check_block_coverage():
+    """Fails when a grammar block has no cases in `blocks()`."""
+    covered = set()
+    for _, cases in blocks():
+        for source in cases:
+            covered.update(re.findall(r'[A-Za-z][A-Za-z0-9_]*', source))
+    return [k for k in EXPECTED_BLOCK_KEYWORDS if k not in covered]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', required=True)
@@ -432,6 +508,16 @@ def main():
     if failed:
         return 1
     print('Every block parses, is idempotent, and keeps every character.')
+
+    # A block present in the grammar but with no cases here is a gap in this
+    # file, not a pass. Checking it is what stops the list from quietly
+    # drifting as blocks are added.
+    absent = check_block_coverage()
+    if absent:
+        print()
+        print('BLOCKS WITH NO CASES: %s' % ', '.join(absent))
+        return 1
+    print('Every block in the reference grammar has cases.')
     return 0
 
 

@@ -1829,6 +1829,74 @@ Fixed, and the tarball is now checked that way: unpacked, bison and flex
 replaced with stubs that exit 127, `make check` run to completion — 436 corpus
 cases, 388 block cases, 67 CLI, 54 LSP, 49 unit, 12 golden, 600 mutants.
 
+### 5.50 The block walk now fails when a block has no cases
+
+§5.46 made the walk a test but left it able to pass silently: it ran the
+cases it had, and a block nobody wrote cases for simply was not there. So
+`tests/block_review.py` now carries the list of block keywords from the
+reference grammar and refuses to pass if any of them has no cases.
+
+The list is generated, not typed — every rule named `*_def` in `icl.g4`, its
+first quoted literal: 53 keywords from 54 rules. It is generated because the
+first version was typed by hand and was wrong in four places, asserting
+`OutputPort`, `Reg`, `Connection` and `PortGroup` as grammar blocks. The
+grammar has none of them:
+
+```
+port_def : scanInPort_def | scanOutPort_def | ... | readEnPort_def
+```
+
+26 alternatives, no `OutputPort`, no `Reg`; `Connection` and `PortGroup` are
+Tessent extensions with no rule at all. Four false assertions in a list whose
+whole job is to be correct — the same mistake as §5.46, one level up, made
+again in the same session. All four are supported here regardless, and still
+have cases; they are just no longer claimed as coming from the grammar.
+
+Running the new check immediately found a genuine gap it was written for:
+`FreqMultiplier`, `FreqDivider` and `DifferentialInvOf`. They belong to
+`ToClockPort` alone,
+
+```
+toClockPort_item : attribute_def | toClockPort_source | freqMultiplier_def
+                 | freqDivider_def | differentialInvOf_def | period_def ;
+```
+
+and so fell outside the 26-port sweep, which covers only what every port
+shares. Ten cases added; all pass.
+
+The check itself was then verified by injecting a keyword that exists
+nowhere: it reported `BLOCKS WITH NO CASES: Zznotablock` and exited 1. The
+first attempt at this verification did not actually inject anything — the
+string was absent from the file, the run passed, and only printing whether the
+injection took effect caught it. A check that has never been seen to fail is
+not evidence.
+
+### 5.51 A third-party formatter test, found through the second contributor
+
+The upstream README names two contributors. The first has 2 repositories; the
+second, `ranaumarnadeem`, has 33. Almost all are unrelated, but
+**`warptap` ships ICL as `tests/fixtures/golden_icl/`** — three files whose
+expected output is checked by its own test suite.
+
+That makes them the first non-trivial ICL found that is not tool-generated and
+not transcribed from a standard. Both of those were already in the corpus;
+this is a third kind — **hand-written, by someone writing ICL for a tool to
+read**. And they record judgments about the language in the files themselves:
+
+```icl
+// warptap: fixed stub capture_value=0x2 -- no real CaptureSource;
+// ICL has no confirmed mechanism for a constant capture source, so
+// none is fabricated here (see module docstring).
+```
+
+Several such notes per file. `scan_mux.icl` adds nothing new syntactically but
+is the only file here exercising `SelectedBy` on a bit-range
+(`SelectedBy SELREG[1:0]`). All three pass, idempotent and
+character-preserving, filed under `pass/warptap/`.
+
+The other DFT repository by the same author, `OpenTestability`, has 284 files
+and no ICL.
+
 ## 6. What was verified, and what was not
 
 **Verified**

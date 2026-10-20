@@ -335,3 +335,11 @@ put `H953.icl` under `Basic/TreeBalanced/`, `G1023.icl` under
 `Basic/TreeFlat_Ex/` and `A586710.icl` under `Basic/TreeUnbalanced/`, while the
 official set puts all three under `ITC02/`. ITC02 is the source of the
 circuits; the Basic directory is what each is used for.
+
+## warptap/ — ranaumarnadeem/warptap
+
+3 files from `tests/fixtures/golden_icl/`. Found via the second contributor
+named in the upstream README, whose other DFT repository (OpenTestability)
+has no ICL. These are golden fixtures — input plus expected output — and are
+hand-written rather than tool-generated, so they are a kind the corpus did not
+have. See REQUIREMENT.md §5.51.
