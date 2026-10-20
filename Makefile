@@ -577,7 +577,7 @@ DIST_OUT := $(BUILD_DIR)/dist
 dist: all
 	@rm -rf $(DIST_DIR)
 	@mkdir -p $(DIST_OUT)
-	@mkdir -p $(DIST_DIR)/src $(DIST_DIR)/samples $(DIST_DIR)/tests $(DIST_DIR)/gen
+	@mkdir -p $(DIST_DIR)/src $(DIST_DIR)/tests $(DIST_DIR)/gen
 	cp $(SOURCES) $(DIST_DIR)/src/
 	cp $(SRC_DIR)/*.h $(DIST_DIR)/src/
 	cp $(SRC_DIR)/icl_parser.yy $(SRC_DIR)/icl_lexer.l $(DIST_DIR)/src/
