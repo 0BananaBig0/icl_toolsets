@@ -56,7 +56,18 @@ def cases(folder):
                 continue
             full = os.path.join(root, name)
             rel = os.path.relpath(full, path)
-            with open(full, 'r', encoding='utf-8') as f:
+            # `surrogateescape`, not plain utf-8: the corpus includes files
+            # that are not valid UTF-8, because the formatter works on bytes
+            # and some of its behaviour is only visible there — a truncated
+            # BOM is one, and it is rejected precisely because those bytes
+            # are not a BOM. Decoding strictly made such a case impossible to
+            # add: the runner raised before the tool was ever invoked.
+            #
+            # surrogateescape round-trips: undecodable bytes become lone
+            # surrogates in memory and the same bytes again on the way out,
+            # so the conservation and idempotence comparisons still hold.
+            with open(full, 'r', encoding='utf-8',
+                      errors='surrogateescape') as f:
                 out.append((rel, f.read()))
     return sorted(out)
 
@@ -73,8 +84,11 @@ def run_as_file(binary, text):
     from stdin — was invisible to the whole corpus. Each case is now run both
     ways, and both must agree.
     """
+    # Same errors= as the corpus read, so a case containing bytes that are
+    # not UTF-8 reaches the tool unchanged instead of being mangled here.
     with tempfile.NamedTemporaryFile('w', suffix='.icl', delete=False,
-                                     encoding='utf-8') as f:
+                                     encoding='utf-8',
+                                     errors='surrogateescape') as f:
         f.write(text)
         path = f.name
     try:
@@ -90,7 +104,16 @@ def run_stdin(binary, text):
     # Bytes, not text: the corpus deliberately includes a BOM and non-UTF-8
     # byte sequences, and decoding them here would crash the runner instead of
     # testing the tool.
-    result = subprocess.run([binary], input=text.encode('utf-8'),
+    #
+    # `surrogateescape` on the encode as well: until a truncated-BOM case was
+    # added, this comment described an intention rather than a fact — the
+    # corpus was read strictly, so no such bytes could ever arrive, and a
+    # plain `encode('utf-8')` had never been exercised with one. It raises
+    # on a lone surrogate, so the first genuinely non-UTF-8 case would have
+    # failed here rather than in the tool.
+    result = subprocess.run([binary],
+                            input=text.encode('utf-8',
+                                              errors='surrogateescape'),
                             capture_output=True)
     result.stdout = result.stdout.decode('utf-8', 'replace')
     result.stderr = result.stderr.decode('utf-8', 'replace')

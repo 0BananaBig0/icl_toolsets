@@ -2949,16 +2949,103 @@ L)`, which never needed it.
 With both gone, the .l and .yy are at **100% line coverage** (179/179 and
 263/263), measured the same way as the C++.
 
+### 5.87 Four options had one spelling that was never executed
+
+Branch coverage on `icl_format_main.cc` named `-h`, `--write`, `--indent`
+and `-i` as never taken. All four are the *other* spelling of an option the
+tests do use: every test happened to write `--help`, `-w`, `-n` and
+`--stdin`. So four string comparisons in `ParseArgs` had never run.
+
+That is not cosmetic. The two spellings are two separate comparisons, and a
+typo in either one leaves an option silently unreachable while the other
+spelling keeps the suite green — the same shape as §5.19 and §5.70:
+something reports success while doing less than it appears to.
+
+Four tests now assert each pair is the *same option*, and they compare
+output rather than exit codes, because a long spelling wired to the wrong
+behaviour would still exit 0:
+
+* `-h` and `--help` must print the same usage.
+* `-w` and `--write` must leave the same bytes in two copies of the same
+  unformatted file (and that file must actually have changed).
+* `-n 4` and `--indent 4` must produce identical output.
+* `-i` and `--stdin` must produce identical output.
+
+Verified by injection: changing `--write` to `--writeX` in the source makes
+the second test fail and name it, while the other three keep passing —
+which is the point, since a test that fails for the wrong reason is not
+evidence.
+
+### 5.88 Seven well-formed messages with the wrong field types
+
+The LSP tests already sent malformed *bodies*. What was missing is the
+opposite: bodies that parse correctly but whose fields have the wrong
+types — `"id":{}`, `"method":123`, `"params":5`, a number followed by `+`,
+a number with two decimal points, a bare `null` id. These are not syntax
+errors, so they reach a different half of `json.cc`: the typed accessors,
+which must fall back rather than mis-read. Fourteen branches there had
+never been taken.
+
+Each is followed by a real request, because what matters is not what the
+server answers to the bad one — it is that it answers the next one. A
+server that wedges on a wrong type is worse than one that rejects it.
+
+Trailing content is asserted twice, and only the second assertion has
+teeth: "the server survives" is equally true of a decoder that silently
+ignores the extra bytes, which is exactly the bug being guarded against.
+So a body with bytes after the closing brace must produce **no reply for
+its id**. Removing the trailing-content check in `json.cc` makes that test
+fail while every "still alive" assertion keeps passing — verified.
+
+That one also needed `drain()` instead of `wait()`: `wait()` turns "nothing
+arrived" into a FAIL of its own, so a test that passes would report itself
+as broken. A check that cries when it succeeds is worse than no check.
+
+### 5.89 The regression runner could not read its own corpus
+
+Adding a truncated-BOM case — a file starting `EF` or `EF BB`, which must
+be *rejected*, since it is not a BOM — made `tests/regression.py` raise
+before the tool was ever invoked: it read every `.icl` with strict UTF-8.
+
+The file already carried a comment saying it worked in bytes "because the
+corpus deliberately includes a BOM and non-UTF-8 byte sequences". That
+comment described an intention rather than a fact: nothing undecodable
+could ever arrive, so the claim had never been tested. The `encode` had
+the same gap — `text.encode('utf-8')` raises on a lone surrogate, so the
+first genuinely non-UTF-8 case would have failed in the runner rather than
+in the tool.
+
+Both now use `errors='surrogateescape'`, which round-trips: undecodable
+bytes become lone surrogates in memory and the same bytes again on the way
+out, so the conservation and idempotence comparisons still hold. Three
+truncated-BOM cases are now in `fail/ours/`.
+
+### 5.90 Coverage now prints what a bare line number cannot say
+
+`tests/coverage.py` used to report never-taken branches as a list of line
+numbers. A number cannot be judged, because the set is a mix of three
+different things that want **opposite actions**:
+
+* branches no test reaches yet — a real gap, to be closed;
+* branches no input can reach — dead code, to be deleted (§5.86 removed
+  two of these);
+* guards that are unreachable on purpose, because they defend a caller
+  contract rather than input — to be left alone.
+
+It now prints the source line beside each number. Reading the current 54,
+most are the third kind: `if (object == nullptr) return fallback;` never
+takes because every caller checks first, and deleting it would be wrong.
+
 ## 6. What was verified, and what was not
 
 **Verified**
 
 | Suite | Count | How |
 |---|---|---|
-| Regression corpus | 488 | 244 files × 2 entries, `tests/regression.py` |
+| Regression corpus | 494 | 247 files × 2 entries, `tests/regression.py` |
 | Block-by-block review | 730 | `tests/block_review.py`, 53 blocks all asserted |
-| CLI behaviour | 67 | `tests/run_tests.py` |
-| LSP protocol | 54 | scripted client, coc.nvim's message sequence |
+| CLI behaviour | 71 | `tests/run_tests.py` |
+| LSP protocol | 62 | scripted client, coc.nvim's message sequence |
 | C++ unit tests | 49 | `make unitcheck` — AST and layout, no bison/flex |
 | Golden files | 12 | `tests/golden_test.py`, byte-for-byte |
 | Whitespace insensitivity | 117 files × 3 layouts | `tests/whitespace_test.py` |
@@ -2966,7 +3053,7 @@ With both gone, the .l and .yy are at **100% line coverage** (179/179 and
 | Grammar rules reached | 197/197 | bison `-t` trace, `yyrline[]` is the expected set |
 | Scanner rules reached | 114/114 | flex `-d` trace, `yy_rule_linenum[]` |
 | ICL/PDL separation | 28 + 40 + 7 | `tests/pdl_separation_test.py` |
-| C++ line / branch | 100% / 95.0% | gcov, `--strict` in `make coverage` |
+| C++ line / branch | **100% / 95.7%** | gcov, `--strict` in `make coverage` |
 | .l and .yy line | 100% (179/179, 263/263) | gcov via bison/flex `#line` |
 
 Plus: ASan + UBSan + leak detection clean on both programs; idempotence and

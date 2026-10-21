@@ -71,6 +71,23 @@ def branch_coverage(path):
     return taken, len(seen), untaken
 
 
+def source_line(name, number):
+    """The |number|-th line of a measured source file, trimmed.
+
+    The .gcov files already carry the source text, but reading it from the
+    original keeps this independent of gcov's formatting and of whether the
+    file was emitted at all.
+    """
+    for directory in ('src', '.'):
+        path = os.path.join(directory, name)
+        if os.path.exists(path):
+            with open(path, encoding='utf-8', errors='replace') as handle:
+                lines = handle.read().split('\n')
+            if 1 <= number <= len(lines):
+                return lines[number - 1].strip()[:96]
+    return '<source not found>'
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--min-line', type=float, default=0.0)
@@ -104,10 +121,22 @@ def main():
     print('%-22s %5d/%-5d %5.1f%% %5d/%-5d %6.1f%%' %
           ('TOTAL', cl, tl, lp, cb, tb, bp))
 
+    # Never-taken branches are printed with their source line, not just their
+    # number. A bare line number cannot be judged: the set below is a mix of
+    # three different things — branches no test reaches yet (a real gap),
+    # branches that no input can reach (dead code, to be deleted), and
+    # guards that are unreachable on purpose because they defend against a
+    # caller contract rather than against input. Those want opposite actions,
+    # and a percentage does not distinguish them. Printing the code lets a
+    # reader tell which is which without opening the file.
     for name, c, t, b, bt, ul, ub in rows:
         if ul or ub:
             print('\n%s: uncovered lines %s' % (name, ul[:24]))
-            print('%s: never-taken branches at lines %s' % (' ' * len(name), ub[:24]))
+            if not ub:
+                continue
+            print('%s: %d never-taken branch(es):' % (name, len(ub)))
+            for line in ub[:24]:
+                print('    %4d  %s' % (line, source_line(name, line)))
 
     bad = []
     if lp < args.min_line:

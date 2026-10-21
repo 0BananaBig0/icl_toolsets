@@ -268,6 +268,43 @@ def main():
         check('CLI | -w with --check rejected',
               runner.run([paths[0], '-w', '--check']).returncode != 0)
 
+        # Long and short spellings of the same option must be the same option.
+        #
+        # Four of them had never been executed: branch coverage showed `-h`,
+        # `--write`, `--indent` and `-i` with zero hits, because every test
+        # happened to use the other spelling. That is not a cosmetic gap — the
+        # two spellings are two separate string comparisons, and a typo in
+        # either would leave an option silently unreachable while the other
+        # spelling kept the tests green.
+        #
+        # Exit codes are not compared on their own: a long spelling wired to
+        # the wrong behaviour would still exit 0. Each pair is compared on
+        # what it actually produces.
+        check('CLI | -h == --help',
+              runner.run(['-h']).stdout == runner.run(['--help']).stdout)
+
+        # -w / --write: two copies of the same unformatted file, one per
+        # spelling, then compare the bytes each one leaves behind.
+        written = []
+        for spelling in ('-w', '--write'):
+            path = os.path.join(tmp, 'w%s.icl' % spelling.strip('-'))
+            with open(path, 'w', encoding='utf-8') as handle:
+                handle.write(BASE)
+            runner.run([path, spelling])
+            written.append(open(path, encoding='utf-8').read())
+        check('CLI | -w == --write',
+              written[0] == written[1] and written[0] != BASE)
+
+        indent_short = runner.run([paths[0], '-n', '4']).stdout
+        indent_long = runner.run([paths[0], '--indent', '4']).stdout
+        check('CLI | -n == --indent',
+              bool(indent_short) and indent_short == indent_long)
+
+        stdin_short = runner.run(['-i'], stdin_text=BASE).stdout
+        stdin_long = runner.run(['--stdin'], stdin_text=BASE).stdout
+        check('CLI | -i == --stdin',
+              bool(stdin_short) and stdin_short == stdin_long)
+
         bad = os.path.join(tmp, 'bad.icl')
         with open(bad, 'w', encoding='utf-8') as handle:
             handle.write('Module { }')

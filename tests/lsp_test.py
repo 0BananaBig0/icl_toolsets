@@ -545,6 +545,56 @@ def main():
           after_bad is not None and 'result' in after_bad,
           str(after_bad)[:120])
 
+    # A well-formed JSON message whose *fields* have the wrong types. These
+    # are not syntax errors — the body parses — so they reach a different
+    # half of json.cc: the typed accessors, which must fall back rather than
+    # mis-read. Branch coverage named six of them as never executed, and a
+    # client that sends `"id":{}` or `"method":7` is not exotic: it is a
+    # different client library's idea of the same protocol.
+    #
+    # Each is followed by a real request, because the property that matters
+    # is not what the server answers to the bad one — it is that it answers
+    # the next one. A server that wedges on a wrong type is worse than one
+    # that rejects it.
+    # Trailing content is asserted twice, and the second assertion is the
+    # one that has teeth: "the server survives" is also true of a decoder
+    # that silently ignores the extra bytes, which is the bug this guards
+    # against. A body with something after the closing brace must be
+    # *rejected* — no reply for its id — and the next request must still be
+    # answered. Removing the trailing-content check in json.cc makes this
+    # fail while every "still alive" assertion keeps passing.
+    raw.send_raw('{"jsonrpc":"2.0","id":77,"method":"initialize",'
+                 '"params":{}} trailing')
+    # drain() rather than wait(): wait() turns "nothing arrived" into a FAIL
+    # of its own, which would report this as broken every time it passes.
+    seen = raw.drain(timeout=0.5)
+    check('json | trailing content: the message is rejected',
+          not any(m.get('id') == 77 for m in seen),
+          str(seen)[:120])
+
+    for label, body in [
+        ('trailing content after a complete message',
+         '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}} trailing'),
+        ('"id" as an object',
+         '{"jsonrpc":"2.0","id":{"a":1},"method":"initialize","params":{}}'),
+        ('"id" as a bare null',
+         '{"jsonrpc":"2.0","id":null,"method":"initialize","params":{}}'),
+        ('"method" as a number',
+         '{"jsonrpc":"2.0","id":2,"method":123,"params":{}}'),
+        ('"params" as a number',
+         '{"jsonrpc":"2.0","id":3,"method":"initialize","params":5}'),
+        ('a number followed by "+"',
+         '{"jsonrpc":"2.0","id":4,"method":"initialize","params":{"a":1+2}}'),
+        ('a number with two decimal points',
+         '{"jsonrpc":"2.0","id":5,"method":"initialize","params":{"a":1.2.3}}'),
+    ]:
+        raw.send_raw(body)
+        still_alive = raw.request('initialize', {'processId': None,
+                                                 'capabilities': {}})
+        check('json | %s: server still serves' % label,
+              still_alive is not None and 'result' in still_alive,
+              str(still_alive)[:120])
+
     # Serialisation escapes: format a document that contains a double quote,
     # so the response body has to escape it. The server never produced an
     # escaped string before, leaving half of SerializeString unexercised.
