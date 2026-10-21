@@ -1853,13 +1853,26 @@ again in the same session. All four are supported here regardless, and still
 have cases; they are just no longer claimed as coming from the grammar.
 
 Running the new check immediately found a genuine gap it was written for:
-`FreqMultiplier`, `FreqDivider` and `DifferentialInvOf`. They belong to
-`ToClockPort` alone,
+`FreqMultiplier`, `FreqDivider` and `DifferentialInvOf`.
+
+> **Correction (§5.78).** This round said "they belong to `ToClockPort`
+> alone". That is true of `FreqMultiplier` and `FreqDivider`, and false of
+> `DifferentialInvOf`, which also appears as `clockPort_diffPort`:
 
 ```
 toClockPort_item : attribute_def | toClockPort_source | freqMultiplier_def
                  | freqDivider_def | differentialInvOf_def | period_def ;
+
+clockPort_item   : attribute_def | clockPort_diffPort ;
+clockPort_diffPort : 'DifferentialInvOf' concat_clock_signal ';' ;
 ```
+
+The statement was made from the `toClockPort_item` rule alone, without
+looking for the keyword anywhere else in the grammar. The check that found
+these three keywords was itself keyword-shaped, so it confirmed the first
+two and over-generalised the third.
+
+`ActivePolarity` is the same shape, in `ResetPort` and `ToResetPort`:
 
 and so fell outside the 26-port sweep, which covers only what every port
 shares. Ten cases added; all pass.
@@ -2623,6 +2636,65 @@ redefine a parameter of the module it instantiates; `defaultLoad_def` taking a
 dot while `hier_data_signal` needs none, which is why `Alias a = b;` is legal;
 and `NameSpace` / `UseNameSpace` with the name **omitted** on both, at top
 level and inside a module.
+
+### 5.77 A mechanical sweep of every keyword in every rule
+
+Rather than pick the next block by hand, the reference grammar was parsed
+into 249 parser rules, every quoted literal in every rule body extracted,
+and each checked against the whole corpus plus every generated case. That is
+a wider net than the 53 block keywords (§5.51): it also covers literals that
+only ever appear *inside* a block — `Port`, `Of`, `RefEnum`, `Enable`,
+`ActivePolarity`, `AccessTogether`, `BSDLEntity`.
+
+Result: **zero keywords defined by the grammar and absent from the corpus.**
+Combined with the 53-block assertion, both keyword layers are now closed.
+
+The sweep is worth keeping but is not sufficient on its own, and §5.76 is
+the reason: `PortGroup` and `si[3:0]` both appeared in the corpus long
+before anyone put them together. Keyword presence and shape coverage are
+different questions, and only the second one finds bugs.
+
+### 5.78 Three places where the grammar wants a single value or a plain integer
+
+Found by reading the item rules of blocks already marked as reviewed.
+
+**`scanInterface_name : SCALAR_ID`** — a ScanInterface may not carry a
+subscript, though the ports and registers beside it may (§5.76). This one
+matters more than `instance_name` or `module_name`, because ScanInterface is
+where a chip file names its tap-facing ports, so a subscript there looks
+natural to anyone writing ICL by hand. The rejection is correct and is
+pinned in `fail/ours/scaninterface_name_with_vector.icl`.
+
+**`pos_int`, not `number`** — three items take a plain integer, so a
+parameter reference is illegal in them, although it is legal one line away
+in `size : pos_int | '$' SCALAR_ID`:
+
+```
+period_def         : 'Period' pos_int (unit)? ';' ;
+freqMultiplier_def : 'FreqMultiplier' pos_int ';' ;
+freqDivider_def    : 'FreqDivider' pos_int ';' ;
+```
+
+`Period $W;` is accepted anyway — the same trade as §5.68's
+`Attribute foo = abc;`, cased rather than resolved.
+
+**Single where neighbours take lists** — the converse of §5.62:
+
+```
+dataOutPort_enable : 'Enable' data_signal ';' ;         <- single
+scanOutPort_enable : 'Enable' data_signal ';' ;         <- single
+dataRegister_writeEnSource : 'WriteEnSource' '~'? data_signal ';' ;
+```
+
+and `DefaultLoadValue` / `ResetValue` take `(concat_number | enum_symbol)`,
+where `enum_symbol` is one `SCALAR_ID` — so a *list* of enum symbols is not
+in the grammar. All accepted here, all cased.
+
+Also corrected here: §5.49 claimed `DifferentialInvOf` belongs to
+`ToClockPort` alone. It appears in `ClockPort` too, as `clockPort_diffPort`.
+The claim came from reading `toClockPort_item` without searching the rest of
+the grammar for the keyword — the check that surfaced those three was itself
+keyword-shaped, and over-generalised the third.
 
 ## 6. What was verified, and what was not
 

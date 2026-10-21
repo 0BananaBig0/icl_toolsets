@@ -733,6 +733,81 @@ def blocks():
         'Module m { ScanOutPort so { Source sr[0]; } }',
     ]))
 
+    # ---- where a plain integer is required ----
+    # Three items take `pos_int` rather than `number`, so a parameter
+    # reference is not legal in them even though it is legal one line away
+    # as a size:
+    #
+    #   period_def         : 'Period' pos_int (unit)? ';' ;
+    #   freqMultiplier_def : 'FreqMultiplier' pos_int ';' ;
+    #   freqDivider_def    : 'FreqDivider' pos_int ';' ;
+    #   size               : pos_int | '$' SCALAR_ID ;
+    #
+    # `Period $W;` is accepted here anyway. It is the same trade as §5.68's
+    # `Attribute foo = abc;`: refusing it would cost nothing to the grammar
+    # and might cost a real file. Cased so the choice is written down.
+    b.append(('posIntOnly', [
+        'Module m { ToClockPort cp { Period 10ns; } }',
+        'Module m { ToClockPort cp { Period 10; } }',
+        'Module m { ToClockPort cp { Period $W; } }',
+        'Module m { ToClockPort cp { FreqMultiplier 2; } }',
+        'Module m { ToClockPort cp { FreqMultiplier $W; } }',
+        'Module m { ToClockPort cp { FreqDivider $W; } }',
+        # 'Enable' takes data_signal, not concat_data_signal — a single
+        # signal, where its neighbours take lists (§5.62).
+        'Module m { ScanOutPort so { Enable e; } }',
+        'Module m { ScanOutPort so { Enable a, b; } }',
+        'Module m { DataOutPort do { Enable a, b; } }',
+        # DefaultLoadValue / ResetValue take (concat_number | enum_symbol),
+        # and enum_symbol is one SCALAR_ID — so a *list* of enum symbols is
+        # not in the grammar. Accepted here, and cased for the same reason.
+        'Module m { ScanRegister sr { DefaultLoadValue A; } }',
+        'Module m { ScanRegister sr { DefaultLoadValue A, B; } }',
+        'Module m { ScanRegister sr { ResetValue A, B; } }',
+        'Module m { ScanRegister sr { CaptureSource A; } }',
+        'Module m { DataInPort di { DefaultLoadValue A; } }',
+        # writeEnSource is '~'? data_signal — single, with an optional not.
+        'Module m { DataRegister dr { WriteEnSource ~w; } }',
+        'Module m { DataRegister dr { AddressValue $A; } }',
+    ]))
+
+    # ---- ScanInterface internals ----
+    # scanInterface_item : attribute_def | scanInterfacePort_def
+    #                    | defaultLoad_def | scanInterfaceChain_def ;
+    # scanInterfaceChain_item : attribute_def | scanInterfacePort_def
+    #                         | defaultLoad_def ;
+    #
+    # The chain item list has no `scanInterfaceChain_def`, so a Chain inside
+    # a Chain is not in the grammar. It parses here anyway — see §5.44,
+    # where the same single rule lets any keyword open a block anywhere.
+    #
+    # scanInterface_name is SCALAR_ID, so `ScanInterface si[3:0]` is
+    # rejected; that rejection is pinned in
+    # fail/ours/scaninterface_name_with_vector.icl.
+    b.append(('scanInterfaceItems', [
+        'Module m { ScanInterface si { Port p; } }',
+        'Module m { ScanInterface si { DefaultLoadValue 0; } }',
+        'Module m { ScanInterface si { Attribute a = 1; } }',
+        'Module m { ScanInterface si { Chain c { Port p; } } }',
+        'Module m { ScanInterface si { Chain c { DefaultLoadValue 0; } } }',
+        'Module m { ScanInterface si { Chain c { Attribute a = 1; } } }',
+        'Module m { ScanInterface si { Chain c { Chain d { Port p; } } } }',
+        # AccessLink internals: accessLink1149_ScanInterface_name is
+        # instance_name ('.' scanInterface_name)? — the hierarchy optional.
+        'Module m { AccessLink al Of STD_1149_1_2001 '
+        '{ BSDLEntity e; r { ScanInterface { si; } } } }',
+        'Module m { AccessLink al Of STD_1149_1_2001 '
+        '{ BSDLEntity e; r { ScanInterface { i.si; } } } }',
+        'Module m { AccessLink al Of STD_1149_1_2001 '
+        '{ BSDLEntity e; r { ActiveSignals { s; } } } }',
+        # alias_item : attribute_def | 'AccessTogether' ';'
+        #            | alias_iApplyEndState | alias_refEnum
+        # — AccessTogether is a bare keyword statement, not a block.
+        'Module m { Alias a = b { AccessTogether; } }',
+        'Module m { Alias a = b { iApplyEndState 1; } }',
+        'Module m { Alias a = b { RefEnum E; } }',
+    ]))
+
     # ---- the attribute machinery ----
     # `Attribute` is the most-used block and the least rule-bound one:
     #
