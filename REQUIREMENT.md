@@ -2870,18 +2870,104 @@ the protocol stream. Two report `malformed request: invalid value at byte N`;
 the rest are ignored, which is the right answer for a message that cannot be
 interpreted.
 
+### 5.85 PDL: no scanner, no grammar, and a check that keeps it that way
+
+The brief asks that ICL and PDL not share rules or token definitions. The
+status is worth stating plainly, because it is not the obvious outcome:
+
+**There is no PDL scanner and no PDL grammar in this repository, and none is
+planned.** `src/` contains exactly one `.l` and one `.yy`, both ICL:
+
+```
+src/icl_lexer.l    ICL only
+src/icl_parser.yy  ICL only
+```
+
+PDL is a different file type — `.pdl`, not `.icl` — and a formatter for it
+would be a second program. Upstream keeps both grammars in one repository
+(`src/icl_parser/icl.g4` and `src/pdl_parser/pdl.g4`), which is exactly the
+arrangement that invites conflating them, so the separation is asserted in
+`tests/pdl_separation_test.py` rather than left to discipline. It checks
+five things:
+
+1. **No PDL-only keyword is reserved here.** 28 of them (`iScan`, `iRead`,
+   `iProc`, `on`, `off`, `STD_1687_2014`…). Reserving one would break a legal
+   ICL file that uses the word as an identifier.
+2. **Each still parses as an ordinary attribute name** — the other half of
+   the same claim, checked against the binary rather than the source.
+3. **The PDL-only lexical forms are rejected**: `0x10`, `0b101`, `#`.
+4. **No PDL token *name* appears in the ICL scanner or grammar.** This is the
+   "do not reuse one set of token definitions" check: `make_ISCAN_NUMBER` or
+   a `%token EVALUE` in `src/icl_lexer.l` / `src/icl_parser.yy` fails it.
+5. **`iApplyEndState` (ICL) is not cut into `iApply` (a PDL command) plus
+   `EndState`.** The two differ by a suffix and are the closest pair across
+   the languages; a shared scanner would go wrong here first.
+
+Checks 4 and 5 are new. Both were verified by injection: adding
+`%token EVALUE` to the grammar makes 4 fail and name the line; a stub binary
+that emits `iApply EndState` makes 5 fail.
+
+Two details of check 4 are worth recording, because the obvious version of
+it reports false failures:
+
+* It matches on word boundaries. A substring match flags `make_IPROCARG`
+  for `make_IPROC` and `DEFAULTLOADVALUE` for `DVALUE` — both ICL.
+* It strips `/* */` comments first. The scanner quotes pdl.g4 inside a
+  comment to explain *why* `0x` is rejected; without stripping, the check
+  fails on the explanation of the very thing it is checking. A check that
+  cries wolf on its own documentation is worse than no check.
+
+The seven time units (`s ms us ns ps fs as`), `SCALAR_ID` and `$name` are
+spelled the same in both languages, so they are **not** expected to be
+rejected — that is the guard against overreach, and it is asserted too.
+
+### 5.86 The .l and .yy now have line coverage, and lost two dead lines
+
+`coverage.py` previously measured only the `.cc` files. It now includes
+`src/icl_parser.yy` and `src/icl_lexer.l`: gcov honours the `#line`
+directives bison and flex emit, so `icl_parser.yy.gcov` reports against the
+`.yy` itself — prologue, semantic actions, scanner actions — which is the
+hand-written logic the brief asks to have covered. The generated `.cc` files
+are deliberately still excluded; their remaining lines are bison's tables
+and flex's DFA, and an unreached table row says nothing about this code.
+
+That immediately named two lines no test reached:
+
+**`src/icl_lexer.l` — the `if (g_buffer != nullptr)` branch in
+`icl_scan_bytes`.** It was never executed, and never could be:
+`IclDriver::Parse` calls `icl_scan_bytes` and `icl_scan_end` as a matched
+pair, and `icl_scan_end` leaves `g_buffer` null, so on every path the
+condition was false. Deleted. Dead defensive code is worse than none — it
+reads as a guarantee that was checked, when nothing checks it.
+
+**`src/icl_parser.yy` — `%printer { yyoutput << $$; } <std::string>`.** It
+runs only while a trace is being printed, and the measured build sets no
+debug level, so it sat at "100% minus one" indefinitely. Removed. The trace
+`grammar_coverage.py` reads is bison's own `Reducing stack by rule N (line
+L)`, which never needed it.
+
+With both gone, the .l and .yy are at **100% line coverage** (179/179 and
+263/263), measured the same way as the C++.
+
 ## 6. What was verified, and what was not
 
 **Verified**
 
 | Suite | Count | How |
 |---|---|---|
-| C++ unit tests | 10 | `make unitcheck` — AST and layout, no bison/flex |
-| Regression corpus | 124 | `tests/cases/`, run by `tests/regression.py` |
-| CLI behaviour | 54 | `tests/run_tests.py` |
-| LSP protocol | 27 | scripted client, coc.nvim's message sequence |
-| neovim built-in client | 10 | real client, real handshake |
-| vim 9 → coc.nvim → icl-lsp | 10 | real editor, nothing simulated |
+| Regression corpus | 488 | 244 files × 2 entries, `tests/regression.py` |
+| Block-by-block review | 730 | `tests/block_review.py`, 53 blocks all asserted |
+| CLI behaviour | 67 | `tests/run_tests.py` |
+| LSP protocol | 54 | scripted client, coc.nvim's message sequence |
+| C++ unit tests | 49 | `make unitcheck` — AST and layout, no bison/flex |
+| Golden files | 12 | `tests/golden_test.py`, byte-for-byte |
+| Whitespace insensitivity | 117 files × 3 layouts | `tests/whitespace_test.py` |
+| Mutation fuzz | 600 mutants | `tests/fuzz.py`, 0 crashes |
+| Grammar rules reached | 197/197 | bison `-t` trace, `yyrline[]` is the expected set |
+| Scanner rules reached | 114/114 | flex `-d` trace, `yy_rule_linenum[]` |
+| ICL/PDL separation | 28 + 40 + 7 | `tests/pdl_separation_test.py` |
+| C++ line / branch | 100% / 95.0% | gcov, `--strict` in `make coverage` |
+| .l and .yy line | 100% (179/179, 263/263) | gcov via bison/flex `#line` |
 
 Plus: ASan + UBSan + leak detection clean on both programs; idempotence and
 character conservation on every sample; `make install` → `make uninstall` with

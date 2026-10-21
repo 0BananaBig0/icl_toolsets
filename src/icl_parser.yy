@@ -246,7 +246,12 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::vector<AstNode*>> mux_body
 %type <std::vector<AstNode*>> conn_body
 
-%printer { yyoutput << $$; } <std::string>;
+/* No %printer. There used to be one for <std::string>, and it was the only
+   line in this file that no test ever reached: it runs only while a trace is
+   being printed, and the measured build sets no debug level, so it sat at
+   100% minus one forever. The trace that `grammar_coverage.py` reads is
+   bison's own "Reducing stack by rule N (line L)", which does not need it —
+   dropping it costs only the symbol values in a debug dump nobody reads. */
 
 %start file
 

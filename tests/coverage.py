@@ -17,8 +17,17 @@ import re
 import subprocess
 import sys
 
+# The two hand-written grammar files are here as well, and are the reason this
+# list is not just "the .cc files": gcov honours the #line directives that
+# bison and flex emit, so `icl_parser.yy.gcov` and `icl_lexer.l.gcov` report
+# against the .yy/.l themselves — prologue, semantic actions and scanner
+# actions, which is exactly the hand-written logic the brief asks to be
+# covered. The generated .cc files are deliberately NOT listed: their other
+# lines are bison's tables and flex's DFA, and a table row that no test
+# reaches says nothing about this code.
 SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
-           'icl_format_main.cc', 'icl_lsp_main.cc']
+           'icl_format_main.cc', 'icl_lsp_main.cc',
+           'icl_parser.yy', 'icl_lexer.l']
 
 
 def line_coverage(path):
