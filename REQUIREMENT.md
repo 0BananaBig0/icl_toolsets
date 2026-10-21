@@ -2696,6 +2696,82 @@ The claim came from reading `toClockPort_item` without searching the rest of
 the grammar for the keyword — the check that surfaced those three was itself
 keyword-shaped, and over-generalised the third.
 
+### 5.79 ICL and PDL are separate languages, and the scanner now says so
+
+Both live in the same upstream repository — `src/icl_parser/icl.g4` and
+`src/pdl_parser/pdl.g4` — which makes them easy to conflate. They do not
+share a lexer:
+
+| | ICL | PDL |
+|---|---|---|
+| line comment | `//`, `/* */` | `#` |
+| hex literal | `8'h10`, `'h10` | `0x10` |
+| binary literal | `4'b0011`, `'b0011` | `0b101` |
+| decimal | `10` | `10`, `1.5`, `1.5e-3` |
+| statement end | `;` | `;` **or newline** |
+| iScan literal | — | `{0b1010}`, `"0x1F"` |
+| line continuation | — | `\` at end of line |
+
+`SCALAR_ID`, `$name` and the seven time units are spelled alike in both, so
+those are ICL too and are not rejected.
+
+**The one that cost something.** `0x10` was accepted and re-rendered as
+`0 x10`: the scanner cut it into NUMBER("0") then IDENT("x10"), and the
+space-separated value rule joined them again. So the formatter *changed the
+text* of a file it claimed only to reformat — and every invariant held while
+it did:
+
+- idempotent: `0 x10` reformats to `0 x10`
+- character-conserving: strip whitespace from both sides and they are equal
+
+Character conservation cannot see a space that was not there before. That is
+the blind spot §5.55 was written about, in a form the whitespace test does
+not cover either, because that test compares two *reflowings of the same
+file*, not the file against its own output.
+
+Two lexer rules now reject them outright, naming the language:
+
+```
+'0x10' is a PDL literal, not ICL — ICL writes 8'h10 or 4'b0011, ...
+'#' starts a comment in PDL, not ICL — ICL uses //
+```
+
+The `0x`/`0b` rule matches only when the base letter follows the digits with
+**no space between**, so `Period 10 ns;` — a real spelling, with the unit
+separated — is untouched. `#` is a single character, so `#include` still
+lexes as INCLUDE by longest match; the 23 Origen files that use it still
+pass.
+
+Rejecting rather than preserving is deliberate: a PDL literal in an ICL file
+means the wrong file was handed to the tool. `tests/cases/fail/pdl/` holds
+one case per PDL-only construct; `tests/cases/pass/pdl/` holds the one
+PDL-looking spelling that is legal ICL — `"0x1F"` inside a string, where the
+bytes are not lexed as a number.
+
+**An experiment that did not work.** After finding this, a check was written
+to catch the whole class: flag any whitespace the formatter inserts where
+the input had none, unless it is at a line break, after a comma, or beside
+an operator. On the corpus it produced 70070 hits — almost all inside
+comments — and 432 distinct character pairs even with comments and strings
+excluded, because `ScanInPort·SI` and `0·x10` look identical to it. Telling
+them apart needs the keyword list, at which point the check is a whitelist
+of every legitimate boundary and is not worth its false positives. It was
+not committed. The lexer fix is the right place: it prevents the specific
+mis-lexing instead of trying to notice its shadow.
+
+### 5.80 Dead code
+
+`IclDriver::has_error()` was never called. `format_job.cc` takes the outcome
+from `FormatText`'s return value and reads `error_line()` and
+`error_message()`; `has_error_` is used inside the driver. Removed, with a
+note in the header saying why there is no replacement — an unused accessor
+is worse than none, because a reader cannot tell whether it is load-bearing.
+
+A sweep for the rest found nothing: no unused struct field, no unused
+enumerator, and no duplicated block of six or more lines anywhere in `src/`
+(checked both within a file and across files; the only cross-file repeats
+were `#include` lines).
+
 ## 6. What was verified, and what was not
 
 **Verified**

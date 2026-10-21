@@ -12,14 +12,17 @@
 //   PDL : TCL_HEX_NUMBER : '0x' (...) + ;   TCL_BIN_NUMBER : '0b' (...) + ;
 //   ICL : sized numbers are 8'h10, 4'b0011 — there is no 0x form at all.
 //
-// So `0x10` below is not ICL. It is accepted anyway, and rendered as two
-// values `0 x10`, because the scanner cuts it into NUMBER then IDENT and the
-// space-separated value list takes both. That is the known cost of the
-// permissive attribute rule (§5.32), not a PDL feature.
+// So `0x10` is not ICL, and is now rejected outright by a scanner rule —
+// see fail/pdl/hex_literal_0x.icl. It used to be accepted and re-rendered
+// as `0 x10`, because the scanner cut it into NUMBER then IDENT and the
+// space-separated value list took both; that rewrote the file's text while
+// every invariant still held, since character conservation cannot see a
+// space that was not there before.
 //
-// It is left permissive on purpose: tightening `NUMBER IDENT` would also
-// reject `Period 10 ns;` with the space in it, which real files write — see
-// the case in this file.
+// The rule matches only when the base letter follows the digits with no
+// space between, so `Period 10 ns;` — a real spelling, with the unit
+// separated — is untouched. That is the case this file exists to hold
+// alongside the ICL literals.
 Module m {
   Parameter W = 4;
   ScanRegister sr[$W-1:0] {
@@ -36,10 +39,5 @@ Module m {
   ToClockPort c2 {
     // Space before the unit — accepted, and kept as written.
     Period 10 ns;
-  }
-  ScanRegister sr3 {
-    ScanInSource si;
-    // Not ICL: the 0x spelling from PDL. Accepted, split into `0 x10`.
-    ResetValue 0x10;
   }
 }

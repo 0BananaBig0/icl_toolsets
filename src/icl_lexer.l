@@ -322,6 +322,50 @@ LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAME
 "}"  { g_location.step(); return icl::IclParser::make_RBRACE(g_location); }
 "["  { g_location.step(); return icl::IclParser::make_LBRACKET(g_location); }
 "]"  { g_location.step(); return icl::IclParser::make_RBRACKET(g_location); }
+
+  /* PDL's number spellings, rejected on sight.
+     ICL and PDL are different languages with different lexers. ICL has no
+     `0x` / `0b` form at all — its literals are `'h10`, `8'h10`, `4'b0011`,
+     with the base after an apostrophe. `0x10` belongs to pdl.g4:
+
+       TCL_HEX_NUMBER : '0x' ('0'..'9'|'A'..'F'|'a'..'f'|'x'|'X')+ ;
+       TCL_BIN_NUMBER : '0b' ('0'..'1'|'x'|'X')+ ;
+
+     Without this rule the scanner cut `0x10` into NUMBER("0") then
+     IDENT("x10"), and the space-separated value rule joined them again as
+     `0 x10` — so the formatter *changed* the text of a file it claimed only
+     to reformat, and did so while every invariant held: the output reformats
+     to itself and keeps every non-blank character. Character conservation
+     cannot see a space that was not there before.
+
+     Rejecting rather than preserving is the point: a PDL literal in an ICL
+     file means the wrong file was handed to the tool, and saying so beats
+     either silently rewriting it or silently passing a non-ICL file through.
+
+     Only when the base letter follows the digits with no space between, so
+     `Period 10 ns;` — a real spelling, with the unit separated — is
+     untouched. */
+{DIGIT}(_?{DIGIT})*[xXbB][0-9a-fA-F_xX]+ {
+                      g_location.step();
+                      driver.SetParseDiagnostic(
+                          g_location.begin.line,
+                          std::string("'") + yytext +
+                          "' is a PDL literal, not ICL — ICL writes 8'h10 or "
+                          "4'b0011, with the base after an apostrophe");
+                      return icl::IclParser::make_END(g_location);
+                    }
+
+  /* PDL's line comment, likewise. ICL uses `//`; `#` means nothing here,
+     and rejecting it is what keeps a PDL file from parsing as a broken ICL
+     one instead of being reported as the wrong language. */
+"#"                 {
+                      g_location.step();
+                      driver.SetParseDiagnostic(
+                          g_location.begin.line,
+                          "'#' starts a comment in PDL, not ICL — ICL uses //");
+                      return icl::IclParser::make_END(g_location);
+                    }
+
 ";"  { g_location.step(); return icl::IclParser::make_SEMICOLON(g_location); }
 ":"  { g_location.step(); return icl::IclParser::make_COLON(g_location); }
 ","  { g_location.step(); return icl::IclParser::make_COMMA(g_location); }

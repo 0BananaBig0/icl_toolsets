@@ -128,7 +128,11 @@ class IclDriver {
   // pre-formatted CLI string: the LSP server turns these into a diagnostic
   // range plus message. |error_line| is 1-based, like every other line number
   // in this code base.
-  bool has_error() const { return has_error_; }
+  // No `has_error()` accessor: nothing calls it. `format_job.cc` takes the
+  // outcome from `FormatText`'s return value and reads the line and message,
+  // so a third accessor would be a third thing that has to agree with
+  // `has_error_` — and an unused one is worse than none, because a reader
+  // cannot tell whether it is load-bearing.
   int error_line() const { return error_line_; }
   const std::string& error_message() const { return error_message_; }
 
