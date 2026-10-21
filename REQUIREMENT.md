@@ -2772,6 +2772,104 @@ enumerator, and no duplicated block of six or more lines anywhere in `src/`
 (checked both within a file and across files; the only cross-file repeats
 were `#include` lines).
 
+### 5.81 ICL/PDL separation, checked from both sides
+
+The instruction to keep the two languages apart was checked mechanically
+rather than by reading for PDL-isms.
+
+**Keywords.** Every quoted literal in `pdl.g4` was diffed against every
+quoted literal in `icl.g4`: 43 in PDL, 96 in ICL, **28 PDL-only**. None of
+the 28 is reserved by our scanner — verified by extracting the scanner's
+keyword rules from `src/icl_lexer.l` and intersecting.
+
+The reverse direction is also closed: every ICL literal is reserved here
+(zero missing). Eight of ours are not in `icl.g4` — `Connection`, `Field`,
+`OneHotScanInterface`, `PortGroup`, `Reg`, `ToDoPort`, `of`, and `namespace`
+(a false positive: my first extractor matched the anonymous `namespace {` in
+the lexer's C++ prologue; the check now matches only lines containing
+`make_`). The first six are the Tessent extensions, documented in §5.x.
+
+Only 15 literals are shared, and all 15 are legitimately ICL: the hex/binary
+digit characters and the seven time units. So the shared set is not evidence
+of conflation.
+
+**`tests/pdl_separation_test.py`** locks this, in `make check`. Its keyword
+list is written out in the file rather than fetched, following
+`tree_clean_test.py`: the duplication is the drift detector. Verified by
+injection — adding `iProc` as a reserved keyword makes it fail and name the
+keyword; removing the injection makes it pass.
+
+**Token sets.** The `.yy` declares 104 terminals and the scanner produces
+exactly 104; neither side has an orphan. `bison -Wall -Werror=other` is
+clean, so no dead rule and no unused terminal.
+
+### 5.82 A shape generator, and why it did not replace the hand-written cases
+
+Since §5.76 established that shape coverage finds bugs where keyword
+coverage does not, a generator was built to derive a minimal sentence for
+each of the 249 parser rules and run each through the formatter — 229
+produced text, **194 accepted, 35 rejected**.
+
+Every one of the 35 turned out to be an artefact:
+
+- **28** were generated as bare module-level statements
+  (`Module m { DefaultLoadValue ~'d1; }`), which this tool rejects
+  correctly — module level admits only `Attribute`-prefixed statements.
+  The generator wrapped each rule's owning `*_def` in a module rather than
+  in the block the item actually belongs to.
+- **`$ a`, `0 s`, `Port a`, `Chain a { ... }`** — the generator joined a
+  rule's symbols with spaces, so a parameter reference came out as `$ a`
+  and a time unit as `0 s`; and items belonging inside a ScanInterface came
+  out at module level.
+- **`AccessLink`** — the rule body spans lines the extractor mangled.
+
+So the generator measured context placement, not shape. Making it emit
+correct contexts means encoding, for each of ~180 item rules, which block
+owns it — which is precisely the knowledge the 730 hand-written cases
+already hold. Not committed; the attempt is recorded because "derive it from
+the grammar" is the obvious next idea and this is what happens.
+
+What the 194 accepted *did* confirm: no rule's minimal shape is rejected
+outright.
+
+### 5.83 Thin categories filled, and two more correct rejections pinned
+
+Counting cases per category (as in §5.58) put `connection` (3), `accessLink`
+(5), `portGroup` (5), `namespace` (6) and `scanInterface` (7) at the bottom.
+All five now have their forms written out: Connection's unnamed braced form
+with hierarchical and indexed operands; PortGroup's ranged names and
+comments between names; Namespace's optional name on both statements;
+ScanInterface's multiple Ports, multiple Chains and mixed items; AccessLink's
+`STD_1149_1_2013` and its multiple `bsdl_instr_ref`.
+
+Two rejections were found correct and pinned in `fail/ours/`:
+
+- **`NameSpace a.b;`** — `namespace_name : SCALAR_ID`, no dotted form,
+  although `hier_port`, `hier_data_signal` and `iProc_namespace` all allow
+  dots.
+- **`Alias i.a = b;`** — `alias_name : reg_port_signal_id`
+  (`SCALAR_ID | vector_id`), while the *value* is
+  `hier_data_signal : (instance_name '.')* reg_port_signal_id`. So
+  `Alias a = i1.i2.b;` is legal and `Alias i.a = b;` is not. The two sit on
+  either side of one `=`, and widening the name would cost nothing at the
+  grammar level — which is why it is a case.
+
+Also noted without a fail case, because the construct is Tessent's and has
+no rule to appeal to: `Connection;` and `Connection c { ... }` are rejected,
+as are `PortGroup pg;` and a `PortGroup` list holding a hierarchical name or
+a `~`. Only the unnamed braced `Connection` and plain port names are
+attested in real output.
+
+### 5.84 Robustness of the LSP against malformed input
+
+Nine malformed requests — missing `Content-Length`, a length shorter or
+longer than the body, a non-JSON body, a JSON array where an object belongs,
+a missing `method`, `params` as a string, 2000 header lines, an empty body —
+all exit 0 with no crash, no hang, and nothing on stdout that would corrupt
+the protocol stream. Two report `malformed request: invalid value at byte N`;
+the rest are ignored, which is the right answer for a message that cannot be
+interpreted.
+
 ## 6. What was verified, and what was not
 
 **Verified**

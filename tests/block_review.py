@@ -785,6 +785,15 @@ def blocks():
     # rejected; that rejection is pinned in
     # fail/ours/scaninterface_name_with_vector.icl.
     b.append(('scanInterfaceItems', [
+        'Module m { ScanInterface si { Port a; Port b; } }',
+        'Module m { ScanInterface si { Port a; DefaultLoadValue 0; '
+        'Attribute x = 1; } }',
+        'Module m { ScanInterface si { Chain c1 { Port a; } '
+        'Chain c2 { Port b; } } }',
+        'Module m { AccessLink al Of STD_1149_1_2013 '
+        '{ BSDLEntity e; r { ScanInterface { si; } } } }',
+        'Module m { AccessLink al Of STD_1149_1_2001 { BSDLEntity e; '
+        'r1 { ScanInterface { si1; } } r2 { ScanInterface { si2; } } } }',
         'Module m { ScanInterface si { Port p; } }',
         'Module m { ScanInterface si { DefaultLoadValue 0; } }',
         'Module m { ScanInterface si { Attribute a = 1; } }',
@@ -806,6 +815,43 @@ def blocks():
         'Module m { Alias a = b { AccessTogether; } }',
         'Module m { Alias a = b { iApplyEndState 1; } }',
         'Module m { Alias a = b { RefEnum E; } }',
+    ]))
+
+    # ---- the three thin categories, filled out ----
+    # connection and portGroup are Tessent's, with no rule in the published
+    # grammar, so these cases come from real Tessent output and from the
+    # published tutorial: only the unnamed braced form of Connection is
+    # attested, and a PortGroup list holds plain port names.
+    b.append(('connection', [
+        'Module m { Connection { a.b -> c.d; } }',
+        'Module m { Connection { a[0] -> b; } }',
+        'Module m { Connection { } }',
+        'Module m { Connection { /* c */ a -> b; } }',
+        'Module m { Connection { a -> b; c -> d; e -> f; } }',
+        'Module m { Connection { TDI -> SIB1.si; SIB1.so -> inst_1.si; '
+        'inst_1.so -> TDO; } }',
+    ]))
+
+    # portGroup — names only, but those may carry a range (§5.76). A
+    # hierarchical name and a `~` are both rejected; see REQUIREMENT §5.81.
+    b.append(('portGroup', [
+        'Module m { PortGroup pg { si, so, en } }',
+        'Module m { PortGroup pg { si[3:0] } }',
+        'Module m { PortGroup pg { en[1] } }',
+        'Module m { PortGroup pg { a, /* c */ b } }',
+        'Module m { PortGroup pg { a } PortGroup pg2 { b, c } }',
+    ]))
+
+    # namespace — the name is optional on both statements, which is easy to
+    # miss because every other named construct in ICL requires its name.
+    b.append(('namespace', [
+        'NameSpace;',
+        'NameSpace ns;',
+        'UseNameSpace;',
+        'UseNameSpace ns;',
+        'NameSpace a;\nNameSpace b;',
+        'Module m { NameSpace ns; UseNameSpace ns; }',
+        'Module m { UseNameSpace; }',
     ]))
 
     # ---- the attribute machinery ----
