@@ -230,6 +230,11 @@
     "basis": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
   },
   {
+    "path": "tests/cases/ours/diagnostics/semantic_crlf.icl",
+    "expected": "reject",
+    "basis": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
     "path": "tests/cases/ours/enum/concat_width_mismatch.icl",
     "expected": "reject",
     "basis": "IEEE 1687-2014 \u00a76.5.3(a), constructed"
@@ -543,6 +548,66 @@
     "path": "tests/cases/ours/scan_register/duplicate_ScanInSource.icl",
     "expected": "reject",
     "basis": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/alias/deep_hierarchy_comment.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.5.2, printed 67\u201368, 135\u2013137 / PDF 81\u201382, 149\u2013151"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/alias/end_state_unknown_concat.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.5.2, printed 67\u201368, 135\u2013137 / PDF 81\u201382, 149\u2013151"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/data_out_port/deep_source_slices.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.4.6.7, printed 67\u201368, 88\u201389 / PDF 81\u201382, 102\u2013103"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/enum/concat_95_bits_mismatch.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/enum/decimal_127_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/enum/decimal_96_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/enum/hex_partial_nibble_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/lexical/parameter_split_dollar.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/logic_signal/nested_unknown_outside_comparison.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/one_hot_data_group/nested_selectable_register.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.4.9(e), 6.4.15, printed 120, 129 / PDF 134, 143"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/parameter/forward_mixed_chain.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.11, 6.5.4, printed 62\u201364, 68\u201369, 138\u2013139 / PDF 76\u201378, 82\u201383, 152\u2013153"
+  },
+  {
+    "path": "tests/cases/ours/syntax_edges/parameter/literal_width_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.11, 6.5.4, printed 62\u201364, 68\u201369, 138\u2013139 / PDF 76\u201378, 82\u201383, 152\u2013153"
   },
   {
     "path": "tests/cases/ours/to_capture_en_port/duplicate_Source.icl",

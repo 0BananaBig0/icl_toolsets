@@ -336,6 +336,7 @@ coverage: $(COV_BINARIES)
 	@python3 tests/block_review.py --binary $(COV_DIR)/icl-format
 	@python3 tests/src/test_icl_lsp.py --binary $(COV_DIR)/icl-lsp
 	@python3 tests/src/test_icl_protocol.py --binary $(COV_DIR)/icl-lsp
+	@python3 tests/src/test_icl_diagnostics.py --binary $(COV_DIR)/icl-lsp
 	@python3 tests/run_tests.py --binary $(COV_DIR)/icl-format
 	@python3 tests/lsp_test.py --binary $(COV_DIR)/icl-lsp \
 	  --cli $(COV_DIR)/icl-format
@@ -345,7 +346,7 @@ coverage: $(COV_BINARIES)
 
 # ---- grammar and scanner coverage ----
 #
-# Measures which *lines of the hand-written files* the corpus exercises:
+# Measures distinct productions and scanner source-rule lines reached in
 # src/icl_parser.yy and src/icl_lexer.l. The generated C++ is not measured —
 # it is machine-written and nobody can act on its line numbers — but a rule in
 # the .y/.l that no test ever reaches is a rule nobody knows works.
@@ -395,7 +396,8 @@ $(GRAMCOV_BIN): $(GRAMCOV_OBJS)
 
 gramcov: $(GRAMCOV_BIN)
 	@python3 tests/grammar_coverage.py --binary $(GRAMCOV_BIN) \
-	  --parser $(GRAMCOV_PARSER) --lexer $(GRAMCOV_LEXER)
+	  --parser $(GRAMCOV_PARSER) --lexer $(GRAMCOV_LEXER) \
+	  --report $(GRAMCOV_DIR)/blocks.json
 
 # ---- installation ----
 #
@@ -534,6 +536,8 @@ check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck
 	@python3 tests/tests/test_antlr_diff.py
 	@python3 tests/tests/test_coverage.py
 	@python3 tests/tests/test_grammar_coverage.py
+	@python3 tests/tests/test_block_review.py
+	@python3 tests/tests/test_regression.py
 	@python3 tests/tests/test_makefile.py
 	@python3 tests/tests/test_tree_clean_test.py
 	@python3 tests/golden_test.py --binary $(BIN)

@@ -20,10 +20,12 @@ Exits non-zero when a rule is never exercised.
 """
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 REDUCE = re.compile(r'Reducing stack by rule (\d+) \(line (\d+)\):')
@@ -47,8 +49,12 @@ def rule_lines(path, array_name):
     values = [int(n) for n in re.findall(r'-?\d+', match.group(1))]
     if array_name == 'yyrline':
         # Slot0 is unused, slot1 is $accept. Bison prints table index minus1.
-        return {slot - 1: line for slot, line in enumerate(values) if slot > 1 and line > 0}
-    return {line: line for line in values if line > 0}
+        rules = {slot - 1: line for slot, line in enumerate(values) if slot > 1 and line > 0}
+    else:
+        rules = {line: line for line in values if line > 0}
+    if not rules:
+        raise ValueError('%s has no source rules in %s' % (array_name, path))
+    return rules
 
 
 def corpus_files():
@@ -76,9 +82,12 @@ def main():
     parser.add_argument('--binary', required=True)
     parser.add_argument('--parser', required=True)
     parser.add_argument('--lexer', required=True)
-    parser.add_argument('--cases', nargs='*')
+    parser.add_argument('--cases', nargs='+')
+    tests = Path(__file__).resolve().parent
+    parser.add_argument('--manifest', type=Path, default=tests / 'cases/conformance.json')
+    parser.add_argument('--report', type=Path, help='write per-block trace evidence as JSON')
     parser.add_argument('--no-fail', action='store_true',
-                        help='report only, always exit 0')
+                        help='allow unreached rules; process and expectation errors still fail')
     args = parser.parse_args()
 
     files = args.cases if args.cases else corpus_files()
@@ -86,23 +95,58 @@ def main():
         print('error: no .icl cases found', file=sys.stderr)
         return 2
 
-    grammar_seen, scanner_seen = set(), set()
+    try:
+        cases = json.loads(args.manifest.read_text())
+        expected = {}
+        for case in cases:
+            expected.setdefault((tests / case['path']).resolve(), []).append(case)
+        order = {block: i for i, block in enumerate(dict.fromkeys(c['block'] for c in cases))}
+    except (OSError, ValueError, KeyError) as error:
+        print('error:', error, file=sys.stderr)
+        return 2
+    # One trace execution per file, in the normative manifest's review order.
+    files = sorted(files, key=lambda path: min(
+        (order[c['block']] for c in expected.get(Path(path).resolve(), [])),
+        default=len(order)))
+    grammar_seen, scanner_seen, blocks = set(), set(), {}
     for path in files:
-        with open(path, 'rb') as handle:
-            data = handle.read()
-        # No path argument: that is how the CLI reads stdin.
-        result = subprocess.run([args.binary],
-                                input=data,
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.PIPE)
-        trace = result.stderr.decode('utf-8', 'replace')
-        grammar_seen |= {int(rule) for rule, line in REDUCE.findall(trace)}
-        scanner_seen |= {int(n) for n in ACCEPT.findall(trace)}
+        try:
+            data = Path(path).read_bytes()
+            # No path argument: that is how the CLI reads stdin.
+            # The 673KiB benchmark emits 143MB of trace in ~45s locally.
+            # Spool to disk to bound memory; allow headroom for slower CI hosts.
+            with tempfile.TemporaryFile() as trace:
+                result = subprocess.run([args.binary], input=data, timeout=180,
+                                        stdout=subprocess.DEVNULL, stderr=trace)
+                trace.seek(0)
+                productions, scanner_lines = set(), set()
+                for raw_line in trace:
+                    line = raw_line.decode('utf-8', 'replace')
+                    productions.update(int(rule) for rule, _ in REDUCE.findall(line))
+                    scanner_lines.update(int(n) for n in ACCEPT.findall(line))
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f'error: {path}: {error}', file=sys.stderr)
+            return 2
+        classifications = expected.get(Path(path).resolve(), [])
+        if result.returncode not in (0, 2):
+            print(f'error: {path}: formatter exited {result.returncode}', file=sys.stderr)
+            return 2
+        if any((result.returncode == 0) != case['accept'] for case in classifications):
+            print(f'error: {path}: acceptance disagrees with conformance manifest', file=sys.stderr)
+            return 1
+        grammar_seen |= productions
+        scanner_seen |= scanner_lines
+        for name in dict.fromkeys(c['block'] for c in classifications) or ['unclassified']:
+            block = blocks.setdefault(name, {
+                'accepted': 0, 'rejected': 0, 'productions': set(), 'scanner_lines': set()})
+            block['accepted' if result.returncode == 0 else 'rejected'] += 1
+            block['productions'] |= productions
+            block['scanner_lines'] |= scanner_lines
 
     try:
         grammar_lines = rule_lines(args.parser, 'yyrline')
         scanner_lines = rule_lines(args.lexer, 'yy_rule_linenum')
-    except ValueError as error:
+    except (OSError, ValueError) as error:
         print('error:', error, file=sys.stderr)
         return 2
     grammar_all, scanner_all = set(grammar_lines), set(scanner_lines)
@@ -119,6 +163,16 @@ def main():
     print('Corpus: %d files' % len(files))
     g_missing = report('grammar', 'src/icl_parser.yy', grammar_seen, grammar_all)
     s_missing = report('scanner', 'src/icl_lexer.l', scanner_seen, scanner_all)
+
+    if args.report:
+        for block in blocks.values():
+            block['productions'] = sorted(block['productions'])
+            block['scanner_lines'] = sorted(block['scanner_lines'])
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps({
+            'files': len(files), 'blocks': blocks,
+            'missing_productions': g_missing, 'missing_scanner_lines': s_missing,
+        }, indent=2) + '\n')
 
     ok = True
     for label, source, missing in (('grammar', 'src/icl_parser.yy', g_missing),

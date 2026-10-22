@@ -6,6 +6,13 @@ in [honza-icl-comparison.md](honza-icl-comparison.md). This report records actua
 verification; it does not claim complete hardware elaboration or formal proof of
 all possible inputs.
 
+## Latest block-coverage audit
+
+See [block-coverage-audit.md](block-coverage-audit.md) for the renewed sequential
+block review, per-block accepted/rejected counts and trace evidence, repaired
+harness oracles, refreshed reference comparison and current coverage limits.
+That report supersedes the earlier measurement snapshots below.
+
 ## Clang-methods follow-up
 
 The subsequent [handwritten syntax-edge corpus](../tests/cases/ours/syntax_edges/README.md)

@@ -337,3 +337,24 @@ adjudication file. No classified positive is among the135 reference-only inputs.
 New local-only cases exercise keyword identifiers and the previously documented
 legacy PortGroup support. The raw log stays in ignored
 `build/reference/renewed-differential-results.txt`.
+
+
+## Block-coverage audit at3612110
+
+Rechecked the pinned checkout without changing its grammar: all268 named
+productions/fragments have matching paths in the table above, all75 documented
+keyword spellings have explicit local Flex patterns, and all8 upstream ICL
+files still have byte-identical local copies. The real adapter tests pass6/6.
+No PDL tokens were imported.
+
+The refreshed differential run covers2284 files:1866 agreements,270 local-only
+acceptances and148 reference-only acceptances. All148 reference-only cases are
+maintained rejections; none is a classified positive. The13 newly recorded
+adjudications cover the CRLF Enum diagnostic, hierarchy whitespace/depth,
+unknown Alias end states, wide numeric overflow and unequal Enum widths,
+parameter-reference spelling/types, nested LogicSignal unknowns and a selectable
+DataRegister in an addressable group. Their individual normative references
+remain in the conformance manifest and the adjudication file. Local-only forms
+continue to exercise the documented keyword identifiers, reference lexer gaps,
+IEEE examples and explicitly classified extensions. The raw output is ignored
+at `build/renewed-differential.log`.

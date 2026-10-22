@@ -4,6 +4,10 @@ Baseline: `44fc3db`. Reference: IEEE 1687-2014, normative Clause 6.
 External comparison: Honza255/icl_parser `333f8bc7a54964138ac14a34fde9e942c496436d`.
 ICL and PDL remain separate languages; this project has no PDL parser.
 
+The latest [block-coverage audit](block-coverage-audit.md) revalidates this review
+against the current classified corpus and records per-block trace evidence.
+Historical counts below describe their respective implementation stages.
+
 ## Enum — syntax and local checks verified
 
 Evidence: §6.5.3, printed 137–138 / PDF 151–152; dependencies §§6.3.7–8,

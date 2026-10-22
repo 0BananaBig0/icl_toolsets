@@ -15,7 +15,7 @@ holds.
 Every case is checked three ways, because accepting input is not enough:
   1. it parses;
   2. formatting it twice equals formatting it once (idempotent);
-  3. it is the same text once whitespace is removed (nothing was dropped).
+  3. content survives, allowing layout changes and common comment-indent rebasing.
 
 Usage: block_review.py --binary BIN
 """
@@ -25,8 +25,21 @@ import os
 import re
 import subprocess
 import sys
+import textwrap
+from pathlib import Path
+
+from src.test_icl_conformance import CONTENT
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def content(text):
+    tokens = CONTENT.findall(text)
+    for i, token in enumerate(tokens):
+        if token.startswith('/*') and '\n' in token:
+            first, rest = token.split('\n', 1)
+            tokens[i] = first + '\n' + textwrap.dedent(rest)
+    return tokens
 
 
 def run(binary, source):
@@ -44,9 +57,8 @@ def run(binary, source):
         return 'accepted once, rejected on the second pass'
     if again.stdout.decode('utf-8', 'replace') != out:
         return 'not idempotent'
-    # Comparing without whitespace is what catches a dropped token: a
-    # formatter that merely reflows keeps every character.
-    if re.sub(r'\s+', '', source) != re.sub(r'\s+', '', out):
+    # Only common comment indentation is layout; relative indent is content.
+    if content(source) != content(out):
         return 'characters lost'
     return None
 
@@ -110,11 +122,6 @@ def blocks():
         #   useNameSpace_def : 'UseNameSpace' namespace_name? ';' ;
         'Module m { Attribute x; }',
         'Module m { UseNameSpace; }',
-        # Tessent's, not the standard's: `->` edges.
-
-
-
-
     ]))
 
     # ---- namespace ----
@@ -622,45 +629,18 @@ def blocks():
         "Module m { Attribute a = 2'b01, 2'b10; }",
     ]))
 
-    # ---- recursion and nesting ----
-    # The recursive rules, checked at depth: nesting costs heap, not C stack.
-    # ---- the signal family ----
-    # Nine signal rules, and they are not the same rule. Five carry `~`:
-    #
-    #   data_signal scan_signal clock_signal reset_signal unknown_signal
-    #       : '~'? signal ;
-    #
-    # Six do not — they are a bare `signal`, so `~` is not legal on them:
-    #
-    #   tck_signal tms_signal trst_signal
-    #   shiftEn_signal captureEn_signal updateEn_signal
-    #       : signal ;
-    #
-    # So `ToTMSPort { Source ~s; }` is not in the published grammar. It is
-    # accepted here, which is the deliberate-extra-shape rule again; the point
-    # of casing it is that the two halves must not be "harmonised" later
-    # without noticing that the grammar really does treat them differently.
-    #
-    # A second asymmetry, this one inside the published grammar itself:
-    # some sources are `concat_*` (a comma list) and some are a single
-    # signal, with no apparent reason:
-    #
-    #   scanRegister_scanInSource  : 'ScanInSource' scan_signal ';'      single
-    #   scanRegister_captureSource : 'CaptureSource' (concat_data_signal
-    #                                | enum_symbol) ';'                 list
-    #   toShiftEnPort_source       : 'Source' concat_shiftEn_signal ';'  list
-    #   toCaptureEnPort_source     : 'Source' captureEn_signal ';'       single
-    #   toUpdateEnPort_source      : 'Source' updateEn_signal ';'        single
-    #
-    # Both forms are accepted here, and both are cased.
+    # ---- signal families: IEEE 6.3.12 and individual port Source rules ----
+    # The concat control-signal families also admit data_signal operands,
+    # including inversion. ToCaptureEn/ToUpdateEn use concat families too.
+    # ScanInSource remains a single scan_signal; CaptureSource accepts a list.
     b.append(('signalFamily', [
-        # The five that take `~`.
+        # Data/scan/clock/reset signal inversion.
         'Module m { DataOutPort d { Source ~a; } }',
         'Module m { ScanOutPort so { Source ~a; } }',
         'Module m { ToClockPort c { Source ~a; } }',
         'Module m { ToResetPort r { Source ~a; } }',
         'Module m { Instance i Of M { InputPort p = ~a; } }',
-        # The six that do not.
+        # Control concatenations can carry inverted data signals.
         'Module m { ToTMSPort t { Source ~a; } }',
         'Module m { ToTRSTPort t { Source ~a; } }',
         'Module m { ToShiftEnPort s { Source ~a; } }',
@@ -784,9 +764,8 @@ def blocks():
     # scanInterfaceChain_item : attribute_def | scanInterfacePort_def
     #                         | defaultLoad_def ;
     #
-    # The chain item list has no `scanInterfaceChain_def`, so a Chain inside
-    # a Chain is not in the grammar. It parses here anyway — see §5.44,
-    # where the same single rule lets any keyword open a block anywhere.
+    # A Chain cannot contain another Chain; the negative conformance corpus
+    # checks that restriction separately.
     #
     # scanInterface_name is SCALAR_ID, so `ScanInterface si[3:0]` is
     # rejected; that rejection is pinned in
@@ -824,11 +803,8 @@ def blocks():
         'Module m { Alias a = b { RefEnum E; } }',
     ]))
 
-    # ---- the three thin categories, filled out ----
-    # connection and portGroup are Tessent's, with no rule in the published
-    # grammar, so these cases come from real Tessent output and from the
-    # published tutorial: only the unnamed braced form of Connection is
-    # attested, and a PortGroup list holds plain port names.
+    # PortGroup is a documented LiU P1687 compatibility form. Connection is
+    # unsupported; its old examples belong to the negative conformance corpus.
 
     # portGroup — names only, but those may carry a range (§5.76). A
     # hierarchical name and a `~` are both rejected; see REQUIREMENT §5.81.
@@ -860,14 +836,8 @@ def blocks():
     #   attribute_value : (concat_string | concat_number) ;
     #   parameter_value : concat_string | concat_number ;
     #
-    # **An attribute value is a string list or a number list — nothing else.**
-    # `Attribute foo = abc;` is not in the grammar, because `abc` is neither.
-    # It is accepted here. That is not a rounding error: this is the single
-    # most consequential piece of permissiveness in the tool, and it is what
-    # lets any keyword appear as an attribute name (§5.32) and lets Tessent
-    # spellings survive. Casing `Attribute foo = abc;` does not celebrate it —
-    # it pins it, so that a later attempt to "tighten" attribute_value has to
-    # confront the 292 real statements counted in §5.59.
+    # Bare identifiers are invalid attribute values; those negative cases are
+    # maintained in the conformance manifest.
     #
     # `concat_number` is `'~'? number (',' '~'? number)*` and `number`
     # includes integer_expr, which is why `= 1 + 2` and `= $P` are legal.
@@ -1261,9 +1231,12 @@ def main():
         return 2
 
     total = failed = 0
-    for name, cases in blocks():
+    generated = Path(HERE) / 'generated/ours/block_review'
+    generated.mkdir(parents=True, exist_ok=True)
+    for block_index, (name, cases) in enumerate(blocks()):
         bad = []
-        for source in cases:
+        for case_index, source in enumerate(cases):
+            (generated / f'{block_index}_{name}_{case_index}.icl').write_text(source)
             total += 1
             reason = run(args.binary, source)
             if reason:

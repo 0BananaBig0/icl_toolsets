@@ -4,8 +4,8 @@
 Every case is a single file under `tests/cases/`:
 
     pass/   valid ICL.   Must be accepted (exit 0), idempotent, and
-                         character-preserving: stripping all whitespace from
-                         input and output must give the same string.
+                         content-preserving: strings/comments remain intact, allowing
+                         layout changes and common comment-indent rebasing.
     fail/   invalid ICL. Must be rejected with exit 2.
 
 Adding a case is dropping a file into a directory. No test code changes. The
@@ -29,12 +29,10 @@ import tempfile
 import subprocess
 import sys
 
+from block_review import content
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CASES = os.path.join(HERE, 'cases')
-
-
-def strip_ws(text):
-    return ''.join(text.split())
 
 
 def cases(folder):
@@ -139,6 +137,7 @@ def main():
         else:
             failed.append('%s  %s' % (name, detail))
             print('  [FAIL] %s  %s' % (name, detail))
+        return ok
 
     print('=' * 72)
     print('FAIL: invalid ICL must be rejected (exit 2)')
@@ -162,10 +161,11 @@ def main():
                                            result.stderr.strip()[:70])):
                 continue
             output = result.stdout
-            if strip_ws(text) != strip_ws(output):
+            # A leading UTF-8 BOM is intentionally consumed by the scanner.
+            if content(text.removeprefix("\ufeff")) != content(output):
                 check(tag + ' | no char lost', False,
-                      'input=%r output=%r' % (strip_ws(text)[:40],
-                                              strip_ws(output)[:40]))
+                      'input=%r output=%r' % (content(text)[:40],
+                                              content(output)[:40]))
                 continue
             second = run_stdin(args.binary, output)
             if second.returncode != 0 or second.stdout != output:
