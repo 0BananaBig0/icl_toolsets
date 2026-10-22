@@ -187,7 +187,7 @@ def main():
         failures.append('PDL token name in ICL source: %s' % where)
 
     # 5. iApplyEndState survives as one word, not iApply + EndState
-    src = 'Module m { ScanInterface si { iApplyEndState DR; } }'
+    src = 'Module m { Alias a = r { iApplyEndState 0; } }'
     with tempfile.NamedTemporaryFile('w', suffix='.icl', delete=False) as fh:
         fh.write(src)
         path = fh.name

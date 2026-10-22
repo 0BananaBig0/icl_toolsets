@@ -8,7 +8,7 @@ Module m {
     }
   }
   ScanInterface si {
-    Chain c[1:0] {
+    Chain c {
       Port p;
       DefaultLoadValue 8'b1010;
     }

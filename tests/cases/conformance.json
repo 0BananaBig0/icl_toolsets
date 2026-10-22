@@ -6676,5 +6676,863 @@
     "block": "logic_signal",
     "accept": false,
     "source": "IEEE 1687-2014 sections 6.3.12 and 6.5.4: integer operators exclude bitwise operators"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/single.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/repeat.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/concat.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/number.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/keyword.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/comments.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/header_comments.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/empty.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/comments_only.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/bare.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/string.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/arithmetic.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/binary.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/bool.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/wrong_invert.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/source.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/attribute.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/parameter.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/nested_group.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/instance.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/data_register.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/scan_register.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/chain.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/empty_port.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/no_semicolon.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/trailing_comma.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/range_extra.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/no_body.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/qualified.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/signal_range.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/based_range.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.14; ours"
+  },
+  {
+    "path": "cases/standard/one_hot_scan_group/cascaded.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; standard"
+  },
+  {
+    "path": "cases/tessent/one_hot_scan_group/distributed.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.14; tessent"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/single.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/repeat.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/concat.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/number.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/keyword.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/comments.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/header_comments.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/empty.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/comments_only.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/bare.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/string.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/arithmetic.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/binary.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/bool.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/wrong_invert.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/source.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/attribute.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/parameter.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/nested_group.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/scan_register.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/chain.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/empty_port.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/no_semicolon.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/trailing_comma.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/range_extra.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/no_body.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/qualified.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/signal_range.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/based_range.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; constructed"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/instance.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/addressed_instance.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/register.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/addressed_register.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/mixed.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/register_comments.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/access_link.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/access_link_bare.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/selectable.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/callback.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "cases/standard/one_hot_data_group/addressed.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; standard"
+  },
+  {
+    "path": "cases/tessent/one_hot_data_group/distributed.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; tessent"
+  },
+  {
+    "path": "cases/tessent/one_hot_data_group/address_concat.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.15; tessent"
+  },
+  {
+    "path": "cases/ours/scan_interface/port.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/ports.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/ranged_port.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/attributes.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/default.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chains.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_attributes.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_default.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/keyword.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/comments.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/header_comments.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_name_scope.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/empty.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/comments_only.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/bare.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/source.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/string_port.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/numeric_port.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/inverted_port.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/hierarchical_port.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/port_concat.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/port_expr.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/port_bool.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/no_port.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/missing_semicolon.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/bad_range.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/based_range.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/multi_range.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/instance.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/register.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/onehot.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/nested_interface.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/default_string.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/default_enum.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/duplicate_default.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/default_and_chain.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_and_default.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_empty.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_comments.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_semicolon.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_no_name.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_ranged_name.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_duplicate.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_duplicate_comment.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_nested.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_source.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_port_concat.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_repeat_default.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/attribute_signal.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/parameter.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/no_body.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/ranged_name.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/hier_name.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/ours/scan_interface/chain_module.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.4.16; ours"
+  },
+  {
+    "path": "cases/standard/scan_interface/interfaces.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; standard"
+  },
+  {
+    "path": "cases/tessent/scan_interface/manual_1.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; tessent"
+  },
+  {
+    "path": "cases/tessent/scan_interface/manual_2.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; tessent"
+  },
+  {
+    "path": "cases/tessent/scan_interface/manual_3.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; tessent"
+  },
+  {
+    "path": "cases/tessent/scan_interface/chain_manual_1.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; tessent"
+  },
+  {
+    "path": "cases/tessent/scan_interface/chain_manual_2.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; tessent"
+  },
+  {
+    "path": "cases/tessent/scan_interface/chain_manual_3.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.4.16; tessent"
+  },
+  {
+    "path": "cases/ours/scan_interface/unsupported_one_hot_interface.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "No OneHotScanInterface production in IEEE 1687-2014, Honza grammar or Tessent topic inventory"
+  },
+  {
+    "path": "cases/ours/scan_interface/one_hot_interface_identifier.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "No OneHotScanInterface production in IEEE 1687-2014, Honza grammar or Tessent topic inventory"
+  },
+  {
+    "path": "cases/ours/scan_interface/alias_only_property.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.4.16 and 6.5.2: iApplyEndState is an Alias property"
+  },
+  {
+    "path": "cases/ours/scan_interface/group_keywords_as_identifiers.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections 6.4.15, 6.4.16, 6.5.2: nested declaration boundaries and keyword identifiers"
+  },
+  {
+    "path": "cases/ours/scan_interface/instance_in_alias.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.4.15, 6.4.16, 6.5.2: nested declaration boundaries and keyword identifiers"
+  },
+  {
+    "path": "cases/ours/scan_interface/data_register_in_alias.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.4.15, 6.4.16, 6.5.2: nested declaration boundaries and keyword identifiers"
   }
 ]

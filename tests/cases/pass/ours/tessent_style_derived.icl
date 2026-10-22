@@ -45,7 +45,7 @@ Module TDR_8 {
     CaptureSource di[7:0];
     ResetValue 8'b0000_0000;
   }
-  ScanInterface client_si { Port si; Source si; }
+  ScanInterface client_si { Port si; Port so; Port se; }
 }
 
 Module my_ip {

@@ -59,8 +59,8 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 
 ### Task 5: OneHot groups, ScanInterface and Chain
 
-- [ ] Audit §§6.4.14–16 individually; test required items, nested instances/chains and invalid nesting before corrections.
-- [ ] Replace generic body acceptance with appropriate productions, run cumulative tests and merged corpus; commit.
+- [x] Audit §§6.4.14–16 individually; test required items, nested instances/chains and invalid nesting before corrections.
+- [x] Replace generic body acceptance with appropriate productions, run cumulative tests and merged corpus; commit.
 
 ### Task 6: Instance and AccessLink
 

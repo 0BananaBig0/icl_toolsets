@@ -123,6 +123,8 @@ void IclDriver::CheckBlockItems(const std::string& kind,
       {"AddressPort", {}},  // §6.4.6.24
       {"WriteEnPort", {}},  // §6.4.6.25
       {"ReadEnPort", {}},  // §6.4.6.26
+      {"ScanInterface", {{"Port", false}, {"DefaultLoadValue", true}}},
+      {"Chain", {{"Port", false}, {"DefaultLoadValue", true}}},
       {"ScanRegister", {{"ScanInSource", true}, {"CaptureSource", true},
                         {"DefaultLoadValue", true}, {"ResetValue", true},
                         {"RefEnum", true}}},  // §6.4.8
@@ -152,6 +154,11 @@ void IclDriver::CheckBlockItems(const std::string& kind,
   if (!has_item && (kind == "ToSelectPort" || kind == "ToResetPort" ||
                     kind == "ToClockPort" || kind == "ToTRSTPort" || kind == "DataRegister")) {
     SetParseDiagnostic(line, kind + " requires a nonempty body or semicolon");
+  }
+  if (kind == "ScanInterface") {
+    if (!chain_names_.empty() && seen.count("DefaultLoadValue"))
+      SetParseDiagnostic(line, "DefaultLoadValue belongs inside Chain when chains are declared");
+    chain_names_.clear();
   }
   if (kind == "ToClockPort") {
     if ((seen.count("Period") || seen.count("DifferentialInvOf")) && seen.size() > 1) {

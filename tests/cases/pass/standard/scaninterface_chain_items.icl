@@ -16,11 +16,9 @@
 // from the inner one, so a Chain cannot nest inside a Chain.
 Module m {
   ScanInterface si {
-    Port SI;
     Attribute a = 1;
-    DefaultLoadValue 1'b0;
     Chain c {
-      Port SO;
+      Port SI; Port SO;
       Attribute b = 2;
       DefaultLoadValue 1'b1;
     }

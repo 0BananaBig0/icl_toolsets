@@ -144,7 +144,7 @@ so it is a `fail/` case instead (`fail/treesitter/top_level_attribute.icl`).
 
 ## pass/p2654 — bradfordvt/P2654Simulations — IEEE P2654 modelling work
 
-Three files under icl/standards/s1687: SReg.icl, sib_mux_pre.icl and sib_mux_post.icl. Verified byte-identical to the upstream repository by content hash.
+Three files under icl/standards/s1687: SReg.icl, sib_mux_pre.icl and sib_mux_post.icl were verified byte-identical to upstream. The two SIB files use lowercase `port`, contrary to IEEE 1687-2014. Their original bytes now live under fail/p2654; corrected derived inputs live under pass/ours. No documented dialect extension for lowercase `port` was found.
 
 
 | file | constructs it exercises |

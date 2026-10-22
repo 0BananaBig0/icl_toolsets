@@ -137,6 +137,11 @@ class IclDriver {
   }
 
   void EndModule() { enum_names_.clear(); }
+
+  void CheckChainName(const std::string& name, int line) {
+    if (!chain_names_.insert(name).second)
+      SetParseDiagnostic(line, "duplicate Chain name: " + name);
+  }
   //
   // Called by the bison error hook. Only the *first* error is kept: later ones
   // are almost always cascades of it, and reporting them buries the cause.
@@ -172,6 +177,7 @@ class IclDriver {
   std::unordered_set<std::string> enum_members_;
   std::unordered_set<std::string> enum_names_;
   size_t enum_width_ = 0;
+  std::unordered_set<std::string> chain_names_;
   FormatStyle style_;
 
   bool has_error_ = false;

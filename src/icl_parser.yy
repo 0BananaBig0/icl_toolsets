@@ -132,7 +132,7 @@ void IclParser::error(const location& loc, const std::string& message) {
    (a - b) - c, and there is no precedence between operators because
    the formatter reproduces them as written rather than evaluating
    them. Without this bison reports 2 shift/reduce conflicts. */
-%left OPERATOR BOOL_OP BIT_OP COMPARE_OP NOT_OP MATH_OP
+%left OPERATOR BOOL_OP COMPARE_OP NOT_OP MATH_OP
 
 %token MODULE "Module"
 %token PARAMETER "Parameter"
@@ -190,7 +190,6 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token DATAINPORT "DataInPort"
 %token DATAOUTPORT "DataOutPort"
 %token SCANINTERFACE "ScanInterface"
-%token ONEHOTSCANINTERFACE "OneHotScanInterface"
 /* IEEE 1687 Table 2 (IJTAG Tutorial, 3rd ed.) lists the ICL description
    elements. The ones that take a register-style body are:
      ScanRegister, DataRegister, DataMux, ClockMux, OneHotScanGroup,
@@ -246,17 +245,21 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> checked_declaration checked_declaration_item strict_attribute
 %type <std::string> checked_declaration_keyword default_value
 %type <std::string> frequency_keyword clock_factor clock_period
-%type <AstNode*> data_register data_register_item
+%type <AstNode*> interface_item interface_property chain
+%type <std::vector<AstNode*>> interface_body chain_body
+%type <AstNode*> group_port data_register data_register_item
+%type <std::vector<AstNode*>> one_hot_scan_body one_hot_data_body
+%type <AstNode*> one_hot_data_item instance_declaration
 %type <std::vector<AstNode*>> data_register_body
 %type <std::string> write_enable callback_keyword callback_namespace callback_id
 %type <std::string> namespace_tail optional_subnamespace callback_args callback_arg ordinary_keyword
 %type <std::vector<AstNode*>> checked_declaration_body
 %type <ParsedValue> concat_number inverted_number number
 %type <std::vector<AstNode*>> module_item_list
-%type <AstNode*> module_item instance_item instance_block
+%type <AstNode*> module_item instance_item
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value name_block_kw onehot_block_kw range_block_kw of_block_kw any_keyword
+%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value range_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -379,20 +382,16 @@ module_item
       { driver.CheckEnum($3, @3.begin.line);
         $$ = driver.MakeBlock("Enum " + $2 + $3 + $4, std::move($6),
                               SpanOf(@1.begin.line, @7.end.line)); }
-  | name_block_kw decl_name LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
-                              SpanOf(@1.begin.line, @5.end.line));
-      }
-  /* One-hot groups take a *range* on their name — the published grammar gives
-     them `reg_port_signal_id`, the same as a register — and only the block
-     form. They are not in `range_block_kw` because that group also permits
-     `name;`, which these do not have. */
-  | onehot_block_kw decl_name opt_range LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
-                              SpanOf(@1.begin.line, @6.end.line));
-      }
+  | SCANINTERFACE token_gap scalar_name token_gap LBRACE interface_body RBRACE
+      { driver.CheckBlockItems("ScanInterface", $6, @1.begin.line);
+        $$ = driver.MakeBlock("ScanInterface " + $2 + $3 + $4, std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line)); }
+  | ONEHOTSCANGROUP token_gap scalar_name token_gap strict_range LBRACE one_hot_scan_body RBRACE
+      { $$ = driver.MakeBlock("OneHotScanGroup " + $2 + $3 + $4 + $5, std::move($7),
+                              SpanOf(@1.begin.line, @8.end.line)); }
+  | ONEHOTDATAGROUP token_gap scalar_name token_gap strict_range LBRACE one_hot_data_body RBRACE
+      { $$ = driver.MakeBlock("OneHotDataGroup " + $2 + $3 + $4 + $5, std::move($7),
+                              SpanOf(@1.begin.line, @8.end.line)); }
   | range_block_kw decl_name opt_range LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
@@ -593,7 +592,8 @@ data_register_item
       { $$ = driver.MakeStatement("WriteEnSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | READDATASOURCE token_gap concat_data_signal SEMICOLON
       { $$ = driver.MakeStatement("ReadDataSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
-  | ADDRESSVALUE token_gap number SEMICOLON
+  // Tessent OneHotDataGroup example permits concatenated AddressValue.
+  | ADDRESSVALUE token_gap concat_number SEMICOLON
       { $$ = driver.MakeStatement("AddressValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | callback_keyword token_gap callback_namespace callback_id callback_args SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + " " + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
@@ -855,8 +855,7 @@ opt_range
    bodies. Factored out because the two bodies accepted the same forms, so
    duplicating them only made the grammar longer and easy to let drift. */
 attr_item
-  : data_register { $$ = $1; }
-  | attr_stmt_name SEMICOLON
+  : attr_stmt_name SEMICOLON
       { $$ = driver.MakeStatement($1 + ";",
                                   SpanOf(@1.begin.line, @2.end.line)); }
   /* A value list, not a single value: `CaptureSource Temp, tdr[2:0];`, from
@@ -899,22 +898,6 @@ attr_item
   | attr_name postfix EQUALS value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + " = " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
-  /* The block form of an instance, reachable here too: the published grammar
-     lists `instance_def` among `oneHotDataGroup_item`.
-
-     Only the block form. The `;` form is not, because `Instance i Of M;` is
-     genuinely ambiguous here against `attr_name attr_value ';'` once attribute
-     values may be space-separated — a real shift/reduce conflict, not a
-     stylistic objection. */
-  /* `instance_item`, not `instance_block`: an instance without a body —
-     `Instance i Of M;` — is one of the two forms the published grammar gives
-     (the other being `{ ... }`), and oneHotDataGroup_item admits an
-     instance_def. Referencing only the braced rule meant the semicolon form
-     worked at module level and failed inside a block, which is the same
-     asymmetry this shared rule exists to prevent. */
-  | instance_item
-      { $$ = $1; }
-
   /* A *named* nested block. IEEE 1687's formal syntax requires it for `Chain`:
      scanInterfaceChain_def : 'Chain' scanInterfaceChain_name '{'
      scanInterfaceChain_item+ '}' — a ScanInterface with several scan chains
@@ -935,6 +918,68 @@ attr_item
       }
   ;
 
+
+
+interface_property
+  : strict_attribute { $$ = $1; }
+  | PORT token_gap scalar_name token_gap strict_range SEMICOLON
+      { $$ = driver.MakeStatement("Port " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+  | DEFAULTLOADVALUE token_gap concat_number SEMICOLON
+      { $$ = driver.MakeStatement("DefaultLoadValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  ;
+
+chain
+  : CHAIN token_gap scalar_name token_gap LBRACE chain_body RBRACE
+      { driver.CheckChainName($3, @3.begin.line);
+        driver.CheckBlockItems("Chain", $6, @1.begin.line);
+        $$ = driver.MakeBlock("Chain " + $2 + $3 + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line)); }
+  ;
+
+chain_body
+  : comment_nodes interface_property { $$ = std::move($1); $$.push_back($2); }
+  | chain_body interface_property { $$ = std::move($1); $$.push_back($2); }
+  | chain_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+interface_item
+  : interface_property { $$ = $1; }
+  | chain { $$ = $1; }
+  ;
+
+interface_body
+  : comment_nodes interface_item { $$ = std::move($1); $$.push_back($2); }
+  | interface_body interface_item { $$ = std::move($1); $$.push_back($2); }
+  | interface_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+
+group_port
+  : PORT token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement("Port " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  ;
+
+one_hot_scan_body
+  : comment_nodes group_port { $$ = std::move($1); $$.push_back($2); }
+  | one_hot_scan_body group_port { $$ = std::move($1); $$.push_back($2); }
+  | one_hot_scan_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+
+one_hot_data_item
+  : group_port { $$ = $1; }
+  | data_register { $$ = $1; }
+  | instance_declaration { $$ = $1; }
+  ;
+
+one_hot_data_body
+  : comment_nodes one_hot_data_item { $$ = std::move($1); $$.push_back($2); }
+  | one_hot_data_body one_hot_data_item { $$ = std::move($1); $$.push_back($2); }
+  | one_hot_data_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
 
 
 strict_mux_keyword
@@ -1097,41 +1142,28 @@ attr_name
   ;
 
 
-/* `Instance i Of M { ... }` and `Instance i Of M;`, in one place.
-
-   The published grammar allows an instance inside a one-hot data group
-   (`oneHotDataGroup_item : instance_def | dataRegister_def | ...`), so this is
-   referenced from the shared attribute list as well as from module_item — one
-   definition, no second copy to drift. */
-instance_block
-  : of_block_kw IDENT of_kw module_ref LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock($1 + " " + $2 + " " + $3 + " " + $4, std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line));
-      }
+// Instance is reusable inside OneHotDataGroup; AccessLink is not.
+instance_declaration
+  : INSTANCE IDENT of_kw module_ref LBRACE attr_body RBRACE
+      { $$ = driver.MakeBlock("Instance " + $2 + " " + $3 + " " + $4, std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line)); }
+  | INSTANCE IDENT of_kw module_ref SEMICOLON
+      { $$ = driver.MakeStatement("Instance " + $2 + " " + $3 + " " + $4 + ";",
+                                  SpanOf(@1.begin.line, @5.end.line)); }
   ;
 
 instance_item
-  : instance_block
-      { $$ = $1; }
-  | of_block_kw IDENT of_kw module_ref SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + " " + $3 + " " + $4 + ";",
+  : instance_declaration { $$ = $1; }
+  | ACCESSLINK IDENT of_kw module_ref LBRACE attr_body RBRACE
+      { $$ = driver.MakeBlock("AccessLink " + $2 + " " + $3 + " " + $4, std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line)); }
+  | ACCESSLINK IDENT of_kw module_ref SEMICOLON
+      { $$ = driver.MakeStatement("AccessLink " + $2 + " " + $3 + " " + $4 + ";",
                                   SpanOf(@1.begin.line, @5.end.line)); }
   ;
 
 /* ------------------------------------------------- keyword groups by shape */
 
-/* Plain identifier only: `scalar_name : SCALAR_ID` and
-   `scanInterface_name : SCALAR_ID` in the published grammar, no range. */
-name_block_kw
-  : SCANINTERFACE        { $$ = "ScanInterface"; }
-  ;
-
-onehot_block_kw
-  : ONEHOTSCANINTERFACE  { $$ = "OneHotScanInterface"; }
-  | ONEHOTSCANGROUP      { $$ = "OneHotScanGroup"; }
-  | ONEHOTDATAGROUP      { $$ = "OneHotDataGroup"; }
-  ;
 
 range_block_kw
   : REG                  { $$ = "Reg"; }
@@ -1209,11 +1241,6 @@ module_ref
   ;
 
 
-of_block_kw
-  : INSTANCE             { $$ = "Instance"; }
-  | ACCESSLINK           { $$ = "AccessLink"; }
-  ;
-
 /* Everything above, plus the keywords that have no block form. One place to
    add a keyword; every list that needs "any keyword" refers to this. */
 any_keyword
@@ -1222,8 +1249,9 @@ any_keyword
   ;
 
 ordinary_keyword
-  : name_block_kw   { $$ = $1; }
-  | onehot_block_kw { $$ = $1; }
+  : SCANINTERFACE { $$ = "ScanInterface"; }
+  | ONEHOTSCANGROUP { $$ = "OneHotScanGroup"; }
+  | ONEHOTDATAGROUP { $$ = "OneHotDataGroup"; }
   | range_block_kw  { $$ = $1; }
   | strict_mux_keyword { $$ = $1; }
   /* `of_block_kw` is deliberately absent. `Instance` and `AccessLink` are

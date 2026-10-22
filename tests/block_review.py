@@ -380,15 +380,15 @@ def blocks():
     # Both take a vector name, because reg_port_signal_id is
     # `SCALAR_ID | vector_id`.
     b.append(('onehot', [
-        'Module m { OneHotScanGroup g { a; b; } }',
-        'Module m { OneHotScanGroup g[3:0] { a; } }',
+        'Module m { OneHotScanGroup g { Port a; Port b; } }',
+        'Module m { OneHotScanGroup g[3:0] { Port a; } }',
         'Module m { OneHotDataGroup g { DataRegister d; } }',
         'Module m { OneHotDataGroup g { Instance i Of M; } }',
-        'Module m { OneHotScanInterface g { a; } }',
+        'Module m { OneHotScanGroup g { Port a; } }',
         # Both names are reg_port_signal_id, so both take an index as well as
         # a range.
-        'Module m { OneHotScanGroup g[1] { a; } }',
-        'Module m { OneHotDataGroup g[2:0] { d; } }',
+        'Module m { OneHotScanGroup g[1] { Port a; } }',
+        'Module m { OneHotDataGroup g[2:0] { Port d; } }',
         # A scan group's only item is Port, and concat_scan_signal means the
         # list takes `~` on any element, not just the first.
         'Module m { ScanInPort a; ScanInPort b; '
@@ -816,7 +816,7 @@ def blocks():
         'Module m { ScanInterface si { Chain c { Port p; } } }',
         'Module m { ScanInterface si { Chain c { DefaultLoadValue 0; } } }',
         'Module m { ScanInterface si { Chain c { Attribute a = 1; } } }',
-        'Module m { ScanInterface si { Chain c { Chain d { Port p; } } } }',
+        'Module m { ScanInterface si { Chain c { Port p; Port q; } Chain d { Port r; Port s; } } }',
         # AccessLink internals: accessLink1149_ScanInterface_name is
         # instance_name ('.' scanInterface_name)? — the hierarchy optional.
         'Module m { AccessLink al Of STD_1149_1_2001 '
@@ -1207,7 +1207,7 @@ def blocks():
         # expected. Not in an attribute value — see below.
         'Module m { Alias x = a.b.c.d.e; }',
         'Module m { Instance i Of a::b::c::d::e; }',
-        'Module m { ScanInterface si { Chain c1 { Chain c2 { Port p; } } } }',
+        'Module m { ScanInterface si { Chain c1 { Port p; } Chain c2 { Port q; } } }',
         'Module m { Alias a = ~b, ~c, ~d; }',
     ]))
 

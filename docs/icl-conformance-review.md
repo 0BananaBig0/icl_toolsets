@@ -36,7 +36,7 @@ Evidence: §6.5.3, printed 137–138 / PDF 151–152; dependencies §§6.3.7–8
 ## Open work
 
 Enum, all 26 port blocks, registers, LogicSignal and the three mux blocks have
-syntax/local-property checks. Subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
+syntax/local-property checks. OneHot groups and ScanInterface/Chain also have verified syntax/local checks; subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
 resolution, complete LSP services, coverage accounting, performance measurement,
 whole-change review and final installation remain pending; no full-conformance
 claim is made by this record.
@@ -233,3 +233,45 @@ Focused results: LogicSignal 85 cases, ScanMux 48, DataMux 47 and ClockMux 47;
 are recorded below after the dynamic verification.
 
 Task 4 full verification: `make check-dynamic BISON=/usr/bin/bison` exited 0; 1113 classified cases, 500 regression assertions, 730 block-review cases, 12 golden, 71 CLI, 62 existing LSP checks and remaining dynamic recipes pass. Removed the leftover generic bitwise-operator branch after three new Parameter negatives reproduced illegal acceptance. Current trace accounting is still source-line-based, pending task 10.
+
+
+## OneHot groups and ScanInterface/Chain
+
+IEEE §6.4.14–16, printed 127–133/PDF 141–147, compared individually with
+Honza's matching productions and Tessent v2023.4 OneHotScanGroup,
+OneHotDataGroup, ScanInterface and Chain topics.
+
+OneHotScanGroup accepts a nonempty Port list. OneHotDataGroup accepts Port,
+Instance and DataRegister items, sharing the same signal syntax without admitting
+AccessLink or unrelated nested blocks. Register placement checks remain shared.
+The Tessent OneHotDataGroup example documents concatenated DataRegister
+AddressValue, extending the IEEE number-only form; this newly found evidence
+supersedes the earlier restriction. Both its completed multi-level example and
+an isolated concatenation fixture now pass.
+
+ScanInterface and Chain have distinct, nonempty bodies. Their Port statement
+requires a local scalar/vector name, without hierarchical paths, inversion or
+concatenation. Attribute and numeric DefaultLoadValue properties are shared;
+Chain cannot nest. Duplicate chain names are rejected within one interface,
+while separate interfaces may reuse names. DefaultLoadValue is a singleton in
+each body (Tessent describes an optional pair); it must be inside Chain whenever
+chains are declared (§6.4.16(l)). Port function/width and topology checks require
+symbol resolution and are not claimed here. Completed standard examples and all
+six Tessent interface/chain examples are retained by source.
+
+No OneHotScanInterface production was found in IEEE, Honza or Tessent. Its
+unsupported declaration/keyword was removed; the word remains a valid identifier.
+Old positives with nested/ranged Chain, generic Source, or DefaultLoadValue
+outside a chain were corrected with negative counterparts. Original P2654 SIB
+files use lowercase `port`, without a documented extension authorizing it; their
+bytes remain in fail/p2654, with corrected derived positives under ours.
+The PDL-separation test now exercises ICL iApplyEndState in its actual Alias
+context rather than an illegal ScanInterface property, which has a negative test.
+
+Focused cases: OneHotScanGroup 33, OneHotDataGroup 42, ScanInterface/Chain 68.
+Initial failing cases were 22/33, 24/42 and 39/62, followed by the unsupported-keyword
+reproduction. Full dynamic verification results follow below.
+
+The coverage pass also exposed obsolete generic-body Instance/DataRegister alternatives. New negative Alias nesting cases reproduced their illegal acceptance before removal; keyword-as-identifier fixtures cover the surviving names.
+
+Task 5 full verification: `make check-dynamic BISON=/usr/bin/bison` exited 0 with 1256 classified cases, 508 regression assertions, 730 block cases, 12 golden,71 CLI and62 existing LSP checks, plus unit/whitespace/fuzz/separation checks. Current source-line grammar trace is not the final honest action/branch coverage report.

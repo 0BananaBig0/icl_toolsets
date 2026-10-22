@@ -279,7 +279,6 @@ ReadEnPort          { g_location.step(); return icl::IclParser::make_READENPORT(
 DataInPort          { g_location.step(); return icl::IclParser::make_DATAINPORT(g_location); }
 DataOutPort         { g_location.step(); return icl::IclParser::make_DATAOUTPORT(g_location); }
 ScanInterface       { g_location.step(); return icl::IclParser::make_SCANINTERFACE(g_location); }
-OneHotScanInterface { g_location.step(); return icl::IclParser::make_ONEHOTSCANINTERFACE(g_location); }
 ScanRegister        { g_location.step(); return icl::IclParser::make_SCANREGISTER(g_location); }
 DataRegister        { g_location.step(); return icl::IclParser::make_DATAREGISTER(g_location); }
 DataMux             { g_location.step(); return icl::IclParser::make_DATAMUX(g_location); }
