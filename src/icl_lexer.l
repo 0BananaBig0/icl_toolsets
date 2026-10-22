@@ -121,7 +121,10 @@ void icl_scan_end() {
 %option never-interactive
 
 DIGIT   [0-9]
-ID      [A-Za-z_][A-Za-z_0-9]*
+ID      [A-Za-z][A-Za-z_0-9]*
+DECIMAL [0-9][0-9_]*
+WIDTH   ({DECIMAL}|\${ID})
+BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-FxX_]*|\'[dD][ \t\r\n]*{DECIMAL})
 
 %%
 
@@ -151,34 +154,21 @@ ID      [A-Za-z_][A-Za-z_0-9]*
                       return icl::IclParser::make_STRING(
                           std::string(yytext), g_location); }
 
-  /* Verilog style literals, sized and unsized. Tessent's IJTAG manual writes
-     `InputPort din = 'b1;` — an unsized base with no width — so the leading
-     digits must be optional. Whitespace is allowed between the base and the
-     digits: IEEE 1687-2014 Appendix E writes `Attribute lic = 'h ef931832;`,
-     and the standard's own examples must not be rejected. Longest match picks the sized form when both
-     apply (`8'hFF`, not `8` followed by `'hFF`). */
-  /* The width may itself be a parameter reference: the published grammar has
-     `size : pos_int | '$' SCALAR_ID`, and `$W'd5` is how a module whose width
-     is a parameter writes a literal. */
-"$"{ID}[ \t]*'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
-                      g_location.step();
-                      return icl::IclParser::make_NUMBER(
-                          std::string(yytext), g_location);
-                    }
-{DIGIT}+'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
-                      g_location.step();
-                      return icl::IclParser::make_NUMBER(
-                          std::string(yytext), g_location);
-                    }
-'[sS]?[bBhHdDoO][ \t]*[0-9a-fA-F_xXzZ?]+ {
-                      g_location.step();
-                      return icl::IclParser::make_NUMBER(
-                          std::string(yytext), g_location);
+  /* IEEE §6.3.8: binary/decimal/hex only, with base-specific digits.
+     The optional width is a decimal integer or parameter reference. */
+{WIDTH}?{BASED}     {
+                      std::string number(yytext);
+                      const auto quote = number.find('\'');
+                      if (quote && number[0] != '$' &&
+                          number.substr(0, quote).find_first_not_of("0_") == std::string::npos) {
+                        driver.SetParseDiagnostic(g_location.begin.line, "number width must be nonzero");
+                      }
+                      g_location.lines(CountNewlines(yytext));
+                      return icl::IclParser::make_NUMBER(number, g_location);
                     }
 
-  /* Decimal, possibly with Verilog digit separators: 1_000. */
-{DIGIT}(_?{DIGIT})* { g_location.step();
-                      return icl::IclParser::make_NUMBER(
+{DECIMAL}           { g_location.step();
+                      return icl::IclParser::make_INTEGER(
                           std::string(yytext), g_location); }
 
   /* A number with a time unit: `Period 10ns;`. The unit is part of the
@@ -187,7 +177,7 @@ ID      [A-Za-z_][A-Za-z_0-9]*
      Longest match keeps a bare `10` on the rule above. */
 {DIGIT}(_?{DIGIT})*(as|fs|ps|ns|us|ms|s) {
                       g_location.step();
-                      return icl::IclParser::make_NUMBER(
+                      return icl::IclParser::make_TIME(
                           std::string(yytext), g_location); }
 
   /* iProc arguments: `ReadCallBack m::p <D>;`. `<` and `>` are operators

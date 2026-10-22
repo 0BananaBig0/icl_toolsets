@@ -74,6 +74,23 @@ class AstPrinter final : public AstVisitor {
 
 }  // namespace
 
+NumericValue IclDriver::NumberLiteral(const std::string& text) const {
+  NumericValue value{text};
+  // Parameter widths need elaboration; fixed widths can be checked locally.
+  if (text[0] == '$' || text[0] == '\'') return value;
+  for (char ch : text) {
+    if (ch == '\'') break;
+    if (ch == '_') continue;
+    const auto digit = static_cast<size_t>(ch - '0');
+    if (value.width > (std::numeric_limits<size_t>::max() - digit) / 10) {
+      value.width = 0;
+      return value;
+    }
+    value.width = value.width * 10 + digit;
+  }
+  return value;
+}
+
 bool IclDriver::Parse(const std::string& text, std::string* error) {
   // Scan straight from memory via flex's buffer API, so no temporary file is
   // ever created and the input buffer is never written to.

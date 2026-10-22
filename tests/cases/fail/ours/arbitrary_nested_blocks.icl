@@ -44,3 +44,6 @@ Module m {
     }
   }
 }
+
+// Reclassified: IEEE §6.5.3 permits only enum_symbol = concat_number;
+// in an Enum. Nesting Enum e2 inside Enum e1 is not an extension in our sources.

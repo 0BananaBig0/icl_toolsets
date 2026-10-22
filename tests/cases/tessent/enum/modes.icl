@@ -1,0 +1,1 @@
+Module instrument { Parameter userEnum1val = 4'b1111; Parameter userEnum2val = 4'h2; Enum Modes { none = 4'b0; red = 4'b0011; blue = 4'ha; green = 4'd9; userEnum1 = $userEnum1val; userEnum2 = $userEnum2val; } }

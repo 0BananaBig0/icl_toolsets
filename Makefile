@@ -357,7 +357,7 @@ $(GRAMCOV_DIR):
 	mkdir -p $(GRAMCOV_DIR)
 
 $(GRAMCOV_PARSER): $(SRC_DIR)/icl_parser.yy | $(GRAMCOV_DIR)
-	$(BISON) -t --output=$(GRAMCOV_PARSER) --defines=$(GRAMCOV_DIR)/icl_parser.hh $<
+	$(BISON) --output=$(GRAMCOV_PARSER) --defines=$(GRAMCOV_DIR)/icl_parser.hh $<
 
 # bison writes the header alongside the .cc, so it has no recipe of its own;
 # an empty one keeps make from concluding the target is impossible.
@@ -540,10 +540,13 @@ coccheck: $(LSP_BIN)
 
 # The corpus in tests/cases/ runs first: it is the cheapest way to see a
 # regression, and a failure there names the file that broke.
-check: all unitcheck
+check: all
+check-dynamic: dynamic
+check check-dynamic: unitcheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
+	@python3 tests/src/test_icl_conformance.py --binary $(BIN)
 	@python3 tests/golden_test.py --binary $(BIN)
 	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)

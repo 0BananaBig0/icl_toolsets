@@ -24,6 +24,7 @@
 #define ICL_FORMAT_SRC_ICL_DRIVER_H_
 
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -114,6 +115,24 @@ class IclDriver {
   }
 
   // ---- parser diagnostics ----
+  NumericValue NumberLiteral(const std::string& text) const;
+
+  void CheckEnumMember(const std::string& name, const NumericValue& value, int line) {
+    if (!enum_members_.insert(name).second)
+      SetParseDiagnostic(line, "duplicate Enum member: " + name);
+    if (value.width && enum_width_ && value.width != enum_width_)
+      SetParseDiagnostic(line, "Enum member widths must match");
+    if (value.width) enum_width_ = value.width;
+  }
+
+  void CheckEnum(const std::string& name, int line) {
+    if (!enum_names_.insert(name).second)
+      SetParseDiagnostic(line, "duplicate Enum name: " + name);
+    enum_members_.clear();
+    enum_width_ = 0;
+  }
+
+  void EndModule() { enum_names_.clear(); }
   //
   // Called by the bison error hook. Only the *first* error is kept: later ones
   // are almost always cascades of it, and reporting them buries the cause.
@@ -146,6 +165,9 @@ class IclDriver {
   bool Parse(const std::string& text, std::string* error);
 
   AstUnit unit_;
+  std::unordered_set<std::string> enum_members_;
+  std::unordered_set<std::string> enum_names_;
+  size_t enum_width_ = 0;
   FormatStyle style_;
 
   bool has_error_ = false;

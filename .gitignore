@@ -37,6 +37,7 @@ gen/
 # once, so every `make codegraph` left the tree dirty. A dot-directory
 # because it is build output, not prose for a reader.
 .codegraph/
+.worktrees/
 
 *.swp
 *~

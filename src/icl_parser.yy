@@ -104,6 +104,8 @@ void IclParser::error(const location& loc, const std::string& message) {
 /* Terminals. */
 %token <std::string> IDENT "identifier"
 %token <std::string> NUMBER "number"
+%token <std::string> INTEGER "unsigned decimal integer"
+%token <std::string> TIME "time literal"
 %token <std::string> STRING "string"
 %token <std::string> COMMENT "comment"
 %token <std::string> PARAMREF "parameter reference"
@@ -228,6 +230,10 @@ void IclParser::error(const location& loc, const std::string& message) {
 
 /* Non-terminals. */
 %type <AstBlock*> module_def
+%type <AstNode*> enum_item
+%type <std::vector<AstNode*>> enum_body enum_comments
+%type <std::string> enum_name enum_gap integer_expr integer_arg
+%type <NumericValue> concat_number inverted_number number
 %type <std::vector<AstNode*>> module_item_list
 %type <AstNode*> module_item instance_item instance_block
 %type <AstNode*> port_decl
@@ -296,6 +302,7 @@ module_def
   : MODULE decl_name LBRACE module_item_list RBRACE
       {
         $$ = driver.MakeBlock("Module " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line));
+        driver.EndModule();
       }
   ;
 
@@ -350,6 +357,10 @@ module_item
      all 13 ICL description elements, so a new keyword is one line in the right
      group rather than two new productions — and the groups cannot drift apart,
      because there is only one copy of each shape. */
+  | ENUM enum_gap enum_name enum_gap LBRACE enum_body RBRACE
+      { driver.CheckEnum($3, @3.begin.line);
+        $$ = driver.MakeBlock("Enum " + $2 + $3 + $4, std::move($6),
+                              SpanOf(@1.begin.line, @7.end.line)); }
   | name_block_kw decl_name LBRACE attr_body RBRACE
       {
         $$ = driver.MakeBlock($1 + " " + $2, std::move($4),
@@ -418,6 +429,73 @@ module_item
   | PORTGROUP decl_name LBRACE port_group_items RBRACE
       { $$ = driver.MakePortGroup($2, std::move($4),
                                   SpanOf(@1.begin.line, @5.end.line)); }
+  ;
+
+/* IEEE 1687-2014 §6.5.3: an enumeration has one or more numeric members.
+   Comments are retained as AST nodes, but do not count as members. */
+enum_name
+  : decl_name { $$ = $1; }
+  | INSTANCE { $$ = "Instance"; }
+  | ACCESSLINK { $$ = "AccessLink"; }
+  ;
+
+enum_gap
+  : %empty { $$ = ""; }
+  | enum_gap COMMENT
+      { $$ = std::move($1) + " " + $2 + ($2.compare(0, 2, "//") == 0 ? "\n" : " "); }
+  ;
+
+enum_comments
+  : %empty { $$ = {}; }
+  | enum_comments COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+enum_body
+  : enum_comments enum_item { $$ = std::move($1); $$.push_back($2); }
+  | enum_body enum_item { $$ = std::move($1); $$.push_back($2); }
+  | enum_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+enum_item
+  : enum_name enum_gap EQUALS enum_gap concat_number SEMICOLON
+      { driver.CheckEnumMember($1, $5, @1.begin.line);
+        $$ = driver.MakeStatement($1 + $2 + " = " + $4 + $5.text + ";", SpanOf(@1.begin.line, @6.end.line)); }
+  ;
+
+concat_number
+  : inverted_number { $$ = $1; }
+  | concat_number COMMA enum_gap inverted_number { $$ = std::move($1); $$.Append($3, $4); }
+  ;
+
+inverted_number
+  : number { $$ = $1; }
+  | OPERATOR enum_gap number
+      { if ($1 != "~") { error(@1, "expected numeric inversion '~'"); YYERROR; }
+        $$ = std::move($3); $$.text = $1 + $2 + $$.text; }
+  ;
+
+number
+  : NUMBER enum_gap { $$ = driver.NumberLiteral($1); $$.text += $2; }
+  | integer_expr { $$ = NumericValue{$1}; }
+  ;
+
+/* Keep the spelling and parentheses: formatting never evaluates or regroups
+   expressions. Only unsigned decimal operands participate in arithmetic. */
+integer_expr
+  : integer_arg { $$ = $1; }
+  | integer_arg OPERATOR enum_gap integer_expr
+      { if ($2.size() != 1 || std::string("+-*/%").find($2) == std::string::npos) {
+          error(@2, "expected integer arithmetic operator"); YYERROR;
+        }
+        $$ = $1 + " " + $2 + " " + $3 + $4; }
+  ;
+
+integer_arg
+  : INTEGER enum_gap { $$ = $1 + $2; }
+  | PARAMREF enum_gap { $$ = $1 + $2; }
+  | LPAREN enum_gap integer_expr RPAREN enum_gap { $$ = "(" + $2 + $3 + ")" + $5; }
   ;
 
 /* -------------------------------------------------------------------- ports */
@@ -844,8 +922,7 @@ instance_item
 /* Plain identifier only: `enum_name : SCALAR_ID` and
    `scanInterface_name : SCALAR_ID` in the published grammar, no range. */
 name_block_kw
-  : ENUM                 { $$ = "Enum"; }
-  | SCANINTERFACE        { $$ = "ScanInterface"; }
+  : SCANINTERFACE        { $$ = "ScanInterface"; }
   ;
 
 onehot_block_kw
@@ -956,6 +1033,7 @@ any_keyword
      between the two — a real shift/reduce conflict, and the reason an instance
      inside a one-hot data group could not be accepted without this. */
   | port_keyword    { $$ = $1; }
+  | ENUM            { $$ = "Enum"; }
   | MODULE          { $$ = "Module"; }
   | PARAMETER       { $$ = "Parameter"; }
   | ATTRIBUTE       { $$ = "Attribute"; }
@@ -1028,6 +1106,8 @@ postfix
 primary
   : IDENT    { $$ = $1; }
   | NUMBER   { $$ = $1; }
+  | INTEGER  { $$ = $1; }
+  | TIME     { $$ = $1; }
   | STRING   { $$ = $1; }
   | PARAMREF { $$ = $1; }
   /* `ReadCallBack m::p <D>;` — an iProc argument marker. */

@@ -61,7 +61,7 @@ def corpus_files():
     """
     root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cases')
     names = []
-    for sub in ('pass', 'fail'):
+    for sub in ('pass', 'fail', 'standard', 'tessent', 'upstream', 'ours'):
         directory = os.path.join(root, sub)
         if not os.path.isdir(directory):
             continue

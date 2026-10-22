@@ -37,11 +37,25 @@
 #define ICL_FORMAT_SRC_ICL_AST_H_
 
 #include <memory>
+#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace icl {
+
+// A zero width means context/parameter dependent, not a zero-bit object.
+struct NumericValue {
+  std::string text;
+  size_t width = 0;
+
+  void Append(const std::string& gap, const NumericValue& value) {
+    text += ", " + gap + value.text;
+    width = width && value.width &&
+                    width <= std::numeric_limits<size_t>::max() - value.width
+                ? width + value.width : 0;
+  }
+};
 
 
 class AstComment;

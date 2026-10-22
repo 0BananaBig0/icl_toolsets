@@ -1204,7 +1204,8 @@ def blocks():
         "Module m { Parameter p = 'd 134; }",
         "Module m { Parameter p = 'b11_00; }",
         "Module m { Parameter p = xx01_x11; }",
-        "Module m { Parameter p = 16'shFF; }",
+        # IEEE §6.3.8 has no Verilog signed-base marker; negative in enum corpus.
+        "Module m { Parameter p = 16'hFF; }",
         "Module m { Parameter p = $W'd5; }",
         "Module m { Parameter p = 0235; }",
         "Module m { Parameter p = 1_2_3; }",

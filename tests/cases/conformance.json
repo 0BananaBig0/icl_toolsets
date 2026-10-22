@@ -1,0 +1,275 @@
+[
+  {"path":"cases/ours/enum/width_mismatch.icl","block":"enum","accept":false,"source":"IEEE 1687-2014 §6.5.3(a), constructed"},
+  {"path":"cases/ours/enum/concat_width_mismatch.icl","block":"enum","accept":false,"source":"IEEE 1687-2014 §6.5.3(a), constructed"},
+  {"path":"cases/ours/enum/separate_enum_widths.icl","block":"enum","accept":true,"source":"IEEE 1687-2014 §6.5.3(a), constructed"},
+  {
+    "path": "cases/standard/enum/result.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.5.3 printed 138/PDF 152; added Module wrapper"
+  },
+  {
+    "path": "cases/tessent/enum/modes.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Enum_id3fd7e051.html: Modes excerpt; corrected overflowing 4'haa and 4'h22 to avoid \u00a76.3.8(j) violations"
+  },
+  {
+    "path": "cases/ours/enum/decimal.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/binary.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/hex.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/sized_decimal.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/width_parameter.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/inversion.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/expression.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/concatenation.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/underscores.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/parameter.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/comments.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/keywords.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/empty.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/comment_only.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/nested.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/property.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/string.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/identifier.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/vector_name.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/missing_equal.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/missing_semicolon.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/boolean.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/unary_plus.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/double_inversion.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/function.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/signal_range.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/leading_underscore.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/sized_arithmetic.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/octal.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/signed.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/z_digit.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/question_digit.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/bad_binary.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/bad_decimal.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/leading_separator.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/zero_width.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/time.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "cases/ours/enum/intertoken_comments.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "cases/ours/enum/expression_comments.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "cases/ours/enum/line_comments.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "cases/ours/enum/duplicate_symbol.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "cases/ours/enum/duplicate_enum.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "cases/ours/enum/separate_module_names.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  }
+]
