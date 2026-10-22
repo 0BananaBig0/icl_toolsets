@@ -1,5 +1,10 @@
 # Requirements
 
+Historical implementation record. Current conformance, language services and
+verification results are recorded in [the block review](docs/icl-conformance-review.md)
+and [the verification report](docs/icl-verification.md); those supersede conflicting
+limitations and coverage claims below.
+
 What was asked for, what was delivered, and — where something could not be
 done as asked — what was done instead and why.
 

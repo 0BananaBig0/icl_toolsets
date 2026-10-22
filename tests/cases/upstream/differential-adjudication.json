@@ -125,6 +125,11 @@
     "basis": "IEEE 1687-2014 \u00a7\u00a76.3.7, 6.3.9; constructed"
   },
   {
+    "path": "tests/cases/ours/data_out_port/newline_before_dot.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5(a), printed 67: hierarchical identifiers cannot contain whitespace."
+  },
+  {
     "path": "tests/cases/ours/data_out_port/source_duplicate.icl",
     "expected": "reject",
     "basis": "IEEE 1687-2014 \u00a76.4.6.7 printed 88/PDF 102; constructed"
@@ -393,6 +398,31 @@
     "path": "tests/cases/ours/lexical/number_invalid_7.icl",
     "expected": "reject",
     "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/logic_signal/unknown_bit_left.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.10(g), printed 123: unknowns are permitted only in the comparison numeric argument."
+  },
+  {
+    "path": "tests/cases/ours/logic_signal/unknown_bit_right.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.10(g), printed 123: unknowns are permitted only in the comparison numeric argument."
+  },
+  {
+    "path": "tests/cases/ours/logic_signal/unknown_boolean_left.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.10(g), printed 123: unknowns are permitted only in the comparison numeric argument."
+  },
+  {
+    "path": "tests/cases/ours/logic_signal/unknown_concat_left.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.10(g), printed 123: unknowns are permitted only in the comparison numeric argument."
+  },
+  {
+    "path": "tests/cases/ours/logic_signal/unknown_concat_right.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.10(g), printed 123: unknowns are permitted only in the comparison numeric argument."
   },
   {
     "path": "tests/cases/ours/one_hot_data_group/concat_invalid_hierarchy.icl",

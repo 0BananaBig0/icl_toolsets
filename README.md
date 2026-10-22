@@ -349,54 +349,28 @@ on one source line.
 `codegraph` parses with Python's tokenizer, so it covers only the Python half;
 the C++ half comes from the compiler. See REQUIREMENT.md §5.3u.
 
-* **A string literal may not span a line.** The published scanner rule is
-  `'"' (~('"'|'\\')|'\\\\'|'\\"')* '"'`, where `~('"'|'\\')` includes a
-  newline — so a string crossing a line break is legal to it. We reject it,
-  because a formatter that accepted one would have to reproduce the break
-  exactly, and no real file in the corpus has one. Rejected with a line
-  number, not silently reformatted.
-
-* **A bare `name value;` statement is a block item, not a module item.**
-  Module level admits only `attribute_def`, which begins with the keyword
-  `Attribute`; inside a block an attribute name may be any keyword or
-  identifier, so `Width 8;` is accepted there and rejected at module level.
-  This matters because a misspelled port keyword — `CaptureEnport CE;` for
-  `CaptureEnPort CE;` — is exactly such a statement, and is refused with a
-  line number rather than silently reformatted.
-
 ## Known limitations
 
-Full requirement-by-requirement accounting, including what could not be done
-as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
+The current [block review](docs/icl-conformance-review.md),
+[upstream comparison](docs/honza-icl-comparison.md) and
+[verification report](docs/icl-verification.md) describe supported syntax and
+measured limits. `REQUIREMENT.md` records the original implementation and is
+historical where these later reviews supersede it.
 
-* **Real Tessent output was only available late.** `tests/cases/pass/`
-  includes `tessent_chip_top.icl` (Tessent Shell 2024.2) and
-  `wrapped_pmm_ip.icl`; both revealed grammar gaps that no hand-written
-  sample had. See `REQUIREMENT.md` §5.3a.
-
-* **Grammar coverage comes from the standard plus the samples available**, not
-  from a corpus of real Tessent output. The element list is IEEE 1687's
-  Table 2 (IJTAG Tutorial, 3rd ed.) and the port functions are Tessent's
-  Table 3-14; `REQUIREMENT.md` §5 lists what each cross-check found missing
-  (five elements, two port functions, and three lexer patterns).
-  `tests/cases/pass/published/keysight_gpio.icl` is a real third-party ICL
-  file and is the
-  strongest sample in the tree. Two gaps were found and fixed exactly
-  this way: `ScanMux` requires the standard `SelectedBy` keyword (the samples
-  had been written against a pre-standard draft that omitted it), and eight
-  port functions from the client/host split (`TRSTPort`, `ToTCKPort`,
-  `ToTRSTPort`, `ToShiftEnPort`, ...) were missing entirely. A file using an
-  uncovered construct is *rejected with a line number* rather than silently
-  mangled — if that happens, the report is enough to add the missing rule.
-  A real vendor file is still the strongest test; see `REQUIREMENT.md`.
-* Attribute bodies are parsed leniently, so a misspelled *attribute name* is
-  not an error — only structure is checked.
-* Column-level layout (aligning `=` across neighbouring lines) is not done.
-* **A comment cannot appear in the middle of a statement.**
-  `ScanInPort /* mid */ SI;` and `Module m /* c */ {` are rejected. Comments
-  before a statement, after one, and inside a block all work. Accepting them
-  inside one would mean adding an optional COMMENT to nearly every production
-  — a large change for a rare spelling.
+* Both original merged Tessent inputs remain in `tests/cases/pass/tessent/`.
+  The classified corpus also contains completed IEEE/Tessent examples, upstream
+  inputs, and constructed positive and negative cases.
+* Multiline strings and comments between tokens are supported and preserved.
+  Comments cannot split an identifier or occur inside a hierarchical name.
+* Block properties follow the reviewed grammar; arbitrary `name value;` items
+  are rejected. User-defined names in `Attribute name = value;` are permitted.
+* Formatting does not align `=` into columns, evaluate integer expressions, or
+  perform full cross-instance width/connectivity elaboration.
+* LSP implementation navigation targets ICL modules. HDL target inference and
+  rename are not advertised. Parsing is serial because the scanner is not
+  reentrant.
+* Reaching every grammar/scanner rule does not prove every handwritten branch
+  is tested. The raw coverage gate and its remaining gaps are reported separately.
 
 ## License
 

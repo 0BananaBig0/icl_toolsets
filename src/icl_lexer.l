@@ -74,31 +74,21 @@ void AppendGeneric(const char* text, size_t size) {
   g_generic_body.append(text, size);
 }
 
-YY_BUFFER_STATE icl_scan_bytes(const char* text, size_t size) {
+void icl_scan_bytes(const char* text, size_t size) {
   // Must reset the line counter: |g_location| is file-scope, so without this a
   // second file's line numbers continue from where the first one ended, and
   // syntax errors are reported at the wrong line.
   //
-  // No cleanup of an existing |g_buffer| here. There used to be one, and it
-  // was never executed: `IclDriver::Parse` calls this and `icl_scan_end` as a
-  // matched pair, and `icl_scan_end` leaves |g_buffer| null, so the branch was
-  // dead on every path. Dead defensive code is worse than no defensive code —
-  // it reads as a guarantee that was checked, when nothing checks it. If a
-  // second entry point ever appears, it should pair the two calls the same
-  // way rather than rely on this function tolerating a stray buffer.
+  // IclDriver::Parse pairs each buffer allocation with icl_scan_end.
   icl_reset_modes();
   g_location.initialize();
   g_buffer = yy_scan_bytes(text, static_cast<int>(size));
-  return g_buffer;
 }
 
 void icl_scan_end() {
-  if (g_buffer != nullptr) {
-    // flex clears YY_CURRENT_BUFFER itself when deleting the buffer that is
-    // currently active, so the scanner is left in a valid empty state.
-    yy_delete_buffer(g_buffer);
-    g_buffer = nullptr;
-  }
+  // Flex accepts null and clears YY_CURRENT_BUFFER when deleting its buffer.
+  yy_delete_buffer(g_buffer);
+  g_buffer = nullptr;
 }
 
 

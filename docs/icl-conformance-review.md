@@ -503,3 +503,48 @@ issues and corrected the new standard citations. `make coverage` retained its
 nonzero threshold result (98.3% lines,59.1% raw branches). Real Vim/coc checks
 passed using the prepared isolated configuration. Reinstallation and installed
 1757-case/39-test checks passed; executable bytes match the tested build.
+
+## Renewed audit at3999c65
+
+Revalidated the classified corpus in the established order, stopping on any
+failure before proceeding: Enum49, DataOutPort48, each remaining port, registers,
+LogicSignal/muxes, groups/interfaces, Instance64, AccessLink73, Alias46,
+Parameter44, Attribute51, Module27, compatibility43, and lexical138. All1757
+classified cases passed. Reused the completed normative/Tessent evidence and the
+268-production upstream matching inventory; no new syntax gap was found.
+
+Real protocol tests reproduced keyword-context defects in shared completion:
+a signal named Of was mistaken for an Instance type introducer, and a namespace
+named Of was treated as the global namespace. The fix checks the Instance header
+context and preserves explicit namespace selection, including incomplete edits.
+Independent review caught the additional `Source Instance, Of` case; persisted
+concat and Boolean-operand regressions failed before the strengthened guard.
+This uses a bounded lookback over existing parser tokens, not a second parser.
+
+LTO exposed an inconsistent scanner interface: `icl_scan_bytes` was declared void
+by the driver but defined to return a buffer pointer. `-flto -Werror=odr` failed
+before correction; the definition now matches its sole caller. The repaired LTO
+pair builds and passes570 formatter regression assertions. Removed an unused
+comment-layout scan and redundant null-buffer guard; Flex's generated deletion
+routine explicitly handles null. The actual allocation/deletion pairing stays
+unchanged. Existing scanner error/recovery and layout tests cover these paths.
+
+The native condition probe now measures parser105/106 and scanner24/24. The only
+remaining mapped parser outcome is on aggregate construction, with no handwritten
+condition there. This is retained in reporting. Raw coverage remains a separate,
+unchanged strict gate. Updated stale README claims about multiline strings,
+inter-token comments, arbitrary block properties and real Tessent fixtures;
+marked REQUIREMENT.md as the historical record superseded by current reports.
+
+Rechecked the real Honza adapter (6/6) and refreshed its corpus comparison;
+all135 reference-only inputs have maintained source-based adjudications, including
+six newly recorded negatives from the previous coverage pass. No classified
+positive is among them. Both programs still share ParsedDocument, AST definitions,
+format-tree construction and rendering; ICL and PDL tokens remain separate.
+
+Final renewed verification:42/42 semantic LSP tests and full dynamic checks pass;
+all334 Bison productions and119 Flex rules are exercised over2035 inputs.
+Strict raw coverage remains nonzero:2247/2286 lines(98.3%),3829/6452 branches(59.3%).
+Installed formatter1757/1757 and LSP42/42 checks passed, with matching binary bytes.
+Both coc configurations were printed by the installation target. No user editor
+settings or third-party license notices were changed.

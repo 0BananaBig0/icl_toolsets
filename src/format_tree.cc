@@ -104,8 +104,6 @@ class FormatTreeBuilder final : public AstVisitor {
         // at |common| leaves `indent - common` leading spaces in place. Adding
         // |extra| on top of that counts it twice, so the comment drifts right
         // by its own indent on every run (and is therefore not idempotent).
-        const size_t indent = piece.find_first_not_of(" \t");
-        (void)indent;
         piece = base + piece.substr(common);
       }
       Append(piece, depth_, node.span().first_line + static_cast<int>(i),

@@ -10,21 +10,22 @@ all possible inputs.
 
 `make check-dynamic BISON=/usr/bin/bison` passed: 1757 classified conformance
 inputs, 570 regression assertions, 714 block cases, 13 golden cases, 74 CLI and
-62 original LSP assertions, 39 semantic LSP tests, 3 protocol tests with malformed
+62 original LSP assertions, 42 semantic LSP tests, 3 protocol tests with malformed
 input subcases, 54 C++ unit assertions, whitespace/fuzz/language-separation checks,
 and coverage-reader/build-graph tests. Follow-up cases cover PortGroup comments
-and CaptureSource enum precedence and signal fallback.
+and CaptureSource enum precedence and signal fallback. The renewed audit also
+covers keyword identifiers and namespaces in complete/incomplete completion contexts.
 
 `make gramcov` reached **334/334 Bison productions** and **119/119 Flex rules**
-over **2033 files**. Production IDs are counted separately even if their actions
+over **2035 files**. Production IDs are counted separately even if their actions
 share a source line. Generated Bison/Flex implementation coverage is excluded.
 All fixtures remain classified under `tests/cases`, with generated scalability
 inputs reproducible under `tests/generated/ours/performance`.
 
 The real Honza ANTLR adapter passed 6/6 tests in the prepared reference environment.
 The ordinary system-Python run explicitly skips integration tests without ANTLR.
-The 2007-input comparison has 1625 agreements, 253 local-only accepts and 129
-reference-only accepts; all 129 are adjudicated expected negatives. Its difference
+The refreshed 2035-input comparison has 1642 agreements, 258 local-only accepts
+and 135 reference-only accepts; all 135 are adjudicated expected negatives. Its difference
 exit code is intentional, not a regression failure.
 
 An independent reviewer reproduced four LSP defects: contextual keyword names,
@@ -55,11 +56,11 @@ exception and cleanup edges and are not a count of handwritten decisions alone.
 
 | Measured source | Lines | Raw branches |
 |---|---:|---:|
-| All handwritten sources and headers | 2236/2275 (98.3%) | 3796/6426 (59.1%) |
+| All handwritten sources and headers | 2247/2286 (98.3%) | 3829/6452 (59.3%) |
 | `src/icl_parser.yy` | 418/418 (100%) | 843/1582 (53.3%) |
-| `src/icl_lexer.l` | 206/208 (99.0%) | 78/140 (55.7%) |
+| `src/icl_lexer.l` | 205/207 (99.0%) | 77/138 (55.8%) |
 
-The final coverage run included all 39 semantic LSP tests. Its nonzero status is
+The final coverage run included all 42 semantic LSP tests. Its nonzero status is
 the threshold failure, not a failed functional assertion.
 
 Remaining mapped line misses include the static property-map initializer in
@@ -74,10 +75,11 @@ evidence that every semantic-action branch executed.
 
 A separate GCC 16.2.1 probe uses native masking MC/DC to locate missing condition
 outcomes. Thirteen maintained inputs improve `icl_parser.yy` from93/106 to105/106
-and `icl_lexer.l` from23/26 to25/26. The remaining parser condition maps to aggregate
-construction at line662, with no explicit source condition. Scanner line105's
-null-buffer cleanup guard remains unexercised because normal callers pair scan
-and cleanup. Counts include both mappings; no artificial exclusion or lowered gate.
+and `icl_lexer.l` from23/26 to25/26. After the renewed audit, the scanner
+measures24/24 because its duplicate cleanup guard was removed; generated Flex cleanup already accepts null. Parser coverage
+remains105/106, with the outstanding condition mapped to aggregate construction
+at current line653, which has no explicit source condition. This mapping remains
+in the denominator; no artificial exclusion or lowered gate.
 
 Reproduce in an isolated build directory (requires GCC supporting the flag):
 
@@ -166,7 +168,7 @@ invalid JSON within a valid frame does not consume the next frame.
 `/home/banana/.local/bin` and project headers under
 `/home/banana/.local/include/icl-format`. Installed bytes match the verified build.
 The installed formatter passed1757/1757 conformance inputs and installed LSP
-passed39/39 semantic tests. The source archive was extracted under `/tmp` and
+passed42/42 semantic tests. Previously, the source archive was extracted under `/tmp` and
 successfully built with `BISON=false FLEX=false`; its formatter accepted the
 review fixture. No personal editor configuration was modified.
 
@@ -179,12 +181,42 @@ generated benchmark inputs. Its regression test failed seven cases before the
 fix and passed afterward. Maintained input fixtures and adjudication expectations
 remain versioned; automatically generated build/analysis outputs do not.
 
-Follow-up verification: full `make check-dynamic` passed, grammar/scanner rules
+Previous follow-up verification at f0a4725: full `make check-dynamic` passed, grammar/scanner rules
 remain334/334 and119/119 over2033 files, and independent review found no functional
 issue in the two shared semantic-layer fixes. It corrected standard citations to
 §6.4.8(t), §6.4.9 and §6.4.10. Both new LSP tests also passed independently.
 The fresh coc run initially lacked its temporary configuration; rerunning with
 the prepared isolated configuration passed all editor checks. Reinstalled binaries
-match the final build and pass1757 conformance cases and39 semantic LSP tests.
+match the final build and pass1757 conformance cases and42 semantic LSP tests.
 Static linking and the optional coc-diagnostic adapter were not re-tested in this
 follow-up; their previously documented limitations remain.
+
+## Renewed audit after3999c65
+
+All45 classified blocks were revalidated in the established order. Completion
+now distinguishes keyword identifiers from Instance type introductions, supports
+a namespace named Of, and handles incomplete namespace-qualified headers.
+The new protocol tests initially failed three assertions. Independent review then
+found that `Source Instance, Of` was still misclassified; concatenation and Boolean
+operand regressions failed before the final header-context fix. The resulting
+42-test semantic suite and full `make check-dynamic` pass. Real Vim/coc checks pass.
+
+GCC LTO diagnosed a scanner return-type mismatch across translation units:
+`-flto -Werror=odr` failed before the signature fix, then the dynamic LTO build
+passed along with570 formatter regression assertions. Removed an unused comment
+layout computation and delegated null-buffer handling to Flex's existing cleanup.
+No generated code was edited or tracked. Compiler/source coverage details above
+are the final measurements; the strict gate still exits nonzero.
+
+The two uncovered scanner source mappings (lines369–370) coexist with gcov's
+`icl_scan_generic` report: called191 times, returned100%, blocks executed100%.
+The subsequent mode/depth assignments also execute191 times. The ambiguous
+mapped lines remain in the denominator; no coverage exclusion was introduced.
+
+Installed verification: `make install-dynamic BISON=/usr/bin/bison` succeeded;
+the installed formatter passed1757/1757 conformance inputs and installed LSP
+passed42/42 semantic tests. Both installed executables match the tested build
+byte-for-byte. The installation command printed both coc configurations; user
+editor settings were not modified. Static linking, optional coc-diagnostic and
+performance benchmarks were not re-run in this renewed audit; no new performance
+claim is made. The prior documented limits still apply.

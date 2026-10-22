@@ -317,13 +317,28 @@ std::vector<SymbolRef> SemanticWorkspace::Complete(const ParsedDocument& doc, si
       [](const SourceToken& t, size_t p) { return t.begin < p; });
   if (it != tokens.begin()) {
     auto prev = it - 1;
-    if (prev->text != "." && prev->begin < offset && offset <= prev->end && prev != tokens.begin()) --prev;
-    if (prev->text == "Of" || prev->text == "of" || prev->text == "::") {
+    if (prev->text != "." && prev->text != "::" && prev->begin < offset && offset <= prev->end && prev != tokens.begin()) --prev;
+    // Keywords are identifiers too; only the Instance header introduces a type.
+    auto is_type_keyword = [&](auto token) {
+      return token - tokens.begin() >= 3 && (token - 2)->text == "Instance" &&
+          Identifier((token - 1)->text) && (token->text == "Of" || token->text == "of") &&
+          ((token - 3)->text == "{" || (token - 3)->text == "}" || (token - 3)->text == ";");
+    };
+    auto type_keyword = prev;
+    std::optional<std::string> explicit_ns;
+    if (prev->text == "::") {
+      if (prev - tokens.begin() >= 2 && is_type_keyword(prev - 2)) {
+        type_keyword = prev - 2; explicit_ns = (prev - 1)->text;
+      } else if (prev != tokens.begin() && is_type_keyword(prev - 1)) {
+        type_keyword = prev - 1; explicit_ns = "";
+      }
+    }
+    if (is_type_keyword(type_keyword)) {
       *member_context = true;
       const auto& events = doc.namespace_uses.at(module);
       auto event = events.upper_bound(offset);
       std::string ns = event == events.begin() ? "" : (--event)->second;
-      if (prev->text == "::") ns = prev != tokens.begin() && (prev - 1)->text != "Of" && (prev - 1)->text != "of" ? (prev - 1)->text : "";
+      if (explicit_ns) ns = *explicit_ns;
       std::vector<SymbolRef> result;
       for (const auto& entry : modules_) for (const auto symbol : entry.second)
         if (symbol.declaration().name_space == ns) result.push_back(symbol);

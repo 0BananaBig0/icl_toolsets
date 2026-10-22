@@ -1,0 +1,1 @@
+Module Editing { DataInPort local_signal; ::

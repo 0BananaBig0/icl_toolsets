@@ -212,6 +212,33 @@ class LanguageServices(unittest.TestCase):
                 self.expect_location(self.query('definition', name + ';', occurrence), self.uri, self.main, declaration, offset=offset)
                 self.assertIsNotNone(self.query('hover', name + ';', occurrence))
 
+    def test_keyword_signal_completion_is_not_module_context(self):
+        self.use_fixture('completion_keywords.icl')
+        for prefix in ('Source Of ', 'Source Instance, Of ', '{ Instance & Of '):
+            with self.subTest(prefix=prefix):
+                labels = {i['label'] for i in self.query('completion', prefix, offset=len(prefix))}
+                self.assertIn('local_signal', labels)
+                self.assertNotIn('GlobalTarget', labels)
+
+    def test_keyword_namespace_completion(self):
+        self.use_fixture('completion_keywords.icl')
+        for needle, offset, expected in [('Of Of::KeywordTarget', 7, {'KeywordTarget'}),
+                                          ('Of ::GlobalTarget', 5, {'Completion', 'GlobalTarget'})]:
+            with self.subTest(needle=needle):
+                self.assertEqual({i['label'] for i in self.query('completion', needle, offset=offset)},
+                                 expected)
+        end = self.main.index('Of Of::KeywordTarget') + 7
+        self.main = self.main[:end]
+        self.open(self.uri, self.main, 3)
+        self.assertEqual({i['label'] for i in self.query('completion', 'Of Of::', offset=7)}, {'KeywordTarget'})
+
+    def test_incomplete_namespace_outside_instance_keeps_scope(self):
+        self.main = (CASES / 'incomplete_namespace.icl').read_text()
+        self.open(self.uri, self.main, 2)
+        labels = {i['label'] for i in self.query('completion', '::', offset=2)}
+        self.assertIn('local_signal', labels)
+        self.assertIn('Instance', labels)
+
     def test_module_type_completion(self):
         items = self.query('completion', 'Of Leaf', offset=3)
         self.assertIn('Leaf', {i['label'] for i in items})

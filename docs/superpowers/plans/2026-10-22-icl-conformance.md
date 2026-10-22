@@ -123,3 +123,17 @@ build directories and keep ICL and PDL separate.
   review of new code, install the resulting pair and print both coc configurations.
 
 Proceed approved implementation; the later LSP clarification explicitly expands its deliverable. Execution stays inline for sequential block ownership. Record progress and decisions in docs/icl-conformance-review.md and the plan ledger; do not stop between ordinary tasks.
+
+### Renewed audit at 3999c65
+
+Reuse completed normative reviews and pinned upstream inventory. Confirm blocks
+in the established sequence and preserve the shared AST and ICL/PDL separation.
+
+- [x] Revalidate Enum, DataOutPort, ports, registers, logic/muxes and groups,
+  then Instance/AccessLink and remaining blocks; investigate actual discrepancies.
+- [x] Reproduce and fix any keyword-identifier completion context errors in the
+  shared semantic layer; test complete and incomplete instance headers.
+- [x] Remove confirmed dead computations and stale documentation; retain truthful
+  coverage denominators and third-party source notices.
+- [x] Run full dynamic checks, source coverage and independent review; install,
+  verify the installed pair and print both coc.nvim configurations.

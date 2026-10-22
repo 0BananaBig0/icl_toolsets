@@ -317,3 +317,23 @@ The adapter fills the token stream, counts lexer and parser errors, and requires
 
 
 Hierarchical identifier whitespace and deep non-Alias paths are rejected under IEEE6.3.10.5, despite reference acceptance. Arbitrary string escapes follow §6.3.9 prose (the BNF only enumerates slash/quote); original spelling is preserved.
+
+## Renewed audit after the MIT license change
+
+Rechecked the pinned ICL grammar: all75 keyword/fixed-word spellings still have
+explicit Flex rules; the remaining six multi-character words are time units in
+TIME/clock_period (the single-character unit `s` is covered too). No PDL grammar
+was used. The existing268-production matching inventory remains applicable;
+no parser productions changed in this follow-up.
+
+Real adapter tests pass6/6. The refreshed differential run over2035 inputs has
+1642 agreements,258 local-only accepts and135 reference-only accepts (exit1
+intentionally reports differences). Six additional reference-only inputs are
+constructed negatives already added during the previous coverage pass: a newline
+inside a hierarchical identifier (§6.3.10.5(a), printed67) and five LogicSignal
+unknown operands outside a comparison numeric argument (§6.4.10(g), printed123).
+All six were checked against those normative rules and added to the maintained
+adjudication file. No classified positive is among the135 reference-only inputs.
+New local-only cases exercise keyword identifiers and the previously documented
+legacy PortGroup support. The raw log stays in ignored
+`build/reference/renewed-differential-results.txt`.
