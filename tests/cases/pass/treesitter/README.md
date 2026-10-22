@@ -1,5 +1,13 @@
 # treesitter/ — dtrodr/tree-sitter-icl
 
+Deduplication note (2026-10-22): the stored `basics_namespaces.icl`,
+`declarations_attributes_declarations.icl` and `ports_simple_ports.icl` contained
+only a newline. Their redundant copies were removed; the canonical empty-input
+case is `../../ours/lexical/empty.icl`. Their old paths and hashes are recorded in
+`../../deduplication.json`. These placeholders did not exercise the constructs
+their filenames suggested. The extraction history below describes the upstream
+corpus, not a current count of passing files in this directory.
+
 20 test cases extracted from `corpus/{basics,declarations,ports}.txt` of an
 independent ICL grammar written for tree-sitter.
 

@@ -4,11 +4,14 @@ Every file under `tests/cases/` sits in a directory naming where it came from. `
 
 ## EDA project snapshot — 2026-10-22
 
-`pass/tessent/eda/` contains 119 canonical module fixtures and
-`pass/syn_slm/eda/` contains 45. See [EDA_CORPUS.md](EDA_CORPUS.md) for the
+`pass/tessent/eda/` contains 78 standalone module fixtures and
+`pass/syn_slm/eda/` contains 39. Another 47 imported definitions share the four
+existing original baselines instead of separate copies. See [EDA_CORPUS.md](EDA_CORPUS.md) for the
 deduplication rules and [eda_sources.json](eda_sources.json) for all 180 original
 paths, hashes, source-to-module mappings and comments. This import is additional
-to the earlier fixtures listed below; those coverage fixtures remain unchanged.
+to the earlier fixtures listed below. The subsequent
+[whole-corpus audit](CORPUS_DEDUPLICATION.md) consolidates redundant copies while
+preserving formatting variants and complete source examples.
 
 
 ## pass/standard — IEEE 1687-2014 — the standard itself
@@ -256,7 +259,6 @@ Hand-written to pin a specific behaviour: a construct, a comment position, a rec
 | `mux_selection_bar_and_scanout_enable.icl` | Module, ScanOutPort, ScanMux, DataMux, ClockMux, SelectedBy, Source, Enable |
 | `mux_with_range.icl` | Module, ScanMux, SelectedBy |
 | `namespace_and_localparam.icl` | NameSpace, UseNameSpace, LocalParameter, Parameter, Attribute, Module, Instance, InputPort, DataInPort |
-| `negative_literal.icl` | Attribute, Module |
 | `nested_named_block_with_range.icl` | Module, Reg, Field, ScanInterface, Chain, Port, DefaultLoadValue |
 | `onehotdatagroup.icl` | Module, OneHotDataGroup, Port |
 | `onehotdatagroup_instance.icl` | Module, Instance, InputPort, OneHotDataGroup, Port |

@@ -26,9 +26,12 @@ struct OpaqueRanges : icl::AstVisitor {
   }
 };
 
-Json Inventory(const std::string& source) {
+Json Inventory(const std::string& source, bool audit) {
   icl::ParsedDocument doc(source);
-  if (!doc.ok) throw std::runtime_error("ICL parse failed");
+  if (!doc.ok) {
+    if (audit) return Json::Object({{"ok", Json::Bool(false)}});
+    throw std::runtime_error("ICL parse failed");
+  }
   OpaqueRanges opaque(doc);
   for (const auto* node : doc.driver.unit().top_level()) node->Accept(opaque);
   const auto& tokens = doc.driver.unit().tokens;
@@ -67,19 +70,21 @@ Json Inventory(const std::string& source) {
     }
     end = std::max(end, r.end);
   }
-  return Json::Object({{"modules", Json::Array(std::move(modules))},
+  return Json::Object({{"ok", Json::Bool(true)},
+                       {"modules", Json::Array(std::move(modules))},
                        {"comments", Json::Array(std::move(comments))}});
 }
 
 int main(int argc, char** argv) {
   Json::Elements files;
-  for (int i = 1; i < argc; ++i) {
+  const bool audit = argc > 1 && std::string(argv[1]) == "--audit";
+  for (int i = audit ? 2 : 1; i < argc; ++i) {
     try {
       std::ifstream input(argv[i], std::ios::binary);
       if (!input) throw std::runtime_error("cannot open input");
       const std::string source{std::istreambuf_iterator<char>(input), {}};
       if (input.bad()) throw std::runtime_error("cannot read input");
-      files.push_back(Inventory(source));
+      files.push_back(Inventory(source, audit));
     } catch (const std::exception& error) {
       std::cerr << argv[i] << ": " << error.what() << '\n';
       return 2;

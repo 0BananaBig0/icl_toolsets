@@ -336,6 +336,11 @@ starred counts, never-executed branches, missing reports and repeated source lin
 Grammar coverage counts distinct production IDs, including multiple productions
 on one source line.
 
+`make corpuscheck` audits all maintained test ICL for duplicate files and module
+definitions. Redundant copies share canonical fixtures; necessary formatting
+variants and complete-source repetitions have individually pinned reasons.
+See [the corpus deduplication record](tests/cases/CORPUS_DEDUPLICATION.md).
+
 ## Code graph
 
 `make codegraph` refreshes `.codegraph/`:

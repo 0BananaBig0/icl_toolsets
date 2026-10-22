@@ -19,23 +19,28 @@ class CorpusTest(unittest.TestCase):
         self.assertTrue(manifest_path.is_file(), 'EDA source manifest missing')
         manifest = json.loads(manifest_path.read_text())
         modules = manifest['modules']
-        paths = [cases / m['path'] for m in modules]
-        self.assertEqual(set(paths), set(cases.glob('pass/*/eda/*.icl')))
-        self.assertEqual(len(paths), len(set(paths)), 'two canonical objects share one file')
+        paths = sorted({cases / m['path'] for m in modules})
+        self.assertEqual({p for p in paths if p.parent.name == 'eda'},
+                         set(cases.glob('pass/*/eda/*.icl')))
         self.assertEqual(len(modules), len({m['id'] for m in modules}))
         result = subprocess.run([str(ROOT / 'build/icl_corpus_inventory'), *map(str, paths)],
                                 capture_output=True, check=True)
         inventory = json.loads(result.stdout)
-        self.assertEqual(len(inventory), len(modules))
+        self.assertEqual(len(inventory), len(paths))
+        inventory = dict(zip(paths, inventory))
+        hashes = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
         file_hashes = set()
-        for m, parsed, path in zip(modules, inventory, paths):
+        for sha in hashes.values():
+            self.assertNotIn(sha, file_hashes, 'byte-identical canonical fixtures')
+            file_hashes.add(sha)
+        for m in modules:
+            path = cases / m['path']
             with self.subTest(path=m['path']):
-                self.assertEqual(len(parsed['modules']), 1)
-                self.assertEqual(module_id(parsed['modules'][0]), m['id'])
-                sha = hashlib.sha256(path.read_bytes()).hexdigest()
-                self.assertEqual(sha, m['sha256'])
-                self.assertNotIn(sha, file_hashes, 'byte-identical canonical fixtures')
-                file_hashes.add(sha)
+                matches = [item for item in inventory[path]['modules'] if module_id(item) == m['id']]
+                self.assertEqual(len(matches), 1, 'canonical module must occur exactly once in its file')
+                for key in ('name', 'namespace', 'use_namespace'):
+                    self.assertEqual(matches[0][key], m[key])
+                self.assertEqual(hashes[path], m['sha256'])
         ids = {m['id'] for m in modules}
         referenced = set()
         origins = {}
@@ -51,7 +56,8 @@ class CorpusTest(unittest.TestCase):
         self.assertEqual(ids, referenced)
         for m in modules:
             self.assertIn(m['id'], origins[m['source']]['modules'])
-            self.assertEqual(Path(m['path']).parts[1], origins[m['source']]['category'])
+            if Path(m['path']).parent.name == 'eda':
+                self.assertEqual(Path(m['path']).parts[1], origins[m['source']]['category'])
 
 
 if __name__ == '__main__':

@@ -543,6 +543,8 @@ $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc $(SHARED_OBJECT
 corpuscheck: $(BUILD_DIR)/icl_corpus_inventory $(BIN)
 	python3 tests/tests/test_import_eda_corpus.py
 	python3 tests/tests/test_eda_corpus.py
+	python3 tests/tests/test_audit_icl_corpus.py
+	python3 tests/audit_icl_corpus.py --policy tests/cases/deduplication.json
 
 # ---- unit tests ----
 #

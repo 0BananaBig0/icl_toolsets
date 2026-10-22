@@ -1,0 +1,1181 @@
+{
+  "scope": "all maintained test ICL; generated benchmarks excluded",
+  "removed_files": [
+    {
+      "path": "cases/ours/module/legacy_24_2.icl",
+      "canonical_path": "cases/ours/module/legacy_0_26.icl",
+      "sha256": "5187e9c59bed525dcaf743006fb6c96a210f1874fc51fba592e66e12f14fd130",
+      "kind": "identical-file",
+      "modules": [],
+      "comments": []
+    },
+    {
+      "path": "cases/ours/to_clock_port/unit_ns.icl",
+      "canonical_path": "cases/ours/to_clock_port/Period.icl",
+      "sha256": "45e2bb9889a4342ea10fdf468e705bd1f2dfd29c2741ff078c7200c78753314f",
+      "kind": "identical-file",
+      "modules": [
+        "2303db8b59e9ed40a1cf6990a7cbe0e3b0aeade7b9db5d570ed92043d230fb2b"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/ours/negative_literal.icl",
+      "canonical_path": "cases/pass/ours/computed_range_bound_negative.icl",
+      "sha256": "38fd979a6820127ba2593111d38e35d250455f21682e551e594a57df61364951",
+      "kind": "identical-file",
+      "modules": [
+        "03adac4c525347ec9714d401f3479d18e8be01566e5c677e0d2ee4c43280fc9a"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/syn_slm/eda/PATH_MONITOR_CONTROLLER_clk_cntrl_ace16da1d972e467.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl.icl",
+      "sha256": "9882e95b7caf9923e3ba37dc6f39eafd86b3410a114e1928cf7c942b3a50f77f",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "ace16da1d972e46718394930f7449f325b606fd5ccd3ae2971a90578417ea98c"
+      ],
+      "comments": [
+        "// Generated; edit the PMM sources, not this file.\n\n",
+        "\n    // Sources describe settled controls; holding edges and clock routing are abstracted.\n    "
+      ]
+    },
+    {
+      "path": "cases/pass/syn_slm/eda/PMC_549b9f21af938dd4.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl.icl",
+      "sha256": "5ad20fb29194ae14e757413c336449070d0c7d7676ff6d075c311d330cfbe740",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "549b9f21af938dd4a7d2f94b370bca42bf46cde5c68fc18e5184b85c734d6e86"
+      ],
+      "comments": [
+        "// Generated; edit the PMM sources, not this file.\n\n"
+      ]
+    },
+    {
+      "path": "cases/pass/syn_slm/eda/PMU_BUNDLE_81ce6269372b4193.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl.icl",
+      "sha256": "817bc521448b5b8dca4063fefc76d0de061654251f62640404b956dc47110212",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "81ce6269372b41939bb6335a979182ce373f3ea8e5268f8bd39b5bce1f93655e"
+      ],
+      "comments": [
+        "// Generated; edit the PMM sources, not this file.\n\n"
+      ]
+    },
+    {
+      "path": "cases/pass/syn_slm/eda/SIB_LOOP_SEL_a7348815387e26ac.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl.icl",
+      "sha256": "2d021d5f0ac80279a434701d1e54140b4d1676a9d98e597b457efd775955feef",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "a7348815387e26ac5eb374c6379959065df8a263d0a5a61bdc47241c7ff742ba"
+      ],
+      "comments": [
+        "// Generated; edit the PMM sources, not this file.\n\n"
+      ]
+    },
+    {
+      "path": "cases/pass/syn_slm/eda/wrapped_pmm_ip_6ff3ac31a479cf03.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl.icl",
+      "sha256": "a5deef870148a497ef0f7b19136d7f7be3780a8531f53f1c446b7aad3d075fb1",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "6ff3ac31a479cf039d25c8129a8141877bc075c0c1be690b9b4d4e1e295f6cea"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/syn_slm/eda/wrapped_pmm_ip_dea300bd7c5aa969.icl",
+      "canonical_path": "cases/pass/tessent/wrapped_pmm_ip.icl",
+      "sha256": "f7417dbfd7ee154b92fd370e1c0c15ed2639f3549ff9c96bcb643fe13b76beb4",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "dea300bd7c5aa969c7087387ab55abb2a1b15599edf69774a524f35c1be88a4b"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/tessent/eda/Block_beb53b6f91c030f0.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "2e02ddf24cf0e7784511d9afe7d2945c16a281c5e2b4bcaf6adf000a5382f600",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "beb53b6f91c030f00d4e2da7cd9018652fba6b4c18d03add24b74dac6eaf997b"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2024.2\n//       Created on: Mon Oct 20 23:31:21 CST 2025\n//-------------------------------------------------\n\n\n\n\n\n// instanced as chip.Block_1\n// instanced as chip.Block_2\n\n\n\n// instanced as Block.SIB_1\n// instanced as Block.SIB_2\n// instanced as chip.SIB_TOP\n\n\n\n// instanced as Block.Sensor_3\n// instanced as Block.Sensor_4\n\n\n\n// instanced as Block.TDR_1_RESET\n// instanced as chip.TDR_TOP_RESET\n\n\n\n// instanced as RESET_TDR.tdr\n\n\n\n// instanced as Block.TDR_2\n// instanced as Block.TDR_3\n\n",
+        "\n   // Created by ICL extraction\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/RESET_TDR_20060acd2d54b3ae.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "9e3b1b236a3182b3aff65e65058992f4c0acb143ab2fe38bfd6c8bb55e58743b",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "20060acd2d54b3aec2d598b33e7c834c5faf424445b2deea2dfce1dc56dc76a7"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2024.2\n//       Created on: Mon Oct 20 23:31:21 CST 2025\n//-------------------------------------------------\n\n\n\n\n\n// instanced as chip.Block_1\n// instanced as chip.Block_2\n\n\n\n// instanced as Block.SIB_1\n// instanced as Block.SIB_2\n// instanced as chip.SIB_TOP\n\n\n\n// instanced as Block.Sensor_3\n// instanced as Block.Sensor_4\n\n\n\n// instanced as Block.TDR_1_RESET\n// instanced as chip.TDR_TOP_RESET\n\n\n\n// instanced as RESET_TDR.tdr\n\n\n\n// instanced as Block.TDR_2\n// instanced as Block.TDR_3\n\n",
+        "\n   // ICL module read from source on or near line 1 of file 'RESET_TDR.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/SIB_6ed157a69a9b2dee.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "fb364e09179419acd1f9b9e9e8271f8f68bed77c5933ccc3fee44d31870914ae",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "6ed157a69a9b2dee7bb4bfc460091900d59f87cae3029ccbb463dbcab7a08cd8"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/tessent/eda/SYNC_1RW_8Kx16_6753cb1ca894cd09.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "075855a7c83c5dba1fa69ad7e40993684f55f165317f79b9c54897a155e7b68c",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "6753cb1ca894cd095157a3148cd1b9bddb2e4ed48f04830bd0b5092e76484acb"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 460 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/Sensor_2336edc33c5be37b.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "6c1968c1275521eab33fdc6ce934c9429f8f81ae6fb02fae58c29bd36600330c",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "2336edc33c5be37bb2d7557b8c9e882c3e10f067e095ab00b2cd12fb961cf77d"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/tessent/eda/TDR_6807438ed0c9e2f9.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "58bd1a7cee2745d542d45c826447951b6bea22ac9d9c5059ef41d5d715d8331e",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "6807438ed0c9e2f944188f54c7d41cee1f3f2a6f4cf664f42b173728be310863"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/tessent/eda/TDR_FOR_RESET_c2a65ebdcb78cda0.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "abb54016d1562a8eab4930ec32afd005a65388464723bff11b89e07e100b010a",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "c2a65ebdcb78cda0396f006d01a4c1587011a6445d347ac25ef7bd4a20881788"
+      ],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/tessent/eda/chip_5e0b27aa13c3d60e.icl",
+      "canonical_path": "cases/pass/tessent/tessent_chip_top.icl",
+      "sha256": "029ef2e23aa60300fcc821701ff01f00624cc85ca4e1a06aaa905577e817f3b2",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "5e0b27aa13c3d60ee0cfc29d64ec0876628f4dd2f8e29c58f8b301ee28666b7e"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2024.2\n//       Created on: Mon Oct 20 23:31:21 CST 2025\n//-------------------------------------------------\n\n\n\n\n\n// instanced as chip.Block_1\n// instanced as chip.Block_2\n\n\n\n// instanced as Block.SIB_1\n// instanced as Block.SIB_2\n// instanced as chip.SIB_TOP\n\n\n\n// instanced as Block.Sensor_3\n// instanced as Block.Sensor_4\n\n\n\n// instanced as Block.TDR_1_RESET\n// instanced as chip.TDR_TOP_RESET\n\n\n\n// instanced as RESET_TDR.tdr\n\n\n\n// instanced as Block.TDR_2\n// instanced as Block.TDR_3\n\n",
+        "\n   // Created by ICL extraction\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_141f7b6fe36dce4c.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "287196c23c62fe4a2583996229c28c3ff43d0b933efab17f9f2f43629e2b8f28",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "141f7b6fe36dce4c93ee2a51fcae75b999e888fd8d4c1491e6743780ec7aefe3"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // Created by ICL extraction\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_ext_64356267b21b9a53.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "39f3d56146c4fd74356bf47dcd04d7ac50309d9ddfe2fbdfde6b0690b00b3665",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "64356267b21b9a53660bb6fe7f7237c6c47c8c282093ebb7542ed35e65cc28aa"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_edt.instrument/gps_baseband_rtl1_tessent_edt_c1_ext.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_ext_tdr_d4cf90400d7abb9f.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "c9bb6450e56a1ec9107a359a551330c0addc69dbd83ea4b17a7829ecb0e50369",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "d4cf90400d7abb9f06963f55855cc19e71e648cb2b76b9f0fc1801c4fa994ee0"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_edt.instrument/gps_baseband_rtl1_tessent_edt_c1_ext_tdr.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_int_2adda25e87a2df1a.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "e761ba1e8ea0ac5cb0dff9310021c3ce0f8f71cb80365d064d59a27b5ed326f3",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "2adda25e87a2df1ad675b640f32d1135e54335694b5e6e7e867a653efd9d7fcb"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_edt.instrument/gps_baseband_rtl1_tessent_edt_c1_int.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_int_tdr_8a6cab528f7ebfd4.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "1fe60c52fbe3bcd6c01a1ae77dca9451a6c21d5da88a6cbd340ba3abbbc9b2ab",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "8a6cab528f7ebfd42d3da9a698c6e855150f70a2113eac1f3bff528a58bec719"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_edt.instrument/gps_baseband_rtl1_tessent_edt_c1_int_tdr.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_occ_f2336a6b0fd5b4e3.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "33bf81b05c3746eb5e69f162cdc7c91d3f26f7c062875cc8aa69d760286e9859",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "f2336a6b0fd5b4e33f9720a8fa7544073003b26799a832ff613596a8b5ae3587"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_occ.instrument/gps_baseband_rtl1_tessent_occ.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_occ_sib_int_21fd5c7de4d0bf0f.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "9ff17d6981584261b955207c8d3ab2b146214ada0dd80c08ac0ab920751d9593",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "21fd5c7de4d0bf0f8bc68733434eca61ae664a8dbc7fcec7e85a1878b389ca12"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 75 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_occ.instrument/gps_baseband_rtl1_tessent_occ.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_sib_1_820d2703f9c357da.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "a9a9f150dacbdc7d8d75c1aedb563b486afbefbde00b4d20b3a816f9fffbe866",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "820d2703f9c357da46528a7cbc00f46e5b1562963fe342c8d37d0eebc074b06e"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_ijtag.instrument/gps_baseband_rtl1_tessent_sib_1.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_sib_2_bc414cfea6f2490b.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "cd510ea2da366f767e62469b5eda7e9b97351412c0b75df764a3d8a71080b5d5",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "bc414cfea6f2490b7b9fc3003dc562518930900da3ee5ff567f6beb91f1834cb"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_ijtag.instrument/gps_baseband_rtl1_tessent_sib_2.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_pipe_w2_1_28e81b42ecc6b109.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "8c1339c1998460db11875c5a275284add5f6d50767427488e375b1476304e79e",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "28e81b42ecc6b109ada062d0da274a6baa4f1eec0757cc0460235dc67473a9a1"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_ssn.instrument/gps_baseband_rtl1_tessent_ssn_pipe_w2_1.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_fa9a9d6baceaa1e6.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "25197fdcfb29602f423045686cfb6fb6ebc56cff88cab2576769d65df1cb7c03",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "fa9a9d6baceaa1e6a94fa23c1b1f5a4508dac9f0a7c62254e61567b7403bee8c"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_ssn.instrument/gps_baseband_rtl1_tessent_ssn_scan_host_1.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_inner_f86762737dee2d24.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "4a65d29a56c932ccc873577a270053fe85bd071df88da06927c33a84261eb276",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "f86762737dee2d246c0947a9f48c0e977021428364100a70d1de286211e40e4d"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 86 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_ssn.instrument/gps_baseband_rtl1_tessent_ssn_scan_host_1.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_tdr_sri_ctrl_9612e233887b0f05.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "fbe780df6dc5878725cec589aceeb23d900fadeb285f5d73d1a0d6a5930ef8a5",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "9612e233887b0f05fb0b1e5cc9c5251fc7c2976dd90a68747eacbe2617be30f0"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Wed Aug 12 13:58:46 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_occ_clk_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_occ.tdr_sib\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_edt_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_occ_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_ssn_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_sib_sri_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_1_inst\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as gps_baseband_rtl1_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as gps_baseband.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 17 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/instruments/gps_baseband_rtl1_ijtag.instrument/gps_baseband_rtl1_tessent_tdr_sri_ctrl.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_7ba697381f95825e.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "9a2c5b569993e3cdb352a8805f614a7c0c9b23ac26edde003c5e179db226f58f",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "7ba697381f95825e8ae04f9049280b54fab9c6ec37439b17fd0c9980189cf6c5"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:22:50 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // Created by ICL extraction\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_bap_85b87d621a211adf.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "1550b3211b0b5d9d8e20dd995d166b62e9944b1f5676d5e07d09e8ed11b047b2",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "85b87d621a211adfc30f6878d7286325819eb03fe4de8e3a595919dd04770063"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 591 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_a22faf03939899e1.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "e7ae38e0e0e704f5dc4f1981b5faa4fc44a98af639111864dcdb54485e796855",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "a22faf03939899e1dbe3ad4d3e10797dbd0915cebb704bcb0c9fdd84211d9b7b"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 849 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_assembly_b856f8ed88584335.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "3e2c67ff58ea9b2580fde872044d4840ff41ec502446a922f0e459bb51494f74",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "b856f8ed8858433524c75b0c1fb63b5199f542c055934a4fdf27999481141af2"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:14:44 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core_rtl1_tessent_mbist_c1_controller_assembly.m1_inst\n// instanced as processor_core_rtl1_tessent_mbist_c1_controller_assembly.m2_inst\n\n\n\n// instanced as processor_core_rtl1_tessent_mbist_c1_controller_assembly.m1_interface_instance\n\n\n\n// instanced as processor_core_rtl1_tessent_mbist_c1_controller_assembly.m2_interface_instance\n\n\n\n// instanced as processor_core_rtl1_tessent_mbist_c1_controller_assembly.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core_rtl1_tessent_mbist_c1_controller_assembly.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n",
+        "\n   // Created by ICL extraction\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_interface_m1_ac2ed02c24249942.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "92cfbb902c3ddd581032c3fba507ab86c4f4d445dbc76eec4b256442dec5c191",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "ac2ed02c24249942c3968b9acff4a418c68435f6e0df1b219700ae64474fc3f6"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 473 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_interface_m2_4a23cb403a90cd54.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "9af247dc2bd6c02cf36406dabdd759a7e7eab19c9296718feafd6f35e8cfb08a",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "4a23cb403a90cd5464e2ed69c0cf8424c08336aa3fe9225e02259a4a8c53452d"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 532 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_sib_1_dd77e0a30a95efcf.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "54e836ae3af36b2c1d0c180fcb2f867f0f3070a67b9a16166b0004a58d233284",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "dd77e0a30a95efcf14c6137a557ff27f682b7dc3b775ab2635b3147c18d146e9"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1149 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_sib_2_f119675687106ca7.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "a3e89c00b44337192fe5a07c683cf3acba9075fb1d25ef1fbcad90e2f72b1050",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "f119675687106ca7e068fd523a5f769ac9e1e9f6aa5242b3feb948d28a34e7c3"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1097 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_ext_8c90884a4cae4249.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "0accb585c5a3315274eca43b976c78f5aedfc5fa1d862a48112ab6626ab8bf60",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "8c90884a4cae424971525d1c2fa30b3872f3dee74069b94ae158adc5ddb7b2f9"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1274 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_ext_tdr_df1d57b00881cd33.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "1e19e2b53e2985a50e9c2b76bcf309e5018acda37cd63a2a260c9267a14632d7",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "df1d57b00881cd330ddb5ffd3ccbbd9a80e75ca83bcdf08ac7bbd3c9b04dfda0"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1290 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_int_845c9eacdc48db86.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "1cc50f34d0838ca51dbd5cf82afa038711cb16c0cf9086ef966ccf52a1c0ffcd",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "845c9eacdc48db86915edb9fc9da5ac73092147103029bd9d8e2cbf34d403513"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1335 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_int_tdr_64f7754a8ce18153.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "4a54d6abfbd9ace4b3a5157806fd70097c662a89f3f9316784c54cacb6e564c4",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "64f7754a8ce18153ec7a09fe958b386ff85b2143e16bfa7a1594e8bceca7b439"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1351 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_occ_91f1445749766d7f.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "a76dff9db3e0bc5023e11ac164b6996c89af257af9acd7490c565a47b8bb74e8",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "91f1445749766d7f3fd4fb008720cb6bfcb39b78f34eb514c1cffa68dd53360c"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1396 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_occ_sib_int_77fb05b2a086e943.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "44449f7705b56043396d8e0752db8ae4b1680b60113a6665e0d02c453098b96d",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "77fb05b2a086e943d5f626c08df8c157c7fa94d67022f151e54b0b5e10f386fa"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1455 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_sib_1_a66d4f164113eab7.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "b7ad08322a6cdc1e76890fb30c39f55216daeb5856722b9e7fb01bc9b8a8b278",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "a66d4f164113eab73510b826f57241b95322ae3dc9b51474789fc9e1720e44ac"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1552 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_sib_2_1e742650fd38f84d.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "866ca9d779d6a67d844afea37178e71140883350c640a3c95eba892678eeb7c0",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "1e742650fd38f84dfd960f900832dfc882fb66a7ccbe273a016e157e4300204b"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1500 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_pipe_w2_1_d03fe6768557dd27.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "c46935e4e477f3cf25d43ba8e9f90431b28487368fb1800385e65b7f3bfb0dc4",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "d03fe6768557dd2761d233856a5ee90598351e9106e90ea437ec65b56cb4351a"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1606 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_98f3d9b58cbea2ce.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "46169a726d3626b520c46f26a0e02e5cc326a50738673a677ea7b80c3734dd10",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "98f3d9b58cbea2ce92dba56ff0c9c48acd05ed72748e2e296c1db1f011c32808"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1638 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_inner_b573f7664b808fe9.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "7d05c5a269910398614c76242e7714457ae8113a75a69968ff548dc58f93ced7",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "b573f7664b808fe96fb86fa7829363273330a8d2a8ee2e5a9fc7601b2b393f23"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:22:50 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 86 of file '/data/workspaces/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/instruments/processor_core_rtl2_ssn.instrument/processor_core_rtl2_tessent_ssn_scan_host_1.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_tdr_sri_ctrl_b272a40c3bda090f.icl",
+      "canonical_path": "cases/pass/tessent/tessent_merged_icl_1.icl",
+      "sha256": "36d96a5b1ea0e1d7e18d1b1db8e4562fb0eac4abd862ec76f0680258f816b5a9",
+      "kind": "module-already-in-baseline",
+      "modules": [
+        "b272a40c3bda090f6eb68fceef2fdeedc0cfa3a8893e08d10b220dc681d1eef7"
+      ],
+      "comments": [
+        "//-------------------------------------------------\n//  File created by: Tessent Shell\n//          Version: 2026.2\n//       Created on: Thu Aug 27 11:28:14 CST 2026\n//-------------------------------------------------\n\n\n\n\n\n// instanced as processor_core.DATA_MEM_1\n// instanced as processor_core.PROG_MEM_2\n\n\n\n// instanced as processor_core.DATA_MEM_1_interface_inst\n\n\n\n// instanced as processor_core.PROG_MEM_2_interface_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_bap_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_mbist_c1_controller_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_mbist_inst\n\n\n\n// instanced as processor_core.processor_core_rtl1_tessent_sib_sti_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_ext_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_edt_c1_int_tdr_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_occ_dco_clk_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_occ.tdr_sib\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_edt_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_occ_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_ctrl_inst\n// instanced as processor_core.processor_core_rtl2_tessent_sib_ssn_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_sib_sri_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_1_inst\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_pipe_2_inst\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_ssn_scan_host_1_inst\n\n\n\n// instanced as processor_core_rtl2_tessent_ssn_scan_host_1.inner\n\n\n\n// instanced as processor_core.processor_core_rtl2_tessent_tdr_sri_ctrl_inst\n\n",
+        "\n   // ICL module read from source on or near line 1998 of file '/home/lianghuaxiao/tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl'\n   "
+      ]
+    },
+    {
+      "path": "cases/pass/treesitter/basics_namespaces.icl",
+      "canonical_path": "cases/ours/lexical/empty.icl",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "kind": "identical-file",
+      "modules": [],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/treesitter/declarations_attributes_declarations.icl",
+      "canonical_path": "cases/ours/lexical/empty.icl",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "kind": "identical-file",
+      "modules": [],
+      "comments": []
+    },
+    {
+      "path": "cases/pass/treesitter/ports_simple_ports.icl",
+      "canonical_path": "cases/ours/lexical/empty.icl",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "kind": "identical-file",
+      "modules": [],
+      "comments": []
+    },
+    {
+      "path": "cases/tessent/data_mux/chip2.icl",
+      "canonical_path": "cases/tessent/clock_mux/chip2.icl",
+      "sha256": "2a17cbd9c32bbec90e41c865da16a40e129bc9b65640d444ce6825f39c7c2744",
+      "kind": "shared-manual-example",
+      "modules": [
+        "851d4ff7a821cd898cbef37ea0402a05262334bd5e607ecdfee0552201b447db"
+      ],
+      "comments": [
+        "// Tessent Shell Reference v2023.4 DataMux example; NBSP normalized.\n"
+      ]
+    },
+    {
+      "path": "cases/tessent/scan_mux/chip2.icl",
+      "canonical_path": "cases/tessent/clock_mux/chip2.icl",
+      "sha256": "c357bcf9b2bec92a844b0b37e9a59d8fae8bc0a0f7c6c505fc8152af10af6319",
+      "kind": "shared-manual-example",
+      "modules": [
+        "851d4ff7a821cd898cbef37ea0402a05262334bd5e607ecdfee0552201b447db"
+      ],
+      "comments": [
+        "// Tessent Shell Reference v2023.4 ScanMux example; NBSP normalized.\n"
+      ]
+    }
+  ],
+  "retained_module_duplicates": [
+    {
+      "id": "019c26f8a5b4e61ba45fae470bd0261460de936a45675658145470407af4bc6d",
+      "name": "SReg",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e3.icl",
+          "module_index": 3,
+          "sha256": "de3c066d13b3b186e6eb87ea0df9a0727c739d56d8f61cfc8e0b2369f036fb8a"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 5,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "082cc1737efe9c4eef0bb228aa0826a38643eb92050ff5ecda2e79f6b8ba22f9",
+      "name": "Example",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/to_clock_port/period_comments.icl",
+          "module_index": 0,
+          "sha256": "6d219446abfd9a530e71a4b581d39180f1dbb603b6b33641fd238530e9014481"
+        },
+        {
+          "path": "cases/ours/to_clock_port/unit_spaced_ns.icl",
+          "module_index": 0,
+          "sha256": "1422b4682fc3a312d1aca981653d05bf0db10c9c4323b17571fbfff0d8f46b62"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    },
+    {
+      "id": "0a5ff8ff216f1ec7b198c29333be1adfbe195b22618f697a187fa00319720782",
+      "name": "WrappedInstr",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/benchmark/Instruments.icl",
+          "module_index": 4,
+          "sha256": "0a56dbe4ce49d5f78716900df9f0f4fb83f37c71cfec307fc267f117d8b7e9e6"
+        },
+        {
+          "path": "cases/pass/ours/honza_instruments_corrected.icl",
+          "module_index": 4,
+          "sha256": "5cf30055b09629ac7ac8ada7d7b1187161d29945053a3e9fe8ba339eb3f80ce6"
+        }
+      ],
+      "reason": "Keep the complete upstream benchmark and corrected Honza Instruments example: six helper definitions match, but other module definitions and namespace transitions differ. Both full-file inputs are regression evidence."
+    },
+    {
+      "id": "1ddc55dad7702f60ea238a1c2ee2771b2d1c25e258a1197cf865de7f3d591a41",
+      "name": "M",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/scan_register/header_comments.icl",
+          "module_index": 0,
+          "sha256": "380371a05e6b7c2b62b316f16065582e2164d3ea04192381e89192f6efd4d6e8"
+        },
+        {
+          "path": "cases/ours/scan_register/range.icl",
+          "module_index": 0,
+          "sha256": "a40221ea34fd2e7059bbaaf3eaddc677837be3eeeb79b8f26922da6564b90a1e"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    },
+    {
+      "id": "2337a32445498904342970278732e784f694cc828b9a9e51f0c4fed61f73dcc6",
+      "name": "m",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/editor/messy.icl",
+          "module_index": 0,
+          "sha256": "ccb1cbe6e5891a05525457696ede209914ca72643cf8dd8710da66991e011d10"
+        },
+        {
+          "path": "cases/pass/ours/crlf_line_endings.icl",
+          "module_index": 0,
+          "sha256": "516bf0c92c65ebcee32bc18d141ada6f2bf49e7b954bde9d4325544d8b96d950"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    },
+    {
+      "id": "2d715abf95525f687ed42873ee9dcdeefa59348acbed4e46cafe9cfee41d9695",
+      "name": "WrappedScan",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/benchmark/Instruments.icl",
+          "module_index": 5,
+          "sha256": "0a56dbe4ce49d5f78716900df9f0f4fb83f37c71cfec307fc267f117d8b7e9e6"
+        },
+        {
+          "path": "cases/pass/ours/honza_instruments_corrected.icl",
+          "module_index": 6,
+          "sha256": "5cf30055b09629ac7ac8ada7d7b1187161d29945053a3e9fe8ba339eb3f80ce6"
+        }
+      ],
+      "reason": "Keep the complete upstream benchmark and corrected Honza Instruments example: six helper definitions match, but other module definitions and namespace transitions differ. Both full-file inputs are regression evidence."
+    },
+    {
+      "id": "39eeed2a0227e25020fdf9c868b2a650743ec509928cf43dea54d20916745b59",
+      "name": "SReg",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/benchmark/Instruments.icl",
+          "module_index": 2,
+          "sha256": "0a56dbe4ce49d5f78716900df9f0f4fb83f37c71cfec307fc267f117d8b7e9e6"
+        },
+        {
+          "path": "cases/pass/ours/honza_instruments_corrected.icl",
+          "module_index": 2,
+          "sha256": "5cf30055b09629ac7ac8ada7d7b1187161d29945053a3e9fe8ba339eb3f80ce6"
+        }
+      ],
+      "reason": "Keep the complete upstream benchmark and corrected Honza Instruments example: six helper definitions match, but other module definitions and namespace transitions differ. Both full-file inputs are regression evidence."
+    },
+    {
+      "id": "45f9aef41adae13141b7afd5be22f2ac982f0ec69fb7505132655404d2aa88ea",
+      "name": "Instrument",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e2.icl",
+          "module_index": 0,
+          "sha256": "2928cefd5af0e71be31e73cb18ba6321593e42d79297c6cb481eeced12f888c5"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 1,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "5949da659b168bae419e74dbdf843178a83366cd1ce5167ba871851ea1635be8",
+      "name": "M",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/instance/comments_only.icl",
+          "module_index": 0,
+          "sha256": "56a6f538ab94b0c500a5657fa325a65477ceee4c17bc465ae1663088bf956e67"
+        },
+        {
+          "path": "cases/ours/instance/empty.icl",
+          "module_index": 0,
+          "sha256": "9334a583e169b009df17dcb4a40c0ded6bf51dc6a59d985e1a91e30434554d74"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    },
+    {
+      "id": "5c38ad4cb09ff1ca06f8ecf596c06cab54f782ec9a506e020b000e8de2892d5e",
+      "name": "m",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "golden/blank_lines_preserved.icl",
+          "module_index": 0,
+          "sha256": "bc5f3249601a0fd79042df66d0a23aedfa674201a4d4bcab2c8eef3dd6c729a6"
+        },
+        {
+          "path": "golden/comment_positions.icl",
+          "module_index": 0,
+          "sha256": "eb8fe97a5ab78b58ce163f2b85f565b00d532db7fa946d08ea28989574aa25b3"
+        }
+      ],
+      "reason": "Distinct exact-output golden and formatter/editor inputs exercise comment positions, alignment, blank lines, BOM or editor offsets. Matching module tokens do not make these byte-level tests interchangeable."
+    },
+    {
+      "id": "6176b84d869556260596254b520a275058e599d2547d077ce8536e9b452d9914",
+      "name": "LoopDIDO",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/benchmark/Instruments.icl",
+          "module_index": 1,
+          "sha256": "0a56dbe4ce49d5f78716900df9f0f4fb83f37c71cfec307fc267f117d8b7e9e6"
+        },
+        {
+          "path": "cases/pass/ours/honza_instruments_corrected.icl",
+          "module_index": 1,
+          "sha256": "5cf30055b09629ac7ac8ada7d7b1187161d29945053a3e9fe8ba339eb3f80ce6"
+        }
+      ],
+      "reason": "Keep the complete upstream benchmark and corrected Honza Instruments example: six helper definitions match, but other module definitions and namespace transitions differ. Both full-file inputs are regression evidence."
+    },
+    {
+      "id": "65af900f3b10987088c5b34f02fd9f3771f1f7173b3f94bced2d646dca04b54b",
+      "name": "warptap_sib",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/warptap/flat_read_write.icl",
+          "module_index": 0,
+          "sha256": "ab8011136b809c69f66e3cc71a293a5a4cec16141e2787d2634126c0b43e5559"
+        },
+        {
+          "path": "cases/pass/warptap/nested_sib.icl",
+          "module_index": 0,
+          "sha256": "472c2e2e849b4030a5c9acd96481ea0a5022fb60914a48e13fa9d7d6d06346aa"
+        },
+        {
+          "path": "cases/pass/warptap/scan_mux.icl",
+          "module_index": 0,
+          "sha256": "f6cf86aca1301aefb0b6e6d70a16dc8b415b00b54a572a7b94449eb65b7b2d15"
+        }
+      ],
+      "reason": "The flat, nested-SIB and scan-mux design snapshots each need the same SIB helper to remain complete standalone examples; their topologies and other modules differ."
+    },
+    {
+      "id": "660e0d749fb2b0945230a30af8fc7fe44800e737b423715a9130e0b18cddcfdd",
+      "name": "SRegP2",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e3.icl",
+          "module_index": 2,
+          "sha256": "de3c066d13b3b186e6eb87ea0df9a0727c739d56d8f61cfc8e0b2369f036fb8a"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 4,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "74704e1c2564fb2e148d6f4499a22ad7a4f0ba867e222e4f9395a53e42f227d2",
+      "name": "SRegP1",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e3.icl",
+          "module_index": 1,
+          "sha256": "de3c066d13b3b186e6eb87ea0df9a0727c739d56d8f61cfc8e0b2369f036fb8a"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 3,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "7aa64494183f68512fdaa3143f00c9b4670133f9aec9a7dda5aa3a7ea3154a3b",
+      "name": "Example",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/data_out_port/empty.icl",
+          "module_index": 0,
+          "sha256": "51f7c4ae1f907dffd45828ff600be584487f64f79cc3de9603c007c881f41d92"
+        },
+        {
+          "path": "cases/ours/data_out_port/header_comments.icl",
+          "module_index": 0,
+          "sha256": "2216bd62f6c22a08f24d21c960946ccb00e7459fba27c90a617706fb91fad953"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    },
+    {
+      "id": "7ea363196bed6e885eb1bb2f920e3d0c3943edc73342a71a81bc52f18fa56d4b",
+      "name": "m",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/editor/good.icl",
+          "module_index": 0,
+          "sha256": "e91a82b6cfb10582cb003181332cd7be410712d4e96ed2027df3f4920f01ee84"
+        },
+        {
+          "path": "cases/pass/ours/bom_stripped_not_kept.icl",
+          "module_index": 0,
+          "sha256": "749fdb15d9331029b1c5fe11e051c8cf99392b10e680314d1bfc1713395da379"
+        },
+        {
+          "path": "cases/pass/ours/comment_opens_with_star.icl",
+          "module_index": 0,
+          "sha256": "a30c25cce6a289901513de076a976f7952e47d3c898b5ace9da853a33e96468e"
+        },
+        {
+          "path": "cases/pass/ours/comment_tab_indented.icl",
+          "module_index": 0,
+          "sha256": "1dfc85be5520a3286e3d052ea4e0dc82b011b9537746b0524b330d1d2ad008c2"
+        },
+        {
+          "path": "cases/pass/ours/comment_with_blank_line.icl",
+          "module_index": 0,
+          "sha256": "915df7a48c04b36f5a14da7e8a84c8cf6fb1eb8871f9b320c84a156397cc410a"
+        },
+        {
+          "path": "cases/pass/ours/ragged_star_comment.icl",
+          "module_index": 0,
+          "sha256": "f3e59f1ac780321ab2054f4d431fc5f90af663e19d85a721e168aafec7c6e44b"
+        },
+        {
+          "path": "cases/pass/ours/single_port.icl",
+          "module_index": 0,
+          "sha256": "7fc17f40d6e55f4b4c42194abace7d81569a367f3fb0d455245b81060f01addf"
+        },
+        {
+          "path": "golden/ragged_star_comment.icl",
+          "module_index": 0,
+          "sha256": "f5606cf49c91c2503faebe99ac93d912d9e7e402bd2b1a0f1e6f3261914a750b"
+        },
+        {
+          "path": "golden/star_comment_alignment.icl",
+          "module_index": 0,
+          "sha256": "7ac54bc54b678a0f1855188bf9203fd4c4f9700f794de4464a0252bd6eff5b96"
+        }
+      ],
+      "reason": "Distinct exact-output golden and formatter/editor inputs exercise comment positions, alignment, blank lines, BOM or editor offsets. Matching module tokens do not make these byte-level tests interchangeable."
+    },
+    {
+      "id": "ae4cec33b5eb66cdfe67b1e5aa6aa91cb4fe6fc71ad7760d4f491258ffff2ceb",
+      "name": "SIB_mux_pre",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e6.icl",
+          "module_index": 0,
+          "sha256": "14420baf63735bfaac3e3267d79043fc45bc45ed91d5b746384a60a2fd744282"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 6,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "b778973b8735bbae281538a8bdf3d2feb6ab397e06652b3ec95f7ce394efd8bf",
+      "name": "SRegP0",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e3.icl",
+          "module_index": 0,
+          "sha256": "de3c066d13b3b186e6eb87ea0df9a0727c739d56d8f61cfc8e0b2369f036fb8a"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 2,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "c05dce9f1d178cf426144b88bbb3edee723278114a4f7e16fd3b1cae3e920a37",
+      "name": "Child",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/tessent/scan_interface/chain_manual_1.icl",
+          "module_index": 1,
+          "sha256": "538d3171c3e5aa503b729bc79bb6b81242fbae54331958b1984917ca20b3d2d9"
+        },
+        {
+          "path": "cases/tessent/scan_interface/chain_manual_2.icl",
+          "module_index": 1,
+          "sha256": "041f82e79d6839c3c0d796b00730779120031646dadf036696be0ecf84ceb764"
+        },
+        {
+          "path": "cases/tessent/scan_interface/chain_manual_3.icl",
+          "module_index": 1,
+          "sha256": "e51f878b552c5d5ab434bfa1965df909ea4eab72076030287a1d124a41e6a697"
+        }
+      ],
+      "reason": "Three different Tessent Chain examples require this supplied Child definition to complete their blockA/blockB instances; retain each complete example."
+    },
+    {
+      "id": "c2dbe6a54af22957f529768313bd3dd52c573b0137d94e23d8de3087e77eacdb",
+      "name": "M",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/lexical/comment_quotes.icl",
+          "module_index": 0,
+          "sha256": "b3ed32b077dfe241f5193b620583a1c674d2d5f28e1213dbed93359b42983fee"
+        },
+        {
+          "path": "cases/ours/lexical/crlf.icl",
+          "module_index": 0,
+          "sha256": "32b23f030a85809c1881f99ece9d5438eef1e4f970c6233e118a42afc71cc2f2"
+        },
+        {
+          "path": "cases/ours/module/module_comments.icl",
+          "module_index": 0,
+          "sha256": "e71daed4b78ce42de89723000b7fafd3f185ab1c097336bad9eec9f20b8263c3"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    },
+    {
+      "id": "c88611474979bed3c58ad1653485e8637cbb3b7c926939a71c00714f0129a7a1",
+      "name": "Context",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/origen/e1.icl",
+          "module_index": 0,
+          "sha256": "887286ca7adc4508f1638862c428412c33b1c923d95e4f3eedc503b804d32c63"
+        },
+        {
+          "path": "cases/pass/published2/sklp_feature_test.icl",
+          "module_index": 0,
+          "sha256": "7c1e67f87c2e5428b96dada1c3f8cf23e6a02f01e4f0b89dad5a17a950d2ea73"
+        }
+      ],
+      "reason": "Preserve independently sourced complete Origen and IJTAG_extension examples. The latter also tests a long prefix of commented-out modules; the complete file exercises their interaction with live definitions."
+    },
+    {
+      "id": "dec7d6687abf2abe63cf0eca1a05c8d9fa660d75e4271c6e0ede74b8d2309273",
+      "name": "Instrument",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/benchmark/Instruments.icl",
+          "module_index": 0,
+          "sha256": "0a56dbe4ce49d5f78716900df9f0f4fb83f37c71cfec307fc267f117d8b7e9e6"
+        },
+        {
+          "path": "cases/pass/ours/honza_instruments_corrected.icl",
+          "module_index": 0,
+          "sha256": "5cf30055b09629ac7ac8ada7d7b1187161d29945053a3e9fe8ba339eb3f80ce6"
+        }
+      ],
+      "reason": "Keep the complete upstream benchmark and corrected Honza Instruments example: six helper definitions match, but other module definitions and namespace transitions differ. Both full-file inputs are regression evidence."
+    },
+    {
+      "id": "f3a9a55c9c956ede3307af923c94b01bc6e5053372f51f71334bbec1fa5cf50e",
+      "name": "SBit",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/benchmark/Instruments.icl",
+          "module_index": 3,
+          "sha256": "0a56dbe4ce49d5f78716900df9f0f4fb83f37c71cfec307fc267f117d8b7e9e6"
+        },
+        {
+          "path": "cases/pass/ours/honza_instruments_corrected.icl",
+          "module_index": 3,
+          "sha256": "5cf30055b09629ac7ac8ada7d7b1187161d29945053a3e9fe8ba339eb3f80ce6"
+        }
+      ],
+      "reason": "Keep the complete upstream benchmark and corrected Honza Instruments example: six helper definitions match, but other module definitions and namespace transitions differ. Both full-file inputs are regression evidence."
+    },
+    {
+      "id": "f3fc8eecd04bc2bf11c1f9f2f283d577912575cf0914fda6df811523537b4286",
+      "name": "SIB",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/pass/published/liu_sib_and_chip_icl.icl",
+          "module_index": 0,
+          "sha256": "bfe9c3b180b99566fb894a17a3b2e155f680bba448e186c558b58980c34fd986"
+        },
+        {
+          "path": "cases/pass/published/published_sib_and_chip.icl",
+          "module_index": 0,
+          "sha256": "feea06b7cf34b38c7d6b9a2419d91088b259478c4bcab51856f6cf571ef2ae3f"
+        }
+      ],
+      "reason": "The published full and reduced chip examples have different Chip_ICL definitions; each includes the SIB helper used by its top-level instances."
+    },
+    {
+      "id": "f650d0a3a993e337569b888f3ff7f51e1f88651c3e3a187a193fc6ec1b17c9fe",
+      "name": "M",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/alias/comments_only.icl",
+          "module_index": 0,
+          "sha256": "69914a4b2005bbe3ede95cb30e7bdcd4f7fa7c97544f6616792500e859299952"
+        },
+        {
+          "path": "cases/ours/alias/empty.icl",
+          "module_index": 0,
+          "sha256": "7009228e23c03b065e2409a63260cc5c8c7ae76f8ae1642fd57850221a8efa81"
+        }
+      ],
+      "reason": "Distinct lexer/formatter inputs exercise comments inside or between tokens, empty versus comment-only blocks, CRLF or spacing. Their byte sequences must remain different to preserve those regressions."
+    }
+  ],
+  "audit": {
+    "before_files": 2212,
+    "after_files": 2157,
+    "unique_valid_module_definitions": 1289,
+    "remaining_exact_file_duplicates": 0,
+    "retained_groups": 25,
+    "retained_extra_occurrences": 35
+  }
+}

@@ -2287,18 +2287,18 @@
       "namespace": "",
       "use_namespace": "",
       "id": "6ff3ac31a479cf039d25c8129a8141877bc075c0c1be690b9b4d4e1e295f6cea",
-      "path": "pass/syn_slm/eda/wrapped_pmm_ip_6ff3ac31a479cf03.icl",
+      "path": "pass/tessent/tessent_merged_icl.icl",
       "source": "syn_slm/1_pmm_ip_generation_with_1500_1687_and_apb_sim/PRJ/SLM/PMM/CORE/DFT/wrapped_pmm_ip.icl",
-      "sha256": "a5deef870148a497ef0f7b19136d7f7be3780a8531f53f1c446b7aad3d075fb1"
+      "sha256": "ace54b30533b44296588dc3dfed5f4b4a3f0825b06358ae2b755cf0acdc28082"
     },
     {
       "name": "wrapped_pmm_ip",
       "namespace": "",
       "use_namespace": "",
       "id": "dea300bd7c5aa969c7087387ab55abb2a1b15599edf69774a524f35c1be88a4b",
-      "path": "pass/syn_slm/eda/wrapped_pmm_ip_dea300bd7c5aa969.icl",
+      "path": "pass/tessent/wrapped_pmm_ip.icl",
       "source": "syn_slm/1_pmm_ip_generation_with_1687_and_apb_sim/PRJ/SLM/PMM/CORE/DFT/wrapped_pmm_ip.icl",
-      "sha256": "f7417dbfd7ee154b92fd370e1c0c15ed2639f3549ff9c96bcb643fe13b76beb4"
+      "sha256": "f2e297da72d0b5dbd73f2f5793122dd67434943610b96cd423aae408671e204e"
     },
     {
       "name": "CAPTURE_LOOP_CAPTURE_SHIFT",
@@ -2494,9 +2494,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "ace16da1d972e46718394930f7449f325b606fd5ccd3ae2971a90578417ea98c",
-      "path": "pass/syn_slm/eda/PATH_MONITOR_CONTROLLER_clk_cntrl_ace16da1d972e467.icl",
+      "path": "pass/tessent/tessent_merged_icl.icl",
       "source": "syn_slm/all_out/1_pmm_ip_generation_with_1687_and_apb_sim/tessent_analysis_gate_icl/icl/PATH_MONITOR_CONTROLLER_clk_cntrl.icl",
-      "sha256": "9882e95b7caf9923e3ba37dc6f39eafd86b3410a114e1928cf7c942b3a50f77f"
+      "sha256": "ace54b30533b44296588dc3dfed5f4b4a3f0825b06358ae2b755cf0acdc28082"
     },
     {
       "name": "PATH_MONITOR_CONTROLLER_pmm_tai_sib_block",
@@ -2566,9 +2566,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "549b9f21af938dd4a7d2f94b370bca42bf46cde5c68fc18e5184b85c734d6e86",
-      "path": "pass/syn_slm/eda/PMC_549b9f21af938dd4.icl",
+      "path": "pass/tessent/tessent_merged_icl.icl",
       "source": "syn_slm/all_out/1_pmm_ip_generation_with_1687_and_apb_sim/tessent_analysis_gate_icl/icl/PMC.icl",
-      "sha256": "5ad20fb29194ae14e757413c336449070d0c7d7676ff6d075c311d330cfbe740"
+      "sha256": "ace54b30533b44296588dc3dfed5f4b4a3f0825b06358ae2b755cf0acdc28082"
     },
     {
       "name": "PMU",
@@ -2584,9 +2584,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "81ce6269372b41939bb6335a979182ce373f3ea8e5268f8bd39b5bce1f93655e",
-      "path": "pass/syn_slm/eda/PMU_BUNDLE_81ce6269372b4193.icl",
+      "path": "pass/tessent/tessent_merged_icl.icl",
       "source": "syn_slm/all_out/1_pmm_ip_generation_with_1687_and_apb_sim/tessent_analysis_gate_icl/icl/PMU_BUNDLE.icl",
-      "sha256": "817bc521448b5b8dca4063fefc76d0de061654251f62640404b956dc47110212"
+      "sha256": "ace54b30533b44296588dc3dfed5f4b4a3f0825b06358ae2b755cf0acdc28082"
     },
     {
       "name": "PM_MODE_TDR_PM_MODE",
@@ -2629,9 +2629,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "a7348815387e26ac5eb374c6379959065df8a263d0a5a61bdc47241c7ff742ba",
-      "path": "pass/syn_slm/eda/SIB_LOOP_SEL_a7348815387e26ac.icl",
+      "path": "pass/tessent/tessent_merged_icl.icl",
       "source": "syn_slm/all_out/1_pmm_ip_generation_with_1687_and_apb_sim/tessent_analysis_gate_icl/icl/SIB_LOOP_SEL.icl",
-      "sha256": "2d021d5f0ac80279a434701d1e54140b4d1676a9d98e597b457efd775955feef"
+      "sha256": "ace54b30533b44296588dc3dfed5f4b4a3f0825b06358ae2b755cf0acdc28082"
     },
     {
       "name": "wrapped_pmm_ip",
@@ -2701,117 +2701,117 @@
       "namespace": "",
       "use_namespace": "",
       "id": "141f7b6fe36dce4c93ee2a51fcae75b999e888fd8d4c1491e6743780ec7aefe3",
-      "path": "pass/tessent/eda/gps_baseband_141f7b6fe36dce4c.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "287196c23c62fe4a2583996229c28c3ff43d0b933efab17f9f2f43629e2b8f28"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_edt_c1_ext",
       "namespace": "",
       "use_namespace": "",
       "id": "64356267b21b9a53660bb6fe7f7237c6c47c8c282093ebb7542ed35e65cc28aa",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_ext_64356267b21b9a53.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "39f3d56146c4fd74356bf47dcd04d7ac50309d9ddfe2fbdfde6b0690b00b3665"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_edt_c1_ext_tdr",
       "namespace": "",
       "use_namespace": "",
       "id": "d4cf90400d7abb9f06963f55855cc19e71e648cb2b76b9f0fc1801c4fa994ee0",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_ext_tdr_d4cf90400d7abb9f.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "c9bb6450e56a1ec9107a359a551330c0addc69dbd83ea4b17a7829ecb0e50369"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_edt_c1_int",
       "namespace": "",
       "use_namespace": "",
       "id": "2adda25e87a2df1ad675b640f32d1135e54335694b5e6e7e867a653efd9d7fcb",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_int_2adda25e87a2df1a.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "e761ba1e8ea0ac5cb0dff9310021c3ce0f8f71cb80365d064d59a27b5ed326f3"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_edt_c1_int_tdr",
       "namespace": "",
       "use_namespace": "",
       "id": "8a6cab528f7ebfd42d3da9a698c6e855150f70a2113eac1f3bff528a58bec719",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_int_tdr_8a6cab528f7ebfd4.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "1fe60c52fbe3bcd6c01a1ae77dca9451a6c21d5da88a6cbd340ba3abbbc9b2ab"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_occ",
       "namespace": "",
       "use_namespace": "",
       "id": "f2336a6b0fd5b4e33f9720a8fa7544073003b26799a832ff613596a8b5ae3587",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_occ_f2336a6b0fd5b4e3.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "33bf81b05c3746eb5e69f162cdc7c91d3f26f7c062875cc8aa69d760286e9859"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_occ_sib_int",
       "namespace": "",
       "use_namespace": "",
       "id": "21fd5c7de4d0bf0f8bc68733434eca61ae664a8dbc7fcec7e85a1878b389ca12",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_occ_sib_int_21fd5c7de4d0bf0f.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "9ff17d6981584261b955207c8d3ab2b146214ada0dd80c08ac0ab920751d9593"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_sib_2",
       "namespace": "",
       "use_namespace": "",
       "id": "bc414cfea6f2490b7b9fc3003dc562518930900da3ee5ff567f6beb91f1834cb",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_sib_2_bc414cfea6f2490b.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "cd510ea2da366f767e62469b5eda7e9b97351412c0b75df764a3d8a71080b5d5"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_sib_1",
       "namespace": "",
       "use_namespace": "",
       "id": "820d2703f9c357da46528a7cbc00f46e5b1562963fe342c8d37d0eebc074b06e",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_sib_1_820d2703f9c357da.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "a9a9f150dacbdc7d8d75c1aedb563b486afbefbde00b4d20b3a816f9fffbe866"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_ssn_pipe_w2_1",
       "namespace": "",
       "use_namespace": "",
       "id": "28e81b42ecc6b109ada062d0da274a6baa4f1eec0757cc0460235dc67473a9a1",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_pipe_w2_1_28e81b42ecc6b109.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "8c1339c1998460db11875c5a275284add5f6d50767427488e375b1476304e79e"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_ssn_scan_host_1",
       "namespace": "",
       "use_namespace": "",
       "id": "fa9a9d6baceaa1e6a94fa23c1b1f5a4508dac9f0a7c62254e61567b7403bee8c",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_fa9a9d6baceaa1e6.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "25197fdcfb29602f423045686cfb6fb6ebc56cff88cab2576769d65df1cb7c03"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_ssn_scan_host_1_inner",
       "namespace": "",
       "use_namespace": "",
       "id": "f86762737dee2d246c0947a9f48c0e977021428364100a70d1de286211e40e4d",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_inner_f86762737dee2d24.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "4a65d29a56c932ccc873577a270053fe85bd071df88da06927c33a84261eb276"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_tdr_sri_ctrl",
       "namespace": "",
       "use_namespace": "",
       "id": "9612e233887b0f05fb0b1e5cc9c5251fc7c2976dd90a68747eacbe2617be30f0",
-      "path": "pass/tessent/eda/gps_baseband_rtl1_tessent_tdr_sri_ctrl_9612e233887b0f05.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/gps_baseband/tsdb_outdir/dft_inserted_designs/gps_baseband_rtl1.dft_inserted_design/gps_baseband.icl",
-      "sha256": "fbe780df6dc5878725cec589aceeb23d900fadeb285f5d73d1a0d6a5930ef8a5"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "gps_baseband_rtl1_tessent_edt_c1_ext",
@@ -2935,153 +2935,153 @@
       "namespace": "",
       "use_namespace": "",
       "id": "6753cb1ca894cd095157a3148cd1b9bddb2e4ed48f04830bd0b5092e76484acb",
-      "path": "pass/tessent/eda/SYNC_1RW_8Kx16_6753cb1ca894cd09.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "075855a7c83c5dba1fa69ad7e40993684f55f165317f79b9c54897a155e7b68c"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_mbist_c1_interface_m1",
       "namespace": "",
       "use_namespace": "",
       "id": "ac2ed02c24249942c3968b9acff4a418c68435f6e0df1b219700ae64474fc3f6",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_interface_m1_ac2ed02c24249942.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "92cfbb902c3ddd581032c3fba507ab86c4f4d445dbc76eec4b256442dec5c191"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_mbist_c1_interface_m2",
       "namespace": "",
       "use_namespace": "",
       "id": "4a23cb403a90cd5464e2ed69c0cf8424c08336aa3fe9225e02259a4a8c53452d",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_interface_m2_4a23cb403a90cd54.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "9af247dc2bd6c02cf36406dabdd759a7e7eab19c9296718feafd6f35e8cfb08a"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_mbist_bap",
       "namespace": "",
       "use_namespace": "",
       "id": "85b87d621a211adfc30f6878d7286325819eb03fe4de8e3a595919dd04770063",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_mbist_bap_85b87d621a211adf.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "1550b3211b0b5d9d8e20dd995d166b62e9944b1f5676d5e07d09e8ed11b047b2"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_mbist_c1_controller",
       "namespace": "",
       "use_namespace": "",
       "id": "a22faf03939899e1dbe3ad4d3e10797dbd0915cebb704bcb0c9fdd84211d9b7b",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_a22faf03939899e1.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "e7ae38e0e0e704f5dc4f1981b5faa4fc44a98af639111864dcdb54485e796855"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_sib_2",
       "namespace": "",
       "use_namespace": "",
       "id": "f119675687106ca7e068fd523a5f769ac9e1e9f6aa5242b3feb948d28a34e7c3",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_sib_2_f119675687106ca7.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "a3e89c00b44337192fe5a07c683cf3acba9075fb1d25ef1fbcad90e2f72b1050"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_sib_1",
       "namespace": "",
       "use_namespace": "",
       "id": "dd77e0a30a95efcf14c6137a557ff27f682b7dc3b775ab2635b3147c18d146e9",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_sib_1_dd77e0a30a95efcf.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "54e836ae3af36b2c1d0c180fcb2f867f0f3070a67b9a16166b0004a58d233284"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_edt_c1_ext",
       "namespace": "",
       "use_namespace": "",
       "id": "8c90884a4cae424971525d1c2fa30b3872f3dee74069b94ae158adc5ddb7b2f9",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_ext_8c90884a4cae4249.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "0accb585c5a3315274eca43b976c78f5aedfc5fa1d862a48112ab6626ab8bf60"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_edt_c1_ext_tdr",
       "namespace": "",
       "use_namespace": "",
       "id": "df1d57b00881cd330ddb5ffd3ccbbd9a80e75ca83bcdf08ac7bbd3c9b04dfda0",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_ext_tdr_df1d57b00881cd33.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "1e19e2b53e2985a50e9c2b76bcf309e5018acda37cd63a2a260c9267a14632d7"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_edt_c1_int",
       "namespace": "",
       "use_namespace": "",
       "id": "845c9eacdc48db86915edb9fc9da5ac73092147103029bd9d8e2cbf34d403513",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_int_845c9eacdc48db86.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "1cc50f34d0838ca51dbd5cf82afa038711cb16c0cf9086ef966ccf52a1c0ffcd"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_edt_c1_int_tdr",
       "namespace": "",
       "use_namespace": "",
       "id": "64f7754a8ce18153ec7a09fe958b386ff85b2143e16bfa7a1594e8bceca7b439",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_int_tdr_64f7754a8ce18153.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "4a54d6abfbd9ace4b3a5157806fd70097c662a89f3f9316784c54cacb6e564c4"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_occ",
       "namespace": "",
       "use_namespace": "",
       "id": "91f1445749766d7f3fd4fb008720cb6bfcb39b78f34eb514c1cffa68dd53360c",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_occ_91f1445749766d7f.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "a76dff9db3e0bc5023e11ac164b6996c89af257af9acd7490c565a47b8bb74e8"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_occ_sib_int",
       "namespace": "",
       "use_namespace": "",
       "id": "77fb05b2a086e943d5f626c08df8c157c7fa94d67022f151e54b0b5e10f386fa",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_occ_sib_int_77fb05b2a086e943.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "44449f7705b56043396d8e0752db8ae4b1680b60113a6665e0d02c453098b96d"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_sib_2",
       "namespace": "",
       "use_namespace": "",
       "id": "1e742650fd38f84dfd960f900832dfc882fb66a7ccbe273a016e157e4300204b",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_sib_2_1e742650fd38f84d.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "866ca9d779d6a67d844afea37178e71140883350c640a3c95eba892678eeb7c0"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_sib_1",
       "namespace": "",
       "use_namespace": "",
       "id": "a66d4f164113eab73510b826f57241b95322ae3dc9b51474789fc9e1720e44ac",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_sib_1_a66d4f164113eab7.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "b7ad08322a6cdc1e76890fb30c39f55216daeb5856722b9e7fb01bc9b8a8b278"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_ssn_pipe_w2_1",
       "namespace": "",
       "use_namespace": "",
       "id": "d03fe6768557dd2761d233856a5ee90598351e9106e90ea437ec65b56cb4351a",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_ssn_pipe_w2_1_d03fe6768557dd27.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "c46935e4e477f3cf25d43ba8e9f90431b28487368fb1800385e65b7f3bfb0dc4"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_ssn_scan_host_1",
       "namespace": "",
       "use_namespace": "",
       "id": "98f3d9b58cbea2ce92dba56ff0c9c48acd05ed72748e2e296c1db1f011c32808",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_98f3d9b58cbea2ce.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "46169a726d3626b520c46f26a0e02e5cc326a50738673a677ea7b80c3734dd10"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_ssn_scan_host_1_inner",
@@ -3097,9 +3097,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "b272a40c3bda090f6eb68fceef2fdeedc0cfa3a8893e08d10b220dc681d1eef7",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_tdr_sri_ctrl_b272a40c3bda090f.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_gate.dft_inserted_design/processor_core.icl",
-      "sha256": "36d96a5b1ea0e1d7e18d1b1db8e4562fb0eac4abd862ec76f0680258f816b5a9"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core",
@@ -3115,18 +3115,18 @@
       "namespace": "",
       "use_namespace": "",
       "id": "7ba697381f95825e8ae04f9049280b54fab9c6ec37439b17fd0c9980189cf6c5",
-      "path": "pass/tessent/eda/processor_core_7ba697381f95825e.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl",
-      "sha256": "9a2c5b569993e3cdb352a8805f614a7c0c9b23ac26edde003c5e179db226f58f"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl2_tessent_ssn_scan_host_1_inner",
       "namespace": "",
       "use_namespace": "",
       "id": "b573f7664b808fe96fb86fa7829363273330a8d2a8ee2e5a9fc7601b2b393f23",
-      "path": "pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_inner_b573f7664b808fe9.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/dft_inserted_designs/processor_core_rtl2.dft_inserted_design/processor_core.icl",
-      "sha256": "7d05c5a269910398614c76242e7714457ae8113a75a69968ff548dc58f93ced7"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_sib_1",
@@ -3169,9 +3169,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "b856f8ed8858433524c75b0c1fb63b5199f542c055934a4fdf27999481141af2",
-      "path": "pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_assembly_b856f8ed88584335.icl",
+      "path": "pass/tessent/tessent_merged_icl_1.icl",
       "source": "tessent_2026.2_usage_examples/tessent_example_hierarchical_flow_with_ssn_v2026.2/wrapped_cores/processor_core/tsdb_outdir/instruments/processor_core_rtl1_mbist.instrument/processor_core_rtl1_tessent_mbist_c1_controller_assembly.icl",
-      "sha256": "3e2c67ff58ea9b2580fde872044d4840ff41ec502446a922f0e459bb51494f74"
+      "sha256": "9bc9acb51e26fcd484834379347238953fd1bb765cfd8710c1a656a56e0deeaf"
     },
     {
       "name": "processor_core_rtl1_tessent_mbist_c1_interface_m1",
@@ -3493,9 +3493,9 @@
       "namespace": "",
       "use_namespace": "",
       "id": "6ed157a69a9b2dee7bb4bfc460091900d59f87cae3029ccbb463dbcab7a08cd8",
-      "path": "pass/tessent/eda/SIB_6ed157a69a9b2dee.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/convert_icl_netlist_to_json_file_with_flattened_icl_network/chip_top.icl",
-      "sha256": "fb364e09179419acd1f9b9e9e8271f8f68bed77c5933ccc3fee44d31870914ae"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "chip",
@@ -3538,18 +3538,18 @@
       "namespace": "",
       "use_namespace": "",
       "id": "6807438ed0c9e2f944188f54c7d41cee1f3f2a6f4cf664f42b173728be310863",
-      "path": "pass/tessent/eda/TDR_6807438ed0c9e2f9.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/test_Local_Reset/test_Hier_Local_Reset/chip_top.icl",
-      "sha256": "58bd1a7cee2745d542d45c826447951b6bea22ac9d9c5059ef41d5d715d8331e"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "Sensor",
       "namespace": "",
       "use_namespace": "",
       "id": "2336edc33c5be37bb2d7557b8c9e882c3e10f067e095ab00b2cd12fb961cf77d",
-      "path": "pass/tessent/eda/Sensor_2336edc33c5be37b.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/test_Local_Reset/test_Hier_Local_Reset/chip_top.icl",
-      "sha256": "6c1968c1275521eab33fdc6ce934c9429f8f81ae6fb02fae58c29bd36600330c"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "RESET_TDR",
@@ -3565,36 +3565,36 @@
       "namespace": "",
       "use_namespace": "",
       "id": "c2a65ebdcb78cda0396f006d01a4c1587011a6445d347ac25ef7bd4a20881788",
-      "path": "pass/tessent/eda/TDR_FOR_RESET_c2a65ebdcb78cda0.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/test_Local_Reset/test_Hier_Local_Reset_Structure_Like_Self_Clear/chip_top.icl",
-      "sha256": "abb54016d1562a8eab4930ec32afd005a65388464723bff11b89e07e100b010a"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "chip",
       "namespace": "",
       "use_namespace": "",
       "id": "5e0b27aa13c3d60ee0cfc29d64ec0876628f4dd2f8e29c58f8b301ee28666b7e",
-      "path": "pass/tessent/eda/chip_5e0b27aa13c3d60e.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/test_Local_Reset/test_Hier_Local_Reset_Structure_Like_Self_Clear_Extracted/chip_top.icl",
-      "sha256": "029ef2e23aa60300fcc821701ff01f00624cc85ca4e1a06aaa905577e817f3b2"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "Block",
       "namespace": "",
       "use_namespace": "",
       "id": "beb53b6f91c030f00d4e2da7cd9018652fba6b4c18d03add24b74dac6eaf997b",
-      "path": "pass/tessent/eda/Block_beb53b6f91c030f0.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/test_Local_Reset/test_Hier_Local_Reset_Structure_Like_Self_Clear_Extracted/chip_top.icl",
-      "sha256": "2e02ddf24cf0e7784511d9afe7d2945c16a281c5e2b4bcaf6adf000a5382f600"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "RESET_TDR",
       "namespace": "",
       "use_namespace": "",
       "id": "20060acd2d54b3aec2d598b33e7c834c5faf424445b2deea2dfce1dc56dc76a7",
-      "path": "pass/tessent/eda/RESET_TDR_20060acd2d54b3ae.icl",
+      "path": "pass/tessent/tessent_chip_top.icl",
       "source": "test/tessent_ijtag/test_Local_Reset/test_Hier_Local_Reset_Structure_Like_Self_Clear_Extracted/chip_top.icl",
-      "sha256": "9e3b1b236a3182b3aff65e65058992f4c0acb143ab2fe38bfd6c8bb55e58743b"
+      "sha256": "063bdb4e50169554651715729259cda7534cd49dc114691c198b1a759c94a848"
     },
     {
       "name": "RESET_TDR",

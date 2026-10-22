@@ -3498,12 +3498,6 @@
     "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
   },
   {
-    "path": "cases/ours/to_clock_port/unit_ns.icl",
-    "block": "to_clock_port",
-    "accept": true,
-    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
-  },
-  {
     "path": "cases/ours/to_clock_port/unit_spaced_ns.icl",
     "block": "to_clock_port",
     "accept": true,
@@ -6090,7 +6084,7 @@
     "source": "IEEE 1687-2014 section 6.4.11; ours"
   },
   {
-    "path": "cases/tessent/scan_mux/chip2.icl",
+    "path": "cases/tessent/clock_mux/chip2.icl",
     "block": "scan_mux",
     "accept": true,
     "source": "Tessent Shell Reference v2023.4 Command_Scanmux_id85c3be13.html example"
@@ -6372,7 +6366,7 @@
     "source": "IEEE 1687-2014 section 6.4.12 example"
   },
   {
-    "path": "cases/tessent/data_mux/chip2.icl",
+    "path": "cases/tessent/clock_mux/chip2.icl",
     "block": "data_mux",
     "accept": true,
     "source": "Tessent Shell Reference v2023.4 Command_Datamux_id282a42c0.html"
@@ -9480,12 +9474,6 @@
     "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
   },
   {
-    "path": "cases/ours/module/legacy_24_2.icl",
-    "block": "fallback",
-    "accept": false,
-    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
-  },
-  {
     "path": "cases/ours/module/legacy_24_3.icl",
     "block": "fallback",
     "accept": false,
@@ -10542,13 +10530,13 @@
     "source": "IEEE 1687-2014 \u00a76.3: constructed condition-path case"
   },
   {
-    "path": "cases/pass/syn_slm/eda/wrapped_pmm_ip_6ff3ac31a479cf03.icl",
+    "path": "cases/pass/tessent/tessent_merged_icl.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA syn_slm; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/syn_slm/eda/wrapped_pmm_ip_dea300bd7c5aa969.icl",
+    "path": "cases/pass/tessent/wrapped_pmm_ip.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA syn_slm; cases/eda_sources.json"
@@ -10680,12 +10668,6 @@
     "source": "remote EDA syn_slm; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/syn_slm/eda/PATH_MONITOR_CONTROLLER_clk_cntrl_ace16da1d972e467.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA syn_slm; cases/eda_sources.json"
-  },
-  {
     "path": "cases/pass/syn_slm/eda/PATH_MONITOR_CONTROLLER_pmm_tai_sib_block_9a4faeb883ac5099.icl",
     "block": "eda-corpus",
     "accept": true,
@@ -10728,19 +10710,7 @@
     "source": "remote EDA syn_slm; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/syn_slm/eda/PMC_549b9f21af938dd4.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA syn_slm; cases/eda_sources.json"
-  },
-  {
     "path": "cases/pass/syn_slm/eda/PMU_a79783850c4b84d7.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA syn_slm; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/syn_slm/eda/PMU_BUNDLE_81ce6269372b4193.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA syn_slm; cases/eda_sources.json"
@@ -10765,12 +10735,6 @@
   },
   {
     "path": "cases/pass/syn_slm/eda/SIB2_LOOP_SIB_2_be89f14554b7fdad.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA syn_slm; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/syn_slm/eda/SIB_LOOP_SEL_a7348815387e26ac.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA syn_slm; cases/eda_sources.json"
@@ -10818,79 +10782,7 @@
     "source": "remote EDA tessent; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/tessent/eda/gps_baseband_141f7b6fe36dce4c.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_ext_64356267b21b9a53.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_ext_tdr_d4cf90400d7abb9f.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_int_2adda25e87a2df1a.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_edt_c1_int_tdr_8a6cab528f7ebfd4.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_occ_f2336a6b0fd5b4e3.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_occ_sib_int_21fd5c7de4d0bf0f.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_sib_2_bc414cfea6f2490b.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_sib_1_820d2703f9c357da.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_pipe_w2_1_28e81b42ecc6b109.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_fa9a9d6baceaa1e6.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_inner_f86762737dee2d24.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_tdr_sri_ctrl_9612e233887b0f05.icl",
+    "path": "cases/pass/tessent/tessent_merged_icl_1.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"
@@ -10974,133 +10866,13 @@
     "source": "remote EDA tessent; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/tessent/eda/SYNC_1RW_8Kx16_6753cb1ca894cd09.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_interface_m1_ac2ed02c24249942.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_interface_m2_4a23cb403a90cd54.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_bap_85b87d621a211adf.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_a22faf03939899e1.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_sib_2_f119675687106ca7.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_sib_1_dd77e0a30a95efcf.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_ext_8c90884a4cae4249.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_ext_tdr_df1d57b00881cd33.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_int_845c9eacdc48db86.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_edt_c1_int_tdr_64f7754a8ce18153.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_occ_91f1445749766d7f.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_occ_sib_int_77fb05b2a086e943.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_sib_2_1e742650fd38f84d.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_sib_1_a66d4f164113eab7.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_pipe_w2_1_d03fe6768557dd27.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_98f3d9b58cbea2ce.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
     "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_inner_7feeca8c0a545ec2.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_tdr_sri_ctrl_b272a40c3bda090f.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
     "path": "cases/pass/tessent/eda/processor_core_fa576ae773aa1c5a.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_7ba697381f95825e.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl2_tessent_ssn_scan_host_1_inner_b573f7664b808fe9.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"
@@ -11125,12 +10897,6 @@
   },
   {
     "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_2510f2b377a5df30.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_assembly_b856f8ed88584335.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"
@@ -11346,7 +11112,7 @@
     "source": "remote EDA tessent; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/tessent/eda/SIB_6ed157a69a9b2dee.icl",
+    "path": "cases/pass/tessent/tessent_chip_top.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"
@@ -11376,43 +11142,7 @@
     "source": "remote EDA tessent; cases/eda_sources.json"
   },
   {
-    "path": "cases/pass/tessent/eda/TDR_6807438ed0c9e2f9.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/Sensor_2336edc33c5be37b.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
     "path": "cases/pass/tessent/eda/RESET_TDR_7289b6193bb24952.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/TDR_FOR_RESET_c2a65ebdcb78cda0.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/chip_5e0b27aa13c3d60e.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/Block_beb53b6f91c030f0.icl",
-    "block": "eda-corpus",
-    "accept": true,
-    "source": "remote EDA tessent; cases/eda_sources.json"
-  },
-  {
-    "path": "cases/pass/tessent/eda/RESET_TDR_20060acd2d54b3ae.icl",
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"

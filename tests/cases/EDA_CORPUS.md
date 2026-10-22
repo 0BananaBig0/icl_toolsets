@@ -16,8 +16,13 @@ and two Verdi directory cycles, but no unreadable ICL. All 180 inputs parse.
 Source trees were not modified.
 
 There are 106 distinct whole-file byte sequences: 74 repeated file occurrences.
-The 328 module occurrences reduce to **164 distinct definitions**: 119 stored in
-`pass/tessent/eda/`, 45 in `pass/syn_slm/eda/`. Fifty qualified module names have
+The 328 module occurrences reduce to **164 distinct definitions**. The initial
+import stored 119 Tessent and 45 Synopsys SLM module fixtures. The subsequent
+[whole-corpus audit](CORPUS_DEDUPLICATION.md) consolidated 47 definitions already
+present in four original baselines. There are now 78 standalone Tessent and 39
+standalone Synopsys SLM fixtures, plus references to those baseline modules.
+All 164 definitions and all 180 source mappings remain represented.
+Fifty qualified module names have
 multiple differing definitions; all of those variants are retained. The file
 suffix identifies the definition, so a same-name variant cannot overwrite it.
 
@@ -32,11 +37,13 @@ order and Generic payload whitespace remain significant. This is conservative
 lexical deduplication, not constant folding or proof of semantic equivalence.
 Comments embedded inside a single numeric token also remain significant.
 
-Each retained fixture contains the original module bytes, outside-module comments
+Each standalone fixture contains the original module bytes, outside-module comments
 from its selected source, and explicit `NameSpace` / `UseNameSpace` directives.
 The first path in lexical order supplies a duplicate's canonical copy; every
 origin keeps its own project classification in `eda_sources.json`, even if a
-shared definition's canonical copy comes from the other project.
+shared definition's canonical copy comes from the other project. After global
+deduplication, `path` may instead identify an original multi-module baseline;
+`id` selects exactly one module within it. `sha256` hashes that canonical file.
 
 The maintained manifest records each original path and whole-file SHA-256, its
 ordered canonical-module IDs, canonical fixture hashes and source comments.
@@ -46,9 +53,9 @@ definitions. Fixture import does not change the original authorship or terms.
 
 This collection is a syntax/formatter corpus. Different design snapshots reuse
 module names; loading every variant as a single design would be ambiguous.
-Cross-file associations can be recovered from the source mappings. Prior
-standard, constructed, upstream and real-tool regression fixtures were not
-deduplicated: their repetition may exercise separate coverage requirements.
+Cross-file associations can be recovered from the source mappings. The global
+audit covers earlier fixtures too; necessary repetitions are individually
+documented and pinned in `deduplication.json`.
 
 ## Reproduce and test
 
@@ -64,7 +71,8 @@ make check-dynamic BISON=/usr/bin/bison
 The importer refuses existing output directories and rejects invalid inputs
 before writing fixtures. It parses each byte-unique file once, using the shared
 frontend; it does not parse ICL with Python regexes. Review updated source
-fixtures and provenance before promoting them from staging into `tests/cases`.
+fixtures and provenance before promoting them from staging into `tests/cases`;
+resolve existing canonical definitions using the global duplicate audit.
 Archives, inventory reports, helper binaries and other generated build output
 stay ignored. The two installed executables and their runtime behavior are
 unchanged by this corpus addition.
