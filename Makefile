@@ -100,7 +100,8 @@ CPPFLAGS  += -I$(SRC_DIR) -I$(GEN_DIR) -D$(shell echo $(PACKAGE) | tr a-z- A-Z_)
 SHARED_SOURCES := \
 	$(SRC_DIR)/icl_driver.cc \
 	$(SRC_DIR)/format_tree.cc \
-	$(SRC_DIR)/format_job.cc
+	$(SRC_DIR)/format_job.cc \
+	$(SRC_DIR)/icl_semantics.cc
 
 CLI_SOURCES := $(SRC_DIR)/icl_format_main.cc
 LSP_SOURCES := $(SRC_DIR)/json.cc $(SRC_DIR)/icl_lsp_main.cc
@@ -535,7 +536,7 @@ coccheck: $(LSP_BIN)
 		echo "coc.nvim not prepared; run tests/setup_coc.sh first"; \
 	else \
 		COC_ROOT=$(COC_ROOT) COC_PLUGIN=$(COC_PLUGIN) COC_VIM=$(COC_VIM) \
-			tests/run_coc_check.sh; \
+			bash tests/run_coc_check.sh; \
 	fi
 
 # The corpus in tests/cases/ runs first: it is the cheapest way to see a
@@ -554,6 +555,7 @@ check check-dynamic: unitcheck
 	@python3 tests/block_review.py --binary $(BIN)
 	@python3 tests/run_tests.py --binary $(BIN)
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
+	@python3 tests/src/test_icl_lsp.py --binary $(LSP_BIN)
 	@$(MAKE) --no-print-directory gramcov
 
 COC_ROOT   ?= /tmp/cocvim
@@ -601,7 +603,7 @@ dist: all
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	# Recursive: the corpus is sorted into per-source subdirectories, and a
 	# flat copy would ship an empty set while appearing to succeed.
-	cp -r tests/cases tests/golden $(DIST_DIR)/tests/
+	cp -r tests/cases tests/golden tests/src tests/tests $(DIST_DIR)/tests/
 	# unit_tests.cc is part of `make check` (the `unitcheck` target builds it),
 	# so a tarball without it cannot run its own test suite. The copy list was
 	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.

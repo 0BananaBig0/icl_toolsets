@@ -354,6 +354,13 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
     icl_scan_end();
   }
 
+  if (pending_module_) {
+    auto span = pending_module_->span();
+    span.last_line = 1 + static_cast<int>(std::count(text.begin(), text.end(), '\n'));
+    const auto last = text.rfind('\n');
+    span.last_column = static_cast<int>(text.size() - (last == std::string::npos ? 0 : last + 1)) + 1;
+    pending_module_->set_span(span);
+  }
   if (has_error_) {
     *error = "line " + std::to_string(error_line_) + ": " + error_message_;
     return false;
@@ -361,27 +368,24 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
   return true;
 }
 
-namespace {
-
-// Strip a UTF-8 BOM. It used to happen on the file-reading path only, so the
-// same bytes were accepted from a file and rejected from stdin — and the LSP,
-// which always feeds the parser from memory, rejected them too. Doing it here
-// makes every path identical.
-void StripBom(std::string* text) {
-  if (text->size() >= 3 && static_cast<unsigned char>((*text)[0]) == 0xEF &&
-      static_cast<unsigned char>((*text)[1]) == 0xBB &&
-      static_cast<unsigned char>((*text)[2]) == 0xBF) {
-    text->erase(0, 3);
-  }
+void IclDriver::RecordMatch(const char* text, size_t size, bool icl) {
+  const size_t begin = scan_offset_;
+  scan_offset_ += size;
+  if (!icl || !size || text[0] == ' ' || text[0] == '\t' || text[0] == '\r' ||
+      text[0] == '\n' || (size >= 2 && text[0] == '/' && (text[1] == '/' || text[1] == '*')) ||
+      (size == 3 && static_cast<unsigned char>(text[0]) == 0xEF)) return;
+  unit_.tokens.push_back({std::string(text, size), begin, scan_offset_});
 }
 
-}  // namespace
+std::string IclDriver::Render(int indent_width) const {
+  FormatStyle style;
+  style.indent_width = indent_width;
+  return RenderFormatTree(BuildFormatTree(unit_, style), indent_width);
+}
 
 bool IclDriver::FormatText(const std::string& text_in, std::string* output,
                            std::string* error) {
-  std::string text = text_in;
-  StripBom(&text);
-  if (!Parse(text, error)) return false;
+  if (!Parse(text_in, error)) return false;
   const std::vector<FormatNode> lines = BuildFormatTree(unit_, style_);
   *output = RenderFormatTree(lines, style_.indent_width);
   return true;

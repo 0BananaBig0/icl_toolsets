@@ -48,6 +48,7 @@ class Json {
 
   Type type() const { return type_; }
   bool is_null() const { return type_ == Type::kNull; }
+  bool bool_value() const { return type_ == Type::kBool && bool_; }
 
   // Object lookup. Nullptr when the key is absent or this is not an object,
   // so a malformed request degrades into "field missing" rather than crashing.
@@ -57,9 +58,6 @@ class Json {
   // type. LSP clients differ in optional fields; being lenient on read keeps
   // one code path instead of a type check per field.
   //
-  // Only the types this server actually reads exist: int for ids and tabSize,
-  // string for methods and uris, elements for contentChanges. Adding a
-  // bool_value the day a bool field is read is cheaper than carrying one now.
   long long int_value(long long fallback = 0) const;
   std::string string_value(const std::string& fallback = "") const;
   const Elements& elements() const { return elements_; }

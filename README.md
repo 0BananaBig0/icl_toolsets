@@ -140,20 +140,30 @@ systems) stay quiet on an already-formatted tree.
 
 ## Editor integration: icl-lsp
 
-`icl-lsp` is a Language Server speaking LSP over stdio. It offers two features,
-both derived from the same front end the CLI uses:
+`icl-lsp` speaks LSP over stdio. Both executables consume `ParsedDocument`,
+which owns one Flex/Bison parse, the shared AST, exact source token spans and
+scoped declarations/references. The LSP caches that document until its text changes;
+formatting renders the cached AST with the requested indentation.
 
-| Feature | How |
+| Feature | Behavior |
 |---|---|
-| Syntax diagnostics | `FormatText` fails → publish one diagnostic at the line the parser stopped on |
-| Whole-document formatting | `FormatText` succeeds → one `TextEdit` covering the document |
+| Diagnostics and formatting | Shared parser diagnostics; invalid input produces no formatting edits. |
+| Completion | ICL keywords, module-local names, instance members and module types in the selected namespace. |
+| Definition / declaration | Parameters, ports, registers, aliases, enum members and module/instance references, with exact UTF-16 protocol positions. |
+| Implementation | The referenced ICL Module body for an instance/module. No inference of HDL implementations. |
+| Hover / references | Declaration source and resolved references, respecting modules, namespaces and instance targets. |
+| Document / workspace symbols | Parsed declarations, including unopened `.icl` files under workspace roots. |
 
-There is no second parser. `options.tabSize` from the client becomes the
-formatter's indent width, so the editor's setting and `icl-format -n` are the
-same knob — set `shiftwidth=2` to match the CLI default.
+Workspace discovery skips hidden directories and `build/`, and does not follow
+symlink directories. Open buffers override disk content. Clients supporting dynamic
+file-watch registration receive an `**/*.icl` watcher; create/change/delete events
+refresh unopened files. Full document synchronization is advertised. Completed
+statements in an incomplete Module remain available for completion, while stale
+symbols from the previous version are discarded. Ambiguous cross-file module
+redefinitions return no guessed target. Rename is not advertised.
 
-A file with a syntax error is **left untouched**: the server returns no edits
-rather than a best-effort reformat.
+`options.tabSize` uses the same clamping as `icl-format -n`. Set `shiftwidth=2`
+to match the CLI default. No existing editor configuration is modified.
 
 ### coc.nvim
 
@@ -271,7 +281,7 @@ Beyond style, a few decisions are load-bearing:
   several files are processed in one run.
 * **Nodes are non-copyable** and owned by an `AstUnit` arena; children hold
   non-owning pointers. Copying would break ownership and slice derived parts.
-* **AST and layout take plain line numbers**, not Bison's location type, so
+* **AST and layout use generator-independent source spans**, not Bison's location type, so
   `make unitcheck` compiles and runs them without generating a parser.
 * **No exceptions** (Google style): errors are `bool` + out-param.
 * **RAII throughout**; verified clean under ASan + UBSan with leak detection.

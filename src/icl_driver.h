@@ -154,7 +154,20 @@ class IclDriver {
     enum_width_ = 0;
   }
 
-  void EndModule() { enum_names_.clear(); access_link_names_.clear(); }
+  AstBlock* OpenModule(const std::string& header, SourceSpan span) {
+    pending_module_ = unit_.Make<AstBlock>(header, span);
+    unit_.top_level().push_back(pending_module_);
+    return pending_module_;
+  }
+  void AppendModuleItem(AstNode* node) { pending_module_->body().push_back(node); }
+  void EndModule() {
+    pending_module_ = nullptr;
+    enum_names_.clear(); access_link_names_.clear();
+  }
+  void RecordMatch(const char* text, size_t size, bool icl);
+  bool Parse(const std::string& text, std::string* error);
+  std::string Render(int indent_width) const;
+
 
   void CheckInstructionName(const std::string& name, int line) {
     if (!instruction_names_.insert(name).second)
@@ -200,8 +213,8 @@ class IclDriver {
   std::string AstToString() const;
 
  private:
-  bool Parse(const std::string& text, std::string* error);
-
+  AstBlock* pending_module_ = nullptr;
+  size_t scan_offset_ = 0;
   AstUnit unit_;
   std::unordered_set<std::string> enum_members_;
   std::unordered_set<std::string> enum_names_;

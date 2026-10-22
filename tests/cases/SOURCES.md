@@ -396,3 +396,11 @@ Standard lexical fixtures complete §§6.3.8–10 examples with declarations and
 wrappers. Constructed byte, delimiter, overflow and hierarchical adjacency cases
 cover boundaries. Dot-adjacent comments and multi-instance paths outside Alias are
 invalid under §6.3.10.5; prior synthetic positives are preserved as negatives.
+
+## Shared semantic/LSP fixtures
+
+`ours/lsp/` contains constructed multi-module files for scopes, namespaces, instance
+members, enum contexts, keyword identifiers, deep Alias paths and AccessLink
+ScanInterface references. `tests/src/test_icl_lsp.py` sends them over real framed
+LSP transport, including incomplete edits, Unicode and disk lifecycle cases.
+`ours/editor/` persists the diagnostic/formatting inputs used by the live coc test.

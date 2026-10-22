@@ -422,3 +422,32 @@ adapter suite skipped5 dependency tests; the separate venv run executed all6.
 Trace reports333/333 grammar source lines and118/118 scanner rules over2007 files;
 production-ID/action/branch accounting remains task10. Numeric parameter-width
 elaboration and known-target concatenation width inference remain semantic limits.
+
+## Task9: shared semantic documents and LSP
+
+`ParsedDocument` owns one `IclDriver`, AST and scanner tokens with exact byte
+spans. `FormatDocument` and the cached LSP path share `FormatParsedDocument`.
+The semantic model walks accepted AST node boundaries and scanner leaves; there
+is no regex parser or PDL token set. Module/instance/port/register/parameter/
+alias/enum symbols and references use module scopes, namespace directives and
+instance targets. Enum lookups follow RefEnum, including equal member spellings
+in separate enums. Unresolved or ambiguous targets do not produce guessed jumps.
+
+Module header reduction now retains completed body statements before an incomplete
+edit. A failed parse still produces no formatter output. UTF-16 conversion occurs
+only at the LSP JSON boundary. Workspace `.icl` files are discovered once, open
+text takes precedence, and registered file watchers refresh unopened files.
+Rename is unadvertised; implementation means an ICL Module body, not inferred HDL.
+
+Verified `make check-dynamic BISON=/usr/bin/bison`:1743 classified,570 regression,
+714 block,13 golden,74 CLI,62 existing LSP and26 new semantic protocol tests,
+unit/whitespace/fuzz/separation checks all pass. Pre-task10 trace reader reports
+334/334 source lines and119/119 scanner rules over2012 inputs.
+
+Live Vim9.2 + installed coc.nvim0.0.82 completed diagnostics, formatting,
+unchanged-invalid-input, definition, hover, symbols and completion checks against
+the worktree binary. Command: `COC_ROOT=/tmp/icl-coc-20261022
+COC_PLUGIN=/home/banana/.vim/plugged/coc.nvim COC_VIM=/usr/bin/vim
+bash tests/run_coc_check.sh`. Test config/data/inputs stayed under the isolated
+COC_ROOT. The runner uses Python's PTY support because util-linux `script` is not
+installed; Vim runs with `-u NONE -i NONE`. User editor settings were not edited.

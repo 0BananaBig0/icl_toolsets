@@ -36,6 +36,7 @@
 #define ICL_FORMAT_SRC_FORMAT_JOB_H_
 
 #include <string>
+#include "icl_semantics.h"
 
 namespace icl {
 
@@ -78,7 +79,10 @@ struct FormatOutcome {
   bool ChangedFrom(const std::string& original) const;
 };
 
-// Runs parse -> AST -> layout -> render, and nothing else.
+FormatOutcome FormatParsedDocument(const ParsedDocument& document,
+                                   const FormatRequest& request);
+
+// Runs the shared parse, semantic model, layout and render chain.
 FormatOutcome FormatDocument(const std::string& text,
                              const FormatRequest& request);
 

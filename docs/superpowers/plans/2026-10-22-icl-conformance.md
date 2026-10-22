@@ -85,12 +85,12 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 Files: src/icl_ast.h, src/icl_driver.{h,cc}, src/format_job.{h,cc}, scanner/parser actions, new src/icl_semantics.{h,cc} only if justified, src/icl_lsp_main.cc, Makefile; tests/src/test_icl_lsp.py and classified multi-file fixtures.
 Interfaces: shared parsed document owns AST, exact token/source spans, declaration/reference information; formatting and symbol queries consume that same parse. LSP alone converts results to JSON/UTF-16 positions.
 
-- [ ] Add protocol tests that currently fail for completion, definition, implementation, hover, references and document/workspace symbols.
-- [ ] Cover module/instance/port/register/parameter/enum/alias names, qualified references, namespace shadowing, unopened workspace files, invalid/incomplete edits, non-ASCII positions and updates/removal.
-- [ ] Extend shared AST/document metadata and scoped resolution; no regex-only LSP parser. Preserve the formatting pipeline and late frontend split.
-- [ ] Implement completion (keywords plus in-scope and instance members), definition/declaration lookup, implementation lookup to ICL module bodies, hover, references and symbol lists. Define absence honestly: no inference of unavailable HDL implementations.
-- [ ] Add safe rename/prepareRename only with scoped-reference tests and versioned edits; do not advertise unsupported capabilities.
-- [ ] Validate CLI/LSP formatting equivalence, lifecycle and coc integration, document actual capabilities and unfinished-feature audit; commit.
+- [x] Add protocol tests that currently fail for completion, definition, implementation, hover, references and document/workspace symbols.
+- [x] Cover module/instance/port/register/parameter/enum/alias names, qualified references, namespace shadowing, unopened workspace files, invalid/incomplete edits, non-ASCII positions and updates/removal.
+- [x] Extend shared AST/document metadata and scoped resolution; no regex-only LSP parser. Preserve the formatting pipeline and late frontend split.
+- [x] Implement completion (keywords plus in-scope and instance members), definition/declaration lookup, implementation lookup to ICL module bodies, hover, references and symbol lists. Define absence honestly: no inference of unavailable HDL implementations.
+- [x] Add safe rename/prepareRename only with scoped-reference tests and versioned edits; do not advertise unsupported capabilities.
+- [x] Validate CLI/LSP formatting equivalence, lifecycle and coc integration, document actual capabilities and unfinished-feature audit; commit.
 
 ### Task 10: Coverage, performance, review and installation
 

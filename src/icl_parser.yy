@@ -246,6 +246,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> decl_name of_kw std_tap_kw any_keyword
 %type <std::vector<AstNode*>> logic_body
 %type <AstNode*> ns_stmt use_ns_stmt
+%type <AstBlock*> module_open
 %type <std::vector<AstNode*>> strict_mux_body mux_prefix
 %type <std::string> strict_mux_keyword mux_codes
 %type <AstNode*> mux_selection
@@ -266,7 +267,6 @@ void IclParser::error(const location& loc, const std::string& message) {
 file
   : %empty
   | file module_def
-      { driver.unit().top_level().push_back($2); }
   | file ns_stmt
       { driver.unit().top_level().push_back($2); }
   | file use_ns_stmt
@@ -276,7 +276,7 @@ file
         // Unlike the nested bodies below, the top-level rule has no vector to
         // append to, so the comment must be pushed onto the unit explicitly.
         driver.unit().top_level().push_back(
-            driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line)));
+            driver.AddComment($2, SpanOf(@2, @2)));
       }
   /* `#include "file.icl"`, with or without a trailing semicolon.
 
@@ -291,17 +291,26 @@ file
   | file INCLUDE STRING
       { driver.unit().top_level().push_back(
             driver.MakeStatement("#include " + $3,
-                                 SpanOf(@2.begin.line, @3.end.line))); }
+                                 SpanOf(@2, @3))); }
   | file INCLUDE STRING SEMICOLON
       { driver.unit().top_level().push_back(
             driver.MakeStatement("#include " + $3 + ";",
-                                 SpanOf(@2.begin.line, @4.end.line))); }
+                                 SpanOf(@2, @4))); }
+  ;
+
+module_open
+  : MODULE token_gap scalar_name token_gap LBRACE
+      { $$ = driver.OpenModule("Module " + $2 + $3 + $4, SpanOf(@1, @5)); }
   ;
 
 module_def
-  : MODULE token_gap scalar_name token_gap LBRACE module_item_list RBRACE
+  : module_open module_item_list RBRACE
       {
-        $$ = driver.MakeBlock("Module " + $2 + $3 + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line));
+        driver.CheckAddressContext($1->header(), $2);
+        driver.CheckNamedValues($2, true);
+        $1->body() = std::move($2);
+        $1->set_span(SpanOf(@1, @3));
+        $$ = $1;
         driver.EndModule();
       }
   ;
@@ -310,50 +319,50 @@ module_item_list
   : %empty
       { $$ = std::vector<AstNode*>(); }
   | module_item_list module_item
-      { $$ = std::move($1); $$.push_back($2); }
+      { $$ = std::move($1); $$.push_back($2); driver.AppendModuleItem($2); }
   ;
 
 module_item
-  : COMMENT { $$ = driver.AddComment($1, SpanOf(@1.begin.line, @1.end.line)); }
+  : COMMENT { $$ = driver.AddComment($1, SpanOf(@1, @1)); }
   | parameter_override { $$ = $1; }
   | LOCALPARAMETER token_gap scalar_name token_gap EQUALS token_gap attribute_values SEMICOLON
       { const auto text = "LocalParameter " + $2 + $3 + $4 + " = " + $6 + $7.text + ";";
-        $$ = driver.MakeParameter("LocalParameter", $3, text, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+        $$ = driver.MakeParameter("LocalParameter", $3, text, std::move($7), SpanOf(@1, @8)); }
   | use_ns_stmt { $$ = $1; }
   | strict_attribute { $$ = $1; }
   | ALIAS token_gap scalar_name token_gap strict_range EQUALS token_gap alias_signals SEMICOLON
       { $$ = driver.MakeStatement("Alias " + $2 + $3 + $4 + $5 + " = " + $7 + $8 + ";",
-                                  SpanOf(@1.begin.line, @9.end.line)); }
+                                  SpanOf(@1, @9)); }
   | ALIAS token_gap scalar_name token_gap strict_range EQUALS token_gap alias_signals LBRACE alias_body RBRACE
       { driver.CheckBlockItems("Alias", $10, @1.begin.line);
         $$ = driver.MakeBlock("Alias " + $2 + $3 + $4 + $5 + " = " + $7 + $8, std::move($10),
-                              SpanOf(@1.begin.line, @11.end.line)); }
+                              SpanOf(@1, @11)); }
   | ENUM token_gap scalar_name token_gap LBRACE enum_body RBRACE
       { driver.CheckEnum($3, @3.begin.line);
         $$ = driver.MakeBlock("Enum " + $2 + $3 + $4, std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line)); }
+                              SpanOf(@1, @7)); }
   | SCANINTERFACE token_gap scalar_name token_gap LBRACE interface_body RBRACE
       { driver.CheckBlockItems("ScanInterface", $6, @1.begin.line);
         $$ = driver.MakeBlock("ScanInterface " + $2 + $3 + $4, std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line)); }
+                              SpanOf(@1, @7)); }
   | ONEHOTSCANGROUP token_gap scalar_name token_gap strict_range LBRACE one_hot_scan_body RBRACE
       { $$ = driver.MakeBlock("OneHotScanGroup " + $2 + $3 + $4 + $5, std::move($7),
-                              SpanOf(@1.begin.line, @8.end.line)); }
+                              SpanOf(@1, @8)); }
   | ONEHOTDATAGROUP token_gap scalar_name token_gap strict_range LBRACE one_hot_data_body RBRACE
       { $$ = driver.MakeBlock("OneHotDataGroup " + $2 + $3 + $4 + $5, std::move($7),
-                              SpanOf(@1.begin.line, @8.end.line)); }
+                              SpanOf(@1, @8)); }
   | PORTGROUP token_gap scalar_name token_gap LBRACE port_group_items RBRACE
-      { $$ = driver.MakePortGroup($2 + $3 + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line)); }
+      { $$ = driver.MakePortGroup($2 + $3 + $4, std::move($6), SpanOf(@1, @7)); }
   | checked_declaration { $$ = $1; }
   | data_register { $$ = $1; }
   | strict_mux_keyword token_gap scalar_name token_gap strict_range SELECTEDBY token_gap concat_data_signal LBRACE strict_mux_body RBRACE
       { $$ = driver.MakeBlock($1 + " " + $2 + $3 + $4 + $5 + " SelectedBy " + $7 + $8,
-                              std::move($10), SpanOf(@1.begin.line, @11.end.line)); }
+                              std::move($10), SpanOf(@1, @11)); }
   // Published P1687 SIB examples omit SelectedBy (LiU, Listings 3 and 8).
   | strict_mux_keyword token_gap scalar_name token_gap strict_range IDENT token_gap LBRACE strict_mux_body RBRACE
       { if ($1 != "ScanMux") { error(@1, "SelectedBy is required"); YYERROR; }
         $$ = driver.MakeBlock("ScanMux " + $2 + $3 + $4 + $5 + " " + $6 + $7,
-                              std::move($9), SpanOf(@1.begin.line, @10.end.line)); }
+                              std::move($9), SpanOf(@1, @10)); }
   | instance_item
       { $$ = $1; }
   /* LogicSignal holds a *boolean expression*, not a list of attributes:
@@ -364,7 +373,7 @@ module_item
      bison's rule ordering, LogicSignal gets a body of its own. */
   | LOGICSIGNAL token_gap scalar_name token_gap strict_range LBRACE logic_body RBRACE
       { $$ = driver.MakeBlock("LogicSignal " + $2 + $3 + $4 + $5, std::move($7),
-                              SpanOf(@1.begin.line, @8.end.line)); }
+                              SpanOf(@1, @8)); }
 
   ;
 
@@ -385,20 +394,20 @@ token_gap
 comment_nodes
   : %empty { $$ = {}; }
   | comment_nodes COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 enum_body
   : comment_nodes enum_item { $$ = std::move($1); $$.push_back($2); }
   | enum_body enum_item { $$ = std::move($1); $$.push_back($2); }
   | enum_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 enum_item
   : scalar_name token_gap EQUALS token_gap concat_number SEMICOLON
       { driver.CheckEnumMember($1, $5, @1.begin.line);
-        $$ = driver.MakeStatement($1 + $2 + " = " + $4 + $5.text + ";", SpanOf(@1.begin.line, @6.end.line)); }
+        $$ = driver.MakeStatement($1 + $2 + " = " + $4 + $5.text + ";", SpanOf(@1, @6)); }
   ;
 
 concat_number
@@ -474,75 +483,75 @@ checked_declaration_keyword
 
 checked_declaration
   : checked_declaration_keyword token_gap scalar_name token_gap strict_range SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + $4 + $5 + ";", SpanOf(@1, @6)); }
   | checked_declaration_keyword token_gap scalar_name token_gap strict_range LBRACE checked_declaration_body RBRACE
       { driver.CheckBlockItems($1, $7, @1.begin.line);
-        $$ = driver.MakeBlock($1 + " " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+        $$ = driver.MakeBlock($1 + " " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1, @8)); }
   ;
 
 checked_declaration_body
   : %empty { $$ = {}; }
   | checked_declaration_body checked_declaration_item { $$ = std::move($1); $$.push_back($2); }
   | checked_declaration_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 checked_declaration_item
   : SOURCE token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement("Source " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("Source " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | SCANINSOURCE token_gap data_signal SEMICOLON
-      { $$ = driver.MakeStatement("ScanInSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("ScanInSource " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | CAPTURESOURCE token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement("CaptureSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("CaptureSource " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | RESETVALUE token_gap default_value SEMICOLON
-      { $$ = driver.MakeStatement("ResetValue " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("ResetValue " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | DIFFERENTIALINVOF token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement("DifferentialInvOf " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("DifferentialInvOf " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | ENABLE token_gap data_signal SEMICOLON
-      { $$ = driver.MakeStatement("Enable " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("Enable " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | REFENUM token_gap scalar_name token_gap SEMICOLON
-      { $$ = driver.MakeStatement("RefEnum " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeStatement("RefEnum " + $2 + $3 + $4 + ";", SpanOf(@1, @5)); }
   | DEFAULTLOADVALUE token_gap default_value SEMICOLON
-      { $$ = driver.MakeStatement("DefaultLoadValue " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("DefaultLoadValue " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | ACTIVEPOLARITY token_gap INTEGER token_gap SEMICOLON
       { if ($3 != "0" && $3 != "1") { error(@3, "ActivePolarity requires 0 or 1"); YYERROR; }
-        $$ = driver.MakeStatement("ActivePolarity " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+        $$ = driver.MakeStatement("ActivePolarity " + $2 + $3 + $4 + ";", SpanOf(@1, @5)); }
   | frequency_keyword token_gap clock_factor SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | PERIOD token_gap clock_period SEMICOLON
-      { $$ = driver.MakeStatement("Period " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("Period " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | LAUNCHEDGE token_gap IDENT token_gap SEMICOLON
       { if ($3 != "Falling") { error(@3, "unsupported legacy LaunchEdge value"); YYERROR; }
-        $$ = driver.MakeStatement("LaunchEdge " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+        $$ = driver.MakeStatement("LaunchEdge " + $2 + $3 + $4 + ";", SpanOf(@1, @5)); }
   | strict_attribute { $$ = $1; }
   ;
 
 data_register
   : DATAREGISTER token_gap scalar_name token_gap strict_range SEMICOLON
-      { $$ = driver.MakeStatement("DataRegister " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+      { $$ = driver.MakeStatement("DataRegister " + $2 + $3 + $4 + $5 + ";", SpanOf(@1, @6)); }
   | DATAREGISTER token_gap scalar_name token_gap strict_range LBRACE data_register_body RBRACE
       { driver.CheckBlockItems("DataRegister", $7, @1.begin.line);
-        $$ = driver.MakeBlock("DataRegister " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+        $$ = driver.MakeBlock("DataRegister " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1, @8)); }
   ;
 
 data_register_body
   : %empty { $$ = {}; }
   | data_register_body data_register_item { $$ = std::move($1); $$.push_back($2); }
   | data_register_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 data_register_item
   : checked_declaration_item { $$ = $1; }
   | WRITEDATASOURCE token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement("WriteDataSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("WriteDataSource " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | WRITEENSOURCE token_gap write_enable SEMICOLON
-      { $$ = driver.MakeStatement("WriteEnSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("WriteEnSource " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | READDATASOURCE token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement("ReadDataSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("ReadDataSource " + $2 + $3 + ";", SpanOf(@1, @4)); }
   | address_value { $$ = $1; }
   | callback_keyword token_gap callback_namespace callback_id callback_args SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + " " + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + " " + $4 + $5 + ";", SpanOf(@1, @6)); }
   ;
 
 /* §6.4.9 explicitly permits an extra inversion before data_signal. */
@@ -620,10 +629,10 @@ default_value
 strict_attribute
   : ATTRIBUTE token_gap scalar_name token_gap SEMICOLON
       { $$ = driver.unit().Make<icl::AstStatement>("Attribute " + $2 + $3 + $4 + ";",
-          SpanOf(@1.begin.line, @5.end.line), icl::NamedKind::Attribute, $3); }
+          SpanOf(@1, @5), icl::NamedKind::Attribute, $3); }
   | ATTRIBUTE token_gap scalar_name token_gap EQUALS token_gap attribute_values SEMICOLON
       { const auto text = "Attribute " + $2 + $3 + $4 + " = " + $6 + $7.text + ";";
-        $$ = driver.unit().Make<icl::AstStatement>(text, SpanOf(@1.begin.line, @8.end.line),
+        $$ = driver.unit().Make<icl::AstStatement>(text, SpanOf(@1, @8),
             icl::NamedKind::Attribute, $3, std::move($7)); }
   ;
 
@@ -693,7 +702,7 @@ logic_body
   : comment_nodes logic_expr SEMICOLON comment_nodes
       { if ($2.has_unknown) { error(@2, "unknown digits are allowed only in a comparison's right operand"); YYERROR; }
         $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2.text + ";", SpanOf(@2.begin.line, @3.end.line)));
+        $$.push_back(driver.MakeStatement($2.text + ";", SpanOf(@2, @3)));
         $$.insert($$.end(), $4.begin(), $4.end()); }
   ;
 
@@ -781,41 +790,41 @@ alias_body
   : %empty { $$ = {}; }
   | alias_body alias_item { $$ = std::move($1); $$.push_back($2); }
   | alias_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 alias_item
   : strict_attribute { $$ = $1; }
   | REFENUM token_gap scalar_name token_gap SEMICOLON
-      { $$ = driver.MakeStatement("RefEnum " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeStatement("RefEnum " + $2 + $3 + $4 + ";", SpanOf(@1, @5)); }
   | ACCESSTOGETHER token_gap SEMICOLON
-      { $$ = driver.MakeStatement("AccessTogether" + $2 + ";", SpanOf(@1.begin.line, @3.end.line)); }
+      { $$ = driver.MakeStatement("AccessTogether" + $2 + ";", SpanOf(@1, @3)); }
   | IAPPLYENDSTATE token_gap concat_number SEMICOLON
       { if ($3.has_unknown) { error(@3, "iApplyEndState cannot contain unknown digits"); YYERROR; }
-        $$ = driver.MakeStatement("iApplyEndState " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
+        $$ = driver.MakeStatement("iApplyEndState " + $2 + $3.text + ";", SpanOf(@1, @4)); }
   ;
 
 
 interface_property
   : strict_attribute { $$ = $1; }
   | PORT token_gap scalar_name token_gap strict_range SEMICOLON
-      { $$ = driver.MakeStatement("Port " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+      { $$ = driver.MakeStatement("Port " + $2 + $3 + $4 + $5 + ";", SpanOf(@1, @6)); }
   | DEFAULTLOADVALUE token_gap concat_number SEMICOLON
-      { $$ = driver.MakeStatement("DefaultLoadValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("DefaultLoadValue " + $2 + $3.text + ";", SpanOf(@1, @4)); }
   ;
 
 chain
   : CHAIN token_gap scalar_name token_gap LBRACE chain_body RBRACE
       { driver.CheckChainName($3, @3.begin.line);
         driver.CheckBlockItems("Chain", $6, @1.begin.line);
-        $$ = driver.MakeBlock("Chain " + $2 + $3 + $4, std::move($6), SpanOf(@1.begin.line, @7.end.line)); }
+        $$ = driver.MakeBlock("Chain " + $2 + $3 + $4, std::move($6), SpanOf(@1, @7)); }
   ;
 
 chain_body
   : comment_nodes interface_property { $$ = std::move($1); $$.push_back($2); }
   | chain_body interface_property { $$ = std::move($1); $$.push_back($2); }
   | chain_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 interface_item
@@ -827,20 +836,20 @@ interface_body
   : comment_nodes interface_item { $$ = std::move($1); $$.push_back($2); }
   | interface_body interface_item { $$ = std::move($1); $$.push_back($2); }
   | interface_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 
 group_port
   : PORT token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement("Port " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("Port " + $2 + $3 + ";", SpanOf(@1, @4)); }
   ;
 
 one_hot_scan_body
   : comment_nodes group_port { $$ = std::move($1); $$.push_back($2); }
   | one_hot_scan_body group_port { $$ = std::move($1); $$.push_back($2); }
   | one_hot_scan_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 
@@ -854,7 +863,7 @@ one_hot_data_body
   : comment_nodes one_hot_data_item { $$ = std::move($1); $$.push_back($2); }
   | one_hot_data_body one_hot_data_item { $$ = std::move($1); $$.push_back($2); }
   | one_hot_data_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 
@@ -868,7 +877,7 @@ strict_mux_keyword
 mux_prefix
   : %empty { $$ = {}; }
   | mux_prefix COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   | mux_prefix strict_attribute { $$ = std::move($1); $$.push_back($2); }
   ;
 
@@ -877,12 +886,12 @@ strict_mux_body
   | strict_mux_body mux_selection { $$ = std::move($1); $$.push_back($2); }
   | strict_mux_body strict_attribute { $$ = std::move($1); $$.push_back($2); }
   | strict_mux_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 mux_selection
   : mux_codes COLON token_gap concat_data_signal SEMICOLON
-      { $$ = driver.MakeStatement($1 + " : " + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeStatement($1 + " : " + $3 + $4 + ";", SpanOf(@1, @5)); }
   ;
 
 mux_codes
@@ -918,24 +927,24 @@ port_group_range
 port_group_item
   : scalar_name port_group_range
       { $$ = icl::PortGroupItem::Name($1 + $2,
-                                      SpanOf(@1.begin.line, @2.end.line)); }
+                                      SpanOf(@1, @2)); }
   | COMMENT
       { $$ = icl::PortGroupItem::Comment(
-            driver.AddComment($1, SpanOf(@1.begin.line, @1.end.line)),
-            SpanOf(@1.begin.line, @1.end.line)); }
+            driver.AddComment($1, SpanOf(@1, @1)),
+            SpanOf(@1, @1)); }
   | COMMA
-      { $$ = icl::PortGroupItem::Comma(SpanOf(@1.begin.line, @1.end.line)); }
+      { $$ = icl::PortGroupItem::Comma(SpanOf(@1, @1)); }
   ;
 
 // Instance is reusable inside OneHotDataGroup; AccessLink is not.
 instance_declaration
   : INSTANCE token_gap scalar_name token_gap of_kw token_gap instance_module_ref SEMICOLON
       { $$ = driver.MakeStatement("Instance " + $2 + $3 + $4 + " " + $5 + " " + $6 + $7 + ";",
-                                  SpanOf(@1.begin.line, @8.end.line)); }
+                                  SpanOf(@1, @8)); }
   | INSTANCE token_gap scalar_name token_gap of_kw token_gap instance_module_ref LBRACE instance_body RBRACE
       { driver.CheckBlockItems("Instance", $9, @1.begin.line);
         $$ = driver.MakeBlock("Instance " + $2 + $3 + $4 + " " + $5 + " " + $6 + $7, std::move($9),
-                              SpanOf(@1.begin.line, @10.end.line)); }
+                              SpanOf(@1, @10)); }
   ;
 
 instance_module_ref
@@ -949,7 +958,7 @@ instance_body
   : %empty { $$ = {}; }
   | instance_body instance_property { $$ = std::move($1); $$.push_back($2); }
   | instance_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 instance_property
@@ -958,9 +967,9 @@ instance_property
   | address_value { $$ = $1; }
   | INPUTPORT token_gap scalar_name token_gap strict_range EQUALS token_gap concat_data_signal SEMICOLON
       { $$ = driver.MakeStatement("InputPort " + $2 + $3 + $4 + $5 + " = " + $7 + $8 + ";",
-                                  SpanOf(@1.begin.line, @9.end.line)); }
+                                  SpanOf(@1, @9)); }
   | ALLOWBROADCAST token_gap broadcast_names SEMICOLON
-      { $$ = driver.MakeStatement("AllowBroadcastOnScanInterface " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("AllowBroadcastOnScanInterface " + $2 + $3 + ";", SpanOf(@1, @4)); }
   ;
 
 // The normative generic example and Inst4 example both allow comma lists.
@@ -972,13 +981,13 @@ broadcast_names
 parameter_override
   : PARAMETER token_gap scalar_name token_gap EQUALS token_gap attribute_values SEMICOLON
       { const auto text = "Parameter " + $2 + $3 + $4 + " = " + $6 + $7.text + ";";
-        $$ = driver.MakeParameter("Parameter", $3, text, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+        $$ = driver.MakeParameter("Parameter", $3, text, std::move($7), SpanOf(@1, @8)); }
   ;
 
 // Tessent OneHotDataGroup and Instance examples use concatenated addresses.
 address_value
   : ADDRESSVALUE token_gap concat_number SEMICOLON
-      { $$ = driver.MakeStatement("AddressValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement("AddressValue " + $2 + $3.text + ";", SpanOf(@1, @4)); }
   ;
 
 instance_item
@@ -990,12 +999,12 @@ access_link
   : ACCESSLINK token_gap scalar_name token_gap OF token_gap std_tap_kw token_gap LBRACE link_body RBRACE
       { driver.CheckAccessLink($3, @3.begin.line);
         $$ = driver.MakeBlock("AccessLink " + $2 + $3 + $4 + " Of " + $6 + $7 + $8,
-                              std::move($10), SpanOf(@1.begin.line, @11.end.line)); }
+                              std::move($10), SpanOf(@1, @11)); }
   | ACCESSLINK token_gap scalar_name token_gap OF token_gap generic_link_type token_gap generic_open GENERIC_BODY
       { driver.CheckAccessLink($3, @3.begin.line);
         // Generic controller contents have implementation-defined semantics.
         $$ = driver.MakeStatement("AccessLink " + $2 + $3 + $4 + " Of " + $6 + $7 + $8 + " {" + $10,
-                                  SpanOf(@1.begin.line, @10.end.line)); }
+                                  SpanOf(@1, @10)); }
   ;
 
 generic_open
@@ -1013,7 +1022,7 @@ generic_link_type
 link_body
   : comment_nodes BSDLENTITY token_gap scalar_name token_gap SEMICOLON link_instructions
       { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement("BSDLEntity " + $3 + $4 + $5 + ";", SpanOf(@2.begin.line, @6.end.line)));
+        $$.push_back(driver.MakeStatement("BSDLEntity " + $3 + $4 + $5 + ";", SpanOf(@2, @6)));
         $$.insert($$.end(), $7.begin(), $7.end()); }
   ;
 
@@ -1021,39 +1030,39 @@ link_instructions
   : comment_nodes link_instruction { $$ = std::move($1); $$.push_back($2); }
   | link_instructions link_instruction { $$ = std::move($1); $$.push_back($2); }
   | link_instructions COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 link_instruction
   : scalar_name token_gap LBRACE link_selected_body RBRACE
       { driver.CheckInstructionName($1, @1.begin.line);
-        $$ = driver.MakeBlock($1 + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line)); }
+        $$ = driver.MakeBlock($1 + $2, std::move($4), SpanOf(@1, @5)); }
   ;
 
 link_selected_body
   : comment_nodes link_selected_item { $$ = std::move($1); $$.push_back($2); }
   | link_selected_body link_selected_item { $$ = std::move($1); $$.push_back($2); }
   | link_selected_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 link_selected_item
   : SCANINTERFACE token_gap LBRACE link_interface_body RBRACE
-      { $$ = driver.MakeBlock("ScanInterface " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeBlock("ScanInterface " + $2, std::move($4), SpanOf(@1, @5)); }
   | ACTIVESIGNALS token_gap LBRACE link_active_body RBRACE
-      { $$ = driver.MakeBlock("ActiveSignals " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeBlock("ActiveSignals " + $2, std::move($4), SpanOf(@1, @5)); }
   ;
 
 link_interface_body
   : comment_nodes link_interface_item { $$ = std::move($1); $$.push_back($2); }
   | link_interface_body link_interface_item { $$ = std::move($1); $$.push_back($2); }
   | link_interface_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 link_interface_item
   : link_interface_ref SEMICOLON
-      { $$ = driver.MakeStatement($1 + ";", SpanOf(@1.begin.line, @2.end.line)); }
+      { $$ = driver.MakeStatement($1 + ";", SpanOf(@1, @2)); }
   ;
 
 link_interface_ref
@@ -1065,12 +1074,12 @@ link_active_body
   : comment_nodes link_active_item { $$ = std::move($1); $$.push_back($2); }
   | link_active_body link_active_item { $$ = std::move($1); $$.push_back($2); }
   | link_active_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2, @2))); }
   ;
 
 link_active_item
   : scalar_name token_gap strict_range SEMICOLON
-      { $$ = driver.MakeStatement($1 + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+      { $$ = driver.MakeStatement($1 + $2 + $3 + ";", SpanOf(@1, @4)); }
   ;
 
 /* ------------------------------------------------- keyword groups by shape */
@@ -1082,16 +1091,16 @@ link_active_item
    Appendix E writes both `NameSpace X;` and a bare `NameSpace;`. */
 ns_stmt
   : NAMESPACE token_gap SEMICOLON
-      { $$ = driver.MakeStatement("NameSpace" + $2 + ";", SpanOf(@1.begin.line, @3.end.line)); }
+      { $$ = driver.MakeStatement("NameSpace" + $2 + ";", SpanOf(@1, @3)); }
   | NAMESPACE token_gap scalar_name token_gap SEMICOLON
-      { $$ = driver.MakeStatement("NameSpace " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeStatement("NameSpace " + $2 + $3 + $4 + ";", SpanOf(@1, @5)); }
   ;
 
 use_ns_stmt
   : USENAMESPACE token_gap SEMICOLON
-      { $$ = driver.MakeStatement("UseNameSpace" + $2 + ";", SpanOf(@1.begin.line, @3.end.line)); }
+      { $$ = driver.MakeStatement("UseNameSpace" + $2 + ";", SpanOf(@1, @3)); }
   | USENAMESPACE token_gap scalar_name token_gap SEMICOLON
-      { $$ = driver.MakeStatement("UseNameSpace " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+      { $$ = driver.MakeStatement("UseNameSpace " + $2 + $3 + $4 + ";", SpanOf(@1, @5)); }
   ;
 
 // The two standard IEEE1149.1 AccessLink types.

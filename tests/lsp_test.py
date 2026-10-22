@@ -151,6 +151,10 @@ class Client:
             self.proc.wait(timeout=5)
         except subprocess.TimeoutExpired:
             self.proc.kill()
+            self.proc.wait(timeout=5)
+        self._reader.join(timeout=1)
+        self.proc.stdout.close()
+        self.proc.stderr.close()
 
 
 def coc_initialize(client, root):
@@ -371,7 +375,7 @@ def main():
     print('D. Robustness')
     print('=' * 72)
 
-    response = client.request('textDocument/hover',
+    response = client.request('textDocument/typeDefinition',
                              {'textDocument': {'uri': good_uri},
                               'position': {'line': 0, 'character': 0}})
     check('unsupported request -> error, not a crash',
@@ -530,7 +534,7 @@ def main():
         '{"jsonrpc":"2.0","id":12,"method":"initialize","params":[1,',
         '{"jsonrpc":"2.0","id":13,"method":"initialize","params":[1 2]}',
         r'{"jsonrpc":"2.0","id":14,"method":"initialize","params":{"a":"\u00ZZ"}}',
-        '{"jsonrpc":"2.0","id":15,"method":"initialize","params":{"a":"\q"}}',
+        r'{"jsonrpc":"2.0","id":15,"method":"initialize","params":{"a":"\q"}}',
         '{"jsonrpc":"2.0","id":16,"method":"initialize","params":{"a":"unterminated',
         r'{"jsonrpc":"2.0","id":17,"method":"initialize","params":{"a":"\u12"}}',
         'not json at all',

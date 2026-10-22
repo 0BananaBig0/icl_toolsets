@@ -117,14 +117,12 @@ class AstVisitor {
   virtual void Visit(const AstBlock& node) = 0;
 };
 
-// Half-open source span [first_line, last_line] using 1-based line numbers.
-//
-// Formatting only needs *line* accuracy: line numbers decide whether a blank
-// line separated two constructs, and whether a comment was trailing. Columns
-// are deliberately not tracked.
+// Source span with 1-based lines and byte columns; the end is exclusive.
 struct SourceSpan {
   int first_line = 0;
   int last_line = 0;
+  int first_column = 1;
+  int last_column = 1;
 };
 
 // Builds a span from line numbers. Taking plain ints (rather than Bison's
@@ -136,6 +134,18 @@ inline SourceSpan SpanOf(int first_line, int last_line) {
   span.last_line = last_line;
   return span;
 }
+
+// Accept generated locations without depending on a generated header.
+template <typename Location>
+inline SourceSpan SpanOf(const Location& first, const Location& last) {
+  return {first.begin.line, last.end.line, first.begin.column, last.end.column};
+}
+
+struct SourceToken {
+  std::string text;
+  size_t begin = 0;
+  size_t end = 0;
+};
 
 // Base class. Non-copyable: nodes are owned by an |AstUnit| arena and always
 // referred to by pointer, so a copy would silently break that ownership (and
@@ -151,6 +161,7 @@ class AstNode {
   virtual void Accept(AstVisitor& visitor) const = 0;
 
   const SourceSpan& span() const { return span_; }
+  void set_span(SourceSpan span) { span_ = span; }
 
  private:
   SourceSpan span_;
@@ -282,6 +293,8 @@ class AstUnit {
   }
 
   std::vector<AstNode*>& top_level() { return top_level_; }
+  const std::vector<AstNode*>& top_level() const { return top_level_; }
+  std::vector<SourceToken> tokens;
 
   // Visits every top-level node in source order.
   void Accept(AstVisitor& visitor) const {

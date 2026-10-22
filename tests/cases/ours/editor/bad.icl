@@ -1,0 +1,3 @@
+Module m {
+  ScanInPort SI
+}

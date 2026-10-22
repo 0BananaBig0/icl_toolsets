@@ -111,7 +111,7 @@ void icl_scan_end() {
 }
 
 
-#define YY_USER_ACTION AdvanceLocation(yytext, yyleng);
+#define YY_USER_ACTION AdvanceLocation(yytext, yyleng); driver.RecordMatch(yytext, yyleng, YY_START == INITIAL);
 %}
 
   /* Writes the generated scanner to disk and never calls yywrap(). */
@@ -159,6 +159,9 @@ BASED   (\'[bB]{NUMGAP}*[01xX][01xX_]*|\'[hH]{NUMGAP}*[0-9a-fA-FxX][0-9a-fA-FxX_
 [ \t\r]+        {  }
 "\n"+               {
                        }
+
+\xEF\xBB\xBF { if (g_location.begin.line != 1 || g_location.begin.column != 1)
+                    driver.SetParseDiagnostic(g_location.begin.line, "BOM is allowed only at the start"); }
 
   /* Comments: emitted as tokens so the formatter can keep them. */
 "/*"([^*]|\*+[^*/])*\*+"/" {

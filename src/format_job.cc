@@ -47,28 +47,20 @@ std::string FormatOutcome::Diagnostic(const std::string& name) const {
 
 FormatOutcome FormatDocument(const std::string& text,
                              const FormatRequest& request) {
+  return FormatParsedDocument(ParsedDocument(text), request);
+}
+
+FormatOutcome FormatParsedDocument(const ParsedDocument& document,
+                                   const FormatRequest& request) {
   FormatOutcome outcome;
-
-  FormatStyle style;
-  style.indent_width = ClampIndentWidth(request.indent_width);
-
-  std::string error;
-  IclDriver driver;
-  driver.set_style(style);
-
-  std::string output;
-  if (!driver.FormatText(text, &output, &error)) {
-    // Take the structured parts, not just the pre-formatted string: the LSP
-    // needs the line number on its own to build a diagnostic range, and the
-    // CLI needs the whole line. One source for both.
-    outcome.error_line = driver.error_line();
-    outcome.error_message = driver.error_message();
+  if (!document.ok) {
+    outcome.error_line = document.driver.error_line();
+    outcome.error_message = document.driver.error_message();
     return outcome;
   }
-
   outcome.ok = true;
-  outcome.text = std::move(output);
-  if (request.with_ast_dump) outcome.ast_dump = driver.AstToString();
+  outcome.text = document.driver.Render(ClampIndentWidth(request.indent_width));
+  if (request.with_ast_dump) outcome.ast_dump = document.driver.AstToString();
   return outcome;
 }
 

@@ -54,7 +54,7 @@ execute 'set runtimepath^=' . s:plugin
 " is when it resolves the config and data home. Setting them afterwards looks
 " harmless and silently leaves coc reading the user's real ~/.vim instead —
 " the language server never appears and `CocAction('services')` comes back [].
-let g:coc_node_path = '/usr/local/bin/node'
+let g:coc_node_path = exepath('node')
 let g:coc_config_home = s:root . '/config'
 let g:coc_data_home = s:root . '/data'
 let g:coc_disable_startup_warning = 1
@@ -175,6 +175,22 @@ function! s:Poll(timer_id)
             \ match(s:after, '^  ScanInPort SI;') >= 0, s:after)
       call s:check('nested block is indented to 4 spaces',
             \ match(s:after, '^    ScanInSource SI;') >= 0, s:after)
+      try
+        call search('ScanInSource', 'w')
+        call cursor(line('.'), match(getline('.'), 'SI') + 1)
+        let l:definitions = CocAction('definitions')
+        call s:check('definition through coc resolves SI', len(l:definitions) == 1, l:definitions)
+        let l:hover = CocAction('getHover')
+        call s:check('hover through coc describes ScanInPort', string(l:hover) =~# 'ScanInPort', l:hover)
+        let l:symbols = CocAction('documentSymbols')
+        call s:check('document symbols through coc are populated', len(l:symbols) >= 3, l:symbols)
+        let l:items = CocRequest('languageserver.icl', 'textDocument/completion',
+              \ {'textDocument': {'uri': 'file://' . expand('%:p')},
+              \  'position': {'line': line('.') - 1, 'character': col('.') - 1}})
+        call s:check('completion through coc includes SI', index(map(copy(l:items), 'v:val.label'), 'SI') >= 0, l:items)
+      catch
+        call s:check('semantic coc requests ran without throwing', 0, v:exception)
+      endtry
       call s:BeginBroken()
     endif
 
