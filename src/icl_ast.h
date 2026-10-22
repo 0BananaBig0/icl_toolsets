@@ -45,12 +45,16 @@
 namespace icl {
 
 // A zero width means context/parameter dependent, not a zero-bit object.
-struct NumericValue {
+enum class ValueKind { Unknown, Number, String };
+
+struct ParsedValue {
   std::string text;
   size_t width = 0;
+  ValueKind kind = ValueKind::Number;
 
-  void Append(const std::string& gap, const NumericValue& value) {
+  void Append(const std::string& gap, const ParsedValue& value) {
     text += ", " + gap + value.text;
+    if (kind == ValueKind::Unknown) kind = value.kind;
     width = width && value.width &&
                     width <= std::numeric_limits<size_t>::max() - value.width
                 ? width + value.width : 0;

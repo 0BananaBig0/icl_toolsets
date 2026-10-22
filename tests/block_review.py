@@ -757,7 +757,7 @@ def blocks():
         # signal, where its neighbours take lists (§5.62).
         'Module m { ScanOutPort so { Enable e; } }',
         'Module m { ScanOutPort so { Enable a, b; } }',
-        'Module m { DataOutPort do { Enable a, b; } }',
+        'Module m { DataOutPort do { Enable ~a; } }',
         # DefaultLoadValue / ResetValue take (concat_number | enum_symbol),
         # and enum_symbol is one SCALAR_ID — so a *list* of enum symbols is
         # not in the grammar. Accepted here, and cased for the same reason.

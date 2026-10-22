@@ -140,6 +140,8 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
 
   /* Comments: emitted as tokens so the formatter can keep them. */
 "/*"([^*]|\*+[^*/])*\*+"/" {
+                      if (std::string(yytext).find("/*", 2) != std::string::npos)
+                        driver.SetParseDiagnostic(g_location.begin.line, "nested block comments are not allowed");
                       // Only advance |end|: the pre-rule step() already put
                       // |begin| on the comment's first line. Calling step()
                       // here would move |begin| to the *last* line, which
@@ -150,7 +152,8 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
 "//"[^\n]*          { g_location.step();
                       return icl::IclParser::make_COMMENT(yytext, g_location); }
 
-\"(\\.|[^"\\\n])*\" { g_location.step();
+\"(\\(.|\n)|[^"\\])*\" {
+                      g_location.lines(CountNewlines(yytext));
                       return icl::IclParser::make_STRING(
                           std::string(yytext), g_location); }
 

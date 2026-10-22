@@ -2,11 +2,11 @@
 // here exercised. Collected so a regression names the shape instead of
 // pointing at whichever large file happened to contain it.
 Module block_review {
-  // DataOutPort: an Enable list, and a per-element `~`.
+  // DataOutPort: one Enable data_signal, optionally inverted (IEEE §6.4.6.7).
   DataOutPort do_all {
     Attribute a = 1;
     Source t;
-    Enable e, ~f;
+    Enable ~e;
     RefEnum E;
   }
 

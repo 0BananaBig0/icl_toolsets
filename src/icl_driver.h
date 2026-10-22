@@ -24,6 +24,7 @@
 #define ICL_FORMAT_SRC_ICL_DRIVER_H_
 
 #include <string>
+#include <initializer_list>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -115,9 +116,11 @@ class IclDriver {
   }
 
   // ---- parser diagnostics ----
-  NumericValue NumberLiteral(const std::string& text) const;
+  ParsedValue NumberLiteral(const std::string& text) const;
+  void CheckSingletonItems(const std::vector<AstNode*>& body,
+                           std::initializer_list<const char*> properties);
 
-  void CheckEnumMember(const std::string& name, const NumericValue& value, int line) {
+  void CheckEnumMember(const std::string& name, const ParsedValue& value, int line) {
     if (!enum_members_.insert(name).second)
       SetParseDiagnostic(line, "duplicate Enum member: " + name);
     if (value.width && enum_width_ && value.width != enum_width_)

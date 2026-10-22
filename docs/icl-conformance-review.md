@@ -40,3 +40,23 @@ rechecked against every later context. Broader numeric evaluation, semantic
 resolution, complete LSP services, coverage accounting, performance measurement,
 whole-change review and final installation remain pending; no full-conformance
 claim is made by this record.
+
+## DataOutPort — syntax and local cardinality verified
+
+IEEE §6.4.6.7 printed 88/PDF 102; Tessent Shell Reference v2023.4
+`Command_Dataoutport_ide13afa16.html`. Honza `dataOutPort_def` and four item
+alternatives agree with the normative grammar. Empty braces are accepted as
+IEEE specifies even though Tessent prose recommends the semicolon form.
+
+Added dedicated port productions, unsigned expression ranges, qualified signal
+references, optional inversion, numeric sources, typed attribute concatenation,
+and unique Source/Enable/RefEnum checks. Keywords work as names and references.
+Dependencies reuse the same numeric and comment productions as Enum. String
+scanning now supports literal/escaped newlines (§6.3.9), and nested block
+comments are rejected (§6.3.7).
+
+Initial result: 27/44 failures; then 3/3 lexical edge failures. Corrected result:
+47/47 DataOutPort, 95/95 cumulative cases, 494 regression assertions and 730
+legacy block cases pass. Corrected two derived positive fixtures and one inline
+case claiming Enable lists were legal; the negative cases preserve that defect.
+Cross-object signal widths/types and instance elaboration are not validated here.

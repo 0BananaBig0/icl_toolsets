@@ -41,9 +41,8 @@ Module m {
   }
 
   // port_enable : seq('Enable', $.signal, ';')  — one signal; a list is
-  // accepted too, because Tessent writes one.
+  // rejected per IEEE §6.4.6.7; see classified data_out_port negative cases.
   DataOutPort d {
     Enable a;
-    Enable a, b;
   }
 }

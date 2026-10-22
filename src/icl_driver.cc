@@ -74,8 +74,8 @@ class AstPrinter final : public AstVisitor {
 
 }  // namespace
 
-NumericValue IclDriver::NumberLiteral(const std::string& text) const {
-  NumericValue value{text};
+ParsedValue IclDriver::NumberLiteral(const std::string& text) const {
+  ParsedValue value{text};
   // Parameter widths need elaboration; fixed widths can be checked locally.
   if (text[0] == '$' || text[0] == '\'') return value;
   for (char ch : text) {
@@ -89,6 +89,22 @@ NumericValue IclDriver::NumberLiteral(const std::string& text) const {
     value.width = value.width * 10 + digit;
   }
   return value;
+}
+
+void IclDriver::CheckSingletonItems(
+    const std::vector<AstNode*>& body,
+    std::initializer_list<const char*> properties) {
+  std::unordered_set<std::string> seen;
+  for (const auto* node : body) {
+    const auto* statement = dynamic_cast<const AstStatement*>(node);
+    if (!statement) continue;
+    const auto& text = statement->text();
+    const std::string keyword = text.substr(0, text.find_first_of(" \t\n;"));
+    for (const char* property : properties) {
+      if (keyword == property && !seen.insert(keyword).second)
+        SetParseDiagnostic(node->span().first_line, "duplicate " + keyword + " property");
+    }
+  }
 }
 
 bool IclDriver::Parse(const std::string& text, std::string* error) {
