@@ -11656,5 +11656,437 @@
     "block": "module",
     "accept": true,
     "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/decimal_96_max.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/decimal_96_overflow.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/decimal_127_max.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/decimal_127_overflow.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/hex_partial_nibble.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/hex_partial_nibble_overflow.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/concat_96_bits.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/enum/concat_95_bits_mismatch.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8(j), 6.3.11, 6.5.3(a); printed 64, 68\u201369, 138 / PDF 78, 82\u201383, 152"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/comment_star_runs.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/keyword_prefix_identifiers.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_comment_separators.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.4\u20136.3.8, printed 60\u201364 / PDF 74\u201378; existing project interpretation of separate size/base tokens, see syntax_edges/README.md"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_decimal_exponent.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_decimal_unknown.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_illegal_suffix.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_missing_digits_after_comment.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_nested_comment_gap.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_repeated_underscores.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_separated_base_letter.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_separated_digits.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/number_underscore_after_gap.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/parameter_split_dollar.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/range_based_nested.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/range_comment_tokens.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/range_missing_inner_operand.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/range_nested_arithmetic.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/string_adjacent_without_comma.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/string_escape_parity.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/string_escaped_terminator.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/lexical/string_multiline_concat.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.3, 6.3.7\u20136.3.10, 6.3.12; printed 60, 62\u201369 / PDF 74, 76\u201383"
+  },
+  {
+    "path": "cases/ours/syntax_edges/logic_signal/nested_based_arithmetic.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/logic_signal/nested_integer_rhs.icl",
+    "block": "logic_signal",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/logic_signal/nested_rhs_signal.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/logic_signal/nested_unknown_comparisons.icl",
+    "block": "logic_signal",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/logic_signal/nested_unknown_outside_comparison.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/logic_signal/reduction_boolean_composition.icl",
+    "block": "logic_signal",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/scan_mux/concat_alternative_comments.icl",
+    "block": "scan_mux",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/scan_mux/concat_boolean_alternative.icl",
+    "block": "scan_mux",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_mux/concat_inverted_sources.icl",
+    "block": "data_mux",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_mux/concat_missing_code.icl",
+    "block": "data_mux",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/clock_mux/concat_xor_alternative.icl",
+    "block": "clock_mux",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/clock_mux/priority_unknown_codes.icl",
+    "block": "clock_mux",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.10\u20136.4.13; printed 69, 122\u2013126 / PDF 83, 136\u2013140"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_register/callback_adjacent_arguments.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.9, printed 118 / PDF 132"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_register/callback_extra_namespace.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.9, printed 118 / PDF 132"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_register/callback_parameterized_namespace.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.9, printed 118 / PDF 132"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_register/callback_split_marker.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.9, printed 118 / PDF 132"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_register/double_inversion_comments.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.9, printed 118 / PDF 132"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_register/triple_inversion_comments.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.9, printed 118 / PDF 132"
+  },
+  {
+    "path": "cases/ours/syntax_edges/to_clock_port/divider_comment_source.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.6.20, printed 103\u2013104 / PDF 117\u2013118"
+  },
+  {
+    "path": "cases/ours/syntax_edges/to_clock_port/period_comment_unit.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.6.20, printed 103\u2013104 / PDF 117\u2013118"
+  },
+  {
+    "path": "cases/ours/syntax_edges/to_clock_port/period_identifier_suffix.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.6.20, printed 103\u2013104 / PDF 117\u2013118"
+  },
+  {
+    "path": "cases/ours/syntax_edges/to_clock_port/period_split_unit.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.6.20, printed 103\u2013104 / PDF 117\u2013118"
+  },
+  {
+    "path": "cases/ours/syntax_edges/parameter/forward_mixed_chain.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.11, 6.5.4, printed 62\u201364, 68\u201369, 138\u2013139 / PDF 76\u201378, 82\u201383, 152\u2013153"
+  },
+  {
+    "path": "cases/ours/syntax_edges/parameter/forward_numeric_width.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.11, 6.5.4, printed 62\u201364, 68\u201369, 138\u2013139 / PDF 76\u201378, 82\u201383, 152\u2013153"
+  },
+  {
+    "path": "cases/ours/syntax_edges/parameter/literal_width_overflow.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.11, 6.5.4, printed 62\u201364, 68\u201369, 138\u2013139 / PDF 76\u201378, 82\u201383, 152\u2013153"
+  },
+  {
+    "path": "cases/ours/syntax_edges/parameter/forward_string_chain.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.11, 6.5.4, printed 62\u201364, 68\u201369, 138\u2013139 / PDF 76\u201378, 82\u201383, 152\u2013153"
+  },
+  {
+    "path": "cases/ours/syntax_edges/access_link/generic_between_modules.icl",
+    "block": "access_link",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.17, printed 134 / PDF 148"
+  },
+  {
+    "path": "cases/ours/syntax_edges/access_link/generic_nested_string_eof.icl",
+    "block": "access_link",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.17, printed 134 / PDF 148"
+  },
+  {
+    "path": "cases/ours/syntax_edges/access_link/generic_then_bad_literal.icl",
+    "block": "access_link",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.17, printed 134 / PDF 148"
+  },
+  {
+    "path": "cases/ours/syntax_edges/access_link/generic_then_standard.icl",
+    "block": "access_link",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.17, printed 134 / PDF 148"
+  },
+  {
+    "path": "cases/ours/syntax_edges/access_link/generic_then_unclosed_enum.icl",
+    "block": "access_link",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.17, printed 134 / PDF 148"
+  },
+  {
+    "path": "cases/ours/syntax_edges/alias/deep_hierarchy_comment.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.5.2, printed 67\u201368, 135\u2013137 / PDF 81\u201382, 149\u2013151"
+  },
+  {
+    "path": "cases/ours/syntax_edges/alias/deep_hierarchy_slices.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.5.2, printed 67\u201368, 135\u2013137 / PDF 81\u201382, 149\u2013151"
+  },
+  {
+    "path": "cases/ours/syntax_edges/alias/end_state_concat.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.5.2, printed 67\u201368, 135\u2013137 / PDF 81\u201382, 149\u2013151"
+  },
+  {
+    "path": "cases/ours/syntax_edges/alias/end_state_unknown_concat.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.5.2, printed 67\u201368, 135\u2013137 / PDF 81\u201382, 149\u2013151"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_out_port/child_slices.icl",
+    "block": "data_out_port",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.4.6.7, printed 67\u201368, 88\u201389 / PDF 81\u201382, 102\u2013103"
+  },
+  {
+    "path": "cases/ours/syntax_edges/data_out_port/deep_source_slices.icl",
+    "block": "data_out_port",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.3.10.5, 6.4.6.7, printed 67\u201368, 88\u201389 / PDF 81\u201382, 102\u2013103"
+  },
+  {
+    "path": "cases/ours/syntax_edges/instance/extra_qualification.icl",
+    "block": "instance",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.4.3\u20136.4.4, 6.4.7, printed 73\u201376, 110\u2013112 / PDF 87\u201390, 124\u2013126"
+  },
+  {
+    "path": "cases/ours/syntax_edges/instance/qualified_parameter_override.icl",
+    "block": "instance",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.4.3\u20136.4.4, 6.4.7, printed 73\u201376, 110\u2013112 / PDF 87\u201390, 124\u2013126"
+  },
+  {
+    "path": "cases/ours/syntax_edges/scan_interface/keyword_chains.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.16, printed 131 / PDF 145"
+  },
+  {
+    "path": "cases/ours/syntax_edges/scan_interface/nested_chain.icl",
+    "block": "scan_interface",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a76.4.16, printed 131 / PDF 145"
+  },
+  {
+    "path": "cases/ours/syntax_edges/one_hot_data_group/addressable_instance_register.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.4.9(e), 6.4.15, printed 120, 129 / PDF 134, 143"
+  },
+  {
+    "path": "cases/ours/syntax_edges/one_hot_data_group/nested_selectable_register.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "Constructed: IEEE 1687-2014 \u00a7\u00a76.4.9(e), 6.4.15, printed 120, 129 / PDF 134, 143"
   }
 ]

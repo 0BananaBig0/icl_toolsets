@@ -8,7 +8,31 @@ all possible inputs.
 
 ## Clang-methods follow-up
 
-The [Clang-methods report](clang-testing-and-icl-status.md) records the latest
+The subsequent [handwritten syntax-edge corpus](../tests/cases/ours/syntax_edges/README.md)
+adds 72 conformance fixtures (33 accept, 39 reject) across 15 blocks. Its separate
+parameter-width overflow reproduction is an explicit expected failure in the
+LSP diagnostics suite: `$WIDTH'H1_FF` is accepted with `WIDTH` resolving to 8.
+This confirms the parameter elaboration limitation below; it is not counted as a
+passing conformance fixture. No production behavior changed in this addition.
+
+`PYTHONPATH=build/reference/python ICL_REF_DIR=/tmp/icl-reference-honza-20261021
+make check-dynamic formatcheck namingcheck BISON=/usr/bin/bison -j4` exited 0:
+2,015 conformance inputs, 29,177 metamorphic variants across 45 blocks (138 seeds
+excluded), and the existing 5,568 identifier/context cases. The live diagnostics
+suite ran seven tests with one expected failure for parameter-width overflow.
+The six real ANTLR adapter tests ran without dependency skips. Grammar traces
+reached 334/334 productions and 119/119 scanner rules over 2,284 corpus files.
+The whole-test-tree audit covered 2,297 ICL files with no duplicate-file groups
+and no new unreviewed module repetition. These figures extend the earlier
+functional evidence; handwritten branch coverage was not remeasured.
+
+Independent review verified the manifest and fixture expectations. Its transport
+failure injection exposed an overly broad expected-failure annotation; an
+unmarked companion test now checks publication for that same input. Repeating
+the injected timeout fails the suite, and supplying the future width diagnostic
+reports an unexpected success. The final review has no residual findings.
+
+The [Clang-methods report](clang-testing-and-icl-status.md) records the preceding
 1,943-case conformance suite, 5,568 identifier/context cases, 27,364 syntax
 properties and a fresh real ANTLR comparison. These functional counts supersede
 the earlier runs below; the coverage limitations remain unchanged.

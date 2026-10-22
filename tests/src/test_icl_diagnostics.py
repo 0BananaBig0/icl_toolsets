@@ -118,6 +118,18 @@ class Diagnostics(unittest.TestCase):
                 self.assertEqual(not result['diagnostics'], case['accept'])
                 self.assertEqual(result.get('version'), version)
 
+    def test_parameter_width_overflow_diagnostic_response(self):
+        # Keep transport failures outside the expected semantic failure below.
+        result = self.open(fixture('parameter_width_overflow'))
+        self.assertEqual(result['version'], 1)
+        self.assertIsInstance(result['diagnostics'], list)
+
+    @unittest.expectedFailure
+    def test_parameter_width_overflow_requires_elaboration(self):
+        # IEEE 6.3.8(j): resolving WIDTH=8 must reject the ninth set bit.
+        result = self.open(fixture('parameter_width_overflow'))
+        self.assertTrue(result['diagnostics'])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

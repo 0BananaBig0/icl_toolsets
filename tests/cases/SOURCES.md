@@ -2,6 +2,15 @@
 
 Every file under `tests/cases/` sits in a directory naming where it came from. `pass/` files must format cleanly, idempotently and without losing a character; `fail/` files must be rejected with exit code 2. Both are run through stdin *and* through a real file.
 
+## Constructed syntax edge fixtures — 2026-10-22
+
+[`ours/syntax_edges/`](ours/syntax_edges/README.md) adds 72 handwritten cases
+across 15 blocks: 33 accepted and 39 rejected inputs. The conformance manifest
+records their IEEE clauses and expected outcomes. Numeric boundaries, lexical
+separators and recursive combinations supplement the existing keyword/rule
+coverage. A separate `ours/diagnostics/parameter_width_overflow.icl` is an explicit
+expected failure for the documented parameter-width elaboration limitation.
+
 ## EDA project snapshot — 2026-10-22
 
 `pass/tessent/eda/` contains 78 standalone module fixtures and
