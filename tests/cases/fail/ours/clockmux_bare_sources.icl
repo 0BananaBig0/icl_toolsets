@@ -1,0 +1,1 @@
+Module m { ClockMux cm SelectedBy sel { a; b; } }

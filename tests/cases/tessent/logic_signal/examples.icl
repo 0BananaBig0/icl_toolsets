@@ -1,0 +1,2 @@
+// Tessent v2023.4 LogicSignal example: ellipses removed; supplied YesNo; overflowing 4'haa corrected to 4'ha.
+Module instrument { DataInPort in[7:0]; Alias enable = in[7] { RefEnum YesNo; } Alias mode[3:0] = in[6:5],in[3:2] { RefEnum Modes; } Parameter user1 = 4'b1010; LogicSignal sig1 { (mode==red) && (enable==1'b1); } LogicSignal sig2 { in[4],1'b1,in[0],0 == 1'b0,$user1; } LogicSignal sig3 { (in[6:5] | in[3:2]) != 2'b10; } Enum Modes { none=4'b0; red=4'b0011; blue=4'ha; green=4'd9; } Enum YesNo { Yes=1'b1; No=1'b0; } }

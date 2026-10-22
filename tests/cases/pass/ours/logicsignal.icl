@@ -1,1 +1,1 @@
-Module m { LogicSignal clk { Source TCK; } }
+Module m { LogicSignal clk { TCK; } }

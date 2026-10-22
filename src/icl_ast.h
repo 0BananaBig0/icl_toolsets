@@ -61,6 +61,21 @@ struct ParsedValue {
   }
 };
 
+struct ParsedReference {
+  std::string text;
+  bool is_scalar = true;
+};
+
+// Syntactic categories needed by LogicSignal, without evaluating expressions.
+struct LogicValue {
+  std::string text;
+  bool is_integer = false;
+  bool is_number = false;
+  bool is_numeric_concat = false;
+  bool is_enum = false;
+  bool has_unknown = false;
+};
+
 
 class AstComment;
 class AstStatement;

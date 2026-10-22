@@ -202,20 +202,15 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
 "->"                { g_location.step();
                       return icl::IclParser::make_ARROW(g_location); }
 
-  /* Operators, returned as one token carrying its own spelling.
-     ICL attribute values are expressions in practice — `ResetValue -1;`,
-     `Source ~a;`, LogicSignal terms like `TDR1[61:32] == 32'b0`. Modelling
-     them as dozens of distinct tokens would add a terminal per operator and a
-     precedence table to resolve them; the formatter only needs the text back
-     unchanged, so one token whose spelling is preserved is enough.
-     Longest forms first, or `==` would lex as two `=`. */
-"=="|"!="|"<="|">="|"<<="|">>="|"<<"|">>"|"&&"|"||" {
+  /* Distinct ICL operator families constrain the LogicSignal grammar. */
+"&&"|"||"          { g_location.step(); return icl::IclParser::make_BOOL_OP(std::string(yytext), g_location); }
+[&|^]               { g_location.step(); return icl::IclParser::make_BIT_OP(std::string(yytext), g_location); }
+"=="|"!="          { g_location.step(); return icl::IclParser::make_COMPARE_OP(std::string(yytext), g_location); }
+[~!]                { g_location.step(); return icl::IclParser::make_NOT_OP(std::string(yytext), g_location); }
+[-+*/%]             { g_location.step(); return icl::IclParser::make_MATH_OP(std::string(yytext), g_location); }
+"<="|">="|"<<="|">>="|"<<"|">>"|[<>] {
                       g_location.step();
-                      return icl::IclParser::make_OPERATOR(
-                          std::string(yytext), g_location); }
-[-+*/%&|^~!<>]      { g_location.step();
-                      return icl::IclParser::make_OPERATOR(
-                          std::string(yytext), g_location); }
+                      return icl::IclParser::make_OPERATOR(std::string(yytext), g_location); }
 "("                 { g_location.step();
                       return icl::IclParser::make_LPAREN(g_location); }
 ")"                 { g_location.step();

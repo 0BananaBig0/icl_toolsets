@@ -54,8 +54,8 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 
 ### Task 4: LogicSignal, ScanMux, DataMux, ClockMux
 
-- [ ] Audit §§6.4.10–13 individually; persist recursive expression, selector, operator and invalid-shape cases before corrections.
-- [ ] Implement unambiguous expression/selection rules and only evidenced legacy forms; verify conflict-free Bison and cumulative tests; commit.
+- [x] Audit §§6.4.10–13 individually; persist recursive expression, selector, operator and invalid-shape cases before corrections.
+- [x] Implement unambiguous expression/selection rules and only evidenced legacy forms; verify conflict-free Bison and cumulative tests; commit.
 
 ### Task 5: OneHot groups, ScanInterface and Chain
 

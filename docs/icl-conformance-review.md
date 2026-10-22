@@ -35,8 +35,8 @@ Evidence: §6.5.3, printed 137–138 / PDF 151–152; dependencies §§6.3.7–8
 
 ## Open work
 
-Enum and all 26 port blocks have syntax/local-property checks. LogicSignal and
-subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
+Enum, all 26 port blocks, registers, LogicSignal and the three mux blocks have
+syntax/local-property checks. Subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
 resolution, complete LSP services, coverage accounting, performance measurement,
 whole-change review and final installation remain pending; no full-conformance
 claim is made by this record.
@@ -190,3 +190,46 @@ mixed access types, Selectable/Addressable blocks, unsupported members, nested
 indices or string ResetValue are now corrected or classified as negatives.
 
 Register-stage verification: `make check-dynamic BISON=/usr/bin/bison` exited 0 with 886 classified cases (59 ScanRegister, 93 DataRegister/dependencies), 494 regression assertions, 730 legacy block cases and all remaining dynamic recipes passing. Trace reader: 291/291 grammar source lines, 112/112 lexer rules over 1133 files; production-ID and handwritten branch accounting still pending. Removed obsolete generic namespace/iProc-marker value alternatives and unproven bare Reg/Field declarations after reproducing their illegal acceptance. All keyword-name checks now use actual Attribute syntax, including Instance and AccessLink, with no exclusion list.
+
+
+## LogicSignal and multiplexers
+
+Reviewed IEEE §6.4.10–13, printed 122–127/PDF 136–141, and Tessent Shell
+Reference v2023.4 LogicSignal/ScanMux/DataMux/ClockMux topics. Honza's four
+corresponding productions have matching operator/selection syntax; its grammar
+also omits the Tessent mux Attribute extension.
+
+LogicSignal now has one expression, layered Boolean/bitwise/reduction/comparison/
+concatenation/unary/unsigned arithmetic productions, recursive parentheses,
+keyword references and comments. Comparisons require a numeric concatenation or
+scalar enum symbol on the right. Unknown digits are allowed only in that right
+operand. Strings, arbitrary properties, signal arithmetic and unsupported
+operators are rejected. Although two semantic rules mention a ternary operator,
+neither the normative operator inventory nor the normative grammar defines it;
+no ternary syntax is invented. Prose and BNF precedence differ; the formatter
+preserves token order and explicit parentheses without evaluation or regrouping.
+Widths and enum binding still require semantic elaboration.
+
+Each mux block was verified before moving to the next. All share a numeric
+selection-list grammar (`|` between concatenations) and signal concatenation
+syntax. At least one actual selection is required. Attributes are explicitly a
+Tessent extension; their order and the selection priority order are preserved.
+The old arbitrary assignments, bare-source and empty-table alternatives were
+removed. The documented pre-standard ScanMux form with a scalar identifier
+selector remains; omitted SelectedBy is rejected for DataMux and ClockMux.
+The LiU paper could not be downloaded again (DNS failed even with escalation);
+this compatibility decision relies on the earlier verified Listings 3 and 8.
+
+Completed standard examples and normalized Tessent chip2 examples are classified
+by source. The two genuine merged files retain their original checksums.
+The constructed `tessent_style.icl` was incorrectly pinned as a vendor positive:
+its original bytes and checksum now remain in the rejection corpus because it
+contains `LogicSignal { Source TCK; }`. A corrected derived positive is classified
+under ours. Old invented bare ClockMux inputs likewise have negative counterparts.
+
+Focused results: LogicSignal 85 cases, ScanMux 48, DataMux 47 and ClockMux 47;
+1113 cumulative classified fixtures. The initial mux suites reproduced 27/48,
+28/47 and 28/47 failures respectively before correction. Final full-suite results
+are recorded below after the dynamic verification.
+
+Task 4 full verification: `make check-dynamic BISON=/usr/bin/bison` exited 0; 1113 classified cases, 500 regression assertions, 730 block-review cases, 12 golden, 71 CLI, 62 existing LSP checks and remaining dynamic recipes pass. Removed the leftover generic bitwise-operator branch after three new Parameter negatives reproduced illegal acceptance. Current trace accounting is still source-line-based, pending task 10.

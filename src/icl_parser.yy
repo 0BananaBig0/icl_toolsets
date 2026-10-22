@@ -120,6 +120,11 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token LOCALPARAMETER "LocalParameter"
 %token ARROW "->"
 %token <std::string> OPERATOR "operator"
+%token <std::string> BOOL_OP "Boolean operator"
+%token <std::string> BIT_OP "bitwise operator"
+%token <std::string> COMPARE_OP "comparison operator"
+%token <std::string> NOT_OP "inversion operator"
+%token <std::string> MATH_OP "arithmetic operator"
 %token LPAREN "("
 %token RPAREN ")"
 
@@ -127,7 +132,7 @@ void IclParser::error(const location& loc, const std::string& message) {
    (a - b) - c, and there is no precedence between operators because
    the formatter reproduces them as written rather than evaluating
    them. Without this bison reports 2 shift/reduce conflicts. */
-%left OPERATOR
+%left OPERATOR BOOL_OP BIT_OP COMPARE_OP NOT_OP MATH_OP
 
 %token MODULE "Module"
 %token PARAMETER "Parameter"
@@ -232,10 +237,12 @@ void IclParser::error(const location& loc, const std::string& message) {
 /* Non-terminals. */
 %type <AstBlock*> module_def
 %type <AstNode*> enum_item
-%type <std::vector<AstNode*>> enum_body enum_comments
+%type <std::vector<AstNode*>> enum_body comment_nodes
 %type <std::string> scalar_name token_gap
 %type <ParsedValue> integer_expr integer_arg attribute_values attribute_atom
-%type <std::string> strict_range signal_path signal_reference signal data_signal concat_data_signal
+%type <std::string> strict_range signal data_signal concat_data_signal any_operator
+%type <ParsedReference> signal_path signal_reference
+%type <LogicValue> logic_expr logic_bit logic_bit_term logic_compare logic_concat logic_unary logic_integer logic_atom
 %type <AstNode*> checked_declaration checked_declaration_item strict_attribute
 %type <std::string> checked_declaration_keyword default_value
 %type <std::string> frequency_keyword clock_factor clock_period
@@ -249,7 +256,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> module_item instance_item instance_block
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value name_block_kw onehot_block_kw range_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -258,7 +265,9 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <AstNode*> ns_stmt
 %type <AstNode*> attr_item
 %type <std::vector<AstNode*>> attr_body
-%type <std::vector<AstNode*>> mux_body
+%type <std::vector<AstNode*>> strict_mux_body mux_prefix
+%type <std::string> strict_mux_keyword mux_codes
+%type <AstNode*> mux_selection
 %type <std::vector<AstNode*>> conn_body
 
 /* No %printer. There used to be one for <std::string>, and it was the only
@@ -391,30 +400,14 @@ module_item
       }
   | checked_declaration { $$ = $1; }
   | data_register { $$ = $1; }
-  | sel_block_kw decl_name opt_range SELECTEDBY value_list LBRACE mux_body RBRACE
-      {
-        // `SelectedBy` is part of the standard; the selector may be a
-        // hierarchical name such as `MyTap.M3_sel`, hence |value_list| rather
-        // than a bare IDENT — and a *list*, because Tessent writes
-        // `SelectedBy config_sib_shift_reg, enable_shift_reg` when a mux is
-        // selected by more than one signal.
-        $$ = driver.MakeBlock($1 + " " + $2 + $3 + " SelectedBy " + $5,
-                              std::move($7),
-                              SpanOf(@1.begin.line, @8.end.line));
-      }
-  /* The same thing without `SelectedBy`: `ScanMux mux1 sr { ... }`. Not the
-     standard form — IEEE 1687.1 requires the keyword — but it is how the
-     pre-standard drafts wrote it, and it survives in published ICL (e.g. the
-     SIB module in "Reusing and Retargeting On-Chip Instrument Access
-     Procedures in IEEE P1687", 2012). Tolerated for the same reason `Reg` and
-     `Field` are: refusing to format a file we can format is worse than
-     accepting one that predates the keyword. */
-  | sel_block_kw decl_name opt_range value LBRACE mux_body RBRACE
-      {
-        $$ = driver.MakeBlock($1 + " " + $2 + $3 + " " + $4,
-                              std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line));
-      }
+  | strict_mux_keyword token_gap scalar_name token_gap strict_range SELECTEDBY token_gap concat_data_signal LBRACE strict_mux_body RBRACE
+      { $$ = driver.MakeBlock($1 + " " + $2 + $3 + $4 + $5 + " SelectedBy " + $7 + $8,
+                              std::move($10), SpanOf(@1.begin.line, @11.end.line)); }
+  // Published P1687 SIB examples omit SelectedBy (LiU, Listings 3 and 8).
+  | strict_mux_keyword token_gap scalar_name token_gap strict_range IDENT token_gap LBRACE strict_mux_body RBRACE
+      { if ($1 != "ScanMux") { error(@1, "SelectedBy is required"); YYERROR; }
+        $$ = driver.MakeBlock("ScanMux " + $2 + $3 + $4 + $5 + " " + $6 + $7,
+                              std::move($9), SpanOf(@1.begin.line, @10.end.line)); }
   | instance_item
       { $$ = $1; }
   /* LogicSignal holds a *boolean expression*, not a list of attributes:
@@ -423,11 +416,9 @@ module_item
      cannot tell at the operator whether `a` is an attribute name followed by
      a unary value or the start of an expression. Rather than leave that to
      bison's rule ordering, LogicSignal gets a body of its own. */
-  | LOGICSIGNAL decl_name opt_range LBRACE logic_body RBRACE
-      {
-        $$ = driver.MakeBlock("LogicSignal " + $2 + $3, std::move($5),
-                              SpanOf(@1.begin.line, @6.end.line));
-      }
+  | LOGICSIGNAL token_gap scalar_name token_gap strict_range LBRACE logic_body RBRACE
+      { $$ = driver.MakeBlock("LogicSignal " + $2 + $3 + $4 + $5, std::move($7),
+                              SpanOf(@1.begin.line, @8.end.line)); }
   | CONNECTION LBRACE conn_body RBRACE
       {
         $$ = driver.MakeBlock("Connection", std::move($3),
@@ -452,14 +443,14 @@ token_gap
       { $$ = std::move($1) + " " + $2 + ($2.compare(0, 2, "//") == 0 ? "\n" : " "); }
   ;
 
-enum_comments
+comment_nodes
   : %empty { $$ = {}; }
-  | enum_comments COMMENT
+  | comment_nodes COMMENT
       { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
   ;
 
 enum_body
-  : enum_comments enum_item { $$ = std::move($1); $$.push_back($2); }
+  : comment_nodes enum_item { $$ = std::move($1); $$.push_back($2); }
   | enum_body enum_item { $$ = std::move($1); $$.push_back($2); }
   | enum_body COMMENT
       { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
@@ -478,7 +469,7 @@ concat_number
 
 inverted_number
   : number { $$ = $1; }
-  | OPERATOR token_gap number
+  | NOT_OP token_gap number
       { if ($1 != "~") { error(@1, "expected numeric inversion '~'"); YYERROR; }
         $$ = std::move($3); $$.text = $1 + $2 + $$.text; }
   ;
@@ -492,11 +483,8 @@ number
    expressions. Only unsigned decimal operands participate in arithmetic. */
 integer_expr
   : integer_arg { $$ = $1; }
-  | integer_arg OPERATOR token_gap integer_expr
-      { if ($2.size() != 1 || std::string("+-*/%").find($2) == std::string::npos) {
-          error(@2, "expected integer arithmetic operator"); YYERROR;
-        }
-        $$ = ParsedValue{$1.text + " " + $2 + " " + $3 + $4.text}; }
+  | integer_arg MATH_OP token_gap integer_expr
+      { $$ = ParsedValue{$1.text + " " + $2 + " " + $3 + $4.text}; }
   ;
 
 integer_arg
@@ -614,7 +602,7 @@ data_register_item
 /* §6.4.9 explicitly permits an extra inversion before data_signal. */
 write_enable
   : data_signal { $$ = $1; }
-  | OPERATOR token_gap OPERATOR token_gap signal
+  | NOT_OP token_gap NOT_OP token_gap signal
       { if ($1 != "~" || $3 != "~") { error(@1, "expected signal inversion '~'"); YYERROR; }
         $$ = $1 + $2 + $3 + $4 + $5; }
   ;
@@ -712,22 +700,24 @@ strict_range
   ;
 
 signal_path
-  : scalar_name token_gap { $$ = $1 + $2; }
-  | signal_path DOT token_gap scalar_name token_gap { $$ = std::move($1) + "." + $3 + $4 + $5; }
+  : scalar_name token_gap { $$ = ParsedReference{$1 + $2}; }
+  | signal_path DOT token_gap scalar_name token_gap
+      { $$ = std::move($1); $$.text += "." + $3 + $4 + $5; $$.is_scalar = false; }
   ;
 
 signal_reference
-  : signal_path strict_range { $$ = $1 + $2; }
+  : signal_path strict_range
+      { $$ = std::move($1); $$.text += $2; $$.is_scalar = $$.is_scalar && $2.empty(); }
   ;
 
 signal
   : number { $$ = $1.text; }
-  | signal_reference { $$ = $1; }
+  | signal_reference { $$ = $1.text; }
   ;
 
 data_signal
   : signal { $$ = $1; }
-  | OPERATOR token_gap signal
+  | NOT_OP token_gap signal
       { if ($1 != "~") { error(@1, "expected signal inversion '~'"); YYERROR; }
         $$ = $1 + $2 + $3; }
   ;
@@ -748,7 +738,7 @@ attr_value
      that per element (`concat_data_signal : data_signal (',' data_signal)*`),
      so `Source ~a, b;` and `Source a, ~b;` are both legal and were both
      rejected — the list accepted an operator only in first position. */
-  | attr_value COMMA OPERATOR postfix
+  | attr_value COMMA any_operator postfix
       { $$ = std::move($1) + ", " + $3 + $4; }
   /* Legacy space-separated properties in blocks not yet constrained. */
   | attr_value postfix         { $$ = std::move($1) + " " + $2; }
@@ -757,40 +747,85 @@ attr_value
      `Source 1 + 1;` is reachable in the published grammar. Costs nothing now
      that the left side of an assignment is `postfix`: `postfix`
      cannot start with an operator, so `a + b` has one reading only. */
-  | attr_value OPERATOR postfix
+  | attr_value any_operator postfix
       { $$ = std::move($1) + " " + $2 + " " + $3; }
   ;
 
-/* The body of a LogicSignal: expression statements and the attribute forms
-   that cannot be confused with them. Comments too, so a documented
-   expression keeps its comment. */
+/* IEEE §6.4.10: one expression, with comments before and after it. */
 logic_body
-  : %empty
-      { $$ = std::vector<AstNode*>(); }
-  | logic_body COMMENT
-      { $$ = std::move($1);
-        $$.push_back(driver.AddComment($2,
-                                       SpanOf(@2.begin.line, @2.end.line))); }
-  | logic_body value_list SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + ";",
-                                          SpanOf(@2.begin.line, @3.end.line))); }
-  | logic_body attr_name EQUALS value_list SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + " = " + $4 + ";",
-                                          SpanOf(@2.begin.line, @5.end.line))); }
-  /* A LogicSignal also carries ordinary attributes — `Source TCK;` — and
-     nested blocks such as `Select { ... }`. Both are unambiguous against an
-     expression: two adjacent names are not a valid expression, and `{`
-     cannot follow one. */
-  | logic_body attr_name postfix SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + " " + $3 + ";",
-                                          SpanOf(@2.begin.line, @4.end.line))); }
-  | logic_body attr_name LBRACE attr_body RBRACE
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeBlock($2, std::move($4),
-                                      SpanOf(@2.begin.line, @5.end.line))); }
+  : comment_nodes logic_expr SEMICOLON comment_nodes
+      { if ($2.has_unknown) { error(@2, "unknown digits are allowed only in a comparison's right operand"); YYERROR; }
+        $$ = std::move($1);
+        $$.push_back(driver.MakeStatement($2.text + ";", SpanOf(@2.begin.line, @3.end.line)));
+        $$.insert($$.end(), $4.begin(), $4.end()); }
+  ;
+
+logic_expr
+  : logic_bit { $$ = std::move($1); }
+  | logic_expr BOOL_OP token_gap logic_bit
+      { $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text;
+        $$.has_unknown = $1.has_unknown || $4.has_unknown; }
+  ;
+
+logic_bit
+  : logic_bit_term { $$ = std::move($1); }
+  | logic_bit BIT_OP token_gap logic_bit_term
+      { $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text;
+        $$.has_unknown = $1.has_unknown || $4.has_unknown; }
+  ;
+
+logic_bit_term
+  : logic_compare { $$ = std::move($1); }
+  | BIT_OP token_gap logic_bit_term
+      { $$.text = $1 + $2 + $3.text; $$.has_unknown = $3.has_unknown; }
+  ;
+
+logic_compare
+  : logic_concat { $$ = std::move($1); }
+  | logic_concat COMPARE_OP token_gap logic_concat
+      { if ($1.has_unknown || !($4.is_numeric_concat || $4.is_enum)) {
+          error(@2, "comparison requires numeric or enum right operand and no unknown left operand"); YYERROR;
+        }
+        $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text; }
+  ;
+
+logic_concat
+  : logic_unary { $$ = std::move($1); }
+  | logic_concat COMMA token_gap logic_unary
+      { $$.text = std::move($1.text) + ", " + $3 + $4.text;
+        $$.is_numeric_concat = $1.is_numeric_concat && $4.is_numeric_concat;
+        $$.has_unknown = $1.has_unknown || $4.has_unknown; }
+  ;
+
+logic_unary
+  : logic_integer { $$ = std::move($1); }
+  | NOT_OP token_gap logic_unary
+      { $$.text = $1 + $2 + $3.text;
+        $$.is_numeric_concat = $1 == "~" && $3.is_number;
+        $$.has_unknown = $3.has_unknown; }
+  ;
+
+logic_integer
+  : logic_atom { $$ = std::move($1); }
+  | logic_integer MATH_OP token_gap logic_atom
+      { if (!$1.is_integer || !$4.is_integer) { error(@2, "integer arithmetic requires decimal or parameter operands"); YYERROR; }
+        $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text;
+        $$.is_integer = $$.is_number = $$.is_numeric_concat = true; }
+  ;
+
+logic_atom
+  : INTEGER token_gap
+      { $$.text = $1 + $2; $$.is_integer = $$.is_number = $$.is_numeric_concat = true; }
+  | PARAMREF token_gap
+      { $$.text = $1 + $2; $$.is_integer = $$.is_number = $$.is_numeric_concat = true; }
+  | NUMBER token_gap
+      { $$.text = $1 + $2; $$.is_number = $$.is_numeric_concat = true;
+        $$.has_unknown = $1.find_first_of("xX", $1.find('\'') + 2) != std::string::npos; }
+  | signal_reference
+      { $$.text = $1.text; $$.is_enum = $1.is_scalar; }
+  | LPAREN token_gap logic_expr RPAREN token_gap
+      { $$ = std::move($3); $$.text = "(" + $2 + $$.text + ")" + $5;
+        $$.is_number = $$.is_integer; }
   ;
 
 /* One or more comma-separated expressions. Built as a string rather than a
@@ -838,7 +873,7 @@ attr_item
   /* An attribute whose value is a unary expression: `ResetValue -1;`,
      `Source ~a;`. Separate from the case above, and rendered with no space
      after the operator, because `- 1` and `-1` differ to the reader. */
-  | attr_name OPERATOR value_list SEMICOLON
+  | attr_name any_operator value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
   /* Also a list: Tessent writes `Attribute x = "a", "b";` for a pin list
@@ -902,42 +937,40 @@ attr_item
 
 
 
-mux_body
-  : %empty
-      { $$ = std::vector<AstNode*>(); }
-  | mux_body COMMENT
-      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
-  /* Both sides may be comma-separated: Tessent writes
-     `1'b1, 3'b00x : STEP_COUNTER_REG[0];` when one selection covers several
-     selector codes. */
-  | mux_body value_list COLON value_list SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + " : " + $4 + ";",
-                                          SpanOf(@2.begin.line, @5.end.line))); }
-  /* A bare entry with no selector. ClockMux and DataMux list their sources
-     this way, whereas ScanMux always pairs a selector with a source. */
-  | mux_body value SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + ";",
-                                          SpanOf(@2.begin.line, @3.end.line))); }
-  /* A mux body can also carry attributes: Tessent puts
-     `Attribute exclude_codes_from_icl_verify = "{2'b01}";` among the
-     selection entries. Only the `name = value` and `name ;` forms are
-     allowed here — a full attribute body would make `2'b10 : x;` ambiguous,
-     since both an attribute value and a selector can start the same way.
-     Not `name ;`: that collides with a bare mux entry, which is also a single
-     name followed by `;`. */
-  | mux_body attr_name EQUALS value_list SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + " = " + $4 + ";",
-                                          SpanOf(@2.begin.line, @5.end.line))); }
-  /* ...and the `Attribute name = value;` spelling, which is a keyword, then
-     the attribute's own name, then `=`. */
-  | mux_body attr_name IDENT EQUALS value_list SEMICOLON
-      { $$ = std::move($1);
-        $$.push_back(driver.MakeStatement($2 + " " + $3 + " = " + $5 + ";",
-                                          SpanOf(@2.begin.line, @6.end.line))); }
+strict_mux_keyword
+  : SCANMUX { $$ = "ScanMux"; }
+  | DATAMUX { $$ = "DataMux"; }
+  | CLOCKMUX { $$ = "ClockMux"; }
   ;
+
+// At least one selection is required; attributes are a Tessent extension.
+mux_prefix
+  : %empty { $$ = {}; }
+  | mux_prefix COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  | mux_prefix strict_attribute { $$ = std::move($1); $$.push_back($2); }
+  ;
+
+strict_mux_body
+  : mux_prefix mux_selection { $$ = std::move($1); $$.push_back($2); }
+  | strict_mux_body mux_selection { $$ = std::move($1); $$.push_back($2); }
+  | strict_mux_body strict_attribute { $$ = std::move($1); $$.push_back($2); }
+  | strict_mux_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+mux_selection
+  : mux_codes COLON token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement($1 + " : " + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+  ;
+
+mux_codes
+  : concat_number { $$ = std::move($1.text); }
+  | mux_codes BIT_OP token_gap concat_number
+      { if ($2 != "|") { error(@2, "expected '|' between selection codes"); YYERROR; }
+        $$ = std::move($1); $$ += " | " + $3 + $4.text; }
+  ;
+
 
 conn_body
   : %empty
@@ -1176,12 +1209,6 @@ module_ref
   ;
 
 
-sel_block_kw
-  : SCANMUX              { $$ = "ScanMux"; }
-  | DATAMUX              { $$ = "DataMux"; }
-  | CLOCKMUX             { $$ = "ClockMux"; }
-  ;
-
 of_block_kw
   : INSTANCE             { $$ = "Instance"; }
   | ACCESSLINK           { $$ = "AccessLink"; }
@@ -1198,7 +1225,7 @@ ordinary_keyword
   : name_block_kw   { $$ = $1; }
   | onehot_block_kw { $$ = $1; }
   | range_block_kw  { $$ = $1; }
-  | sel_block_kw    { $$ = $1; }
+  | strict_mux_keyword { $$ = $1; }
   /* `of_block_kw` is deliberately absent. `Instance` and `AccessLink` are
      always followed by `name Of module`, which `instance_item` already covers;
      letting them also be bare attribute names makes `Instance` ambiguous
@@ -1252,6 +1279,14 @@ ordinary_keyword
 
 /* ------------------------------------------------------------------ values */
 
+any_operator
+  : OPERATOR { $$ = $1; }
+  | BOOL_OP { $$ = $1; }
+  | COMPARE_OP { $$ = $1; }
+  | NOT_OP { $$ = $1; }
+  | MATH_OP { $$ = $1; }
+  ;
+
 value
   : postfix { $$ = $1; }
   /* A connection edge, `a -> b`, is only written inside `Connection`, but
@@ -1259,10 +1294,10 @@ value
      used to cost a second nonterminal and a reduce/reduce conflict. */
   | postfix ARROW postfix { $$ = $1 + " -> " + $3; }
   /* Unary: `ResetValue -1;`, `Source ~a;`. */
-  | OPERATOR value { $$ = $1 + $2; }
+  | any_operator value %prec OPERATOR { $$ = $1 + $2; }
   /* Binary. No precedence table: the formatter reproduces the operators as
      written, so left-to-right grouping is enough and unambiguous. */
-  | value OPERATOR value { $$ = $1 + " " + $2 + " " + $3; }
+  | value any_operator value %prec OPERATOR { $$ = $1 + " " + $2 + " " + $3; }
   | LPAREN value_list RPAREN { $$ = "(" + $2 + ")"; }
   ;
 
