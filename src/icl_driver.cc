@@ -18,6 +18,8 @@
 
 #include <map>
 #include <cctype>
+#include <cstdint>
+#include <algorithm>
 
 #include <iostream>
 #include <sstream>
@@ -30,6 +32,41 @@ void icl_scan_end();
 
 namespace icl {
 namespace {
+// Check only literal overflow; parameter widths still require elaboration.
+bool FitsWidth(const std::string& digits, char base, size_t width) {
+  if (base != 'd') {
+    const size_t step = base == 'b' ? 1 : 4;
+    size_t bit = 0;
+    for (auto it = digits.rbegin(); it != digits.rend(); ++it) {
+      if (*it == '_') continue;
+      const char ch = static_cast<char>(std::tolower(static_cast<unsigned char>(*it)));
+      const unsigned digit = ch == 'x' ? 0 : ch <= '9' ? ch - '0' : ch - 'a' + 10;
+      if (digit && (bit >= width || (width - bit < step && digit >> (width - bit))))
+        return false;
+      bit += step;
+    }
+    return true;
+  }
+  // A decimal digit needs fewer than four bits; skip obviously generous widths.
+  if (width / 4 >= digits.size()) return true;
+  std::vector<uint32_t> limbs(1, 0);
+  const size_t maximum = width / 32 + (width % 32 != 0);
+  for (char ch : digits) {
+    if (ch == '_') continue;
+    uint64_t carry = static_cast<unsigned>(ch - '0');
+    for (auto& limb : limbs) {
+      carry += static_cast<uint64_t>(limb) * 10;
+      limb = static_cast<uint32_t>(carry);
+      carry >>= 32;
+    }
+    if (carry) limbs.push_back(static_cast<uint32_t>(carry));
+    if (limbs.size() > maximum ||
+        (limbs.size() == maximum && width % 32 && limbs.back() >> (width % 32)))
+      return false;
+  }
+  return true;
+}
+
 // `--ast` printer. A visitor so that adding a node class fails to compile here
 // instead of silently printing nothing.
 //
@@ -111,6 +148,9 @@ ParsedValue IclDriver::NumberLiteral(const std::string& source, int line) {
     }
     value.width = value.width * 10 + digit;
   }
+  if (value.width && !FitsWidth(text.substr(quote + 2),
+      static_cast<char>(std::tolower(static_cast<unsigned char>(text[quote + 1]))), value.width))
+    SetParseDiagnostic(line, "sized number truncates significant bits");
   return value;
 }
 
@@ -292,9 +332,14 @@ void IclDriver::CheckAddressContext(const std::string& header,
 bool IclDriver::Parse(const std::string& text, std::string* error) {
   // Scan straight from memory via flex's buffer API, so no temporary file is
   // ever created and the input buffer is never written to.
-  icl_scan_bytes(text.data(), text.size());
+  const auto nul = text.find('\0');
+  if (nul != std::string::npos) {
+    SetParseDiagnostic(1 + static_cast<int>(std::count(text.begin(), text.begin() + nul, '\n')),
+                       "NUL byte is not valid ICL source");
+  } else {
+    icl_scan_bytes(text.data(), text.size());
 
-  IclParser parser(*this);
+    IclParser parser(*this);
 #ifdef ICL_PARSER_TRACE
   // Only compiled by the `gramcov` target, which pairs a bison `-t` parser
   // with a flex `-d` scanner. The two trace these builds print are how the
@@ -305,8 +350,9 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
   // parser to instrument.
   parser.set_debug_level(1);
 #endif
-  parser.parse();
-  icl_scan_end();
+    parser.parse();
+    icl_scan_end();
+  }
 
   if (has_error_) {
     *error = "line " + std::to_string(error_line_) + ": " + error_message_;

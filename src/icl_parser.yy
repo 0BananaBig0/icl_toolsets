@@ -16,24 +16,9 @@
  *
  * Grammar for IEEE 1687-2014 (IJTAG) Instrument Connectivity Language.
  *
- * Design rule, stated up front because it explains the shape of everything
- * below: the *structural* level is strict, the *attribute* level is lenient.
- *
- *   Strict  — Module, the 13 port kinds, ScanRegister/Reg/Field, Instance,
- *             ScanMux selection tables, Connection edges, PortGroup comma
- *             lists, AccessLink sub-structures. These are what make an ICL
- *             file a network description, and it is the whole point of the
- *             tool that a non-conforming file is rejected rather than
- *             silently reformatted.
- *
- *   Lenient — inside a block, an attribute is `NAME ...;` where NAME may be
- *             any identifier *or* any ICL keyword. Needed because real ICL
- *             writes `Attribute d = "x";` inside a Field block and
- *             `DataInPort DI = 8'h00;` inside an Instance block: the attribute
- *             name is a keyword there. Encoding every attribute form rigidly
- *             would reject valid files; being lenient here loses nothing,
- *             because attribute spelling does not affect the network topology
- *             or the layout.
+ * Each IEEE block has its own legal members and multiplicities. Shared
+ * productions describe identical lexical/value rules; documented compatibility
+ * forms are recorded in docs/icl-conformance-review.md.
  */
 
 %skeleton "lalr1.cc"
@@ -234,7 +219,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> scalar_name token_gap
 %type <ParsedValue> integer_expr integer_arg attribute_values attribute_atom
 %type <std::string> strict_range signal data_signal concat_data_signal
-%type <ParsedReference> signal_path signal_reference
+%type <ParsedReference> signal_path signal_reference alias_reference
 %type <LogicValue> logic_expr logic_bit logic_bit_term logic_compare logic_concat logic_unary logic_integer logic_atom
 %type <AstNode*> checked_declaration checked_declaration_item strict_attribute
 %type <std::string> checked_declaration_keyword default_value
@@ -664,12 +649,24 @@ strict_range
   ;
 
 signal_path
-  : scalar_name token_gap { $$ = ParsedReference{$1 + $2}; }
+  : scalar_name token_gap
+      { $$ = ParsedReference{$1 + $2}; $$.end_line = @1.end.line; $$.end_column = @1.end.column; }
   | signal_path DOT token_gap scalar_name token_gap
-      { $$ = std::move($1); $$.text += "." + $3 + $4 + $5; $$.is_scalar = false; }
+      { if ($1.end_line != @2.begin.line || $1.end_column != @2.begin.column ||
+            @2.end.line != @4.begin.line || @2.end.column != @4.begin.column) {
+          error(@2, "hierarchical identifiers cannot contain whitespace or comments"); YYERROR;
+        }
+        $$ = std::move($1); $$.text += "." + $3 + $4 + $5; $$.is_scalar = false;
+        ++$$.depth; $$.end_line = @4.end.line; $$.end_column = @4.end.column; }
   ;
 
 signal_reference
+  : alias_reference
+      { if ($1.depth > 1) { error(@1, "multi-level hierarchy is allowed only in Alias"); YYERROR; }
+        $$ = std::move($1); }
+  ;
+
+alias_reference
   : signal_path strict_range
       { $$ = std::move($1); $$.text += $2; $$.is_scalar = $$.is_scalar && $2.empty(); }
   ;
@@ -769,8 +766,8 @@ logic_atom
   ;
 
 alias_signal
-  : signal_reference { $$ = std::move($1.text); }
-  | NOT_OP token_gap signal_reference
+  : alias_reference { $$ = std::move($1.text); }
+  | NOT_OP token_gap alias_reference
       { if ($1 != "~") { error(@1, "expected alias inversion '~'"); YYERROR; }
         $$ = $1 + $2 + $3.text; }
   ;

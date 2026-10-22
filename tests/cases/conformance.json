@@ -9610,5 +9610,851 @@
     "block": "fallback",
     "accept": true,
     "source": "Legacy LiU P1687 list with ICL whitespace/comments between tokens, constructed preservation regression"
+  },
+  {
+    "path": "cases/standard/lexical/decimal.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/leading_zero.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/based_decimal.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/hex.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/missing_base.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/pdl_hex.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/binary.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/uppercase_decimal.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/binary_unknown.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/unknown_padding.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/split_base.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/zero_missing_digits.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/standard/lexical/hex_overflow.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_0.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_1.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_2.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_3.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_4.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_5.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_6.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_7.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_8.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_9.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_valid_10.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8, zero/unknown truncation, decimal boundaries and trivia; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_0.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_1.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_2.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_3.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_4.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_5.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_6.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_7.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_8.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_9.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_10.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_11.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_12.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_13.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/number_invalid_14.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/lexical/ascii_names.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/unicode_name.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/underscore_name.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/case.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/keyword_name.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/trailing.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/trailing_illegal.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/empty.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/comments_only.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/null_string.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/null_comment.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/null_line_comment.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/null_generic.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/null_eof.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/formfeed.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/vertical_tab.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/crlf.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/open_comment.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/open_string.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/nested_comment.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/comment_quotes.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/all_escapes.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/multiline_string.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/quoted_comments.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/ours/lexical/escaped_newline.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "cases/fail/upstream/ijtag_Instruments.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Honza333f8bc tests/test_icls/Instruments.icl, original bytes; eight fixed-width constants truncate significant bits contrary to IEEE6.3.8(j)"
+  },
+  {
+    "path": "cases/ours/reference/valid.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed EOF/lexical-error fixtures for strict reference differential testing"
+  },
+  {
+    "path": "cases/ours/reference/trailing.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed EOF/lexical-error fixtures for strict reference differential testing"
+  },
+  {
+    "path": "cases/ours/reference/lexical_suffix.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed EOF/lexical-error fixtures for strict reference differential testing"
+  },
+  {
+    "path": "cases/ours/reference/lexical_body.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed EOF/lexical-error fixtures for strict reference differential testing"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_00.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:7 IclNumber('xx', 'bin', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_01.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:23 IclNumber('0', 'bin', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_02.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:30 IclNumber(\"'b11_00\", 'bin', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_03.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:46 IclNumber(\"'B11\", 'bin', 10); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_04.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:50 IclNumber('xx01_x11', 'bin', 10); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_05.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:54 IclNumber(\"'d13\", 'dec', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_06.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:61 IclNumber(\"'HE\", 'hex', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_07.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:65 IclNumber('1_2_3', 'dec', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_08.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:69 IclNumber('0235', 'dec', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_09.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:73 IclNumber(\"'d 134\", 'dec', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_10.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:77 IclNumber(\"'h 23ff\", 'hex', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_11.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:95 IclNumber(\"'b0101\", 'bin', 4); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_12.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:99 IclNumber(\"'D 3\", 'dec', 5); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_13.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:103 IclNumber(\"'b0_1x\", 'bin', 3); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_14.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:107 IclNumber(\"'hx\", 'hex', 7); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_15.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:111 IclNumber(\"'h3\", 'hex', 2); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_16.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:143 IclNumber(\"' x\", 'hex', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_17.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:150 IclNumber(\"' 3x\", 'hex', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_18.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:157 IclNumber(\"'x3\", 'hex', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_19.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:164 IclNumber(\"'b00101\", 'bin', 5); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_20.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:165 IclNumber(\"'b1111\", 'bin', 4); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_21.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:172 IclNumber(\"'b111x\", 'bin', 4); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_22.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:184 IclNumber(\"'bx100\", 'bin', 4); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_23.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:194 IclNumber('x100', 'hex', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_24.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Honza333f8bc tests/test_icl_number.py:198 IclNumber('x101', 'bin', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_25.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Honza333f8bc tests/test_icl_number.py:82 IclNumber('3fa', 'dec', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_26.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Honza333f8bc tests/test_icl_number.py:89 IclNumber('0xa', 'dec', -1); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_27.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Honza333f8bc tests/test_icl_number.py:116 IclNumber(\"'hF\", 'hex', 2); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_28.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Honza333f8bc tests/test_icl_number.py:130 IclNumber(\"'b\", 'bin', 0); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/upstream/lexical/number_api_29.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Honza333f8bc tests/test_icl_number.py:137 IclNumber(\"'30\", 'hex', 5); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  },
+  {
+    "path": "cases/ours/lexical/hier_source_space_before.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_alias_space_before.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_source_space_after.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_alias_space_after.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_source_newline.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_alias_newline.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_source_comment_before.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_alias_comment_before.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_source_comment_after.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_alias_comment_after.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_deep_source.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/ours/lexical/hier_deep_logic.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "cases/standard/lexical/hier_standard.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10.5; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_string_0.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.9; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_string_1.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.9; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_string_2.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.9; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_string_3.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.9; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_0.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_1.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_2.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_3.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_4.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_5.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_6.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_7.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_8.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_9.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_10.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_11.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_12.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_13.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_14.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_15.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_16.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_17.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/standard/lexical/standard_identifier_18.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.10; example completed with Module and declarations"
+  },
+  {
+    "path": "cases/ours/scan_register/comments_invalid_hierarchy.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "cases/ours/logic_signal/comments_everywhere_invalid_hierarchy.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "cases/ours/one_hot_scan_group/concat_invalid_hierarchy.icl",
+    "block": "one_hot_scan_group",
+    "accept": false,
+    "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "cases/ours/one_hot_data_group/concat_invalid_hierarchy.icl",
+    "block": "one_hot_data_group",
+    "accept": false,
+    "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "cases/ours/instance/input_concat_invalid_hierarchy.icl",
+    "block": "instance",
+    "accept": false,
+    "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "cases/ours/alias/comments_invalid_hierarchy.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
   }
 ]

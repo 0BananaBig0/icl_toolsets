@@ -42,3 +42,6 @@ gen/
 *.swp
 *~
 .DS_Store
+
+# Python test imports
+__pycache__/

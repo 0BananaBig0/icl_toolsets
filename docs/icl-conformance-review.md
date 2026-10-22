@@ -396,3 +396,29 @@ unit,whitespace,fuzz,separation checks green. Current trace:332/332 grammar sour
 lines and118/118 lexer rules over1866 files. This is not yet production-ID or
 handwritten action/branch coverage (Task10). A follow-up PortGroup test reproduced
 and fixed comma loss when a comment preceded the comma; token order is preserved.
+
+## Task8: cross-cutting lexical rules and upstream comparison
+
+IEEE1687-2014 §§6.3.5–10 (printed61–68/PDF75–82) reviewed against scanner and
+shared literal metadata. Corrected fixed-width nonzero-bit truncation, whitespace
+alphabet, literal-base trivia, embedded NUL handling and invalid-byte diagnostics.
+Strings preserve arbitrary escapes per normative prose; BNF's narrower examples
+are not treated as a prohibition. Hierarchical dots require adjacent identifiers;
+paths deeper than one instance are restricted to Alias (§6.3.10.5). Exact scanner
+line/column accounting is now centralized, a prerequisite for this check and LSP.
+All original user merged files still pass unchanged.
+
+Honza comparison is in `honza-icl-comparison.md`;268 named grammar entries and75
+multi-character keywords are mapped, all8 original files retained and all30
+numeric API inputs transcribed. The ANTLR adapter counts lexer errors and EOF;
+its6 real-reference tests pass. Differential2007 inputs:1625 agree,253 local-only,
+129 reference-only; all reference-only cases are expected local negatives with
+recorded normative grounds. This is differential evidence, not hardware DRC.
+
+Full `make check-dynamic BISON=/usr/bin/bison` passed:1743 classified cases,
+570 regression assertions,714 block cases,13 golden,74 CLI,62 LSP; unit,
+whitespace, fuzz and language separation checks passed. The system-Python reference
+adapter suite skipped5 dependency tests; the separate venv run executed all6.
+Trace reports333/333 grammar source lines and118/118 scanner rules over2007 files;
+production-ID/action/branch accounting remains task10. Numeric parameter-width
+elaboration and known-target concatenation width inference remain semantic limits.

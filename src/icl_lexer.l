@@ -60,26 +60,16 @@ IclParser::symbol_type yylex(IclDriver& driver);
 // empty buffer as a workaround leaks the one it just replaced.
 namespace {
 
-// Location of the token currently being scanned. `YY_USER_ACTION` widens it
-// by the length of the match; rules then call step()/lines() to move past it.
-// The type comes from the generated parser header (Bison's default location,
-// which tracks begin/end positions — we only ever read `begin.line`).
-//
-// ponytail: file-scope, so the scanner is neither reentrant nor thread-safe.
-// Fine for this CLI (one file per process, single-threaded). Upgrade path:
-// %option reentrant + bison's bridge API, if this ever becomes a library or
-// a language server that formats concurrently.
+// Single scanner location, advanced once for every matched byte. The CLI and
+// LSP parse serially; concurrent parsing would require a reentrant scanner.
 icl::IclParser::location_type g_location;
 
-// Number of '\n' characters in a matched token. Multi-line block comments must
-// advance the line counter by hand, otherwise every following line number is
-// wrong and trailing comments / blank lines get attached to the wrong place.
-int CountNewlines(const char* text) {
-  int count = 0;
-  for (const char* p = text; *p != '\0'; ++p) {
-    if (*p == '\n') ++count;
+void AdvanceLocation(const char* text, size_t size) {
+  g_location.step();
+  for (size_t i = 0; i < size; ++i) {
+    if (text[i] == '\n') g_location.lines(1);
+    else g_location.columns(1);
   }
-  return count;
 }
 
 }  // namespace
@@ -91,7 +81,6 @@ void icl_reset_modes();
 
 void AppendGeneric(const char* text, size_t size) {
   g_generic_body.append(text, size);
-  g_location.lines(CountNewlines(text));
 }
 
 YY_BUFFER_STATE icl_scan_bytes(const char* text, size_t size) {
@@ -122,7 +111,7 @@ void icl_scan_end() {
 }
 
 
-#define YY_USER_ACTION g_location.columns(static_cast<int>(yyleng));
+#define YY_USER_ACTION AdvanceLocation(yytext, yyleng);
 %}
 
   /* Writes the generated scanner to disk and never calls yywrap(). */
@@ -135,15 +124,10 @@ ID      [A-Za-z][A-Za-z_0-9]*
 DECIMAL [0-9][0-9_]*
 WIDTH   ({DECIMAL}|\${ID})
 NUMGAP  ([ \t\r\n]|"//"[^\n]*\n|"/*"([^*]|\*+[^*/])*\*+"/")
-BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-FxX_]*|\'[dD][ \t\r\n]*{DECIMAL})
+BASED   (\'[bB]{NUMGAP}*[01xX][01xX_]*|\'[hH]{NUMGAP}*[0-9a-fA-FxX][0-9a-fA-FxX_]*|\'[dD]{NUMGAP}*{DECIMAL})
 
 %%
 
-%{
-  // Code executed before every rule: the match starts where the previous one
-  // ended.
-  g_location.step();
-%}
 
   /* IEEE Generic AccessLink is opaque text with balanced nested braces. */
 <GENERIC_LINK>"{" { AppendGeneric(yytext, yyleng); ++g_generic_depth; }
@@ -172,26 +156,21 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
                       return icl::IclParser::make_END(g_location);
                     }
 
-[ \t\r\f\v]+        { g_location.step(); }
-"\n"+               { g_location.lines(static_cast<int>(yyleng));
-                      g_location.step(); }
+[ \t\r]+        {  }
+"\n"+               {
+                       }
 
   /* Comments: emitted as tokens so the formatter can keep them. */
 "/*"([^*]|\*+[^*/])*\*+"/" {
                       if (std::string(yytext).find("/*", 2) != std::string::npos)
                         driver.SetParseDiagnostic(g_location.begin.line, "nested block comments are not allowed");
-                      // Only advance |end|: the pre-rule step() already put
-                      // |begin| on the comment's first line. Calling step()
-                      // here would move |begin| to the *last* line, which
-                      // would mis-place every multi-line comment.
-                      g_location.lines(CountNewlines(yytext));
                       return icl::IclParser::make_COMMENT(yytext, g_location);
                     }
-"//"[^\n]*          { g_location.step();
+"//"[^\n]*          {
                       return icl::IclParser::make_COMMENT(yytext, g_location); }
 
 \"(\\(.|\n)|[^"\\])*\" {
-                      g_location.lines(CountNewlines(yytext));
+
                       return icl::IclParser::make_STRING(
                           std::string(yytext), g_location); }
 
@@ -199,11 +178,11 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
      The optional width is a decimal integer or parameter reference. */
 ({WIDTH}{NUMGAP}*)?{BASED}     {
                       std::string number(yytext);
-                      g_location.lines(CountNewlines(yytext));
+
                       return icl::IclParser::make_NUMBER(number, g_location);
                     }
 
-{DECIMAL}           { g_location.step();
+{DECIMAL}           {
                       return icl::IclParser::make_INTEGER(
                           std::string(yytext), g_location); }
 
@@ -212,7 +191,7 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
      followed by IDENT and no rule accepts two adjacent values there.
      Longest match keeps a bare `10` on the rule above. */
 {DECIMAL}(as|fs|ps|ns|us|ms|s) {
-                      g_location.step();
+
                       return icl::IclParser::make_TIME(
                           std::string(yytext), g_location); }
 
@@ -220,7 +199,7 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
      everywhere else, so `<D>` would lex as three tokens and no rule accepts
      `<` without a value on its left. Lexed as one token because that is what
      it is — a fixed marker, not an operator applied to `D`. */
-"<D>"|"<R>"        { g_location.step();
+"<D>"|"<R>"        {
                       return icl::IclParser::make_IPROCARG(
                           std::string(yytext), g_location); }
 
@@ -228,104 +207,104 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
      `Parameter MSB = 5;` and then writes `DataInPort datain[ $MSB:0 ];`
      (Tessent IJTAG User's Manual, "ICL Network Extraction of Parameterized
      Modules"). The `$` is kept in the token text so output is byte-identical. */
-"$"{ID}             { g_location.step();
+"$"{ID}             {
                       return icl::IclParser::make_PARAMREF(
                           std::string(yytext), g_location); }
 
 
   /* Distinct ICL operator families constrain the LogicSignal grammar. */
-"&&"|"||"          { g_location.step(); return icl::IclParser::make_BOOL_OP(std::string(yytext), g_location); }
-[&|^]               { g_location.step(); return icl::IclParser::make_BIT_OP(std::string(yytext), g_location); }
-"=="|"!="          { g_location.step(); return icl::IclParser::make_COMPARE_OP(std::string(yytext), g_location); }
-[~!]                { g_location.step(); return icl::IclParser::make_NOT_OP(std::string(yytext), g_location); }
-[-+*/%]             { g_location.step(); return icl::IclParser::make_MATH_OP(std::string(yytext), g_location); }
-"("                 { g_location.step();
+"&&"|"||"          {  return icl::IclParser::make_BOOL_OP(std::string(yytext), g_location); }
+[&|^]               {  return icl::IclParser::make_BIT_OP(std::string(yytext), g_location); }
+"=="|"!="          {  return icl::IclParser::make_COMPARE_OP(std::string(yytext), g_location); }
+[~!]                {  return icl::IclParser::make_NOT_OP(std::string(yytext), g_location); }
+[-+*/%]             {  return icl::IclParser::make_MATH_OP(std::string(yytext), g_location); }
+"("                 {
                       return icl::IclParser::make_LPAREN(g_location); }
-")"                 { g_location.step();
+")"                 {
                       return icl::IclParser::make_RPAREN(g_location); }
 
   /* IEEE 1687 keywords (case sensitive). */
-PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
-"#include"           { g_location.step(); return icl::IclParser::make_INCLUDE(g_location); }
-Module              { g_location.step(); return icl::IclParser::make_MODULE(g_location); }
-Parameter           { g_location.step(); return icl::IclParser::make_PARAMETER(g_location); }
-Attribute           { g_location.step(); return icl::IclParser::make_ATTRIBUTE(g_location); }
-AllowBroadcastOnScanInterface { g_location.step(); return icl::IclParser::make_ALLOWBROADCAST(g_location); }
-Alias               { g_location.step(); return icl::IclParser::make_ALIAS(g_location); }
-Enum                { g_location.step(); return icl::IclParser::make_ENUM(g_location); }
-ScanInPort          { g_location.step(); return icl::IclParser::make_SCANINPORT(g_location); }
-AccessTogether         { g_location.step(); return icl::IclParser::make_ACCESSTOGETHER(g_location); }
-ActivePolarity         { g_location.step(); return icl::IclParser::make_ACTIVEPOLARITY(g_location); }
-ActiveSignals          { g_location.step(); return icl::IclParser::make_ACTIVESIGNALS(g_location); }
-AddressValue           { g_location.step(); return icl::IclParser::make_ADDRESSVALUE(g_location); }
-BSDLEntity             { g_location.step(); return icl::IclParser::make_BSDLENTITY(g_location); }
-CaptureSource          { g_location.step(); return icl::IclParser::make_CAPTURESOURCE(g_location); }
-Chain                  { g_location.step(); return icl::IclParser::make_CHAIN(g_location); }
-DefaultLoadValue       { g_location.step(); return icl::IclParser::make_DEFAULTLOADVALUE(g_location); }
-DifferentialInvOf      { g_location.step(); return icl::IclParser::make_DIFFERENTIALINVOF(g_location); }
-Enable                 { g_location.step(); return icl::IclParser::make_ENABLE(g_location); }
-FreqDivider            { g_location.step(); return icl::IclParser::make_FREQDIVIDER(g_location); }
-FreqMultiplier         { g_location.step(); return icl::IclParser::make_FREQMULTIPLIER(g_location); }
-Period                 { g_location.step(); return icl::IclParser::make_PERIOD(g_location); }
-InputPort              { g_location.step(); return icl::IclParser::make_INPUTPORT(g_location); }
-Port                   { g_location.step(); return icl::IclParser::make_PORT(g_location); }
-ReadCallBack           { g_location.step(); return icl::IclParser::make_READCALLBACK(g_location); }
-ReadDataSource         { g_location.step(); return icl::IclParser::make_READDATASOURCE(g_location); }
-RefEnum                { g_location.step(); return icl::IclParser::make_REFENUM(g_location); }
-ResetValue             { g_location.step(); return icl::IclParser::make_RESETVALUE(g_location); }
-STD_1149_1_2001        { g_location.step(); return icl::IclParser::make_STD1149_1_2001(g_location); }
-STD_1149_1_2013        { g_location.step(); return icl::IclParser::make_STD1149_1_2013(g_location); }
-ScanInSource           { g_location.step(); return icl::IclParser::make_SCANINSOURCE(g_location); }
-Source                 { g_location.step(); return icl::IclParser::make_SOURCE(g_location); }
-WriteCallBack          { g_location.step(); return icl::IclParser::make_WRITECALLBACK(g_location); }
-WriteDataSource        { g_location.step(); return icl::IclParser::make_WRITEDATASOURCE(g_location); }
-WriteEnSource          { g_location.step(); return icl::IclParser::make_WRITEENSOURCE(g_location); }
-iApplyEndState         { g_location.step(); return icl::IclParser::make_IAPPLYENDSTATE(g_location); }
-LaunchEdge          { g_location.step(); return icl::IclParser::make_LAUNCHEDGE(g_location); }
-ScanOutPort         { g_location.step(); return icl::IclParser::make_SCANOUTPORT(g_location); }
-ShiftEnPort         { g_location.step(); return icl::IclParser::make_SHIFTENPORT(g_location); }
-CaptureEnPort       { g_location.step(); return icl::IclParser::make_CAPTUREENPORT(g_location); }
-UpdateEnPort        { g_location.step(); return icl::IclParser::make_UPDATEENPORT(g_location); }
-SelectPort          { g_location.step(); return icl::IclParser::make_SELECTPORT(g_location); }
-ResetPort           { g_location.step(); return icl::IclParser::make_RESETPORT(g_location); }
-TCKPort             { g_location.step(); return icl::IclParser::make_TCKPORT(g_location); }
-ClockPort           { g_location.step(); return icl::IclParser::make_CLOCKPORT(g_location); }
-ToClockPort         { g_location.step(); return icl::IclParser::make_TOCLOCKPORT(g_location); }
-TMSPort             { g_location.step(); return icl::IclParser::make_TMSPORT(g_location); }
-TRSTPort            { g_location.step(); return icl::IclParser::make_TRSTPORT(g_location); }
-ToTCKPort           { g_location.step(); return icl::IclParser::make_TOTCKPORT(g_location); }
-ToTMSPort           { g_location.step(); return icl::IclParser::make_TOTMSPORT(g_location); }
-ToTRSTPort          { g_location.step(); return icl::IclParser::make_TOTRSTPORT(g_location); }
-ToShiftEnPort       { g_location.step(); return icl::IclParser::make_TOSHIFTENPORT(g_location); }
-ToCaptureEnPort     { g_location.step(); return icl::IclParser::make_TOCAPTUREENPORT(g_location); }
-ToUpdateEnPort      { g_location.step(); return icl::IclParser::make_TOUPDATEENPORT(g_location); }
-ToResetPort         { g_location.step(); return icl::IclParser::make_TORESETPORT(g_location); }
-ToSelectPort        { g_location.step(); return icl::IclParser::make_TOSELECTPORT(g_location); }
-ToIRSelectPort      { g_location.step(); return icl::IclParser::make_TOIRSELECTPORT(g_location); }
-AddressPort         { g_location.step(); return icl::IclParser::make_ADDRESSPORT(g_location); }
-WriteEnPort         { g_location.step(); return icl::IclParser::make_WRITEENPORT(g_location); }
-ReadEnPort          { g_location.step(); return icl::IclParser::make_READENPORT(g_location); }
-DataInPort          { g_location.step(); return icl::IclParser::make_DATAINPORT(g_location); }
-DataOutPort         { g_location.step(); return icl::IclParser::make_DATAOUTPORT(g_location); }
-ScanInterface       { g_location.step(); return icl::IclParser::make_SCANINTERFACE(g_location); }
-ScanRegister        { g_location.step(); return icl::IclParser::make_SCANREGISTER(g_location); }
-DataRegister        { g_location.step(); return icl::IclParser::make_DATAREGISTER(g_location); }
-DataMux             { g_location.step(); return icl::IclParser::make_DATAMUX(g_location); }
-ClockMux            { g_location.step(); return icl::IclParser::make_CLOCKMUX(g_location); }
-OneHotScanGroup     { g_location.step(); return icl::IclParser::make_ONEHOTSCANGROUP(g_location); }
-OneHotDataGroup     { g_location.step(); return icl::IclParser::make_ONEHOTDATAGROUP(g_location); }
-Instance            { g_location.step(); return icl::IclParser::make_INSTANCE(g_location); }
-ScanMux             { g_location.step(); return icl::IclParser::make_SCANMUX(g_location); }
-SelectedBy          { g_location.step(); return icl::IclParser::make_SELECTEDBY(g_location); }
-LogicSignal         { g_location.step(); return icl::IclParser::make_LOGICSIGNAL(g_location); }
-AccessLink          { g_location.step(); return icl::IclParser::make_ACCESSLINK(g_location); }
-Of                  { g_location.step(); return icl::IclParser::make_OF(g_location); }
-of                   { g_location.step(); return icl::IclParser::make_OFLOWER(g_location); }
-NameSpace           { g_location.step(); return icl::IclParser::make_NAMESPACE(g_location); }
-UseNameSpace        { g_location.step(); return icl::IclParser::make_USENAMESPACE(g_location); }
-LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAMETER(g_location); }
+PortGroup           {  return icl::IclParser::make_PORTGROUP(g_location); }
+"#include"           {  return icl::IclParser::make_INCLUDE(g_location); }
+Module              {  return icl::IclParser::make_MODULE(g_location); }
+Parameter           {  return icl::IclParser::make_PARAMETER(g_location); }
+Attribute           {  return icl::IclParser::make_ATTRIBUTE(g_location); }
+AllowBroadcastOnScanInterface {  return icl::IclParser::make_ALLOWBROADCAST(g_location); }
+Alias               {  return icl::IclParser::make_ALIAS(g_location); }
+Enum                {  return icl::IclParser::make_ENUM(g_location); }
+ScanInPort          {  return icl::IclParser::make_SCANINPORT(g_location); }
+AccessTogether         {  return icl::IclParser::make_ACCESSTOGETHER(g_location); }
+ActivePolarity         {  return icl::IclParser::make_ACTIVEPOLARITY(g_location); }
+ActiveSignals          {  return icl::IclParser::make_ACTIVESIGNALS(g_location); }
+AddressValue           {  return icl::IclParser::make_ADDRESSVALUE(g_location); }
+BSDLEntity             {  return icl::IclParser::make_BSDLENTITY(g_location); }
+CaptureSource          {  return icl::IclParser::make_CAPTURESOURCE(g_location); }
+Chain                  {  return icl::IclParser::make_CHAIN(g_location); }
+DefaultLoadValue       {  return icl::IclParser::make_DEFAULTLOADVALUE(g_location); }
+DifferentialInvOf      {  return icl::IclParser::make_DIFFERENTIALINVOF(g_location); }
+Enable                 {  return icl::IclParser::make_ENABLE(g_location); }
+FreqDivider            {  return icl::IclParser::make_FREQDIVIDER(g_location); }
+FreqMultiplier         {  return icl::IclParser::make_FREQMULTIPLIER(g_location); }
+Period                 {  return icl::IclParser::make_PERIOD(g_location); }
+InputPort              {  return icl::IclParser::make_INPUTPORT(g_location); }
+Port                   {  return icl::IclParser::make_PORT(g_location); }
+ReadCallBack           {  return icl::IclParser::make_READCALLBACK(g_location); }
+ReadDataSource         {  return icl::IclParser::make_READDATASOURCE(g_location); }
+RefEnum                {  return icl::IclParser::make_REFENUM(g_location); }
+ResetValue             {  return icl::IclParser::make_RESETVALUE(g_location); }
+STD_1149_1_2001        {  return icl::IclParser::make_STD1149_1_2001(g_location); }
+STD_1149_1_2013        {  return icl::IclParser::make_STD1149_1_2013(g_location); }
+ScanInSource           {  return icl::IclParser::make_SCANINSOURCE(g_location); }
+Source                 {  return icl::IclParser::make_SOURCE(g_location); }
+WriteCallBack          {  return icl::IclParser::make_WRITECALLBACK(g_location); }
+WriteDataSource        {  return icl::IclParser::make_WRITEDATASOURCE(g_location); }
+WriteEnSource          {  return icl::IclParser::make_WRITEENSOURCE(g_location); }
+iApplyEndState         {  return icl::IclParser::make_IAPPLYENDSTATE(g_location); }
+LaunchEdge          {  return icl::IclParser::make_LAUNCHEDGE(g_location); }
+ScanOutPort         {  return icl::IclParser::make_SCANOUTPORT(g_location); }
+ShiftEnPort         {  return icl::IclParser::make_SHIFTENPORT(g_location); }
+CaptureEnPort       {  return icl::IclParser::make_CAPTUREENPORT(g_location); }
+UpdateEnPort        {  return icl::IclParser::make_UPDATEENPORT(g_location); }
+SelectPort          {  return icl::IclParser::make_SELECTPORT(g_location); }
+ResetPort           {  return icl::IclParser::make_RESETPORT(g_location); }
+TCKPort             {  return icl::IclParser::make_TCKPORT(g_location); }
+ClockPort           {  return icl::IclParser::make_CLOCKPORT(g_location); }
+ToClockPort         {  return icl::IclParser::make_TOCLOCKPORT(g_location); }
+TMSPort             {  return icl::IclParser::make_TMSPORT(g_location); }
+TRSTPort            {  return icl::IclParser::make_TRSTPORT(g_location); }
+ToTCKPort           {  return icl::IclParser::make_TOTCKPORT(g_location); }
+ToTMSPort           {  return icl::IclParser::make_TOTMSPORT(g_location); }
+ToTRSTPort          {  return icl::IclParser::make_TOTRSTPORT(g_location); }
+ToShiftEnPort       {  return icl::IclParser::make_TOSHIFTENPORT(g_location); }
+ToCaptureEnPort     {  return icl::IclParser::make_TOCAPTUREENPORT(g_location); }
+ToUpdateEnPort      {  return icl::IclParser::make_TOUPDATEENPORT(g_location); }
+ToResetPort         {  return icl::IclParser::make_TORESETPORT(g_location); }
+ToSelectPort        {  return icl::IclParser::make_TOSELECTPORT(g_location); }
+ToIRSelectPort      {  return icl::IclParser::make_TOIRSELECTPORT(g_location); }
+AddressPort         {  return icl::IclParser::make_ADDRESSPORT(g_location); }
+WriteEnPort         {  return icl::IclParser::make_WRITEENPORT(g_location); }
+ReadEnPort          {  return icl::IclParser::make_READENPORT(g_location); }
+DataInPort          {  return icl::IclParser::make_DATAINPORT(g_location); }
+DataOutPort         {  return icl::IclParser::make_DATAOUTPORT(g_location); }
+ScanInterface       {  return icl::IclParser::make_SCANINTERFACE(g_location); }
+ScanRegister        {  return icl::IclParser::make_SCANREGISTER(g_location); }
+DataRegister        {  return icl::IclParser::make_DATAREGISTER(g_location); }
+DataMux             {  return icl::IclParser::make_DATAMUX(g_location); }
+ClockMux            {  return icl::IclParser::make_CLOCKMUX(g_location); }
+OneHotScanGroup     {  return icl::IclParser::make_ONEHOTSCANGROUP(g_location); }
+OneHotDataGroup     {  return icl::IclParser::make_ONEHOTDATAGROUP(g_location); }
+Instance            {  return icl::IclParser::make_INSTANCE(g_location); }
+ScanMux             {  return icl::IclParser::make_SCANMUX(g_location); }
+SelectedBy          {  return icl::IclParser::make_SELECTEDBY(g_location); }
+LogicSignal         {  return icl::IclParser::make_LOGICSIGNAL(g_location); }
+AccessLink          {  return icl::IclParser::make_ACCESSLINK(g_location); }
+Of                  {  return icl::IclParser::make_OF(g_location); }
+of                   {  return icl::IclParser::make_OFLOWER(g_location); }
+NameSpace           {  return icl::IclParser::make_NAMESPACE(g_location); }
+UseNameSpace        {  return icl::IclParser::make_USENAMESPACE(g_location); }
+LocalParameter      {  return icl::IclParser::make_LOCALPARAMETER(g_location); }
 
-{ID}                { g_location.step();
+{ID}                {
                       return icl::IclParser::make_IDENT(std::string(yytext),
                                                        g_location); }
 
@@ -333,11 +312,11 @@ LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAME
      Each is written as a quoted literal rather than a bracket character class:
      it keeps the escaping unambiguous, and returning an arbitrary character
      code for anything else would trip Bison's symbol_type assertion. */
-"::" { g_location.step(); return icl::IclParser::make_DCOLON(g_location); }
-"{"  { g_location.step(); return icl::IclParser::make_LBRACE(g_location); }
-"}"  { g_location.step(); return icl::IclParser::make_RBRACE(g_location); }
-"["  { g_location.step(); return icl::IclParser::make_LBRACKET(g_location); }
-"]"  { g_location.step(); return icl::IclParser::make_RBRACKET(g_location); }
+"::" {  return icl::IclParser::make_DCOLON(g_location); }
+"{"  {  return icl::IclParser::make_LBRACE(g_location); }
+"}"  {  return icl::IclParser::make_RBRACE(g_location); }
+"["  {  return icl::IclParser::make_LBRACKET(g_location); }
+"]"  {  return icl::IclParser::make_RBRACKET(g_location); }
 
   /* PDL's number spellings, rejected on sight.
      ICL and PDL are different languages with different lexers. ICL has no
@@ -362,7 +341,7 @@ LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAME
      `Period 10 ns;` — a real spelling, with the unit separated — is
      untouched. */
 {DIGIT}(_?{DIGIT})*[xXbB][0-9a-fA-F_xX]+ {
-                      g_location.step();
+
                       driver.SetParseDiagnostic(
                           g_location.begin.line,
                           std::string("'") + yytext +
@@ -375,18 +354,18 @@ LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAME
      and rejecting it is what keeps a PDL file from parsing as a broken ICL
      one instead of being reported as the wrong language. */
 "#"                 {
-                      g_location.step();
+
                       driver.SetParseDiagnostic(
                           g_location.begin.line,
                           "'#' starts a comment in PDL, not ICL — ICL uses //");
                       return icl::IclParser::make_END(g_location);
                     }
 
-";"  { g_location.step(); return icl::IclParser::make_SEMICOLON(g_location); }
-":"  { g_location.step(); return icl::IclParser::make_COLON(g_location); }
-","  { g_location.step(); return icl::IclParser::make_COMMA(g_location); }
-"."  { g_location.step(); return icl::IclParser::make_DOT(g_location); }
-"="  { g_location.step(); return icl::IclParser::make_EQUALS(g_location); }
+";"  {  return icl::IclParser::make_SEMICOLON(g_location); }
+":"  {  return icl::IclParser::make_COLON(g_location); }
+","  {  return icl::IclParser::make_COMMA(g_location); }
+"."  {  return icl::IclParser::make_DOT(g_location); }
+"="  {  return icl::IclParser::make_EQUALS(g_location); }
 
   /* Anything else is a lexical error. Emitting it as a token would make the
      parser see a symbol with no matching rule; crashing is never an acceptable
@@ -398,7 +377,7 @@ LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAME
                       // diagnostic travels with the file being processed.
                       driver.SetParseDiagnostic(
                           g_location.begin.line,
-                          std::string("illegal character '") + yytext[0] + "'");
+                          static_cast<unsigned char>(yytext[0]) >= 128 ? "non-ASCII byte outside ICL string/comment" : std::string("illegal character '") + yytext[0] + "'");
                       return icl::IclParser::make_END(g_location);
                     }
 

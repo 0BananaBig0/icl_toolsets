@@ -83,6 +83,9 @@ struct ParsedValue {
 struct ParsedReference {
   std::string text;
   bool is_scalar = true;
+  size_t depth = 0;
+  int end_line = 1;
+  int end_column = 1;
 };
 
 // Syntactic categories needed by LogicSignal, without evaluating expressions.

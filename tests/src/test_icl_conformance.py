@@ -36,7 +36,7 @@ def main():
                 assert result.returncode == 2, f'expected syntax error (2), got {result.returncode}'
                 assert not result.stdout, 'rejected input produced output'
                 assert result.stderr, 'missing diagnostic'
-        except (AssertionError, subprocess.TimeoutExpired) as error:
+        except (AssertionError, subprocess.TimeoutExpired, UnicodeError) as error:
             failures.append(case['path'])
             print(f"FAIL {case['path']}: {error}")
     print(f'{len(selected) - len(failures)}/{len(selected)} conformance cases passed')

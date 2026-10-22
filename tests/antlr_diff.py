@@ -11,7 +11,7 @@ The script needs two things this repository does not vendor:
     pip install antlr4-python3-runtime==4.7.2
     ICL_REF_DIR=/path/to/icl_parser   (with src/icl_parser/*.py)
 
-Without them it exits 0 and says so. It is a tool for when those are
+Without them it exits 77 (unrun) and says so. It is a tool for when those are
 available, not a gate — the repository's own checks must not depend on
 another project being checked out.
 
@@ -35,6 +35,7 @@ import glob
 import os
 import subprocess
 import sys
+import typing
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -42,8 +43,11 @@ ROOT = os.path.dirname(HERE)
 
 def load_reference(ref_dir):
     sys.path.insert(0, os.path.join(ref_dir, 'src'))
+    # ANTLR4.7.2's generated type-only import predates Python3.13.
+    if sys.version_info >= (3, 13):
+        sys.modules.setdefault('typing.io', typing)
     try:
-        from antlr4 import CommonTokenStream, FileStream  # noqa: F401
+        from antlr4 import CommonTokenStream, FileStream, Token
         from antlr4.error.ErrorListener import ErrorListener
         from icl_parser.iclLexer import iclLexer
         from icl_parser.iclParser import iclParser
@@ -70,18 +74,26 @@ def load_reference(ref_dir):
             pass
 
     def parse(path):
-        inp = FileStream(path, encoding='utf-8')
+        try:
+            inp = FileStream(path, encoding='utf-8')
+        except UnicodeDecodeError as error:
+            return False, str(error)
         lex = iclLexer(inp)
         lex.removeErrorListeners()
         c1 = Collector()
         lex.addErrorListener(c1)
-        parser = iclParser(CommonTokenStream(lex))
+        tokens = CommonTokenStream(lex)
+        tokens.fill()  # Scan the suffix too, even if the start rule stops early.
+        tokens.seek(0)
+        parser = iclParser(tokens)
         parser.removeErrorListeners()
         c2 = Collector()
         parser.addErrorListener(c2)
         parser.icl_source()
         total = c1.n + c2.n
-        return total == 0, (c1.first or c2.first)
+        remaining = tokens.LA(1) != Token.EOF
+        return total == 0 and not remaining, (c1.first or c2.first or
+            ('unconsumed input after icl_source' if remaining else ''))
 
     return parse, None
 
@@ -96,12 +108,12 @@ def main():
         print()
         print('antlr diff: ICL_REF_DIR not set — skipped (needs the reference')
         print('            repository and antlr4-python3-runtime==4.7.2)')
-        return 0
+        return 77
     parse, err = load_reference(args.ref_dir)
     if parse is None:
         print()
         print('antlr diff: reference parser unavailable (%s) — skipped' % err)
-        return 0
+        return 77
 
     binary = os.path.abspath(args.binary)
     files = sorted(glob.glob(os.path.join(ROOT, 'tests', 'cases', '**', '*.icl'),
@@ -119,12 +131,12 @@ def main():
             print('  we-only  %s  (%s)' % (os.path.relpath(path, ROOT), why[:60]))
         else:
             under += 1
-            print('  GAP      %s  (they accept, we reject)' %
+            print('  ref-only %s  (reference accepts, ours rejects)' %
                   os.path.relpath(path, ROOT))
-    print('antlr diff: %d files — agree %d, we-only %d, gaps %d'
+    print('antlr diff: %d files — agree %d, we-only %d, reference-only %d'
           % (len(files), agree, over, under))
-    print('  "we-only" is expected: we accept Origen `#include` and reject')
-    print('  nothing the standard requires. "GAP" is the column that matters.')
+    print('Both difference directions require IEEE/vendor adjudication; the reference')
+    print('grammar does not perform local semantic checks and is not a conformance oracle.')
     return 1 if under else 0
 
 

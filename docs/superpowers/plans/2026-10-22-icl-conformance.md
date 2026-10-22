@@ -74,11 +74,11 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 
 ### Task 8: Cross-cutting lexer, upstream comparison and provenance
 
-- [ ] Close §6.3 lexical coverage including bases, widths, delimiters, strings, comments, whitespace, EOF and recursive limits using regression fixtures before fixes.
-- [ ] Compare every Honza ICL keyword/production and embedded Python input at revision 333f8bc7a54964138ac14a34fde9e942c496436d. Record matchability differences and normative adjudication; import applicable missing cases with source/license.
-- [ ] Fix tests/antlr_diff.py to count lexer errors and require full input consumption; distinguish absent dependencies from success.
-- [ ] Record public Flex/Bison/parser/formatter/LSP test practices and adopted methods; reclassify erroneous old positive tests with evidence rather than disabling them.
-- [ ] Run complete cumulative corpus and grammar checks; commit.
+- [x] Close §6.3 lexical coverage including bases, widths, delimiters, strings, comments, whitespace, EOF and recursive limits using regression fixtures before fixes.
+- [x] Compare every Honza ICL keyword/production and embedded Python input at revision 333f8bc7a54964138ac14a34fde9e942c496436d. Record matchability differences and normative adjudication; import applicable missing cases with source/license.
+- [x] Fix tests/antlr_diff.py to count lexer errors and require full input consumption; distinguish absent dependencies from success.
+- [x] Record public Flex/Bison/parser/formatter/LSP test practices and adopted methods; reclassify erroneous old positive tests with evidence rather than disabling them.
+- [x] Run complete cumulative corpus and grammar checks; commit.
 
 ### Task 9: Shared semantic document and real LSP services
 

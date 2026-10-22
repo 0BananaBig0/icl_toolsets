@@ -1,0 +1,647 @@
+[
+  {
+    "path": "tests/cases/fail/ours/clock_and_callback_invalid_instance.icl",
+    "expected": "reject",
+    "basis": "Preserved invalid corpus; see tests/cases/SOURCES.md and per-block review."
+  },
+  {
+    "path": "tests/cases/fail/ours/default_load_outside_chain.icl",
+    "expected": "reject",
+    "basis": "Preserved invalid corpus; see tests/cases/SOURCES.md and per-block review."
+  },
+  {
+    "path": "tests/cases/fail/upstream/ijtag_Instruments.icl",
+    "expected": "reject",
+    "basis": "Honza333f8bc tests/test_icls/Instruments.icl, original bytes; eight fixed-width constants truncate significant bits contrary to IEEE6.3.8(j)"
+  },
+  {
+    "path": "tests/cases/ours/alias/comments_invalid_hierarchy.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "tests/cases/ours/alias/end_unknown.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "tests/cases/ours/alias/end_unknown_concat.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "tests/cases/ours/alias/end_unknown_inverted.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "tests/cases/ours/alias/ref_duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_Alias.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_DataInPort.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_DataOutPort.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_DataRegister.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_Instance.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_ScanInPort.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_ScanInterface.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_ScanOutPort.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_ScanRegister.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/duplicate_comments.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/known_mixed.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/attribute/unsized.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_in_port/enum_duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_out_port/enable_duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.7 printed 88/PDF 102; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_out_port/enum_duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.7 printed 88/PDF 102; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_out_port/nested_comment.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a7\u00a76.3.7, 6.3.9; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_out_port/source_duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.7 printed 88/PDF 102; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/address_outside_group.icl",
+    "expected": "reject",
+    "basis": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_AddressValue.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_DefaultLoadValue.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_ReadCallBack.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_ReadDataSource.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_RefEnum.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_ResetValue.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_WriteCallBack.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_WriteDataSource.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/duplicate_WriteEnSource.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/read_callback_in_group.icl",
+    "expected": "reject",
+    "basis": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "tests/cases/ours/data_register/selectable_in_group.icl",
+    "expected": "reject",
+    "basis": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "tests/cases/ours/data_register/type_conflict_0.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/type_conflict_1.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/type_conflict_2.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/type_conflict_3.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/type_conflict_4.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/type_conflict_5.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "tests/cases/ours/data_register/write_callback_in_group.icl",
+    "expected": "reject",
+    "basis": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "tests/cases/ours/enum/concat_width_mismatch.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.5.3(a), constructed"
+  },
+  {
+    "path": "tests/cases/ours/enum/duplicate_enum.icl",
+    "expected": "reject",
+    "basis": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "tests/cases/ours/enum/duplicate_symbol.icl",
+    "expected": "reject",
+    "basis": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.7, 6.5.3(b,c)"
+  },
+  {
+    "path": "tests/cases/ours/enum/width_mismatch.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.5.3(a), constructed"
+  },
+  {
+    "path": "tests/cases/ours/enum/zero_width.icl",
+    "expected": "reject",
+    "basis": "Constructed from IEEE 1687-2014 \u00a7\u00a76.3.8, 6.3.12, 6.5.3"
+  },
+  {
+    "path": "tests/cases/ours/instance/address_outside.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.4.7; ours"
+  },
+  {
+    "path": "tests/cases/ours/instance/duplicate_address.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.4.7; ours"
+  },
+  {
+    "path": "tests/cases/ours/instance/duplicate_attributes.icl",
+    "expected": "reject",
+    "basis": "Original constructed repeatability case, duplicate name forbidden by IEEE section6.5.5(a)"
+  },
+  {
+    "path": "tests/cases/ours/instance/input_concat_invalid_hierarchy.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "tests/cases/ours/instance/unsized_parameter_concat.icl",
+    "expected": "reject",
+    "basis": "Original constructed Instance case, invalid unsized concatenation per section 6.5.4"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_alias_comment_after.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_alias_comment_before.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_alias_newline.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_alias_space_after.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_alias_space_before.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_deep_logic.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_deep_source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_source_comment_after.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_source_comment_before.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_source_newline.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_source_space_after.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/hier_source_space_before.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.3.10.5; constructed boundary"
+  },
+  {
+    "path": "tests/cases/ours/lexical/nested_comment.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "tests/cases/ours/lexical/null_comment.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "tests/cases/ours/lexical/null_line_comment.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "tests/cases/ours/lexical/null_string.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.5-6.3.9 lexical boundaries; empty document compatibility; string escapes follow normative6.3.9 prose"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_0.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_1.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_2.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_3.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_4.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_5.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_6.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/lexical/number_invalid_7.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.8, significant truncation/base/digit boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/one_hot_data_group/concat_invalid_hierarchy.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "tests/cases/ours/one_hot_data_group/selectable.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.4.15; ours"
+  },
+  {
+    "path": "tests/cases/ours/one_hot_scan_group/concat_invalid_hierarchy.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "tests/cases/ours/parameter/circular.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/duplicate_comments.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/instance_duplicate.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/known_mixed.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/known_unsized.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/nested_width_comment.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.4-6.3.8 numeric token whitespace/comment boundaries; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/self.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/sized_cycle.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/spaced_zero_width.icl",
+    "expected": "reject",
+    "basis": "IEEE6.3.4(11-12),6.3.5 sized number is size plus UNSIZED_* token; whitespace/comments are separators"
+  },
+  {
+    "path": "tests/cases/ours/parameter/unsized_based_concat.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/unsized_concat.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/parameter/unsized_list.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
+  },
+  {
+    "path": "tests/cases/ours/scan_out_port/duplicate_Enable.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "tests/cases/ours/scan_out_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "tests/cases/ours/scan_register/comments_invalid_hierarchy.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "tests/cases/ours/scan_register/duplicate_CaptureSource.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "tests/cases/ours/scan_register/duplicate_DefaultLoadValue.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "tests/cases/ours/scan_register/duplicate_RefEnum.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "tests/cases/ours/scan_register/duplicate_ResetValue.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "tests/cases/ours/scan_register/duplicate_ScanInSource.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "tests/cases/ours/to_capture_en_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/FreqDivider.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/FreqMultiplier.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/differential_divider.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/differential_multiplier.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/differential_source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/duplicate_differential.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/duplicate_divider.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/duplicate_multiplier.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/duplicate_period.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/period_differential.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/period_divider.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/period_multiplier.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_clock_port/period_source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_reset_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_reset_port/repeat_polarity.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_select_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_shift_en_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_tms_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "Tessent Shell Reference v2023.4 Command_Totmsport_id112d7e41.html: at most one Source"
+  },
+  {
+    "path": "tests/cases/ours/to_trst_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "tests/cases/ours/to_update_en_port/duplicate_Source.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "tests/cases/standard/lexical/hex_overflow.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "tests/cases/standard/parameter/type_error.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4 printed139/PDF153, completed with Module wrapper"
+  },
+  {
+    "path": "tests/cases/standard/parameter/unsized_error.icl",
+    "expected": "reject",
+    "basis": "IEEE 1687-2014 section 6.5.4 printed139/PDF153, completed with Module wrapper"
+  },
+  {
+    "path": "tests/cases/upstream/lexical/number_api_27.icl",
+    "expected": "reject",
+    "basis": "Honza333f8bc tests/test_icl_number.py:116 IclNumber(\"'hF\", 'hex', 2); supplied API base/width completed into ICL literal, original rejected spellings retained"
+  }
+]

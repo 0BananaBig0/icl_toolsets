@@ -547,6 +547,7 @@ check check-dynamic: unitcheck
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/src/test_icl_conformance.py --binary $(BIN)
+	@python3 tests/tests/test_antlr_diff.py
 	@python3 tests/golden_test.py --binary $(BIN)
 	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)

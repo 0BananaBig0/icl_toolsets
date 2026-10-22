@@ -382,3 +382,17 @@ PortGroup is retained as a legacy LiU P1687 Listing8 form (alongside the existin
 ScanMux and LaunchEdge compatibility), not attributed to Tessent or IEEE2014.
 The real merged user files remain byte-identical. New source-specific fixtures and
 precise decisions are indexed by cases/conformance.json.
+
+## Task 8 lexical and upstream audit
+
+See `docs/honza-icl-comparison.md` for the pinned revision, all268 production/fragment
+mappings, keyword inventory, original input hashes and all30 distinct numeric API
+constructor inputs. The original `ijtag_Instruments.icl` is now a negative under
+`fail/upstream`: eight values overflow their declared widths under IEEE6.3.8(j).
+`pass/ours/honza_instruments_corrected.icl` changes only those widths. Upstream
+license is retained in `upstream/LICENSE_Honza255`.
+
+Standard lexical fixtures complete §§6.3.8–10 examples with declarations and Module
+wrappers. Constructed byte, delimiter, overflow and hierarchical adjacency cases
+cover boundaries. Dot-adjacent comments and multi-instance paths outside Alias are
+invalid under §6.3.10.5; prior synthetic positives are preserved as negatives.

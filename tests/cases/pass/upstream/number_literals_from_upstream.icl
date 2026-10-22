@@ -1,4 +1,4 @@
-// Every literal spelling that tests/test_icl_number.py in Honza255/icl_parser
+// Representative literal spellings from tests/test_icl_number.py in Honza255/icl_parser
 // feeds to IclNumber and expects to be accepted.
 //
 // That test calls IclNumber(text, base, width) directly, so it supplies the
