@@ -52,6 +52,9 @@ struct ParsedValue {
       : text(std::move(text)), width(width), kind(kind) {}
   std::string text;
   size_t width = 0;
+  // Literal magnitude only; compound values require later elaboration.
+  std::optional<size_t> integer;
+  bool inverted = false;
   ValueKind kind = ValueKind::kNumber;
   bool has_unknown = false;
   bool unsized = false;
@@ -60,6 +63,7 @@ struct ParsedValue {
   std::vector<std::string> dependencies;
 
   void Append(const std::string& gap, const ParsedValue& value) {
+    integer.reset();
     if (atoms.empty()) atoms.push_back({kind, unsized, reference});
     if (value.atoms.empty()) {
       atoms.push_back({value.kind, value.unsized, value.reference});

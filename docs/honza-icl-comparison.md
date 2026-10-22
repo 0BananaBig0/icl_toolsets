@@ -358,3 +358,15 @@ remain in the conformance manifest and the adjudication file. Local-only forms
 continue to exercise the documented keyword identifiers, reference lexer gaps,
 IEEE examples and explicitly classified extensions. The raw output is ignored
 at `build/renewed-differential.log`.
+
+
+## Literal parameter-width follow-up at97bb610
+
+With the bounded literal/alias default checks, the comparison covers2,324 files:
+1,889 agreements,270 local-only acceptances and165 reference-only acceptances.
+All165 rejections have maintained source-based adjudications; none is a classified
+positive. The17 additions since the block audit exercise local numeric defaults,
+forward aliases, zero widths, significant-bit truncation and cycles. The reference
+grammar alone does not perform these value checks. The explicitly unresolved
+arithmetic-width example is preserved outside positive conformance classification.
+No keyword or production mapping changed. Log: `build/parameter-width-differential.log`.

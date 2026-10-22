@@ -6,6 +6,13 @@ in [honza-icl-comparison.md](honza-icl-comparison.md). This report records actua
 verification; it does not claim complete hardware elaboration or formal proof of
 all possible inputs.
 
+## Literal parameter-width follow-up
+
+[Literal parameter-width validation](parameter-width-validation.md) fixes the
+recorded forward-alias overflow and promotes its diagnostic to an ordinary test.
+Its scope, remaining elaboration limits and fresh verification supersede the
+historical expected-failure description below.
+
 ## Latest block-coverage audit
 
 See [block-coverage-audit.md](block-coverage-audit.md) for the renewed sequential

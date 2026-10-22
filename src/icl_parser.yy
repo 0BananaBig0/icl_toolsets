@@ -491,6 +491,8 @@ inverted_number
       }
       $$ = std::move($3);
       $$.text = $1 + $2 + $$.text;
+      $$.inverted = true;
+      $$.integer.reset();
     }
   ;
 
@@ -528,8 +530,8 @@ integer_expr
 integer_arg
   : INTEGER token_gap
     {
-      $$ = ParsedValue{$1 + $2};
-      $$.unsized = true;
+      $$ = driver.NumberLiteral($1, @1.begin.line);
+      $$.text += $2;
     }
   | PARAMREF token_gap
     {

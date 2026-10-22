@@ -21,7 +21,24 @@ void IclScanEnd();
 
 namespace icl {
 namespace {
-// Check only literal overflow; parameter widths still require elaboration.
+// Width metadata is bounded; an unrepresentable/unknown value stays deferred.
+std::optional<size_t> LiteralInteger(const std::string& digits, char base) {
+  const size_t radix = base == 'd' ? 10 : base == 'b' ? 2 : 16;
+  size_t value = 0;
+  for (unsigned char raw : digits) {
+    if (raw == '_') continue;
+    const char ch = static_cast<char>(std::tolower(raw));
+    if (ch == 'x') return std::nullopt;
+    const size_t digit = ch <= '9' ? ch - '0' : ch - 'a' + 10;
+    if (value > (std::numeric_limits<size_t>::max() - digit) / radix) {
+      return std::nullopt;
+    }
+    value = value * radix + digit;
+  }
+  return value;
+}
+
+// Literal overflow is independent of formatting and shared by both frontends.
 bool FitsWidth(const std::string& digits, char base, size_t width) {
   if (base != 'd') {
     const size_t step = base == 'b' ? 1 : 4;
@@ -133,6 +150,15 @@ ParsedValue IclDriver::NumberLiteral(const std::string& source, int line) {
     }
   }
   const auto quote = text.find('\'');
+  if (quote == std::string::npos) {
+    value.integer = LiteralInteger(text, 'd');
+    value.unsized = true;
+    return value;
+  }
+  const char base = static_cast<char>(
+      std::tolower(static_cast<unsigned char>(text[quote + 1])));
+  const std::string digits = text.substr(quote + 2);
+  value.integer = LiteralInteger(digits, base);
   if (quote && text[0] != '$' &&
       text.substr(0, quote).find_first_not_of("0_") == std::string::npos) {
     SetParseDiagnostic(line, "number width must be nonzero");
@@ -141,33 +167,21 @@ ParsedValue IclDriver::NumberLiteral(const std::string& source, int line) {
       text.find_first_of("xX", text.find('\'') + 2) != std::string::npos;
   value.unsized = text[0] == '\'';
   if (text[0] == '$') {
-    value.dependencies.push_back(text.substr(1, text.find('\'') - 1));
+    value.dependencies.push_back(text.substr(1, quote - 1));
+    deferred_widths_.push_back({value.dependencies.back(), digits, base, line});
   }
-  // Parameter widths need elaboration; fixed widths can be checked locally.
+  // Parameter defaults are checked at module close, after forward references.
   if (text[0] == '$' || text[0] == '\'') return value;
-  for (char ch : text) {
-    if (ch == '\'') break;
-    if (ch == '_') continue;
-    const auto digit = static_cast<size_t>(ch - '0');
-    if (value.width > (std::numeric_limits<size_t>::max() - digit) / 10) {
-      value.width = 0;
-      return value;
-    }
-    value.width = value.width * 10 + digit;
-  }
-  if (value.width &&
-      !FitsWidth(text.substr(quote + 2),
-                 static_cast<char>(
-                     std::tolower(static_cast<unsigned char>(text[quote + 1]))),
-                 value.width)) {
+  value.width = LiteralInteger(text.substr(0, quote), 'd').value_or(0);
+  if (value.width && !FitsWidth(digits, base, value.width)) {
     SetParseDiagnostic(line, "sized number truncates significant bits");
   }
   return value;
 }
 
-// Resolve local default types without evaluating values or instantiating
-// modules. Kahn's traversal handles forward references and long dependency
-// chains in O(V+E).
+// Resolve local default types and literal/alias integers without instantiating
+// modules or evaluating compound expressions. Kahn's traversal handles forward
+// references and long dependency chains in O(V+E).
 void IclDriver::CheckNamedValues(const std::vector<AstNode*>& body,
                                  bool module) {
   std::vector<const AstStatement*> parameters;
@@ -195,6 +209,7 @@ void IclDriver::CheckNamedValues(const std::vector<AstNode*>& body,
   std::vector<std::vector<size_t>> users(count);
   std::vector<ValueAtom> types(count, {ValueKind::kUnknown, false, ""});
   std::vector<size_t> ready;
+  std::vector<std::optional<size_t>> integers(count);
   for (size_t i = 0; i < count; ++i) {
     for (const auto& dep : parameters[i]->value()->dependencies) {
       const auto found = names.find(dep);
@@ -208,6 +223,11 @@ void IclDriver::CheckNamedValues(const std::vector<AstNode*>& body,
   for (size_t next = 0; next < ready.size(); ++next) {
     const size_t i = ready[next];
     const auto& value = *parameters[i]->value();
+    if (value.atoms.empty() && !value.inverted) {
+      integers[i] = value.integer;
+      const auto found = names.find(value.reference);
+      if (module && found != names.end()) integers[i] = integers[found->second];
+    }
     auto atoms = value.atoms;
     if (atoms.empty()) {
       atoms.push_back({value.kind, value.unsized, value.reference});
@@ -234,6 +254,19 @@ void IclDriver::CheckNamedValues(const std::vector<AstNode*>& body,
     types[i] = result;
     for (size_t user : users[i]) {
       if (!--pending[user]) ready.push_back(user);
+    }
+  }
+  if (module) {
+    for (const auto& literal : deferred_widths_) {
+      const auto found = names.find(literal.parameter);
+      if (found == names.end() || !integers[found->second]) continue;
+      const size_t width = *integers[found->second];
+      if (!width) {
+        SetParseDiagnostic(literal.line, "number width must be nonzero");
+      } else if (!FitsWidth(literal.digits, literal.base, width)) {
+        SetParseDiagnostic(literal.line,
+                           "sized number truncates significant bits");
+      }
     }
   }
   if (ready.size() != count) {

@@ -190,7 +190,9 @@ from Tessent and other existing ICL sources. Details are recorded in the
 [conformance review](docs/icl-conformance-review.md).
 
 Formatting and local diagnostics do not perform full hardware connectivity or
-width elaboration, execute PDL, or replace vendor DRC tools. Integer expressions
+width elaboration, execute PDL, or replace vendor DRC tools. They check sized
+literals against locally resolvable numeric Parameter/LocalParameter defaults
+and alias chains, including forward references. Integer expressions
 are preserved rather than evaluated. Generic AccessLink payloads are treated as
 opaque content. Formatting does not align assignment operators into columns.
 

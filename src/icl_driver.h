@@ -167,6 +167,7 @@ class IclDriver {
   }
   void EndModule() {
     pending_module_ = nullptr;
+    deferred_widths_.clear();
     enum_names_.clear();
     access_link_names_.clear();
   }
@@ -217,6 +218,13 @@ class IclDriver {
   std::string AstToString() const;
 
  private:
+  struct DeferredWidth {
+    std::string parameter;
+    std::string digits;
+    char base;
+    int line;
+  };
+  std::vector<DeferredWidth> deferred_widths_;
   AstBlock* pending_module_ = nullptr;
   size_t scan_offset_ = 0;
   AstUnit unit_;

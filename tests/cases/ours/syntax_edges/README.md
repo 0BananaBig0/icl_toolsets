@@ -50,18 +50,16 @@ new portability guarantee. The previous ruling is recorded in
 [`docs/icl-conformance-review.md`](../../../../docs/icl-conformance-review.md).
 An apostrophe and its base letter remain indivisible in both interpretations.
 
-## Separate known semantic failure
+## Parameter-width diagnostic regression
 
 [`../diagnostics/parameter_width_overflow.icl`](../diagnostics/parameter_width_overflow.icl)
-reproduces deferred parameter-width elaboration: `WIDTH` resolves through `BITS`
-to 8, but `$WIDTH'H1_FF` is accepted. IEEE §6.3.8(j), printed 64/PDF 78, requires
-rejection of its ninth set bit. The existing LSP diagnostics suite records this
-as an explicit `expectedFailure`; it is **not** a passing conformance input.
-If diagnostics become available, unittest reports an unexpected success so the
-limitation can be removed and the fixture promoted into the conformance manifest.
-An unmarked companion test verifies publication/version of the same document so
-a crash or missing response cannot be hidden by the expected-failure annotation.
-The fixed-width counterpart is `parameter/literal_width_overflow.icl`.
+originally reproduced a missing check: WIDTH resolves through BITS to8, while
+`$WIDTH'H1_FF` needs nine bits. The shared driver now resolves literal default
+values and alias chains, so this is an ordinary negative conformance fixture.
+The LSP regression verifies the diagnostic and clears it after BITS changes to9;
+there is no expected-failure annotation. The fixed-width counterpart remains
+`parameter/literal_width_overflow.icl`. Compound/instance-dependent widths still
+require elaboration; see [the width fixtures](../parameter_widths/README.md).
 
 ## Run
 

@@ -15,6 +15,7 @@ usage, editor setup, supported features and practical limitations.
 | [Independent syntax checks](icl-syntax-properties.md) | IEEE-derived metamorphic acceptance checks and live diagnostic verification. |
 | [Clang methods and ICL status](clang-testing-and-icl-status.md) | LLVM comparison, systematic identifier contexts and fresh reference-parser results. |
 | [Testing practices](icl-testing-practices.md) | Public parser, formatter, LSP, Flex and Bison practices used here. |
+| [Literal parameter widths](parameter-width-validation.md) | Shared local width diagnostics, bounds and regression evidence. |
 | [Verification and limits](icl-verification.md) | Dated correctness, coverage, editor and performance evidence, including unmet gates. |
 
 ## Fixtures and editor examples

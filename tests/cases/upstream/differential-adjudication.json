@@ -230,6 +230,11 @@
     "basis": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
   },
   {
+    "path": "tests/cases/ours/diagnostics/parameter_width_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), printed63\u201364/PDF77\u201378; forward default width resolves to8"
+  },
+  {
     "path": "tests/cases/ours/diagnostics/semantic_crlf.icl",
     "expected": "reject",
     "basis": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
@@ -510,6 +515,81 @@
     "basis": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
   },
   {
+    "path": "tests/cases/ours/parameter_widths/based_width.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/binary_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/binary_width_alias.icl",
+    "expected": "reject",
+    "basis": "Constructed independent review probe: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; literal/alias width boundaries and conservative deferral"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/chained_based_width.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/decimal_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/forward_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/forward_zero.icl",
+    "expected": "reject",
+    "basis": "Constructed independent review probe: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; literal/alias width boundaries and conservative deferral"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/hex_width_alias.icl",
+    "expected": "reject",
+    "basis": "Constructed independent review probe: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; literal/alias width boundaries and conservative deferral"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/large_decimal_payload.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/local_cycle.icl",
+    "expected": "reject",
+    "basis": "Constructed independent review probe: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; literal/alias width boundaries and conservative deferral"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/nested_override.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/parenthesized_alias.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/partial_nibble_overflow.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/unsized_based_width.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
+    "path": "tests/cases/ours/parameter_widths/zero_width.icl",
+    "expected": "reject",
+    "basis": "Constructed: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; bounded local literal/alias default resolution (compound and external widths deferred)"
+  },
+  {
     "path": "tests/cases/ours/scan_out_port/duplicate_Enable.icl",
     "expected": "reject",
     "basis": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
@@ -723,6 +803,11 @@
     "path": "tests/cases/standard/lexical/hex_overflow.icl",
     "expected": "reject",
     "basis": "IEEE1687-2014 section6.3.8 printed63/PDF77 examples1-2; added Module/Parameter wrapper"
+  },
+  {
+    "path": "tests/cases/standard/lexical/parameter_size_truncates.icl",
+    "expected": "reject",
+    "basis": "IEEE1687-2014 \u00a76.3.8 Example2, printed63/PDF77; fragment completed with Module/Attribute wrapper"
   },
   {
     "path": "tests/cases/standard/parameter/type_error.icl",

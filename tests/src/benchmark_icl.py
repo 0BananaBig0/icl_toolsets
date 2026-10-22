@@ -26,6 +26,14 @@ def inputs():
         path.write_text('Module M { Parameter P = 1; DataInPort p[' + '+'.join(['$P']*size) + ':0]; }\n')
         paths.append(path)
     for size in (1000, 4000, 16000):
+        path = generated / f'parameter_aliases_{size}.icl'
+        lines = [f'Module BenchmarkParameterAliases{size} {{']
+        lines.extend(f'Parameter W{i} = $W{i + 1};' for i in range(size - 1))
+        lines.extend([f'LocalParameter W{size - 1} = 8;',
+                      "Attribute value = $W0'hFF;", '}'])
+        path.write_text('\n'.join(lines) + '\n')
+        paths.append(path)
+    for size in (1000, 4000, 16000):
         path = generated/f'decimal_digits_{size}.icl'
         # All9s is near a width boundary; avoids the generous-width fast path.
         path.write_text(f"Module M {{ Attribute value = {int(size*3.322)+1}'d" + '9'*size + '; }\n')

@@ -1,5 +1,9 @@
 # Block coverage audit — 2026-10-22
 
+The subsequent [literal parameter-width fix](parameter-width-validation.md)
+resolves the recorded alias-chain diagnostic gap; the results below are the
+audit snapshot before that production change.
+
 Baseline: `3612110`. This pass reuses the source-backed rulings in
 [the conformance review](icl-conformance-review.md), checks the classified inputs
 in order, and repairs weaknesses in the test evidence. It changes no production
