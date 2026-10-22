@@ -10462,5 +10462,83 @@
     "block": "lexical",
     "accept": true,
     "source": "IEEE1687-2014 \u00a76.3.8; constructed width beyond host integer representation; width-dependent elaboration unverified"
+  },
+  {
+    "path": "cases/ours/enum/logical_inversion.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.8, \u00a76.5.3: constructed invalid numeric inversion"
+  },
+  {
+    "path": "cases/ours/data_out_port/newline_before_dot.icl",
+    "block": "data_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3.6: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/data_register/write_enable_left_logical.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/data_register/write_enable_right_logical.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/unknown_boolean_left.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/unknown_bit_left.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/unknown_bit_right.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/concat_number_signal.icl",
+    "block": "logic_signal",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/unknown_concat_left.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/unknown_concat_right.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/logic_signal/arithmetic_rhs_signal.icl",
+    "block": "logic_signal",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.10: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/lexical/bom_after_space.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3: constructed condition-path case"
+  },
+  {
+    "path": "cases/ours/lexical/bom_after_newline.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.3: constructed condition-path case"
   }
 ]

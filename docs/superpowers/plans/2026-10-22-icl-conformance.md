@@ -105,4 +105,21 @@ Files: tests/coverage.py, tests/grammar_coverage.py, new tests/tests/test_covera
 
 ## Execution record
 
+### Follow-up: remaining acceptance evidence
+
+The repeated review request resumes the existing approved scope at `80fec0f`.
+Completed normative block reviews and reference inventories remain evidence;
+do not restart their implementation. Preserve all generated outputs under ignored
+build directories and keep ICL and PDL separate.
+
+- [x] Recheck Enum, then DataOutPort and subsequent blocks against the existing
+  source-backed inventory; investigate only discrepancies or uncovered logic.
+- [x] Probe GCC condition coverage to distinguish actual handwritten decisions
+  from exception cleanup edges. Add tested reporting only if the probe supplies
+  reliable source locations. Keep the original raw coverage visible.
+- [x] Add classified inputs for reachable missing handwritten paths, fix confirmed
+  bugs with RED→GREEN, and record unreachable/compiler-generated mappings honestly.
+- [x] Correct stale review records, run affected and full checks, obtain independent
+  review of new code, install the resulting pair and print both coc configurations.
+
 Proceed approved implementation; the later LSP clarification explicitly expands its deliverable. Execution stays inline for sequential block ownership. Record progress and decisions in docs/icl-conformance-review.md and the plan ledger; do not stop between ordinary tasks.

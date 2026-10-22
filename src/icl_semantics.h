@@ -27,6 +27,7 @@ struct NameUse {
   bool module_type = false;
   bool parameter = false;
   int enum_owner = -1;
+  bool enum_or_signal = false;
   std::vector<std::string> enum_signal;
   std::string name_space;
 };

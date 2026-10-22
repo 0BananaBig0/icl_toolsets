@@ -199,6 +199,11 @@ void ParsedDocument::Build() {
       use.parameter = param;
       if (override_lhs) use.instance = parent;
       if (kind == "DefaultLoadValue" || kind == "ResetValue" || kind == "iApplyEndState") use.enum_owner = parent;
+      // 6.4.8(t): a bare CaptureSource name prefers RefEnum, then a signal.
+      if (kind == "CaptureSource" && i == first + 1 && header_end == first + 3) {
+        use.enum_owner = parent;
+        use.enum_or_signal = true;
+      }
       if (i > first + 1 && (tokens[i - 1].text == "==" || tokens[i - 1].text == "!=") && !uses.empty())
         use.enum_signal = uses.back().path;
       if (i >= 2 && tokens[i - 1].text == ".") {
@@ -213,7 +218,8 @@ void ParsedDocument::Build() {
     if (block) {
       // Generic AccessLink payload has no child AST; it remains opaque.
       const int child_parent = own >= 0 ? own : parent;
-      const std::string child_context = ((kind == "ScanInterface" && own < 0) || kind == "ActiveSignals")
+      const std::string child_context = ((kind == "ScanInterface" && own < 0) ||
+          kind == "ActiveSignals" || kind == "PortGroup")
           ? "ReferenceBody" : kind;
       for (const auto* child : block->body()) walk(child, module, child_parent, use_ns, child_context);
     }
@@ -280,7 +286,10 @@ SymbolRef SemanticWorkspace::Resolve(const ParsedDocument& doc, const NameUse& u
   SymbolRef scope{&doc, static_cast<size_t>(use.module)};
   if (use.instance >= 0) scope = Implementation({&doc, static_cast<size_t>(use.instance)});
   if (use.parameter) return Member(scope, use.path.front(), true);
-  if (use.enum_owner >= 0) return EnumMember({&doc, static_cast<size_t>(use.enum_owner)}, use.path.back());
+  if (use.enum_owner >= 0) {
+    const auto member = EnumMember({&doc, static_cast<size_t>(use.enum_owner)}, use.path.back());
+    if (member || !use.enum_or_signal) return member;
+  }
   if (!use.enum_signal.empty()) {
     NameUse signal{{}, use.enum_signal, use.module};
     return EnumMember(Resolve(doc, signal), use.path.back());

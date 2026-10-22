@@ -139,6 +139,29 @@ class LanguageServices(unittest.TestCase):
         self.main = (CASES / name).read_text()
         self.assertEqual(self.open(self.uri, self.main, 2)['params']['diagnostics'], [])
 
+    def test_port_group_references_with_comments(self):
+        self.use_fixture('port_groups.icl')
+        for name in ('Source', 'input'):
+            for occurrence in (1, 2):
+                with self.subTest(name=name, occurrence=occurrence):
+                    self.expect_location(self.query('definition', name, occurrence),
+                                         self.uri, self.main, 'DataInPort ' + name, offset=11)
+            refs = self.query('references', name, context={'includeDeclaration': True})
+            self.assertEqual(len(refs), 3, refs)
+
+    def test_capture_enum_precedence_and_signal_fallback(self):
+        self.use_fixture('capture_enum.icl')
+        self.expect_location(self.query('definition', 'CaptureSource ON', offset=14),
+                             self.uri, self.main, "ON = 1'b1", length=2)
+        self.expect_location(self.query('definition', 'CaptureSource input', offset=14),
+                             self.uri, self.main, 'DataInPort input', offset=11)
+        for occurrence in (1, 2, 3):
+            self.expect_location(self.query('definition', 'CaptureSource ON', occurrence, offset=14),
+                                 self.uri, self.main, 'DataInPort ON', offset=11)
+        self.expect_location(self.query('definition', 'child.output', offset=7),
+                             self.lib_uri, self.lib, 'DataOutPort output', offset=12)
+        self.assertEqual(len(self.query('references', "ON = 1'b1", context={'includeDeclaration': True})), 2)
+
     def test_enum_context_resolves_same_spelling(self):
         self.use_fixture('enums.icl')
         self.expect_location(self.query('definition', 'DefaultLoadValue ON', offset=18), self.uri, self.main, "ON = 1'b1", length=2)

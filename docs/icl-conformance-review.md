@@ -33,13 +33,13 @@ Evidence: §6.5.3, printed 137–138 / PDF 151–152; dependencies §§6.3.7–8
   Tessent fixture was modified. Tessent's Enum example contains overflowing
   constants; the derived test explicitly records corrections to those values.
 
-## Open work
+## Review status
 
-Enum, all 26 port blocks, registers, LogicSignal and the three mux blocks have
-syntax/local-property checks. OneHot groups and ScanInterface/Chain also have verified syntax/local checks; subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
-resolution, complete LSP services, coverage accounting, performance measurement,
-whole-change review and final installation remain pending; no full-conformance
-claim is made by this record.
+All planned syntax blocks, the lexer, shared AST/LSP services, upstream
+comparison and installation have been reviewed and tested as recorded below.
+The follow-up closes additional decision-path and navigation gaps; exact coverage
+limits remain in [icl-verification.md](icl-verification.md). This is evidence of
+the tested language behavior, not a claim of full hardware elaboration.
 
 ## DataOutPort — syntax and local cardinality verified
 
@@ -468,3 +468,38 @@ pass. Static runtime libraries are absent. Real Vim9.2/coc0.0.82 integration pas
 mapping artifacts, test commands, reference comparison, performance costs and
 remaining language/toolchain limits. [Editor configurations](editor/coc-lsp.json)
 and [optional CLI adapter](editor/coc-cli.json) are printed by installation.
+
+## Follow-up: decision paths and semantic references
+
+Reused the completed normative block inventory and reviewed remaining conditions
+in order: Enum, DataOutPort, DataRegister, LogicSignal, lexical rules. Thirteen
+constructed inputs now cover invalid logical numeric inversion, double WriteEnSource
+inversion, a newline before a hierarchy dot, both sides of unknown propagation,
+numeric/signal concatenation, noninteger arithmetic RHS, and displaced BOMs.
+Each classified block passed before moving on. No parser behavior change was needed.
+
+GCC 16.2.1 masking MC/DC (`-fcondition-coverage`, `gcov -g`) improved the measured
+parser conditions from 93/106 to 105/106 and scanner conditions from 23/26 to
+25/26. The remaining parser mapping is the aggregate construction on line 662,
+which has no handwritten condition. The scanner miss is the null-buffer branch
+of `icl_scan_end`; normal callers always pair scanning and cleanup. Retained both
+in the denominator. Ruling: use native gcov reports, not a custom condition reader;
+compiler-inserted conditions prevent treating this as a pure source-decision gate.
+Raw line/branch coverage and its existing thresholds remain unchanged.
+
+Two navigation regressions were reproduced before shared semantic-layer fixes:
+PortGroup member references disappeared when comments changed the AST layout;
+CaptureSource selected a same-named signal instead of the RefEnum member required
+by IEEE 1687-2014 §6.4.8(t). Tests cover commented/inline PortGroup names, keyword
+identifiers, enum precedence, signal fallback, absent RefEnum, indexed,
+concatenated and hierarchical signal operands, plus reference counts. The latter
+forms must not be reinterpreted as enum symbols. The focused LSP suite passes39/39.
+ICL and PDL definitions remain separate; no additional parser or grammar was added.
+
+Final follow-up verification: `make check-dynamic BISON=/usr/bin/bison` passed,
+1757 classified cases and39 semantic LSP tests; all334 Bison productions and119
+Flex rules reached over2033 input files. Independent review found no functional
+issues and corrected the new standard citations. `make coverage` retained its
+nonzero threshold result (98.3% lines,59.1% raw branches). Real Vim/coc checks
+passed using the prepared isolated configuration. Reinstallation and installed
+1757-case/39-test checks passed; executable bytes match the tested build.

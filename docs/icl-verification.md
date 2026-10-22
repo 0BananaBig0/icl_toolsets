@@ -8,15 +8,15 @@ all possible inputs.
 
 ## Functional checks
 
-`make check-dynamic BISON=/usr/bin/bison` passed: 1744 classified conformance
+`make check-dynamic BISON=/usr/bin/bison` passed: 1757 classified conformance
 inputs, 570 regression assertions, 714 block cases, 13 golden cases, 74 CLI and
-62 original LSP assertions, 35 semantic LSP tests, 3 protocol tests with malformed
+62 original LSP assertions, 39 semantic LSP tests, 3 protocol tests with malformed
 input subcases, 54 C++ unit assertions, whitespace/fuzz/language-separation checks,
-and coverage-reader/build-graph tests. Two additional semantic tests for empty-file
-completion and missing enum members passed in the focused suite, now **37/37**.
+and coverage-reader/build-graph tests. Follow-up cases cover PortGroup comments
+and CaptureSource enum precedence and signal fallback.
 
 `make gramcov` reached **334/334 Bison productions** and **119/119 Flex rules**
-over **2018 files**. Production IDs are counted separately even if their actions
+over **2033 files**. Production IDs are counted separately even if their actions
 share a source line. Generated Bison/Flex implementation coverage is excluded.
 All fixtures remain classified under `tests/cases`, with generated scalability
 inputs reproducible under `tests/generated/ours/performance`.
@@ -55,11 +55,11 @@ exception and cleanup edges and are not a count of handwritten decisions alone.
 
 | Measured source | Lines | Raw branches |
 |---|---:|---:|
-| All handwritten sources and headers | 2229/2269 (98.2%) | 3756/6406 (58.6%) |
-| `src/icl_parser.yy` | 418/418 (100%) | 827/1582 (52.3%) |
-| `src/icl_lexer.l` | 206/208 (99.0%) | 74/140 (52.9%) |
+| All handwritten sources and headers | 2236/2275 (98.3%) | 3796/6426 (59.1%) |
+| `src/icl_parser.yy` | 418/418 (100%) | 843/1582 (53.3%) |
+| `src/icl_lexer.l` | 206/208 (99.0%) | 78/140 (55.7%) |
 
-The final coverage run included all 37 semantic LSP tests. Its nonzero status is
+The final coverage run included all 39 semantic LSP tests. Its nonzero status is
 the threshold failure, not a failed functional assertion.
 
 Remaining mapped line misses include the static property-map initializer in
@@ -67,9 +67,34 @@ Remaining mapped line misses include the static property-map initializer in
 definition, and two lines at the `icl_scan_generic` function entry. The scanner
 function is called and its body executes; gcov maps entry/reset counts differently.
 These are retained in the denominator. Branch gaps also include defensive guards
-and valid input combinations not independently exercised. The final enum-member
-fallback return also remains uncovered. Rule coverage is not
+and valid input combinations not independently exercised. The enum-member fallback return is now covered by the CaptureSource tests. Rule coverage is not
 evidence that every semantic-action branch executed.
+
+## Condition coverage follow-up
+
+A separate GCC 16.2.1 probe uses native masking MC/DC to locate missing condition
+outcomes. Thirteen maintained inputs improve `icl_parser.yy` from93/106 to105/106
+and `icl_lexer.l` from23/26 to25/26. The remaining parser condition maps to aggregate
+construction at line662, with no explicit source condition. Scanner line105's
+null-buffer cleanup guard remains unexercised because normal callers pair scan
+and cleanup. Counts include both mappings; no artificial exclusion or lowered gate.
+
+Reproduce in an isolated build directory (requires GCC supporting the flag):
+
+```sh
+make dynamic BUILD_DIR=build/conditions BISON=/usr/bin/bison \
+  CXXFLAGS='-O0 -g --coverage -fcondition-coverage' -j4
+python3 tests/src/test_icl_conformance.py --binary build/conditions/icl-format
+python3 tests/regression.py --binary build/conditions/icl-format
+mkdir -p build/conditions/reports
+(cd build/conditions/reports && gcov -j -g -b -o .. ../icl_parser.o ../icl_lexer.o)
+```
+
+Read each file's `lines[].conditions` in the native JSON reports. Multiple
+condition groups on a single line are distinct; totals above include every group
+for the exact `.yy`/`.l` file. These diagnostic measurements supplement raw
+line/branch coverage; they neither replace its gate nor prove all possible inputs.
+All emitted reports and build products stay in ignored `build/`.
 
 ## Performance
 
@@ -140,8 +165,8 @@ invalid JSON within a valid frame does not consume the next frame.
 `make install-dynamic BISON=/usr/bin/bison` installed the pair under
 `/home/banana/.local/bin` and project headers under
 `/home/banana/.local/include/icl-format`. Installed bytes match the verified build.
-The installed formatter passed1744/1744 conformance inputs and installed LSP
-passed37/37 semantic tests. The source archive was extracted under `/tmp` and
+The installed formatter passed1757/1757 conformance inputs and installed LSP
+passed39/39 semantic tests. The source archive was extracted under `/tmp` and
 successfully built with `BISON=false FLEX=false`; its formatter accepted the
 review fixture. No personal editor configuration was modified.
 
@@ -153,3 +178,13 @@ now rejects bytecode, nested `__pycache__`, tool workflow state, worktrees and
 generated benchmark inputs. Its regression test failed seven cases before the
 fix and passed afterward. Maintained input fixtures and adjudication expectations
 remain versioned; automatically generated build/analysis outputs do not.
+
+Follow-up verification: full `make check-dynamic` passed, grammar/scanner rules
+remain334/334 and119/119 over2033 files, and independent review found no functional
+issue in the two shared semantic-layer fixes. It corrected standard citations to
+§6.4.8(t), §6.4.9 and §6.4.10. Both new LSP tests also passed independently.
+The fresh coc run initially lacked its temporary configuration; rerunning with
+the prepared isolated configuration passed all editor checks. Reinstalled binaries
+match the final build and pass1757 conformance cases and39 semantic LSP tests.
+Static linking and the optional coc-diagnostic adapter were not re-tested in this
+follow-up; their previously documented limitations remain.
