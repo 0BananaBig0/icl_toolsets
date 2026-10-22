@@ -2,6 +2,14 @@
 
 Every file under `tests/cases/` sits in a directory naming where it came from. `pass/` files must format cleanly, idempotently and without losing a character; `fail/` files must be rejected with exit code 2. Both are run through stdin *and* through a real file.
 
+## EDA project snapshot — 2026-10-22
+
+`pass/tessent/eda/` contains 119 canonical module fixtures and
+`pass/syn_slm/eda/` contains 45. See [EDA_CORPUS.md](EDA_CORPUS.md) for the
+deduplication rules and [eda_sources.json](eda_sources.json) for all 180 original
+paths, hashes, source-to-module mappings and comments. This import is additional
+to the earlier fixtures listed below; those coverage fixtures remain unchanged.
+
 
 ## pass/standard — IEEE 1687-2014 — the standard itself
 

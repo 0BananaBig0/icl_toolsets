@@ -511,7 +511,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck
+check check-dynamic: unitcheck corpuscheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
@@ -534,6 +534,15 @@ check check-dynamic: unitcheck
 COC_ROOT   ?= /tmp/cocvim
 COC_PLUGIN ?= $(COC_ROOT)/coc.nvim
 COC_VIM    ?= /usr/local/vim9/bin/vim
+
+# Parser-backed inventory is test support, not an installed executable.
+$(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc $(SHARED_OBJECTS) $(BUILD_DIR)/json.o
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+.PHONY: corpuscheck
+corpuscheck: $(BUILD_DIR)/icl_corpus_inventory $(BIN)
+	python3 tests/tests/test_import_eda_corpus.py
+	python3 tests/tests/test_eda_corpus.py
 
 # ---- unit tests ----
 #
