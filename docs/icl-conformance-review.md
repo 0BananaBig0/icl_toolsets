@@ -275,3 +275,60 @@ reproduction. Full dynamic verification results follow below.
 The coverage pass also exposed obsolete generic-body Instance/DataRegister alternatives. New negative Alias nesting cases reproduced their illegal acceptance before removal; keyword-as-identifier fixtures cover the surviving names.
 
 Task 5 full verification: `make check-dynamic BISON=/usr/bin/bison` exited 0 with 1256 classified cases, 508 regression assertions, 730 block cases, 12 golden,71 CLI and62 existing LSP checks, plus unit/whitespace/fuzz/separation checks. Current source-line grammar trace is not the final honest action/branch coverage report.
+
+
+## Instance and AccessLink
+
+IEEE §6.4.7 (printed 110–112/PDF 124–126) and §6.4.17 (printed
+133–135/PDF 147–149), with Tessent v2023.4 Instance and AccessLink topics.
+Each block was tested independently before implementation.
+
+Instance now has dedicated input connection, parameter override, Attribute,
+broadcast and AddressValue productions. Names can be keywords and comments may
+separate tokens. A module reference has at most one namespace qualifier, including
+the explicit global `::Module` form. The documented Origen lowercase `of` extension
+is retained only for Instance. Tessent examples document concatenated addresses,
+which are shared with DataRegister. The parent AST construction rejects explicit
+addressed instances outside OneHotDataGroup. Missing address properties in otherwise
+incomplete declarations, connectivity completeness, overlapping resolved input ranges,
+parameter binding and hierarchy cycles remain semantic/elaboration checks.
+
+Broadcast interface lists are accepted because both the normative generic example
+and Inst4 example explicitly use commas despite the single-name BNF. This is a
+source-backed discrepancy ruling; Tessent documents broadcasting as unsupported.
+Standard examples and both vendor Instance examples are completed; the second
+vendor example's stray `7` in a WriteEnPort declaration is removed explicitly.
+Old invented OutputPort entries, generic properties and deep namespace chains
+are corrected or retained as negative fixtures.
+
+AccessLink has separate standard 1149.1 and Generic entry points. The standard
+form requires one leading BSDLEntity, one or more named instructions, and nonempty
+ScanInterface/ActiveSignals lists. Interface references allow an instance with an
+optional single interface component. Active signals are local scalar/vector names.
+Duplicate instruction names and access-link names are rejected at their proper
+scopes. The grammar permits ActiveSignals-only instructions; the vendor's stronger
+ScanInterface requirement is not imposed on IEEE inputs.
+
+Generic controller contents have implementation-defined semantics. A separate
+Flex start condition collects balanced nested braces, strings and comments in
+linear time and preserves the payload byte-for-byte in the shared AST. The
+formatter changes the outer ICL layout only. This is opaque ICL content, not a
+second PDL parser or shared PDL token set. Unexpected EOF, unterminated quotes/
+comments and nested block comments fail, and the scanner resets before the next
+file. A golden fixture checks payload whitespace exactly; the whitespace suite
+checks Generic variants for content preservation and idempotence rather than
+requiring their intentionally preserved payload whitespace to become identical.
+Standard 1149.1 input continues to receive normal nested formatting.
+
+Honza's Generic AccessLink rule does not consume its body (its raw block is an
+unused lexer fragment). The normative clause explicitly defines that body, so the
+old upstream free-text rejection fixture is now a positive. The generic type
+`STD_1149_1` remains an ordinary implementation-defined identifier; legacy payloads
+such as BSDL_Entity/ScanPath are preserved there, but are rejected when incorrectly
+attached to the standard `STD_1149_1_2001`/`2013` types.
+
+Initial failures: Instance32/63, AccessLink41/65. Final focused totals include
+63 Instance and73 AccessLink cases, plus the exact-output and scanner-recovery
+checks. Final full dynamic results follow below.
+
+Task 6 full verification: `make check-dynamic BISON=/usr/bin/bison` exited 0 with 1392 classified cases,530 regression assertions,730 block-review cases,13 golden,74 CLI and62 existing LSP checks, plus unit/whitespace/fuzz/separation checks. Current trace:368/368 grammar source lines and123/123 lexer rules over1657 files. Removed obsolete generic assignment/unnamed-block paths after negative Alias dependency tests; retained comments, legal numeric concatenation and all keyword identifiers in persisted fixtures.

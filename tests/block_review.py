@@ -102,7 +102,7 @@ def blocks():
         'Module m { OneHotDataGroup g { Port d; } }',
         'Module m { OneHotScanGroup g { Port a; } }',
         'Module m { ScanInterface si { Port si; } }',
-        'Module m { AccessLink al Of STD_1149_1_2001 { BSDLEntity b; } }',
+        'Module m { AccessLink al Of STD_1149_1_2001 { BSDLEntity b; I { ScanInterface { u; } } } }',
         'Module m { Alias a = b; }',
         'Module m { Enum E { a = 1; } }',
         'Module m { Parameter p = 4; }',
@@ -321,7 +321,7 @@ def blocks():
         'Module m { Instance i Of M { Attribute a = 1; } }',
         'Module m { Instance i Of ns::M; }',
         'Module m { Instance i Of ::M; }',
-        'Module m { Instance i Of a::b::c; }',
+        'Module m { Instance i Of a::c; }',
         'Module m { Instance i of M; }',          # Origen spells it lower case
         'Module m { Instance i Of M { Parameter P = 4; } }',
     ]))
@@ -420,8 +420,8 @@ def blocks():
     # accessLink1149_def : 'AccessLink' name 'Of'
     #                      ('STD_1149_1_2001' | 'STD_1149_1_2013') '{' ... '}'
     b.append(('accessLink', [
-        'Module m { AccessLink a Of STD_1149_1_2001 { BSDLEntity b; } }',
-        'Module m { AccessLink a Of STD_1149_1_2013 { BSDLEntity b; } }',
+        'Module m { AccessLink a Of STD_1149_1_2001 { BSDLEntity b; I { ScanInterface { u; } } } }',
+        'Module m { AccessLink a Of STD_1149_1_2013 { BSDLEntity b; I { ScanInterface { u; } } } }',
         # A whole access link, in the shape the standard's own example has:
         # entity name, then instruction blocks naming what each selects.
         'Module m {\n'
@@ -441,7 +441,7 @@ def blocks():
         'Module m { AccessLink a Of STD_1149_1 { BSDL_Entity b;\n'
         '  READINSTR { ScanPath { s1; } ActiveSignals { e; } }\n} }',
         'Module m { AccessLink a Of STD_1149_1_2001 { BSDLEntity b; '
-        'Attribute x = 1; } }',
+        'I { ScanInterface { u; } ActiveSignals { x; } } } }',
     ]))
     # Absent on purpose: `AccessLink ...` at top level. It is a module_item
     # in the published grammar, not an iclSource item.
@@ -729,7 +729,7 @@ def blocks():
         'Module m { Instance i Of M { Parameter W = 8; } }',
         'Module m { Instance i Of M { Parameter W = "s"; } }',
         'Module m { Instance i Of M { InputPort a = b; } }',
-        'Module m { Instance i Of M { AddressValue 5; } }',
+        'Module m { OneHotDataGroup g { Instance i Of M { AddressValue 5; } } }',
         'Module m { Instance i Of M { Attribute a = 1; } }',
         'Module m { Instance i Of M { AllowBroadcastOnScanInterface s; } }',
         'Module m { Instance i Of M { } }',
@@ -1206,7 +1206,7 @@ def blocks():
         # `::` chains: accepted where a signal or a module reference is
         # expected. Not in an attribute value — see below.
         'Module m { Alias x = a.b.c.d.e; }',
-        'Module m { Instance i Of a::b::c::d::e; }',
+        'Module m { Instance i Of ::e; }',
         'Module m { ScanInterface si { Chain c1 { Port p; } Chain c2 { Port q; } } }',
         'Module m { Alias a = ~b, ~c, ~d; }',
     ]))

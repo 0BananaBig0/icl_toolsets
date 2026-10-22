@@ -1,1 +1,1 @@
-Module m { Instance i Of M { OneHotScanGroup x = 1; } }
+Module m { Instance i Of M { Attribute OneHotScanGroup = 1; } }

@@ -123,6 +123,8 @@ void IclDriver::CheckBlockItems(const std::string& kind,
       {"AddressPort", {}},  // §6.4.6.24
       {"WriteEnPort", {}},  // §6.4.6.25
       {"ReadEnPort", {}},  // §6.4.6.26
+      {"Instance", {{"InputPort", false}, {"Parameter", false},
+                    {"AllowBroadcastOnScanInterface", false}, {"AddressValue", true}}},
       {"ScanInterface", {{"Port", false}, {"DefaultLoadValue", true}}},
       {"Chain", {{"Port", false}, {"DefaultLoadValue", true}}},
       {"ScanRegister", {{"ScanInSource", true}, {"CaptureSource", true},
@@ -177,12 +179,15 @@ void IclDriver::CheckBlockItems(const std::string& kind,
   }
 }
 
-void IclDriver::CheckDataRegisterContext(const std::string& header,
+void IclDriver::CheckAddressContext(const std::string& header,
                                         const std::vector<AstNode*>& body) {
   const bool one_hot = header.rfind("OneHotDataGroup ", 0) == 0;
   for (const auto* node : body) {
     const auto* reg = dynamic_cast<const AstBlock*>(node);
-    if (!reg || reg->header().rfind("DataRegister ", 0) != 0) continue;
+    if (!reg) continue;
+    const bool data_register = reg->header().rfind("DataRegister ", 0) == 0;
+    const bool instance = reg->header().rfind("Instance ", 0) == 0;
+    if (!data_register && !instance) continue;
     for (const auto* item : reg->body()) {
       const auto* property = dynamic_cast<const AstStatement*>(item);
       if (!property) continue;
@@ -192,9 +197,9 @@ void IclDriver::CheckDataRegisterContext(const std::string& header,
       const bool other_type = keyword == "WriteDataSource" || keyword == "WriteEnSource" ||
                               keyword == "ReadCallBack" || keyword == "ReadDataSource" ||
                               keyword == "WriteCallBack";
-      if ((addressed && !one_hot) || (other_type && one_hot)) {
+      if ((addressed && !one_hot) || (data_register && other_type && one_hot)) {
         SetParseDiagnostic(item->span().first_line,
-                           "addressable DataRegisters belong only in OneHotDataGroup; other access types belong outside it");
+                           "addressable DataRegisters/Instances belong only in OneHotDataGroup; other register access types belong outside it");
       }
     }
   }

@@ -10,7 +10,7 @@
 // So they are treated uniformly, and this pins the uniform treatment.
 Module m {
   Instance i Of M {
-    STD_1149_1_2001 = 1'b0;
-    STD_1149_1_2013 = 1'b1;
+    Attribute STD_1149_1_2001 = 1'b0;
+    Attribute STD_1149_1_2013 = 1'b1;
   }
 }

@@ -36,6 +36,8 @@ import subprocess
 import sys
 import tempfile
 
+from src.test_icl_conformance import CONTENT
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
@@ -112,6 +114,14 @@ def main():
                 failures.append((path, 'rejected once every brace is on its own line'))
                 continue
             checked += 1
+            # Generic controllers define their own payload; only outer ICL is formatted.
+            if re.search(r'AccessLink\s+\w+\s+Of\s+(?!STD_1149_1_(?:2001|2013)\b)\w+\s*\{', text):
+                for source, result in [(text, original), (compact(text), one_line), (expand(text), spread)]:
+                    if CONTENT.findall(source) != CONTENT.findall(result):
+                        failures.append((path, 'generic payload content changed'))
+                    if format_source(binary, result, workdir) != result:
+                        failures.append((path, 'generic payload formatting is not idempotent'))
+                continue
             if not (without_blank_lines(original) ==
                     without_blank_lines(one_line) ==
                     without_blank_lines(spread)):
@@ -123,7 +133,7 @@ def main():
         print('  FAIL %s: %s' % (os.path.relpath(path, ROOT), why))
     if failures:
         return 1
-    print('Whitespace does not change the output.')
+    print('Known ICL reflows canonically; opaque Generic payloads preserve content and remain idempotent.')
     return 0
 
 

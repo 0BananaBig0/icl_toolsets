@@ -64,8 +64,8 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 
 ### Task 6: Instance and AccessLink
 
-- [ ] Audit §6.4.7 then §6.4.17; cover module references, namespace scopes, input connections, parameter overrides and generic/1149.1 forms.
-- [ ] For each missing/rejected form add RED test, correct it and validate cumulative suite; commit.
+- [x] Audit §6.4.7 then §6.4.17; cover module references, namespace scopes, input connections, parameter overrides and generic/1149.1 forms.
+- [x] For each missing/rejected form add RED test, correct it and validate cumulative suite; commit.
 
 ### Task 7: Alias, parameters, attributes, namespaces and module structure
 

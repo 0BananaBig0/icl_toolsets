@@ -1,0 +1,4 @@
+// Constructed IEEE 6.4.17 Generic payload: preserve whitespace and embedded syntax.
+Module M{AccessLink g Of Generic { foo  bar
+	#tag {0x12} " x  y "
+} DataInPort p;}

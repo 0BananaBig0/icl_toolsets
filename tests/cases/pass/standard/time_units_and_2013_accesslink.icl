@@ -21,11 +21,11 @@ Module m {
     FreqDivider 3;
   }
   AccessLink t1 Of STD_1149_1_2001 {
-    BSDL_Entity E;
-    R { ScanPath { a; } }
+    BSDLEntity E;
+    R { ScanInterface { a; } }
   }
   AccessLink t2 Of STD_1149_1_2013 {
-    BSDL_Entity E;
-    R { ScanPath { a; } }
+    BSDLEntity E;
+    R { ScanInterface { a; } }
   }
 }

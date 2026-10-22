@@ -180,12 +180,12 @@ def main():
     if out:
         check('Tab | no tabs in output', '\t' not in out)
 
-    deep = 'Module m0 {\nAccessLink a Of T {\nL1 {\nL2 {\nL3 {\nIdent x;\n}\n}\n}\n}\n}\n'
+    deep = 'Module m0 { AccessLink a Of STD_1149_1_2001 { BSDLEntity E; I { ScanInterface { inst.si; } } } }'
     out = idem(runner, deep, 'deep nesting')
     if out:
-        target = [l for l in out.split('\n') if 'Ident x' in l][0]
-        check('nesting | level 5 indents 10 spaces (2 per level)',
-              len(target) - len(target.lstrip()) == 10, repr(target))
+        target = [l for l in out.split('\n') if 'inst.si;' in l][0]
+        check('nesting | level 4 indents 8 spaces (2 per level)',
+              len(target) - len(target.lstrip()) == 8, repr(target))
 
     # Blank-line preservation.
     blank = 'Module m {\nScanInPort SI;\n\nScanOutPort SO { Source SI; }\n}\n'
@@ -356,6 +356,16 @@ def main():
         # A batch containing one bad file must still fail overall.
         check('CLI | good + bad in one run -> exit 2',
               runner.run([okay, bad]).returncode == 2)
+
+        # A failed opaque block must not leave Flex in its Generic start condition.
+        expected = runner.run([okay]).stdout
+        for ending in ('string', 'body', 'comment'):
+            broken = os.path.join(HERE, 'cases', 'ours', 'access_link',
+                                  'generic_unclosed_' + ending + '.icl')
+            result = runner.run([broken, okay])
+            check('CLI | scanner resets after unclosed Generic ' + ending,
+                  result.returncode == 2 and expected in result.stdout,
+                  'rc=%d out=%r' % (result.returncode, result.stdout[:100]))
 
         # Two scanner edge cases no sample file happened to contain.
         #

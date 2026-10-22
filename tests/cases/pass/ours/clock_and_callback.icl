@@ -19,8 +19,8 @@ Module m {
   }
   DataRegister dr_write { WriteCallBack m p <R> 3 "x" $N; }
   OneHotDataGroup addressed { DataRegister dr { AddressValue 3; } }
-  Instance i Of T {
+  OneHotDataGroup instances { Instance i Of T {
     AllowBroadcastOnScanInterface si;
     AddressValue 3;
-  }
+  } }
 }

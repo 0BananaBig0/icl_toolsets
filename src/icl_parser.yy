@@ -78,6 +78,7 @@ class IclDriver;
 %param {icl::IclDriver& driver}
 
 %code {
+void icl_scan_generic();
 // Declared by the generated scanner (see icl_lexer.l). It must be visible at
 // the parser's call site; this block lands after the parser class definition,
 // so |IclParser::symbol_type| is a complete type here.
@@ -202,6 +203,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token REG "Reg"
 %token FIELD "Field"
 %token INSTANCE "Instance"
+%token <std::string> GENERIC_BODY "generic AccessLink body"
 %token SCANMUX "ScanMux"
 %token DATAMUX "DataMux"
 %token CLOCKMUX "ClockMux"
@@ -249,17 +251,21 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::vector<AstNode*>> interface_body chain_body
 %type <AstNode*> group_port data_register data_register_item
 %type <std::vector<AstNode*>> one_hot_scan_body one_hot_data_body
-%type <AstNode*> one_hot_data_item instance_declaration
+%type <AstNode*> one_hot_data_item instance_declaration instance_property address_value parameter_override
+%type <std::vector<AstNode*>> instance_body
+%type <std::string> instance_module_ref broadcast_names generic_link_type link_interface_ref
+%type <AstNode*> access_link link_instruction link_selected_item link_interface_item link_active_item
+%type <std::vector<AstNode*>> link_body link_instructions link_selected_body link_interface_body link_active_body
 %type <std::vector<AstNode*>> data_register_body
 %type <std::string> write_enable callback_keyword callback_namespace callback_id
-%type <std::string> namespace_tail optional_subnamespace callback_args callback_arg ordinary_keyword
+%type <std::string> namespace_tail optional_subnamespace callback_args callback_arg ordinary_keyword non_tap_keyword
 %type <std::vector<AstNode*>> checked_declaration_body
 %type <ParsedValue> concat_number inverted_number number
 %type <std::vector<AstNode*>> module_item_list
 %type <AstNode*> module_item instance_item
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value range_block_kw any_keyword
+%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list std_tap_kw attr_value range_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -592,9 +598,7 @@ data_register_item
       { $$ = driver.MakeStatement("WriteEnSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | READDATASOURCE token_gap concat_data_signal SEMICOLON
       { $$ = driver.MakeStatement("ReadDataSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
-  // Tessent OneHotDataGroup example permits concatenated AddressValue.
-  | ADDRESSVALUE token_gap concat_number SEMICOLON
-      { $$ = driver.MakeStatement("AddressValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | address_value { $$ = $1; }
   | callback_keyword token_gap callback_namespace callback_id callback_args SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + " " + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
   ;
@@ -875,11 +879,6 @@ attr_item
   | attr_name any_operator value_list SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
-  /* Also a list: Tessent writes `Attribute x = "a", "b";` for a pin list
-     too long for one line. */
-  | attr_name EQUALS value_list SEMICOLON
-      { $$ = driver.MakeStatement($1 + " = " + $3 + ";",
-                                  SpanOf(@1.begin.line, @4.end.line)); }
   /* The left side of an assignment is an expression, not just a name:
      `InputPort datain[5:0] = toplevel_datain[15:10];` is verbatim from the
      Tessent IJTAG manual's parameterised-module example, and the previous
@@ -1042,13 +1041,7 @@ attr_body
                                        SpanOf(@2.begin.line, @2.end.line))); }
   | attr_body attr_item
       { $$ = std::move($1); $$.push_back($2); }
-  | attr_body attr_name LBRACE attr_body RBRACE
-      {
-        AstBlock* nested = driver.MakeBlock($2, std::move($4),
-                                           SpanOf(@2.begin.line, @5.end.line));
-        $$ = std::move($1);
-        $$.push_back(nested);
-      }
+
   ;
 
 /* The contents of a `PortGroup { ... }`: port names and comments, in any
@@ -1144,22 +1137,148 @@ attr_name
 
 // Instance is reusable inside OneHotDataGroup; AccessLink is not.
 instance_declaration
-  : INSTANCE IDENT of_kw module_ref LBRACE attr_body RBRACE
-      { $$ = driver.MakeBlock("Instance " + $2 + " " + $3 + " " + $4, std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line)); }
-  | INSTANCE IDENT of_kw module_ref SEMICOLON
-      { $$ = driver.MakeStatement("Instance " + $2 + " " + $3 + " " + $4 + ";",
-                                  SpanOf(@1.begin.line, @5.end.line)); }
+  : INSTANCE token_gap scalar_name token_gap of_kw token_gap instance_module_ref SEMICOLON
+      { $$ = driver.MakeStatement("Instance " + $2 + $3 + $4 + " " + $5 + " " + $6 + $7 + ";",
+                                  SpanOf(@1.begin.line, @8.end.line)); }
+  | INSTANCE token_gap scalar_name token_gap of_kw token_gap instance_module_ref LBRACE instance_body RBRACE
+      { driver.CheckBlockItems("Instance", $9, @1.begin.line);
+        $$ = driver.MakeBlock("Instance " + $2 + $3 + $4 + " " + $5 + " " + $6 + $7, std::move($9),
+                              SpanOf(@1.begin.line, @10.end.line)); }
+  ;
+
+instance_module_ref
+  : scalar_name token_gap { $$ = $1 + $2; }
+  | scalar_name token_gap DCOLON token_gap scalar_name token_gap
+      { $$ = $1 + $2 + "::" + $4 + $5 + $6; }
+  | DCOLON token_gap scalar_name token_gap { $$ = "::" + $2 + $3 + $4; }
+  ;
+
+instance_body
+  : %empty { $$ = {}; }
+  | instance_body instance_property { $$ = std::move($1); $$.push_back($2); }
+  | instance_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+instance_property
+  : strict_attribute { $$ = $1; }
+  | parameter_override { $$ = $1; }
+  | address_value { $$ = $1; }
+  | INPUTPORT token_gap scalar_name token_gap strict_range EQUALS token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement("InputPort " + $2 + $3 + $4 + $5 + " = " + $7 + $8 + ";",
+                                  SpanOf(@1.begin.line, @9.end.line)); }
+  | ALLOWBROADCAST token_gap broadcast_names SEMICOLON
+      { $$ = driver.MakeStatement("AllowBroadcastOnScanInterface " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  ;
+
+// The normative generic example and Inst4 example both allow comma lists.
+broadcast_names
+  : scalar_name token_gap { $$ = $1 + $2; }
+  | broadcast_names COMMA token_gap scalar_name token_gap { $$ = std::move($1) + ", " + $3 + $4 + $5; }
+  ;
+
+parameter_override
+  : PARAMETER token_gap scalar_name token_gap EQUALS token_gap attribute_values SEMICOLON
+      { $$ = driver.MakeStatement("Parameter " + $2 + $3 + $4 + " = " + $6 + $7.text + ";",
+                                  SpanOf(@1.begin.line, @8.end.line)); }
+  ;
+
+// Tessent OneHotDataGroup and Instance examples use concatenated addresses.
+address_value
+  : ADDRESSVALUE token_gap concat_number SEMICOLON
+      { $$ = driver.MakeStatement("AddressValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
   ;
 
 instance_item
   : instance_declaration { $$ = $1; }
-  | ACCESSLINK IDENT of_kw module_ref LBRACE attr_body RBRACE
-      { $$ = driver.MakeBlock("AccessLink " + $2 + " " + $3 + " " + $4, std::move($6),
-                              SpanOf(@1.begin.line, @7.end.line)); }
-  | ACCESSLINK IDENT of_kw module_ref SEMICOLON
-      { $$ = driver.MakeStatement("AccessLink " + $2 + " " + $3 + " " + $4 + ";",
-                                  SpanOf(@1.begin.line, @5.end.line)); }
+  | access_link { $$ = $1; }
+  ;
+
+access_link
+  : ACCESSLINK token_gap scalar_name token_gap OF token_gap std_tap_kw token_gap LBRACE link_body RBRACE
+      { driver.CheckAccessLink($3, @3.begin.line);
+        $$ = driver.MakeBlock("AccessLink " + $2 + $3 + $4 + " Of " + $6 + $7 + $8,
+                              std::move($10), SpanOf(@1.begin.line, @11.end.line)); }
+  | ACCESSLINK token_gap scalar_name token_gap OF token_gap generic_link_type token_gap generic_open GENERIC_BODY
+      { driver.CheckAccessLink($3, @3.begin.line);
+        // Generic controller contents have implementation-defined semantics.
+        $$ = driver.MakeStatement("AccessLink " + $2 + $3 + $4 + " Of " + $6 + $7 + $8 + " {" + $10,
+                                  SpanOf(@1.begin.line, @10.end.line)); }
+  ;
+
+generic_open
+  : LBRACE { ::icl_scan_generic(); }
+  ;
+
+generic_link_type
+  : IDENT { $$ = $1; }
+  | non_tap_keyword { $$ = $1; }
+  | DATAREGISTER { $$ = "DataRegister"; }
+  | INSTANCE { $$ = "Instance"; }
+  | ACCESSLINK { $$ = "AccessLink"; }
+  ;
+
+link_body
+  : comment_nodes BSDLENTITY token_gap scalar_name token_gap SEMICOLON link_instructions
+      { $$ = std::move($1);
+        $$.push_back(driver.MakeStatement("BSDLEntity " + $3 + $4 + $5 + ";", SpanOf(@2.begin.line, @6.end.line)));
+        $$.insert($$.end(), $7.begin(), $7.end()); }
+  ;
+
+link_instructions
+  : comment_nodes link_instruction { $$ = std::move($1); $$.push_back($2); }
+  | link_instructions link_instruction { $$ = std::move($1); $$.push_back($2); }
+  | link_instructions COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+link_instruction
+  : scalar_name token_gap LBRACE link_selected_body RBRACE
+      { driver.CheckInstructionName($1, @1.begin.line);
+        $$ = driver.MakeBlock($1 + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line)); }
+  ;
+
+link_selected_body
+  : comment_nodes link_selected_item { $$ = std::move($1); $$.push_back($2); }
+  | link_selected_body link_selected_item { $$ = std::move($1); $$.push_back($2); }
+  | link_selected_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+link_selected_item
+  : SCANINTERFACE token_gap LBRACE link_interface_body RBRACE
+      { $$ = driver.MakeBlock("ScanInterface " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line)); }
+  | ACTIVESIGNALS token_gap LBRACE link_active_body RBRACE
+      { $$ = driver.MakeBlock("ActiveSignals " + $2, std::move($4), SpanOf(@1.begin.line, @5.end.line)); }
+  ;
+
+link_interface_body
+  : comment_nodes link_interface_item { $$ = std::move($1); $$.push_back($2); }
+  | link_interface_body link_interface_item { $$ = std::move($1); $$.push_back($2); }
+  | link_interface_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+link_interface_item
+  : link_interface_ref SEMICOLON
+      { $$ = driver.MakeStatement($1 + ";", SpanOf(@1.begin.line, @2.end.line)); }
+  ;
+
+link_interface_ref
+  : scalar_name token_gap { $$ = $1 + $2; }
+  | scalar_name token_gap DOT token_gap scalar_name token_gap { $$ = $1 + $2 + "." + $4 + $5 + $6; }
+  ;
+
+link_active_body
+  : comment_nodes link_active_item { $$ = std::move($1); $$.push_back($2); }
+  | link_active_body link_active_item { $$ = std::move($1); $$.push_back($2); }
+  | link_active_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+link_active_item
+  : scalar_name token_gap strict_range SEMICOLON
+      { $$ = driver.MakeStatement($1 + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   ;
 
 /* ------------------------------------------------- keyword groups by shape */
@@ -1223,24 +1342,6 @@ of_kw
   | OFLOWER { $$ = "of"; }
   ;
 
-module_ref
-  : IDENT                    { $$ = $1; }
-  | std_tap_kw               { $$ = $1; }
-  | module_ref DCOLON IDENT  { $$ = $1 + "::" + $3; }
-  /* A leading `::` with no namespace in front of it — the global namespace.
-     The published grammar allows it *only* here: instance_def writes the
-     qualifier as `(namespace_name? '::')?`, namespace optional, while a signal
-     reference has no such form. So `Instance i Of ::M;` parses and
-     `Source ::M;` does not, and that asymmetry is the standard's, not two
-     rules drifting apart.
-
-     Allowing it in `value` too was tried first, for symmetry; it costs three
-     shift/reduce conflicts, because `attr_value` also permits space-separated
-     values and a bare `::` then has two readings. */
-  | DCOLON IDENT             { $$ = "::" + $2; }
-  ;
-
-
 /* Everything above, plus the keywords that have no block form. One place to
    add a keyword; every list that needs "any keyword" refers to this. */
 any_keyword
@@ -1249,6 +1350,11 @@ any_keyword
   ;
 
 ordinary_keyword
+  : non_tap_keyword { $$ = $1; }
+  | std_tap_kw { $$ = $1; }
+  ;
+
+non_tap_keyword
   : SCANINTERFACE { $$ = "ScanInterface"; }
   | ONEHOTSCANGROUP { $$ = "OneHotScanGroup"; }
   | ONEHOTDATAGROUP { $$ = "OneHotDataGroup"; }
@@ -1285,8 +1391,6 @@ ordinary_keyword
   | READDATASOURCE  { $$ = "ReadDataSource"; }
   | REFENUM         { $$ = "RefEnum"; }
   | RESETVALUE      { $$ = "ResetValue"; }
-  | STD1149_1_2001  { $$ = "STD_1149_1_2001"; }
-  | STD1149_1_2013  { $$ = "STD_1149_1_2013"; }
   | SCANINSOURCE    { $$ = "ScanInSource"; }
   | SOURCE          { $$ = "Source"; }
   | WRITECALLBACK   { $$ = "WriteCallBack"; }

@@ -1,1 +1,1 @@
-Module m { Instance i Of M { ClockPort x = 1; } }
+Module m { Instance i Of M { Attribute ClockPort = 1; } }

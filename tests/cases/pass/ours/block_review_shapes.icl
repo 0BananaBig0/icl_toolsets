@@ -52,7 +52,7 @@ Module block_review {
   // Instance: every item the grammar lists.
   Instance inst Of M {
     InputPort a = b;
-    OutputPort c = d;
+    InputPort c = d;
     Parameter P = 1;
     Attribute x = 1;
   }

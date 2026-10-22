@@ -105,7 +105,7 @@ class IclDriver {
 
   AstBlock* MakeBlock(const std::string& header, std::vector<AstNode*> body,
                       SourceSpan span) {
-    CheckDataRegisterContext(header, body);
+    CheckAddressContext(header, body);
     AstBlock* block = unit_.Make<AstBlock>(header, span);
     block->body() = std::move(body);
     return block;
@@ -118,7 +118,7 @@ class IclDriver {
   // ---- parser diagnostics ----
   ParsedValue NumberLiteral(const std::string& text) const;
   void CheckBlockItems(const std::string& kind, const std::vector<AstNode*>& body, int line);
-  void CheckDataRegisterContext(const std::string& header,
+  void CheckAddressContext(const std::string& header,
                                 const std::vector<AstNode*>& body);
 
   void CheckEnumMember(const std::string& name, const ParsedValue& value, int line) {
@@ -136,7 +136,18 @@ class IclDriver {
     enum_width_ = 0;
   }
 
-  void EndModule() { enum_names_.clear(); }
+  void EndModule() { enum_names_.clear(); access_link_names_.clear(); }
+
+  void CheckInstructionName(const std::string& name, int line) {
+    if (!instruction_names_.insert(name).second)
+      SetParseDiagnostic(line, "duplicate AccessLink instruction: " + name);
+  }
+
+  void CheckAccessLink(const std::string& name, int line) {
+    if (!access_link_names_.insert(name).second)
+      SetParseDiagnostic(line, "duplicate AccessLink name: " + name);
+    instruction_names_.clear();
+  }
 
   void CheckChainName(const std::string& name, int line) {
     if (!chain_names_.insert(name).second)
@@ -178,6 +189,8 @@ class IclDriver {
   std::unordered_set<std::string> enum_names_;
   size_t enum_width_ = 0;
   std::unordered_set<std::string> chain_names_;
+  std::unordered_set<std::string> instruction_names_;
+  std::unordered_set<std::string> access_link_names_;
   FormatStyle style_;
 
   bool has_error_ = false;

@@ -16,6 +16,6 @@ Module m {
   // list in the generative keyword test, which is the drift detector. So it
   // is treated uniformly, and this pins the uniform treatment.
   Instance i of M {
-    of = 1'b0;
+    Attribute of = 1'b0;
   }
 }

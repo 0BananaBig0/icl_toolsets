@@ -85,6 +85,14 @@ int CountNewlines(const char* text) {
 }  // namespace
 
 YY_BUFFER_STATE g_buffer = nullptr;
+std::string g_generic_body;
+size_t g_generic_depth = 0;
+void icl_reset_modes();
+
+void AppendGeneric(const char* text, size_t size) {
+  g_generic_body.append(text, size);
+  g_location.lines(CountNewlines(text));
+}
 
 YY_BUFFER_STATE icl_scan_bytes(const char* text, size_t size) {
   // Must reset the line counter: |g_location| is file-scope, so without this a
@@ -98,6 +106,7 @@ YY_BUFFER_STATE icl_scan_bytes(const char* text, size_t size) {
   // it reads as a guarantee that was checked, when nothing checks it. If a
   // second entry point ever appears, it should pair the two calls the same
   // way rather than rely on this function tolerating a stray buffer.
+  icl_reset_modes();
   g_location.initialize();
   g_buffer = yy_scan_bytes(text, static_cast<int>(size));
   return g_buffer;
@@ -119,6 +128,7 @@ void icl_scan_end() {
   /* Writes the generated scanner to disk and never calls yywrap(). */
 %option noyywrap nounput noinput nodefault batch
 %option never-interactive
+%x GENERIC_LINK
 
 DIGIT   [0-9]
 ID      [A-Za-z][A-Za-z_0-9]*
@@ -133,6 +143,33 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
   // ended.
   g_location.step();
 %}
+
+  /* IEEE Generic AccessLink is opaque text with balanced nested braces. */
+<GENERIC_LINK>"{" { AppendGeneric(yytext, yyleng); ++g_generic_depth; }
+<GENERIC_LINK>"}" {
+                      AppendGeneric(yytext, yyleng);
+                      if (--g_generic_depth == 0) {
+                        BEGIN(INITIAL);
+                        return icl::IclParser::make_GENERIC_BODY(std::move(g_generic_body), g_location);
+                      }
+                    }
+<GENERIC_LINK>\"(\\(.|\n)|[^"\\])*\" { AppendGeneric(yytext, yyleng); }
+<GENERIC_LINK>"//"[^\n]* { AppendGeneric(yytext, yyleng); }
+<GENERIC_LINK>"/*"([^*]|\*+[^*/])*\*+"/" {
+                      if (std::string(yytext).find("/*", 2) != std::string::npos)
+                        driver.SetParseDiagnostic(g_location.begin.line, "nested block comments are not allowed");
+                      AppendGeneric(yytext, yyleng);
+                    }
+<GENERIC_LINK>[^{}"/]+ { AppendGeneric(yytext, yyleng); }
+<GENERIC_LINK>"/" { AppendGeneric(yytext, yyleng); }
+<GENERIC_LINK>\"|"/*" {
+                      driver.SetParseDiagnostic(g_location.begin.line, "unterminated Generic AccessLink string or comment");
+                      return icl::IclParser::make_END(g_location);
+                    }
+<GENERIC_LINK><<EOF>> {
+                      driver.SetParseDiagnostic(g_location.begin.line, "unterminated Generic AccessLink body");
+                      return icl::IclParser::make_END(g_location);
+                    }
 
 [ \t\r\f\v]+        { g_location.step(); }
 "\n"+               { g_location.lines(static_cast<int>(yyleng));
@@ -378,3 +415,14 @@ LocalParameter      { g_location.step(); return icl::IclParser::make_LOCALPARAME
                     }
 
 %%
+void icl_scan_generic() {
+  g_generic_body.clear();
+  g_generic_depth = 1;
+  BEGIN(GENERIC_LINK);
+}
+
+void icl_reset_modes() {
+  g_generic_body.clear();
+  g_generic_depth = 0;
+  BEGIN(INITIAL);
+}

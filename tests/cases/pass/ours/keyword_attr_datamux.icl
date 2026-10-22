@@ -1,1 +1,1 @@
-Module m { Instance i Of M { DataMux x = 1; } }
+Module m { Instance i Of M { Attribute DataMux = 1; } }
