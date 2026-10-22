@@ -153,8 +153,9 @@ the original requests and implementation history.
 - **D3 — Installation:** install both commands with a configurable prefix,
   defaulting to `$HOME/.local`, record installed paths and support uninstall.
   For runtime releases, execute installation commands and verify the installed
-  programs, then print coc.nvim configurations for both the LSP and CLI
-  formatter integration. Do not overwrite personal editor settings. Distinguish
+  programs, then print the single coc.nvim `icl` server entry, which supplies
+  language services and formatting, plus standalone `icl-format` usage. The
+  installer must not modify personal editor settings. Distinguish
   the tested LSP setup from the optional CLI adapter's unverified end-to-end
   behavior.
 - **D4 — Documentation and license:** use `icl_toolsets` for repository identity

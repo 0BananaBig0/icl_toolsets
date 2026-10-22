@@ -443,30 +443,25 @@ define install_body
 	@$(call coc_body,$3)
 endef
 
-# Printed after every install: the editor config is the one thing a user has to
-# write by hand, and it differs between the two programs, so guessing it is
-# where people get stuck. Both snippets are emitted together because a real
-# setup uses icl-lsp for live diagnostics and icl-format for batch runs.
+# One server supplies both language services and editor formatting.
 #
 # `set filetype=icl` — not `setfiletype` — is deliberate: vim's own filetype.vim
 # maps *.icl to the Clean language, and setfiletype silently does nothing once
 # a filetype is already set, which leaves coc never starting the server.
 define coc_body
 	@echo ""
-	@echo "=== coc.nvim: recommended shared-AST LSP formatting ==="
+	@echo "=== coc.nvim: ICL language services and formatting ==="
+	@echo "In :CocConfig, merge the icl entry into languageserver alongside your existing servers:"
 	@cat docs/editor/coc-lsp.json
 	@echo ""
 	@echo "Add to vimrc:"
 	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
-	@echo '  autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab'
+	@echo "Indentation follows your existing Vim/coc shiftwidth and tabstop settings."
 	@echo "Formatting: :call CocAction('format'); optional format on save:"
 	@echo "  autocmd BufWritePre *.icl call CocAction('format')"
 	@echo ""
-	@echo "=== Alternative: icl-format through :CocInstall coc-diagnostic ==="
-	@echo "Use this configuration instead of the one above:"
-	@cat docs/editor/coc-cli.json
-	@echo ""
-	@echo "The adapter uses stdin/stdout and preserves invalid buffers on exit 2."
+	@echo "icl-lsp includes the icl-format formatting engine; no extra formatter plugin is needed."
+	@echo "Standalone CLI formatting: icl-format input.icl > output.icl"
 	@echo "Keep $(bindir) on the editor's PATH or use absolute command paths."
 	@echo "Installed variant: $1; $(bindir)/$(PACKAGE) and $(bindir)/icl-lsp"
 endef

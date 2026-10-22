@@ -140,8 +140,10 @@ and reviewed test expectations/provenance are maintained test inputs. Keep
 temporary extraction and analysis output under ignored `build/`.
 
 `make install-dynamic` and `make install-static` install both tools using the same
-command names and write an installation manifest. They print both coc.nvim
-configuration choices. Installation verification must exercise the installed
+command names and write an installation manifest. They print the single `icl`
+language-server entry for diagnostics, navigation and shared-engine formatting,
+plus standalone CLI usage. The optional external CLI adapter remains documented
+in `editor/coc-cli.json`. Installation verification must exercise the installed
 paths, not only the build-directory binaries.
 
 ## Code navigation and quality

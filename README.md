@@ -123,7 +123,8 @@ and ensure `icl-lsp` is on the editor's `PATH`. Vim users need a coc.nvim-compat
 Vim version; the tested setup uses Vim 9.2. Follow coc.nvim's current requirements
 for your editor and Node.js versions.
 
-Merge this configuration into `:CocConfig`. A copy is available in
+One `icl` entry supplies language services and formatting. Merge it into
+`languageserver` alongside your existing servers in `:CocConfig`. A copy is available in
 [docs/editor/coc-lsp.json](docs/editor/coc-lsp.json):
 
 ```json
@@ -144,7 +145,6 @@ Add these lines to your Vim configuration:
 augroup icl_toolsets
   autocmd!
   autocmd BufNewFile,BufRead *.icl set filetype=icl
-  autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab
 augroup END
 
 nmap <silent> gd <Plug>(coc-definition)
@@ -153,8 +153,8 @@ nmap <silent> gr <Plug>(coc-references)
 ```
 
 The explicit `set filetype=icl` overrides Vim's built-in association of `.icl`
-with the Clean language. The indentation settings keep editor formatting aligned
-with the CLI default. Existing coc.nvim navigation mappings can be reused.
+with the Clean language. LSP formatting inherits the indentation settings supplied
+by Vim/coc.nvim. Existing coc.nvim navigation mappings can be reused.
 
 Format the current buffer with:
 
@@ -180,8 +180,8 @@ so only the CLI adapter formats the buffer.
 
 The optional adapter configuration has been checked against its upstream schema;
 it has not been tested end to end. The default LSP configuration above has been
-tested with a real Vim/coc.nvim session. Installation prints both configurations
-for reference; it does not edit your editor settings.
+tested with a real Vim/coc.nvim session. Installation prints the single-server
+configuration above and standalone CLI usage; it does not edit your editor settings.
 
 ## Language support and limitations
 
