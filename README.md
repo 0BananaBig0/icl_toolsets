@@ -400,4 +400,7 @@ as asked and what was substituted, is in [`REQUIREMENT.md`](REQUIREMENT.md).
 
 ## License
 
-Apache License 2.0.
+MIT License. See [LICENSE](LICENSE).
+
+Third-party test fixtures retain their original copyright and license notices;
+see [test sources](tests/cases/SOURCES.md) and accompanying license files.

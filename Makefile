@@ -1,16 +1,7 @@
 # Copyright 2024 The ICL Format Authors.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# SPDX-License-Identifier: MIT
+# See LICENSE in the project root for license information.
 #
 # Builds two programs for IEEE 1687-2014 (IJTAG) ICL:
 #   icl-format  command line formatter
@@ -590,7 +581,7 @@ dist: dynamic
 	# so a tarball without it cannot run its own test suite. The copy list was
 	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.
 	cp tests/*.py tests/*.cc tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
-	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
+	cp Makefile README.md REQUIREMENT.md LICENSE $(DIST_DIR)/
 	cp -r docs $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar --exclude=__pycache__ --exclude='*.pyc' -czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
