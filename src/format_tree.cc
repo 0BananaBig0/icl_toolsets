@@ -69,7 +69,8 @@ class FormatTreeBuilder final : public AstVisitor {
     // previous output line is a trailing comment. The *comment* is the node
     // that must join the previous line — marking the previous node instead
     // would pull it up onto its own predecessor.
-    if (!nodes.empty() && node.span().first_line == nodes.back().source_line() &&
+    if (!nodes.empty() &&
+        node.span().first_line == nodes.back().source_line() &&
         !node.is_multiline()) {
       Append(node.text(), depth_, node.span().first_line,
              node.span().last_line);
@@ -86,15 +87,16 @@ class FormatTreeBuilder final : public AstVisitor {
     for (size_t i = 1; i < lines.size(); ++i) {
       const size_t indent = lines[i].find_first_not_of(" \t");
       if (indent == std::string::npos) continue;  // Blank line: ignore.
-      common = (common == std::string::npos) ? indent : std::min(common, indent);
+      common =
+          (common == std::string::npos) ? indent : std::min(common, indent);
     }
     // Star-style comments get one extra column so the stars sit under the
     // opening one; anything else keeps its relative indent untouched.
     bool star_style = false;
     if (lines.size() > 1) {
       const size_t first_char = lines[1].find_first_not_of(" \t");
-      star_style = first_char != std::string::npos &&
-                   lines[1][first_char] == '*';
+      star_style =
+          first_char != std::string::npos && lines[1][first_char] == '*';
     }
     const std::string base(star_style ? 1 : 0, ' ');
     for (size_t i = 0; i < lines.size(); ++i) {
@@ -125,8 +127,8 @@ class FormatTreeBuilder final : public AstVisitor {
   }
 
  private:
-  void EmitGroup(const std::string& header,
-                 const std::vector<AstNode*>& body, const SourceSpan& span) {
+  void EmitGroup(const std::string& header, const std::vector<AstNode*>& body,
+                 const SourceSpan& span) {
     Append(header + " {", depth_, span.first_line, span.first_line);
     ++depth_;
     for (const AstNode* child : body) {

@@ -23,10 +23,11 @@
 // would corrupt the protocol stream), and keeping this layer pure is what
 // makes it possible.
 
-#ifndef ICL_FORMAT_SRC_FORMAT_JOB_H_
-#define ICL_FORMAT_SRC_FORMAT_JOB_H_
+#ifndef ICL_TOOLSETS_SRC_FORMAT_JOB_H_
+#define ICL_TOOLSETS_SRC_FORMAT_JOB_H_
 
 #include <string>
+
 #include "icl_semantics.h"
 
 namespace icl {
@@ -79,4 +80,4 @@ FormatOutcome FormatDocument(const std::string& text,
 
 }  // namespace icl
 
-#endif  // ICL_FORMAT_SRC_FORMAT_JOB_H_
+#endif  // ICL_TOOLSETS_SRC_FORMAT_JOB_H_

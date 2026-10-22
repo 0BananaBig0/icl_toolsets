@@ -5,12 +5,12 @@
 
 #include "json.h"
 
-#include <cstdint>
 #include <cmath>
-#include <limits>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <string>
 
 namespace icl {
@@ -67,9 +67,7 @@ class Parser {
     }
   }
 
-  bool Peek(char c) const {
-    return pos_ < text_.size() && text_[pos_] == c;
-  }
+  bool Peek(char c) const { return pos_ < text_.size() && text_[pos_] == c; }
 
   bool Expect(char c) {
     if (!Peek(c)) return false;
@@ -79,7 +77,10 @@ class Parser {
 
   bool ParseValue(Json* out) {
     if (pos_ >= text_.size() || depth_ >= 256) return false;
-    struct DepthGuard { size_t& depth; ~DepthGuard() { --depth; } } guard{depth_};
+    struct DepthGuard {
+      size_t& depth;
+      ~DepthGuard() { --depth; }
+    } guard{depth_};
     ++depth_;
     switch (text_[pos_]) {
       case '{':
@@ -203,33 +204,59 @@ class Parser {
             if ((next & 0xC0) != 0x80) return false;
             codepoint = (codepoint << 6) | (next & 0x3F);
           }
-          if ((count == 3 && codepoint < 0x800) || (count == 4 && codepoint < 0x10000) ||
-              codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF)) return false;
+          if ((count == 3 && codepoint < 0x800) ||
+              (count == 4 && codepoint < 0x10000) || codepoint > 0x10FFFF ||
+              (codepoint >= 0xD800 && codepoint <= 0xDFFF)) {
+            return false;
+          }
           out->append(text_, begin, count);
-        } else out->push_back(c);
+        } else {
+          out->push_back(c);
+        }
         continue;
       }
       if (pos_ >= text_.size()) return false;
       const char escape = text_[pos_++];
       switch (escape) {
-        case '"': out->push_back('"'); break;
-        case '\\': out->push_back('\\'); break;
-        case '/': out->push_back('/'); break;
-        case 'b': out->push_back('\b'); break;
-        case 'f': out->push_back('\f'); break;
-        case 'n': out->push_back('\n'); break;
-        case 'r': out->push_back('\r'); break;
-        case 't': out->push_back('\t'); break;
+        case '"':
+          out->push_back('"');
+          break;
+        case '\\':
+          out->push_back('\\');
+          break;
+        case '/':
+          out->push_back('/');
+          break;
+        case 'b':
+          out->push_back('\b');
+          break;
+        case 'f':
+          out->push_back('\f');
+          break;
+        case 'n':
+          out->push_back('\n');
+          break;
+        case 'r':
+          out->push_back('\r');
+          break;
+        case 't':
+          out->push_back('\t');
+          break;
         case 'u': {
           uint32_t unit = 0;
           if (!ParseHex4(&unit)) return false;
           if (unit >= 0xD800 && unit <= 0xDBFF) {
-            if (pos_ + 1 >= text_.size() || text_[pos_] != '\\' || text_[pos_ + 1] != 'u') return false;
+            if (pos_ + 1 >= text_.size() || text_[pos_] != '\\' ||
+                text_[pos_ + 1] != 'u') {
+              return false;
+            }
             pos_ += 2;
             uint32_t low = 0;
             if (!ParseHex4(&low) || low < 0xDC00 || low > 0xDFFF) return false;
             unit = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
-          } else if (unit >= 0xDC00 && unit <= 0xDFFF) return false;
+          } else if (unit >= 0xDC00 && unit <= 0xDFFF) {
+            return false;
+          }
           AppendUtf8(out, unit);
           break;
         }
@@ -242,10 +269,14 @@ class Parser {
 
   bool ParseNumber(Json* out) {
     const size_t start = pos_;
-    const auto digit = [&] { return pos_ < text_.size() && text_[pos_] >= '0' && text_[pos_] <= '9'; };
+    const auto digit = [&] {
+      return pos_ < text_.size() && text_[pos_] >= '0' && text_[pos_] <= '9';
+    };
     Expect('-');
     if (!digit()) return false;
-    if (!Expect('0')) while (digit()) ++pos_;
+    if (!Expect('0')) {
+      while (digit()) ++pos_;
+    }
     if (Expect('.')) {
       if (!digit()) return false;
       while (digit()) ++pos_;
@@ -255,7 +286,8 @@ class Parser {
       if (!digit()) return false;
       while (digit()) ++pos_;
     }
-    const double number = std::strtod(text_.substr(start, pos_ - start).c_str(), nullptr);
+    const double number =
+        std::strtod(text_.substr(start, pos_ - start).c_str(), nullptr);
     if (!std::isfinite(number)) return false;
     *out = Json::Number(number);
     return true;
@@ -270,13 +302,27 @@ void SerializeString(const std::string& value, std::string* out) {
   out->push_back('"');
   for (unsigned char c : value) {
     switch (c) {
-      case '"': *out += "\\\""; break;
-      case '\\': *out += "\\\\"; break;
-      case '\b': *out += "\\b"; break;
-      case '\f': *out += "\\f"; break;
-      case '\n': *out += "\\n"; break;
-      case '\r': *out += "\\r"; break;
-      case '\t': *out += "\\t"; break;
+      case '"':
+        *out += "\\\"";
+        break;
+      case '\\':
+        *out += "\\\\";
+        break;
+      case '\b':
+        *out += "\\b";
+        break;
+      case '\f':
+        *out += "\\f";
+        break;
+      case '\n':
+        *out += "\\n";
+        break;
+      case '\r':
+        *out += "\\r";
+        break;
+      case '\t':
+        *out += "\\t";
+        break;
       default:
         if (c < 0x20) {
           char buffer[8];
@@ -299,7 +345,7 @@ Json Json::Bool(bool value) {
   return json;
 }
 
-Json Json::Int(long long value) {
+Json Json::Int(std::int64_t value) {
   Json json;
   json.type_ = Type::kNumber;
   json.number_ = static_cast<double>(value);
@@ -342,11 +388,15 @@ const Json* Json::Find(const std::string& key) const {
   return nullptr;
 }
 
-long long Json::int_value(long long fallback) const {
-  if (type_ != Type::kNumber || !std::isfinite(number_) || std::trunc(number_) != number_ ||
-      number_ < static_cast<double>(std::numeric_limits<long long>::min()) ||
-      number_ >= -static_cast<double>(std::numeric_limits<long long>::min())) return fallback;
-  return static_cast<long long>(number_);
+std::int64_t Json::int_value(std::int64_t fallback) const {
+  if (type_ != Type::kNumber || !std::isfinite(number_) ||
+      std::trunc(number_) != number_ ||
+      number_ < static_cast<double>(std::numeric_limits<std::int64_t>::min()) ||
+      number_ >=
+          -static_cast<double>(std::numeric_limits<std::int64_t>::min())) {
+    return fallback;
+  }
+  return static_cast<std::int64_t>(number_);
 }
 
 std::string Json::string_value(const std::string& fallback) const {

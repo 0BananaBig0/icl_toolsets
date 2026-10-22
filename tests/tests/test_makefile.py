@@ -1,11 +1,33 @@
 #!/usr/bin/env python3
-"""A parallel build must invoke each multi-output generator only once."""
+"""Build graph, distribution and installed-header integration checks."""
 from pathlib import Path
+import os
+import shlex
 import subprocess
+import tempfile
 import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 class BuildGraph(unittest.TestCase):
+    def test_installed_headers_resolve_without_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory)
+            run = subprocess.run(
+                ['make', 'install-dynamic', 'BISON=/usr/bin/bison',
+                 f'prefix={prefix}', f'MANIFEST={prefix}/manifest'],
+                cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            headers = sorted((prefix / 'include/icl-format').glob('*.h'))
+            self.assertEqual({header.name for header in headers},
+                             {header.name for header in (ROOT / 'src').glob('*.h')})
+            source = ''.join(f'#include "{header.name}"\n' for header in headers)
+            run = subprocess.run(
+                shlex.split(os.environ.get('CXX', 'g++')) +
+                ['-std=c++17', '-fsyntax-only', '-x', 'c++',
+                 f'-I{prefix}/include/icl-format', '-'],
+                cwd=prefix, input=source, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+
     def test_source_distribution_needs_no_static_libraries(self):
         run = subprocess.run(['make', '-n', 'dist', 'BISON=/usr/bin/bison'], cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stderr)

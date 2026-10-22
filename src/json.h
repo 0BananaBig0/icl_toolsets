@@ -5,9 +5,10 @@
 //
 // A JSON value, written for one purpose: speaking LSP over stdio.
 
-#ifndef ICL_FORMAT_SRC_JSON_H_
-#define ICL_FORMAT_SRC_JSON_H_
+#ifndef ICL_TOOLSETS_SRC_JSON_H_
+#define ICL_TOOLSETS_SRC_JSON_H_
 
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
@@ -31,7 +32,7 @@ class Json {
 
   static Json Null() { return Json(); }
   static Json Bool(bool value);
-  static Json Int(long long value);
+  static Json Int(std::int64_t value);
   static Json Number(double value);
   static Json String(std::string value);
   static Json Array(Elements elements);
@@ -49,7 +50,7 @@ class Json {
   // type. LSP clients differ in optional fields; being lenient on read keeps
   // one code path instead of a type check per field.
   //
-  long long int_value(long long fallback = 0) const;
+  std::int64_t int_value(std::int64_t fallback = 0) const;
   std::string string_value(const std::string& fallback = "") const;
   const Elements& elements() const { return elements_; }
 
@@ -69,4 +70,4 @@ class Json {
 
 }  // namespace icl
 
-#endif  // ICL_FORMAT_SRC_JSON_H_
+#endif  // ICL_TOOLSETS_SRC_JSON_H_

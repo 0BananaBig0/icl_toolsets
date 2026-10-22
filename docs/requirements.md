@@ -75,6 +75,13 @@ the original requests and implementation history.
   performance claims. Avoid repeated parsing/scans and unnecessary per-file
   subprocesses where batching or shared state fits the workload. Report tested
   scale and limits; no fixed latency target has yet been specified.
+- **A4 — Google style:** handwritten `src/` must follow Google C++ style for
+  file, type, class, function, variable and constant naming, header structure,
+  class interfaces, comments and layout. Embedded C++ follows the same rules;
+  generator-defined interfaces keep their required names. Apply the documented
+  Makefile conventions while preserving GNU Make semantics. Maintain style
+  checks and review the aspects they cannot enforce. See
+  [coding style](coding-style.md) for exact conventions and tooling boundaries.
 
 ## Tests, provenance and coverage
 
@@ -147,7 +154,7 @@ the original requests and implementation history.
 |---|---|
 | P1, L1–L4 | Conformance and Honza comparison records; `make check-dynamic`, golden and CLI tests. |
 | P2–P3 | LSP semantic/protocol suites; `make coccheck`; `make nvimcheck` when claiming that client. |
-| A1–A3 | Source review, shared AST/unit checks, representative performance measurements. |
+| A1–A4 | Source review, shared AST/unit checks, performance measurements, `make formatcheck`, `make namingcheck`. |
 | T1 | `make gramcov` and `make coverage`, with distinct rule/line/branch results. |
 | T2–T5 | Source manifests, corpus audit, `make corpuscheck`, dated test reports and limitations. |
 | D1–D3 | Dynamic/static builds where supported, `make dist`, extracted archive build with generators disabled, installed-path smoke tests. |

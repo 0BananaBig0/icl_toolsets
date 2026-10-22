@@ -16,9 +16,9 @@ constexpr int kMaxIndentWidth = 16;
 }  // namespace
 
 int ClampIndentWidth(int requested) {
-  return requested < 1 ? 2
-                       : (requested > kMaxIndentWidth ? kMaxIndentWidth
-                                                      : requested);
+  return requested < 1
+             ? 2
+             : (requested > kMaxIndentWidth ? kMaxIndentWidth : requested);
 }
 
 bool FormatOutcome::ChangedFrom(const std::string& original) const {
@@ -44,14 +44,15 @@ FormatOutcome FormatDocument(const std::string& text,
 FormatOutcome FormatParsedDocument(const ParsedDocument& document,
                                    const FormatRequest& request) {
   FormatOutcome outcome;
-  if (!document.ok) {
-    outcome.error_line = document.driver.error_line();
-    outcome.error_message = document.driver.error_message();
+  if (!document.ok()) {
+    outcome.error_line = document.driver().error_line();
+    outcome.error_message = document.driver().error_message();
     return outcome;
   }
   outcome.ok = true;
-  outcome.text = document.driver.Render(ClampIndentWidth(request.indent_width));
-  if (request.with_ast_dump) outcome.ast_dump = document.driver.AstToString();
+  outcome.text =
+      document.driver().Render(ClampIndentWidth(request.indent_width));
+  if (request.with_ast_dump) outcome.ast_dump = document.driver().AstToString();
   return outcome;
 }
 

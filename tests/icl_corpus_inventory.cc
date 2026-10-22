@@ -28,16 +28,16 @@ struct OpaqueRanges : icl::AstVisitor {
 
 Json Inventory(const std::string& source, bool audit) {
   icl::ParsedDocument doc(source);
-  if (!doc.ok) {
+  if (!doc.ok()) {
     if (audit) return Json::Object({{"ok", Json::Bool(false)}});
     throw std::runtime_error("ICL parse failed");
   }
   OpaqueRanges opaque(doc);
-  for (const auto* node : doc.driver.unit().top_level()) node->Accept(opaque);
-  const auto& tokens = doc.driver.unit().tokens;
+  for (const auto* node : doc.driver().unit().top_level()) node->Accept(opaque);
+  const auto& tokens = doc.driver().unit().tokens();
   Json::Elements modules, comments;
-  for (size_t i = 0; i < doc.declarations.size(); ++i) {
-    const auto& d = doc.declarations[i];
+  for (size_t i = 0; i < doc.declarations().size(); ++i) {
+    const auto& d = doc.declarations()[i];
     if (d.kind != "Module") continue;
     Json::Elements spelling, bodies;
     auto token = std::lower_bound(tokens.begin(), tokens.end(), d.range.begin,
@@ -49,7 +49,7 @@ Json Inventory(const std::string& source, bool audit) {
         bodies.push_back(Json::String(source.substr(r.begin, r.end - r.begin)));
     modules.push_back(Json::Object({
         {"name", Json::String(d.name)}, {"namespace", Json::String(d.name_space)},
-        {"use_namespace", Json::String(doc.namespace_uses.at(i).begin()->second)},
+        {"use_namespace", Json::String(doc.namespace_uses().at(i).begin()->second)},
         {"begin", Json::Int(d.range.begin)}, {"end", Json::Int(d.range.end)},
         {"tokens", Json::Array(std::move(spelling))},
         {"opaque", Json::Array(std::move(bodies))}}));

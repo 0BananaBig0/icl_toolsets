@@ -150,8 +150,9 @@ fall back to targeted searches. `make codegraph` produces `.codegraph/` outputs:
 Python helper graphs, compiler-generated C++ header dependencies and rendered
 dependency graphs. Those files are generated aids and are not source code.
 
-Follow the project's Google-style C++ conventions: two-space indentation,
-`snake_case` variables, `PascalCase` types and `kConstant` constants. Prefer
+Follow the required [Google coding style](coding-style.md), including names,
+headers, class interfaces and layout. Run `make formatcheck` and
+`make namingcheck` alongside the relevant functional checks. Prefer
 existing shared code and the standard library. Remove redundant or dead code
 without removing error handling or required tests. Avoid speculative abstractions.
 For performance changes, measure representative merged ICL and larger/deeper

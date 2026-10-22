@@ -11,8 +11,8 @@
 // .yy file stays readable, and it owns the parser's diagnostic state (the
 // first syntax error), which used to live in a file-scope global.
 
-#ifndef ICL_FORMAT_SRC_ICL_DRIVER_H_
-#define ICL_FORMAT_SRC_ICL_DRIVER_H_
+#ifndef ICL_TOOLSETS_SRC_ICL_DRIVER_H_
+#define ICL_TOOLSETS_SRC_ICL_DRIVER_H_
 
 #include <string>
 #include <unordered_set>
@@ -23,7 +23,6 @@
 #include "icl_ast.h"
 
 namespace icl {
-
 
 class IclDriver {
  public:
@@ -40,11 +39,14 @@ class IclDriver {
     return unit_.Make<AstStatement>(text, span);
   }
 
-  AstStatement* MakeParameter(const std::string& keyword, const std::string& name,
-                              const std::string& text, ParsedValue value, SourceSpan span) {
+  AstStatement* MakeParameter(const std::string& keyword,
+                              const std::string& name, const std::string& text,
+                              ParsedValue value, SourceSpan span) {
     return unit_.Make<AstStatement>(text, span,
-        keyword == "Parameter" ? NamedKind::Parameter : NamedKind::LocalParameter,
-        name, std::move(value));
+                                    keyword == "Parameter"
+                                        ? NamedKind::kParameter
+                                        : NamedKind::kLocalParameter,
+                                    name, std::move(value));
   }
 
   void CheckNamedValues(const std::vector<AstNode*>& body, bool module);
@@ -56,18 +58,27 @@ class IclDriver {
   // the closing brace.
   AstNode* MakePortGroup(const std::string& name,
                          std::vector<PortGroupItem> items, SourceSpan span) {
-    // Validate separators before folding; comments must not hide a missing name.
+    // Validate separators before folding; comments must not hide a missing
+    // name.
     bool need_name = true;
     for (const auto& item : items) {
       if (item.is_name) {
-        if (!need_name) SetParseDiagnostic(span.first_line, "expected comma between PortGroup names");
+        if (!need_name) {
+          SetParseDiagnostic(span.first_line,
+                             "expected comma between PortGroup names");
+        }
         need_name = false;
       } else if (item.is_comma) {
-        if (need_name) SetParseDiagnostic(span.first_line, "expected PortGroup name before comma");
+        if (need_name) {
+          SetParseDiagnostic(span.first_line,
+                             "expected PortGroup name before comma");
+        }
         need_name = true;
       }
     }
-    if (need_name) SetParseDiagnostic(span.first_line, "expected PortGroup name");
+    if (need_name) {
+      SetParseDiagnostic(span.first_line, "expected PortGroup name");
+    }
     // Fold adjacent names/commas only, preserving intervening comments.
     std::vector<PortGroupItem> folded;
     for (PortGroupItem& item : items) {
@@ -96,7 +107,8 @@ class IclDriver {
     std::vector<AstNode*> body;
     for (const PortGroupItem& item : folded) {
       if (item.is_name || item.is_comma) {
-        body.push_back(unit_.Make<AstStatement>(item.is_comma ? "," : item.text, item.span));
+        body.push_back(unit_.Make<AstStatement>(item.is_comma ? "," : item.text,
+                                                item.span));
       } else {
         body.push_back(item.node);
       }
@@ -121,21 +133,26 @@ class IclDriver {
 
   // ---- parser diagnostics ----
   ParsedValue NumberLiteral(const std::string& text, int line);
-  void CheckBlockItems(const std::string& kind, const std::vector<AstNode*>& body, int line);
+  void CheckBlockItems(const std::string& kind,
+                       const std::vector<AstNode*>& body, int line);
   void CheckAddressContext(const std::string& header,
-                                const std::vector<AstNode*>& body);
+                           const std::vector<AstNode*>& body);
 
-  void CheckEnumMember(const std::string& name, const ParsedValue& value, int line) {
-    if (!enum_members_.insert(name).second)
+  void CheckEnumMember(const std::string& name, const ParsedValue& value,
+                       int line) {
+    if (!enum_members_.insert(name).second) {
       SetParseDiagnostic(line, "duplicate Enum member: " + name);
-    if (value.width && enum_width_ && value.width != enum_width_)
+    }
+    if (value.width && enum_width_ && value.width != enum_width_) {
       SetParseDiagnostic(line, "Enum member widths must match");
+    }
     if (value.width) enum_width_ = value.width;
   }
 
   void CheckEnum(const std::string& name, int line) {
-    if (!enum_names_.insert(name).second)
+    if (!enum_names_.insert(name).second) {
       SetParseDiagnostic(line, "duplicate Enum name: " + name);
+    }
     enum_members_.clear();
     enum_width_ = 0;
   }
@@ -145,30 +162,35 @@ class IclDriver {
     unit_.top_level().push_back(pending_module_);
     return pending_module_;
   }
-  void AppendModuleItem(AstNode* node) { pending_module_->body().push_back(node); }
+  void AppendModuleItem(AstNode* node) {
+    pending_module_->body().push_back(node);
+  }
   void EndModule() {
     pending_module_ = nullptr;
-    enum_names_.clear(); access_link_names_.clear();
+    enum_names_.clear();
+    access_link_names_.clear();
   }
   void RecordMatch(const char* text, size_t size, bool icl);
   bool Parse(const std::string& text, std::string* error);
   std::string Render(int indent_width) const;
 
-
   void CheckInstructionName(const std::string& name, int line) {
-    if (!instruction_names_.insert(name).second)
+    if (!instruction_names_.insert(name).second) {
       SetParseDiagnostic(line, "duplicate AccessLink instruction: " + name);
+    }
   }
 
   void CheckAccessLink(const std::string& name, int line) {
-    if (!access_link_names_.insert(name).second)
+    if (!access_link_names_.insert(name).second) {
       SetParseDiagnostic(line, "duplicate AccessLink name: " + name);
+    }
     instruction_names_.clear();
   }
 
   void CheckChainName(const std::string& name, int line) {
-    if (!chain_names_.insert(name).second)
+    if (!chain_names_.insert(name).second) {
       SetParseDiagnostic(line, "duplicate Chain name: " + name);
+    }
   }
   //
   // Called by the bison error hook. Only the *first* error is kept: later ones
@@ -214,4 +236,4 @@ class IclDriver {
 
 }  // namespace icl
 
-#endif  // ICL_FORMAT_SRC_ICL_DRIVER_H_
+#endif  // ICL_TOOLSETS_SRC_ICL_DRIVER_H_

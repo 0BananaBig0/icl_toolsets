@@ -23,8 +23,8 @@
 // Keeping this pass separate means the parser stays free of formatting policy,
 // and a future style (2-space indent, Allman braces) is a change here only.
 
-#ifndef ICL_FORMAT_SRC_FORMAT_TREE_H_
-#define ICL_FORMAT_SRC_FORMAT_TREE_H_
+#ifndef ICL_TOOLSETS_SRC_FORMAT_TREE_H_
+#define ICL_TOOLSETS_SRC_FORMAT_TREE_H_
 
 #include <string>
 #include <vector>
@@ -50,7 +50,9 @@ struct FormatStyle {
 class FormatNode {
  public:
   FormatNode(bool is_blank_line, std::string text, int indent)
-      : is_blank_line_(is_blank_line), text_(std::move(text)), indent_(indent) {}
+      : is_blank_line_(is_blank_line),
+        text_(std::move(text)),
+        indent_(indent) {}
 
   // True for a blank-line separator, not for a line of source text. A real
   // line can also be empty (a blank line inside a multi-line comment), so an
@@ -95,4 +97,4 @@ std::string RenderFormatTree(const std::vector<FormatNode>& lines,
 
 }  // namespace icl
 
-#endif  // ICL_FORMAT_SRC_FORMAT_TREE_H_
+#endif  // ICL_TOOLSETS_SRC_FORMAT_TREE_H_

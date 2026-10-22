@@ -110,7 +110,6 @@ bool ParseArgs(int argc, char** argv, Options* options, std::string* error) {
   return true;
 }
 
-
 // One unit of work: a named file, or stdin. |from_file| doubles as "the result
 // may be written back", which stdin never allows.
 struct Job {
@@ -134,8 +133,7 @@ bool WriteFile(const std::string& path, const std::string& data) {
 //
 // Returns false when the file cannot be opened or is not text — binary input
 // must never be silently reformatted.
-bool ReadInput(const std::string& path, std::string* text,
-               std::string* error) {
+bool ReadInput(const std::string& path, std::string* text, std::string* error) {
   std::ifstream stream(path, std::ios::binary);
   if (!stream) {
     *error = "cannot open '" + path + "'";
@@ -169,8 +167,7 @@ bool Emit(const std::string& name, const std::string& original,
   if (options.write && writable) {
     // Only touch the file when the content actually changes; this keeps
     // mtimes (and build systems) quiet on already-formatted trees.
-    return outcome.ChangedFrom(original) ? WriteFile(name, outcome.text)
-                                        : true;
+    return outcome.ChangedFrom(original) ? WriteFile(name, outcome.text) : true;
   }
   std::cout << outcome.text;
   return true;

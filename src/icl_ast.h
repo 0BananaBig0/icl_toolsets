@@ -23,12 +23,13 @@
 // one-line form (`Alias a = b;`) and a block form (`Alias a = b { ... }`).
 // Named statements also carry metadata for shared local semantic checks.
 
-#ifndef ICL_FORMAT_SRC_ICL_AST_H_
-#define ICL_FORMAT_SRC_ICL_AST_H_
+#ifndef ICL_TOOLSETS_SRC_ICL_AST_H_
+#define ICL_TOOLSETS_SRC_ICL_AST_H_
 
+#include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
-#include <limits>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,7 +37,7 @@
 namespace icl {
 
 // A zero width means context/parameter dependent, not a zero-bit object.
-enum class ValueKind { Unknown, Number, String };
+enum class ValueKind { kUnknown, kNumber, kString };
 
 struct ValueAtom {
   ValueKind kind;
@@ -46,11 +47,12 @@ struct ValueAtom {
 
 struct ParsedValue {
   ParsedValue() = default;
-  ParsedValue(std::string text, size_t width = 0, ValueKind kind = ValueKind::Number)
+  explicit ParsedValue(std::string text, size_t width = 0,
+                       ValueKind kind = ValueKind::kNumber)
       : text(std::move(text)), width(width), kind(kind) {}
   std::string text;
   size_t width = 0;
-  ValueKind kind = ValueKind::Number;
+  ValueKind kind = ValueKind::kNumber;
   bool has_unknown = false;
   bool unsized = false;
   std::string reference;
@@ -59,15 +61,20 @@ struct ParsedValue {
 
   void Append(const std::string& gap, const ParsedValue& value) {
     if (atoms.empty()) atoms.push_back({kind, unsized, reference});
-    if (value.atoms.empty()) atoms.push_back({value.kind, value.unsized, value.reference});
-    else atoms.insert(atoms.end(), value.atoms.begin(), value.atoms.end());
-    dependencies.insert(dependencies.end(), value.dependencies.begin(), value.dependencies.end());
+    if (value.atoms.empty()) {
+      atoms.push_back({value.kind, value.unsized, value.reference});
+    } else {
+      atoms.insert(atoms.end(), value.atoms.begin(), value.atoms.end());
+    }
+    dependencies.insert(dependencies.end(), value.dependencies.begin(),
+                        value.dependencies.end());
     text += ", " + gap + value.text;
     has_unknown = has_unknown || value.has_unknown;
-    if (kind == ValueKind::Unknown) kind = value.kind;
+    if (kind == ValueKind::kUnknown) kind = value.kind;
     width = width && value.width &&
                     width <= std::numeric_limits<size_t>::max() - value.width
-                ? width + value.width : 0;
+                ? width + value.width
+                : 0;
   }
 };
 
@@ -88,7 +95,6 @@ struct LogicValue {
   bool is_enum = false;
   bool has_unknown = false;
 };
-
 
 class AstComment;
 class AstStatement;
@@ -174,19 +180,23 @@ class AstComment : public AstNode {
   std::string text_;
 };
 
-// A construct rendered on exactly one line: parameters, attributes, ScanMux selection entries and plain ports
+// A construct rendered on exactly one line: parameters, attributes, ScanMux
+// selection entries and plain ports
 // (`ScanInPort si;`).
 //
 // |text| is the complete line including any trailing semicolon, so rendering
 // needs no knowledge of what the statement is.
-enum class NamedKind { None, Parameter, LocalParameter, Attribute };
+enum class NamedKind { kNone, kParameter, kLocalParameter, kAttribute };
 
 class AstStatement : public AstNode {
  public:
   AstStatement(const std::string& text, SourceSpan span,
-               NamedKind kind = NamedKind::None, std::string name = "",
+               NamedKind kind = NamedKind::kNone, std::string name = "",
                std::optional<ParsedValue> value = std::nullopt)
-      : AstNode(span), text_(text), kind_(kind), name_(std::move(name)),
+      : AstNode(span),
+        text_(text),
+        kind_(kind),
+        name_(std::move(name)),
         value_(std::move(value)) {}
 
   void Accept(AstVisitor& visitor) const override { visitor.Visit(*this); }
@@ -236,7 +246,7 @@ class AstBlock : public AstNode {
 struct PortGroupItem {
   bool is_name = false;
   bool is_comma = false;
-  std::string text;     // name, with any comma already folded on
+  std::string text;         // name, with any comma already folded on
   AstNode* node = nullptr;  // set only for a comment
   // Each item keeps the span of *its own* token. Giving every item the span of
   // the whole group was wrong: the layout pass decides whether a comment is
@@ -285,7 +295,8 @@ class AstUnit {
 
   std::vector<AstNode*>& top_level() { return top_level_; }
   const std::vector<AstNode*>& top_level() const { return top_level_; }
-  std::vector<SourceToken> tokens;
+  const std::vector<SourceToken>& tokens() const { return tokens_; }
+  std::vector<SourceToken>& tokens() { return tokens_; }
 
   // Visits every top-level node in source order.
   void Accept(AstVisitor& visitor) const {
@@ -295,10 +306,11 @@ class AstUnit {
   }
 
  private:
+  std::vector<SourceToken> tokens_;
   std::vector<std::unique_ptr<AstNode>> nodes_;
   std::vector<AstNode*> top_level_;
 };
 
 }  // namespace icl
 
-#endif  // ICL_FORMAT_SRC_ICL_AST_H_
+#endif  // ICL_TOOLSETS_SRC_ICL_AST_H_
