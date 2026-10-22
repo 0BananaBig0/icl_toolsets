@@ -10,6 +10,6 @@
 // do fail.
 Module m {
   ScanRegister sr {
-    ResetValue "0x1F";
+    Attribute text = "0x1F";
   }
 }

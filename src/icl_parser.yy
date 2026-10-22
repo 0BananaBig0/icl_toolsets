@@ -236,16 +236,20 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> scalar_name token_gap
 %type <ParsedValue> integer_expr integer_arg attribute_values attribute_atom
 %type <std::string> strict_range signal_path signal_reference signal data_signal concat_data_signal
-%type <AstNode*> checked_port checked_port_item strict_attribute
-%type <std::string> checked_port_keyword default_value
+%type <AstNode*> checked_declaration checked_declaration_item strict_attribute
+%type <std::string> checked_declaration_keyword default_value
 %type <std::string> frequency_keyword clock_factor clock_period
-%type <std::vector<AstNode*>> checked_port_body
+%type <AstNode*> data_register data_register_item
+%type <std::vector<AstNode*>> data_register_body
+%type <std::string> write_enable callback_keyword callback_namespace callback_id
+%type <std::string> namespace_tail optional_subnamespace callback_args callback_arg ordinary_keyword
+%type <std::vector<AstNode*>> checked_declaration_body
 %type <ParsedValue> concat_number inverted_number number
 %type <std::vector<AstNode*>> module_item_list
 %type <AstNode*> module_item instance_item instance_block
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
-%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
+%type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
 %type <std::string> value
 %type <std::string> postfix
 %type <std::string> primary
@@ -385,10 +389,8 @@ module_item
         $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5),
                               SpanOf(@1.begin.line, @6.end.line));
       }
-  | range_block_kw decl_name opt_range SEMICOLON
-      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
-                                  SpanOf(@1.begin.line, @4.end.line)); }
-  | checked_port { $$ = $1; }
+  | checked_declaration { $$ = $1; }
+  | data_register { $$ = $1; }
   | sel_block_kw decl_name opt_range SELECTEDBY value_list LBRACE mux_body RBRACE
       {
         // `SelectedBy` is part of the standard; the selector may be a
@@ -503,9 +505,9 @@ integer_arg
   | LPAREN token_gap integer_expr RPAREN token_gap { $$ = ParsedValue{"(" + $2 + $3.text + ")" + $5}; }
   ;
 
-/* Each property has one grammar; the shared driver checks the permitted
-   properties and cardinalities for the particular port kind. */
-checked_port_keyword
+/* Ports and registers share declaration shapes and property productions.
+   The driver checks the permitted properties and cardinalities per kind. */
+checked_declaration_keyword
   : DATAOUTPORT { $$ = "DataOutPort"; }
   | DATAINPORT { $$ = "DataInPort"; }
   | SCANINPORT { $$ = "ScanInPort"; }
@@ -532,26 +534,33 @@ checked_port_keyword
   | TCKPORT { $$ = "TCKPort"; }
   | TOTMSPORT { $$ = "ToTMSPort"; }
   | TMSPORT { $$ = "TMSPort"; }
+  | SCANREGISTER { $$ = "ScanRegister"; }
   ;
 
-checked_port
-  : checked_port_keyword token_gap scalar_name token_gap strict_range SEMICOLON
+checked_declaration
+  : checked_declaration_keyword token_gap scalar_name token_gap strict_range SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
-  | checked_port_keyword token_gap scalar_name token_gap strict_range LBRACE checked_port_body RBRACE
-      { driver.CheckPortItems($1, $7, @1.begin.line);
+  | checked_declaration_keyword token_gap scalar_name token_gap strict_range LBRACE checked_declaration_body RBRACE
+      { driver.CheckBlockItems($1, $7, @1.begin.line);
         $$ = driver.MakeBlock($1 + " " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
   ;
 
-checked_port_body
+checked_declaration_body
   : %empty { $$ = {}; }
-  | checked_port_body checked_port_item { $$ = std::move($1); $$.push_back($2); }
-  | checked_port_body COMMENT
+  | checked_declaration_body checked_declaration_item { $$ = std::move($1); $$.push_back($2); }
+  | checked_declaration_body COMMENT
       { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
   ;
 
-checked_port_item
+checked_declaration_item
   : SOURCE token_gap concat_data_signal SEMICOLON
       { $$ = driver.MakeStatement("Source " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | SCANINSOURCE token_gap data_signal SEMICOLON
+      { $$ = driver.MakeStatement("ScanInSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | CAPTURESOURCE token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement("CaptureSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | RESETVALUE token_gap default_value SEMICOLON
+      { $$ = driver.MakeStatement("ResetValue " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | DIFFERENTIALINVOF token_gap concat_data_signal SEMICOLON
       { $$ = driver.MakeStatement("DifferentialInvOf " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | ENABLE token_gap data_signal SEMICOLON
@@ -571,6 +580,80 @@ checked_port_item
       { if ($3 != "Falling") { error(@3, "unsupported legacy LaunchEdge value"); YYERROR; }
         $$ = driver.MakeStatement("LaunchEdge " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
   | strict_attribute { $$ = $1; }
+  ;
+
+data_register
+  : DATAREGISTER token_gap scalar_name token_gap strict_range SEMICOLON
+      { $$ = driver.MakeStatement("DataRegister " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+  | DATAREGISTER token_gap scalar_name token_gap strict_range LBRACE data_register_body RBRACE
+      { driver.CheckBlockItems("DataRegister", $7, @1.begin.line);
+        $$ = driver.MakeBlock("DataRegister " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+  ;
+
+data_register_body
+  : %empty { $$ = {}; }
+  | data_register_body data_register_item { $$ = std::move($1); $$.push_back($2); }
+  | data_register_body COMMENT
+      { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
+  ;
+
+data_register_item
+  : checked_declaration_item { $$ = $1; }
+  | WRITEDATASOURCE token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement("WriteDataSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | WRITEENSOURCE token_gap write_enable SEMICOLON
+      { $$ = driver.MakeStatement("WriteEnSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | READDATASOURCE token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement("ReadDataSource " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | ADDRESSVALUE token_gap number SEMICOLON
+      { $$ = driver.MakeStatement("AddressValue " + $2 + $3.text + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | callback_keyword token_gap callback_namespace callback_id callback_args SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + " " + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+  ;
+
+/* §6.4.9 explicitly permits an extra inversion before data_signal. */
+write_enable
+  : data_signal { $$ = $1; }
+  | OPERATOR token_gap OPERATOR token_gap signal
+      { if ($1 != "~" || $3 != "~") { error(@1, "expected signal inversion '~'"); YYERROR; }
+        $$ = $1 + $2 + $3 + $4 + $5; }
+  ;
+
+callback_keyword
+  : READCALLBACK { $$ = "ReadCallBack"; }
+  | WRITECALLBACK { $$ = "WriteCallBack"; }
+  ;
+
+callback_namespace
+  : scalar_name token_gap namespace_tail { $$ = $1 + $2 + $3; }
+  | PARAMREF token_gap optional_subnamespace { $$ = $1 + $2 + $3; }
+  | DCOLON token_gap callback_id optional_subnamespace { $$ = "::" + $2 + $3 + $4; }
+  ;
+
+namespace_tail
+  : %empty { $$ = ""; }
+  | DCOLON token_gap callback_id optional_subnamespace { $$ = "::" + $2 + $3 + $4; }
+  ;
+
+optional_subnamespace
+  : %empty { $$ = ""; }
+  | DCOLON token_gap callback_id { $$ = "::" + $2 + $3; }
+  ;
+
+callback_id
+  : scalar_name token_gap { $$ = $1 + $2; }
+  | PARAMREF token_gap { $$ = $1 + $2; }
+  ;
+
+callback_args
+  : %empty { $$ = ""; }
+  | callback_args callback_arg { $$ = std::move($1) + " " + $2; }
+  ;
+
+callback_arg
+  : number { $$ = $1.text; }
+  | STRING token_gap { $$ = $1 + $2; }
+  | IPROCARG token_gap { $$ = $1 + $2; }
   ;
 
 frequency_keyword
@@ -658,44 +741,24 @@ concat_data_signal
    Used for attribute values, where `name - 1` must not be read as an
    expression. */
 attr_value
-  : value_no_lead_op                    { $$ = $1; }
-  /* A leading `::` at the *start* of the value, as in an iProc namespace:
-     `iProc_namespace : (namespace_name? '::')? ref_module_name ...`, where
-     the prefix is optional, so `::mod` names a module in the global
-     namespace and `WriteCallBack ::mod p <R>;` is legal. Placed here rather
-     than in `value_no_lead_op` because there it is genuinely ambiguous: `a
-     :: b` would be either one qualified name or two space-separated values,
-     and those render differently. At the start of a value there is nothing
-     before it to attach to, so there is only one reading — and, unlike the
-     change to `value_no_lead_op`, this one adds no conflicts. */
-  | DCOLON value_no_lead_op             { $$ = "::" + $2; }
-  | attr_value COMMA value_no_lead_op   { $$ = std::move($1) + ", " + $3; }
+  : postfix                    { $$ = $1; }
+  | attr_value COMMA postfix   { $$ = std::move($1) + ", " + $3; }
   /* A later element may carry a unary operator of its own. Every signal type
      in the standard is written `'~'? signal` and the concatenation rules put
      that per element (`concat_data_signal : data_signal (',' data_signal)*`),
      so `Source ~a, b;` and `Source a, ~b;` are both legal and were both
      rejected — the list accepted an operator only in first position. */
-  | attr_value COMMA OPERATOR value_no_lead_op
+  | attr_value COMMA OPERATOR postfix
       { $$ = std::move($1) + ", " + $3 + $4; }
-  /* Also space-separated: `ReadCallBack m::p <D>;`, where a name, a
-     namespace-qualified name and iProc arguments follow the keyword with
-     nothing between them. */
-  | attr_value value_no_lead_op         { $$ = std::move($1) + " " + $2; }
+  /* Legacy space-separated properties in blocks not yet constrained. */
+  | attr_value postfix         { $$ = std::move($1) + " " + $2; }
   /* A binary operator inside an attribute value. `signal : (number |
      reg_port_signal_id | hier_port)` and `number : ... | integer_expr`, so
      `Source 1 + 1;` is reachable in the published grammar. Costs nothing now
-     that the left side of an assignment is `postfix`: `value_no_lead_op`
+     that the left side of an assignment is `postfix`: `postfix`
      cannot start with an operator, so `a + b` has one reading only. */
-  | attr_value OPERATOR value_no_lead_op
+  | attr_value OPERATOR postfix
       { $$ = std::move($1) + " " + $2 + " " + $3; }
-  ;
-
-value_no_lead_op
-  : postfix                   { $$ = $1; }
-  /* Left recursive, so a qualified name may have any number of segments:
-     `a::b::c`. An iProc namespace is `ns::module::sub` in the grammar, so
-     two separators occur in one name, and there is no reason to stop there. */
-  | value_no_lead_op DCOLON postfix { $$ = $1 + "::" + $3; }
   ;
 
 /* The body of a LogicSignal: expression statements and the attribute forms
@@ -720,7 +783,7 @@ logic_body
      nested blocks such as `Select { ... }`. Both are unambiguous against an
      expression: two adjacent names are not a valid expression, and `{`
      cannot follow one. */
-  | logic_body attr_name value_no_lead_op SEMICOLON
+  | logic_body attr_name postfix SEMICOLON
       { $$ = std::move($1);
         $$.push_back(driver.MakeStatement($2 + " " + $3 + ";",
                                           SpanOf(@2.begin.line, @4.end.line))); }
@@ -757,7 +820,8 @@ opt_range
    bodies. Factored out because the two bodies accepted the same forms, so
    duplicating them only made the grammar longer and easy to let drift. */
 attr_item
-  : attr_stmt_name SEMICOLON
+  : data_register { $$ = $1; }
+  | attr_stmt_name SEMICOLON
       { $$ = driver.MakeStatement($1 + ";",
                                   SpanOf(@1.begin.line, @2.end.line)); }
   /* A value list, not a single value: `CaptureSource Temp, tdr[2:0];`, from
@@ -967,7 +1031,7 @@ port_group_item
    would be a genuine reduce/reduce conflict. Here `IDENT` has exactly one
    path. */
 attr_stmt_name
-  : any_keyword { $$ = $1; }
+  : ordinary_keyword { $$ = $1; }
   | postfix     { $$ = $1; }
   ;
 
@@ -996,7 +1060,7 @@ decl_name
 
 attr_name
   : IDENT        { $$ = $1; }
-  | any_keyword  { $$ = $1; }
+  | ordinary_keyword  { $$ = $1; }
   ;
 
 
@@ -1037,9 +1101,7 @@ onehot_block_kw
   ;
 
 range_block_kw
-  : SCANREGISTER         { $$ = "ScanRegister"; }
-  | DATAREGISTER         { $$ = "DataRegister"; }
-  | REG                  { $$ = "Reg"; }
+  : REG                  { $$ = "Reg"; }
   | FIELD                { $$ = "Field"; }
   ;
 
@@ -1128,6 +1190,11 @@ of_block_kw
 /* Everything above, plus the keywords that have no block form. One place to
    add a keyword; every list that needs "any keyword" refers to this. */
 any_keyword
+  : ordinary_keyword { $$ = $1; }
+  | DATAREGISTER { $$ = "DataRegister"; }
+  ;
+
+ordinary_keyword
   : name_block_kw   { $$ = $1; }
   | onehot_block_kw { $$ = $1; }
   | range_block_kw  { $$ = $1; }
@@ -1139,7 +1206,7 @@ any_keyword
      inside a one-hot data group could not be accepted without this. */
   | ENUM            { $$ = "Enum"; }
   | LAUNCHEDGE      { $$ = "LaunchEdge"; }
-  | checked_port_keyword { $$ = $1; }
+  | checked_declaration_keyword { $$ = $1; }
   | MODULE          { $$ = "Module"; }
   | PARAMETER       { $$ = "Parameter"; }
   | ATTRIBUTE       { $$ = "Attribute"; }
@@ -1215,8 +1282,6 @@ primary
   | INTEGER  { $$ = $1; }
   | STRING   { $$ = $1; }
   | PARAMREF { $$ = $1; }
-  /* `ReadCallBack m::p <D>;` — an iProc argument marker. */
-  | IPROCARG { $$ = $1; }
   ;
 
 %%

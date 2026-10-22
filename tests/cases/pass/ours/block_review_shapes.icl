@@ -33,13 +33,13 @@ Module block_review {
 
   // DataRegister: all four flavours in one module.
   DataRegister dr_write { WriteEnSource e; WriteDataSource d; }
-  DataRegister dr_addr { AddressValue 'h0; }
+  OneHotDataGroup addressed { DataRegister dr_addr { AddressValue 'h0; } }
   DataRegister dr_read { ReadDataSource r; }
-  DataRegister dr_cb { WriteCallBack m::p <D>; }
+  DataRegister dr_cb { WriteCallBack m p <D>; }
 
   // One-hot groups: one with a port list, one containing a whole register.
   OneHotScanGroup ohs[3:0] { Port a, b; }
-  OneHotDataGroup ohd { DataRegister dr { WriteEnSource e; } Port a; }
+  OneHotDataGroup ohd { DataRegister dr { AddressValue 0; } Port a; }
 
   // A scan interface with a chain, and one with several ports.
   ScanInterface si_chain { Chain c { Port a; DefaultLoadValue 1; } }

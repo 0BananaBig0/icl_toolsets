@@ -4,8 +4,12 @@ Module m {
   // module in the global namespace.
   DataRegister dr {
     ReadCallBack ::mod p <D>;
+  }
+  DataRegister wr {
     WriteCallBack ::mod::sub q <R> 5 "s" $X;
-    WriteCallBack m::p <D>;
+  }
+  DataRegister wr2 {
+    WriteCallBack m p <D>;
   }
   Instance i Of ::M { InputPort a = b; }
 }

@@ -13,12 +13,12 @@ Module m {
   ClockPort cp {
     DifferentialInvOf clk2;
   }
-  DataRegister dr {
-    ReadCallBack m::p <D>;
-    WriteCallBack p <R> 3 "x" $N;
+  DataRegister dr_read {
+    ReadCallBack m p <D>;
     ReadDataSource a;
-    AddressValue 3;
   }
+  DataRegister dr_write { WriteCallBack m p <R> 3 "x" $N; }
+  OneHotDataGroup addressed { DataRegister dr { AddressValue 3; } }
   Instance i Of T {
     AllowBroadcastOnScanInterface si;
     AddressValue 3;

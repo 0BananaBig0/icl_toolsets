@@ -105,6 +105,7 @@ class IclDriver {
 
   AstBlock* MakeBlock(const std::string& header, std::vector<AstNode*> body,
                       SourceSpan span) {
+    CheckDataRegisterContext(header, body);
     AstBlock* block = unit_.Make<AstBlock>(header, span);
     block->body() = std::move(body);
     return block;
@@ -116,7 +117,9 @@ class IclDriver {
 
   // ---- parser diagnostics ----
   ParsedValue NumberLiteral(const std::string& text) const;
-  void CheckPortItems(const std::string& kind, const std::vector<AstNode*>& body, int line);
+  void CheckBlockItems(const std::string& kind, const std::vector<AstNode*>& body, int line);
+  void CheckDataRegisterContext(const std::string& header,
+                                const std::vector<AstNode*>& body);
 
   void CheckEnumMember(const std::string& name, const ParsedValue& value, int line) {
     if (!enum_members_.insert(name).second)

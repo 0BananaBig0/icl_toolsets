@@ -133,12 +133,7 @@ def main():
     ok, detail = test_baseline_files_unmodified()
     check('Tessent baseline files are byte-identical', ok, detail)
 
-    # Every keyword the scanner knows must be usable as an attribute name.
-    # This is generated from the scanner itself rather than written out, so a
-    # new keyword cannot silently miss `any_keyword` in the grammar — which is
-    # exactly what happened twice: `attr_name` was a second, hand-written list
-    # that drifted, and `ClockPort clk = x;` inside an Instance was rejected
-    # while `ClockPort clk;` at module level was accepted.
+    # Every scanner keyword must also work as an ICL Attribute identifier.
     scanner = os.path.join(HERE, '..', 'src', 'icl_lexer.l')
     keyword_re = re.compile(r'^([A-Z][A-Za-z0-9_]*)\s+\{[^}]*make_[A-Z_]+\(',
                             re.M)
@@ -146,22 +141,17 @@ def main():
         keywords = keyword_re.findall(f.read())
     check('scanner keyword list was parsed', len(keywords) >= 40,
           'found %d' % len(keywords))
-    # Two keywords are excluded on purpose. `Instance` and `AccessLink` are
-    # always `name Of module`, which instance_item covers; letting them also be
-    # bare attribute names makes `Instance` ambiguous between the two — a real
-    # shift/reduce conflict, and what blocked an instance inside a one-hot data
-    # group. The exclusion is asserted to be exactly this set, so a third
-    # keyword silently dropping out still fails.
-    excluded = {'Instance', 'AccessLink'}
+    # ICL keywords are legal identifiers, including Attribute names.
+    # Exercise Attribute syntax rather than an arbitrary Instance property.
     drifted = []
     for keyword in keywords:
         result = runner.format_text(
-            'Module m { Instance i Of T { %s x = 1; } }' % keyword)
+            'Module m { ScanRegister sr { Attribute %s = 1; } }' % keyword)
         if result.returncode != 0:
             drifted.append(keyword)
     check('every scanner keyword works as an attribute name',
-          set(drifted) == excluded,
-          'expected only %s, got %r' % (sorted(excluded), sorted(drifted)[:8]))
+          not drifted,
+          'rejected keyword names: %r' % sorted(drifted))
 
     # The two front ends share format_job.cc, so these must hold for both.
     # The clamp used to exist only in the LSP (a 157-byte file with

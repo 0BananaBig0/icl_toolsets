@@ -49,8 +49,8 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 
 ### Task 3: ScanRegister and DataRegister
 
-- [ ] Audit §6.4.8 then §6.4.9, persist examples and invalid alternatives, observe RED, correct bodies including selectable/addressable and callback nesting.
-- [ ] Cover every alternative and dependent expression, run cumulative checks and merged corpus; commit.
+- [x] Audit §6.4.8 then §6.4.9, persist examples and invalid alternatives, observe RED, correct bodies including selectable/addressable and callback nesting.
+- [x] Cover every alternative and dependent expression, run cumulative checks and merged corpus; commit.
 
 ### Task 4: LogicSignal, ScanMux, DataMux, ClockMux
 

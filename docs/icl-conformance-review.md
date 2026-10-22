@@ -35,7 +35,7 @@ Evidence: §6.5.3, printed 137–138 / PDF 151–152; dependencies §§6.3.7–8
 
 ## Open work
 
-Enum and all 26 port blocks have syntax/local-property checks. Register and
+Enum and all 26 port blocks have syntax/local-property checks. LogicSignal and
 subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
 resolution, complete LSP services, coverage accounting, performance measurement,
 whole-change review and final installation remain pending; no full-conformance
@@ -146,3 +146,47 @@ Per-block classified fixtures (each positive also checks content and idempotence
 | port_inventory | 6 |
 
 Verification: `make check-dynamic BISON=/usr/bin/bison` exited 0: 734 classified conformance cases, 494 regression assertions, 730 block-review cases, 12 golden cases, 71 CLI checks and 62 existing LSP checks, plus unit/whitespace/fuzz/separation checks. Current trace reader reports 261/261 grammar source lines and 112/112 lexer rules over 981 files; distinct production-ID and handwritten branch accounting remain task 10.
+
+
+## ScanRegister and DataRegister
+
+IEEE §6.4.8 (printed 113–116/PDF 127–130) and §6.4.9 (printed
+117–120/PDF 131–134), compared with Honza's corresponding productions and
+Tessent v2023.4 `Command_Scanregister_idc6d7ce0a.html` /
+`Command_Dataregister_iddd11b495.html`.
+
+ScanRegister shares the strict declaration/range/signal/attribute machinery with
+ports, adding its own permitted properties and singleton counts. ScanInSource
+is one signal; CaptureSource is a concatenation; ResetValue and DefaultLoadValue
+are numeric concatenations or one enum symbol. Arbitrary members and nested
+blocks are rejected. The explicit semicolon and empty-body grammar forms remain
+accepted: missing ScanInSource (semantic rule b) is an incomplete-model issue,
+not grounds for deleting those syntax alternatives. Resolving signal and enum
+references, widths and reset/default value compatibility still needs elaboration.
+
+DataRegister has a distinct body entry point, also used for nested declarations.
+Its common properties reuse the same grammar and validation as ScanRegister.
+Selectable/addressable/read-callback/write-callback properties are mutually
+exclusive; non-Attribute properties are singletons. Empty braces are rejected.
+The shared AST construction checks rule e: explicit addressable declarations
+belong inside OneHotDataGroup, and other explicit access types belong outside.
+Declarations without an access type remain syntactically incomplete rather than
+being assigned an invented type.
+
+Callback syntax is IEEE ICL: namespace, then a separate procedure name, then
+zero or more numeric/string/parameter/<D>/<R> arguments. Namespace qualification
+has the exact depth and parameter positions specified in §6.4.9; it is not an
+unbounded `::` sequence. Tessent v2023.4 explicitly says callback functionality
+is unsupported, so no vendor shorthand was inferred. The lexer remains ICL-only.
+The normative WriteEnSource production permits an extra inversion before a
+data_signal, including two consecutive `~` operators; this is tested explicitly.
+
+Source examples include both Tessent ScanRegister examples (with the sensor's
+stray semicolon before a ScanOutPort body removed), its DataRegister example,
+and completed IEEE selectable/addressable/callback examples. The IEEE callback
+example's unquoted string parameter M3 is quoted per §6.5.4, and its missing
+instance is supplied. Former synthetic positives with missing callback names,
+mixed access types, Selectable/Addressable blocks, unsupported members, nested
+indices or string ResetValue are now corrected or classified as negatives.
+
+Register-stage verification: `make check-dynamic BISON=/usr/bin/bison` exited 0 with 886 classified cases (59 ScanRegister, 93 DataRegister/dependencies), 494 regression assertions, 730 legacy block cases and all remaining dynamic recipes passing. Trace reader: 291/291 grammar source lines, 112/112 lexer rules over 1133 files; production-ID and handwritten branch accounting still pending. Removed obsolete generic namespace/iProc-marker value alternatives and unproven bare Reg/Field declarations after reproducing their illegal acceptance. All keyword-name checks now use actual Attribute syntax, including Instance and AccessLink, with no exclusion list.

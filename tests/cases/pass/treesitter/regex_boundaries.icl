@@ -23,8 +23,8 @@ Module m {
   Parameter sized = $W'd5;
   Parameter named = $abc_1;
 
-  // index : $.integer_expression  — so an index can itself be an index
-  ScanRegister sr[a[0]];
+  // index : $.integer_expression — recursively parenthesized arithmetic
+  ScanRegister sr[($W + (2 * 3))];
   ScanRegister sr2[$W - 1:0];
 
   // concat_number_list : prec.left(seq($.concat_number, repeat(seq('|', $.concat_number))))
@@ -38,8 +38,10 @@ Module m {
 
   // i_proc_namespace : optional(scope) name optional(sub_scope)
   DataRegister dr {
-    WriteCallBack a::b::c <D>;
-    WriteCallBack $a::b::$c <D>;
+    WriteCallBack a::b c <D>;
+  }
+  DataRegister dr2 {
+    WriteCallBack $a::b $c <D>;
   }
 
   // port_enable : seq('Enable', $.signal, ';')  — one signal; a list is

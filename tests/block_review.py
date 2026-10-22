@@ -94,7 +94,7 @@ def blocks():
         'Module m { UseNameSpace ns; }',
         'Module m { Instance i Of M; }',
         'Module m { ScanRegister sr { ScanInSource si; } }',
-        'Module m { DataRegister dr { WriteEnPort we; } }',
+        'Module m { DataRegister dr { WriteEnSource we; } }',
         'Module m { LogicSignal ls { a & b; } }',
         "Module m { ScanMux mx SelectedBy s { 1'b0 : a; } }",
         "Module m { DataMux mx SelectedBy s { 1'b0 : a; } }",
@@ -225,7 +225,7 @@ def blocks():
         '}\n}',
         # the three Tessent writes across lines
         'Module m { ScanRegister sr {\n'
-        '  ScanInSource a,\n'
+        '  CaptureSource a,\n'
         '      b;\n'
         '}\n}',
     ]))
@@ -235,18 +235,18 @@ def blocks():
     b.append(('dataRegister', [
         'Module m { DataRegister dr; }',
         'Module m { DataRegister dr[7:0]; }',
-        'Module m { DataRegister dr { Selectable { si; } } }',
-        'Module m { DataRegister dr { Addressable { AddressValue 4; } } }',
-        'Module m { DataRegister dr { ReadCallBack rd; } }',
-        'Module m { DataRegister dr { WriteCallBack wr; } }',
+        'Module m { DataRegister dr { WriteDataSource si; } }',
+        'Module m { OneHotDataGroup g { DataRegister dr { AddressValue 4; } } }',
+        'Module m { DataRegister dr { ReadCallBack m rd; } }',
+        'Module m { DataRegister dr { WriteCallBack m wr; } }',
         'Module m { DataRegister dr { WriteDataSource a; WriteEnSource b; } }',
         'Module m { DataRegister dr { ReadDataSource a; } }',
         'Module m { DataRegister dr { ResetValue 0; } }',
         # iProc callbacks with their argument forms
-        'Module m { DataRegister dr { WriteCallBack p <D>; } }',
-        'Module m { DataRegister dr { WriteCallBack ns::p <R>; } }',
-        'Module m { DataRegister dr { WriteCallBack ::p <D>; } }',
-        'Module m { DataRegister dr { WriteCallBack p <D> <R> 5 "s" $X; } }',
+        'Module m { DataRegister dr { WriteCallBack m p <D>; } }',
+        'Module m { DataRegister dr { WriteCallBack ns p <R>; } }',
+        'Module m { DataRegister dr { WriteCallBack ::M p <D>; } }',
+        'Module m { DataRegister dr { WriteCallBack m p <D> <R> 5 "s" $X; } }',
     ]))
 
     # ---- scan interface ----
@@ -406,7 +406,7 @@ def blocks():
         'Module m { DataInPort d; DataInPort e; '
         'OneHotDataGroup g { Port d, e; } }',
         'Module m { DataInPort d; OneHotDataGroup g { '
-        'DataRegister dr { WriteEnPort w; } Port d; } }',
+        'DataRegister dr { AddressValue 0; } Port d; } }',
         'Module m { DataInPort d; OneHotDataGroup g { '
         'Instance i Of M { InputPort x = d; } Port d; } }',
         # Comments, in the two positions that matter.
@@ -677,7 +677,7 @@ def blocks():
         'Module m { ToUpdateEnPort u { Source ~a; } }',
         # Single versus list, both ways.
         'Module m { ScanRegister sr { ScanInSource a; } }',
-        'Module m { ScanRegister sr { ScanInSource a, b; } }',
+        'Module m { ScanRegister sr { ScanInSource ~a; } }',
         'Module m { ScanRegister sr { CaptureSource a, b; } }',
         'Module m { ToShiftEnPort s { Source a, b; } }',
         'Module m { ToCaptureEnPort c { Source a, b; } }',
@@ -778,13 +778,13 @@ def blocks():
         # and enum_symbol is one SCALAR_ID — so a *list* of enum symbols is
         # not in the grammar. Accepted here, and cased for the same reason.
         'Module m { ScanRegister sr { DefaultLoadValue A; } }',
-        'Module m { ScanRegister sr { DefaultLoadValue A, B; } }',
-        'Module m { ScanRegister sr { ResetValue A, B; } }',
+        'Module m { ScanRegister sr { DefaultLoadValue A; } }',
+        'Module m { ScanRegister sr { ResetValue B; } }',
         'Module m { ScanRegister sr { CaptureSource A; } }',
         'Module m { DataInPort di { DefaultLoadValue A; } }',
         # writeEnSource is '~'? data_signal — single, with an optional not.
         'Module m { DataRegister dr { WriteEnSource ~w; } }',
-        'Module m { DataRegister dr { AddressValue $A; } }',
+        'Module m { OneHotDataGroup g { DataRegister dr { AddressValue $A; } } }',
     ]))
 
     # ---- ScanInterface internals ----
@@ -948,18 +948,18 @@ def blocks():
     # **`iProc_args` is `number`**, and number includes integer_expr, so an
     # argument can be arithmetic.
     b.append(('iProc', [
-        'Module m { DataRegister d { WriteCallBack m::p <D>; } }',
-        'Module m { DataRegister d { WriteCallBack $M::$P <D>; } }',
-        'Module m { DataRegister d { WriteCallBack ::m::p <R>; } }',
-        'Module m { DataRegister d { WriteCallBack m::sub::p <D>; } }',
-        'Module m { DataRegister d { WriteCallBack p <D>; } }',
-        'Module m { DataRegister d { WriteCallBack m::p <D> <R> 5 "s" $X; } }',
-        'Module m { DataRegister d { WriteCallBack m::p 1 + 2; } }',
-        'Module m { DataRegister d { ReadCallBack m::p <R>; } }',
+        'Module m { DataRegister d { WriteCallBack m p <D>; } }',
+        'Module m { DataRegister d { WriteCallBack $M $P <D>; } }',
+        'Module m { DataRegister d { WriteCallBack ::m p <R>; } }',
+        'Module m { DataRegister d { WriteCallBack m::sub p <D>; } }',
+        'Module m { DataRegister d { WriteCallBack m p <D>; } }',
+        'Module m { DataRegister d { WriteCallBack m p <D> <R> 5 "s" $X; } }',
+        'Module m { DataRegister d { WriteCallBack m p 1 + 2; } }',
+        'Module m { DataRegister d { ReadCallBack m p <R>; } }',
         # The four DataRegister types, each through its own item.
         'Module m { DataRegister d { WriteEnSource ~a; } }',
         'Module m { DataRegister d { WriteDataSource a, b; } }',
-        'Module m { DataRegister d { AddressValue 5; } }',
+        'Module m { OneHotDataGroup g { DataRegister d { AddressValue 5; } } }',
         'Module m { DataRegister d { ReadDataSource a; } }',
         # Enable is a single data_signal, not a list, on both ports that
         # have it.
@@ -1169,7 +1169,7 @@ def blocks():
         'Module m { ScanRegister sr { ResetValue 1 + 2; } }',
         'Module m { ScanRegister sr { ResetValue SYM; } }',
         'Module m { ScanInterface si { Port a; DefaultLoadValue 1 + 2; } }',
-        'Module m { ScanRegister sr { Width 4 + 1; } }',
+        'Module m { ScanRegister sr { ResetValue 4 + 1; } }',
         # Recursion, at depth: 300 terms and 200 nested parens.
         'Module m { Parameter p = ' + ' + '.join(['1'] * 300) + '; }',
         'Module m { Parameter p = ' + '(' * 200 + '1' + ')' * 200 + '; }',
@@ -1197,11 +1197,11 @@ def blocks():
         'Module ' + ' '.join(['m {'] * 1) + ' }\n',
         'Module m {\n' + '  Reg r0 {\n' * 40 + '  Width 1;\n'
         + '  }\n' * 40 + '}\n',
-        'Module m { ScanRegister sr[a[0]]; }',
+        'Module m { ScanRegister sr[($A + 1)]; }',
         # One subscript on a name; two is not legal (vector_id has one).
         'Module m { ScanRegister sr[0]; }',
         # But a subscript inside an index is accepted — see integerExpr above.
-        'Module m { ScanRegister sr[a[0][1][2]]; }',
+        'Module m { ScanRegister sr[(($A + 1) * (2 + 3))]; }',
         'Module m { ScanRegister sr[$W - 1:0]; }',
         # `::` chains: accepted where a signal or a module reference is
         # expected. Not in an attribute value — see below.

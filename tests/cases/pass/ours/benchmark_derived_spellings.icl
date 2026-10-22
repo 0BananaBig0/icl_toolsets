@@ -17,10 +17,12 @@ Module m {
   }
 
   // From Classic/Kernel: RefEnum, a symbolic reset value and an address.
+  OneHotDataGroup addressed {
   DataRegister R_id {
     RefEnum Identification;
     ResetValue CORE_ID;
     AddressValue 'h0000;
+  }
   }
 
   // From Standard/Kernel: a one-hot group containing a whole data register.

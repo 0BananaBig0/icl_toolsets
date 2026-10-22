@@ -183,7 +183,7 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
                       return icl::IclParser::make_TIME(
                           std::string(yytext), g_location); }
 
-  /* iProc arguments: `ReadCallBack m::p <D>;`. `<` and `>` are operators
+  /* iProc arguments: `ReadCallBack m p <D>;`. `<` and `>` are operators
      everywhere else, so `<D>` would lex as three tokens and no rule accepts
      `<` without a value on its left. Lexed as one token because that is what
      it is — a fixed marker, not an operator applied to `D`. */

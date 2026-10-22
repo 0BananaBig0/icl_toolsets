@@ -164,7 +164,7 @@ def main():
     # 2. ...and each still works as an ordinary attribute name
     for kw in PDL_ONLY_KEYWORDS:
         if not accepts(args.binary,
-                       'Module m { ScanRegister sr { %s 1; } }' % kw):
+                       'Module m { ScanRegister sr { Attribute %s = 1; } }' % kw):
             failures.append('%s: not usable as an attribute name' % kw)
 
     # 3. the PDL-only lexical forms are rejected

@@ -9,7 +9,7 @@ Module m {
     Enable ~e;
   }
   ScanRegister sr {
-    ScanInSource a, ~b;
+    ScanInSource ~b;
     ResetValue ~1'b0, 2'b11;
     CaptureSource ~1'b0, ~2'b11;
   }

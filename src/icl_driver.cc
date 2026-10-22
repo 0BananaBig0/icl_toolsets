@@ -93,9 +93,9 @@ ParsedValue IclDriver::NumberLiteral(const std::string& text) const {
   return value;
 }
 
-void IclDriver::CheckPortItems(const std::string& kind,
+void IclDriver::CheckBlockItems(const std::string& kind,
                                const std::vector<AstNode*>& body, int line) {
-  // true means a singleton. Attribute is repeatable for every port kind.
+  // true means a singleton. Attribute is repeatable for every kind.
   static const std::map<std::string, std::map<std::string, bool>> rules = {
       {"ScanInPort", {}},  // §6.4.6.1
       {"ScanOutPort", {{"Source", true}, {"Enable", true}, {"LaunchEdge", true}}},  // §6.4.6.2
@@ -123,6 +123,14 @@ void IclDriver::CheckPortItems(const std::string& kind,
       {"AddressPort", {}},  // §6.4.6.24
       {"WriteEnPort", {}},  // §6.4.6.25
       {"ReadEnPort", {}},  // §6.4.6.26
+      {"ScanRegister", {{"ScanInSource", true}, {"CaptureSource", true},
+                        {"DefaultLoadValue", true}, {"ResetValue", true},
+                        {"RefEnum", true}}},  // §6.4.8
+      {"DataRegister", {{"WriteDataSource", true}, {"WriteEnSource", true},
+                        {"AddressValue", true}, {"ReadCallBack", true},
+                        {"ReadDataSource", true}, {"WriteCallBack", true},
+                        {"ResetValue", true}, {"DefaultLoadValue", true},
+                        {"RefEnum", true}}},  // §6.4.9
   };
   const auto& properties = rules.at(kind);
   std::unordered_set<std::string> seen;
@@ -142,7 +150,7 @@ void IclDriver::CheckPortItems(const std::string& kind,
     }
   }
   if (!has_item && (kind == "ToSelectPort" || kind == "ToResetPort" ||
-                    kind == "ToClockPort" || kind == "ToTRSTPort")) {
+                    kind == "ToClockPort" || kind == "ToTRSTPort" || kind == "DataRegister")) {
     SetParseDiagnostic(line, kind + " requires a nonempty body or semicolon");
   }
   if (kind == "ToClockPort") {
@@ -151,6 +159,36 @@ void IclDriver::CheckPortItems(const std::string& kind,
     }
     if ((seen.count("FreqMultiplier") || seen.count("FreqDivider")) && !seen.count("Source")) {
       SetParseDiagnostic(line, "clock frequency factors require Source");
+    }
+  }
+  if (kind == "DataRegister") {
+    const int types = static_cast<int>(seen.count("WriteDataSource") || seen.count("WriteEnSource")) +
+                      static_cast<int>(seen.count("AddressValue") != 0) +
+                      static_cast<int>(seen.count("ReadCallBack") || seen.count("ReadDataSource")) +
+                      static_cast<int>(seen.count("WriteCallBack") != 0);
+    if (types > 1) SetParseDiagnostic(line, "DataRegister access types are mutually exclusive");
+  }
+}
+
+void IclDriver::CheckDataRegisterContext(const std::string& header,
+                                        const std::vector<AstNode*>& body) {
+  const bool one_hot = header.rfind("OneHotDataGroup ", 0) == 0;
+  for (const auto* node : body) {
+    const auto* reg = dynamic_cast<const AstBlock*>(node);
+    if (!reg || reg->header().rfind("DataRegister ", 0) != 0) continue;
+    for (const auto* item : reg->body()) {
+      const auto* property = dynamic_cast<const AstStatement*>(item);
+      if (!property) continue;
+      const auto& text = property->text();
+      const auto keyword = text.substr(0, text.find_first_of(" \t\n;"));
+      const bool addressed = keyword == "AddressValue";
+      const bool other_type = keyword == "WriteDataSource" || keyword == "WriteEnSource" ||
+                              keyword == "ReadCallBack" || keyword == "ReadDataSource" ||
+                              keyword == "WriteCallBack";
+      if ((addressed && !one_hot) || (other_type && one_hot)) {
+        SetParseDiagnostic(item->span().first_line,
+                           "addressable DataRegisters belong only in OneHotDataGroup; other access types belong outside it");
+      }
     }
   }
 }

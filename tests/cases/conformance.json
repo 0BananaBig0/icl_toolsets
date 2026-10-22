@@ -4402,5 +4402,917 @@
     "block": "port_inventory",
     "accept": true,
     "source": "IEEE \u00a7\u00a76.3.12,6.4.8: numeric signal expression; syntax only"
+  },
+  {
+    "path": "cases/ours/scan_register/bare.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/empty.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/comments.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/attribute.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/scan_in.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/scan_in_inverted.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/scan_in_number.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/scan_in_list.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/scan_in_expression.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/scan_in_boolean.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/capture_list.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/capture_enum.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/capture_boolean.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/capture_missing.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/default_enum.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/default_concat.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/default_string.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/default_signal.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/default_enum_inverted.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/reset_enum.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/reset_concat.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/reset_expression.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/reset_string.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/reset_signal.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/ref_enum.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/ref_enum_list.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/ref_enum_hierarchy.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/ref_enum_missing.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/unknown.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/nested.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/nested_register.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/attribute_signal.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/duplicate_ScanInSource.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/duplicate_CaptureSource.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/duplicate_DefaultLoadValue.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/duplicate_ResetValue.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/duplicate_RefEnum.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_Source.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_Enable.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_ActivePolarity.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_Period.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_AddressValue.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_ReadCallBack.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/foreign_WriteEnSource.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/range.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/range_expression.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/range_identifier.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/range_nested.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/keyword.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/special_keyword.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/ours/scan_register/header_comments.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.8 printed 113\u2013116/PDF 127\u2013130; constructed syntax/local-cardinality case"
+  },
+  {
+    "path": "cases/standard/scan_register/example.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "IEEE \u00a76.4.8 printed 114/PDF 128, completed example"
+  },
+  {
+    "path": "cases/tessent/scan_register/tap.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Scanregister_idc6d7ce0a.html Example 1; corrected typography"
+  },
+  {
+    "path": "cases/tessent/scan_register/sensor.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Scanregister_idc6d7ce0a.html Example 2; corrected typography"
+  },
+  {
+    "path": "cases/ours/scan_register/old_deep_recursion.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.8 / \u00a76.3.12; regression for formerly accepted synthetic input"
+  },
+  {
+    "path": "cases/ours/scan_register/reset_pdl_string.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.8 / \u00a76.3.12; regression for formerly accepted synthetic input"
+  },
+  {
+    "path": "cases/ours/scan_register/enum_list_DefaultLoadValue.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.8 / \u00a76.3.12; regression for formerly accepted synthetic input"
+  },
+  {
+    "path": "cases/ours/scan_register/enum_list_ResetValue.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.8 / \u00a76.3.12; regression for formerly accepted synthetic input"
+  },
+  {
+    "path": "cases/ours/scan_register/width_property.icl",
+    "block": "scan_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.8 / \u00a76.3.12; regression for formerly accepted synthetic input"
+  },
+  {
+    "path": "cases/ours/data_register/bare.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/empty.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/comment_only.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/attributes.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/selectable.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/enable_inverted.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/enable_double_inverted.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/enable_list.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/enable_operator.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/address_number.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/address_expression.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/address_list.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/address_signal.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/address_string.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/common.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/reset_concat.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/reset_string.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/reset_signal.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/read_source.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/read_callback.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/write_callback.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_no_args.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_missing_name.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_compact.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_unquoted_arg.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_bad_marker.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_string_namespace.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_comma_args.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_expr.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/callback_comments.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/selectable_block.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/addressable_block.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/foreign_scan.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/foreign_capture.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/foreign_source.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/unknown.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/nested.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_0.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_1.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_2.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_3.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_4.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_5.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_6.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_7.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_8.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/namespace_9.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/bad_namespace_0.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/bad_namespace_1.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/bad_namespace_2.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/bad_namespace_3.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_WriteEnSource.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_WriteDataSource.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_ReadDataSource.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_AddressValue.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_ReadCallBack.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_WriteCallBack.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_ResetValue.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_DefaultLoadValue.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/duplicate_RefEnum.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/type_conflict_0.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/type_conflict_1.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/type_conflict_2.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/type_conflict_3.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/type_conflict_4.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/type_conflict_5.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/range.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/range_expression.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/bad_range.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/ours/data_register/keyword.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 117\u2013120/PDF 131\u2013134; constructed"
+  },
+  {
+    "path": "cases/standard/data_register/selectable.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE \u00a76.4.9 printed 119/PDF 133; completed selectable examples"
+  },
+  {
+    "path": "cases/standard/data_register/callback.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE \u00a76.4.9 callback example: quoted unquoted M3 string per \u00a76.5.4 and completed missing instance"
+  },
+  {
+    "path": "cases/tessent/data_register/selectable.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Tessent v2023.4 Command_Dataregister_iddd11b495.html selectable example"
+  },
+  {
+    "path": "cases/ours/data_register/old_clock_and_callback.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9; invalid synthetic legacy input preserved before correction"
+  },
+  {
+    "path": "cases/ours/data_register/old_dataregister_block.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9; invalid synthetic legacy input preserved before correction"
+  },
+  {
+    "path": "cases/ours/data_register/old_iproc_namespace_leading_colons.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9; invalid synthetic legacy input preserved before correction"
+  },
+  {
+    "path": "cases/ours/data_register/old_regex_boundaries.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9; invalid synthetic legacy input preserved before correction"
+  },
+  {
+    "path": "cases/standard/data_register/addressable.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.9 printed 119/PDF 133 addressable example"
+  },
+  {
+    "path": "cases/ours/data_register/nested_invalid.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4.6,6.4.9,6.4.14; constructed context/identifier case"
+  },
+  {
+    "path": "cases/ours/data_register/port_scan_property.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4.6,6.4.9,6.4.14; constructed context/identifier case"
+  },
+  {
+    "path": "cases/ours/data_register/data_register_keyword_name.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE \u00a7\u00a76.4.6,6.4.9,6.4.14; constructed context/identifier case"
+  },
+  {
+    "path": "cases/ours/data_register/address_outside_group.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "cases/ours/data_register/selectable_in_group.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "cases/ours/data_register/read_callback_in_group.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "cases/ours/data_register/write_callback_in_group.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "cases/ours/data_register/address_in_group.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE \u00a76.4.9 rule e printed 120/PDF 134; constructed nesting case"
+  },
+  {
+    "path": "cases/ours/data_register/callback_marker_outside_callback.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
+  },
+  {
+    "path": "cases/ours/data_register/global_namespace_outside_callback.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
+  },
+  {
+    "path": "cases/ours/data_register/qualified_namespace_outside_callback.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
+  },
+  {
+    "path": "cases/ours/data_register/unsupported_reg_bare.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
+  },
+  {
+    "path": "cases/ours/data_register/unsupported_field_bare.icl",
+    "block": "data_register",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
+  },
+  {
+    "path": "cases/ours/data_register/property_names.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
+  },
+  {
+    "path": "cases/ours/data_register/alias_numeric_dependency.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "IEEE \u00a7\u00a76.4,6.4.9,6.5.2,6.5.5; shared lexical/production dependency regression, no generic callback syntax"
   }
 ]
