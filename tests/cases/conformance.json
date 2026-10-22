@@ -10456,5 +10456,11 @@
     "block": "alias",
     "accept": false,
     "source": "IEEE1687-2014 \u00a76.3.10.5; original constructed invalid hierarchy preserved"
+  },
+  {
+    "path": "cases/ours/lexical/large_width.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "IEEE1687-2014 \u00a76.3.8; constructed width beyond host integer representation; width-dependent elaboration unverified"
   }
 ]

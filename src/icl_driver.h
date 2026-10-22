@@ -41,11 +41,6 @@ class IclDriver {
   IclDriver(const IclDriver&) = delete;
   IclDriver& operator=(const IclDriver&) = delete;
 
-  // Runs the whole pipeline. Returns false and fills |error| when the input is
-  // not valid IEEE 1687 ICL.
-  bool FormatText(const std::string& text, std::string* output,
-                  std::string* error);
-
   // ---- factory helpers used by the grammar actions ----
   AstUnit& unit() { return unit_; }
   const AstUnit& unit() const { return unit_; }
@@ -199,14 +194,12 @@ class IclDriver {
   // range plus message. |error_line| is 1-based, like every other line number
   // in this code base.
   // No `has_error()` accessor: nothing calls it. `format_job.cc` takes the
-  // outcome from `FormatText`'s return value and reads the line and message,
+  // outcome from `Parse`'s return value and reads the line and message,
   // so a third accessor would be a third thing that has to agree with
   // `has_error_` — and an unused one is worse than none, because a reader
   // cannot tell whether it is load-bearing.
   int error_line() const { return error_line_; }
   const std::string& error_message() const { return error_message_; }
-
-  void set_style(const FormatStyle& style) { style_ = style; }
 
   // The AST as text (`--ast`). Returned rather than printed, so that the
   // shared job layer can hand it to either front end without doing I/O.
@@ -222,7 +215,6 @@ class IclDriver {
   std::unordered_set<std::string> chain_names_;
   std::unordered_set<std::string> instruction_names_;
   std::unordered_set<std::string> access_link_names_;
-  FormatStyle style_;
 
   bool has_error_ = false;
   int error_line_ = 0;

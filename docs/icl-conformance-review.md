@@ -451,3 +451,20 @@ COC_PLUGIN=/home/banana/.vim/plugged/coc.nvim COC_VIM=/usr/bin/vim
 bash tests/run_coc_check.sh`. Test config/data/inputs stayed under the isolated
 COC_ROOT. The runner uses Python's PTY support because util-linux `script` is not
 installed; Vim runs with `-u NONE -i NONE`. User editor settings were not edited.
+
+
+## Task 10 — final verification, performance and installation
+
+Coverage readers now count zero/starred lines, never-executed branches, inline
+headers and distinct same-line productions. Full dynamic regression passes;
+strict coverage remains below its unchanged thresholds. Independent review's four
+LSP findings were reproduced and fixed in shared semantics, then independently
+rechecked. Long integer expressions no longer copy right-hand tails quadratically.
+JSON/framing malformed-input and recovery tests pass. The dynamic pair is installed
+under `/home/banana/.local/bin`; installed formatter1744/1744 and LSP37/37 checks
+pass. Static runtime libraries are absent. Real Vim9.2/coc0.0.82 integration passes.
+
+[Final verification report](icl-verification.md) records exact coverage, compiler
+mapping artifacts, test commands, reference comparison, performance costs and
+remaining language/toolchain limits. [Editor configurations](editor/coc-lsp.json)
+and [optional CLI adapter](editor/coc-cli.json) are printed by installation.

@@ -24,8 +24,9 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
 
-REDUCE = re.compile(r'Reducing stack by rule \d+ \(line (\d+)\):')
+REDUCE = re.compile(r'Reducing stack by rule (\d+) \(line (\d+)\):')
 ACCEPT = re.compile(r'--accepting rule at line (\d+)')
 
 
@@ -38,18 +39,16 @@ def rule_lines(path, array_name):
     the generator rather than from a second parser of the .y/.l syntax, which
     would be one more thing to keep correct.
     """
-    text = open(path, encoding='utf-8', errors='replace').read()
-    # bison emits the table as a class static, `IclParser::yyrline_[]`, hence
-    # the optional trailing underscore.
+    text = Path(path).read_text(encoding='utf-8', errors='replace')
     match = re.search(re.escape(array_name) +
                       r'_?\s*(?:\[[^\]]*\])?\s*=\s*\{(.*?)\}', text, re.S)
     if not match:
-        print('error: %s not found in %s' % (array_name, path), file=sys.stderr)
-        return []
-    # Line 0 is not a rule: it is the `$accept` pseudo-rule in yyrline[] and
-    # flex's "no rule matched" slot in yy_rule_linenum[]. Neither is something
-    # a test can reach, so both are dropped rather than reported as missing.
-    return [int(n) for n in re.findall(r'-?\d+', match.group(1)) if int(n) > 0]
+        raise ValueError('%s not found in %s' % (array_name, path))
+    values = [int(n) for n in re.findall(r'-?\d+', match.group(1))]
+    if array_name == 'yyrline':
+        # Slot0 is unused, slot1 is $accept. Bison prints table index minus1.
+        return {slot - 1: line for slot, line in enumerate(values) if slot > 1 and line > 0}
+    return {line: line for line in values if line > 0}
 
 
 def corpus_files():
@@ -97,11 +96,16 @@ def main():
                                 stdout=subprocess.DEVNULL,
                                 stderr=subprocess.PIPE)
         trace = result.stderr.decode('utf-8', 'replace')
-        grammar_seen |= {int(n) for n in REDUCE.findall(trace)}
+        grammar_seen |= {int(rule) for rule, line in REDUCE.findall(trace)}
         scanner_seen |= {int(n) for n in ACCEPT.findall(trace)}
 
-    grammar_all = set(rule_lines(args.parser, 'yyrline'))
-    scanner_all = set(rule_lines(args.lexer, 'yy_rule_linenum'))
+    try:
+        grammar_lines = rule_lines(args.parser, 'yyrline')
+        scanner_lines = rule_lines(args.lexer, 'yy_rule_linenum')
+    except ValueError as error:
+        print('error:', error, file=sys.stderr)
+        return 2
+    grammar_all, scanner_all = set(grammar_lines), set(scanner_lines)
 
     def report(label, source, seen, expected):
         missing = sorted(expected - seen)
@@ -125,9 +129,11 @@ def main():
         print('\n%s rules never exercised (%s):' % (label, source))
         lines = open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                   '..', source), encoding='utf-8').read().split('\n')
-        for number in missing:
+        mapping = grammar_lines if label == 'grammar' else scanner_lines
+        for rule in missing:
+            number = mapping[rule]
             text = lines[number - 1].strip() if 0 < number <= len(lines) else '?'
-            print('  line %-4d %s' % (number, text[:78]))
+            print('  rule %-4d line %-4d %s' % (rule, number, text[:78]))
 
     if ok:
         print('\nEvery grammar and scanner rule is exercised by the corpus.')

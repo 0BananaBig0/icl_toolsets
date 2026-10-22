@@ -1,0 +1,21 @@
+{
+  "languageserver": {
+    "icl": {
+      "command": "icl-lsp",
+      "filetypes": ["icl"],
+      "rootPatterns": [".git"],
+      "disabledFeatures": ["documentFormatting", "documentRangeFormatting"]
+    }
+  },
+  "diagnostic-languageserver.formatters": {
+    "icl-format": {
+      "command": "icl-format",
+      "args": ["--indent", "2"],
+      "isStdout": true,
+      "ignoreExitCode": false
+    }
+  },
+  "diagnostic-languageserver.formatFiletypes": {
+    "icl": "icl-format"
+  }
+}

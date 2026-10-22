@@ -383,14 +383,6 @@ std::string IclDriver::Render(int indent_width) const {
   return RenderFormatTree(BuildFormatTree(unit_, style), indent_width);
 }
 
-bool IclDriver::FormatText(const std::string& text_in, std::string* output,
-                           std::string* error) {
-  if (!Parse(text_in, error)) return false;
-  const std::vector<FormatNode> lines = BuildFormatTree(unit_, style_);
-  *output = RenderFormatTree(lines, style_.indent_width);
-  return true;
-}
-
 std::string IclDriver::AstToString() const {
   std::ostringstream out;
   AstPrinter printer(&out);

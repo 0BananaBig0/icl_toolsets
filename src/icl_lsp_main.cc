@@ -48,6 +48,7 @@ bool ReadMessage(std::string* body) {
   for (;;) {
     const int c = std::cin.get();
     if (c == EOF) return false;
+    if (header.size() == 8192) return false;
     header.push_back(static_cast<char>(c));
     const size_t size = header.size();
     if (size >= 4 && header.compare(size - 4, 4, "\r\n\r\n") == 0) break;
@@ -78,7 +79,13 @@ bool ReadMessage(std::string* body) {
       if (c >= 'A' && c <= 'Z') c = static_cast<char>(c - 'A' + 'a');
     }
     if (lower == "content-length") {
-      length = std::strtol(value.c_str(), nullptr, 10);
+      if (length >= 0 || value.empty() || value.find_first_not_of("0123456789") != std::string::npos) return false;
+      unsigned long long parsed = 0;
+      for (const char c : value) {
+        parsed = parsed * 10 + static_cast<unsigned>(c - '0');
+        if (parsed > 64 * 1024 * 1024) return false;
+      }
+      length = static_cast<long>(parsed);
     }
     // Content-Type is sent by some clients; ignored on purpose.
   }

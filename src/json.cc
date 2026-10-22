@@ -15,6 +15,8 @@
 #include "json.h"
 
 #include <cstdint>
+#include <cmath>
+#include <limits>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -85,7 +87,9 @@ class Parser {
   }
 
   bool ParseValue(Json* out) {
-    if (pos_ >= text_.size()) return false;
+    if (pos_ >= text_.size() || depth_ >= 256) return false;
+    struct DepthGuard { size_t& depth; ~DepthGuard() { --depth; } } guard{depth_};
+    ++depth_;
     switch (text_[pos_]) {
       case '{':
         return ParseObject(out);
@@ -195,7 +199,23 @@ class Parser {
       const char c = text_[pos_++];
       if (c == '"') return true;
       if (c != '\\') {
-        out->push_back(c);
+        const auto first = static_cast<unsigned char>(c);
+        if (first < 0x20) return false;
+        if (first >= 0x80) {
+          if (first < 0xC2 || first > 0xF4) return false;
+          const size_t count = first < 0xE0 ? 2 : first < 0xF0 ? 3 : 4;
+          uint32_t codepoint = first & (0x7F >> count);
+          const size_t begin = pos_ - 1;
+          for (size_t i = 1; i < count; ++i) {
+            if (pos_ == text_.size()) return false;
+            const auto next = static_cast<unsigned char>(text_[pos_++]);
+            if ((next & 0xC0) != 0x80) return false;
+            codepoint = (codepoint << 6) | (next & 0x3F);
+          }
+          if ((count == 3 && codepoint < 0x800) || (count == 4 && codepoint < 0x10000) ||
+              codepoint > 0x10FFFF || (codepoint >= 0xD800 && codepoint <= 0xDFFF)) return false;
+          out->append(text_, begin, count);
+        } else out->push_back(c);
         continue;
       }
       if (pos_ >= text_.size()) return false;
@@ -212,18 +232,13 @@ class Parser {
         case 'u': {
           uint32_t unit = 0;
           if (!ParseHex4(&unit)) return false;
-          // Surrogate pair: a high surrogate must be followed by "\uDC00"-ish.
-          if (unit >= 0xD800 && unit <= 0xDBFF && pos_ + 1 < text_.size() &&
-              text_[pos_] == '\\' && text_[pos_ + 1] == 'u') {
-            const size_t saved = pos_;
+          if (unit >= 0xD800 && unit <= 0xDBFF) {
+            if (pos_ + 1 >= text_.size() || text_[pos_] != '\\' || text_[pos_ + 1] != 'u') return false;
             pos_ += 2;
             uint32_t low = 0;
-            if (ParseHex4(&low) && low >= 0xDC00 && low <= 0xDFFF) {
-              unit = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
-            } else {
-              pos_ = saved;
-            }
-          }
+            if (!ParseHex4(&low) || low < 0xDC00 || low > 0xDFFF) return false;
+            unit = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
+          } else if (unit >= 0xDC00 && unit <= 0xDFFF) return false;
           AppendUtf8(out, unit);
           break;
         }
@@ -236,31 +251,28 @@ class Parser {
 
   bool ParseNumber(Json* out) {
     const size_t start = pos_;
-    if (pos_ < text_.size() && (text_[pos_] == '-' || text_[pos_] == '+')) ++pos_;
-    bool is_integer = true;
-    while (pos_ < text_.size()) {
-      const char c = text_[pos_];
-      if (c >= '0' && c <= '9') {
-        ++pos_;
-      } else if (c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-') {
-        is_integer = false;
-        ++pos_;
-      } else {
-        break;
-      }
+    const auto digit = [&] { return pos_ < text_.size() && text_[pos_] >= '0' && text_[pos_] <= '9'; };
+    Expect('-');
+    if (!digit()) return false;
+    if (!Expect('0')) while (digit()) ++pos_;
+    if (Expect('.')) {
+      if (!digit()) return false;
+      while (digit()) ++pos_;
     }
-    if (pos_ == start) return false;
-    const std::string digits = text_.substr(start, pos_ - start);
-    if (is_integer) {
-      *out = Json::Int(std::strtoll(digits.c_str(), nullptr, 10));
-    } else {
-      *out = Json::Number(std::strtod(digits.c_str(), nullptr));
+    if (Expect('e') || Expect('E')) {
+      if (!Expect('+')) Expect('-');
+      if (!digit()) return false;
+      while (digit()) ++pos_;
     }
+    const double number = std::strtod(text_.substr(start, pos_ - start).c_str(), nullptr);
+    if (!std::isfinite(number)) return false;
+    *out = Json::Number(number);
     return true;
   }
 
   const std::string& text_;
   size_t pos_ = 0;
+  size_t depth_ = 0;
 };
 
 void SerializeString(const std::string& value, std::string* out) {
@@ -340,7 +352,10 @@ const Json* Json::Find(const std::string& key) const {
 }
 
 long long Json::int_value(long long fallback) const {
-  return type_ == Type::kNumber ? static_cast<long long>(number_) : fallback;
+  if (type_ != Type::kNumber || !std::isfinite(number_) || std::trunc(number_) != number_ ||
+      number_ < static_cast<double>(std::numeric_limits<long long>::min()) ||
+      number_ >= -static_cast<double>(std::numeric_limits<long long>::min())) return fallback;
+  return static_cast<long long>(number_);
 }
 
 std::string Json::string_value(const std::string& fallback) const {
@@ -357,14 +372,8 @@ std::string Json::Serialize() const {
       out += bool_ ? "true" : "false";
       break;
     case Type::kNumber: {
-      // Always an integer. Every number this side of the code builds comes
-      // from Json::Int; Json::Number exists for parsing, and a parsed value is
-      // never serialised back. The float branch that used to sit here was
-      // dead — coverage showed it never ran — so it was removed rather than
-      // left as a guess a reader would have to reason about.
       char buffer[32];
-      std::snprintf(buffer, sizeof(buffer), "%lld",
-                    static_cast<long long>(number_));
+      std::snprintf(buffer, sizeof(buffer), "%.17g", number_);
       out += buffer;
       break;
     }

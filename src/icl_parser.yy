@@ -435,9 +435,9 @@ based_number
 /* Keep the spelling and parentheses: formatting never evaluates or regroups
    expressions. Only unsigned decimal operands participate in arithmetic. */
 integer_expr
-  : integer_arg { $$ = $1; }
-  | integer_arg MATH_OP token_gap integer_expr
-      { $$ = ParsedValue{$1.text + " " + $2 + " " + $3 + $4.text}; $$.unsized = true;
+  : integer_arg { $$ = std::move($1); }
+  | integer_expr MATH_OP token_gap integer_arg
+      { $$ = ParsedValue{std::move($1.text) + " " + $2 + " " + $3 + $4.text}; $$.unsized = true;
         $$.dependencies = std::move($1.dependencies);
         $$.dependencies.insert($$.dependencies.end(), $4.dependencies.begin(), $4.dependencies.end()); }
   ;

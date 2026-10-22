@@ -99,8 +99,8 @@ void ParsedDocument::Build() {
   };
   std::string definition_ns;
   std::optional<std::string> file_use_ns;
-  std::function<void(const AstNode*, int, int, std::string&, bool)> walk;
-  walk = [&](const AstNode* node, int module, int parent, std::string& use_ns, bool reference_body) {
+  std::function<void(const AstNode*, int, int, std::string&, const std::string&)> walk;
+  walk = [&](const AstNode* node, int module, int parent, std::string& use_ns, const std::string& context) {
     if (dynamic_cast<const AstComment*>(node)) return;
     const auto range = Range(node->span());
     const size_t first = token_index(range.begin), last = token_index(range.end);
@@ -111,23 +111,32 @@ void ParsedDocument::Build() {
       header_end = first;
       while (header_end < last && tokens[header_end].text != "{") ++header_end;
     }
-    const std::string kind = tokens[first].text;
-    if (kind == "NameSpace" || kind == "UseNameSpace") {
+    const std::string parent_kind = parent >= 0 ? declarations[parent].kind : "";
+    const bool enum_item = context == "Enum";
+    const bool reference_body = context == "ReferenceBody";
+    const bool expression = reference_body || context == "LogicSignal";
+    const std::string kind = enum_item ? "EnumMember" : expression ? "" :
+        context == "AccessLink" && block ? "Instruction" : tokens[first].text;
+    if ((context.empty() || context == "Module") &&
+        (kind == "NameSpace" || kind == "UseNameSpace")) {
       const std::string name = first + 1 < last && tokens[first + 1].text != ";" ? tokens[first + 1].text : "";
       if (kind == "NameSpace") definition_ns = name;
       else { use_ns = name; if (module < 0) file_use_ns = name;
         else namespace_uses[module][range.begin] = name; }
       return;
     }
-    const bool in_instance = parent >= 0 && declarations[parent].kind == "Instance";
-    const bool enum_item = parent >= 0 && declarations[parent].kind == "Enum";
-    const bool declaration = !reference_body && (enum_item || (Declares(kind) && !(in_instance && kind == "Parameter")));
+    const bool in_instance = parent_kind == "Instance";
+    const bool declaration = !expression && (enum_item ||
+        (context.empty() && kind == "Module") ||
+        (context == "Module" && Declares(kind)) ||
+        (context == "OneHotDataGroup" && (kind == "Instance" || kind == "DataRegister")) ||
+        (context == "ScanInterface" && kind == "Chain"));
     int own = -1;
     size_t ref_start = first + 1;
     if (declaration && (enum_item || first + 1 < header_end)) {
       const auto& name = tokens[enum_item ? first : first + 1];
       Declaration d;
-      d.name = name.text; d.kind = enum_item ? "EnumMember" : kind;
+      d.name = name.text; d.kind = kind;
       d.name_range = {name.begin, name.end}; d.range = range;
       d.module = module; d.parent = parent;
       d.name_space = definition_ns;
@@ -157,6 +166,7 @@ void ParsedDocument::Build() {
         }
         ref_start = header_end;
       }
+      if (kind == "AccessLink") ref_start = header_end;
     }
     // The parser supplies the node boundaries and syntactic category. These are
     // lexical leaves of that AST, not a second grammar or text-search parser.
@@ -167,12 +177,14 @@ void ParsedDocument::Build() {
                         declarations[parent].kind == "ScanMux" ||
                         declarations[parent].kind == "DataMux" || declarations[parent].kind == "ClockMux"));
     if (reference_body || (parent >= 0 && declarations[parent].kind == "LogicSignal")) ref_start = first;
+    bool selection_keyword = declaration && (kind == "ScanMux" || kind == "DataMux" || kind == "ClockMux");
     for (size_t i = ref_start; i < header_end; ++i) {
       const auto& token = tokens[i];
       const bool param = token.text[0] == '$';
-      const bool override_lhs = in_instance && i == first + 1 && (kind == "InputPort" || kind == "Parameter");
+      const bool override_lhs = in_instance &&
+          ((i == first + 1 && (kind == "InputPort" || kind == "Parameter")) || kind == "AllowBroadcastOnScanInterface");
       if (!(param || Identifier(token.text)) || (!signals && !param && !override_lhs)) continue;
-      if (declaration && (token.text == "SelectedBy" || token.text == "Of" || token.text == "of")) continue;
+      if (selection_keyword && token.text == "SelectedBy") { selection_keyword = false; continue; }
       size_t name_end = token.text.size();
       if (param) {
         name_end = 1;
@@ -201,11 +213,13 @@ void ParsedDocument::Build() {
     if (block) {
       // Generic AccessLink payload has no child AST; it remains opaque.
       const int child_parent = own >= 0 ? own : parent;
-      for (const auto* child : block->body()) walk(child, module, child_parent, use_ns, kind == "ScanInterface" && own < 0);
+      const std::string child_context = ((kind == "ScanInterface" && own < 0) || kind == "ActiveSignals")
+          ? "ReferenceBody" : kind;
+      for (const auto* child : block->body()) walk(child, module, child_parent, use_ns, child_context);
     }
   };
   std::string use_ns;
-  for (const auto* node : driver.unit().top_level()) walk(node, -1, -1, use_ns, false);
+  for (const auto* node : driver.unit().top_level()) walk(node, -1, -1, use_ns, "");
   std::stable_sort(uses.begin(), uses.end(), [](const NameUse& a, const NameUse& b) { return a.range.begin < b.range.begin; });
 }
 
@@ -265,6 +279,7 @@ SymbolRef SemanticWorkspace::Resolve(const ParsedDocument& doc, const NameUse& u
   if (use.module < 0) return {};
   SymbolRef scope{&doc, static_cast<size_t>(use.module)};
   if (use.instance >= 0) scope = Implementation({&doc, static_cast<size_t>(use.instance)});
+  if (use.parameter) return Member(scope, use.path.front(), true);
   if (use.enum_owner >= 0) return EnumMember({&doc, static_cast<size_t>(use.enum_owner)}, use.path.back());
   if (!use.enum_signal.empty()) {
     NameUse signal{{}, use.enum_signal, use.module};

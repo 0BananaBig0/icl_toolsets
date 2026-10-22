@@ -1,0 +1,9 @@
+{
+  "languageserver": {
+    "icl": {
+      "command": "icl-lsp",
+      "filetypes": ["icl"],
+      "rootPatterns": [".git"]
+    }
+  }
+}

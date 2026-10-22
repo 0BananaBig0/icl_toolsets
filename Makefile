@@ -30,8 +30,7 @@
 #   make clean      remove build output (keeps bison/flex output)
 #   make distclean  remove everything generated
 #
-# Requirements: bison >= 3.8, flex >= 2.6, a C++17 compiler.
-# Verified on Rocky Linux 8+ and Ubuntu 22.04+.
+# Requirements: bison >= 3.8, flex >= 2.6, GNU make >= 4.3, a C++17 compiler.
 
 CXX      ?= g++
 BISON    ?= bison
@@ -226,7 +225,7 @@ else
 # greps for conflicts.
 BISON_FLAGS = -Wall -Werror=other --report=all
 
-$(PARSER_CC) $(PARSER_HH): $(SRC_DIR)/icl_parser.yy
+$(PARSER_CC) $(PARSER_HH) &: $(SRC_DIR)/icl_parser.yy
 	@mkdir -p $(GEN_DIR)
 	$(BISON) $(BISON_FLAGS) --output=$(PARSER_CC) --defines=$(PARSER_HH) $<
 	@if grep -q "conflict" $(GEN_DIR)/icl_parser.output 2>/dev/null; then \
@@ -236,7 +235,7 @@ $(PARSER_CC) $(PARSER_HH): $(SRC_DIR)/icl_parser.yy
 
 # flex reports "rule cannot be matched" — a scanner rule shadowed by an
 # earlier one, so it can never fire. Silent today, and invisible tomorrow.
-$(LEXER_CC) $(LEXER_HH): $(SRC_DIR)/icl_lexer.l $(PARSER_HH)
+$(LEXER_CC) $(LEXER_HH) &: $(SRC_DIR)/icl_lexer.l $(PARSER_HH)
 	@mkdir -p $(GEN_DIR)
 	$(FLEX) --outfile=$(LEXER_CC) --header-file=$(LEXER_HH) $< 2> $(GEN_DIR)/flex.log
 	@if grep -qiE "warning|rule cannot be matched" $(GEN_DIR)/flex.log 2>/dev/null; then \
@@ -289,7 +288,8 @@ codegraph: $(ALL_OBJECTS)
 # Unit tests are linked against the same instrumented objects, so their counts
 # merge with the end-to-end runs instead of being measured separately.
 COV_DIR := $(BUILD_DIR)/cov
-COV_CXXFLAGS := -fprofile-arcs -ftest-coverage -g -O0
+COV_CXXFLAGS := -fprofile-arcs -ftest-coverage -g -O0 -MMD -MP
+-include $(wildcard $(COV_DIR)/*.d)
 
 # One set of instrumented objects, linked three ways. Each binary has its own
 # `main`, so the other two mains are filtered out rather than listed by hand.
@@ -326,6 +326,10 @@ $(COV_DIR)/unittests: $(COV_UNIT)
 coverage: $(COV_BINARIES)
 	@rm -f $(COV_DIR)/*.gcda *.gcov
 	@python3 tests/regression.py --binary $(COV_DIR)/icl-format
+	@python3 tests/src/test_icl_conformance.py --binary $(COV_DIR)/icl-format
+	@python3 tests/block_review.py --binary $(COV_DIR)/icl-format
+	@python3 tests/src/test_icl_lsp.py --binary $(COV_DIR)/icl-lsp
+	@python3 tests/src/test_icl_protocol.py --binary $(COV_DIR)/icl-lsp
 	@python3 tests/run_tests.py --binary $(COV_DIR)/icl-format
 	@python3 tests/lsp_test.py --binary $(COV_DIR)/icl-lsp \
 		--cli $(COV_DIR)/icl-format
@@ -404,7 +408,8 @@ MANIFEST := $(BUILD_DIR)/install_manifest.txt
 #
 # Because both write the same paths, the manifest is correct whichever ran.
 HEADERS := $(SRC_DIR)/icl_ast.h $(SRC_DIR)/icl_driver.h \
-           $(SRC_DIR)/format_tree.h $(SRC_DIR)/json.h
+           $(SRC_DIR)/format_tree.h $(SRC_DIR)/format_job.h \
+           $(SRC_DIR)/icl_semantics.h $(SRC_DIR)/json.h
 
 install: install-dynamic
 
@@ -440,50 +445,22 @@ endef
 # a filetype is already set, which leaves coc never starting the server.
 define coc_body
 	@echo ""
-	@echo "=== coc.nvim configuration ==="
+	@echo "=== coc.nvim: recommended shared-AST LSP formatting ==="
+	@cat docs/editor/coc-lsp.json
 	@echo ""
-	@echo "1) Add to coc-settings.json (open it with :CocConfig):"
-	@echo ""
-	@echo '  {'
-	@echo '    "languageserver": {'
-	@echo '      "icl": {'
-	@echo '        "command": "icl-lsp",'
-	@echo '        "filetypes": ["icl"],'
-	@echo '        "settings": {}'
-	@echo '      }'
-	@echo '    },'
-	@echo '    "coc.preferences.formatOnSave": true'
-	@echo '  }'
-	@echo ""
-	@echo "2) Add to vimrc — both lines matter:"
-	@echo ""
+	@echo "Add to vimrc:"
 	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
 	@echo '  autocmd FileType icl setlocal shiftwidth=2 tabstop=2 expandtab'
+	@echo "Formatting: :call CocAction('format'); optional format on save:"
+	@echo "  autocmd BufWritePre *.icl call CocAction('format')"
 	@echo ""
-	@echo "   coc.nvim needs vim 9 — its api.vim is vim9script. vim 9.2 is what"
-	@echo "   tests/setup_coc.sh builds (VIM_VERSION=v9.2.0000); vim 8.2 fails"
-	@echo "   to start the server without saying why."
+	@echo "=== Alternative: icl-format through :CocInstall coc-diagnostic ==="
+	@echo "Use this configuration instead of the one above:"
+	@cat docs/editor/coc-cli.json
 	@echo ""
-	@echo "   shiftwidth is what coc forwards as LSP tabSize, so the editor and"
-	@echo "   the CLI agree only if it is 2 — vim defaults to 8."
-	@echo ""
-	@echo "3) icl-lsp is now active. Check with :CocCommand workspace.showOutput;"
-	@echo "   formatting is :call CocAction('format')."
-	@echo ""
-	@echo "4) icl-format is the batch tool — same grammar, no editor needed:"
-	@echo ""
-	@echo '    icl-format file.icl              # print formatted'
-	@echo '    icl-format -w file.icl           # rewrite in place'
-	@echo '    icl-format --check file.icl      # exit 1 if it would change'
-	@echo '    icl-format --ast file.icl        # show the syntax tree'
-	@echo ""
-	@echo "   To run icl-format from vim on the current buffer instead:"
-	@echo ""
-	@echo '  autocmd FileType icl nnoremap <buffer> <leader>f \'
-	@echo '        :%!icl-format<CR>'
-	@echo ""
-	@echo "Installed variant: $1; binaries are at $(bindir)/$(PACKAGE)"
-	@echo "and $(bindir)/icl-lsp."
+	@echo "The adapter uses stdin/stdout and preserves invalid buffers on exit 2."
+	@echo "Keep $(bindir) on the editor's PATH or use absolute command paths."
+	@echo "Installed variant: $1; $(bindir)/$(PACKAGE) and $(bindir)/icl-lsp"
 endef
 
 install-dynamic: $(BIN) $(LSP_BIN)
@@ -549,6 +526,9 @@ check check-dynamic: unitcheck
 	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/src/test_icl_conformance.py --binary $(BIN)
 	@python3 tests/tests/test_antlr_diff.py
+	@python3 tests/tests/test_coverage.py
+	@python3 tests/tests/test_grammar_coverage.py
+	@python3 tests/tests/test_makefile.py
 	@python3 tests/golden_test.py --binary $(BIN)
 	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)
@@ -556,6 +536,7 @@ check check-dynamic: unitcheck
 	@python3 tests/run_tests.py --binary $(BIN)
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
 	@python3 tests/src/test_icl_lsp.py --binary $(LSP_BIN)
+	@python3 tests/src/test_icl_protocol.py --binary $(LSP_BIN)
 	@$(MAKE) --no-print-directory gramcov
 
 COC_ROOT   ?= /tmp/cocvim
@@ -592,7 +573,7 @@ DIST_DIR := $(PACKAGE)-$(VERSION)
 # archives and cleaned by `distclean`, so this cannot happen again.
 DIST_OUT := $(BUILD_DIR)/dist
 
-dist: all
+dist: dynamic
 	@rm -rf $(DIST_DIR)
 	@mkdir -p $(DIST_OUT)
 	@mkdir -p $(DIST_DIR)/src $(DIST_DIR)/tests $(DIST_DIR)/gen
@@ -609,8 +590,9 @@ dist: all
 	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.
 	cp tests/*.py tests/*.cc tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md REQUIREMENT.md $(DIST_DIR)/
+	cp -r docs $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
-	tar czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
+	tar --exclude=__pycache__ --exclude='*.pyc' -czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
 	@rm -rf $(DIST_DIR)
 	@echo "created $(DIST_OUT)/$(DIST_DIR).tar.gz (build with only g++: no bison/flex needed)"
 

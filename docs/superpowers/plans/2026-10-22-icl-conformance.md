@@ -95,13 +95,13 @@ Interfaces: shared parsed document owns AST, exact token/source spans, declarati
 ### Task 10: Coverage, performance, review and installation
 
 Files: tests/coverage.py, tests/grammar_coverage.py, new tests/tests/test_coverage.py and test_grammar_coverage.py; Makefile; tests/src benchmark; README.md and review record.
-- [ ] Add failing coverage-reader tests for missing reports, starred/zero counts, never-executed branches and same-line productions; correct accounting, include handwritten headers/actions and exclude generated implementation.
-- [ ] Measure baseline/final merged and scaled inputs with same toolchain and parameters; record wall time and RSS. Fix proven expensive paths and retain correctness checks.
-- [ ] Review all shared/CLI/LSP handwritten code and build/install safety using CodeGraph then current source; reproduce material defects before changes.
-- [ ] Run complete dynamic/static build, all tests, truthful line/branch and grammar coverage, editor integration. Resolve known toolchain limitations or report them explicitly.
-- [ ] Obtain one independent whole-change review, fix material findings with RED→GREEN, run required final checks.
-- [ ] Install dynamic pair, verify installed paths/version/behavior and print tested coc.nvim LSP config plus documented CLI formatter adapter alternative. Leave existing editor config untouched.
-- [ ] Commit validated changes and report measured results, unsupported semantic/HDL limits and any genuinely incomplete work. No push requested.
+- [x] Add failing coverage-reader tests for missing reports, starred/zero counts, never-executed branches and same-line productions; correct accounting, include handwritten headers/actions and exclude generated implementation.
+- [x] Measure baseline/final merged and scaled inputs with same toolchain and parameters; record wall time and RSS. Fix proven expensive paths and retain correctness checks.
+- [x] Review all shared/CLI/LSP handwritten code and build/install safety using CodeGraph then current source; reproduce material defects before changes.
+- [x] Run complete dynamic/static build, all tests, truthful line/branch and grammar coverage, editor integration. Resolve known toolchain limitations or report them explicitly.
+- [x] Obtain one independent whole-change review, fix material findings with RED→GREEN, run required final checks.
+- [x] Install dynamic pair, verify installed paths/version/behavior and print tested coc.nvim LSP config plus documented CLI formatter adapter alternative. Leave existing editor config untouched.
+- [x] Commit validated changes and report measured results, unsupported semantic/HDL limits and any genuinely incomplete work. No push requested.
 
 ## Execution record
 

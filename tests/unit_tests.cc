@@ -320,12 +320,28 @@ void TestJsonRejects() {
         Json::Parse("{\"a\":\"\\ud83d\\ude00\"}", &pair, &error) &&
             pair.Find("a")->string_value() == "\xf0\x9f\x98\x80");
   Json lone;
-  Check("accepts a high surrogate with no partner",
-        Json::Parse("{\"a\":\"\\ud83d\\u0041\"}", &lone, &error));
+  Check("rejects a high surrogate with no partner on UTF-8 transport",
+        !Json::Parse("{\"a\":\"\\ud83d\\u0041\"}", &lone, &error));
+  Check("serializes a fractional number without truncation", Json::Number(1.25).Serialize() == "1.25");
+  Check("out-of-range integer access uses fallback", Json::Number(1e100).int_value(-1) == -1);
+  const std::string utf8 = "é汉😀";
+  Check("accepts raw UTF-8 of every multibyte length",
+        Json::Parse("\"" + utf8 + "\"", &parsed, &error) && parsed.string_value() == utf8);
   Json nested;
   Check("accepts an empty array",
         Json::Parse("{\"a\":[]}", &nested, &error) &&
             nested.Find("a")->elements().empty());
+}
+
+void TestConcatenatedValues() {
+  ParsedValue left("1'b0", 1), right("1'b1", 1);
+  right.Append("", ParsedValue("1'b0", 1));
+  left.Append("", right);
+  Check("concatenating value groups preserves all atoms",
+        left.width == 3 && left.atoms.size() == 3 && left.text == "1'b0, 1'b1, 1'b0");
+  ParsedValue full("full", std::numeric_limits<size_t>::max());
+  full.Append("", ParsedValue("1'b0", 1));
+  Check("concatenation width overflow stays unknown", full.width == 0);
 }
 
 }  // namespace
@@ -345,6 +361,7 @@ int main() {
   TestRenderIsStable();
   TestJsonEscapes();
   TestJsonRejects();
+  TestConcatenatedValues();
   std::cout << "========================================================\n";
   std::cout << "PASS=" << icl::g_pass << "  FAIL=" << icl::g_fail << "\n";
   std::cout << "========================================================\n";

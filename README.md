@@ -33,7 +33,7 @@ Two examples of why that matters in ICL:
 
 * C++17 compiler (g++ 9+, clang 10+)
 * bison ≥ 3.8, flex ≥ 2.6
-* GNU make
+* GNU make ≥ 4.3 (grouped Bison/Flex outputs)
 
 ### Rocky Linux 8
 
@@ -44,10 +44,10 @@ Two ways forward:
 ```bash
 # Option A — build from the pre-generated tarball (needs only g++)
 tar xzf icl-format-1.0.0.tar.gz && cd icl-format-1.0.0
-make && sudo make install          # or: make install with prefix=$HOME/.local
+make dynamic && make install-dynamic
 
 # Option B — install a newer bison, then build from the git tree
-make && make install
+make dynamic && make install-dynamic
 ```
 
 `make dist` produces that tarball: it bundles the generated parser and
@@ -58,13 +58,14 @@ scanner, so the target machine needs no bison at all.
 ```bash
 make                 # builds all four binaries (see below)
 make dynamic         # only the dynamically linked pair (no static libc needed)
-make check           # unit tests (10) + CLI suite (121) + LSP suite (25)
-make unitcheck       # unit tests only: AST + layout, no bison/flex needed
+make check-dynamic   # full dynamic regression, including grammar traces
+make check           # same checks, plus static build prerequisites
+make unitcheck       # AST/layout/JSON unit checks, no bison/flex needed
 make nvimcheck       # drive icl-lsp from neovim's built-in LSP client (needs nvim)
 make coccheck        # the full vim -> coc.nvim -> icl-lsp chain (see below)
 make install         # same as install-dynamic
 make install-dynamic # smaller; needs the host's libstdc++/glibc
-make install-static  # self-contained; runs on any Linux regardless of glibc
+make install-static  # needs static runtime libraries at build time
 make uninstall       # removes exactly what install added
 ```
 
@@ -74,12 +75,13 @@ flavour:
 | Binary | Links | What it is |
 |---|---|---|
 | `icl-format` | dynamic | command line formatter |
-| `icl-format-static` | static | same, runs on any Linux regardless of glibc |
+| `icl-format-static` | static | same, includes the C/C++ runtime |
 | `icl-lsp` | dynamic | Language Server for editors |
 | `icl-lsp-static` | static | same |
 
-Both programs link the **same parser front end**, so a grammar fix reaches the
-CLI and the editor at once and neither can drift from the other.
+Both programs share `ParsedDocument`, its AST definition, validation and formatting
+pipeline. LSP formatting reuses the cached parse; only CLI I/O and protocol/editor
+services diverge. See [verification and measured limits](docs/icl-verification.md).
 
 ### Choosing a build at install time
 
@@ -87,21 +89,20 @@ CLI and the editor at once and neither can drift from the other.
 install the programs under the **same names**, so an editor config that says
 `"command": "icl-lsp"` works either way — pick the one that suits the machine:
 
-| Target | Size | Needs |
-|---|---|---|
-| `make install-dynamic` | ~172 KB + ~231 KB | the host's libstdc++ and glibc |
-| `make install-static` | ~2.6 MB + ~2.7 MB | nothing — runs on any Linux |
+| Target | Needs |
+|---|---|
+| `make install-dynamic` | The host's compatible libstdc++ and glibc |
+| `make install-static` | Static C/C++ libraries while building |
 
-On a machine you control, dynamic is enough. Use static when the binary has to
-run somewhere whose glibc differs from where it was built (Rocky 8 hosts
-building for Rocky 9, a container, a tool box).
+Static binaries still require a compatible architecture and Linux kernel. The
+current host lacks static libc/libm/libstdc++; dynamic builds are verified.
 
 Install layout (GNU conventions, default `prefix = $(HOME)/.local`):
 
 ```
 $(prefix)/bin/icl-format
 $(prefix)/bin/icl-lsp
-$(prefix)/include/icl-format/{icl_ast.h,icl_driver.h,format_tree.h,json.h}
+$(prefix)/include/icl-format/{icl_ast.h,icl_driver.h,format_tree.h,format_job.h,icl_semantics.h,json.h}
 $(prefix)/share/doc/icl-format/
 $(prefix)/share/man/man1/icl-format.1
 ```
@@ -109,11 +110,12 @@ $(prefix)/share/man/man1/icl-format.1
 Override with `make install prefix=/opt/tools`.
 
 `make install` writes `build/install_manifest.txt`; `make uninstall` deletes
-exactly those paths — it never touches files it did not install.
+the recorded paths. Installation replaces same-named targets under the selected
+prefix; use a dedicated prefix when keeping multiple versions.
 
 Every `make install` prints the coc.nvim configuration when it finishes —
 the `languageserver` block for icl-lsp, the two vimrc lines that make `*.icl`
-an `icl` filetype, and the icl-format command lines. See
+an `icl` filetype, and an optional coc-diagnostic adapter for icl-format. See
 "Editor integration" below for the reasoning behind each one.
 
 ## Usage
@@ -168,7 +170,7 @@ to match the CLI default. No existing editor configuration is modified.
 ### coc.nvim
 
 `make coccheck` runs the whole chain against a real editor — nothing is
-simulated. Verified with vim 9.1 + coc.nvim 0.0.82: vim loads coc, coc starts
+simulated. Verified with vim 9.2 + coc.nvim 0.0.82: vim loads coc, coc starts
 its own node server, that server reads `coc-settings.json` and launches
 `icl-lsp`, and diagnostics plus formatting come back through coc's API.
 
@@ -223,19 +225,37 @@ Then `:call CocAction('format')` reformats the buffer, and diagnostics appear
 inline. To format on save:
 
 ```vim
-autocmd FileType icl autocmd BufWritePre <buffer> call CocAction('format')
+autocmd BufWritePre *.icl call CocAction('format')
 ```
 
 If the server does not start, `:CocCommand workspace.showOutput` shows the
 channel log; a useful first check is `:echo CocAction('services')`, which
 should list `languageserver.icl` with `state: "running"`.
 
+### Optional CLI formatter through coc.nvim
+
+Use [coc-cli.json](docs/editor/coc-cli.json) after `:CocInstall coc-diagnostic`
+if formatting must launch `icl-format`. It keeps `icl-lsp` for language services
+and disables its formatting provider to avoid competing formatters. The default
+[LSP configuration](docs/editor/coc-lsp.json) needs no additional extension and
+reuses the cached AST.
+
+The CLI adapter passes buffer text on stdin and uses stdout only on success;
+`ignoreExitCode: false` preserves invalid input. Its keys follow the upstream
+[coc-diagnostic configuration](https://github.com/iamcco/coc-diagnostic#config)
+and [formatter schema](https://github.com/iamcco/diagnostic-languageserver#formatters).
+The real Vim/coc/LSP chain was tested; the optional coc-diagnostic extension was
+not installed or tested end to end. Keep both executables on Vim's PATH, or use
+absolute command paths. Do not use `:%!icl-format`: a failed shell filter can
+replace the buffer with diagnostics.
+
 ### Other clients
 
-Any client that can launch a stdio command works. The advertised capabilities
-are `textDocumentSync: 1` (full) and `documentFormattingProvider: true`;
-everything else is answered with `-32601`, and unknown notifications are
-ignored, so a client probing for features the server lacks stays healthy.
+Any client supporting stdio LSP and full document synchronization can use the
+services listed above. Unsupported requests receive `-32601`; unknown
+notifications are ignored. JSON nesting is limited to 256, frame headers to
+8192 bytes and payloads to 64 MiB. Invalid framing terminates the stream; invalid
+JSON in a correctly framed message is rejected without losing the next frame.
 
 ## Grammar and compatibility
 
@@ -274,7 +294,7 @@ Beyond style, a few decisions are load-bearing:
   one-line form (`Alias a = b;`) and a block form (`Alias a = b { ... }`), so
   no tag value identifies a class. With a visitor, adding a node class is a
   compile error until it is handled — no runtime cast can be wrong.
-* **No global mutable state, except the scanner's line counter.** Parser
+* **The scanner is not reentrant.** Parser
   diagnostics live on `IclDriver` (bison's `%param` puts it in scope). Flex's
   location is file-scope because the scanner is not reentrant; it is reset on
   every `icl_scan_bytes`, which is what keeps error line numbers correct when
@@ -283,8 +303,9 @@ Beyond style, a few decisions are load-bearing:
   non-owning pointers. Copying would break ownership and slice derived parts.
 * **AST and layout use generator-independent source spans**, not Bison's location type, so
   `make unitcheck` compiles and runs them without generating a parser.
-* **No exceptions** (Google style): errors are `bool` + out-param.
-* **RAII throughout**; verified clean under ASan + UBSan with leak detection.
+* **Parse errors use explicit results.** C++ exceptions remain enabled; gcov
+  includes compiler-generated exception/cleanup edges in its raw branch totals.
+* **RAII owns AST nodes and cached documents.**
 
 ## What is preserved
 
@@ -293,44 +314,27 @@ including star alignment, and every non-whitespace character — the test suite
 asserts `f(f(x)) == f(x)` and that stripping all whitespace yields identical
 text before and after.
 
-## Deliberate shortcuts
+## Limits and coverage
 
-Each is marked `ponytail:` in the source, with its upgrade path. Run
-`grep -rn "ponytail:" src/ Makefile` for the full ledger.
+The scanner has file-scope state; the CLI and LSP parse serially. Concurrent
+parsing would require a reentrant scanner. Local validation is not full hardware
+elaboration: parameter-dependent widths, cross-instance connectivity and HDL
+implementation inference are not certified. Generic AccessLink payloads remain
+opaque. ICL and PDL do not share lexers, grammar or token sets.
 
-* **The scanner keeps its location in a file-scope variable**, so it is neither
-  reentrant nor thread-safe. Fine for one-file-per-process; needs
-  `%option reentrant` if this ever becomes a library or language server.
-* **Attribute *names* are not validated** — any keyword is accepted inside a
-  block. Structure is checked, spelling is not.
-* **`-static`** is safe only because the tool uses no NSS, no `dlopen` and no
-  locale APIs.
+See [the final verification report](docs/icl-verification.md) for actual counts,
+remaining uncovered paths, compiler artifacts and performance measurements.
+`make gramcov` reaches **334/334 Bison productions and 119/119 Flex rules**.
+This does not imply every semantic-action branch ran. `make coverage` reports
+handwritten `.cc`, `.h`, `.yy` and `.l` lines/branches, excluding generated
+parser/scanner implementation files. Its unchanged **100% line / 90% branch**
+threshold is currently **not met**; older 100%/92.6% claims used incomplete counting.
 
-## Coverage
-
-Three different things are measured, because they fail differently.
-
-| what | how | current |
-|---|---|---|
-| lines of hand-written C++ | `make coverage` (gcov) | 100% |
-| branches of hand-written C++ | `make coverage` (gcov) | 92.6% |
-| rules of `icl_parser.yy` | `make gramcov` (bison `-t`) | 157/157 |
-| rules of `icl_lexer.l` | `make gramcov` (flex `-d`) | 82/82 |
-
-`make coverage` instruments the sources with gcov and runs every suite against
-the instrumented binaries, including the C++ unit tests, so their counts merge
-with the end-to-end runs. It fails below `--min-line 100 --min-branch 90`.
-
-`make gramcov` measures the *hand-written* grammar and scanner rather than the
-generated C++, which is machine-written and whose line numbers nobody can act
-on. It uses the generators' own traces instead of an instrumenter of ours:
-`bison -t` prints `Reducing stack by rule N (line L)` and `flex -d` prints
-`--accepting rule at line N`, both naming a line in the `.yy`/`.l`. The set of
-lines that are rules at all is read back out of the generated tables
-(`yyrline[]`, `yy_rule_linenum[]`), so the report cannot drift from the
-grammar it measures.
-
-Both are part of `make check`.
+`make check-dynamic` includes rule coverage and functional regression;
+`make coverage` is a separate strict gate. Coverage-reader tests cover zero and
+starred counts, never-executed branches, missing reports and repeated source lines.
+Grammar coverage counts distinct production IDs, including multiple productions
+on one source line.
 
 ## Code graph
 

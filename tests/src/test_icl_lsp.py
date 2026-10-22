@@ -137,7 +137,7 @@ class LanguageServices(unittest.TestCase):
 
     def use_fixture(self, name):
         self.main = (CASES / name).read_text()
-        self.open(self.uri, self.main, 2)
+        self.assertEqual(self.open(self.uri, self.main, 2)['params']['diagnostics'], [])
 
     def test_enum_context_resolves_same_spelling(self):
         self.use_fixture('enums.icl')
@@ -152,6 +152,42 @@ class LanguageServices(unittest.TestCase):
     def test_access_link_scan_interface_reference(self):
         self.use_fixture('interface.icl')
         self.expect_location(self.query('definition', 'child.access', offset=8), self.uri, self.main, 'ScanInterface access', offset=14, length=6)
+
+    def test_review_parameter_in_numeric_context(self):
+        self.use_fixture('review.icl')
+        for occurrence in range(3):
+            with self.subTest(occurrence=occurrence):
+                self.expect_location(self.query('definition', '$V', occurrence, offset=1), self.uri, self.main, 'Parameter V', offset=10, length=1)
+
+    def test_review_contextual_keyword_identifiers(self):
+        self.use_fixture('review.icl')
+        for use, declaration, offset in [
+            ('Module;', 'DataInPort Module', 11),
+            ('Of;', 'DataInPort Of', 11),
+            ('SelectedBy;', 'DataInPort SelectedBy', 11),
+        ]:
+            with self.subTest(use=use):
+                self.expect_location(self.query('definition', use, occurrence=1), self.uri, self.main, declaration, offset=offset)
+        for name in ['Module', 'NameSpace', 'UseNameSpace']:
+            with self.subTest(enum=name):
+                self.expect_location(self.query('definition', 'DefaultLoadValue ' + name, offset=17), self.uri, self.main, name + ' =')
+        self.expect_location(self.query('definition', '::Leaf', offset=3), self.uri, self.main, 'Module Leaf', offset=7)
+        symbols = self.result('textDocument/documentSymbol', {'textDocument': {'uri': self.uri}})
+        self.assertNotIn(';', {s['name'] for s in symbols})
+
+    def test_review_broadcast_uses_instance_scope(self):
+        self.use_fixture('review.icl')
+        for name in ['iface', 'second']:
+            with self.subTest(name=name):
+                self.expect_location(self.query('definition', name + (';' if name == 'second' else ',')), self.uri, self.main, 'ScanInterface ' + name, offset=14)
+
+    def test_review_active_signals_references(self):
+        self.use_fixture('review.icl')
+        for name, declaration, offset in [('reset', 'ResetPort reset', 10), ('Module', 'DataInPort Module', 11)]:
+            with self.subTest(name=name):
+                occurrence = 1 if name == 'reset' else 3
+                self.expect_location(self.query('definition', name + ';', occurrence), self.uri, self.main, declaration, offset=offset)
+                self.assertIsNotNone(self.query('hover', name + ';', occurrence))
 
     def test_module_type_completion(self):
         items = self.query('completion', 'Of Leaf', offset=3)
@@ -176,9 +212,45 @@ class LanguageServices(unittest.TestCase):
         self.assertEqual(registration['params']['registrations'][0]['registerOptions']['watchers'][0]['globPattern'], '**/*.icl')
         self.client.send({'jsonrpc': '2.0', 'id': registration['id'], 'result': None})
 
+    def test_unicode_cursor_uses_utf16(self):
+        self.main = self.main.replace('Source readback', '/* é汉😀 */ Source readback')
+        self.open(self.uri, self.main, 2)
+        self.expect_location(self.query('definition', 'Source readback', offset=9), self.uri, self.main, 'Alias readback', offset=6, length=8)
+
+    def test_percent_encoded_file_uri(self):
+        old = self.root/'library.icl'
+        renamed = self.root/'library space.icl'
+        old.rename(renamed)
+        self.client.notify('workspace/didChangeWatchedFiles', {'changes': [
+            {'uri': self.lib_uri, 'type': 3}, {'uri': renamed.as_uri(), 'type': 1}]})
+        self.expect_location(self.query('definition', 'Of Leaf', offset=4), renamed.as_uri(), self.lib, 'Module Leaf', offset=7, length=4)
+
+    def test_missing_and_ambiguous_definitions_are_not_guessed(self):
+        self.main = self.main.replace('Source readback', 'Source missing')
+        self.open(self.uri, self.main, 2)
+        self.assertEqual(self.query('definition', 'Source missing', offset=9), [])
+        self.assertIsNone(self.query('hover', 'Source missing', offset=9))
+        duplicate = self.root/'duplicate.icl'
+        duplicate.write_text(self.lib)
+        self.client.notify('workspace/didChangeWatchedFiles', {'changes': [{'uri': duplicate.as_uri(), 'type': 1}]})
+        self.assertEqual(self.query('definition', 'Of Leaf', offset=4), [])
+
     def test_stale_change_is_ignored(self):
         self.client.notify('textDocument/didChange', {'textDocument': {'uri': self.uri, 'version': 0}, 'contentChanges': [{'text': ''}]})
         self.expect_location(self.query('definition', 'Source readback', offset=9), self.uri, self.main, 'Alias readback', offset=6)
+
+    def test_top_level_completion_and_nonmodule_implementation(self):
+        self.assertEqual(self.query('implementation', 'DataInPort input', offset=12), [])
+        self.main = ''
+        self.open(self.uri, self.main, 2)
+        items = self.result('textDocument/completion', {'textDocument': {'uri': self.uri}, 'position': {'line': 0, 'character': 0}})
+        self.assertIn('Module', {i['label'] for i in items})
+
+    def test_enum_members_do_not_leak_from_other_enums(self):
+        self.use_fixture('enums.icl')
+        self.main = self.main.replace('Enum First', "Enum Third { MISSING = 1'b0; } Enum First").replace('DefaultLoadValue ON', 'DefaultLoadValue MISSING', 1)
+        self.open(self.uri, self.main, 3)
+        self.assertEqual(self.query('definition', 'DefaultLoadValue MISSING', offset=17), [])
 
     def test_references_exclude_declaration(self):
         refs = self.query('references', 'Alias readback', offset=7, context={'includeDeclaration': False})
@@ -196,6 +268,22 @@ class LanguageServices(unittest.TestCase):
         self.open(self.uri, self.main, 2)
         items = self.query('completion', 'child.', offset=6)
         self.assertEqual({i['label'] for i in items}, {'input', 'output', 'Width'})
+
+    def test_incomplete_deep_alias_completion(self):
+        self.use_fixture('hierarchy.icl')
+        self.main = self.main[:self.main.index('Alias result')] + 'Alias result = mid.leaf.'
+        self.open(self.uri, self.main, 3)
+        items = self.query('completion', 'mid.leaf.', offset=9)
+        self.assertIn('out', {i['label'] for i in items})
+
+    def test_workspace_discovers_encoded_uri(self):
+        path = self.root/'library space.icl'
+        (self.root/'library.icl').rename(path)
+        self.client.stop()
+        self.client = Client(BINARY)
+        self.result('initialize', {'rootUri': self.root.as_uri()})
+        self.open(self.uri, self.main)
+        self.expect_location(self.query('definition', 'Of Leaf', offset=4), path.as_uri(), self.lib, 'Module Leaf', offset=7)
 
     def test_disk_change_delete_and_close(self):
         path = self.root/'library.icl'

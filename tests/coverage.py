@@ -14,7 +14,7 @@ import argparse
 import glob
 import os
 import re
-import subprocess
+from pathlib import Path
 import sys
 
 # The two hand-written grammar files are here as well, and are the reason this
@@ -27,48 +27,41 @@ import sys
 # reaches says nothing about this code.
 SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'icl_format_main.cc', 'icl_lsp_main.cc',
-           'icl_parser.yy', 'icl_lexer.l']
+           'icl_semantics.cc', 'icl_parser.yy', 'icl_lexer.l',
+           'icl_ast.h', 'icl_driver.h', 'icl_semantics.h', 'format_tree.h', 'json.h']
+
+
+LINE = re.compile(r'^\s*([0-9]+\*?|#####|=====|-):\s*(\d+):')
 
 
 def line_coverage(path):
-    total, covered, uncovered = 0, 0, []
-    for line in open(path):
-        m = re.match(r'^\s*(#####|[0-9]+):\s*(\d+):', line)
-        if not m:
+    seen = {}
+    for line in Path(path).read_text().splitlines():
+        match = LINE.match(line)
+        if not match or match[1] == '-' or int(match[2]) == 0:
             continue
-        total += 1
-        if m.group(1) == '#####':
-            uncovered.append(int(m.group(2)))
-        else:
-            covered += 1
-    return covered, total, uncovered
+        count = match[1].rstrip('*')
+        number = int(match[2])
+        seen[number] = seen.get(number, False) or (count.isdigit() and int(count) > 0)
+    missing = sorted(number for number, hit in seen.items() if not hit)
+    return sum(seen.values()), len(seen), missing
 
 
 def branch_coverage(path):
-    """Counts each branch point once; a branch is 'taken' if ever non-zero."""
-    current, seen = None, {}
-    for line in open(path):
-        m = re.match(r'^\s*[0-9#*-]+:\s*(\d+):', line)
-        if m:
-            current = int(m.group(1))
+    """Count never-executed and exception edges, including template instances."""
+    current, function, seen = None, '', {}
+    for line in Path(path).read_text().splitlines():
+        if line.startswith('function '):
+            function = line.split(' called ', 1)[0]
+        match = LINE.match(line)
+        if match:
+            current = int(match[2])
             continue
-        if 'branch' not in line:
-            continue
-        b = re.search(r'branch\s+(\d+)\s+(?:taken\s+(\d+))?(?:\s*\((\w+)\))?',
-                      line)
-        if not b or current is None:
-            continue
-        # 'throw' paths are unreachable: this code base builds with -fno-exceptions.
-        if b.group(3) == 'throw':
-            continue
-        count = b.group(2)
-        if count is None:      # bare "(fallthrough)" with no counter
-            continue
-        key = (current, b.group(1))
-        seen[key] = max(seen.get(key, 0), int(count))
-    taken = sum(1 for v in seen.values() if v > 0)
-    untaken = sorted({k[0] for k, v in seen.items() if v == 0})
-    return taken, len(seen), untaken
+        branch = re.search(r'branch\s+(\d+)\s+(?:taken\s+(\d+)|never executed)', line)
+        if branch and current is not None:
+            key = (function, current, int(branch[1]))
+            seen[key] = max(seen.get(key, 0), int(branch[2] or 0))
+    return sum(count > 0 for count in seen.values()), len(seen), sorted({key[1] for key, count in seen.items() if not count})
 
 
 def source_line(name, number):
@@ -99,17 +92,23 @@ def main():
         print('error: no .gcov files; run gcov first', file=sys.stderr)
         return 2
 
+    missing = [name for name in SOURCES if not Path(name + '.gcov').exists()]
+    if missing:
+        print('error: missing source reports: ' + ', '.join(missing), file=sys.stderr)
+        return 2
     tl = cl = tb = cb = 0
     rows = []
     for name in SOURCES:
         path = name + '.gcov'
-        if not os.path.exists(path):
-            continue
         c, t, ul = line_coverage(path)
         b, bt, ub = branch_coverage(path)
         cl += c; tl += t; cb += b; tb += bt
         rows.append((name, c, t, b, bt, ul, ub))
 
+    if not tl:
+        print('error: no executable source lines in reports', file=sys.stderr)
+        return 2
+    print('Branch totals include compiler-emitted exception and cleanup edges.')
     print('%-22s %14s %16s' % ('file', 'lines', 'branches'))
     for name, c, t, b, bt, ul, ub in rows:
         print('%-22s %5d/%-5d %5.1f%% %5d/%-5d %6.1f%%' %
