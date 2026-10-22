@@ -592,7 +592,7 @@ dist: dynamic
 	# so a tarball without it cannot run its own test suite. The copy list was
 	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.
 	cp tests/*.py tests/*.cc tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
-	cp Makefile README.md REQUIREMENT.md LICENSE $(DIST_DIR)/
+	cp Makefile README.md LICENSE $(DIST_DIR)/
 	cp -r docs $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar --exclude=__pycache__ --exclude='*.pyc' -czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
