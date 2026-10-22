@@ -196,22 +196,20 @@ class IclDriver {
   // Called by the bison error hook. Only the *first* error is kept: later ones
   // are almost always cascades of it, and reporting them buries the cause.
   void SetParseDiagnostic(int line, const std::string& message) {
+    // Semantic checks with only a line number retain a whole-line range.
+    SetParseDiagnostic(SourceSpan{line, line, 0, 0}, message);
+  }
+  void SetParseDiagnostic(SourceSpan span, const std::string& message) {
     if (has_error_) return;
     has_error_ = true;
-    error_line_ = line;
+    error_span_ = span;
     error_message_ = message;
   }
 
-  // Structured form, for callers that need the parts rather than the
-  // pre-formatted CLI string: the LSP server turns these into a diagnostic
-  // range plus message. |error_line| is 1-based, like every other line number
-  // in this code base.
-  // No `has_error()` accessor: nothing calls it. `format_job.cc` takes the
-  // outcome from `Parse`'s return value and reads the line and message,
-  // so a third accessor would be a third thing that has to agree with
-  // `has_error_` — and an unused one is worse than none, because a reader
-  // cannot tell whether it is load-bearing.
-  int error_line() const { return error_line_; }
+  // Source spans use 1-based byte columns; zero columns mean line-only errors.
+  // Parse's return value indicates success; these accessors describe failure.
+  int error_line() const { return error_span_.first_line; }
+  const SourceSpan& error_span() const { return error_span_; }
   const std::string& error_message() const { return error_message_; }
 
   // The AST as text (`--ast`). Returned rather than printed, so that the
@@ -230,7 +228,7 @@ class IclDriver {
   std::unordered_set<std::string> access_link_names_;
 
   bool has_error_ = false;
-  int error_line_ = 0;
+  SourceSpan error_span_;
   std::string error_message_;
 };
 

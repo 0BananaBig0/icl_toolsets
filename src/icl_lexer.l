@@ -40,7 +40,11 @@ IclParser::symbol_type yylex(IclDriver& driver);
 
 // flex's default `yyterminate()` returns the int 0, which cannot be converted
 // to a bison variant symbol. End-of-input must hand back a real END token.
-#define yyterminate() return icl::IclParser::make_END(g_location)
+#define yyterminate()                                  \
+  do {                                                 \
+    g_location.step();                                 \
+    return icl::IclParser::make_END(g_location);       \
+  } while (false)
 
 // Memory-buffer scanning entry points, used by the driver so that no temporary
 // file is ever created. |yy_scan_bytes| copies the input into a flex buffer;
@@ -130,7 +134,7 @@ BASED   (\'[bB]{NUMGAP}*[01xX][01xX_]*|\'[hH]{NUMGAP}*[0-9a-fA-FxX][0-9a-fA-FxX_
 <GENERIC_LINK>"//"[^\n]* { AppendGeneric(yytext, yyleng); }
 <GENERIC_LINK>"/*"([^*]|\*+[^*/])*\*+"/" {
   if (std::string(yytext).find("/*", 2) != std::string::npos) {
-    driver.SetParseDiagnostic(g_location.begin.line,
+    driver.SetParseDiagnostic(icl::SpanOf(g_location, g_location),
                               "nested block comments are not allowed");
   }
   AppendGeneric(yytext, yyleng);
@@ -139,12 +143,13 @@ BASED   (\'[bB]{NUMGAP}*[01xX][01xX_]*|\'[hH]{NUMGAP}*[0-9a-fA-FxX][0-9a-fA-FxX_
 <GENERIC_LINK>"/" { AppendGeneric(yytext, yyleng); }
 <GENERIC_LINK>\"|"/*" {
   driver.SetParseDiagnostic(
-      g_location.begin.line,
+      icl::SpanOf(g_location, g_location),
       "unterminated Generic AccessLink string or comment");
   return icl::IclParser::make_END(g_location);
 }
 <GENERIC_LINK><<EOF>> {
-  driver.SetParseDiagnostic(g_location.begin.line,
+  g_location.step();
+  driver.SetParseDiagnostic(icl::SpanOf(g_location, g_location),
                             "unterminated Generic AccessLink body");
   return icl::IclParser::make_END(g_location);
 }
@@ -154,7 +159,7 @@ BASED   (\'[bB]{NUMGAP}*[01xX][01xX_]*|\'[hH]{NUMGAP}*[0-9a-fA-FxX][0-9a-fA-FxX_
 
 \xEF\xBB\xBF {
   if (g_location.begin.line != 1 || g_location.begin.column != 1) {
-    driver.SetParseDiagnostic(g_location.begin.line,
+    driver.SetParseDiagnostic(icl::SpanOf(g_location, g_location),
                               "BOM is allowed only at the start");
   }
 }
@@ -162,7 +167,7 @@ BASED   (\'[bB]{NUMGAP}*[01xX][01xX_]*|\'[hH]{NUMGAP}*[0-9a-fA-FxX][0-9a-fA-FxX_
   /* Comments: emitted as tokens so the formatter can keep them. */
 "/*"([^*]|\*+[^*/])*\*+"/" {
   if (std::string(yytext).find("/*", 2) != std::string::npos) {
-    driver.SetParseDiagnostic(g_location.begin.line,
+    driver.SetParseDiagnostic(icl::SpanOf(g_location, g_location),
                               "nested block comments are not allowed");
   }
   return icl::IclParser::make_COMMENT(yytext, g_location);
@@ -347,7 +352,7 @@ LocalParameter { return icl::IclParser::make_LOCALPARAMETER(g_location); }
      untouched. */
 {DIGIT}(_?{DIGIT})*[xXbB][0-9a-fA-F_xX]+ {
   driver.SetParseDiagnostic(
-      g_location.begin.line,
+      icl::SpanOf(g_location, g_location),
       std::string("'") + yytext +
           "' is a PDL literal, not ICL — ICL writes 8'h10 or "
           "4'b0011, with the base after an apostrophe");
@@ -359,7 +364,7 @@ LocalParameter { return icl::IclParser::make_LOCALPARAMETER(g_location); }
      one instead of being reported as the wrong language. */
 "#" {
   driver.SetParseDiagnostic(
-      g_location.begin.line,
+      icl::SpanOf(g_location, g_location),
       "'#' starts a comment in PDL, not ICL — ICL uses //");
   return icl::IclParser::make_END(g_location);
 }
@@ -379,7 +384,7 @@ LocalParameter { return icl::IclParser::make_LOCALPARAMETER(g_location); }
   // a parameter) rather than through a global, so that the
   // diagnostic travels with the file being processed.
   driver.SetParseDiagnostic(
-      g_location.begin.line,
+      icl::SpanOf(g_location, g_location),
       static_cast<unsigned char>(yytext[0]) >= 128
           ? "non-ASCII byte outside ICL string/comment"
           : std::string("illegal character '") + yytext[0] + "'");

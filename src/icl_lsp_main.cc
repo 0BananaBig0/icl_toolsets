@@ -214,8 +214,7 @@ std::string FileUri(const std::string& path) {
   return uri;
 }
 
-// Length of line |line_index| (0-based) in bytes, used to underline a whole
-// line for a diagnostic: the parser reports a line but no column.
+// UTF-16 length excluding CRLF, for diagnostics with only a line number.
 std::int64_t LineLength(const std::string& text, std::int64_t line_index) {
   size_t start = 0;
   for (std::int64_t i = 0; i < line_index; ++i) {
@@ -224,7 +223,8 @@ std::int64_t LineLength(const std::string& text, std::int64_t line_index) {
     start = newline + 1;
   }
   const size_t newline = text.find('\n', start);
-  const size_t end = (newline == std::string::npos) ? text.size() : newline;
+  size_t end = (newline == std::string::npos) ? text.size() : newline;
+  if (end > start && text[end - 1] == '\r') --end;
   return static_cast<std::int64_t>(Utf16Length(text, start, end));
 }
 
@@ -336,6 +336,7 @@ class LspServer {
       workspace_.documents().erase(uri);
       ReadDisk(uri);
       workspace_.Reindex();
+      PublishDiagnostics(uri, nullptr);
     } else if (method == "workspace/didChangeWatchedFiles") {
       WatchedFiles(Params(message));
     } else if (method == "textDocument/formatting") {
@@ -416,34 +417,41 @@ class LspServer {
     auto document = std::make_shared<icl::ParsedDocument>(text);
     workspace_.documents()[uri] = document;
     workspace_.Reindex();
-    PublishDiagnostics(uri, *document);
+    PublishDiagnostics(uri, document.get());
   }
 
   void PublishDiagnostics(const std::string& uri,
-                          const icl::ParsedDocument& document) {
-    const auto& text = document.source();
-    const auto outcome =
-        icl::FormatParsedDocument(document, icl::FormatRequest());
+                          const icl::ParsedDocument* document) {
     Json::Elements diagnostics;
-    if (!outcome.ok) {
-      // The job's line is 1-based; LSP positions are 0-based.
+    if (document && !document->ok()) {
+      const auto& driver = document->driver();
+      const auto& span = driver.error_span();
       const std::int64_t line =
-          outcome.error_line > 0 ? outcome.error_line - 1 : 0;
+          driver.error_line() > 0 ? driver.error_line() - 1 : 0;
+      const Json range =
+          span.first_column > 0
+              ? SourceRange(*document, document->Range(span))
+              : Json::Object(
+                    {{"start", Position(line, 0)},
+                     {"end",
+                      Position(line, LineLength(document->source(), line))}});
       diagnostics.push_back(Json::Object({
-          {"range",
-           Json::Object({{"start", Position(line, 0)},
-                         {"end", Position(line, LineLength(text, line))}})},
-          {"severity", Json::Int(1)},  // 1 = Error.
+          {"range", range},
+          {"severity", Json::Int(1)},
           {"source", Json::String("icl-lsp")},
-          {"message", Json::String(outcome.error_message)},
+          {"message", Json::String(driver.error_message())},
       }));
+    }
+    Json::Members params{{"uri", Json::String(uri)},
+                         {"diagnostics", Json::Array(std::move(diagnostics))}};
+    const auto version = open_versions_.find(uri);
+    if (version != open_versions_.end() && version->second >= 0) {
+      params.emplace_back("version", Json::Int(version->second));
     }
     WriteMessage(Json::Object(
         {{"jsonrpc", Json::String("2.0")},
          {"method", Json::String("textDocument/publishDiagnostics")},
-         {"params", Json::Object({{"uri", Json::String(uri)},
-                                  {"diagnostics",
-                                   Json::Array(std::move(diagnostics))}})}}));
+         {"params", Json::Object(std::move(params))}}));
   }
 
   Json Formatting(const Json& params) {

@@ -1,0 +1,1 @@
+Module DiagnosticLifecycle { DataInPort input; }

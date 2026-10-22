@@ -6,6 +6,14 @@ in [honza-icl-comparison.md](honza-icl-comparison.md). This report records actua
 verification; it does not claim complete hardware elaboration or formal proof of
 all possible inputs.
 
+## Independent syntax and diagnostic follow-up
+
+The [new syntax-property report](icl-syntax-properties.md) records 25,938
+IEEE-derived transformations across 45 blocks, corpus-wide live LSP validation
+of 1,885 cases, precise/versioned diagnostics and additional EOF/CRLF regressions.
+Its newer functional counts supersede the earlier run below; the handwritten
+line/branch coverage limitations in this document remain unchanged.
+
 ## Functional checks
 
 `make check-dynamic BISON=/usr/bin/bison` passed: 1757 classified conformance

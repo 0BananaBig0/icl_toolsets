@@ -57,7 +57,8 @@ checks may need additional tools described by their scripts.
 |---|---|
 | `make dynamic` | Dynamic `build/icl-format` and `build/icl-lsp`. |
 | `make static` | Static variants; requires static runtime libraries. |
-| `make check-dynamic` | Full dynamic functional suite, corpus audit and grammar/scanner rule coverage. |
+| `make check-dynamic` | Full dynamic functional suite, live corpus diagnostics, syntax properties, corpus audit and grammar/scanner rule coverage. |
+| `make syntaxcheck` | Independent IEEE whitespace/comment and nested-index transformations; generated inputs remain ignored. |
 | `make check` | Full suite with the default dynamic/static build prerequisites. |
 | `make unitcheck` | AST/layout/JSON unit assertions without generating the parser. |
 | `make corpuscheck` | Importer/provenance checks and all maintained ICL duplicate checks. |

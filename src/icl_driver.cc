@@ -405,8 +405,14 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
   // ever created and the input buffer is never written to.
   const auto nul = text.find('\0');
   if (nul != std::string::npos) {
-    SetParseDiagnostic(1 + static_cast<int>(std::count(
-                               text.begin(), text.begin() + nul, '\n')),
+    const int line = 1 + static_cast<int>(std::count(text.begin(),
+                                                     text.begin() + nul, '\n'));
+    const auto newline = text.rfind('\n', nul);
+    const int column =
+        static_cast<int>(nul -
+                         (newline == std::string::npos ? 0 : newline + 1)) +
+        1;
+    SetParseDiagnostic(SourceSpan{line, line, column, column + 1},
                        "NUL byte is not valid ICL source");
   } else {
     IclScanBytes(text.data(), text.size());
@@ -438,7 +444,7 @@ bool IclDriver::Parse(const std::string& text, std::string* error) {
     pending_module_->set_span(span);
   }
   if (has_error_) {
-    *error = "line " + std::to_string(error_line_) + ": " + error_message_;
+    *error = "line " + std::to_string(error_line()) + ": " + error_message_;
     return false;
   }
   return true;

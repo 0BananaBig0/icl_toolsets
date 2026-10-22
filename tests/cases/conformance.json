@@ -11254,5 +11254,59 @@
     "block": "eda-corpus",
     "accept": true,
     "source": "remote EDA tessent; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/ours/diagnostics/valid.icl",
+    "block": "module",
+    "accept": true,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/parser.icl",
+    "block": "module",
+    "accept": false,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/lexer.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/eof.icl",
+    "block": "module",
+    "accept": false,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/unicode.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/nul.icl",
+    "block": "lexical",
+    "accept": false,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/semantic_crlf.icl",
+    "block": "enum",
+    "accept": false,
+    "source": "Constructed live LSP diagnostic regression; IEEE 1687-2014 clauses 6.3, 6.4 and 6.5.3"
+  },
+  {
+    "path": "cases/ours/diagnostics/generic_eof.icl",
+    "block": "access_link",
+    "accept": false,
+    "source": "Constructed Generic AccessLink EOF diagnostic regression"
+  },
+  {
+    "path": "cases/ours/diagnostics/generic_eof_newline.icl",
+    "block": "access_link",
+    "accept": false,
+    "source": "Constructed Generic AccessLink EOF diagnostic regression"
   }
 ]

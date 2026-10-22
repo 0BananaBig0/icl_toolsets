@@ -1,0 +1,2 @@
+Module DiagnosticEof {
+  DataInPort input;

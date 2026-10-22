@@ -130,7 +130,7 @@ OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 # binary.
 .PHONY: all dynamic static install install-dynamic install-static uninstall \
     check nvimcheck coccheck clean distclean version dist check-tools \
-    formatcheck namingcheck
+    formatcheck namingcheck syntaxcheck
 .DEFAULT_GOAL := all
 
 # Development-only style checks; normal builds need no LLVM tools. Review the
@@ -526,7 +526,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck
+check check-dynamic: unitcheck corpuscheck syntaxcheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
@@ -544,6 +544,7 @@ check check-dynamic: unitcheck corpuscheck
 	@python3 tests/lsp_test.py --binary $(LSP_BIN) --cli $(BIN)
 	@python3 tests/src/test_icl_lsp.py --binary $(LSP_BIN)
 	@python3 tests/src/test_icl_protocol.py --binary $(LSP_BIN)
+	@python3 tests/src/test_icl_diagnostics.py --binary $(LSP_BIN)
 	@$(MAKE) --no-print-directory gramcov
 
 COC_ROOT ?= /tmp/cocvim
@@ -554,6 +555,11 @@ COC_VIM ?= /usr/local/vim9/bin/vim
 $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc \
     $(SHARED_OBJECTS) $(BUILD_DIR)/json.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+# Acceptance-preserving IEEE transformations, independent of our .yy/.l rules.
+syntaxcheck: $(BUILD_DIR)/icl_corpus_inventory
+	python3 tests/tests/src/test_icl_metamorphic.py
+	python3 tests/src/test_icl_metamorphic.py --inventory $<
 
 .PHONY: corpuscheck
 corpuscheck: $(BUILD_DIR)/icl_corpus_inventory $(BIN)

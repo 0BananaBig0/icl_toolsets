@@ -72,7 +72,7 @@ namespace icl {
 // used to be a file-scope global); it keeps only the earliest error because
 // later ones are cascades of it.
 void IclParser::error(const location& loc, const std::string& message) {
-  driver.SetParseDiagnostic(loc.begin.line, message);
+  driver.SetParseDiagnostic(SpanOf(loc, loc), message);
 }
 
 }  // namespace icl

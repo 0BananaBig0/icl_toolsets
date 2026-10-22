@@ -119,6 +119,17 @@ the original requests and implementation history.
   not infer full regression or editor success from compilation, schema checks,
   partial suites or historical results. Known acceptance gaps stay visible.
 
+- **T6 — Independent syntax oracle:** complement production/rule coverage with
+  IEEE-derived metamorphic tests whose expected acceptance does not come from
+  our grammar. Require valid whitespace/comment and recursive-index variants to
+  parse, and nested block comments to fail. Exercise every classified corpus
+  expectation through live LSP edits. Report exclusions and avoid treating a
+  finite corpus as proof of full language support.
+- **T7 — Live syntax checking:** share the CLI parser and AST; publish diagnostic
+  versions and UTF-16 token/EOF ranges, ignore stale edits, and clear errors on
+  correction or close. Preserve the documented first-error policy and line-only
+  fallback for semantic checks that lack columns.
+
 ## Build, delivery and documentation
 
 - **D1 — Build:** provide dynamic and static variants of both executables and

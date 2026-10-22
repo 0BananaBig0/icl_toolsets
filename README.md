@@ -98,10 +98,16 @@ its exit status as the formatting check result.
 `icl-lsp` runs over standard input/output and is started by the editor's LSP
 client. It provides:
 
-- Syntax diagnostics and whole-document formatting.
+- Syntax diagnostics on open and edit, plus whole-document formatting.
 - Completion for ICL keywords, local names, instance members and module types.
 - Go to definition/declaration, go to implementation, and find references.
 - Hover information, document symbols and workspace symbols.
+
+Syntax checking uses the same ICL parser as `icl-format`. Errors underline the
+unexpected token using editor-compatible Unicode positions; incomplete input
+points to the end of the document. Errors clear when corrected or closed. The
+server reports the first error per document; fix it to reveal subsequent errors.
+Some semantic checks report a whole line when no token location is available.
 
 Implementation navigation leads to the referenced **ICL module definition**.
 HDL implementation inference and symbol renaming are not available.

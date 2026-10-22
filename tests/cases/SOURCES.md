@@ -414,3 +414,18 @@ members, enum contexts, keyword identifiers, deep Alias paths and AccessLink
 ScanInterface references. `tests/src/test_icl_lsp.py` sends them over real framed
 LSP transport, including incomplete edits, Unicode and disk lifecycle cases.
 `ours/editor/` persists the diagnostic/formatting inputs used by the live coc test.
+
+## Independent syntax and diagnostic checks
+
+`ours/diagnostics/` contains constructed syntax, lexical and Enum-width failures,
+a valid repair buffer, Unicode text, CRLF and an intentional NUL byte. These
+fixtures test LSP positions and lifecycle behavior; they are not vendor examples.
+`tests/src/test_icl_diagnostics.py` also sends every classified conformance input
+through the real LSP transport.
+
+`tests/src/test_icl_metamorphic.py` derives ignored inputs below
+`tests/generated/ours/metamorphic/` from eligible positive conformance seeds.
+`results.json` retains each seed's manifest entry and source attribution. The
+transformations follow IEEE 1687-2014 §§6.3.2, 6.3.4(11–12), 6.3.6–8; they are
+constructed tests, not additional verbatim standard examples. See
+[the method and exclusions](../../docs/icl-syntax-properties.md).

@@ -12,6 +12,7 @@ usage, editor setup, supported features and practical limitations.
 | [Coding style](coding-style.md) | Required Google C++ naming/layout, generator exceptions and Makefile conventions. |
 | [ICL conformance review](icl-conformance-review.md) | Block-by-block IEEE/vendor evidence and compatibility decisions. |
 | [Honza parser comparison](honza-icl-comparison.md) | Keyword, grammar, matching and test-case comparison with the reference repository. |
+| [Independent syntax checks](icl-syntax-properties.md) | IEEE-derived metamorphic acceptance checks and live diagnostic verification. |
 | [Testing practices](icl-testing-practices.md) | Public parser, formatter, LSP, Flex and Bison practices used here. |
 | [Verification and limits](icl-verification.md) | Dated correctness, coverage, editor and performance evidence, including unmet gates. |
 
