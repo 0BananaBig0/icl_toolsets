@@ -16,7 +16,7 @@ Module m {
   ToClockPort c5 { Period 10us; }
   ToClockPort c6 { Period 10ms; }
   ToClockPort c7 {
-    Period 10ns;
+    Source c4;
     FreqMultiplier 2;
     FreqDivider 3;
   }

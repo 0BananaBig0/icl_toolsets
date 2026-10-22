@@ -14,6 +14,8 @@
 
 #include "icl_driver.h"
 
+#include <map>
+
 #include <iostream>
 #include <sstream>
 
@@ -91,18 +93,64 @@ ParsedValue IclDriver::NumberLiteral(const std::string& text) const {
   return value;
 }
 
-void IclDriver::CheckSingletonItems(
-    const std::vector<AstNode*>& body,
-    std::initializer_list<const char*> properties) {
+void IclDriver::CheckPortItems(const std::string& kind,
+                               const std::vector<AstNode*>& body, int line) {
+  // true means a singleton. Attribute is repeatable for every port kind.
+  static const std::map<std::string, std::map<std::string, bool>> rules = {
+      {"ScanInPort", {}},  // §6.4.6.1
+      {"ScanOutPort", {{"Source", true}, {"Enable", true}, {"LaunchEdge", true}}},  // §6.4.6.2
+      {"ShiftEnPort", {}},  // §6.4.6.3
+      {"CaptureEnPort", {}},  // §6.4.6.4
+      {"UpdateEnPort", {}},  // §6.4.6.5
+      {"DataInPort", {{"RefEnum", true}, {"DefaultLoadValue", false}}},  // §6.4.6.6
+      {"DataOutPort", {{"Source", true}, {"Enable", true}, {"RefEnum", true}}},  // §6.4.6.7
+      {"ToShiftEnPort", {{"Source", true}}},  // §6.4.6.8
+      {"ToCaptureEnPort", {{"Source", true}}},  // §6.4.6.9
+      {"ToUpdateEnPort", {{"Source", true}}},  // §6.4.6.10
+      {"SelectPort", {}},  // §6.4.6.11
+      {"ToSelectPort", {{"Source", true}}},  // §6.4.6.12
+      {"ResetPort", {{"ActivePolarity", false}}},  // §6.4.6.13
+      {"ToResetPort", {{"Source", true}, {"ActivePolarity", true}}},  // §6.4.6.14
+      {"TMSPort", {}},  // §6.4.6.15
+      {"ToTMSPort", {{"Source", true}}},  // §6.4.6.16; Tessent singleton Source
+      {"TCKPort", {}},  // §6.4.6.17
+      {"ToTCKPort", {{"Source", true}}},  // §6.4.6.18; Tessent Source extension
+      {"ClockPort", {{"DifferentialInvOf", false}}},  // §6.4.6.19
+      {"ToClockPort", {{"Source", true}, {"FreqMultiplier", true}, {"FreqDivider", true}, {"DifferentialInvOf", true}, {"Period", true}}},  // §6.4.6.20
+      {"TRSTPort", {}},  // §6.4.6.21
+      {"ToTRSTPort", {{"Source", true}}},  // §6.4.6.22
+      {"ToIRSelectPort", {}},  // §6.4.6.23
+      {"AddressPort", {}},  // §6.4.6.24
+      {"WriteEnPort", {}},  // §6.4.6.25
+      {"ReadEnPort", {}},  // §6.4.6.26
+  };
+  const auto& properties = rules.at(kind);
   std::unordered_set<std::string> seen;
+  bool has_item = false;
   for (const auto* node : body) {
     const auto* statement = dynamic_cast<const AstStatement*>(node);
     if (!statement) continue;
+    has_item = true;
     const auto& text = statement->text();
     const std::string keyword = text.substr(0, text.find_first_of(" \t\n;"));
-    for (const char* property : properties) {
-      if (keyword == property && !seen.insert(keyword).second)
-        SetParseDiagnostic(node->span().first_line, "duplicate " + keyword + " property");
+    if (keyword == "Attribute") continue;
+    const auto property = properties.find(keyword);
+    if (property == properties.end()) {
+      SetParseDiagnostic(node->span().first_line, keyword + " is not allowed in " + kind);
+    } else if (property->second && !seen.insert(keyword).second) {
+      SetParseDiagnostic(node->span().first_line, "duplicate " + keyword + " property");
+    }
+  }
+  if (!has_item && (kind == "ToSelectPort" || kind == "ToResetPort" ||
+                    kind == "ToClockPort" || kind == "ToTRSTPort")) {
+    SetParseDiagnostic(line, kind + " requires a nonempty body or semicolon");
+  }
+  if (kind == "ToClockPort") {
+    if ((seen.count("Period") || seen.count("DifferentialInvOf")) && seen.size() > 1) {
+      SetParseDiagnostic(line, "Period and DifferentialInvOf exclude other clock properties");
+    }
+    if ((seen.count("FreqMultiplier") || seen.count("FreqDivider")) && !seen.count("Source")) {
+      SetParseDiagnostic(line, "clock frequency factors require Source");
     }
   }
 }

@@ -1,1 +1,1 @@
-Module m { ScanInPort a; ScanOutPort b; ShiftEnPort c; CaptureEnPort d; UpdateEnPort e; SelectPort f; ResetPort g; TCKPort h; TMSPort i; ToDoPort j; ToSelectPort k; DataInPort l; DataOutPort m2; }
+Module m { ScanInPort a; ScanOutPort b; ShiftEnPort c; CaptureEnPort d; UpdateEnPort e; SelectPort f; ResetPort g; TCKPort h; TMSPort i; ToIRSelectPort j; ToSelectPort k; DataInPort l; DataOutPort m2; }

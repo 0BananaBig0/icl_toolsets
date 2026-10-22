@@ -181,7 +181,6 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token TOCAPTUREENPORT "ToCaptureEnPort"
 %token TOUPDATEENPORT "ToUpdateEnPort"
 %token TORESETPORT "ToResetPort"
-%token TODOPORT "ToDoPort"
 %token TOSELECTPORT "ToSelectPort"
 %token DATAINPORT "DataInPort"
 %token DATAOUTPORT "DataOutPort"
@@ -213,6 +212,8 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token OFLOWER "of"
 %token INCLUDE "#include"
 
+%token LAUNCHEDGE "LaunchEdge"
+
 %token END 0 "end of file"
 
 /* Punctuation. Named tokens (rather than raw character literals) let the
@@ -235,13 +236,13 @@ void IclParser::error(const location& loc, const std::string& message) {
 %type <std::string> scalar_name token_gap
 %type <ParsedValue> integer_expr integer_arg attribute_values attribute_atom
 %type <std::string> strict_range signal_path signal_reference signal data_signal concat_data_signal
-%type <AstNode*> data_out_port data_out_item strict_attribute
-%type <std::vector<AstNode*>> data_out_body
+%type <AstNode*> checked_port checked_port_item strict_attribute
+%type <std::string> checked_port_keyword default_value
+%type <std::string> frequency_keyword clock_factor clock_period
+%type <std::vector<AstNode*>> checked_port_body
 %type <ParsedValue> concat_number inverted_number number
 %type <std::vector<AstNode*>> module_item_list
 %type <AstNode*> module_item instance_item instance_block
-%type <AstNode*> port_decl
-%type <std::string> port_keyword
 %type <std::vector<icl::PortGroupItem>> port_group_items
 %type <icl::PortGroupItem> port_group_item
 %type <std::string> decl_name of_kw opt_range attr_stmt_name value_list module_ref std_tap_kw attr_value value_no_lead_op name_block_kw onehot_block_kw range_block_kw sel_block_kw of_block_kw any_keyword
@@ -387,8 +388,7 @@ module_item
   | range_block_kw decl_name opt_range SEMICOLON
       { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
                                   SpanOf(@1.begin.line, @4.end.line)); }
-  | port_decl { $$ = $1; }
-  | data_out_port { $$ = $1; }
+  | checked_port { $$ = $1; }
   | sel_block_kw decl_name opt_range SELECTEDBY value_list LBRACE mux_body RBRACE
       {
         // `SelectedBy` is part of the standard; the selector may be a
@@ -503,30 +503,101 @@ integer_arg
   | LPAREN token_gap integer_expr RPAREN token_gap { $$ = ParsedValue{"(" + $2 + $3.text + ")" + $5}; }
   ;
 
-/* IEEE §6.4.6.7. Reuse only the properties actually admitted by this port. */
-data_out_port
-  : DATAOUTPORT token_gap scalar_name token_gap strict_range SEMICOLON
-      { $$ = driver.MakeStatement("DataOutPort " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
-  | DATAOUTPORT token_gap scalar_name token_gap strict_range LBRACE data_out_body RBRACE
-      { driver.CheckSingletonItems($7, {"Source", "Enable", "RefEnum"});
-        $$ = driver.MakeBlock("DataOutPort " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+/* Each property has one grammar; the shared driver checks the permitted
+   properties and cardinalities for the particular port kind. */
+checked_port_keyword
+  : DATAOUTPORT { $$ = "DataOutPort"; }
+  | DATAINPORT { $$ = "DataInPort"; }
+  | SCANINPORT { $$ = "ScanInPort"; }
+  | SCANOUTPORT { $$ = "ScanOutPort"; }
+  | SHIFTENPORT { $$ = "ShiftEnPort"; }
+  | CAPTUREENPORT { $$ = "CaptureEnPort"; }
+  | UPDATEENPORT { $$ = "UpdateEnPort"; }
+  | TOSHIFTENPORT { $$ = "ToShiftEnPort"; }
+  | TOCAPTUREENPORT { $$ = "ToCaptureEnPort"; }
+  | TOUPDATEENPORT { $$ = "ToUpdateEnPort"; }
+  | SELECTPORT { $$ = "SelectPort"; }
+  | TOSELECTPORT { $$ = "ToSelectPort"; }
+  | RESETPORT { $$ = "ResetPort"; }
+  | TORESETPORT { $$ = "ToResetPort"; }
+  | READENPORT { $$ = "ReadEnPort"; }
+  | WRITEENPORT { $$ = "WriteEnPort"; }
+  | ADDRESSPORT { $$ = "AddressPort"; }
+  | TOIRSELECTPORT { $$ = "ToIRSelectPort"; }
+  | TOTRSTPORT { $$ = "ToTRSTPort"; }
+  | TRSTPORT { $$ = "TRSTPort"; }
+  | TOCLOCKPORT { $$ = "ToClockPort"; }
+  | CLOCKPORT { $$ = "ClockPort"; }
+  | TOTCKPORT { $$ = "ToTCKPort"; }
+  | TCKPORT { $$ = "TCKPort"; }
+  | TOTMSPORT { $$ = "ToTMSPort"; }
+  | TMSPORT { $$ = "TMSPort"; }
   ;
 
-data_out_body
+checked_port
+  : checked_port_keyword token_gap scalar_name token_gap strict_range SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + $4 + $5 + ";", SpanOf(@1.begin.line, @6.end.line)); }
+  | checked_port_keyword token_gap scalar_name token_gap strict_range LBRACE checked_port_body RBRACE
+      { driver.CheckPortItems($1, $7, @1.begin.line);
+        $$ = driver.MakeBlock($1 + " " + $2 + $3 + $4 + $5, std::move($7), SpanOf(@1.begin.line, @8.end.line)); }
+  ;
+
+checked_port_body
   : %empty { $$ = {}; }
-  | data_out_body data_out_item { $$ = std::move($1); $$.push_back($2); }
-  | data_out_body COMMENT
+  | checked_port_body checked_port_item { $$ = std::move($1); $$.push_back($2); }
+  | checked_port_body COMMENT
       { $$ = std::move($1); $$.push_back(driver.AddComment($2, SpanOf(@2.begin.line, @2.end.line))); }
   ;
 
-data_out_item
+checked_port_item
   : SOURCE token_gap concat_data_signal SEMICOLON
       { $$ = driver.MakeStatement("Source " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | DIFFERENTIALINVOF token_gap concat_data_signal SEMICOLON
+      { $$ = driver.MakeStatement("DifferentialInvOf " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | ENABLE token_gap data_signal SEMICOLON
       { $$ = driver.MakeStatement("Enable " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
   | REFENUM token_gap scalar_name token_gap SEMICOLON
       { $$ = driver.MakeStatement("RefEnum " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+  | DEFAULTLOADVALUE token_gap default_value SEMICOLON
+      { $$ = driver.MakeStatement("DefaultLoadValue " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | ACTIVEPOLARITY token_gap INTEGER token_gap SEMICOLON
+      { if ($3 != "0" && $3 != "1") { error(@3, "ActivePolarity requires 0 or 1"); YYERROR; }
+        $$ = driver.MakeStatement("ActivePolarity " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
+  | frequency_keyword token_gap clock_factor SEMICOLON
+      { $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | PERIOD token_gap clock_period SEMICOLON
+      { $$ = driver.MakeStatement("Period " + $2 + $3 + ";", SpanOf(@1.begin.line, @4.end.line)); }
+  | LAUNCHEDGE token_gap IDENT token_gap SEMICOLON
+      { if ($3 != "Falling") { error(@3, "unsupported legacy LaunchEdge value"); YYERROR; }
+        $$ = driver.MakeStatement("LaunchEdge " + $2 + $3 + $4 + ";", SpanOf(@1.begin.line, @5.end.line)); }
   | strict_attribute { $$ = $1; }
+  ;
+
+frequency_keyword
+  : FREQMULTIPLIER { $$ = "FreqMultiplier"; }
+  | FREQDIVIDER { $$ = "FreqDivider"; }
+  ;
+
+clock_factor
+  : INTEGER token_gap { $$ = $1 + $2; }
+  /* Tessent v2023.4 clockGen example uses parameterized factors. */
+  | PARAMREF token_gap { $$ = $1 + $2; }
+  ;
+
+clock_period
+  : INTEGER token_gap { $$ = $1 + $2; }
+  | TIME token_gap { $$ = $1 + $2; }
+  | INTEGER token_gap IDENT token_gap
+      { if ($3 != "s" && $3 != "ms" && $3 != "us" && $3 != "ns" &&
+            $3 != "ps" && $3 != "fs" && $3 != "as") {
+          error(@3, "invalid Period time unit"); YYERROR;
+        }
+        $$ = $1 + " " + $2 + $3 + $4; }
+  ;
+
+default_value
+  : concat_number { $$ = $1.text; }
+  | scalar_name token_gap { $$ = $1 + $2; }
   ;
 
 strict_attribute
@@ -582,44 +653,6 @@ concat_data_signal
   : data_signal { $$ = $1; }
   | concat_data_signal COMMA token_gap data_signal { $$ = std::move($1) + ", " + $3 + $4; }
   ;
-
-/* -------------------------------------------------------------------- ports */
-
-port_keyword
-  : SCANINPORT       { $$ = "ScanInPort"; }
-  /* These four are in the ICL grammar (the `port_def` list of a published
-     ANTLR grammar for 1687) though not in any file available here. Added
-     together because they are the same kind of thing, and a formatter that
-     refuses a legal port declaration is worse than one that accepts an
-     unusual one. */
-  | TOIRSELECTPORT   { $$ = "ToIRSelectPort"; }
-  | ADDRESSPORT      { $$ = "AddressPort"; }
-  | WRITEENPORT      { $$ = "WriteEnPort"; }
-  | READENPORT       { $$ = "ReadEnPort"; }
-  | SCANOUTPORT      { $$ = "ScanOutPort"; }
-  | SHIFTENPORT      { $$ = "ShiftEnPort"; }
-  | CAPTUREENPORT    { $$ = "CaptureEnPort"; }
-  | UPDATEENPORT     { $$ = "UpdateEnPort"; }
-  | SELECTPORT       { $$ = "SelectPort"; }
-  | RESETPORT        { $$ = "ResetPort"; }
-  | TCKPORT          { $$ = "TCKPort"; }
-  | CLOCKPORT        { $$ = "ClockPort"; }
-  | TOCLOCKPORT      { $$ = "ToClockPort"; }
-  | TMSPORT          { $$ = "TMSPort"; }
-  | TRSTPORT         { $$ = "TRSTPort"; }
-  | TOTCKPORT        { $$ = "ToTCKPort"; }
-  | TOTMSPORT        { $$ = "ToTMSPort"; }
-  | TOTRSTPORT       { $$ = "ToTRSTPort"; }
-  | TOSHIFTENPORT    { $$ = "ToShiftEnPort"; }
-  | TOCAPTUREENPORT  { $$ = "ToCaptureEnPort"; }
-  | TOUPDATEENPORT   { $$ = "ToUpdateEnPort"; }
-  | TORESETPORT      { $$ = "ToResetPort"; }
-  | TODOPORT         { $$ = "ToDoPort"; }
-  | TOSELECTPORT     { $$ = "ToSelectPort"; }
-  | DATAINPORT       { $$ = "DataInPort"; }
-
-  ;
-
 
 /* A comma-separated run of values that does not start with an operator.
    Used for attribute values, where `name - 1` must not be read as an
@@ -718,19 +751,6 @@ opt_range
   | LBRACKET value RBRACKET            { $$ = "[" + $2 + "]"; }
   | LBRACKET value COLON value RBRACKET { $$ = "[" + $2 + ":" + $4 + "]"; }
   ;
-
-port_decl
-  : port_keyword decl_name opt_range SEMICOLON
-      {
-        $$ = driver.MakeStatement($1 + " " + $2 + $3 + ";",
-                                  SpanOf(@1.begin.line, @4.end.line));
-      }
-  | port_keyword decl_name opt_range LBRACE attr_body RBRACE
-      {
-        $$ = driver.MakeBlock($1 + " " + $2 + $3, std::move($5), SpanOf(@1.begin.line, @6.end.line));
-      }
-  ;
-
 /* -------------------------------------------------------------------- bodies */
 
 /* Shared attribute forms, used by both ordinary block bodies and AccessLink
@@ -1117,9 +1137,9 @@ any_keyword
      letting them also be bare attribute names makes `Instance` ambiguous
      between the two — a real shift/reduce conflict, and the reason an instance
      inside a one-hot data group could not be accepted without this. */
-  | port_keyword    { $$ = $1; }
   | ENUM            { $$ = "Enum"; }
-  | DATAOUTPORT     { $$ = "DataOutPort"; }
+  | LAUNCHEDGE      { $$ = "LaunchEdge"; }
+  | checked_port_keyword { $$ = $1; }
   | MODULE          { $$ = "Module"; }
   | PARAMETER       { $$ = "Parameter"; }
   | ATTRIBUTE       { $$ = "Attribute"; }
@@ -1193,7 +1213,6 @@ primary
   : IDENT    { $$ = $1; }
   | NUMBER   { $$ = $1; }
   | INTEGER  { $$ = $1; }
-  | TIME     { $$ = $1; }
   | STRING   { $$ = $1; }
   | PARAMREF { $$ = $1; }
   /* `ReadCallBack m::p <D>;` — an iProc argument marker. */

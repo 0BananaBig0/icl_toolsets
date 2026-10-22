@@ -43,9 +43,9 @@ Interface: `python3 tests/src/test_icl_conformance.py --binary build/icl-format 
 ### Task 2: DataOutPort and remaining ports
 
 Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review record.
-- [ ] Audit §6.4.6.7, test its legal shapes and illegal members/counts, fix, verify.
-- [ ] Repeat separately for DataInPort, ScanInPort, ScanOutPort, each control/clock/reset host/client port. Share only identical semantic rules.
-- [ ] Verify source preservation, ranges, attributes and all cumulative blocks; commit.
+- [x] Audit §6.4.6.7, test its legal shapes and illegal members/counts, fix, verify.
+- [x] Repeat separately for DataInPort, ScanInPort, ScanOutPort, each control/clock/reset host/client port. Share only identical semantic rules.
+- [x] Verify source preservation, ranges, attributes and all cumulative blocks; commit.
 
 ### Task 3: ScanRegister and DataRegister
 

@@ -1,8 +1,13 @@
 Module m {
   ToClockPort c {
     Period 10ns;
+  }
+  ToClockPort scaled {
+    Source clk;
     FreqMultiplier 2;
     FreqDivider 4;
+  }
+  ToClockPort differential {
     DifferentialInvOf clk;
   }
   ClockPort cp {

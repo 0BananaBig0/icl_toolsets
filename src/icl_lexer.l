@@ -178,7 +178,7 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
      literal, not a separate identifier — otherwise `10ns` lexes as NUMBER
      followed by IDENT and no rule accepts two adjacent values there.
      Longest match keeps a bare `10` on the rule above. */
-{DIGIT}(_?{DIGIT})*(as|fs|ps|ns|us|ms|s) {
+{DECIMAL}(as|fs|ps|ns|us|ms|s) {
                       g_location.step();
                       return icl::IclParser::make_TIME(
                           std::string(yytext), g_location); }
@@ -257,6 +257,7 @@ WriteCallBack          { g_location.step(); return icl::IclParser::make_WRITECAL
 WriteDataSource        { g_location.step(); return icl::IclParser::make_WRITEDATASOURCE(g_location); }
 WriteEnSource          { g_location.step(); return icl::IclParser::make_WRITEENSOURCE(g_location); }
 iApplyEndState         { g_location.step(); return icl::IclParser::make_IAPPLYENDSTATE(g_location); }
+LaunchEdge          { g_location.step(); return icl::IclParser::make_LAUNCHEDGE(g_location); }
 ScanOutPort         { g_location.step(); return icl::IclParser::make_SCANOUTPORT(g_location); }
 ShiftEnPort         { g_location.step(); return icl::IclParser::make_SHIFTENPORT(g_location); }
 CaptureEnPort       { g_location.step(); return icl::IclParser::make_CAPTUREENPORT(g_location); }
@@ -275,7 +276,6 @@ ToShiftEnPort       { g_location.step(); return icl::IclParser::make_TOSHIFTENPO
 ToCaptureEnPort     { g_location.step(); return icl::IclParser::make_TOCAPTUREENPORT(g_location); }
 ToUpdateEnPort      { g_location.step(); return icl::IclParser::make_TOUPDATEENPORT(g_location); }
 ToResetPort         { g_location.step(); return icl::IclParser::make_TORESETPORT(g_location); }
-ToDoPort            { g_location.step(); return icl::IclParser::make_TODOPORT(g_location); }
 ToSelectPort        { g_location.step(); return icl::IclParser::make_TOSELECTPORT(g_location); }
 ToIRSelectPort      { g_location.step(); return icl::IclParser::make_TOIRSELECTPORT(g_location); }
 AddressPort         { g_location.step(); return icl::IclParser::make_ADDRESSPORT(g_location); }

@@ -13,6 +13,8 @@ Module m {
   // — the unit is part of the number token, and it is optional.
   ToClockPort c {
     Period 10;
+  }
+  ToClockPort separated {
     Period 1_0ns;
   }
 

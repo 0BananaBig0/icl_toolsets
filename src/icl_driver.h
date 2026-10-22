@@ -24,7 +24,6 @@
 #define ICL_FORMAT_SRC_ICL_DRIVER_H_
 
 #include <string>
-#include <initializer_list>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -117,8 +116,7 @@ class IclDriver {
 
   // ---- parser diagnostics ----
   ParsedValue NumberLiteral(const std::string& text) const;
-  void CheckSingletonItems(const std::vector<AstNode*>& body,
-                           std::initializer_list<const char*> properties);
+  void CheckPortItems(const std::string& kind, const std::vector<AstNode*>& body, int line);
 
   void CheckEnumMember(const std::string& name, const ParsedValue& value, int line) {
     if (!enum_members_.insert(name).second)

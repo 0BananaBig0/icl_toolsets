@@ -176,16 +176,34 @@ def blocks():
     ]
     port_cases = []
     for p in PORTS:
+        prop = {
+            "DataInPort": "RefEnum E;",
+            "ScanInPort": "Attribute flag;",
+            "ShiftEnPort": "Attribute flag;",
+            "CaptureEnPort": "Attribute flag;",
+            "UpdateEnPort": "Attribute flag;",
+            "SelectPort": "Attribute flag;",
+            "ResetPort": "ActivePolarity 0;",
+            "TMSPort": "Attribute flag;",
+            "TCKPort": "Attribute flag;",
+            "ClockPort": "DifferentialInvOf clk;",
+            "TRSTPort": "Attribute flag;",
+            "ToIRSelectPort": "Attribute flag;",
+            "AddressPort": "Attribute flag;",
+            "WriteEnPort": "Attribute flag;",
+            "ReadEnPort": "Attribute flag;",
+        }.get(p, "Source s;")
         port_cases.append('Module m { %s p; }' % p)
         port_cases.append('Module m { %s p[3:0]; }' % p)
-        port_cases.append('Module m { %s p { } }' % p)
-        port_cases.append('Module m { %s p[3:0] { } }' % p)
-        port_cases.append('Module m { %s p { Source s; } }' % p)
+        empty_body = "Attribute flag;" if p in ("ToSelectPort", "ToResetPort", "ToClockPort", "ToTRSTPort") else ""
+        port_cases.append('Module m { %s p { %s } }' % (p, empty_body))
+        port_cases.append('Module m { %s p[3:0] { %s } }' % (p, empty_body))
+        port_cases.append('Module m { %s p { %s } }' % (p, prop))
         port_cases.append('Module m { %s p { Attribute a = 1; } }' % p)
         # a comment in each of three places inside the body
-        port_cases.append('Module m { %s p {\n  // before\n  Source s;\n} }' % p)
-        port_cases.append('Module m { %s p {\n  Source s; // after\n} }' % p)
-        port_cases.append('Module m { %s p {\n  Source s;\n  // trailing\n} }' % p)
+        port_cases.append('Module m { %s p {\n  // before\n  %s\n} }' % (p, prop))
+        port_cases.append('Module m { %s p {\n  %s // after\n} }' % (p, prop))
+        port_cases.append('Module m { %s p {\n  %s\n  // trailing\n} }' % (p, prop))
     b.append(('ports', port_cases))
 
     # ---- scan register ----
@@ -515,10 +533,10 @@ def blocks():
         'Module m { ToCaptureEnPort ce { Source s; } }',
         'Module m { ToUpdateEnPort ue { Source s; } }',
         # Group 3: `item+`, so empty is illegal in the published grammar.
-        # Accepted here; see §5.59.
-        'Module m { ToSelectPort tsp { } }',
-        'Module m { ToResetPort trp { } }',
-        'Module m { ToTRSTPort trst { } }',
+        # Empty bodies are covered by the classified rejection fixtures.
+        'Module m { ToSelectPort tsp { Attribute flag; } }',
+        'Module m { ToResetPort trp { Attribute flag; } }',
+        'Module m { ToTRSTPort trst { Attribute flag; } }',
         # scanInterfacePort_def : 'Port' reg_port_signal_id ';' — no body
         # form, and the name may carry a range.
         'Module m { ScanInterface si { Port a; } }',
@@ -530,8 +548,8 @@ def blocks():
     ]))
 
     b.append(('toClockPortItems', [
-        'Module m { ToClockPort c { FreqMultiplier 4; } }',
-        'Module m { ToClockPort c { FreqDivider 2; } }',
+        'Module m { ToClockPort c { Source clk; FreqMultiplier 4; } }',
+        'Module m { ToClockPort c { Source clk; FreqDivider 2; } }',
         'Module m { ToClockPort c { DifferentialInvOf clk; } }',
         # concat_clock_signal, so the differential item takes a list
         'Module m { ToClockPort c { DifferentialInvOf clk, clkb; } }',
@@ -542,8 +560,7 @@ def blocks():
         '  Source clk;\n'
         '  FreqMultiplier 2;\n'
         '  FreqDivider 4;\n'
-        '  DifferentialInvOf clkb;\n'
-        '  Period 10ns;\n'
+        '  Attribute note = "scaled clock";\n'
         '}\n}',
         'Module m { ToClockPort c[1:0] { Period 10ns; } }',
         'Module m { ToClockPort c; }',
@@ -743,20 +760,19 @@ def blocks():
     #   freqDivider_def    : 'FreqDivider' pos_int ';' ;
     #   size               : pos_int | '$' SCALAR_ID ;
     #
-    # `Period $W;` is accepted here anyway. It is the same trade as §5.68's
-    # `Attribute foo = abc;`: refusing it would cost nothing to the grammar
-    # and might cost a real file. Cased so the choice is written down.
+    # Period requires a decimal literal. Tessent documents parameterized
+    # frequency factors; both factors require Source (IEEE §6.4.6.20).
     b.append(('posIntOnly', [
         'Module m { ToClockPort cp { Period 10ns; } }',
         'Module m { ToClockPort cp { Period 10; } }',
-        'Module m { ToClockPort cp { Period $W; } }',
-        'Module m { ToClockPort cp { FreqMultiplier 2; } }',
-        'Module m { ToClockPort cp { FreqMultiplier $W; } }',
-        'Module m { ToClockPort cp { FreqDivider $W; } }',
+        'Module m { ToClockPort cp { Period 20; } }',
+        'Module m { ToClockPort cp { Source clk; FreqMultiplier 2; } }',
+        'Module m { ToClockPort cp { Source clk; FreqMultiplier $W; } }',
+        'Module m { ToClockPort cp { Source clk; FreqDivider $W; } }',
         # 'Enable' takes data_signal, not concat_data_signal — a single
         # signal, where its neighbours take lists (§5.62).
         'Module m { ScanOutPort so { Enable e; } }',
-        'Module m { ScanOutPort so { Enable a, b; } }',
+        'Module m { ScanOutPort so { Enable ~a; } }',
         'Module m { DataOutPort do { Enable ~a; } }',
         # DefaultLoadValue / ResetValue take (concat_number | enum_symbol),
         # and enum_symbol is one SCALAR_ID — so a *list* of enum symbols is
@@ -1189,7 +1205,7 @@ def blocks():
         'Module m { ScanRegister sr[$W - 1:0]; }',
         # `::` chains: accepted where a signal or a module reference is
         # expected. Not in an attribute value — see below.
-        'Module m { ScanOutPort so { Source a::b::c::d::e; } }',
+        'Module m { Alias x = a.b.c.d.e; }',
         'Module m { Instance i Of a::b::c::d::e; }',
         'Module m { ScanInterface si { Chain c1 { Chain c2 { Port p; } } } }',
         'Module m { Alias a = ~b, ~c, ~d; }',

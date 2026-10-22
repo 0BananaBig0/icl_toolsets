@@ -568,5 +568,3839 @@
     "block": "data_out_port",
     "accept": false,
     "source": "IEEE 1687-2014 \u00a7\u00a76.3.7, 6.3.9; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/bare.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/empty.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/attributes.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/enum.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/load.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/symbol.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/concat.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/all.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/source.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/enable.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/enum_duplicate.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/enum_range.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/load_string.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/load_reference.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/load_symbols.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/ours/data_in_port/nested.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.6 printed 86\u201387/PDF 100\u2013101; constructed"
+  },
+  {
+    "path": "cases/standard/data_in_port/examples.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.6 printed 87/PDF 101; examples combined; added Module, enum1, and 8-bit range on D to match load value"
+  },
+  {
+    "path": "cases/tessent/data_in_port/instrument.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Datainport topic, Example 1"
+  },
+  {
+    "path": "cases/ours/data_in_port/unprefixed_parameter.icl",
+    "block": "data_in_port",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.3.10.3, 6.3.12; unprefixed parameter reference from erroneous old positive fixture"
+  },
+  {
+    "path": "cases/ours/scan_in_port/bare.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/empty.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/attribute.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/comments.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/range.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/keywords.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/range_expression.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/Source.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/Enable.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/RefEnum.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/DefaultLoadValue.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/ActivePolarity.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/DifferentialInvOf.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/Period.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/FreqDivider.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/FreqMultiplier.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/Unknown.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/Nested.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/named_range.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/signed_range.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/ours/scan_in_port/string_attribute.icl",
+    "block": "scan_in_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.1, printed 82/PDF 96; constructed"
+  },
+  {
+    "path": "cases/standard/scan_in_port/example.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.1 printed 82/PDF 96; combined examples with Module wrapper"
+  },
+  {
+    "path": "cases/ours/scan_out_port/bare.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/empty.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/attribute.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/comments.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/range.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/keywords.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/range_expression.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/Source.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/Enable.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/RefEnum.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/DefaultLoadValue.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/ActivePolarity.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/DifferentialInvOf.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/Period.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/FreqDivider.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/FreqMultiplier.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/Unknown.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/Nested.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/named_range.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/signed_range.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/string_attribute.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/standard/scan_out_port/example.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.2 printed 83/PDF 97; added Module, SI and RegA to complete example"
+  },
+  {
+    "path": "cases/ours/scan_out_port/duplicate_Source.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/scan_out_port/duplicate_Enable.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.2, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/published/scan_out_port/legacy_falling.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "Legacy P1687 syntax: Ghani Zadegan et al., Reusing and Retargeting On-Chip Instrument Access Procedures, Listing 3/PDF 5 and Listing 8/PDF 9, https://www.ida.liu.se/labs/eslab/publications/pap/db/farza_DTM12.pdf; minimized complete example"
+  },
+  {
+    "path": "cases/ours/scan_out_port/legacy_wrong_port.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "Legacy P1687 syntax: Ghani Zadegan et al., Reusing and Retargeting On-Chip Instrument Access Procedures, Listing 3/PDF 5 and Listing 8/PDF 9, https://www.ida.liu.se/labs/eslab/publications/pap/db/farza_DTM12.pdf; minimized complete example"
+  },
+  {
+    "path": "cases/ours/scan_out_port/legacy_wrong_edge.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "Legacy P1687 syntax: Ghani Zadegan et al., Reusing and Retargeting On-Chip Instrument Access Procedures, Listing 3/PDF 5 and Listing 8/PDF 9, https://www.ida.liu.se/labs/eslab/publications/pap/db/farza_DTM12.pdf; minimized complete example"
+  },
+  {
+    "path": "cases/ours/scan_out_port/namespace_source.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.6.2; erroneous old positive case"
+  },
+  {
+    "path": "cases/ours/scan_out_port/enable_list.icl",
+    "block": "scan_out_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a7\u00a76.3.12, 6.4.6.2; erroneous old positive case"
+  },
+  {
+    "path": "cases/ours/shift_en_port/bare.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/empty.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/attribute.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/comments.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/range.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/keywords.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/range_expression.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/Source.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/Enable.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/RefEnum.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/DefaultLoadValue.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/ActivePolarity.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/DifferentialInvOf.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/Period.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/FreqDivider.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/FreqMultiplier.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/Unknown.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/Nested.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/named_range.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/signed_range.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/ours/shift_en_port/string_attribute.icl",
+    "block": "shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.3, printed 83/PDF 97; constructed"
+  },
+  {
+    "path": "cases/standard/shift_en_port/example.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.3 generic example, supplied Module and attribute value"
+  },
+  {
+    "path": "cases/ours/capture_en_port/bare.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/empty.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/attribute.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/comments.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/range.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/keywords.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/range_expression.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/Source.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/Enable.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/RefEnum.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/DefaultLoadValue.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/ActivePolarity.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/DifferentialInvOf.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/Period.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/FreqDivider.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/FreqMultiplier.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/Unknown.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/Nested.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/named_range.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/signed_range.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/ours/capture_en_port/string_attribute.icl",
+    "block": "capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.4, printed 84/PDF 98; constructed"
+  },
+  {
+    "path": "cases/standard/capture_en_port/example.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.4 printed 84/PDF 98 example, supplied Module wrapper"
+  },
+  {
+    "path": "cases/ours/update_en_port/bare.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/empty.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/attribute.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/comments.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/range.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/keywords.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/range_expression.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/Source.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/Enable.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/RefEnum.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/DefaultLoadValue.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/ActivePolarity.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/DifferentialInvOf.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/Period.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/FreqDivider.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/FreqMultiplier.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/Unknown.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/Nested.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/named_range.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/signed_range.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/ours/update_en_port/string_attribute.icl",
+    "block": "update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.5, printed 85/PDF 99; constructed"
+  },
+  {
+    "path": "cases/standard/update_en_port/example.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.5 printed 85/PDF 99 example, supplied Module wrapper"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/bare.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/empty.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/attribute.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/comments.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/range.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/keywords.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/range_expression.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/Source.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/Enable.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/RefEnum.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/DefaultLoadValue.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/ActivePolarity.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/DifferentialInvOf.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/Period.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/FreqDivider.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/FreqMultiplier.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/Unknown.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/Nested.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/named_range.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/signed_range.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/string_attribute.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/standard/to_shift_en_port/example.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.8 printed 89/PDF 103 examples, supplied Tap/tap_fsm and Module wrappers"
+  },
+  {
+    "path": "cases/ours/to_shift_en_port/duplicate_Source.icl",
+    "block": "to_shift_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.8, printed 89/PDF 103; constructed"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/bare.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/empty.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/attribute.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/comments.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/range.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/keywords.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/range_expression.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/Source.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/Enable.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/RefEnum.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/DefaultLoadValue.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/ActivePolarity.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/DifferentialInvOf.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/Period.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/FreqDivider.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/FreqMultiplier.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/Unknown.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/Nested.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/named_range.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/signed_range.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/string_attribute.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/standard/to_capture_en_port/example.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/ours/to_capture_en_port/duplicate_Source.icl",
+    "block": "to_capture_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 printed 90\u201391/PDF 104\u2013105; constructed/completed example"
+  },
+  {
+    "path": "cases/standard/to_capture_en_port/gating.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE \u00a76.4.6.9 Figure 42 printed 91/PDF 105; completed snippet"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/bare.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/empty.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/attribute.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/comments.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/range.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/keywords.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/range_expression.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/Source.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/Enable.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/RefEnum.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/DefaultLoadValue.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/ActivePolarity.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/DifferentialInvOf.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/Period.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/FreqDivider.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/FreqMultiplier.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/Unknown.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/Nested.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/named_range.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/signed_range.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/string_attribute.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/ours/to_update_en_port/duplicate_Source.icl",
+    "block": "to_update_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; constructed"
+  },
+  {
+    "path": "cases/standard/to_update_en_port/example.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 printed 91\u201392/PDF 105\u2013106; completed example"
+  },
+  {
+    "path": "cases/ours/select_port/bare.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/empty.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/attribute.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/comments.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/range.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/keywords.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/range_expression.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/Source.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/Enable.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/RefEnum.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/DefaultLoadValue.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/ActivePolarity.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/DifferentialInvOf.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/Period.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/FreqDivider.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/FreqMultiplier.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/Unknown.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/Nested.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/named_range.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/signed_range.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/ours/select_port/string_attribute.icl",
+    "block": "select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; constructed"
+  },
+  {
+    "path": "cases/standard/select_port/example.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.11 printed 93/PDF 107; completed example"
+  },
+  {
+    "path": "cases/ours/to_select_port/bare.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/empty.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/attribute.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/comments.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/range.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/keywords.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/range_expression.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/Source.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/Enable.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/RefEnum.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/DefaultLoadValue.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/ActivePolarity.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/DifferentialInvOf.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/Period.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/FreqDivider.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/FreqMultiplier.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/Unknown.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/Nested.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/named_range.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/signed_range.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/string_attribute.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/to_select_port/duplicate_Source.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/standard/to_select_port/example.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; completed example"
+  },
+  {
+    "path": "cases/ours/to_select_port/comment_only.icl",
+    "block": "to_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.12 printed 94\u201395/PDF 108\u2013109; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/bare.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/empty.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/attribute.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/comments.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/range.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/keywords.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/range_expression.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/Source.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/Enable.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/RefEnum.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/DefaultLoadValue.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/ActivePolarity.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/DifferentialInvOf.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/Period.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/FreqDivider.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/FreqMultiplier.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/Unknown.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/Nested.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/named_range.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/signed_range.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/string_attribute.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/standard/reset_port/example.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; completed example"
+  },
+  {
+    "path": "cases/ours/reset_port/polarity_one.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/polarity_two.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/polarity_binary.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/polarity_parameter.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/polarity_list.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/polarity_leading_zero.icl",
+    "block": "reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/reset_port/repeat_polarity.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.13 printed 95\u201396/PDF 109\u2013110; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/bare.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/empty.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/attribute.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/comments.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/range.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/keywords.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/range_expression.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/Source.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/Enable.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/RefEnum.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/DefaultLoadValue.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/ActivePolarity.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/DifferentialInvOf.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/Period.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/FreqDivider.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/FreqMultiplier.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/Unknown.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/Nested.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/named_range.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/signed_range.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/string_attribute.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/duplicate_Source.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/standard/to_reset_port/example.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; completed example"
+  },
+  {
+    "path": "cases/ours/to_reset_port/comment_only.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/polarity_one.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/polarity_two.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/polarity_binary.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/polarity_parameter.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/to_reset_port/repeat_polarity.icl",
+    "block": "to_reset_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.14 printed 97/PDF 111; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/bare.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/empty.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/attribute.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/comments.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/range.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/keywords.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/range_expression.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/Source.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/Enable.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/RefEnum.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/DefaultLoadValue.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/ActivePolarity.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/DifferentialInvOf.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/Period.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/FreqDivider.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/FreqMultiplier.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/Unknown.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/Nested.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/named_range.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/signed_range.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/ours/tms_port/string_attribute.icl",
+    "block": "tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; constructed"
+  },
+  {
+    "path": "cases/standard/tms_port/example.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.15 printed 98/PDF 112; completed example"
+  },
+  {
+    "path": "cases/ours/to_tms_port/bare.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/empty.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/attribute.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/comments.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/range.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/keywords.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/range_expression.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/Source.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/Enable.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/RefEnum.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/DefaultLoadValue.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/ActivePolarity.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/DifferentialInvOf.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/Period.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/FreqDivider.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/FreqMultiplier.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/Unknown.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/Nested.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/named_range.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/signed_range.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/string_attribute.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; constructed"
+  },
+  {
+    "path": "cases/ours/to_tms_port/duplicate_Source.icl",
+    "block": "to_tms_port",
+    "accept": false,
+    "source": "Tessent Shell Reference v2023.4 Command_Totmsport_id112d7e41.html: at most one Source"
+  },
+  {
+    "path": "cases/standard/to_tms_port/example.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.16 printed 99\u2013100/PDF 113\u2013114; completed example"
+  },
+  {
+    "path": "cases/ours/tck_port/bare.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/empty.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/attribute.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/comments.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/range.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/keywords.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/range_expression.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/Source.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/Enable.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/RefEnum.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/DefaultLoadValue.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/ActivePolarity.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/DifferentialInvOf.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/Period.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/FreqDivider.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/FreqMultiplier.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/Unknown.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/Nested.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/named_range.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/signed_range.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/ours/tck_port/string_attribute.icl",
+    "block": "tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; constructed"
+  },
+  {
+    "path": "cases/standard/tck_port/example.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.17 printed 101/PDF 115; completed example"
+  },
+  {
+    "path": "cases/ours/to_tck_port/bare.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/empty.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/attribute.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/comments.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/range.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/keywords.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/range_expression.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/tessent/to_tck_port/source.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/Enable.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/RefEnum.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/DefaultLoadValue.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/ActivePolarity.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/DifferentialInvOf.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/Period.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/FreqDivider.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/FreqMultiplier.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/Unknown.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/Nested.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/named_range.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/signed_range.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/string_attribute.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/ours/to_tck_port/duplicate_Source.icl",
+    "block": "to_tck_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; constructed"
+  },
+  {
+    "path": "cases/standard/to_tck_port/example.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.18 printed 102/PDF 116; Tessent v2023.4 Command_Totckport_idec26fb0a.html Source extension; completed example"
+  },
+  {
+    "path": "cases/ours/clock_port/bare.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/empty.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/attribute.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/comments.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/range.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/keywords.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/range_expression.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/Source.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/Enable.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/RefEnum.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/DefaultLoadValue.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/ActivePolarity.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/DifferentialInvOf.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/Period.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/FreqDivider.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/FreqMultiplier.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/Unknown.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/Nested.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/named_range.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/signed_range.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/string_attribute.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/standard/clock_port/example.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; completed example"
+  },
+  {
+    "path": "cases/ours/clock_port/differential_list.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/differential_hierarchy.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/differential_missing.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/differential_expression.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/clock_port/differential_string.icl",
+    "block": "clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.19 printed 102\u2013103/PDF 116\u2013117; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/bare.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/empty.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/attribute.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/comments.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/range.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/keywords.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/range_expression.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/Source.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/Enable.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/RefEnum.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/DefaultLoadValue.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/ActivePolarity.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/DifferentialInvOf.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/Period.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/FreqDivider.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/FreqMultiplier.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/Unknown.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/Nested.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/named_range.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/signed_range.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/string_attribute.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/duplicate_Source.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/standard/to_clock_port/example.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; completed example"
+  },
+  {
+    "path": "cases/ours/to_clock_port/comment_only.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/multiply.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/divide.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/both_factors.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/duplicate_period.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/duplicate_differential.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/duplicate_multiplier.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/duplicate_divider.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_source.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_differential.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_multiplier.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_divider.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/differential_source.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/differential_multiplier.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/differential_divider.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_default_units.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_comments.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_wrong_units.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_fraction.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_signed.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_based.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_expression.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_parameter.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/factor_signed.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/factor_based.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/factor_expression.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/factor_string.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/factor_name.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/factor_time.icl",
+    "block": "to_clock_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/decimal_separators.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/period_separators.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/zero_pos_int.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_s.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_s.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_ms.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_ms.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_us.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_us.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_ns.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_ns.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_ps.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_ps.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_fs.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_fs.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_as.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/ours/to_clock_port/unit_spaced_as.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.20 printed 103\u2013104/PDF 117\u2013118; constructed"
+  },
+  {
+    "path": "cases/tessent/to_clock_port/parameters.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Toclockport_ide389c67c.html; derived example"
+  },
+  {
+    "path": "cases/ours/trst_port/bare.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/empty.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/attribute.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/comments.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/range.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/keywords.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/range_expression.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/Source.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/Enable.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/RefEnum.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/DefaultLoadValue.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/ActivePolarity.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/DifferentialInvOf.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/Period.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/FreqDivider.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/FreqMultiplier.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/Unknown.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/Nested.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/named_range.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/signed_range.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/ours/trst_port/string_attribute.icl",
+    "block": "trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; constructed"
+  },
+  {
+    "path": "cases/standard/trst_port/example.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.21 printed 104\u2013105/PDF 118\u2013119; completed example"
+  },
+  {
+    "path": "cases/ours/to_trst_port/bare.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/empty.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/attribute.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/comments.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/range.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/keywords.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/range_expression.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/Source.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/Enable.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/RefEnum.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/DefaultLoadValue.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/ActivePolarity.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/DifferentialInvOf.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/Period.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/FreqDivider.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/FreqMultiplier.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/Unknown.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/Nested.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/named_range.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/signed_range.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/string_attribute.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_trst_port/duplicate_Source.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/standard/to_trst_port/example.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; completed example"
+  },
+  {
+    "path": "cases/ours/to_trst_port/comment_only.icl",
+    "block": "to_trst_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.22 printed 106/PDF 120; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/bare.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/empty.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/attribute.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/comments.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/range.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/keywords.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/range_expression.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/Source.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/Enable.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/RefEnum.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/DefaultLoadValue.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/ActivePolarity.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/DifferentialInvOf.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/Period.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/FreqDivider.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/FreqMultiplier.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/Unknown.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/Nested.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/named_range.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/signed_range.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/ours/to_ir_select_port/string_attribute.icl",
+    "block": "to_ir_select_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; constructed"
+  },
+  {
+    "path": "cases/standard/to_ir_select_port/example.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.23 printed 107/PDF 121; completed example"
+  },
+  {
+    "path": "cases/ours/address_port/bare.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/empty.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/attribute.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/comments.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/range.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/keywords.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/range_expression.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/Source.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/Enable.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/RefEnum.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/DefaultLoadValue.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/ActivePolarity.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/DifferentialInvOf.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/Period.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/FreqDivider.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/FreqMultiplier.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/Unknown.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/Nested.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/named_range.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/signed_range.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/ours/address_port/string_attribute.icl",
+    "block": "address_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; constructed"
+  },
+  {
+    "path": "cases/standard/address_port/example.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.24 printed 108/PDF 122; completed example"
+  },
+  {
+    "path": "cases/ours/write_en_port/bare.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/empty.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/attribute.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/comments.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/range.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/keywords.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/range_expression.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/Source.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/Enable.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/RefEnum.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/DefaultLoadValue.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/ActivePolarity.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/DifferentialInvOf.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/Period.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/FreqDivider.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/FreqMultiplier.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/Unknown.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/Nested.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/named_range.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/signed_range.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/ours/write_en_port/string_attribute.icl",
+    "block": "write_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; constructed"
+  },
+  {
+    "path": "cases/standard/write_en_port/example.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.25 printed 109/PDF 123; completed example"
+  },
+  {
+    "path": "cases/ours/read_en_port/bare.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/empty.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/attribute.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/comments.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/range.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/keywords.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/range_expression.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/Source.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/Enable.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/RefEnum.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/DefaultLoadValue.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/ActivePolarity.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/DifferentialInvOf.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/Period.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/FreqDivider.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/FreqMultiplier.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/Unknown.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/Nested.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/named_range.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/signed_range.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/ours/read_en_port/string_attribute.icl",
+    "block": "read_en_port",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; constructed"
+  },
+  {
+    "path": "cases/standard/read_en_port/example.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.26 printed 109\u2013110/PDF 123\u2013124; completed example"
+  },
+  {
+    "path": "cases/ours/port_inventory/todo_bare.icl",
+    "block": "port_inventory",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6 port inventory: ToDoPort is not a port keyword; no Tessent extension found"
+  },
+  {
+    "path": "cases/ours/port_inventory/todo_body.icl",
+    "block": "port_inventory",
+    "accept": false,
+    "source": "IEEE 1687-2014 \u00a76.4.6 port inventory: ToDoPort is not a port keyword; no Tessent extension found"
+  },
+  {
+    "path": "cases/ours/port_inventory/todo_identifier.icl",
+    "block": "port_inventory",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6 port inventory: ToDoPort is not a port keyword; no Tessent extension found"
+  },
+  {
+    "path": "cases/standard/to_capture_en_port/concatenated_source.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.9 normative grammar; constructed concatenation example"
+  },
+  {
+    "path": "cases/standard/to_update_en_port/concatenated_source.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "IEEE 1687-2014 \u00a76.4.6.10 normative grammar; constructed concatenation example"
+  },
+  {
+    "path": "cases/ours/port_inventory/property_keyword_names.icl",
+    "block": "port_inventory",
+    "accept": true,
+    "source": "IEEE \u00a76.3.5 identifiers / \u00a76.4.6 port_name"
+  },
+  {
+    "path": "cases/ours/port_inventory/time_attribute.icl",
+    "block": "port_inventory",
+    "accept": false,
+    "source": "IEEE \u00a7\u00a76.3.8,6.5.5: time suffix is not a number; only Period admits units"
+  },
+  {
+    "path": "cases/ours/port_inventory/numeric_scan_source.icl",
+    "block": "port_inventory",
+    "accept": true,
+    "source": "IEEE \u00a7\u00a76.3.12,6.4.8: numeric signal expression; syntax only"
   }
 ]

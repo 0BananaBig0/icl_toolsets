@@ -35,8 +35,8 @@ Evidence: §6.5.3, printed 137–138 / PDF 151–152; dependencies §§6.3.7–8
 
 ## Open work
 
-DataOutPort and subsequent blocks are not yet confirmed. Lexer changes must be
-rechecked against every later context. Broader numeric evaluation, semantic
+Enum and all 26 port blocks have syntax/local-property checks. Register and
+subsequent blocks remain unreviewed; lexer changes must be rechecked in those contexts. Broader numeric evaluation, semantic
 resolution, complete LSP services, coverage accounting, performance measurement,
 whole-change review and final installation remain pending; no full-conformance
 claim is made by this record.
@@ -60,3 +60,89 @@ Initial result: 27/44 failures; then 3/3 lexical edge failures. Corrected result
 legacy block cases pass. Corrected two derived positive fixtures and one inline
 case claiming Enable lists were legal; the negative cases preserve that defect.
 Cross-object signal widths/types and instance elaboration are not validated here.
+
+## DataInPort and ScanInPort
+
+DataInPort (§6.4.6.6, printed 86–87) was checked separately: 8/16 initial failures, then 19/19 corrected cases including IEEE/Tessent examples. Only Attribute, RefEnum and DefaultLoadValue are admitted; RefEnum is a singleton. ScanInPort (§6.4.6.1, printed 82) then reproduced 16/22 failures and passed 22/22 after restricting its body to Attribute. Cumulative 136 cases, 494 regression assertions and 730 legacy block cases passed. Parameter reference W in an old range test was corrected to $W with a rejection fixture for the original error.
+
+
+## Remaining port blocks — syntax and local properties
+
+Reviewed each port independently against IEEE 1687-2014 §6.4.6.1–26,
+printed 82–110 (PDF 96–124), with failing fixtures before each correction.
+Every port uses the same header, range, comment, attribute and signal grammar.
+The shared driver enforces the permitted properties and stated singleton rules.
+Empty bodies are rejected for ToSelectPort, ToResetPort, ToClockPort and
+ToTRSTPort; comments alone do not satisfy their required item.
+
+ToClockPort additionally rejects mutually exclusive properties and frequency
+factors without Source. Period accepts a decimal integer with any of the seven
+IEEE units, joined or separated, including inter-token comments. ActivePolarity
+requires the exact literal 0 or 1. Both merged Tessent fixtures are unchanged.
+
+Evidence-backed compatibility rules:
+
+- ScanOutPort LaunchEdge Falling: Zadegan et al., “Reusing and Retargeting
+  On-Chip Instrument Access Procedures in IEEE P1687”, Listings 3 and 8,
+  PDF pages 5 and 9, https://www.ida.liu.se/labs/eslab/publications/pap/db/farza_DTM12.pdf.
+  No other LaunchEdge value or port placement is inferred from this evidence.
+- ToTCKPort Source: Tessent Shell Reference v2023.4,
+  `tshell_ref/topics/Command_Totckport_idec26fb0a.html`, explicitly labeled a
+  property absent from IEEE 1687-2014. Source remains a singleton.
+- Parameterized FreqMultiplier/FreqDivider: Tessent v2023.4
+  `Command_Toclockport_ide389c67c.html`, clockGen example. Arbitrary expressions
+  and parameterized Period are not admitted without supporting evidence.
+- ToTMSPort Source singleton: Tessent v2023.4
+  `Command_Totmsport_id112d7e41.html`. The IEEE clause does not explicitly state
+  that cardinality. ResetPort ActivePolarity and ClockPort DifferentialInvOf
+  remain repeatable because their clauses give no singleton restriction.
+
+Honza `icl.g4` at 333f8bc7a54964138ac14a34fde9e942c496436d defines all
+26 port keywords; all are matched here. Its ToCaptureEnPort and ToUpdateEnPort
+Source alternatives use a single signal whereas normative §§6.4.6.9–10 allow
+concatenation. Classified standard fixtures preserve that broader legal syntax.
+Its other port-body alternatives match the normative shapes reviewed here;
+its grammar alone does not enforce the local cardinality/exclusivity rules.
+
+Removed the unsupported ToDoPort keyword and the last generic port-body fallback.
+ToDoPort remains usable as an ordinary identifier. No matching port declaration
+was found in IEEE, Honza or the local Tessent Shell Reference topics. Old
+fabricated positives with illegal empty bodies, property combinations, repeated
+Period or unprefixed range parameters were corrected, with negative counterparts
+in the classified corpus. No hardware elaboration, signal type/width resolution,
+retargeting or full semantic DRC is claimed by these checks.
+
+Per-block classified fixtures (each positive also checks content and idempotence):
+
+| Block | Cases |
+| --- | ---: |
+| enum | 48 |
+| data_out_port | 47 |
+| data_in_port | 19 |
+| scan_in_port | 22 |
+| scan_out_port | 29 |
+| shift_en_port | 22 |
+| capture_en_port | 22 |
+| update_en_port | 22 |
+| to_shift_en_port | 23 |
+| to_capture_en_port | 25 |
+| to_update_en_port | 24 |
+| select_port | 22 |
+| to_select_port | 24 |
+| reset_port | 29 |
+| to_reset_port | 29 |
+| tms_port | 22 |
+| to_tms_port | 23 |
+| tck_port | 22 |
+| to_tck_port | 23 |
+| clock_port | 27 |
+| to_clock_port | 70 |
+| trst_port | 22 |
+| to_trst_port | 24 |
+| to_ir_select_port | 22 |
+| address_port | 22 |
+| write_en_port | 22 |
+| read_en_port | 22 |
+| port_inventory | 6 |
+
+Verification: `make check-dynamic BISON=/usr/bin/bison` exited 0: 734 classified conformance cases, 494 regression assertions, 730 block-review cases, 12 golden cases, 71 CLI checks and 62 existing LSP checks, plus unit/whitespace/fuzz/separation checks. Current trace reader reports 261/261 grammar source lines and 112/112 lexer rules over 981 files; distinct production-ID and handwritten branch accounting remain task 10.
