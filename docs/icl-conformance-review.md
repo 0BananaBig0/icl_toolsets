@@ -332,3 +332,67 @@ Initial failures: Instance32/63, AccessLink41/65. Final focused totals include
 checks. Final full dynamic results follow below.
 
 Task 6 full verification: `make check-dynamic BISON=/usr/bin/bison` exited 0 with 1392 classified cases,530 regression assertions,730 block-review cases,13 golden,74 CLI and62 existing LSP checks, plus unit/whitespace/fuzz/separation checks. Current trace:368/368 grammar source lines and123/123 lexer rules over1657 files. Removed obsolete generic assignment/unnamed-block paths after negative Alias dependency tests; retained comments, legal numeric concatenation and all keyword identifiers in persisted fixtures.
+
+## Task 7 — Alias, Parameter, Attribute and module structure
+
+Sources: IEEE1687-2014 §§6.5.2,6.5.4–5 (printed136–140/PDF150–154),
+§§6.4.2–5 (printed73–78/PDF87–92), and lexical dependencies6.3.4–8.
+Tessent Shell Reference v2023.4 topics Command_Alias_id2ff00152.html,
+Command_Parameter_id6095dafa.html, Command_Localparameter_idc06e0fee.html,
+Command_Attribute_id811c3f4b.html, Command_Module_idf9751e45.html,
+Command_Namespace_id86c09529.html and Command_Usenamespace_id12b11dc1.html.
+Honza ICL grammar was compared for each corresponding production. Tessent explicitly
+does not implement NameSpace/UseNameSpace; IEEE governs those forms.
+
+Alias now has dedicated signal-reference concatenation and property rules. Numeric,
+string, parameter and arbitrary-expression sources are rejected; one inversion per
+signal is supported. RefEnum is a singleton. AccessTogether and iApplyEndState are
+repeatable according to the normative grammar; literal unknown digits in end-state
+values are rejected. Empty braces are accepted solely as observed user merged-ICL
+compatibility, not as IEEE grammar or a Tessent-manual claim. Both real user merged
+files retain their original hashes. The Alias vendor example's overflowing 4'haa
+was corrected to 4'ha in the derived fixture and recorded in its provenance.
+
+Parameter/LocalParameter share typed concatenation rules with Attribute. Named AST
+metadata survives comments between keyword/name/value tokens. Direct-child parameter
+names are unique across Parameter and LocalParameter, and Attribute names are unique
+within each containing element. Repeated distinct attributes remain legal; five old
+same-name repeatability cases were corrected with their original text kept as negatives.
+Local default parameter types and cycles use a linear O(V+E) dependency traversal,
+including forward references and parameter-sized literals. Unsized numeric concatenation
+and statically resolved mixed string/number concatenation are rejected. Instance overrides
+resolve references in their enclosing scope, so `Parameter Size = $Size` is not
+erroneously treated as a self-cycle. Missing modules, instance elaboration, resolved
+widths and full hardware consistency are not asserted by these local checks.
+
+NameSpace is file-level only; UseNameSpace is legal at file/module scope. Both support
+keyword identifiers, comments and an omitted name for root scope. Module names likewise
+support keywords/comments. Module-level AllowBroadcastOnScanInterface was removed;
+it belongs in Instance. Empty Module bodies remain accepted because the normative
+§6.4.4 examples explicitly use them despite the module_item+ grammar. Redefinition
+is also allowed by §6.4.5(a); this formatter preserves source order and both definitions.
+Empty documents remain supported for editor/formatter use.
+
+The arbitrary fallback bodies and generic expressions for Reg, Field and Connection
+were removed, along with their special tokens. No corresponding declaration exists in
+IEEE's exhaustive module-item list, Honza, or Tessent's complete Module statement list.
+The alleged tutorial Connection example lacks a retrievable citation and now remains
+byte-preserved as a negative under fail/published. Other invalid synthetic positives
+were preserved under fail/ours or the classified corpus. PortGroup is retained as a
+LiU P1687 Listing8 compatibility form, not as Tessent or IEEE2014 syntax. Its comma
+list now rejects leading/doubled/trailing/missing commas and comment-only lists.
+
+A dependency regression exposed legal whitespace/comments between size and based
+number tokens (6.3.4(11–12),6.3.5). Flex collects the combined literal with maximal
+munch, avoiding a Bison ambiguity with adjacent numeric callback arguments. Numeric
+metadata skips only its token's trivia, while formatting keeps the original spelling
+and comments. Zero widths, nested comments and two independent sizes still fail.
+The normative no-whitespace rule between quote and base remains enforced.
+
+Task7 verification: make check-dynamic BISON=/usr/bin/bison exited0:1602 classified
+cases,568 regression assertions,714 remaining valid block-review cases (invalid
+legacy cases retained as classified negatives),13 golden,74 CLI,62 existing LSP;
+unit,whitespace,fuzz,separation checks green. Current trace:332/332 grammar source
+lines and118/118 lexer rules over1866 files. This is not yet production-ID or
+handwritten action/branch coverage (Task10). A follow-up PortGroup test reproduced
+and fixed comma loss when a comment preceded the comma; token order is preserved.

@@ -1,1 +1,1 @@
-Module m { Attribute d = -1; }
+Module m { Attribute d = 0 - 1; }

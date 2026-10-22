@@ -14,7 +14,10 @@
 
 #include "icl_driver.h"
 
+#include <unordered_map>
+
 #include <map>
+#include <cctype>
 
 #include <iostream>
 #include <sstream>
@@ -76,8 +79,26 @@ class AstPrinter final : public AstVisitor {
 
 }  // namespace
 
-ParsedValue IclDriver::NumberLiteral(const std::string& text) const {
-  ParsedValue value{text};
+ParsedValue IclDriver::NumberLiteral(const std::string& source, int line) {
+  ParsedValue value{source};
+  std::string text;
+  for (size_t i = 0; i < source.size();) {
+    if (std::isspace(static_cast<unsigned char>(source[i]))) { ++i; continue; }
+    if (source.compare(i, 2, "//") == 0) {
+      i = source.find('\n', i) + 1;
+    } else if (source.compare(i, 2, "/*") == 0) {
+      const auto end = source.find("*/", i + 2);
+      if (source.find("/*", i + 2) < end)
+        SetParseDiagnostic(line, "nested block comments are not allowed");
+      i = end + 2;
+    } else text += source[i++];
+  }
+  const auto quote = text.find('\'');
+  if (quote && text[0] != '$' && text.substr(0, quote).find_first_not_of("0_") == std::string::npos)
+    SetParseDiagnostic(line, "number width must be nonzero");
+  value.has_unknown = text.find_first_of("xX", text.find('\'') + 2) != std::string::npos;
+  value.unsized = text[0] == '\'';
+  if (text[0] == '$') value.dependencies.push_back(text.substr(1, text.find('\'') - 1));
   // Parameter widths need elaboration; fixed widths can be checked locally.
   if (text[0] == '$' || text[0] == '\'') return value;
   for (char ch : text) {
@@ -91,6 +112,68 @@ ParsedValue IclDriver::NumberLiteral(const std::string& text) const {
     value.width = value.width * 10 + digit;
   }
   return value;
+}
+
+// Resolve local default types without evaluating values or instantiating modules.
+// Kahn's traversal handles forward references and long dependency chains in O(V+E).
+void IclDriver::CheckNamedValues(const std::vector<AstNode*>& body, bool module) {
+  std::vector<const AstStatement*> parameters;
+  std::unordered_map<std::string, size_t> names;
+  std::unordered_set<std::string> attributes;
+  for (const auto* node : body) {
+    const auto* statement = dynamic_cast<const AstStatement*>(node);
+    if (!statement) continue;
+    if (statement->named_kind() == NamedKind::Attribute &&
+        !attributes.insert(statement->name()).second)
+      SetParseDiagnostic(statement->span().first_line, "duplicate attribute: " + statement->name());
+    if (!statement->value()) continue;
+    if (statement->named_kind() != NamedKind::Attribute &&
+        !names.emplace(statement->name(), parameters.size()).second) {
+      SetParseDiagnostic(statement->span().first_line, "duplicate parameter: " + statement->name());
+      continue;
+    }
+    parameters.push_back(statement);
+  }
+  const size_t count = parameters.size();
+  std::vector<size_t> pending(count);
+  std::vector<std::vector<size_t>> users(count);
+  std::vector<ValueAtom> types(count, {ValueKind::Unknown, false, ""});
+  std::vector<size_t> ready;
+  for (size_t i = 0; i < count; ++i) {
+    for (const auto& dep : parameters[i]->value()->dependencies) {
+      const auto found = names.find(dep);
+      if (module && found != names.end()) { ++pending[i]; users[found->second].push_back(i); }
+    }
+    if (!pending[i]) ready.push_back(i);
+  }
+  for (size_t next = 0; next < ready.size(); ++next) {
+    const size_t i = ready[next];
+    const auto& value = *parameters[i]->value();
+    auto atoms = value.atoms;
+    if (atoms.empty()) atoms.push_back({value.kind, value.unsized, value.reference});
+    ValueAtom result{ValueKind::Unknown, false, ""};
+    for (auto atom : atoms) {
+      if (!atom.reference.empty()) {
+        const auto found = names.find(atom.reference);
+        if (module && found != names.end()) atom = types[found->second];
+      }
+      if (atoms.size() > 1 && atom.unsized)
+        SetParseDiagnostic(parameters[i]->span().first_line, "unsized number in concatenation");
+      if (atom.kind != ValueKind::Unknown) {
+        if (result.kind != ValueKind::Unknown && result.kind != atom.kind)
+          SetParseDiagnostic(parameters[i]->span().first_line, "cannot concatenate strings and numbers");
+        result.kind = atom.kind;
+      }
+      result.unsized = result.unsized || atom.unsized;
+    }
+    types[i] = result;
+    for (size_t user : users[i]) if (!--pending[user]) ready.push_back(user);
+  }
+  if (ready.size() != count)
+    for (size_t i = 0; i < count; ++i) if (pending[i]) {
+      SetParseDiagnostic(parameters[i]->span().first_line, "circular parameter reference");
+      break;
+    }
 }
 
 void IclDriver::CheckBlockItems(const std::string& kind,
@@ -123,6 +206,7 @@ void IclDriver::CheckBlockItems(const std::string& kind,
       {"AddressPort", {}},  // §6.4.6.24
       {"WriteEnPort", {}},  // §6.4.6.25
       {"ReadEnPort", {}},  // §6.4.6.26
+      {"Alias", {{"RefEnum", true}, {"AccessTogether", false}, {"iApplyEndState", false}}},
       {"Instance", {{"InputPort", false}, {"Parameter", false},
                     {"AllowBroadcastOnScanInterface", false}, {"AddressValue", true}}},
       {"ScanInterface", {{"Port", false}, {"DefaultLoadValue", true}}},

@@ -10,13 +10,5 @@ Module m {
   ScanRegister s[($a + 1):($b - 1)] {
     ScanInSource t[$MSB];
   }
-  Reg outer {
-    Field l1 {
-      Field l2 {
-        Field l3 {
-          Width 1;
-        }
-      }
-    }
-  }
+  ScanInterface iface { Chain c { Port si; Attribute nested = "chain"; } }
 }

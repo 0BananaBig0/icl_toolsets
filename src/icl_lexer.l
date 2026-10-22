@@ -134,6 +134,7 @@ DIGIT   [0-9]
 ID      [A-Za-z][A-Za-z_0-9]*
 DECIMAL [0-9][0-9_]*
 WIDTH   ({DECIMAL}|\${ID})
+NUMGAP  ([ \t\r\n]|"//"[^\n]*\n|"/*"([^*]|\*+[^*/])*\*+"/")
 BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-FxX_]*|\'[dD][ \t\r\n]*{DECIMAL})
 
 %%
@@ -196,13 +197,8 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
 
   /* IEEE §6.3.8: binary/decimal/hex only, with base-specific digits.
      The optional width is a decimal integer or parameter reference. */
-{WIDTH}?{BASED}     {
+({WIDTH}{NUMGAP}*)?{BASED}     {
                       std::string number(yytext);
-                      const auto quote = number.find('\'');
-                      if (quote && number[0] != '$' &&
-                          number.substr(0, quote).find_first_not_of("0_") == std::string::npos) {
-                        driver.SetParseDiagnostic(g_location.begin.line, "number width must be nonzero");
-                      }
                       g_location.lines(CountNewlines(yytext));
                       return icl::IclParser::make_NUMBER(number, g_location);
                     }
@@ -236,8 +232,6 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
                       return icl::IclParser::make_PARAMREF(
                           std::string(yytext), g_location); }
 
-"->"                { g_location.step();
-                      return icl::IclParser::make_ARROW(g_location); }
 
   /* Distinct ICL operator families constrain the LogicSignal grammar. */
 "&&"|"||"          { g_location.step(); return icl::IclParser::make_BOOL_OP(std::string(yytext), g_location); }
@@ -245,15 +239,13 @@ BASED   (\'[bB][ \t\r\n]*[01xX][01xX_]*|\'[hH][ \t\r\n]*[0-9a-fA-FxX][0-9a-fA-Fx
 "=="|"!="          { g_location.step(); return icl::IclParser::make_COMPARE_OP(std::string(yytext), g_location); }
 [~!]                { g_location.step(); return icl::IclParser::make_NOT_OP(std::string(yytext), g_location); }
 [-+*/%]             { g_location.step(); return icl::IclParser::make_MATH_OP(std::string(yytext), g_location); }
-"<="|">="|"<<="|">>="|"<<"|">>"|[<>] {
-                      g_location.step();
-                      return icl::IclParser::make_OPERATOR(std::string(yytext), g_location); }
 "("                 { g_location.step();
                       return icl::IclParser::make_LPAREN(g_location); }
 ")"                 { g_location.step();
                       return icl::IclParser::make_RPAREN(g_location); }
 
   /* IEEE 1687 keywords (case sensitive). */
+PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
 "#include"           { g_location.step(); return icl::IclParser::make_INCLUDE(g_location); }
 Module              { g_location.step(); return icl::IclParser::make_MODULE(g_location); }
 Parameter           { g_location.step(); return icl::IclParser::make_PARAMETER(g_location); }
@@ -322,14 +314,10 @@ DataMux             { g_location.step(); return icl::IclParser::make_DATAMUX(g_l
 ClockMux            { g_location.step(); return icl::IclParser::make_CLOCKMUX(g_location); }
 OneHotScanGroup     { g_location.step(); return icl::IclParser::make_ONEHOTSCANGROUP(g_location); }
 OneHotDataGroup     { g_location.step(); return icl::IclParser::make_ONEHOTDATAGROUP(g_location); }
-Reg                 { g_location.step(); return icl::IclParser::make_REG(g_location); }
-Field               { g_location.step(); return icl::IclParser::make_FIELD(g_location); }
 Instance            { g_location.step(); return icl::IclParser::make_INSTANCE(g_location); }
 ScanMux             { g_location.step(); return icl::IclParser::make_SCANMUX(g_location); }
 SelectedBy          { g_location.step(); return icl::IclParser::make_SELECTEDBY(g_location); }
 LogicSignal         { g_location.step(); return icl::IclParser::make_LOGICSIGNAL(g_location); }
-Connection          { g_location.step(); return icl::IclParser::make_CONNECTION(g_location); }
-PortGroup           { g_location.step(); return icl::IclParser::make_PORTGROUP(g_location); }
 AccessLink          { g_location.step(); return icl::IclParser::make_ACCESSLINK(g_location); }
 Of                  { g_location.step(); return icl::IclParser::make_OF(g_location); }
 of                   { g_location.step(); return icl::IclParser::make_OFLOWER(g_location); }

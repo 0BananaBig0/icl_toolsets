@@ -1,3 +1,1 @@
-Module m {
-  Attribute d = r[-1];
-}
+Module m { Attribute d = 0 - 1; }

@@ -58,5 +58,5 @@ Module block_review {
   }
 
   // A concatenation mixing every element form.
-  Alias al = a, ~b, c[1:0], $P;
+  Alias al = a, ~b, c[1:0];
 }

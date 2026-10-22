@@ -85,11 +85,6 @@ Module Chip_ICL {
 
   LogicSignal tck_gated { TCK; }
 
-  Connection {
-    TDI -> SIB1.si;
-    SIB1.so -> inst_1.si;
-    inst_1.so -> TDO;
-  }
 
   AccessLink Tap1 Of STD_1149_1 {
     BSDL_Entity Chip_ICL;

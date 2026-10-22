@@ -1,1 +1,1 @@
-Module m { Attribute d = a.b.c; }
+Module m { Attribute d = "a.b.c"; }

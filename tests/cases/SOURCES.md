@@ -367,3 +367,18 @@ ICL comment) and `pass/upstream/pdl_shared_lexer.icl` (shared `SCALAR_ID`,
   (`sensors/`). Written by hand for a VHDL thermal-sensor entity, and its
   own header says it follows the Origen-SDK/ijtag examples. It is the only
   file that names a `client` ScanInterface and uses `SelectPort` for TMS.
+
+## Task 7 provenance corrections
+
+Original synthetic positives containing invalid Alias parameters, Attribute signal
+expressions, unsized concatenations, module-level broadcast directives, nested
+NameSpace, and generic Reg/Field/Connection constructs are preserved as negatives.
+Derived positives keep the intended legal feature under ours. The tutorial-derived
+connection_instrument_module now lives under fail/published: its alleged tutorial
+source has no retrievable citation, and its syntax is absent from IEEE 1687 and the
+complete Tessent Module inventory. This is not vendor syntax evidence.
+
+PortGroup is retained as a legacy LiU P1687 Listing8 form (alongside the existing
+ScanMux and LaunchEdge compatibility), not attributed to Tessent or IEEE2014.
+The real merged user files remain byte-identical. New source-specific fixtures and
+precise decisions are indexed by cases/conformance.json.

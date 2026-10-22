@@ -1,1 +1,1 @@
-Module m { Attribute d = a << 2 || b; }
+Module m { LogicSignal d { a || b; } }

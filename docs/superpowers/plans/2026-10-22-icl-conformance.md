@@ -69,8 +69,8 @@ Files: scanner/parser, per-port fixtures/manifest, tests/block_review.py, review
 
 ### Task 7: Alias, parameters, attributes, namespaces and module structure
 
-- [ ] Audit §§6.5.2, 6.5.4–5 and 6.4.2–5 sequentially with source-backed cases and RED→GREEN corrections.
-- [ ] Remove unsupported fallback productions and unproven extensions, verify keyword identifiers and local cardinality constraints; commit.
+- [x] Audit §§6.5.2, 6.5.4–5 and 6.4.2–5 sequentially with source-backed cases and RED→GREEN corrections.
+- [x] Remove unsupported fallback productions and unproven extensions, verify keyword identifiers and local cardinality constraints; commit.
 
 ### Task 8: Cross-cutting lexer, upstream comparison and provenance
 

@@ -60,5 +60,5 @@ Module Source {
     Port si;
   }
   PortGroup Port { Source, Port }
-  AllowBroadcastOnScanInterface Port;
+  Instance broadcast_reference Of target { AllowBroadcastOnScanInterface Port; }
 }

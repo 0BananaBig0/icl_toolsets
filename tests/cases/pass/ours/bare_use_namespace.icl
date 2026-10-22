@@ -1,4 +1,4 @@
+NameSpace ns;
 Module m {
   UseNameSpace;
-  NameSpace ns;
 }

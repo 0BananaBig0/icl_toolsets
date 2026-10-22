@@ -8,8 +8,4 @@ Module m {
     // A comment before the single LogicSignal expression.
     a && b;
   }
-  Connection {
-    // A comment inside a connection body.
-    a -> b;
-  }
 }

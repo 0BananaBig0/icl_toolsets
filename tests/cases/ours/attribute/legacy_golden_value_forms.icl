@@ -1,0 +1,7 @@
+Module m {
+Attribute a = "text";
+Attribute b = 1'b0, 2'hF;
+Attribute c = ~a.b.c;
+Attribute d = $PARAM;
+Attribute e;
+}

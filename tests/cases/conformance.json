@@ -8350,5 +8350,1265 @@
     "block": "access_link",
     "accept": true,
     "source": "IEEE 1687-2014 sections 6.3, 6.5.2; grammar dependency cleanup and identifier inventory"
+  },
+  {
+    "path": "cases/ours/alias/simple.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/concat.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/keyword.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/range_expr.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/attribute.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/refenum.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/access.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/endstate.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_concat.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/repeat_access.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/repeat_endstate.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/all_items.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/comments.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/empty.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Observed user merged-ICL compatibility: empty Alias bodies; not normative IEEE or documented Tessent syntax"
+  },
+  {
+    "path": "cases/ours/alias/comments_only.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Observed user merged-ICL empty Alias compatibility, with inserted comment"
+  },
+  {
+    "path": "cases/ours/alias/number_source.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/param_source.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/string_source.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/source_math.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/source_bool.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/source_parens.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/source_double_invert.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/source_not.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/source_namespace.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/name_hier.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/range_signal.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/range_based.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/unknown_property.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/nested.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/ref_duplicate.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/ref_concat.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/ref_hier.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/ref_string.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/access_arg.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_string.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_signal.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_enum.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_unknown.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_unknown_concat.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/end_unknown_inverted.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/attr_mixed.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/ours/alias/attr_signal.icl",
+    "block": "alias",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.2; ours"
+  },
+  {
+    "path": "cases/standard/alias/standard_examples.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; standard"
+  },
+  {
+    "path": "cases/tessent/alias/manual.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.2; tessent"
+  },
+  {
+    "path": "cases/tessent/alias/merged_empty_body.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Extracted empty Alias bodies from user tessent_merged_icl_1.icl; minimal module wrapper, observed corpus compatibility only"
+  },
+  {
+    "path": "cases/ours/parameter/keyword_comments.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/forward.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/scopes.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/parentheses.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/string_concat.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/sized_concat.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/duplicate.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/duplicate_comments.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/circular.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/self.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/sized_cycle.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/bare_name.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/range_name.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/hier_name.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/boolean.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/signal.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/mixed.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/unsized_concat.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/unsized_based_concat.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/known_mixed.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/known_unsized.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/no_value.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/missing_semi.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/instance_local.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/instance_duplicate.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4; constructed"
+  },
+  {
+    "path": "cases/standard/parameter/concatenation.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.4 printed139/PDF153, completed with Module wrapper"
+  },
+  {
+    "path": "cases/standard/parameter/unsized_error.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4 printed139/PDF153, completed with Module wrapper"
+  },
+  {
+    "path": "cases/standard/parameter/type_error.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.4 printed139/PDF153, completed with Module wrapper"
+  },
+  {
+    "path": "cases/tessent/parameter/example_2.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Parameter_id6095dafa.html example, original complete module"
+  },
+  {
+    "path": "cases/tessent/parameter/example_3.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "Tessent Shell Reference v2023.4 Command_Parameter_id6095dafa.html example, original complete module"
+  },
+  {
+    "path": "cases/ours/parameter/instance_outer_self.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/negative.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/sized_arithmetic.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/bare_x.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/unsized_list.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections 6.3.8,6.3.12,6.4.7,6.5.4; constructed"
+  },
+  {
+    "path": "cases/ours/instance/unsized_parameter_concat.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "Original constructed Instance case, invalid unsized concatenation per section 6.5.4"
+  },
+  {
+    "path": "cases/ours/attribute/flag.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/comments.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/distinct.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/scopes.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/known_strings.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/known_sized.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_comments.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/bare_value.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/signal_value.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/boolean.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/mixed.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/unsized.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/known_mixed.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/index.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/hierarchy.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/no_value.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/no_semicolon.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/nested.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/cross_parameter_name.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_ScanInPort.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_ScanOutPort.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_DataInPort.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_DataOutPort.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_ScanRegister.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_DataRegister.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_Alias.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_Instance.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_ScanInterface.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_ScanMux.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_DataMux.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/duplicate_ClockMux.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/ours/attribute/chain.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "IEEE 1687-2014 section 6.5.5, constructed"
+  },
+  {
+    "path": "cases/standard/attribute/scan_type.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "IEEE 1687-2014 section 6.5.5 printed140/PDF154, added Module wrapper"
+  },
+  {
+    "path": "cases/tessent/attribute/is_top.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "Tessent v2023.4 Command_Attribute_id811c3f4b.html example1: replaced typography quotes with ASCII, removed ellipsis"
+  },
+  {
+    "path": "cases/tessent/attribute/connection_rule.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "Tessent v2023.4 Attribute example2: added Module wrapper"
+  },
+  {
+    "path": "cases/ours/scan_mux/duplicate_attributes.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed repeatability case, duplicate name forbidden by IEEE section6.5.5(a)"
+  },
+  {
+    "path": "cases/ours/data_mux/duplicate_attributes.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed repeatability case, duplicate name forbidden by IEEE section6.5.5(a)"
+  },
+  {
+    "path": "cases/ours/clock_mux/duplicate_attributes.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed repeatability case, duplicate name forbidden by IEEE section6.5.5(a)"
+  },
+  {
+    "path": "cases/ours/scan_interface/duplicate_attributes.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed repeatability case, duplicate name forbidden by IEEE section6.5.5(a)"
+  },
+  {
+    "path": "cases/ours/instance/duplicate_attributes.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed repeatability case, duplicate name forbidden by IEEE section6.5.5(a)"
+  },
+  {
+    "path": "cases/fail/ours/arithmetic_expression.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/attribute_hierarchical.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/comparison_expression.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/computed_range_bound_negative.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/computed_range_bounds.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/negative_literal.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/parenthesised.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/shift_and_logic.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/fail/ours/unary_complement.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original constructed positive corrected: IEEE6.5.5 attribute_value is concat_string or concat_number, not signal expression"
+  },
+  {
+    "path": "cases/ours/module/keyword_module.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/module_comments.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/namespace_comments.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/namespace_reset_comments.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/namespace_scope.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/redefinition.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/empty_module.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/namespace_only.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/use_namespace_only.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/include.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/namespace_inside.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/nested_namespace.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/parameter_namespace.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/parameter_use_namespace.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/string_namespace.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/range_module.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/qualified_module.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/nested_module.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/port_outside.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/parameter_outside.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/attribute_outside.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/namespace_block.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/module_semicolon.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/module_trailing_semicolon.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/ours/module/broadcast_outside_instance.icl",
+    "block": "module",
+    "accept": false,
+    "source": "IEEE 1687-2014 sections6.4.2-6.4.5; empty Module from section6.4.4 example, include from Origen extension"
+  },
+  {
+    "path": "cases/standard/module/namespace_file1.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 section6.4.4 printed76/PDF90 complete example, prose labels and explanatory comments omitted"
+  },
+  {
+    "path": "cases/standard/module/namespace_file2.icl",
+    "block": "module",
+    "accept": true,
+    "source": "IEEE 1687-2014 section6.4.4 printed76/PDF90 complete example, prose labels and explanatory comments omitted"
+  },
+  {
+    "path": "cases/ours/module/Reg_declaration.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/ours/module/Reg_identifier.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/ours/module/Field_declaration.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/ours/module/Field_identifier.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/ours/module/Connection_declaration.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/ours/module/Connection_identifier.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/ours/module/PortGroup_declaration.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "LiU Reusing and Retargeting On-Chip Instrument Access Procedures in IEEE P1687 Listing8, legacy PortGroup compatibility; not Tessent/IEEE2014"
+  },
+  {
+    "path": "cases/ours/module/PortGroup_identifier.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "IEEE6.4.5 exhaustive module_item grammar and Tessent v2023.4 Module statement inventory: no such declaration; names remain identifiers"
+  },
+  {
+    "path": "cases/fail/ours/bodies_with_comments_and_assignments.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/connection_arrows.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/deep_recursion.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/integer_expr_in_range.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/keyword_block_inside_register.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/literal_sized_by_parameter.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/nested_named_block_with_range.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/reg_and_field.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/tessent_style_derived.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/ours/unary_attribute_value.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/fail/published/connection_instrument_module.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Preserved original legacy fixture; no IEEE1687/Tessent/Honza grammar for Reg,Field,Connection; tutorial attribution unverified"
+  },
+  {
+    "path": "cases/ours/module/legacy_0_23.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_0_24.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_0_25.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_0_26.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_16_0.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_16_1.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_16_2.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_19_1.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_19_2.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_24_0.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_24_1.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_24_2.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_24_3.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_24_4.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_24_5.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_32_4.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original block_review.py generic fallback positive, rejected per IEEE6.4.5 exhaustive module grammar"
+  },
+  {
+    "path": "cases/ours/module/legacy_golden_nested.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Original synthetic golden test with nonexistent Reg/Field declarations"
+  },
+  {
+    "path": "cases/ours/parameter/spaced_parameter_width.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE6.3.4(11-12),6.3.5 sized number is size plus UNSIZED_* token; whitespace/comments are separators"
+  },
+  {
+    "path": "cases/ours/parameter/spaced_numeric_width.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE6.3.4(11-12),6.3.5 sized number is size plus UNSIZED_* token; whitespace/comments are separators"
+  },
+  {
+    "path": "cases/ours/parameter/spaced_zero_width.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE6.3.4(11-12),6.3.5 sized number is size plus UNSIZED_* token; whitespace/comments are separators"
+  },
+  {
+    "path": "cases/ours/parameter/double_width.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE6.3.4(11-12),6.3.5 sized number is size plus UNSIZED_* token; whitespace/comments are separators"
+  },
+  {
+    "path": "cases/ours/module/portgroup_double_comma.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Legacy LiU P1687 Listing8 comma-list shape, constructed boundary case"
+  },
+  {
+    "path": "cases/ours/module/portgroup_leading_comma.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Legacy LiU P1687 Listing8 comma-list shape, constructed boundary case"
+  },
+  {
+    "path": "cases/ours/module/portgroup_trailing_comma.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Legacy LiU P1687 Listing8 comma-list shape, constructed boundary case"
+  },
+  {
+    "path": "cases/ours/module/portgroup_missing_comma.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Legacy LiU P1687 Listing8 comma-list shape, constructed boundary case"
+  },
+  {
+    "path": "cases/ours/module/portgroup_comments_only.icl",
+    "block": "fallback",
+    "accept": false,
+    "source": "Legacy LiU P1687 Listing8 comma-list shape, constructed boundary case"
+  },
+  {
+    "path": "cases/ours/module/portgroup_keyword.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "Legacy LiU P1687 Listing8 comma-list shape, constructed boundary case"
+  },
+  {
+    "path": "cases/ours/parameter/comment_number.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8 numeric token whitespace/comment boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/line_comment_width.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8 numeric token whitespace/comment boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/logic_spaced_width.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "IEEE6.3.4-6.3.8 numeric token whitespace/comment boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/parameter/nested_width_comment.icl",
+    "block": "parameter",
+    "accept": false,
+    "source": "IEEE6.3.4-6.3.8 numeric token whitespace/comment boundaries; constructed"
+  },
+  {
+    "path": "cases/ours/attribute/legacy_golden_value_forms.icl",
+    "block": "attribute",
+    "accept": false,
+    "source": "Original synthetic golden test: Attribute cannot contain signal expression ~a.b.c (IEEE6.5.5)"
+  },
+  {
+    "path": "cases/ours/module/portgroup_comment_before_comma.icl",
+    "block": "fallback",
+    "accept": true,
+    "source": "Legacy LiU P1687 list with ICL whitespace/comments between tokens, constructed preservation regression"
   }
 ]

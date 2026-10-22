@@ -1,0 +1,1 @@
+NameSpace N { Module M {} }

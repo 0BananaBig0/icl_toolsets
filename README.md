@@ -24,9 +24,8 @@ source text ──(flex + bison)──▶ AST ──(layout)──▶ format tre
 Keeping layout out of the parser is what makes the two questions separable.
 Two examples of why that matters in ICL:
 
-* `PortGroup tap_side {si, so, en}` is semantically close to
-  `PortGroup tap_side { Source si; ... }` but must stay on **one line**.
-  That is a visual decision, not a grammar one.
+* A legacy `PortGroup tap_side {si, so, en}` list stays on one line,
+  while an embedded line comment requires multiple lines.
 * `} // trailing note` — the comment is the parser's *next* sibling, yet it
   belongs on the closing brace's line.
 
@@ -228,22 +227,19 @@ are `textDocumentSync: 1` (full) and `documentFormattingProvider: true`;
 everything else is answered with `-32601`, and unknown notifications are
 ignored, so a client probing for features the server lacks stays healthy.
 
-## Grammar design: strict where it counts
+## Grammar and compatibility
 
-The **structural** level is strict, the **attribute** level lenient.
+Each IEEE 1687 ICL construct has a dedicated grammar or shares only identical
+property forms. Attributes use `Attribute name [= value];`; arbitrary properties
+and nested blocks are rejected. ICL keywords may be identifiers in name positions.
+Parameters and attributes carry shared AST metadata for local name/type checks.
 
-*Strict* — Module, the 13 port kinds, `ScanRegister` / `Reg` / `Field`,
-`Instance x Of Y`, `ScanMux` selection tables, `Connection a -> b;`,
-`PortGroup` comma lists, `AccessLink` sub-structures. These are what make an
-ICL file a network description, and rejecting a non-conforming file is the
-point of the tool.
-
-*Lenient* — inside a block an attribute is `NAME ...;` where `NAME` may be any
-identifier **or** any ICL keyword. Real ICL writes `Attribute d = "x";` inside
-a `Field` block and `DataInPort DI = 8'h00;` inside an `Instance` block, so the
-attribute name is a keyword there. Encoding every attribute form rigidly would
-reject valid files, and being lenient here loses nothing: attribute spelling
-affects neither the network topology nor the layout.
+The source-backed compatibility forms and their limits are recorded in
+[the conformance review](docs/icl-conformance-review.md). They include legacy
+P1687 PortGroup lists, omitted ScanMux SelectedBy and ScanOutPort LaunchEdge,
+Origen includes/lowercase `of`, documented Tessent extensions, and empty Alias
+bodies observed in the user's merged corpus. Reg, Field and Connection are not
+supported declarations. ICL and PDL are separate languages; no PDL parser exists.
 
 ## Style
 

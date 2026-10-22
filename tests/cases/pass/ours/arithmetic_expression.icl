@@ -1,1 +1,1 @@
-Module m { Attribute d = a + b * 2; }
+Module m { Attribute d = $a + $b * 2; }

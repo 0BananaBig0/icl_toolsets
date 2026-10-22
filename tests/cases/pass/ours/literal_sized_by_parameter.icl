@@ -4,7 +4,7 @@ Module m {
   // writes its literals this way.
   Parameter W = 8;
   DataInPort din[$W:0];
-  Reg r {
+  ScanRegister r {
     ResetValue $W'd5;
     CaptureSource $W'b1;
     DefaultLoadValue $W 'd5;

@@ -1,7 +1,7 @@
 Module m {
-  Reg r {
-    Source ~a;
-    ResetValue -1;
+  ScanRegister r {
+    ScanInSource ~a;
+    ResetValue 0 - 1;
     CaptureSource ~b;
   }
 }

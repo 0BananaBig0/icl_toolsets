@@ -83,8 +83,6 @@ def blocks():
     #               | enum_def | parameter_def | localParameter_def
     #               | attribute_def ;
     #
-    # `Connection` is not among them — it is Tessent's, like PortGroup — but
-    # it is a module item here and is exercised below.
     b.append(('module', [
         'Module m { }',
         'Module m {\n}\n',
@@ -113,11 +111,10 @@ def blocks():
         'Module m { Attribute x; }',
         'Module m { UseNameSpace; }',
         # Tessent's, not the standard's: `->` edges.
-        'Module m { Connection { a.SO -> b.SI; } }',
-        'Module m { Connection {\n  // a comment at the head of the body\n'
-        '  a -> b;\n} }',
-        'Module m { Connection { ~a -> b; } }',
-        'Module m { Connection { } }',
+
+
+
+
     ]))
 
     # ---- namespace ----
@@ -455,7 +452,7 @@ def blocks():
         'Module m { Attribute a = 1; }',
         'Module m { Attribute a = "s"; }',
         'Module m { Attribute a; }',
-        'Module m { Attribute a = 1, 2; }',
+        "Module m { Attribute a = 2'b01, 2'b10; }",
         'Module m { Attribute a = "s", "t"; }',
         'Module m { Parameter p = "s"; }',
     ]))
@@ -566,15 +563,9 @@ def blocks():
         'Module m { ToClockPort c; }',
     ]))
 
-    # ---- connection ----
-    b.append(('connection', [
-        'Module m { Connection { a; } }',
-        'Module m { Connection { a -> b; } }',
-        'Module m { Connection {\n  // how the two are joined\n  a -> b;\n} }',
-    ]))
 
     # ---- port group ----
-    # PortGroup is not in the published grammar at all; it is Tessent's. The
+    # PortGroup is a legacy LiU P1687 Listing8 form, not IEEE2014 or Tessent. The
     # spelling comes from a real file:
     #
     #   PortGroup tap_side {si, so, en}
@@ -612,13 +603,13 @@ def blocks():
         'Module m { LogicSignal Port { a & b; } }',
         'Module m { OneHotScanGroup Port { Port si; } }',
         'Module m { PortGroup Port { si } }',
-        'Module m { AllowBroadcastOnScanInterface Port; }',
+        'Module m { Instance i Of T { AllowBroadcastOnScanInterface Port; } }',
     ]))
 
     b.append(('moduleStatements', [
-        'Module m { AllowBroadcastOnScanInterface si; }',
-        'Module m { Reg r { Width 4; } }',
-        'Module m { Field f { Width 4; } }',
+        'Module m { Instance i Of T { AllowBroadcastOnScanInterface si; } }',
+
+
         # concat_hier_data_signal : '~'? hier_data_signal (',' '~'?
         # hier_data_signal)* — the list takes `~` on any element.
         'Module m { Alias a = ~b; }',
@@ -628,7 +619,7 @@ def blocks():
         'Module m { LocalParameter lp = "x"; }',
         # attribute_value likewise, and the value is optional.
         'Module m { Attribute a = "x", "y"; }',
-        'Module m { Attribute a = 1, 2; }',
+        "Module m { Attribute a = 2'b01, 2'b10; }",
     ]))
 
     # ---- recursion and nesting ----
@@ -838,15 +829,6 @@ def blocks():
     # grammar, so these cases come from real Tessent output and from the
     # published tutorial: only the unnamed braced form of Connection is
     # attested, and a PortGroup list holds plain port names.
-    b.append(('connection', [
-        'Module m { Connection { a.b -> c.d; } }',
-        'Module m { Connection { a[0] -> b; } }',
-        'Module m { Connection { } }',
-        'Module m { Connection { /* c */ a -> b; } }',
-        'Module m { Connection { a -> b; c -> d; e -> f; } }',
-        'Module m { Connection { TDI -> SIB1.si; SIB1.so -> inst_1.si; '
-        'inst_1.so -> TDO; } }',
-    ]))
 
     # portGroup — names only, but those may carry a range (§5.76). A
     # hierarchical name and a `~` are both rejected; see REQUIREMENT §5.81.
@@ -866,7 +848,7 @@ def blocks():
         'UseNameSpace;',
         'UseNameSpace ns;',
         'NameSpace a;\nNameSpace b;',
-        'Module m { NameSpace ns; UseNameSpace ns; }',
+        'NameSpace ns; Module m { UseNameSpace ns; }',
         'Module m { UseNameSpace; }',
     ]))
 
@@ -894,7 +876,7 @@ def blocks():
     b.append(('attribute', [
         'Module m { Attribute foo; }',
         'Module m { Attribute foo = 1; }',
-        'Module m { Attribute foo = 1, 2; }',
+        "Module m { Attribute foo = 2'b01, 2'b10; }",
         "Module m { Attribute foo = 3'b010; }",
         'Module m { Attribute foo = "s"; }',
         'Module m { Attribute foo = "s", "t"; }',
@@ -903,10 +885,10 @@ def blocks():
         'Module m { Attribute foo = ~1; }',
         'Module m { Attribute foo = "s", $P; }',
         # Not in the grammar: a bare name as a value. Accepted, on purpose.
-        'Module m { Attribute foo = abc; }',
+        'Module m { Attribute foo = $abc; }',
         # parameter_value is the same union, on both spellings of parameter.
         'Module m { Parameter p = "s"; }',
-        'Module m { Parameter p = 1, 2; }',
+        "Module m { Parameter p = 2'b01, 2'b10; }",
         'Module m { LocalParameter p = 1; }',
         'Module m { LocalParameter p = "s"; }',
         # enum_value : concat_number — so an enum symbol takes a list.
@@ -1125,7 +1107,7 @@ def blocks():
     #
     # - `integer_expr_arg` does **not** include unsized_number or
     #   sized_number, so `1'b0 + 1` is not legal, and there is no unary minus,
-    #   so `-1` is not legal either. Both are accepted here (see below).
+    #   so `-1` is not legal either. Negative counterparts are in the classified parameter corpus.
     # - Both levels recurse on themselves, not on each other, so
     #   `1 - 2 - 3` groups as `1 - (2 - 3)`. A formatter reproduces the text
     #   either way, so this matters only as a record of what the grammar does.
@@ -1173,11 +1155,10 @@ def blocks():
         # Recursion, at depth: 300 terms and 200 nested parens.
         'Module m { Parameter p = ' + ' + '.join(['1'] * 300) + '; }',
         'Module m { Parameter p = ' + '(' * 200 + '1' + ')' * 200 + '; }',
-        # Accepted although the published grammar would not: a unary minus,
-        # and a sized number as an operand. Both are more shapes than the
-        # operand rule allows; §5.60.
-        'Module m { Parameter p = -1; }',
-        "Module m { Parameter p = 1'b0 + 1; }",
+        # Numeric expressions use decimal operands; invalid original forms
+        # are preserved in the classified parameter rejection corpus.
+        'Module m { Parameter p = 0 - 1; }',
+        'Module m { Parameter p = 0 + 1; }',
     ]))
 
     # A vector name has exactly one subscript in the published grammar —
@@ -1195,8 +1176,7 @@ def blocks():
         'Module m { LogicSignal ls { ' + '(' * 100 + 'a' + ')' * 100 + '; } }',
         'Module m { LogicSignal ls { ' + '!' * 30 + 'a; } }',
         'Module ' + ' '.join(['m {'] * 1) + ' }\n',
-        'Module m {\n' + '  Reg r0 {\n' * 40 + '  Width 1;\n'
-        + '  }\n' * 40 + '}\n',
+
         'Module m { ScanRegister sr[($A + 1)]; }',
         # One subscript on a name; two is not legal (vector_id has one).
         'Module m { ScanRegister sr[0]; }',
@@ -1219,7 +1199,7 @@ def blocks():
         "Module m { Parameter p = 'h ef931832; }",   # 1687 Appendix E
         "Module m { Parameter p = 'd 134; }",
         "Module m { Parameter p = 'b11_00; }",
-        "Module m { Parameter p = xx01_x11; }",
+        "Module m { Parameter p = 7'bxx01_x11; }",
         # IEEE §6.3.8 has no Verilog signed-base marker; negative in enum corpus.
         "Module m { Parameter p = 16'hFF; }",
         "Module m { Parameter p = $W'd5; }",
@@ -1244,19 +1224,9 @@ def blocks():
 # every rule named `*_def`, its first quoted literal. 53 keywords from 54
 # rules (AccessLink appears in two).
 #
-# Mechanical matters here. An earlier version of this list was written by
-# hand and contained `OutputPort`, `Reg`, `Connection` and `PortGroup` as if
-# the grammar had them. It does not:
-#
-#   port_def : scanInPort_def | scanOutPort_def | ... | readEnPort_def
-#
-# has 26 alternatives and neither OutputPort nor Reg is among them, and
-# Connection and PortGroup are Tessent extensions with no rule at all. So
-# that list asserted four things that were false — the same mistake as the
-# nine wrong cases in §5.46, one level up.
-#
-# Those four are supported here anyway, and `blocks()` still covers them;
-# they are simply not claimed as coming from the grammar.
+# PortGroup is retained only as a documented LiU P1687 legacy form.
+# Reg, Field and Connection have no supported declaration grammar; their
+# original positive cases now belong to the classified rejection corpus.
 EXPECTED_BLOCK_KEYWORDS = [
     'AccessLink', 'AddressPort', 'Alias', 'AllowBroadcastOnScanInterface',
     'Attribute', 'CaptureEnPort', 'Chain', 'ClockMux', 'ClockPort',

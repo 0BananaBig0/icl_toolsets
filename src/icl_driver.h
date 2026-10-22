@@ -54,8 +54,15 @@ class IclDriver {
     return unit_.Make<AstStatement>(text, span);
   }
 
-  // Takes |body| too: every grammar action assigned the body on the very next
-  // line, so keeping them apart only added a named temporary and two lines.
+  AstStatement* MakeParameter(const std::string& keyword, const std::string& name,
+                              const std::string& text, ParsedValue value, SourceSpan span) {
+    return unit_.Make<AstStatement>(text, span,
+        keyword == "Parameter" ? NamedKind::Parameter : NamedKind::LocalParameter,
+        name, std::move(value));
+  }
+
+  void CheckNamedValues(const std::vector<AstNode*>& body, bool module);
+
   // A `PortGroup { a, b }` with its elements in source order.
   //
   // One line when the list holds only names, several when it also holds a
@@ -63,15 +70,25 @@ class IclDriver {
   // the closing brace.
   AstNode* MakePortGroup(const std::string& name,
                          std::vector<PortGroupItem> items, SourceSpan span) {
-    // Fold each comma onto the name that precedes it, so a comma is never a
-    // line of its own and the text round-trips byte for byte.
+    // Validate separators before folding; comments must not hide a missing name.
+    bool need_name = true;
+    for (const auto& item : items) {
+      if (item.is_name) {
+        if (!need_name) SetParseDiagnostic(span.first_line, "expected comma between PortGroup names");
+        need_name = false;
+      } else if (item.is_comma) {
+        if (need_name) SetParseDiagnostic(span.first_line, "expected PortGroup name before comma");
+        need_name = true;
+      }
+    }
+    if (need_name) SetParseDiagnostic(span.first_line, "expected PortGroup name");
+    // Fold adjacent names/commas only, preserving intervening comments.
     std::vector<PortGroupItem> folded;
     for (PortGroupItem& item : items) {
       if (item.is_comma && !folded.empty() && folded.back().is_name) {
         folded.back().text += ",";
         continue;
       }
-      if (item.is_comma) continue;
       folded.push_back(std::move(item));
     }
 
@@ -92,8 +109,8 @@ class IclDriver {
 
     std::vector<AstNode*> body;
     for (const PortGroupItem& item : folded) {
-      if (item.is_name) {
-        body.push_back(unit_.Make<AstStatement>(item.text, item.span));
+      if (item.is_name || item.is_comma) {
+        body.push_back(unit_.Make<AstStatement>(item.is_comma ? "," : item.text, item.span));
       } else {
         body.push_back(item.node);
       }
@@ -106,6 +123,7 @@ class IclDriver {
   AstBlock* MakeBlock(const std::string& header, std::vector<AstNode*> body,
                       SourceSpan span) {
     CheckAddressContext(header, body);
+    CheckNamedValues(body, header.rfind("Module ", 0) == 0);
     AstBlock* block = unit_.Make<AstBlock>(header, span);
     block->body() = std::move(body);
     return block;
@@ -116,7 +134,7 @@ class IclDriver {
   }
 
   // ---- parser diagnostics ----
-  ParsedValue NumberLiteral(const std::string& text) const;
+  ParsedValue NumberLiteral(const std::string& text, int line);
   void CheckBlockItems(const std::string& kind, const std::vector<AstNode*>& body, int line);
   void CheckAddressContext(const std::string& header,
                                 const std::vector<AstNode*>& body);

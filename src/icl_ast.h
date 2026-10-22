@@ -28,15 +28,15 @@
 // Traversal: nodes are visited through |AstVisitor| (see below). There is no
 // kind enum and no per-construct classes: everything reduces to three shapes
 // (comment / one line / header + body), and a fourth dimension would not be a
-// 1:1 map anyway — |Alias|, |ScanRegister|, |Reg| and |Field| each have both a
+// 1:1 map anyway — |Alias| and |ScanRegister| each have both a
 // one-line form (`Alias a = b;`) and a block form (`Alias a = b { ... }`).
-// Each node's text already carries its ICL keyword, so a separate tag would be
-// metadata that nothing reads.
+// Named statements also carry metadata for shared local semantic checks.
 
 #ifndef ICL_FORMAT_SRC_ICL_AST_H_
 #define ICL_FORMAT_SRC_ICL_AST_H_
 
 #include <memory>
+#include <optional>
 #include <limits>
 #include <string>
 #include <utility>
@@ -47,13 +47,32 @@ namespace icl {
 // A zero width means context/parameter dependent, not a zero-bit object.
 enum class ValueKind { Unknown, Number, String };
 
+struct ValueAtom {
+  ValueKind kind;
+  bool unsized;
+  std::string reference;
+};
+
 struct ParsedValue {
+  ParsedValue() = default;
+  ParsedValue(std::string text, size_t width = 0, ValueKind kind = ValueKind::Number)
+      : text(std::move(text)), width(width), kind(kind) {}
   std::string text;
   size_t width = 0;
   ValueKind kind = ValueKind::Number;
+  bool has_unknown = false;
+  bool unsized = false;
+  std::string reference;
+  std::vector<ValueAtom> atoms;
+  std::vector<std::string> dependencies;
 
   void Append(const std::string& gap, const ParsedValue& value) {
+    if (atoms.empty()) atoms.push_back({kind, unsized, reference});
+    if (value.atoms.empty()) atoms.push_back({value.kind, value.unsized, value.reference});
+    else atoms.insert(atoms.end(), value.atoms.begin(), value.atoms.end());
+    dependencies.insert(dependencies.end(), value.dependencies.begin(), value.dependencies.end());
     text += ", " + gap + value.text;
+    has_unknown = has_unknown || value.has_unknown;
     if (kind == ValueKind::Unknown) kind = value.kind;
     width = width && value.width &&
                     width <= std::numeric_limits<size_t>::max() - value.width
@@ -150,28 +169,39 @@ class AstComment : public AstNode {
   std::string text_;
 };
 
-// A construct rendered on exactly one line: parameters, attributes, generic
-// attribute items, ScanMux selection entries, Connection edges, plain ports
-// (`ScanInPort si;`) and comma lists (`PortGroup tap_side {si, so, en}`).
+// A construct rendered on exactly one line: parameters, attributes, ScanMux selection entries and plain ports
+// (`ScanInPort si;`).
 //
 // |text| is the complete line including any trailing semicolon, so rendering
 // needs no knowledge of what the statement is.
+enum class NamedKind { None, Parameter, LocalParameter, Attribute };
+
 class AstStatement : public AstNode {
  public:
-  AstStatement(const std::string& text, SourceSpan span)
-      : AstNode(span), text_(text) {}
+  AstStatement(const std::string& text, SourceSpan span,
+               NamedKind kind = NamedKind::None, std::string name = "",
+               std::optional<ParsedValue> value = std::nullopt)
+      : AstNode(span), text_(text), kind_(kind), name_(std::move(name)),
+        value_(std::move(value)) {}
 
   void Accept(AstVisitor& visitor) const override { visitor.Visit(*this); }
 
   const std::string& text() const { return text_; }
 
+  NamedKind named_kind() const { return kind_; }
+  const std::string& name() const { return name_; }
+  const std::optional<ParsedValue>& value() const { return value_; }
+
  private:
   std::string text_;
+  NamedKind kind_;
+  std::string name_;
+  std::optional<ParsedValue> value_;
 };
 
 // Any `HEADER { ... }` construct: Module / Enum / Alias-with-block /
-// ScanInterface / OneHotScanInterface / ScanRegister / Reg / Field / Instance /
-// ScanMux / LogicSignal / Connection / AccessLink / nested 1149.1 blocks, and
+// ScanInterface / ScanRegister / Instance /
+// ScanMux / LogicSignal / AccessLink / nested 1149.1 blocks, and
 // a port declared with a body (`ScanOutPort so { Source sr; }`).
 //
 // There is no separate Module/Port/PortGroup class: each is just a header
@@ -194,7 +224,7 @@ class AstBlock : public AstNode {
   std::vector<AstNode*> body_;
 };
 
-// Owns every node of one parsed file, and hands out non-owning pointers.
+// Owns every node of one parsed file and returns non-owning pointers.
 // One element of a `PortGroup { ... }` list: a name, a comment, or a comma.
 // The comma is kept as an item so that folding it onto the preceding name is a
 // decision made once here, not a special case in the grammar actions.
@@ -224,9 +254,10 @@ struct PortGroupItem {
     item.span = span;
     return item;
   }
-  static PortGroupItem Comma() {
+  static PortGroupItem Comma(SourceSpan span) {
     PortGroupItem item;
     item.is_comma = true;
+    item.span = span;
     return item;
   }
 };

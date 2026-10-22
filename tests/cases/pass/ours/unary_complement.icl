@@ -1,1 +1,1 @@
-Module m { Attribute d = ~a; }
+Module m { Attribute d = ~$a; }
