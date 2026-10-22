@@ -14,3 +14,8 @@ Tests execute production binaries. Fixtures live under `tests/cases/`, with IEEE
 Tessent, upstream and constructed origins distinguished. Honza differential results
 are adjudicated against source clauses; lexer errors and unconsumed suffixes count
 as rejection. Missing external dependencies are unrun (exit77), never a passing test.
+
+The [Clang-methods follow-up](clang-testing-and-icl-status.md) distinguishes
+compiler conformance from formatter behavior and adds systematic identifier
+context combinations. `make keywordcheck` is part of `make check-dynamic` and
+uses maintained IEEE expectations rather than implementation-derived tokens.

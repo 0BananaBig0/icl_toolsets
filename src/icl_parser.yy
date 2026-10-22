@@ -159,13 +159,7 @@ void IclParser::error(const location& loc, const std::string& message) {
 %token DATAINPORT "DataInPort"
 %token DATAOUTPORT "DataOutPort"
 %token SCANINTERFACE "ScanInterface"
-/* IEEE 1687 Table 2 (IJTAG Tutorial, 3rd ed.) lists the ICL description
-   elements. The ones that take a register-style body are:
-     ScanRegister, DataRegister, DataMux, ClockMux, OneHotScanGroup,
-     OneHotDataGroup
-   `Reg`, `Field` and `OneHotScanInterface` are not in that list; they
-   are accepted anyway because rejecting a file we cannot check is the
-   worse failure for a formatter. */
+/* IEEE register, mux and group declarations; undocumented blocks are rejected. */
 %token SCANREGISTER "ScanRegister"
 %token DATAREGISTER "DataRegister"
 %token INSTANCE "Instance"

@@ -6,6 +6,13 @@ in [honza-icl-comparison.md](honza-icl-comparison.md). This report records actua
 verification; it does not claim complete hardware elaboration or formal proof of
 all possible inputs.
 
+## Clang-methods follow-up
+
+The [Clang-methods report](clang-testing-and-icl-status.md) records the latest
+1,943-case conformance suite, 5,568 identifier/context cases, 27,364 syntax
+properties and a fresh real ANTLR comparison. These functional counts supersede
+the earlier runs below; the coverage limitations remain unchanged.
+
 ## Independent syntax and diagnostic follow-up
 
 The [new syntax-property report](icl-syntax-properties.md) records 25,938

@@ -429,3 +429,13 @@ through the real LSP transport.
 transformations follow IEEE 1687-2014 §§6.3.2, 6.3.4(11–12), 6.3.6–8; they are
 constructed tests, not additional verbatim standard examples. See
 [the method and exclusions](../../docs/icl-syntax-properties.md).
+
+## Keyword/context matrix
+
+`ours/keyword_contexts/` contains 58 constructed ICL context templates and an
+independent scalar-name inventory. IEEE 1687-2014 §6.3.3(b), printed60/PDF74,
+permits keywords as identifiers; §§6.3.10.2–5 define name/reference forms. The
+matrix uses those permissions, not the implementation's token list. Provenance,
+invalid-name rules and the callback token-boundary exception are recorded in
+[its README](ours/keyword_contexts/README.md). Generated combinations remain under
+ignored `tests/generated/ours/keyword_contexts/`.

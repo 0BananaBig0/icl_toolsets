@@ -130,6 +130,12 @@ the original requests and implementation history.
   correction or close. Preserve the documented first-error policy and line-only
   fallback for semantic checks that lack columns.
 
+- **T8 — Context combinations:** systematically test IEEE nonreserved keywords
+  in declaration/reference positions, including every port kind. Reparse and
+  check formatting stability, exercise the same inputs through live LSP edits,
+  and adjudicate ambiguous malformed-name mutations against the normative
+  token/production rules. Keep this oracle independent of implementation tokens.
+
 ## Build, delivery and documentation
 
 - **D1 — Build:** provide dynamic and static variants of both executables and

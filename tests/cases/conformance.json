@@ -11308,5 +11308,353 @@
     "block": "access_link",
     "accept": false,
     "source": "Constructed Generic AccessLink EOF diagnostic regression"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/AddressPort.icl",
+    "block": "address_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/CaptureEnPort.icl",
+    "block": "capture_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ClockPort.icl",
+    "block": "clock_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/DataInPort.icl",
+    "block": "data_in_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/DataOutPort.icl",
+    "block": "data_out_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ReadEnPort.icl",
+    "block": "read_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ResetPort.icl",
+    "block": "reset_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ScanInPort.icl",
+    "block": "scan_in_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ScanOutPort.icl",
+    "block": "scan_out_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/SelectPort.icl",
+    "block": "select_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ShiftEnPort.icl",
+    "block": "shift_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/TCKPort.icl",
+    "block": "tck_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/TMSPort.icl",
+    "block": "tms_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/TRSTPort.icl",
+    "block": "trst_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToCaptureEnPort.icl",
+    "block": "to_capture_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToClockPort.icl",
+    "block": "to_clock_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToIRSelectPort.icl",
+    "block": "to_ir_select_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToResetPort.icl",
+    "block": "to_reset_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToSelectPort.icl",
+    "block": "to_select_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToShiftEnPort.icl",
+    "block": "to_shift_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToTCKPort.icl",
+    "block": "to_tck_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToTMSPort.icl",
+    "block": "to_tms_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToTRSTPort.icl",
+    "block": "to_trst_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/ToUpdateEnPort.icl",
+    "block": "to_update_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/UpdateEnPort.icl",
+    "block": "update_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/WriteEnPort.icl",
+    "block": "write_en_port",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/access_link.icl",
+    "block": "access_link",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/alias.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/alias_hierarchy.icl",
+    "block": "alias",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/attribute.icl",
+    "block": "attribute",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/callback_namespace.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/callback_procedure.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/chain.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/clock_mux.icl",
+    "block": "clock_mux",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/data_mux.icl",
+    "block": "data_mux",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/data_register.icl",
+    "block": "data_register",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/enum.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/enum_member.icl",
+    "block": "enum",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/hierarchical_instance.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/hierarchical_port.icl",
+    "block": "lexical",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/input_port.icl",
+    "block": "instance",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/instance.icl",
+    "block": "instance",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/instance_module.icl",
+    "block": "instance",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/instance_namespace.icl",
+    "block": "instance",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/local_parameter.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/logic_operand.icl",
+    "block": "logic_signal",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/logic_signal.icl",
+    "block": "logic_signal",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/module.icl",
+    "block": "module",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/mux_selector.icl",
+    "block": "data_mux",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/namespace.icl",
+    "block": "module",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/one_hot_data_group.icl",
+    "block": "one_hot_data_group",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/one_hot_scan_group.icl",
+    "block": "one_hot_scan_group",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/parameter.icl",
+    "block": "parameter",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/parameter_override.icl",
+    "block": "instance",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/scan_interface.icl",
+    "block": "scan_interface",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/scan_mux.icl",
+    "block": "scan_mux",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/scan_register.icl",
+    "block": "scan_register",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
+  },
+  {
+    "path": "cases/ours/keyword_contexts/use_namespace.icl",
+    "block": "module",
+    "accept": true,
+    "source": "Constructed context for IEEE 1687-2014 6.3.3(b) and 6.3.10 identifier permissions; see ours/keyword_contexts/README.md"
   }
 ]

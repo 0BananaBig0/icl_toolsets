@@ -130,7 +130,7 @@ OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 # binary.
 .PHONY: all dynamic static install install-dynamic install-static uninstall \
     check nvimcheck coccheck clean distclean version dist check-tools \
-    formatcheck namingcheck syntaxcheck
+    formatcheck namingcheck syntaxcheck keywordcheck
 .DEFAULT_GOAL := all
 
 # Development-only style checks; normal builds need no LLVM tools. Review the
@@ -526,7 +526,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck syntaxcheck
+check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
@@ -560,6 +560,12 @@ $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc \
 syntaxcheck: $(BUILD_DIR)/icl_corpus_inventory
 	python3 tests/tests/src/test_icl_metamorphic.py
 	python3 tests/src/test_icl_metamorphic.py --inventory $<
+
+# Cross-context identifier permissions are independent of our token inventory.
+keywordcheck: $(BIN) $(LSP_BIN) $(BUILD_DIR)/icl_corpus_inventory
+	python3 tests/tests/src/test_icl_keyword_contexts.py
+	python3 tests/src/test_icl_keyword_contexts.py --binary $(BIN) \
+	  --lsp $(LSP_BIN) --inventory $(BUILD_DIR)/icl_corpus_inventory
 
 .PHONY: corpuscheck
 corpuscheck: $(BUILD_DIR)/icl_corpus_inventory $(BIN)

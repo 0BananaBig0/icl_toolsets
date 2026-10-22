@@ -1,0 +1,12 @@
+AccessLink AccessTogether ActivePolarity ActiveSignals AddressPort AddressValue
+Alias AllowBroadcastOnScanInterface Attribute BSDLEntity CaptureEnPort CaptureSource
+Chain ClockMux ClockPort DataInPort DataMux DataOutPort DataRegister DefaultLoadValue
+DifferentialInvOf Enable Enum FreqDivider FreqMultiplier InputPort Instance
+LocalParameter LogicSignal Module NameSpace Of OneHotDataGroup OneHotScanGroup
+Parameter Period Port ReadCallBack ReadDataSource ReadEnPort RefEnum ResetPort
+ResetValue STD_1149_1_2001 STD_1149_1_2013 ScanInPort ScanInSource ScanInterface
+ScanMux ScanOutPort ScanRegister SelectPort SelectedBy ShiftEnPort Source TCKPort
+TMSPort TRSTPort ToCaptureEnPort ToClockPort ToIRSelectPort ToResetPort ToSelectPort
+ToShiftEnPort ToTCKPort ToTMSPort ToTRSTPort ToUpdateEnPort UpdateEnPort UseNameSpace
+WriteCallBack WriteDataSource WriteEnPort WriteEnSource iApplyEndState
+Generic Rising Falling High Low s ms us ns ps fs as A a bus_index n657 A_0
