@@ -37,9 +37,11 @@ ROOT = os.path.dirname(HERE)
 GENERATED_SUFFIXES = (
     '.o', '.a', '.gcda', '.gcno', '.gcov',
     '.tar.gz', '.tgz', '.zip',
+    '.pyc', '.pyo',
 )
 GENERATED_PREFIXES = (
     'build/', 'gen/', '.codegraph/',
+    '.worktrees/', '.superpowers/', 'tests/generated/',
 )
 
 
@@ -97,7 +99,7 @@ def main():
     files = tracked_files()
     dirty = []
     for name in files:
-        if name.startswith(GENERATED_PREFIXES) or \
+        if '__pycache__' in name.split('/') or name.startswith(GENERATED_PREFIXES) or \
            name.endswith(GENERATED_SUFFIXES):
             dirty.append(name)
 

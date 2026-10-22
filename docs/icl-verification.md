@@ -144,3 +144,12 @@ The installed formatter passed1744/1744 conformance inputs and installed LSP
 passed37/37 semantic tests. The source archive was extracted under `/tmp` and
 successfully built with `BISON=false FLEX=false`; its formatter accepted the
 review fixture. No personal editor configuration was modified.
+
+
+A final tracking audit found four Python bytecode files (including two inherited
+from the baseline) and the generated differential log in Git. They were removed
+from the tracked tree; the log moved under ignored `build/reference/`. The guard
+now rejects bytecode, nested `__pycache__`, tool workflow state, worktrees and
+generated benchmark inputs. Its regression test failed seven cases before the
+fix and passed afterward. Maintained input fixtures and adjudication expectations
+remain versioned; automatically generated build/analysis outputs do not.

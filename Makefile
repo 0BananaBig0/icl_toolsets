@@ -529,6 +529,7 @@ check check-dynamic: unitcheck
 	@python3 tests/tests/test_coverage.py
 	@python3 tests/tests/test_grammar_coverage.py
 	@python3 tests/tests/test_makefile.py
+	@python3 tests/tests/test_tree_clean_test.py
 	@python3 tests/golden_test.py --binary $(BIN)
 	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)
