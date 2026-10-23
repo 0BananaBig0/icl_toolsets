@@ -9,13 +9,19 @@ the instrument connectivity language defined by IEEE 1687-2014 (IJTAG).
 | `icl-lsp` | Provide diagnostics, formatting, completion and code navigation in editors such as Vim/Neovim with coc.nvim. |
 
 The repository is named `icl_toolsets`; the installed commands are `icl-format`
-and `icl-lsp`. Both tools apply the same ICL parsing and formatting rules.
+and `icl-lsp`. Both tools share one parser, AST and formatting engine, so editor
+formatting and command-line formatting use the same rules. `icl-lsp` includes
+formatting directly; it does not launch `icl-format` as a subprocess.
+
 PDL (Procedural Description Language) is a separate language and is not supported.
+These tools edit and check ICL; they do not execute IJTAG procedures or replace
+vendor connectivity and design-rule checks.
 
 ## Build and install
 
-Building from Git requires a C++17 compiler (GCC 9+ or Clang 10+), GNU Make 4.3+,
-Bison 3.8+ and Flex 2.6+.
+Building from Git requires a C++17 compiler and standard library with
+`std::filesystem` support (for example, GCC 9+ or Clang 10+ with a suitable
+standard library), GNU Make 4.3+, Bison 3.8+ and Flex 2.6+.
 
 ```sh
 git clone https://gitee.com/banana33/icl_toolsets.git
@@ -26,9 +32,12 @@ export PATH="$HOME/.local/bin:$PATH"
 icl-format --version
 ```
 
-This installs both commands into `$HOME/.local/bin`. Add that directory to your
-shell's startup configuration so your editor can also find them. A custom
-installation prefix is supported:
+`make dynamic` produces `build/icl-format` and `build/icl-lsp`; you can run these
+directly before installing. `make install-dynamic` installs both commands into
+`$HOME/.local/bin` and prints the coc.nvim setup below. Add that directory to your
+shell's startup configuration so your editor can also find them. Installation
+does not change your editor configuration. A custom installation prefix is
+supported:
 
 ```sh
 make install-dynamic prefix=/opt/icl_toolsets
@@ -38,19 +47,21 @@ The dynamic binaries require compatible C/C++ runtime libraries on the target
 machine. For a static build, install the static C/C++ runtime libraries first,
 then run `make static` and `make install-static`. Both installation variants
 use the same command names. Plain `make` builds both variants; `make dynamic`
-works without static runtime libraries.
+works without static runtime libraries. Plain `make install` selects the dynamic
+variant.
 
-To remove an installation, run `make uninstall` from the build directory,
+To remove an installation, run `make uninstall` from the same source directory,
 using the same `prefix` if you selected one. Keep `build/install_manifest.txt`
 until uninstalling; it records the installed paths. Installation replaces
 same-named files under the selected prefix.
 
 ### Building from a source archive
 
-The source archive includes the generated parser and scanner, so building it
-requires the compiler and Make but does not require Bison or Flex. This is useful
+An archive produced by `make dist` includes the generated parser and scanner.
+Building it requires the compiler and Make but does not require Bison or Flex. This is useful
 on Rocky Linux 8, whose system Bison is older than the Git build requires.
-Use an archive provided by the project maintainer:
+Use the maintainer's `make dist` archive, rather than a Git hosting site's automatic
+source download (which contains only the tracked sources). For the current version:
 
 ```sh
 tar xzf icl-format-1.0.0.tar.gz
@@ -60,8 +71,10 @@ make install-dynamic
 ```
 
 The current archive/package name is `icl-format-1.0.0`; the repository name is
-`icl_toolsets`. With a Git checkout, install a suitable Bison version or select
-one explicitly, for example `make dynamic BISON=/path/to/bison`.
+`icl_toolsets`. `make dist` writes the archive under `build/dist/`; see the
+[developer guide](docs/development.md) for packaging and verification commands.
+With a Git checkout, install a suitable Bison version or select one explicitly,
+for example `make dynamic BISON=/path/to/bison`.
 
 ## Format ICL files
 
@@ -76,19 +89,25 @@ icl-format < top.icl                 # read from standard input
 icl-format --help
 ```
 
-The default indentation is two spaces. Formatting preserves comments and string
-contents, normalizes spacing and indentation, and limits consecutive blank lines
+The CLI defaults to two spaces per indentation level and does not read vimrc or
+`.clang-format` settings. Use `--indent N` to select a width; widths above 16 are
+limited to 16. For editor-controlled indentation, use the LSP integration below.
+
+Formatting preserves comments and string contents, normalizes spacing and
+indentation, and limits consecutive blank lines
 to one. Formatting an already formatted file produces the same result.
 With `-w`, an unchanged file keeps its modification time.
 
-Invalid input reports a diagnostic instead of formatted output. When formatting
+Input rejected by the parser or its local semantic checks reports a diagnostic
+instead of formatted output; `-w` leaves that input unchanged. When formatting
 multiple files, valid files can still be processed even if another file fails.
+`--check` prints the names of inputs that would change, without rewriting them.
 
 | Exit code | Meaning |
 |---|---|
 | `0` | Success; with `--check`, all inputs are already formatted. |
 | `1` | `--check` found at least one input that would change. |
-| `2` | Syntax error, file I/O error or invalid command-line arguments. |
+| `2` | Invalid ICL (including detected semantic errors), file I/O error or invalid command-line arguments. |
 
 For CI, run `icl-format --check` on the ICL files you want to enforce and use
 its exit status as the formatting check result.
@@ -98,13 +117,15 @@ its exit status as the formatting check result.
 `icl-lsp` runs over standard input/output and is started by the editor's LSP
 client. It provides:
 
-- Syntax diagnostics on open and edit, plus whole-document formatting.
+- Syntax and local semantic diagnostics on open and edit, plus whole-document formatting.
 - Completion for ICL keywords, local names, instance members and module types.
 - Go to definition/declaration, go to implementation, and find references.
 - Hover information, document symbols and workspace symbols.
 
-Syntax checking uses the same ICL parser as `icl-format`. Errors underline the
-unexpected token using editor-compatible Unicode positions; incomplete input
+Diagnostics use the same parser and local validation as `icl-format`, including
+checks for sized-number overflow and locally resolvable parameter widths.
+Syntax errors underline the unexpected token using editor-compatible Unicode
+positions; incomplete input
 points to the end of the document. Errors clear when corrected or closed. The
 server reports the first error per document; fix it to reveal subsequent errors.
 Some semantic checks report a whole line when no token location is available.
@@ -124,7 +145,8 @@ Vim version; the tested setup uses Vim 9.2. Follow coc.nvim's current requiremen
 for your editor and Node.js versions.
 
 One `icl` entry supplies language services and formatting. Merge it into
-`languageserver` alongside your existing servers in `:CocConfig`. A copy is available in
+`languageserver` alongside your existing servers (such as `verilog`) in
+`:CocConfig` (normally `~/.vim/coc-settings.json` in Vim). A copy is available in
 [docs/editor/coc-lsp.json](docs/editor/coc-lsp.json):
 
 ```json
@@ -153,8 +175,15 @@ nmap <silent> gr <Plug>(coc-references)
 ```
 
 The explicit `set filetype=icl` overrides Vim's built-in association of `.icl`
-with the Clean language. LSP formatting inherits the indentation settings supplied
-by Vim/coc.nvim. Existing coc.nvim navigation mappings can be reused.
+with the Clean language. Existing coc.nvim navigation mappings can be reused.
+After changing the configuration, run `:CocRestart` and reopen the ICL file, or
+set `:set filetype=icl` in the current buffer.
+
+LSP formatting uses the `tabSize` sent by coc.nvim, normally derived from Vim's
+`shiftwidth` (or `tabstop` when `shiftwidth` is zero). No `--indent` argument is
+needed in the server configuration. The formatter always emits spaces, even with
+`noexpandtab`; widths above 16 are limited to 16. The standalone CLI still uses
+its own two-space default unless you pass `--indent`.
 
 Format the current buffer with:
 
@@ -178,23 +207,31 @@ To launch `icl-format` for editor formatting, install `coc-diagnostic` with
 `icl-lsp` for navigation and diagnostics and disables its formatting provider
 so only the CLI adapter formats the buffer.
 
-The optional adapter configuration has been checked against its upstream schema;
-it has not been tested end to end. The default LSP configuration above has been
-tested with a real Vim/coc.nvim session. Installation prints the single-server
-configuration above and standalone CLI usage; it does not edit your editor settings.
+The optional adapter example explicitly passes `--indent 2`; it does not inherit
+your Vim indentation width. It has been checked against its upstream schema but
+has not been tested end to end. The recommended LSP configuration above has been
+tested with a real Vim/coc.nvim session; see the
+[verification report](docs/parameter-width-validation.md).
 
 ## Language support and limitations
 
 The tools target IEEE 1687-2014 ICL and include documented compatibility forms
-from Tessent and other existing ICL sources. Details are recorded in the
-[conformance review](docs/icl-conformance-review.md).
+from Tessent and other existing ICL sources. Tests cover standard examples,
+constructed positive/negative cases, public parser fixtures and collected
+Tessent/Synopsys SLM ICL. This is tested support, not a guarantee that every
+possible ICL input or semantic error is handled. See the
+[conformance review](docs/icl-conformance-review.md) and
+[verification reports](docs/README.md) for evidence and remaining gaps.
 
 Formatting and local diagnostics do not perform full hardware connectivity or
 width elaboration, execute PDL, or replace vendor DRC tools. They check sized
 literals against locally resolvable numeric Parameter/LocalParameter defaults
-and alias chains, including forward references. Integer expressions
+and alias chains, including forward references. Arithmetic-derived widths and
+child-module parameter overrides are not fully evaluated. Integer expressions
 are preserved rather than evaluated. Generic AccessLink payloads are treated as
-opaque content. Formatting does not align assignment operators into columns.
+opaque content. Formatting does not align assignment operators into columns,
+and only whole-document formatting is supported. Symbol rename, range formatting
+and inferred HDL implementation targets are not provided.
 
 ## Documentation and license
 
