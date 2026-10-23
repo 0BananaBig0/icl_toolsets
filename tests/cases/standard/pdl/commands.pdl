@@ -1,0 +1,41 @@
+# Completed command forms from IEEE 1687-2014 clauses 7.9 and 8.3.
+# A retargeting environment would supply Demo's named ports/registers/interfaces.
+# This is parser input, not a runnable hardware test sequence.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo -iProcNameSpace vendor
+iProc setup {} {
+  iUseProcNameSpace vendor
+  iPrefix child
+  iReset -sync
+  iWrite control 0X1A
+  iRead status 0Bxx01
+  iState control 0x00 -LastWrittenValue
+  iState status 0bxx -LastReadValue
+  iState status 0 -LastMiscompareValue
+  iScan -ir interface -chain data 8 -si {0b0000
+    0011} -so "0bxxxx xxxx" -stable
+  iOverrideScanInterface interface -capture on -update off -broadcast off
+  iApply -together
+  iClock clock
+  iClockOverride clock -source source -freqMultiplier 2 -freqDivider 1
+  iRunLoop 10 -sck clock
+  iRunLoop -time 1.0ms
+  iTake control
+  iMerge -begin
+  iCall helper
+  iMerge -end
+  iRelease control
+  iPrefix -
+  iUseProcNameSpace -
+  iNote -comment "setup complete"
+  iNote -status "ready"
+}
+iPDLLevel 1 -version STD_1687_2014
+iProc inspect {} {
+  set data [iGetReadData interface -chain data -hex]
+  set mismatches [iGetMiscompares status -bin]
+  set status [iGetStatus -clear]
+  if {$status != 0} {
+    iSetFail "read failed" -quit
+  }
+}

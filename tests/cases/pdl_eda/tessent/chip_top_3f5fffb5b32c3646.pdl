@@ -1,0 +1,34 @@
+# ############################################################################ #
+# #                         File Name: chip_top.pdl                          # #
+# #                          Author: Huaxiao Liang                           # #
+# #                         Mail: hxliang666@qq.com                          # #
+# #                         08/06/2025-Wed-23:10:06                          # #
+# ############################################################################ #
+
+
+# set_system_mode analysis -force
+# open_pattern_set TDR_initial
+# iPDLLevel 0;
+# iProcsForModule Sensor;
+# iProc Read_Temperature {{cycles 100}} {
+#     iNote "Start the temperature monitor:";
+#     iWrite En 1;
+#     iApply;
+#     iNote "Executing:"
+#     # iRunLoop $cycles -sck system_clock;
+#     iApply;
+#     iNote "Reading temperature value:"
+#     iRead Temp[3:0];
+#     iApply;
+#     iNote "Turn off the temperature monitor:"
+#     iWrite En 0;
+#     iApply;
+# }
+# iPDLLevel 0;
+# iProcsForModule chip;
+# iMerge -begin
+#     iCall Sensor_1.Read_Temperature 200;
+#     iCall Sensor_2.Read_Temperature 200;
+# iMerge -end
+# close_pattern_set
+# set_system_mode setup -force

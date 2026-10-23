@@ -1,0 +1,12 @@
+# IEEE1687-2014 7.9.17, completed/adapted static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iClock MySclk2
+iRunLoop 2000 -sck MySclk2
+iRunLoop 20000 -sck ClockIn
+iRunLoop 10
+iRunLoop 10 -tck
+iRunLoop -time 1.0e-3s
+iRunLoop -time 10.25ms
+}

@@ -1,0 +1,6 @@
+# Constructed boundary case for IEEE1687-2014 7.7.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iWrite reg 0x
+}

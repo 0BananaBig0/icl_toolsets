@@ -1,0 +1,9 @@
+# Constructed boundary case for IEEE1687-2014 7.6(k3–6).
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+	# comment
+iWrite reg \
+ 0x01; # trailing comment
+iRead reg 1
+}

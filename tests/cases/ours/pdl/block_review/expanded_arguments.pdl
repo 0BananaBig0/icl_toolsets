@@ -1,0 +1,5 @@
+# IEEE1687-2014 8.2 Tcl argument expansion; completed/adapted case.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+set arguments {reg 1}
+iProc run {} {iWrite {*}$arguments}

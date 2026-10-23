@@ -1,0 +1,12 @@
+# standard: IEEE1687-2014 7.9.4,7.9.6–8; completed static parser example.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProcsForModule vendorA::HSS -iProcNameSpace temp_measure
+iProc example {} {
+iUseProcNameSpace MyNameSpace
+iPrefix myinst1.myinst2
+iRead myport
+iCall I4.I5.vendor2::myproc2 10
+iPrefix -
+iUseProcNameSpace -
+}

@@ -1,0 +1,8 @@
+# Constructed boundary case for IEEE1687-2014 7.6(k2),7.7.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iWrite iRead 1
+iRead iWrite 0
+iWrite child.iApply[7:0] 0xAB
+}

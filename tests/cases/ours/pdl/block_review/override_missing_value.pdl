@@ -1,0 +1,6 @@
+# IEEE1687-2014 7.9.13, completed/adapted syntax input.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iOverrideScanInterface iface -update
+}

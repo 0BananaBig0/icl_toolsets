@@ -1,0 +1,10 @@
+iProcsForModule gps_baseband
+
+iProc default {} {
+
+   iReset
+   iNote "SSNContinuityVerify(default)"
+   iRunLoop -time 160000ps
+   iRunLoop -time 160000ps
+
+}

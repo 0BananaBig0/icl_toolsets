@@ -1,0 +1,36 @@
+# Constructed Tcl script-body roles and expression/substitution coverage.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc control {{limit 3}} {
+  for {set i 0} {$i < $limit} {incr i} {
+    iWrite reg($i) 1
+    iApply
+  }
+  while {$i > 0} {
+    incr i -1
+  }
+  set result [lmap value {1 2} {expr {$value + 1}}]
+  if {$limit == 0} then {
+    iNote -comment "zero"
+  } elseif {$limit == 1} {
+    iNote -comment "one"
+  } else {
+    iNote -comment "other"
+  }
+  catch {iGetStatus} finally {options}
+  try {iGetStatus} on error {message options} {
+    iNote -comment $message
+  } finally {
+    iNote -comment "finished"
+  }
+  switch -regexp -matchvar matches -- $limit {
+    {0;1} -
+    {2\{3} {iApply}
+    default {iNote -comment "fallback"}
+  }
+  switch -- $limit 0 {iApply} default {iNote -comment "fallback"}
+}
+namespace eval ::example {
+  proc helper {} {return [expr {1 + 2}]}
+  helper
+}

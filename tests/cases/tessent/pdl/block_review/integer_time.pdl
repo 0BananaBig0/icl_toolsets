@@ -1,0 +1,7 @@
+# Completed from collected Tessent SSN and MemoryBist files; integer time compatibility.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iRunLoop -time 400ns
+iRunLoop -time 160000ps
+}

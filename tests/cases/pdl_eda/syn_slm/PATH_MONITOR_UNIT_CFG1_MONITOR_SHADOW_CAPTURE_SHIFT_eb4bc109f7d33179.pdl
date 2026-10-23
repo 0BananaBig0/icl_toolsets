@@ -1,0 +1,5 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_UNIT_CFG1_MONITOR_SHADOW_CAPTURE_SHIFT
+iProc read_shadow_out {value} {
+  iRead shadow_out $value;
+}

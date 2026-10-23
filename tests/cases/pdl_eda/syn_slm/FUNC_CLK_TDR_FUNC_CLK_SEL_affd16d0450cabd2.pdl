@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule FUNC_CLK_TDR_FUNC_CLK_SEL
+iProc write_Value {value} {
+  iWrite Value $value;
+}
+iProc read_Value {value} {
+  iRead Value $value;
+}

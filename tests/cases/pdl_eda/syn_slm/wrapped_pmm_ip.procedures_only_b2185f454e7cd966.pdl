@@ -1,0 +1,216 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule wrapped_pmm_ip
+iProc verify {} {
+  iNote -status "MODE: verify write PM_MODE_TDR : 6'b010100" ;
+  iWrite PM_MODE_TDR 0b010100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify read PM_MODE_TDR : 6'b010100" ;
+  iRead PM_MODE_TDR 0b010100;
+  iApply;
+  iRunLoop -tck 4;
+   
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b0" ;
+  iWrite LOOP_BYPASS_TDR 0b0;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b0" ;
+  iWrite SIB2_LOOP1_BYPASS_TDR 0b0;
+  iApply;
+  iNote -status "MODE: verify write PATH_SEL_LOOP1: 18'b101010101010101010" ;
+  iWrite PATH_SEL_LOOP1 0b101010101010101010;
+  iApply;
+  iNote -status "MODE: verify write DELAY_SEL_LOOP1 : 30'b101010101010101010101010101010" ;
+  iWrite DELAY_SEL_LOOP1 0b101010101010101010101010101010;
+  iApply;
+  iNote -status "MODE: verify read PATH_SEL_LOOP1: 18'b101010101010101010" ;
+  iRead PATH_SEL_LOOP1 0b101010101010101010;
+  iApply;
+  iNote -status "MODE: verify read DELAY_SEL_LOOP1 : 30'b101010101010101010101010101010" ;
+  iRead DELAY_SEL_LOOP1 0b101010101010101010101010101010;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b1" ;
+  iWrite SIB2_LOOP1_BYPASS_TDR 0b1;
+  iApply;
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b1" ;
+  iWrite LOOP_BYPASS_TDR 0b1;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify read FUNC_CLK_TDR : 15'b000000000000001" ;
+  iRead FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify write FUNC_CLK_TDR : 15'b000000000000000" ;
+  iWrite FUNC_CLK_TDR 0b000000000000000;
+  iApply;
+  iNote -status "MODE: verify read FUNC_CLK_TDR : 15'b000000000000000" ;
+  iRead FUNC_CLK_TDR 0b000000000000000;
+  iApply;
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b0" ;
+  iWrite LOOP_BYPASS_TDR 0b0;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b0" ;
+  iWrite SIB2_LOOP1_BYPASS_TDR 0b0;
+  iApply;
+  iNote -status "MODE: verify read COLLECT_STATUS_TDR : 12'b0x0x0x0x0x0x" ;
+  iRead COLLECT_LOOP1 0b0x0x0x0x0x0x;
+  iApply;
+  iNote -status "MODE: verify read CAPTURE_LOOP1 : 12'bxxxxxxxxxxxx" ;
+  iRead CAPTURE_LOOP1 0bxxxxxxxxxxxx;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b1" ;
+  iWrite SIB2_LOOP1_BYPASS_TDR 0b1;
+  iApply;
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b1" ;
+  iWrite LOOP_BYPASS_TDR 0b1;
+  iApply;
+}
+  
+iProc stuck_at_slow_pclk {} {
+  iNote -status "MODE: stuck_at_slow_pclk write PM_MODE_TDR : 6'b010101" ;
+  iWrite PM_MODE_TDR 0b010101;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc stuck_at_fast_pclk {} {
+  iNote -status "MODE: stuck_at_fast_pclk write PM_MODE_TDR : 6'b110101" ;
+  iWrite PM_MODE_TDR 0b110101;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc tdf_mode_slow_pclk {} {
+  iNote -status "MODE: tdf_mode_slow_pclk write PM_MODE_TDR : 6'b010110" ;
+  iWrite PM_MODE_TDR 0b010110;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc tdf_mode_fast_pclk {} {
+  iNote -status "MODE: tdf_mode_fast_pclk write PM_MODE_TDR : 6'b110110" ;
+  iWrite PM_MODE_TDR 0b110110;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_slow_pclk {} {
+  iNote -status "MODE: characterization_slow_pclk write PM_MODE_TDR : 6'b010100" ;
+  iWrite PM_MODE_TDR 0b010100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_fast_pclk {} {
+  iNote -status "MODE: characterization_fast_pclk write PM_MODE_TDR : 6'b110100" ;
+  iWrite PM_MODE_TDR 0b110100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc stuck_at_apb_slow_pclk {} {
+  iNote -status "MODE: stuck_at_apb_slow_pclk write PM_MODE_TDR : 6'b010001" ;
+  iWrite PM_MODE_TDR 0b010001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_apb_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc stuck_at_apb_fast_pclk {} {
+  iNote -status "MODE: stuck_at_apb_fast_pclk write PM_MODE_TDR : 6'b110001" ;
+  iWrite PM_MODE_TDR 0b110001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_apb_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc tdf_mode_apb_slow_pclk {} {
+  iNote -status "MODE: tdf_mode_apb_slow_pclk write PM_MODE_TDR : 6'b010010" ;
+  iWrite PM_MODE_TDR 0b010010;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_apb_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc tdf_mode_apb_fast_pclk {} {
+  iNote -status "MODE: tdf_mode_apb_fast_pclk write PM_MODE_TDR : 6'b110010" ;
+  iWrite PM_MODE_TDR 0b110010;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_apb_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_apb_slow_pclk {} {
+  iNote -status "MODE: characterization_apb_slow_pclk write PM_MODE_TDR : 6'b010000" ;
+  iWrite PM_MODE_TDR 0b010000;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_apb_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_apb_fast_pclk {} {
+  iNote -status "MODE: characterization_apb_fast_pclk write PM_MODE_TDR : 6'b110000" ;
+  iWrite PM_MODE_TDR 0b110000;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_apb_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_slow_pclk_debug {} {
+  iNote -status "MODE: characterization_slow_pclk_debug write PM_MODE_TDR : 6'b011100" ;
+  iWrite PM_MODE_TDR 0b011100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_slow_pclk_debug write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_fast_pclk_debug {} {
+  iNote -status "MODE: characterization_fast_pclk_debug write PM_MODE_TDR : 6'b111100" ;
+  iWrite PM_MODE_TDR 0b111100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_fast_pclk_debug write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iWrite FUNC_CLK_TDR 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+

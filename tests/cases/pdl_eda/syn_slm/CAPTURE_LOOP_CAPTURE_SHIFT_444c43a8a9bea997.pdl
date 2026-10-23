@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule CAPTURE_LOOP_CAPTURE_SHIFT
+iProc read_CaptureBit {value} {
+  iRead CaptureBit $value;
+}
+iProc read_Shadow {value} {
+  iRead Shadow $value;
+}

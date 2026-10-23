@@ -8,6 +8,8 @@ usage, editor setup, supported features and practical limitations.
 | Document | Purpose |
 |---|---|
 | [Project requirements](requirements.md) | Current product, architecture, quality, testing and delivery requirements. |
+| [PDL tools](pdl-tools.md) | Separate Tcl/PDL architecture, static dependency build, analysis limits and verification. |
+| [PDL block review](pdl-block-review.md) | IEEE clauses 7–8, PDL fixtures, upstream comparison and syntax-review evidence. |
 | [Developer guide](development.md) | Shared processing pipeline, source layout, build/test commands and contribution practices. |
 | [Coding style](coding-style.md) | Required Google C++ naming/layout, generator exceptions and Makefile conventions. |
 | [ICL conformance review](icl-conformance-review.md) | Block-by-block IEEE/vendor evidence and compatibility decisions. |

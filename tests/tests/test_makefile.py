@@ -17,6 +17,17 @@ class BuildGraph(unittest.TestCase):
                  f'prefix={prefix}', f'MANIFEST={prefix}/manifest'],
                 cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            self.assertEqual({p.name for p in (prefix / 'bin').iterdir()},
+                             {'icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp'})
+            for name in ('icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp'):
+                installed = subprocess.run([str(prefix / 'bin' / name), '--version'],
+                                           capture_output=True, text=True, timeout=5)
+                self.assertEqual(installed.returncode, 0, installed.stderr)
+                self.assertTrue(installed.stdout.startswith(name + ' '))
+            notices = prefix / 'share/doc/icl-format/third-party-notices.md'
+            self.assertTrue(notices.is_file())
+            self.assertIn('Regents of the University of', notices.read_text())
+            self.assertIn(str(notices), (prefix / 'manifest').read_text())
             headers = sorted((prefix / 'include/icl-format').glob('*.h'))
             self.assertEqual({header.name for header in headers},
                              {header.name for header in (ROOT / 'src').glob('*.h')})

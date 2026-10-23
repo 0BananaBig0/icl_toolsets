@@ -1,0 +1,18 @@
+# Adapted/completed from IEEE 1687-2014, clauses 7.5.5 and 7.9.5.
+# Assumes the associated ICL module has BIST_engage, BIST_mode and bist_sig.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc start_bist {bistID {bist_mode 0b110}} {
+iWrite BIST_engage[$bistID] 0b1
+iWrite BIST_mode $bist_mode
+iApply
+iRunLoop 10000 -tck
+}
+iProc read_signature {{signature 0xaaaa5555}} {
+iRead bist_sig $signature
+iApply
+}
+iProc run_bist {} {
+iCall start_bist 42
+iCall read_signature
+}

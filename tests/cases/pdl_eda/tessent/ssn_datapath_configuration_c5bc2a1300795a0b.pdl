@@ -1,0 +1,9 @@
+#
+# PDL for configuring top-level mux.
+# When mux select=1'b0, gps_baseband physical blocks are byapssed
+#
+iProcsForModule chip_top
+iProc include_gps_blocks_in_ssn_datapath {} {
+  iCall chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.setup select_secondary_bus 0b1
+}
+

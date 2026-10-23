@@ -1,0 +1,32 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PM_MODE_TDR_PM_MODE
+iProc write_ClockDividerTestEnable {value} {
+  iWrite ClockDividerTestEnable $value;
+}
+iProc read_ClockDividerTestEnable {value} {
+  iRead ClockDividerTestEnable $value;
+}
+iProc write_TestEnable {value} {
+  iWrite TestEnable $value;
+}
+iProc read_TestEnable {value} {
+  iRead TestEnable $value;
+}
+iProc write_DebugEnable {value} {
+  iWrite DebugEnable $value;
+}
+iProc read_DebugEnable {value} {
+  iRead DebugEnable $value;
+}
+iProc write_TAISelect {value} {
+  iWrite TAISelect $value;
+}
+iProc read_TAISelect {value} {
+  iRead TAISelect $value;
+}
+iProc write_Mode {value} {
+  iWrite Mode $value;
+}
+iProc read_Mode {value} {
+  iRead Mode $value;
+}

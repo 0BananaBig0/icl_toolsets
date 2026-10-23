@@ -1,0 +1,31 @@
+# Constructed from Honza255/icl_parser pdl.g4 keyword alternatives at333f8bc; checked IEEE7.6(k2),7.7.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iWrite iPDLLevel 1
+iWrite iProcsForModule 1
+iWrite iProc 1
+iWrite iPrefix 1
+iWrite iCall 1
+iWrite iReset 1
+iWrite iUseProcNameSpace 1
+iWrite iRead 1
+iWrite iWrite 1
+iWrite iScan 1
+iWrite iApply 1
+iWrite iNote 1
+iWrite iTake 1
+iWrite iRelease 1
+iWrite iMerge 1
+iWrite iClock 1
+iWrite iClockOverride 1
+iWrite iRunLoop 1
+iWrite iOverrideScanInterface 1
+iWrite iState 1
+iWrite iGetReadData 1
+iWrite iGetMiscompares 1
+iWrite iGetStatus 1
+iWrite iSetFail 1
+iWrite on 1
+iWrite off 1
+}

@@ -1,0 +1,5 @@
+# IEEE7.6(k6), continuation in argument list
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {value \
+ {other 1}} {iWrite reg $value}

@@ -1,0 +1,4 @@
+# Constructed static-analysis regression; IEEE1687-2014 8.1,7.9.17.
+iPDLLevel 1 -version STD_1687_2014
+set mode -time
+iRunLoop $mode 1.0ns

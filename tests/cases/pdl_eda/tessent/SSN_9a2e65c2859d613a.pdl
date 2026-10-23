@@ -1,0 +1,10 @@
+iProcsForModule processor_core
+
+iProc default {} {
+
+   iReset
+   iNote "SSNContinuityVerify(default)"
+   iRunLoop -time 160000ps
+   iRunLoop -time 160000ps
+
+}

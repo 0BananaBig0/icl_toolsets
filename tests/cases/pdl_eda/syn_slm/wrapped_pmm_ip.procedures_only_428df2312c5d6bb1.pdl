@@ -1,0 +1,258 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule wrapped_pmm_ip
+iProc verify {} {
+  iNote -status "MODE: verify write PM_MODE_TDR : 6'b010100" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify read PM_MODE_TDR : 6'b010100" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.read_tdr_shift_cap 0b010100;
+  iApply;
+  iRunLoop -tck 4;
+   
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b0" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_sib_loop_bypass_tdr_inst.write_tdr_shift_cap 0b0;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b0" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_sib2_bypass_tdr_inst_1.write_tdr_shift_cap 0b0;
+  iApply;
+  iNote -status "MODE: verify write PATH_SEL_LOOP1: 18'b101010101010101010" ;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.path_sel_reg_inst.write_path_sel_reg 0b101;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.path_sel_reg_inst.write_path_sel_reg 0b010;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.path_sel_reg_inst.write_path_sel_reg 0b101;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.path_sel_reg_inst.write_path_sel_reg 0b010;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.path_sel_reg_inst.write_path_sel_reg 0b101;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.path_sel_reg_inst.write_path_sel_reg 0b010;
+  iApply;
+  iNote -status "MODE: verify write DELAY_SEL_LOOP1 : 30'b101010101010101010101010101010" ;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.delay_selector_capture_ff.write_o_delay_select 0b10101;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.delay_selector_capture_ff.write_o_delay_select 0b01010;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.delay_selector_capture_ff.write_o_delay_select 0b10101;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.delay_selector_capture_ff.write_o_delay_select 0b01010;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.delay_selector_capture_ff.write_o_delay_select 0b10101;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.delay_selector_capture_ff.write_o_delay_select 0b01010;
+  iApply;
+  iNote -status "MODE: verify read PATH_SEL_LOOP1: 18'b101010101010101010" ;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.path_sel_reg_inst.read_path_sel_reg 0b101;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.path_sel_reg_inst.read_path_sel_reg 0b010;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.path_sel_reg_inst.read_path_sel_reg 0b101;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.path_sel_reg_inst.read_path_sel_reg 0b010;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.path_sel_reg_inst.read_path_sel_reg 0b101;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.path_sel_reg_inst.read_path_sel_reg 0b010;
+  iApply;
+  iNote -status "MODE: verify read DELAY_SEL_LOOP1 : 30'b101010101010101010101010101010" ;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.delay_selector_capture_ff.read_o_delay_select 0b10101;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.delay_selector_capture_ff.read_o_delay_select 0b01010;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.delay_selector_capture_ff.read_o_delay_select 0b10101;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.delay_selector_capture_ff.read_o_delay_select 0b01010;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.delay_selector_capture_ff.read_o_delay_select 0b10101;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.delay_selector_capture_ff.read_o_delay_select 0b01010;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b1" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_sib2_bypass_tdr_inst_1.write_tdr_shift_cap 0b1;
+  iApply;
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b1" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_sib_loop_bypass_tdr_inst.write_tdr_shift_cap 0b1;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify read FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.read_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: verify write FUNC_CLK_TDR : 15'b000000000000000" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000000;
+  iApply;
+  iNote -status "MODE: verify read FUNC_CLK_TDR : 15'b000000000000000" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.read_tdr_shift_cap 0b000000000000000;
+  iApply;
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b0" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_sib_loop_bypass_tdr_inst.write_tdr_shift_cap 0b0;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b0" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_sib2_bypass_tdr_inst_1.write_tdr_shift_cap 0b0;
+  iApply;
+  iNote -status "MODE: verify read COLLECT_STATUS_TDR : 12'b0x0x0x0x0x0x" ;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.pmu_status_detector_inst.read_pmu_status_reg 0b0;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.toggle_detector_inst.read_in_toggle_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.pmu_status_detector_inst.read_pmu_status_reg 0b0;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.toggle_detector_inst.read_in_toggle_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.pmu_status_detector_inst.read_pmu_status_reg 0b0;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.toggle_detector_inst.read_in_toggle_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.pmu_status_detector_inst.read_pmu_status_reg 0b0;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.toggle_detector_inst.read_in_toggle_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.pmu_status_detector_inst.read_pmu_status_reg 0b0;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.toggle_detector_inst.read_in_toggle_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.pmu_status_detector_inst.read_pmu_status_reg 0b0;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.toggle_detector_inst.read_in_toggle_out 0bx;
+  iApply;
+  iNote -status "MODE: verify read CAPTURE_LOOP1 : 12'bxxxxxxxxxxxx" ;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.delay_selector_capture_ff.read_capture_data_reg 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit0_loop1.monitor_shadow_inst.read_shadow_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.delay_selector_capture_ff.read_capture_data_reg 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit1_loop1.monitor_shadow_inst.read_shadow_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.delay_selector_capture_ff.read_capture_data_reg 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit2_loop1.monitor_shadow_inst.read_shadow_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.delay_selector_capture_ff.read_capture_data_reg 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit3_loop1.monitor_shadow_inst.read_shadow_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.delay_selector_capture_ff.read_capture_data_reg 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit4_loop1.monitor_shadow_inst.read_shadow_out 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.delay_selector_capture_ff.read_capture_data_reg 0bx;
+  iCall pmu_bundle_inst.path_monitor_unit5_loop1.monitor_shadow_inst.read_shadow_out 0bx;
+  iApply;
+  iNote -status "MODE: verify write SIB2_LOOP1_BYPASS_TDR: 1'b1" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_sib2_bypass_tdr_inst_1.write_tdr_shift_cap 0b1;
+  iApply;
+  iNote -status "MODE: verify write LOOP_BYPASS_TDR: 1'b1" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_sib_loop_bypass_tdr_inst.write_tdr_shift_cap 0b1;
+  iApply;
+}
+  
+iProc stuck_at_slow_pclk {} {
+  iNote -status "MODE: stuck_at_slow_pclk write PM_MODE_TDR : 6'b010101" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010101;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc stuck_at_fast_pclk {} {
+  iNote -status "MODE: stuck_at_fast_pclk write PM_MODE_TDR : 6'b110101" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b110101;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc tdf_mode_slow_pclk {} {
+  iNote -status "MODE: tdf_mode_slow_pclk write PM_MODE_TDR : 6'b010110" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010110;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc tdf_mode_fast_pclk {} {
+  iNote -status "MODE: tdf_mode_fast_pclk write PM_MODE_TDR : 6'b110110" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b110110;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_slow_pclk {} {
+  iNote -status "MODE: characterization_slow_pclk write PM_MODE_TDR : 6'b010100" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_fast_pclk {} {
+  iNote -status "MODE: characterization_fast_pclk write PM_MODE_TDR : 6'b110100" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b110100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc stuck_at_apb_slow_pclk {} {
+  iNote -status "MODE: stuck_at_apb_slow_pclk write PM_MODE_TDR : 6'b010001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_apb_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc stuck_at_apb_fast_pclk {} {
+  iNote -status "MODE: stuck_at_apb_fast_pclk write PM_MODE_TDR : 6'b110001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b110001;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: stuck_at_apb_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+  
+iProc tdf_mode_apb_slow_pclk {} {
+  iNote -status "MODE: tdf_mode_apb_slow_pclk write PM_MODE_TDR : 6'b010010" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010010;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_apb_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc tdf_mode_apb_fast_pclk {} {
+  iNote -status "MODE: tdf_mode_apb_fast_pclk write PM_MODE_TDR : 6'b110010" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b110010;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: tdf_mode_apb_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_apb_slow_pclk {} {
+  iNote -status "MODE: characterization_apb_slow_pclk write PM_MODE_TDR : 6'b010000" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b010000;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_apb_slow_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_apb_fast_pclk {} {
+  iNote -status "MODE: characterization_apb_fast_pclk write PM_MODE_TDR : 6'b110000" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b110000;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_apb_fast_pclk write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_slow_pclk_debug {} {
+  iNote -status "MODE: characterization_slow_pclk_debug write PM_MODE_TDR : 6'b011100" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b011100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_slow_pclk_debug write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+iProc characterization_fast_pclk_debug {} {
+  iNote -status "MODE: characterization_fast_pclk_debug write PM_MODE_TDR : 6'b111100" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_tdr_shift_cap 0b111100;
+  iApply;
+  iRunLoop -tck 4;
+  iNote -status "MODE: characterization_fast_pclk_debug write FUNC_CLK_TDR : 15'b000000000000001" ;
+  iCall path_monitor_controller_inst.path_monitor_controller_tai_inst.IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_tdr_shift_cap 0b000000000000001;
+  iApply;
+  iRunLoop -tck 4;
+}
+

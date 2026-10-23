@@ -1,0 +1,8 @@
+# IEEE1687-2014 7.9.13, completed/adapted syntax input.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iOverrideScanInterface blocka_i1.client1 -capture off
+iOverrideScanInterface block2_i1.c2 block2_I1.c3 -update off
+iOverrideScanInterface u1.target u2.shadow1 u3.shadow2 -broadcast on
+}

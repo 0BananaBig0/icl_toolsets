@@ -1,0 +1,11 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_UNIT_CFG1_DELAY_SEL_CAPTURE_FF_DELAY_SELECT_CAPTURE_SHIFT
+iProc write_o_delay_select {value} {
+  iWrite o_delay_select $value;
+}
+iProc read_o_delay_select {value} {
+  iRead o_delay_select $value;
+}
+iProc read_capture_data_reg {value} {
+  iRead capture_data_reg $value;
+}

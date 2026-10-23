@@ -1,0 +1,5 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_UNIT_CFG1_TOGGLE_DETECTOR_COLLECT_STATUS
+iProc read_in_toggle_out {value} {
+  iRead in_toggle_out $value;
+}

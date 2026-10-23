@@ -2,6 +2,29 @@
 
 Every file under `tests/cases/` sits in a directory naming where it came from. `pass/` files must format cleanly, idempotently and without losing a character; `fail/` files must be rejected with exit code 2. Both are run through stdin *and* through a real file.
 
+## PDL fixtures — 2026-10-23
+
+The [PDL block manifest](pdl_blocks.json) additionally classifies maintained
+`block_review/` inputs under `standard/pdl`, `ours/pdl`, `tessent/pdl` and
+`upstream/pdl`. Each entry records its clause and expected acceptance. See the
+[block review](../../docs/pdl-block-review.md) for example completion/typography
+repairs, vendor extensions and the pinned upstream comparison. The upstream
+case is constructed from its PDL grammar keyword list; it is not an upstream
+PDL test. Imported complete vendor streams retain their own
+[provenance manifest](pdl_eda/sources.json).
+
+- `standard/pdl/basic.pdl`: manually completed/adapted IEEE 1687-2014 clauses
+  7.5.5 and 7.9.5 procedure examples, with declarations/default arguments added
+  to form a complete PDL command stream. Assumed ICL objects are named in comments.
+- `standard/pdl/commands.pdl`: completed command forms from clauses 7.9 and
+  8.3, including module bindings and procedure bodies; assumed hardware context
+  is explicit in comments.
+- `ours/pdl/nested.pdl` and `control_flow.pdl`: handwritten level-1 nesting,
+  data preservation, Tcl script-body roles and variable/substitution fixtures.
+- `tests/src/test_pdl_tools.py`: constructed positive/negative CLI and real stdio
+  LSP scenarios, including values from clauses 7.7–7.8; tests create their own
+  temporary workspace ICL/PDL inputs and do not execute PDL.
+
 ## Constructed syntax edge fixtures — 2026-10-22
 
 [`ours/syntax_edges/`](ours/syntax_edges/README.md) adds 72 handwritten cases
@@ -448,3 +471,11 @@ matrix uses those permissions, not the implementation's token list. Provenance,
 invalid-name rules and the callback token-boundary exception are recorded in
 [its README](ours/keyword_contexts/README.md). Generated combinations remain under
 ignored `tests/generated/ours/keyword_contexts/`.
+
+## PDL from EDA projects
+
+[pdl_eda/](pdl_eda/README.md) preserves 79 complete byte-unique PDL streams from
+114 source paths below `~/remote_eda/lianghuaxiao`, with full hashes and source
+mappings. Canonical categories are Synopsys SLM (47) and Tessent (32). Six
+nonportable argument lists are explicit negative cases; the other 73 are positive
+formatter/LSP cases. These fixtures retain their original notices and ownership.

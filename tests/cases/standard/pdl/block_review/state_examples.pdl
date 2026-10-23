@@ -1,0 +1,11 @@
+# IEEE1687-2014 7.9.22, completed/adapted static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iState myreg4 0b1101110011
+iState SIBS 0b0010011011
+iState a.b.regz 0b1001010000
+iState a.b.regz 0b1001010000 -LastWrittenValue
+iState a.b.regz 0b1001010000 -LastReadValue
+iState a.b.regz 0b0001000000 -LastMiscompareValue
+}

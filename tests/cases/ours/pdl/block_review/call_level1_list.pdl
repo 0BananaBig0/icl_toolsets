@@ -1,0 +1,4 @@
+# Constructed static-analysis regression; IEEE1687-2014 8.1.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule M
+iProc p {} {iCall q {bad value} a-b}

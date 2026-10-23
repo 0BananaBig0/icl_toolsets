@@ -1,0 +1,50 @@
+# PDL commands sourced inside the all_branches pattern set.
+# External snapshots stand in for the omitted measurement/counting logic.
+iWrite pmu0_counters 0x3CA5
+iWrite pmu1_counters 0xE196
+iWrite pmu0_captures 0b101
+iWrite pmu1_captures 0b011
+iApply
+iWrite PMC.MODE_SELECT.Value 1
+iWrite PMC.PATH_SELECT.Value 0b101
+iApply
+
+# One request spans mutually exclusive branches; the retargeter must switch.
+iRead PMC.MODE_SELECT.Value 1
+iRead PMC.PATH_SELECT.Value 0b101
+iRead PMU0.Counter1.Value 0xA5
+iRead PMU0.Counter2.Value 0x3C
+iRead PMU1.Counter1.Value 0x96
+iRead PMU1.Counter2.Value 0xE1
+iRead PMU0.Shadow.Value 1
+iRead PMU0.Capture1.Value 0
+iRead PMU0.Capture2.Value 1
+iRead PMU1.Shadow.Value 1
+iRead PMU1.Capture1.Value 1
+iRead PMU1.Capture2.Value 0
+iApply
+
+iWrite PMC.SIB1.Value 0
+iApply
+iRead PMC.SIB1.Value 0
+iApply
+
+# Reopening the parent must retain configuration and capture new snapshots.
+iWrite pmu0_counters 0xC35A
+iWrite pmu1_counters 0x1E69
+iWrite pmu0_captures 0b010
+iWrite pmu1_captures 0b100
+iApply
+iRead PMC.MODE_SELECT.Value 1
+iRead PMC.PATH_SELECT.Value 0b101
+iRead PMU0.Counter1.Value 0x5A
+iRead PMU0.Counter2.Value 0xC3
+iRead PMU1.Counter1.Value 0x69
+iRead PMU1.Counter2.Value 0x1E
+iRead PMU0.Shadow.Value 0
+iRead PMU0.Capture1.Value 1
+iRead PMU0.Capture2.Value 0
+iRead PMU1.Shadow.Value 0
+iRead PMU1.Capture1.Value 0
+iRead PMU1.Capture2.Value 1
+iApply

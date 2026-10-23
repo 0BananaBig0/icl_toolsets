@@ -1,0 +1,8 @@
+# IEEE1687-2014 8.4.3, completed/adapted syntax input.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc inspect {} {
+iGetStatus -clear
+iCall myProc
+set num_fails [iGetStatus]
+}

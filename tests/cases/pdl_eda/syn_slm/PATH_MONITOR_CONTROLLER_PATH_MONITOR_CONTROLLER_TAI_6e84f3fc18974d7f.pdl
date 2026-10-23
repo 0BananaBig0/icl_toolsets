@@ -1,0 +1,44 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_CONTROLLER_PATH_MONITOR_CONTROLLER_TAI
+iProc write_sib2_inst_1 {value} {
+  iCall IEEE_1687_module_inst.pmm_tai_sib_inst.sib2_inst_1.write_Value $value;
+}
+iProc read_sib2_inst_1 {value} {
+  iCall IEEE_1687_module_inst.pmm_tai_sib_inst.sib2_inst_1.read_Value $value;
+}
+iProc write_loop_sel_inst {value} {
+  iCall IEEE_1687_module_inst.pmm_tai_sib_inst.loop_sel_inst.write_Value $value;
+}
+iProc read_loop_sel_inst {value} {
+  iCall IEEE_1687_module_inst.pmm_tai_sib_inst.loop_sel_inst.read_Value $value;
+}
+iProc write_sib1_inst {value} {
+  iCall IEEE_1687_module_inst.pmm_tai_sib_inst.sib1_inst.write_Value $value;
+}
+iProc read_sib1_inst {value} {
+  iCall IEEE_1687_module_inst.pmm_tai_sib_inst.sib1_inst.read_Value $value;
+}
+iProc write_IEEE_1687_tm_tdr_inst {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.write_Value $value;
+}
+iProc read_IEEE_1687_tm_tdr_inst {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_tm_tdr_inst.read_Value $value;
+}
+iProc write_IEEE_1687_pmu_func_clk_gate_en_tdr_inst {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.write_Value $value;
+}
+iProc read_IEEE_1687_pmu_func_clk_gate_en_tdr_inst {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_func_clk_gate_en_tdr_inst.read_Value $value;
+}
+iProc write_IEEE_1687_pmu_sib_loop_bypass_tdr_inst {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_sib_loop_bypass_tdr_inst.write_Value $value;
+}
+iProc read_IEEE_1687_pmu_sib_loop_bypass_tdr_inst {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_pmu_sib_loop_bypass_tdr_inst.read_Value $value;
+}
+iProc write_IEEE_1687_sib2_bypass_tdr_inst_1 {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_sib2_bypass_tdr_inst_1.write_Value $value;
+}
+iProc read_IEEE_1687_sib2_bypass_tdr_inst_1 {value} {
+  iCall IEEE_1687_module_inst.IEEE_1687_dr_inst.IEEE_1687_sib2_bypass_tdr_inst_1.read_Value $value;
+}

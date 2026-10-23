@@ -1,0 +1,4 @@
+# Constructed static-analysis regression; IEEE1687-2014 8.1,7.9.12.
+iPDLLevel 1 -version STD_1687_2014
+set option -ir
+iScan $option si 8 -si 0x00

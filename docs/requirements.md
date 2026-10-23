@@ -1,8 +1,8 @@
 # Project requirements
 
 These are the acceptance targets for **icl_toolsets**, not a claim that every
-target has been met. The installed executables remain `icl-format` and
-`icl-lsp`. See [verification and limits](icl-verification.md) for dated evidence
+target has been met. The installed executables are `icl-format`, `icl-lsp`, `pdl-format` and
+`pdl-lsp`. See [verification and limits](icl-verification.md) for dated evidence
 and [corpus deduplication](../tests/cases/CORPUS_DEDUPLICATION.md) for the later
 corpus audit. The [historical record](history/requirements-legacy.md) preserves
 the original requests and implementation history.
@@ -40,8 +40,10 @@ the original requests and implementation history.
   [conformance review](icl-conformance-review.md).
 - **L2 — Separate languages:** ICL and PDL have different grammars, lexical rules
   and keyword sets. Never reuse a common token definition or mix their rules.
-  If PDL support is added, give it separate Flex/Bison sources and tests. There
-  is currently no PDL parser; this requirement does not request creating one.
+  PDL uses Tcl parsing APIs and a separate PDL tree, command specification and
+  tests; it does not use ICL Flex/Bison tokens or grammar. Never evaluate source
+  during formatting or analysis. The two PDL tools share their entire language
+  pipeline; transport/CLI infrastructure may be shared across languages.
 - **L3 — Reference authority:** use the normative IEEE clauses to resolve
   correctness questions. Informative examples, Tessent manuals, real tool output
   and third-party parsers provide additional evidence, not replacements for the
@@ -58,7 +60,7 @@ the original requests and implementation history.
 
 ## Shared architecture and code quality
 
-- **A1 — One AST and pipeline:** both executables must share the AST definition
+- **A1 — One AST and pipeline per language:** each language pair must share its AST definition
   and implementation, parser, document analysis and formatting logic. Share the
   processing chain as far toward its end as their functions allow; do not split
   early and duplicate equivalent operations. CLI argument/options structures,
@@ -138,10 +140,12 @@ the original requests and implementation history.
 
 ## Build, delivery and documentation
 
-- **D1 — Build:** provide dynamic and static variants of both executables and
+- **D1 — Build:** provide dynamic and static variants of all four executables and
   target deployment on Rocky Linux 8 and newer compatible environments. Git
   builds require C++17, GNU Make 4.3+, Bison 3.8+ and Flex 2.6+. Static variants
-  require static runtime libraries; dynamic builds must work without them.
+  require static runtime libraries and real static Tcl for PDL; dynamic builds
+  must work without static libraries. PDL requires matching Tcl development
+  headers/libraries; ICL-only builds must remain usable without Tcl.
   Source archives must build without invoking Bison/Flex by including generated
   parser/scanner sources in the archive. Verify compatibility on the actual
   target before claiming it; an archive build on a newer host is insufficient.
@@ -150,16 +154,16 @@ the original requests and implementation history.
   CodeGraph outputs or generated stress data. Hand-maintained scripts and the
   explicitly requested vendor/example test inputs and provenance are maintained
   source material. Distribution-only generated files stay outside Git.
-- **D3 — Installation:** install both commands with a configurable prefix,
+- **D3 — Installation:** install all four commands with a configurable prefix,
   defaulting to `$HOME/.local`, record installed paths and support uninstall.
   For runtime releases, execute installation commands and verify the installed
-  programs, then print the single coc.nvim `icl` server entry, which supplies
-  language services and formatting, plus standalone `icl-format` usage. The
+  programs, then print the coc.nvim `icl` and `pdl` server entries, each supplying
+  language services and formatting, plus standalone formatter usage. The
   installer must not modify personal editor settings. Distinguish
   the tested LSP setup from the optional CLI adapter's unverified end-to-end
   behavior.
 - **D4 — Documentation and license:** use `icl_toolsets` for repository identity
-  and retain the executable names `icl-format` and `icl-lsp`. The root README
+  and retain the four documented executable names. The root README
   must explain features, limitations, installation and use for customers.
   Developer guides and project requirements belong in `docs/`; fixture
   provenance/licenses may stay beside their inputs. Keep the MIT project
@@ -180,3 +184,20 @@ the original requests and implementation history.
 
 See the [documentation index](README.md) for the maintained records. New evidence
 must state its scope and date; a requirements checklist is not itself a test result.
+
+## PDL delivery acceptance
+
+The [PDL design](superpowers/specs/2026-10-23-pdl-tools-design.md) defines the
+new tools: deterministic source-preserving formatting, non-evaluating Tcl syntax
+analysis, local PDL validation, diagnostics/completion/navigation, shared per-language
+trees and dynamic/fully static variants. Runtime-dependent Tcl behavior, complete
+ICL width elaboration and IJTAG execution are outside this editor-tool delivery.
+See [PDL tools](pdl-tools.md) for tested behavior and remaining limits.
+
+PDL review must follow clauses 7–8 block by block, with the preceding block's
+checks confirmed before the next. The [block review](pdl-block-review.md) records
+normative references, source-attributed positive/negative cases, recursive Tcl
+handling and the separate Honza PDL grammar comparison. Keep ICL examples and
+keywords out of the PDL grammar. Both PDL executables must use the same AST,
+analysis and formatter; non-evaluating Tcl parsing does not waive authored-code
+coverage or permit execution of imported procedures.

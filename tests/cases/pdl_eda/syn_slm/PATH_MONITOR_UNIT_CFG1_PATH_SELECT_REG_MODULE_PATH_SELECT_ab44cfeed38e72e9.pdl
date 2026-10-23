@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_UNIT_CFG1_PATH_SELECT_REG_MODULE_PATH_SELECT
+iProc write_path_sel_reg {value} {
+  iWrite path_sel_reg $value;
+}
+iProc read_path_sel_reg {value} {
+  iRead path_sel_reg $value;
+}

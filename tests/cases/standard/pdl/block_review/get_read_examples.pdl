@@ -1,0 +1,12 @@
+# IEEE1687-2014 8.4.1, completed/adapted syntax input.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc inspect {} {
+iRead RegA
+iRead RegB(3:0) 0xf
+iApply
+set a [iGetReadData RegA -hex]
+set b [iGetReadData RegB(3:1)]
+set c [iGetReadData lbits -bin]
+set d [iGetReadData iface -chain data -dec]
+}

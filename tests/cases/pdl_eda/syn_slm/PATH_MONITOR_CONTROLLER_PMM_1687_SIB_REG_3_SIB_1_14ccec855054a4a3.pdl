@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_CONTROLLER_PMM_1687_SIB_REG_3_SIB_1
+iProc write_TDR_shift {value} {
+  iWrite TDR_shift $value;
+}
+iProc read_TDR_shift {value} {
+  iRead TDR_shift $value;
+}

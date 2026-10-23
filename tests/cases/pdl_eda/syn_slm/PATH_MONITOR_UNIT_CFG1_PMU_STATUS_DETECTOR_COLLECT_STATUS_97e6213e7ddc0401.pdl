@@ -1,0 +1,5 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_UNIT_CFG1_PMU_STATUS_DETECTOR_COLLECT_STATUS
+iProc read_pmu_status_reg {value} {
+  iRead pmu_status_reg $value;
+}

@@ -1,0 +1,8 @@
+# standard: IEEE1687-2014 7.9.11; static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iWrite myreg4 0x373
+iWrite myreg4 0xXX0
+iWrite myreg4 0xF
+}

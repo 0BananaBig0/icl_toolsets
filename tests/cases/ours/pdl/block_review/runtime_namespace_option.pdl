@@ -1,0 +1,5 @@
+# Constructed static-analysis regression; IEEE1687-2014 8.1,7.9.4.
+iPDLLevel 1 -version STD_1687_2014
+set option -iProcNameSpace
+iProcsForModule M $option ns
+iProc p {} {iApply}

@@ -1,0 +1,7 @@
+# standard: IEEE1687-2014 7.9.5,7.9.8; completed static parser example.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc myproc {arg1 arg2 {arg3 24} {arg4 0x32} {arg5 1024}} {
+iWrite reg $arg1
+}
+iProc myproc2 {} {iCall myproc 10 20}

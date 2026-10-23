@@ -1,0 +1,6 @@
+# Constructed static-analysis regression; IEEE1687-2014 7.9.8 args.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule M
+iProc p {arg} {
+iCall q 12 0XAx 0B1x ENUM block.reg[7:0] reg(3) $arg
+}

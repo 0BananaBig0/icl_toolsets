@@ -1,0 +1,9 @@
+# standard: IEEE1687-2014 7.9.10; static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iRead reg
+iRead reg 0xff
+iRead reg Ready
+iRead reg[$bit] $expected
+}

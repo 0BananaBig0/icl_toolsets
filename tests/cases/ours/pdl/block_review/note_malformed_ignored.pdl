@@ -1,0 +1,9 @@
+# IEEE1687-2014 7.9.21, completed/adapted static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iNote
+iNote -bad "message"
+iNote -status
+iNote extra extra extra
+}

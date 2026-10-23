@@ -4,6 +4,11 @@
       "command": "icl-lsp",
       "filetypes": ["icl"],
       "rootPatterns": [".git"]
+    },
+    "pdl": {
+      "command": "pdl-lsp",
+      "filetypes": ["pdl"],
+      "rootPatterns": [".git"]
     }
   }
 }

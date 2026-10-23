@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule PATH_MONITOR_CONTROLLER_IEEE_1687_one_bit_tdr_SIB_2
+iProc write_tdr_shift_cap {value} {
+  iWrite tdr_shift_cap $value;
+}
+iProc read_tdr_shift_cap {value} {
+  iRead tdr_shift_cap $value;
+}

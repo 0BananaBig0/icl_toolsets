@@ -1,0 +1,11 @@
+# IEEE1687-2014 7.9.14, completed/adapted static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iWrite myport 0xf0
+iWrite myport(9:8) 3
+iApply
+iWrite myport(3) 1
+iApply
+iApply -together
+}

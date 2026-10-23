@@ -1,0 +1,6 @@
+# IEEE1687-2014 7.9.12, completed/adapted syntax input.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc scan {} {
+iScan 9bad 8
+}

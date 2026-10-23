@@ -1,0 +1,5 @@
+# ours: IEEE1687-2014 7.9.3–8; completed static parser example.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc iRead {iWrite} {iWrite iRead $iWrite}
+iProc caller {} {iCall iRead 1}

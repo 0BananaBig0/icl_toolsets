@@ -1,0 +1,7 @@
+# IEEE1687-2014 7.9.16, completed/adapted static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iClockOverride MyToSclk -freqMultiplier 5
+iClockOverride clock -source child.clock -freqMultiplier 0x2 -freqDivider 2
+}

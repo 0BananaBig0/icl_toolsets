@@ -1,0 +1,7 @@
+# standard: IEEE1687-2014 7.9.9; static syntax case.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iReset
+iReset -sync
+}

@@ -5,7 +5,7 @@ instructions are in the [main README](../README.md).
 
 ## Shared architecture
 
-The two executables link the same scanner, parser, AST definitions, document
+The two ICL executables link the same scanner, parser, AST definitions, document
 analysis and formatting implementation. `ParsedDocument` owns the source,
 parser driver, AST and semantic index. The formatting chain is:
 
@@ -28,10 +28,11 @@ workspace management and responses form the necessary outer boundaries.
 | `src/icl_semantics.{h,cc}` | Parsed documents, scoped declarations/references and workspace resolution. |
 | `src/format_tree.{h,cc}` | Layout decisions and rendering. |
 | `src/format_job.{h,cc}` | Shared formatting requests, outcomes and diagnostics. |
-| `src/icl_format_main.cc` | CLI options, input files and output handling. |
-| `src/icl_lsp_main.cc`, `src/json.{h,cc}` | LSP services, framing and JSON transport. |
+| `src/format_cli.h`, `src/*_format_main.cc` | Shared CLI implementation and language adapters. |
+| `src/lsp_server.h`, `src/*_lsp_main.cc`, `src/json.{h,cc}` | Shared LSP services/transport and separate language adapters. |
+| `src/pdl_document.{h,cc}` | Shared PDL source tree, non-evaluating Tcl parsing, analysis and formatting; see [PDL tools](pdl-tools.md). |
 
-The AST uses three node shapes: comment, statement and header/body block. Nodes
+The ICL AST uses three node shapes: comment, statement and header/body block. Nodes
 are non-copyable and owned by an `AstUnit` arena; child pointers are non-owning.
 Formatting walks the AST through `AstVisitor`. Source spans do not depend on
 generated Bison types. Semantic indexing and formatting share those spans;
@@ -55,8 +56,9 @@ checks may need additional tools described by their scripts.
 
 | Command | Checks or output |
 |---|---|
-| `make dynamic` | Dynamic `build/icl-format` and `build/icl-lsp`. |
-| `make static` | Static variants; requires static runtime libraries. |
+| `make dynamic` | Dynamic ICL/PDL formatter and LSP pairs in `build/`. |
+| `make static` | Static variants; requires static runtime libraries and real static Tcl. |
+| `make pdlcheck` | PDL functional/LSP tests, complete vendor corpus and source-attributed block cases. |
 | `make check-dynamic` | Full dynamic functional suite, live corpus diagnostics, syntax properties, corpus audit and grammar/scanner rule coverage. |
 | `make keywordcheck` | Independent keyword/identifier-context matrix through CLI and live LSP. |
 | `make syntaxcheck` | Independent IEEE whitespace/comment and nested-index transformations; generated inputs remain ignored. |

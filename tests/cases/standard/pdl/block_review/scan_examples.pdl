@@ -1,0 +1,12 @@
+# IEEE1687-2014 7.9.12, completed/adapted syntax input.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc scan {} {
+iScan myif 8 -si 0b01010101 -so 0b11xx00xx
+iScan myif 8 -si 0b11 -so 0b11
+iScan myif 12 -si "0b0000 0000 000 0"
+iScan myif 12 -si { 0b0000
+0000
+000
+0 }
+}

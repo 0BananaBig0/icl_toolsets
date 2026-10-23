@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule COLLECT_LOOP_COLLECT_STATUS
+iProc read_Status {value} {
+  iRead Status $value;
+}
+iProc read_Toggle {value} {
+  iRead Toggle $value;
+}

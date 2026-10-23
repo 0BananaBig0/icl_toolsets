@@ -1,0 +1,47 @@
+#--------------------------------------------------------------------------------
+#
+#  Unpublished work. Copyright 2026 Siemens
+#
+#  This material contains trade secrets or otherwise confidential 
+#  information owned by Siemens Industry Software Inc. or its affiliates 
+#  (collectively, SISW), or its licensors. Access to and use of this 
+#  information is strictly limited as set forth in the Customer's 
+#  applicable agreements with SISW.
+#
+#--------------------------------------------------------------------------------
+#  File created by: Tessent Shell
+#          Version: 2026.2
+#       Created on: Wed Aug 12 13:58:39 CST 2026
+#--------------------------------------------------------------------------------
+
+iProcsForModule gps_baseband_rtl1_tessent_edt_c1_int
+iProc setup {args} {
+   if {[expr [llength $args]%2 != 0]} {
+      display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+      return -code error
+   }
+
+   set edt_bypass 0
+   foreach {param value} $args {
+      set param [string tolower $param]
+      if {$param eq "edt_bypass"} {
+         set edt_bypass $value
+      } else {
+         display_message -error "Invalid parameter '$param'. Valid parameter is 'edt_bypass'."
+         return -code error
+      }
+      if {![string is boolean -strict $value]} {
+         display_message -error "Invalid non-boolean value '$value' for parameter '$param'."
+         return -code error
+      }
+   }
+
+   if {$edt_bypass} {
+      iWrite edt_bypass on
+   } else {
+      iWrite edt_bypass off
+   }
+   iApply
+}
+
+

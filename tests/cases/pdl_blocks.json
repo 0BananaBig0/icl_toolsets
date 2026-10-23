@@ -1,0 +1,939 @@
+[
+  {
+    "block": "lexical",
+    "path": "standard/pdl/block_review/numbers.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.8 Example1"
+  },
+  {
+    "block": "lexical",
+    "path": "standard/pdl/block_review/vectors.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.8 Examples2\u20133"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/keywords_as_names.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k2),7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/comments_continuations.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k3\u20136)"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/bad_hex.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/bad_binary.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/empty_hex.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/signed.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/sized_icl.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/separator.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/bad_object_digit.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/bad_hierarchy.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/bad_vector_index.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/bad_vector_range.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/empty_vector.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/argument_vectors.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.7"
+  },
+  {
+    "block": "procedures",
+    "path": "standard/pdl/block_review/procedure_defaults.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.5,7.9.8"
+  },
+  {
+    "block": "procedures",
+    "path": "standard/pdl/block_review/procedure_prefix_namespace.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.4,7.9.6\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_module.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_namespace.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_proc_name.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_arg_name.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_default.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_call.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_prefix_vector.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_call_namespace.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/bad_default_order.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/duplicate_arguments.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/nested_level_zero.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/keywords_as_procedures.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.3\u20138"
+  },
+  {
+    "block": "iReset",
+    "path": "standard/pdl/block_review/reset_forms.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.9"
+  },
+  {
+    "block": "iReset",
+    "path": "ours/pdl/block_review/reset_bad_option.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.9"
+  },
+  {
+    "block": "iReset",
+    "path": "ours/pdl/block_review/reset_extra.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.9"
+  },
+  {
+    "block": "iRead",
+    "path": "standard/pdl/block_review/read_forms.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.10"
+  },
+  {
+    "block": "iRead",
+    "path": "ours/pdl/block_review/read_missing.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.10"
+  },
+  {
+    "block": "iRead",
+    "path": "ours/pdl/block_review/read_bad_data.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.10"
+  },
+  {
+    "block": "iWrite",
+    "path": "standard/pdl/block_review/write_forms.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.11"
+  },
+  {
+    "block": "iWrite",
+    "path": "ours/pdl/block_review/write_missing.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.11"
+  },
+  {
+    "block": "iWrite",
+    "path": "ours/pdl/block_review/write_bad_data_vector.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.11"
+  },
+  {
+    "block": "iWrite",
+    "path": "ours/pdl/block_review/write_bad_object_suffix.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.11"
+  },
+  {
+    "block": "iScan",
+    "path": "standard/pdl/block_review/scan_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_optional_forms.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_bad_chain.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_bad_interface.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_empty_data.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_decimal_spaces.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_duplicate.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_missing_option_value.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_missing_chain_length.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.12"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "standard/pdl/block_review/override_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "ours/pdl/block_review/override_bad_value.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "ours/pdl/block_review/override_missing_interface.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "ours/pdl/block_review/override_bad_interface.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "ours/pdl/block_review/override_missing_value.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iApply",
+    "path": "standard/pdl/block_review/apply_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.14"
+  },
+  {
+    "block": "iApply",
+    "path": "ours/pdl/block_review/apply_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.14"
+  },
+  {
+    "block": "iClock",
+    "path": "standard/pdl/block_review/clock_example.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.15"
+  },
+  {
+    "block": "iClock",
+    "path": "ours/pdl/block_review/clock_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.15"
+  },
+  {
+    "block": "iClock",
+    "path": "ours/pdl/block_review/clock_missing.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.15"
+  },
+  {
+    "block": "iClockOverride",
+    "path": "standard/pdl/block_review/clock_override_forms.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.16"
+  },
+  {
+    "block": "iClockOverride",
+    "path": "ours/pdl/block_review/clock_override_bad_source.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.16"
+  },
+  {
+    "block": "iClockOverride",
+    "path": "ours/pdl/block_review/clock_override_bad_number.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.16"
+  },
+  {
+    "block": "iClockOverride",
+    "path": "ours/pdl/block_review/clock_override_enum.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.16"
+  },
+  {
+    "block": "iClockOverride",
+    "path": "ours/pdl/block_review/clock_override_missing.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.16"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "standard/pdl/block_review/runloop_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_bad_time.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_bad_time_exp.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_bad_time_units.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_bad_port.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_missing_port.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iMerge",
+    "path": "standard/pdl/block_review/merge_example.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iMerge",
+    "path": "ours/pdl/block_review/merge_bad_option.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iMerge",
+    "path": "ours/pdl/block_review/merge_unclosed.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iMerge",
+    "path": "ours/pdl/block_review/merge_unopened.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iMerge",
+    "path": "ours/pdl/block_review/merge_illegal_command.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iTake",
+    "path": "standard/pdl/block_review/take_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.19"
+  },
+  {
+    "block": "iTake",
+    "path": "ours/pdl/block_review/take_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.19"
+  },
+  {
+    "block": "iRelease",
+    "path": "standard/pdl/block_review/release_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.20"
+  },
+  {
+    "block": "iRelease",
+    "path": "ours/pdl/block_review/release_missing.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.20"
+  },
+  {
+    "block": "iNote",
+    "path": "standard/pdl/block_review/note_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.21"
+  },
+  {
+    "block": "iNote",
+    "path": "ours/pdl/block_review/note_malformed_ignored.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.21"
+  },
+  {
+    "block": "iState",
+    "path": "standard/pdl/block_review/state_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "7.9.22"
+  },
+  {
+    "block": "iState",
+    "path": "ours/pdl/block_review/state_enum.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.22"
+  },
+  {
+    "block": "iState",
+    "path": "ours/pdl/block_review/state_multiple_flags.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.22"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "tessent/pdl/block_review/integer_time.pdl",
+    "valid": true,
+    "source": "tessent",
+    "clause": "Observed Tessent2026.2 corpus; IEEE7.7 time grammar requires decimal point"
+  },
+  {
+    "block": "iGetReadData",
+    "path": "standard/pdl/block_review/get_read_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "8.4.1"
+  },
+  {
+    "block": "iGetReadData",
+    "path": "ours/pdl/block_review/get_read_multiple_formats.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.1"
+  },
+  {
+    "block": "iGetReadData",
+    "path": "ours/pdl/block_review/get_read_bad_chain.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.1"
+  },
+  {
+    "block": "iGetReadData",
+    "path": "ours/pdl/block_review/get_read_missing.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.1"
+  },
+  {
+    "block": "iGetMiscompares",
+    "path": "standard/pdl/block_review/miscompare_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "8.4.2"
+  },
+  {
+    "block": "iGetMiscompares",
+    "path": "ours/pdl/block_review/miscompare_multiple_formats.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.2"
+  },
+  {
+    "block": "iGetMiscompares",
+    "path": "ours/pdl/block_review/miscompare_incomplete.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.2"
+  },
+  {
+    "block": "iGetStatus",
+    "path": "standard/pdl/block_review/status_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "8.4.3"
+  },
+  {
+    "block": "iGetStatus",
+    "path": "ours/pdl/block_review/status_bad_option.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.3"
+  },
+  {
+    "block": "iGetStatus",
+    "path": "ours/pdl/block_review/status_level_zero.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.3"
+  },
+  {
+    "block": "iSetFail",
+    "path": "standard/pdl/block_review/fail_examples.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "8.4.4"
+  },
+  {
+    "block": "iSetFail",
+    "path": "ours/pdl/block_review/fail_missing_message.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.4"
+  },
+  {
+    "block": "iSetFail",
+    "path": "ours/pdl/block_review/fail_bad_option.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.4.4"
+  },
+  {
+    "block": "tcl",
+    "path": "standard/pdl/block_review/level1_example.pdl",
+    "valid": true,
+    "source": "standard",
+    "clause": "8.5 (fixed typography, same Tcl if command, command substitution in elseif)"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/quoted_body_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.2 Tcl literal quoted script body"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/quoted_body_valid.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2",
+    "preserve": [
+      "\"iWrite reg 1\""
+    ]
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/dynamic_arg_list.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/expanded_arguments.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2 Tcl argument expansion",
+    "preserve": [
+      "{*}$arguments"
+    ]
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/expanded_binding.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/dynamic_level.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/nested_control.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/nested_expression_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.2,8.4.3"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/incomplete_quote.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/too_deep.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.2; implementation limit128script levels"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/nested_depth.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/nested_data.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.2; data is not recursively parsed as script"
+  },
+  {
+    "block": "upstream",
+    "path": "upstream/pdl/block_review/keyword_names.pdl",
+    "valid": true,
+    "source": "upstream",
+    "clause": "IEEE7.6(k2),7.7; Honza255333f8bc pdl.g4 keyword rule"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/time_no_integer.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/time_no_fraction.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/time_empty.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/time_exp_no_minus.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/time_exp_no_digits.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/all_time_units.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.7,7.9.17"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/crlf.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k3\u20136)"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/nul.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "Tcl parser input boundary: reject embedded NUL"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/crlf_arguments.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k6),7.9.5"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/lf_arguments.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k6),7.9.5"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_vertical_space.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.2; Tcl switch list whitespace"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_continuation.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.2; Tcl switch list whitespace"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runtime_runloop_option.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1,7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runtime_runloop_mode.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1,7.9.17"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/runtime_namespace_option.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1,7.9.4"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/runtime_scan_ir.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1,7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/runtime_scan_chain.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1,7.9.12"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/call_bad_list.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.8 args"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/call_bad_punctuation.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.8 args"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/call_literal_arguments.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.8 args"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/call_level1_list.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1"
+  }
+]

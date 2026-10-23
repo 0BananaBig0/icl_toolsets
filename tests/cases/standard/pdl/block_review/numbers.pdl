@@ -1,0 +1,13 @@
+# Completed/adapted from IEEE1687-2014 7.8 Example1.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iWrite reg 123
+iWrite reg 0x123
+iWrite reg 0xAa
+iWrite reg 0xx
+iWrite reg 0b011
+iWrite reg 0bx11
+iWrite reg 0B1
+iWrite reg 0XAB
+}

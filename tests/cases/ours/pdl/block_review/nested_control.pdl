@@ -1,0 +1,16 @@
+# IEEE1687-2014 8.2; completed/adapted case.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc run {v} {
+for {set i 0} {$i < 2} {incr i} {
+foreach x {1 2} {
+if {$x} then {
+while {$v} {
+catch {iRead reg} message options
+break
+}
+} elseif {$v} {iApply} else {iWrite reg 0}
+}
+}
+try {iApply} trap {PDL ERROR} {message options} {iSetFail "bad"} finally {iNote -comment "done"}
+}

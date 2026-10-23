@@ -1,27 +1,28 @@
 # icl_toolsets
 
-Tools for editing and formatting **ICL (Instrument Connectivity Language)**,
-the instrument connectivity language defined by IEEE 1687-2014 (IJTAG).
+Tools for editing and formatting **ICL (Instrument Connectivity Language)** and
+**PDL (Procedural Description Language)** defined by IEEE 1687-2014 (IJTAG).
 
 | Tool | Purpose |
 |---|---|
 | `icl-format` | Format ICL files from the command line, rewrite files in place, or check formatting in CI. |
-| `icl-lsp` | Provide diagnostics, formatting, completion and code navigation in editors such as Vim/Neovim with coc.nvim. |
+| `icl-lsp` | Provide ICL diagnostics, formatting, completion and code navigation in editors such as Vim/Neovim with coc.nvim. |
+| `pdl-format` | Format PDL and nested Tcl scripts while preserving data words and substitutions. |
+| `pdl-lsp` | Provide PDL diagnostics, formatting, procedure/variable completion and navigation, including static references into ICL. |
 
-The repository is named `icl_toolsets`; the installed commands are `icl-format`
-and `icl-lsp`. Both tools share one parser, AST and formatting engine, so editor
-formatting and command-line formatting use the same rules. `icl-lsp` includes
-formatting directly; it does not launch `icl-format` as a subprocess.
-
-PDL (Procedural Description Language) is a separate language and is not supported.
-These tools edit and check ICL; they do not execute IJTAG procedures or replace
-vendor connectivity and design-rule checks.
+The repository is named `icl_toolsets`. Each language pair shares its own parser,
+syntax tree, analysis and formatting engine. ICL and PDL remain separate languages;
+PDL uses Tcl's parsing API without executing source. Both language servers format
+directly, without launching a formatter subprocess. These tools do not execute
+IJTAG procedures or replace vendor connectivity and design-rule checks.
 
 ## Build and install
 
 Building from Git requires a C++17 compiler and standard library with
 `std::filesystem` support (for example, GCC 9+ or Clang 10+ with a suitable
-standard library), GNU Make 4.3+, Bison 3.8+ and Flex 2.6+.
+standard library), GNU Make 4.3+, Bison 3.8+, Flex 2.6+, pkg-config and Tcl
+development files (Tcl 8.6 or newer). PDL builds require the real Tcl library;
+the Tcl stub library alone is insufficient.
 
 ```sh
 git clone https://gitee.com/banana33/icl_toolsets.git
@@ -31,10 +32,13 @@ make install-dynamic
 export PATH="$HOME/.local/bin:$PATH"
 icl-format --version
 icl-lsp --version
+pdl-format --version
+pdl-lsp --version
 ```
 
-`make dynamic` produces `build/icl-format` and `build/icl-lsp`; you can run these
-directly before installing. `make install-dynamic` installs both commands into
+`make dynamic` produces `build/icl-format`, `build/icl-lsp`, `build/pdl-format`
+and `build/pdl-lsp`; you can run these directly before installing.
+`make install-dynamic` installs all four commands into
 `$HOME/.local/bin` and prints the coc.nvim setup below. Add that directory to your
 shell's startup configuration so your editor can also find them. Installation
 does not change your editor configuration. A custom installation prefix is
@@ -45,8 +49,19 @@ make install-dynamic prefix=/opt/icl_toolsets
 ```
 
 The dynamic binaries require compatible C/C++ runtime libraries on the target
-machine. For a static build, install the static C/C++ runtime libraries first,
-then run `make static` and `make install-static`. Both installation variants
+machine, and PDL binaries also require the corresponding Tcl shared library.
+For a static build, install static C/C++ runtime libraries and a real static Tcl
+archive built for the matching Tcl headers, then run:
+
+```sh
+make static TCL_STATIC_LIB=/path/to/libtcl9.0.a
+make install-static TCL_STATIC_LIB=/path/to/libtcl9.0.a
+```
+
+Static outputs have the `-static` suffix under `build/`. See the
+[PDL build guide](docs/pdl-tools.md) for building Tcl locally and platform limits.
+Use `make icl-dynamic` or `make icl-static` to build only ICL without Tcl,
+or `make pdl-dynamic` / `make pdl-static` for just PDL. Both installation variants
 use the same command names. Plain `make` builds both variants; `make dynamic`
 works without static runtime libraries. Plain `make install` selects the dynamic
 variant.
@@ -59,7 +74,8 @@ same-named files under the selected prefix.
 ### Building from a source archive
 
 An archive produced by `make dist` includes the generated parser and scanner.
-Building it requires the compiler and Make but does not require Bison or Flex. This is useful
+Building it requires the compiler, Make and Tcl development files but does not
+require Bison or Flex. This is useful
 on Rocky Linux 8, whose system Bison is older than the Git build requires.
 Use the maintainer's `make dist` archive, rather than a Git hosting site's automatic
 source download (which contains only the tracked sources). For the current version:
@@ -108,19 +124,37 @@ multiple files, valid files can still be processed even if another file fails.
 |---|---|
 | `0` | Success; with `--check`, all inputs are already formatted. |
 | `1` | `--check` found at least one input that would change. |
-| `2` | Invalid ICL (including detected semantic errors), file I/O error or invalid command-line arguments. |
+| `2` | Invalid source (including detected semantic errors), file I/O error or invalid command-line arguments. |
 
 For CI, run `icl-format --check` on the ICL files you want to enforce and use
 its exit status as the formatting check result.
 
+## Format PDL files
+
+The PDL formatter supports the same CLI options and exit codes as `icl-format`:
+
+```sh
+pdl-format procedures.pdl
+pdl-format -w procedures.pdl
+pdl-format --check procedures.pdl
+pdl-format --indent 4 < procedures.pdl
+```
+
+It indents recognized braced script bodies (`iProc`, `proc`, Tcl control flow),
+normalizes spaces between words and places separate commands on separate lines.
+Braced data, quoted text and substitutions retain their spelling. Invalid input
+is diagnosed without rewriting the file. Unknown Tcl command arguments remain
+opaque; quoted/dynamic script bodies are preserved rather than evaluated.
+
 ## Editor features
 
-`icl-lsp` runs over standard input/output and is started without arguments by the
-editor's LSP client. Use `icl-lsp --help` (or `-h`) and `icl-lsp --version` to
-print information and exit. Unsupported arguments exit with status 2. Running
+`icl-lsp` and `pdl-lsp` run over standard input/output and are started without
+arguments by the editor's LSP client. Use `icl-lsp --help` (or `-h`) and
+`icl-lsp --version` to print information and exit. Unsupported arguments exit with status 2. Running
 `icl-lsp` without arguments in a terminal waits for LSP messages; this is normal.
+`pdl-lsp` accepts the same help/version options.
 
-It provides:
+The ICL server provides:
 
 - Syntax and local semantic diagnostics on open and edit, plus whole-document formatting.
 - Completion for ICL keywords, local names, instance members and module types.
@@ -135,21 +169,29 @@ points to the end of the document. Errors clear when corrected or closed. The
 server reports the first error per document; fix it to reveal subsequent errors.
 Some semantic checks report a whole line when no token location is available.
 
-Implementation navigation leads to the referenced **ICL module definition**.
+For ICL, implementation navigation leads to the referenced **ICL module definition**.
 HDL implementation inference and symbol renaming are not available.
 Workspace navigation includes unopened `.icl` files under the project roots;
 hidden directories, `build/` and symlinked directories are skipped. Open buffers
 take precedence over files on disk. Ambiguous module definitions do not produce
 a guessed navigation target.
 
+PDL diagnostics check Tcl syntax, recognized literal scripts/expressions, PDL
+command arities/options, literal values and explicit level-0 restrictions.
+PDL navigation resolves statically named procedures, local variables, module
+bindings and ICL objects through `iPrefix`. It scans `.pdl`, `.tcl` and `.icl`
+workspace files. Dynamic names and runtime-generated code cannot be resolved;
+this is not a Tcl runtime, retargeter or complete PDL semantic validator. See
+[PDL support and limits](docs/pdl-tools.md).
+
 ### Vim/Neovim with coc.nvim
 
 Install [coc.nvim](https://github.com/neoclide/coc.nvim) and its prerequisites,
-and ensure `icl-lsp` is on the editor's `PATH`. Vim users need a coc.nvim-compatible
+and ensure both language servers are on the editor's `PATH`. Vim users need a coc.nvim-compatible
 Vim version; the tested setup uses Vim 9.2. Follow coc.nvim's current requirements
 for your editor and Node.js versions.
 
-One `icl` entry supplies language services and formatting. Merge it into
+Each language needs one entry for language services and formatting. Merge both into
 `languageserver` alongside your existing servers (such as `verilog`) in
 `:CocConfig` (normally `~/.vim/coc-settings.json` in Vim). A copy is available in
 [docs/editor/coc-lsp.json](docs/editor/coc-lsp.json):
@@ -160,6 +202,11 @@ One `icl` entry supplies language services and formatting. Merge it into
     "icl": {
       "command": "icl-lsp",
       "filetypes": ["icl"],
+      "rootPatterns": [".git"]
+    },
+    "pdl": {
+      "command": "pdl-lsp",
+      "filetypes": ["pdl"],
       "rootPatterns": [".git"]
     }
   }
@@ -172,6 +219,8 @@ Add these lines to your Vim configuration:
 augroup icl_toolsets
   autocmd!
   autocmd BufNewFile,BufRead *.icl set filetype=icl
+  autocmd BufNewFile,BufRead *.pdl set filetype=pdl
+  autocmd FileType pdl setlocal syntax=tcl
 augroup END
 
 nmap <silent> gd <Plug>(coc-definition)
@@ -196,7 +245,7 @@ Format the current buffer with:
 :call CocAction('format')
 ```
 
-For optional format-on-save, add `autocmd BufWritePre *.icl call CocAction('format')`
+For optional format-on-save, add `autocmd BufWritePre *.icl,*.pdl call CocAction('format')`
 inside the `icl_toolsets` group. Invalid buffers receive diagnostics and no
 formatting edits.
 
@@ -214,13 +263,14 @@ so only the CLI adapter formats the buffer.
 
 The optional adapter example explicitly passes `--indent 2`; it does not inherit
 your Vim indentation width. It has been checked against its upstream schema but
-has not been tested end to end. The recommended LSP configuration above has been
-tested with a real Vim/coc.nvim session; see the
+has not been tested end to end. The ICL entry of the recommended configuration has been
+tested with a real Vim/coc.nvim session; PDL has been tested through real stdio
+LSP clients, with a full Vim/coc.nvim session still unverified. See the
 [verification report](docs/parameter-width-validation.md).
 
 ## Language support and limitations
 
-The tools target IEEE 1687-2014 ICL and include documented compatibility forms
+The ICL tools target IEEE 1687-2014 ICL and include documented compatibility forms
 from Tessent and other existing ICL sources. Tests cover standard examples,
 constructed positive/negative cases, public parser fixtures and collected
 Tessent/Synopsys SLM ICL. This is tested support, not a guarantee that every

@@ -1,0 +1,12 @@
+# IEEE1687-2014 8.5 (fixed typography, same Tcl if command, command substitution in elseif); completed/adapted case.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {} {
+iGetStatus -clear
+iRead myRegister
+iRead yourRegister 0b010101
+iApply
+set my_value [iGetReadData myRegister]
+set your_value [iGetReadData yourRegister]
+if {$my_value == 0b000} {iSetFail "device is on fire" -quit} elseif {[iGetStatus] > 0} {iSetFail "device is defective"}
+}

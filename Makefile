@@ -3,25 +3,26 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE in the project root for license information.
 #
-# Builds two programs for IEEE 1687-2014 (IJTAG) ICL:
+# Builds four programs for IEEE 1687-2014 (IJTAG) ICL and PDL:
 #   icl-format  command line formatter
 #   icl-lsp     Language Server (diagnostics + formatting) for editors
-# Each is produced dynamically linked and fully static, so `make` yields four
-# binaries.
+#   pdl-format  Tcl-aware PDL command line formatter
+#   pdl-lsp     PDL language services for editors
+# Each is produced dynamically linked and fully static: eight binaries.
 #
 # Pipeline:  text --(flex/bison)--> AST --(layout)--> lines --(render)--> text
-# Both programs link the same front end, so a grammar fix reaches both.
+# Each language pair shares its own syntax tree, analysis and formatter.
 #
 # Targets:
-#   make            build all four binaries
-#   make dynamic    build only the dynamically linked pair
+#   make            build all eight binaries
+#   make dynamic    build all four dynamic binaries
 #   make install    install into $(prefix) (default: $HOME/.local)
 #   make uninstall  remove exactly what install put there
 #   make check      run the test suite
 #   make clean      remove build output (keeps bison/flex output)
 #   make distclean  remove everything generated
 #
-# Requirements: bison >= 3.8, flex >= 2.6, GNU make >= 4.3, a C++17 compiler.
+# Requirements: bison >= 3.8, flex >= 2.6, GNU make >= 4.3, C++17, Tcl development files.
 
 CXX ?= g++
 BISON ?= bison
@@ -67,7 +68,7 @@ endif
 # expanded to a bare `mkdir` and failed.
 CODEGRAPH_DIR := .codegraph
 
-# Two programs, built from the same front end:
+# ICL programs share their front end; PDL programs share a separate one:
 #   icl-format  the command line formatter
 #   icl-lsp     a Language Server (diagnostics + formatting) for editors
 # Each is produced both dynamically linked and fully static.
@@ -75,6 +76,16 @@ BIN := $(BUILD_DIR)/$(PACKAGE)
 LSP_BIN := $(BUILD_DIR)/icl-lsp
 STATIC_BIN := $(BUILD_DIR)/$(PACKAGE)-static
 LSP_STATIC_BIN := $(BUILD_DIR)/icl-lsp-static
+PDL_BIN := $(BUILD_DIR)/pdl-format
+PDL_LSP_BIN := $(BUILD_DIR)/pdl-lsp
+PDL_STATIC_BIN := $(BUILD_DIR)/pdl-format-static
+PDL_LSP_STATIC_BIN := $(BUILD_DIR)/pdl-lsp-static
+
+# Tcl stub archives cannot supply the parser. Static builds need real libtcl.a.
+TCL_CFLAGS ?= $(shell pkg-config --cflags tcl 2>/dev/null)
+TCL_LIBS ?= $(shell pkg-config --libs tcl 2>/dev/null)
+TCL_STATIC_LIB ?= $(firstword $(wildcard $(BUILD_DIR)/deps/tcl-static/libtcl9.0.a /usr/lib64/libtcl[89]*.a /usr/lib/libtcl[89]*.a $(shell pkg-config --variable=libdir tcl 2>/dev/null)/libtcl[89]*.a))
+TCL_STATIC_LIBS ?= $(TCL_STATIC_LIB) -ldl -lpthread -lm
 
 CXXFLAGS ?= -O2
 CXXSTD := -std=c++17
@@ -98,8 +109,11 @@ SHARED_SOURCES := \
 
 CLI_SOURCES := $(SRC_DIR)/icl_format_main.cc
 LSP_SOURCES := $(SRC_DIR)/json.cc $(SRC_DIR)/icl_lsp_main.cc
+PDL_SOURCES := $(SRC_DIR)/pdl_document.cc $(SRC_DIR)/pdl_format_main.cc \
+    $(SRC_DIR)/pdl_lsp_main.cc
 
-SOURCES := $(SHARED_SOURCES) $(CLI_SOURCES) $(LSP_SOURCES)
+SOURCES := $(SHARED_SOURCES) $(CLI_SOURCES) $(LSP_SOURCES) $(PDL_SOURCES)
+PDL_OBJECT := $(BUILD_DIR)/pdl_document.o
 
 # bison / flex outputs. Kept in $(GEN_DIR) so that `make clean` cannot leave a
 # stale generated parser behind a hand-edited .yy file.
@@ -116,21 +130,17 @@ CLI_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(CLI_SOURCES))
 LSP_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(LSP_SOURCES))
 
 OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
+OBJECTS += $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PDL_SOURCES))
 
 # ---- statically linked binary ----
 #
-# `-static` folds libstdc++/libgcc/libc into the executable, so the result runs
-# on any Linux with a compatible kernel and needs no runtime libraries at all.
-# Costs ~2.1 MB (stripped) instead of ~146 KB; pays off when the binary has to
-# be dropped onto machines whose glibc differs from the build host's.
-#
-# ponytail: static glibc is safe here only because the tool uses no NSS, no
-# dlopen and no locale-dependent APIs. Upgrade path: if any of those appear,
-# drop `-static` (or switch to musl) rather than shipping a subtly broken
-# binary.
+# `-static` includes C/C++ runtimes and, for PDL, Tcl in the executable.
+# Static Tcl still contains optional glibc NSS calls; see docs/pdl-tools.md
+# for link warnings and portability limits. Test the intended target host.
 .PHONY: all dynamic static install install-dynamic install-static uninstall \
     check nvimcheck coccheck clean distclean version dist check-tools \
-    formatcheck namingcheck syntaxcheck keywordcheck
+    formatcheck namingcheck syntaxcheck keywordcheck pdl-dynamic pdl-static \
+    icl-dynamic icl-static pdlcheck check-tcl check-tcl-static
 .DEFAULT_GOAL := all
 
 # Development-only style checks; normal builds need no LLVM tools. Review the
@@ -139,7 +149,7 @@ formatcheck:
 	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(wildcard $(SRC_DIR)/*.h)
 
 namingcheck: $(GEN_SOURCES)
-	$(CLANG_TIDY) $(SOURCES) -- $(CXXSTD) $(CPPFLAGS)
+	$(CLANG_TIDY) $(SOURCES) -- $(CXXSTD) $(CPPFLAGS) $(TCL_CFLAGS)
 
 # ---- toolchain requirements ----
 #
@@ -151,7 +161,7 @@ namingcheck: $(GEN_SOURCES)
 # Two ways forward on Rocky 8:
 #   * install a newer bison, or
 #   * build from a `make dist` tarball, which bundles the generated parser so
-#     that only g++ is needed.
+#     that only g++ and Tcl development files are needed.
 BISON_MAJOR := $(shell $(BISON) --version 2>/dev/null | head -1 | \
     sed -E 's/.* ([0-9]+)\.([0-9]+).*/\1/')
 BISON_MINOR := $(shell $(BISON) --version 2>/dev/null | head -1 | \
@@ -176,11 +186,41 @@ else
 	@echo "toolchain: bison $(BISON_MAJOR).$(BISON_MINOR), $(CXX) $(shell $(CXX) --version | head -1)"
 endif
 
-all: check-tools $(BIN) $(LSP_BIN) $(STATIC_BIN) $(LSP_STATIC_BIN)
+all: dynamic static
 
 # For a box without the static C runtime installed (glibc-static / libstdc++
-# -static): build the two dynamic binaries only.
-dynamic: check-tools $(BIN) $(LSP_BIN)
+# -static): build the four dynamic binaries only.
+dynamic: icl-dynamic pdl-dynamic
+
+icl-dynamic: check-tools $(BIN) $(LSP_BIN)
+
+pdl-dynamic: check-tools check-tcl $(PDL_BIN) $(PDL_LSP_BIN)
+
+check-tcl:
+	@if [ -z "$(TCL_LIBS)" ]; then \
+	  echo "error: install Tcl development files and pkg-config, or set TCL_CFLAGS/TCL_LIBS" >&2; \
+	  exit 1; \
+	fi
+
+check-tcl-static:
+	@if [ ! -f "$(TCL_STATIC_LIB)" ]; then \
+	  echo "error: set TCL_STATIC_LIB to a real static Tcl archive; see docs/pdl-tools.md" >&2; \
+	  exit 1; \
+	fi
+
+$(BUILD_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
+
+$(PDL_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_format_main.o
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) -o $@
+
+$(PDL_LSP_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_lsp_main.o $(BUILD_DIR)/json.o
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) -o $@
+
+$(PDL_STATIC_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_format_main.o | check-tcl-static
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
+
+$(PDL_LSP_STATIC_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_lsp_main.o $(BUILD_DIR)/json.o | check-tcl-static
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
 
 $(BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
 	@mkdir -p $(@D)
@@ -190,7 +230,17 @@ $(LSP_BIN): $(SHARED_OBJECTS) $(LSP_OBJECTS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ -o $@
 
-static: check-tools $(STATIC_BIN) $(LSP_STATIC_BIN)
+static: icl-static pdl-static
+
+icl-static: check-tools $(STATIC_BIN) $(LSP_STATIC_BIN)
+
+pdl-static: check-tools $(PDL_STATIC_BIN) $(PDL_LSP_STATIC_BIN)
+
+pdlcheck: pdl-dynamic
+	python3 tests/src/test_pdl_tools.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
+	python3 tests/tests/test_import_pdl_corpus.py
+	python3 tests/src/test_pdl_corpus.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
+	python3 tests/src/test_pdl_blocks.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
 
 $(STATIC_BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
 	@mkdir -p $(@D)
@@ -305,8 +355,13 @@ COV_CLI := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(CLI_SOURCES
 COV_LSP := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(LSP_SOURCES))
 COV_UNIT := $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/unit_tests.o
 COV_BINARIES := $(COV_DIR)/icl-format $(COV_DIR)/icl-lsp $(COV_DIR)/unittests
+COV_BINARIES += $(COV_DIR)/pdl-format $(COV_DIR)/pdl-lsp
 COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
     $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
+COV_REPORT_OBJECTS += $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o \
+    $(COV_DIR)/pdl_lsp_main.o
+
+$(COV_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
 
 $(COV_DIR):
 	mkdir -p $(COV_DIR)
@@ -326,6 +381,12 @@ $(COV_DIR)/icl-format: $(COV_CLI)
 $(COV_DIR)/icl-lsp: $(COV_LSP)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
+$(COV_DIR)/pdl-format: $(COV_SHARED) $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o
+	$(CXX) $(CXXSTD) --coverage $^ $(TCL_LIBS) -o $@
+
+$(COV_DIR)/pdl-lsp: $(COV_SHARED) $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_lsp_main.o $(COV_DIR)/json.o
+	$(CXX) $(CXXSTD) --coverage $^ $(TCL_LIBS) -o $@
+
 $(COV_DIR)/unittests: $(COV_UNIT)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
@@ -337,6 +398,9 @@ coverage: $(COV_BINARIES)
 	@python3 tests/src/test_icl_lsp.py --binary $(COV_DIR)/icl-lsp
 	@python3 tests/src/test_icl_protocol.py --binary $(COV_DIR)/icl-lsp
 	@python3 tests/src/test_icl_diagnostics.py --binary $(COV_DIR)/icl-lsp
+	@python3 tests/src/test_pdl_tools.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
+	@python3 tests/src/test_pdl_corpus.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
+	@python3 tests/src/test_pdl_blocks.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
 	@python3 tests/run_tests.py --binary $(COV_DIR)/icl-format
 	@python3 tests/lsp_test.py --binary $(COV_DIR)/icl-lsp \
 	  --cli $(COV_DIR)/icl-format
@@ -412,12 +476,10 @@ MANIFEST := $(BUILD_DIR)/install_manifest.txt
 # separate decision.
 #
 #   install-dynamic  smaller; needs the host's libstdc++/glibc
-#   install-static   self-contained; runs on any Linux regardless of glibc
+#   install-static   no ELF shared-library dependencies; see Tcl/glibc limits in docs
 #
 # Because both write the same paths, the manifest is correct whichever ran.
-HEADERS := $(SRC_DIR)/icl_ast.h $(SRC_DIR)/icl_driver.h \
-    $(SRC_DIR)/format_tree.h $(SRC_DIR)/format_job.h \
-    $(SRC_DIR)/icl_semantics.h $(SRC_DIR)/json.h
+HEADERS := $(wildcard $(SRC_DIR)/*.h)
 
 install: install-dynamic
 
@@ -428,18 +490,24 @@ define install_body
 	@mkdir -p $(bindir) $(includedir)/$(PACKAGE) $(docdir) $(man1dir)
 	$(INSTALL_PROGRAM) $1 $(bindir)/$(PACKAGE)
 	$(INSTALL_PROGRAM) $2 $(bindir)/icl-lsp
+	$(INSTALL_PROGRAM) $(if $(filter static,$3),$(PDL_STATIC_BIN),$(PDL_BIN)) $(bindir)/pdl-format
+	$(INSTALL_PROGRAM) $(if $(filter static,$3),$(PDL_LSP_STATIC_BIN),$(PDL_LSP_BIN)) $(bindir)/pdl-lsp
 	@for h in $(HEADERS); do \
 	  $(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
 	done
+	$(INSTALL_DATA) docs/third-party-notices.md $(docdir)/third-party-notices.md
 	@if [ -f $(PACKAGE).1 ]; then $(INSTALL_DATA) $(PACKAGE).1 $(man1dir)/; fi
 	@: > $(MANIFEST)
 	@echo $(bindir)/$(PACKAGE) >> $(MANIFEST)
 	@echo $(bindir)/icl-lsp >> $(MANIFEST)
+	@echo $(bindir)/pdl-format >> $(MANIFEST)
+	@echo $(bindir)/pdl-lsp >> $(MANIFEST)
+	@echo $(docdir)/third-party-notices.md >> $(MANIFEST)
 	@for h in $(HEADERS); do \
 	  echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
 	done
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
-	@echo "installed ($3) $(PACKAGE) + icl-lsp $(VERSION) into $(prefix)"
+	@echo "installed ($3) icl-format, icl-lsp, pdl-format, pdl-lsp $(VERSION) into $(prefix)"
 	@$(call coc_body,$3)
 endef
 
@@ -450,27 +518,31 @@ endef
 # a filetype is already set, which leaves coc never starting the server.
 define coc_body
 	@echo ""
-	@echo "=== coc.nvim: ICL language services and formatting ==="
-	@echo "In :CocConfig, merge the icl entry into languageserver alongside your existing servers:"
+	@echo "=== coc.nvim: ICL and PDL language services and formatting ==="
+	@echo "In :CocConfig, merge icl and pdl into languageserver alongside your existing servers:"
 	@cat docs/editor/coc-lsp.json
 	@echo ""
 	@echo "Add to vimrc:"
 	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
+	@echo '  autocmd BufNewFile,BufRead *.pdl set filetype=pdl'
+	@echo '  autocmd FileType pdl setlocal syntax=tcl'
 	@echo "Indentation follows your existing Vim/coc shiftwidth and tabstop settings."
 	@echo "Formatting: :call CocAction('format'); optional format on save:"
 	@echo "  autocmd BufWritePre *.icl call CocAction('format')"
+	@echo "  autocmd BufWritePre *.pdl call CocAction('format')"
 	@echo ""
 	@echo "icl-lsp includes the icl-format formatting engine; no extra formatter plugin is needed."
 	@echo "Standalone CLI formatting: icl-format input.icl > output.icl"
+	@echo "PDL formatting: pdl-format input.pdl > output.pdl; PDL analysis never executes source."
 	@echo "Keep $(bindir) on the editor's PATH or use absolute command paths."
 	@echo "Installed variant: $1; $(bindir)/$(PACKAGE) and $(bindir)/icl-lsp"
 endef
 
-install-dynamic: $(BIN) $(LSP_BIN)
+install-dynamic: $(BIN) $(LSP_BIN) $(PDL_BIN) $(PDL_LSP_BIN)
 	$(call install_body,$(BIN),$(LSP_BIN),dynamic)
-	@echo "for a glibc-independent build: make install-static"
+	@echo "for fully static ELF binaries: make install-static (see docs/pdl-tools.md for platform limits)"
 
-install-static: $(STATIC_BIN) $(LSP_STATIC_BIN)
+install-static: $(STATIC_BIN) $(LSP_STATIC_BIN) $(PDL_STATIC_BIN) $(PDL_LSP_STATIC_BIN)
 	$(call install_body,$(STATIC_BIN),$(LSP_STATIC_BIN),static)
 
 uninstall:
@@ -478,6 +550,7 @@ uninstall:
 	  echo "no manifest at $(MANIFEST); removing known targets instead" >&2; \
 	  rm -f $(bindir)/$(PACKAGE); \
 	  rm -f $(bindir)/icl-lsp; \
+	  rm -f $(bindir)/pdl-format $(bindir)/pdl-lsp; \
 	  rm -rf $(includedir)/$(PACKAGE); \
 	  rm -rf $(docdir); \
 	  rm -f $(man1dir)/$(PACKAGE).1; \
@@ -523,7 +596,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck
+check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
@@ -593,7 +666,7 @@ $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc \
 # ---- source distribution with the parser pre-generated ----
 #
 # Lets a machine without bison/flex (e.g. stock Rocky Linux 8, which ships
-# bison 3.0.4) build with nothing but g++. The tarball contains the generated
+# bison 3.0.4) build with g++ and Tcl development files. The tarball contains the generated
 # parser and scanner sources plus a stub Makefile that skips the generators.
 DIST_DIR := $(PACKAGE)-$(VERSION)
 # The tarball is a build product, so it goes under build/ rather than next to
@@ -624,7 +697,7 @@ dist: dynamic
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar --exclude=__pycache__ --exclude='*.pyc' -czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
 	@rm -rf $(DIST_DIR)
-	@echo "created $(DIST_OUT)/$(DIST_DIR).tar.gz (build with only g++: no bison/flex needed)"
+	@echo "created $(DIST_OUT)/$(DIST_DIR).tar.gz (build with g++ and Tcl: no bison/flex needed)"
 
 version:
 	@echo $(VERSION)

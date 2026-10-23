@@ -1,0 +1,17 @@
+# Constructed Tcl/PDL level-1 nesting and data-preservation example.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo -iProcNameSpace tests
+iProc check {limit} {
+set message {this is data;
+  not a command block}
+foreach bit {0 1 2} {
+if {$bit < $limit} {
+iRead status($bit)
+iApply
+set value [iGetReadData status($bit) -hex]
+} else {
+iNote -comment "ignored {braces} and # text"
+}
+}
+return $message
+}

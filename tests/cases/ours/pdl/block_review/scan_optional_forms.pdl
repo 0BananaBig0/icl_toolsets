@@ -1,0 +1,9 @@
+# IEEE1687-2014 7.9.12, completed/adapted syntax input.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc scan {} {
+iScan -ir child.iface -chain data 8 -si 0xAB -so 0xXX -stable
+iScan iface 8
+iScan iface 8 -so 0
+iScan iface 8 -si "0XAB CD"
+}
