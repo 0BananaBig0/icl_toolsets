@@ -30,6 +30,7 @@ make dynamic
 make install-dynamic
 export PATH="$HOME/.local/bin:$PATH"
 icl-format --version
+icl-lsp --version
 ```
 
 `make dynamic` produces `build/icl-format` and `build/icl-lsp`; you can run these
@@ -114,8 +115,12 @@ its exit status as the formatting check result.
 
 ## Editor features
 
-`icl-lsp` runs over standard input/output and is started by the editor's LSP
-client. It provides:
+`icl-lsp` runs over standard input/output and is started without arguments by the
+editor's LSP client. Use `icl-lsp --help` (or `-h`) and `icl-lsp --version` to
+print information and exit. Unsupported arguments exit with status 2. Running
+`icl-lsp` without arguments in a terminal waits for LSP messages; this is normal.
+
+It provides:
 
 - Syntax and local semantic diagnostics on open and edit, plus whole-document formatting.
 - Completion for ICL keywords, local names, instance members and module types.

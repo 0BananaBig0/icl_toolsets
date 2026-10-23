@@ -670,7 +670,29 @@ class LspServer {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  if (argc == 2) {
+    const std::string arg = argv[1];
+    if (arg == "-h" || arg == "--help") {
+      std::cout << "usage: icl-lsp [--help | --version]\n"
+                   "\n"
+                   "ICL language server for IEEE 1687-2014.\n"
+                   "With no arguments, serves LSP on stdin/stdout.\n"
+                   "\n"
+                   "options:\n"
+                   "  -h, --help    print this message and exit\n"
+                   "      --version print version and exit\n";
+      return 0;
+    }
+    if (arg == "--version") {
+      std::cout << "icl-lsp " << ICL_FORMAT_VERSION << "\n";
+      return 0;
+    }
+  }
+  if (argc > 1) {
+    std::cerr << "icl-lsp: invalid arguments; use --help for usage\n";
+    return 2;
+  }
   // The protocol stream is stdout; diagnostics about our own
   // operation must not land in it.
   std::ios::sync_with_stdio(false);

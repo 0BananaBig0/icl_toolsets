@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Malformed JSON/framing must not corrupt the next well-framed LSP exchange."""
+"""Command-line exits and malformed input must preserve LSP startup/framing."""
 import argparse
 import json
 from pathlib import Path
@@ -11,6 +11,51 @@ BINARY = None
 def frame(body):
     if isinstance(body, str): body = body.encode()
     return b'Content-Length: '+str(len(body)).encode()+b'\r\n\r\n'+body
+
+
+class CommandLine(unittest.TestCase):
+    def run_without_input(self, *args):
+        # Keep stdin open: communicate() alone sends EOF and hides the hang.
+        with subprocess.Popen([BINARY, *args], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate()
+                self.fail(f'{args} waited for LSP input instead of exiting')
+            stdout, stderr = process.communicate()
+            return process.returncode, stdout, stderr
+
+    def test_help_exits_without_lsp_input(self):
+        for option in ('--help', '-h'):
+            with self.subTest(option=option):
+                code, stdout, stderr = self.run_without_input(option)
+                self.assertEqual(code, 0)
+                for text in (b'icl-lsp', b'--help', b'--version', b'stdin', b'stdout'):
+                    self.assertIn(text, stdout)
+                self.assertEqual(stderr, b'')
+                self.assertNotIn(b'Content-Length:', stdout)
+
+    def test_version_matches_lsp_initialize(self):
+        code, stdout, stderr = self.run_without_input('--version')
+        self.assertEqual(code, 0)
+        self.assertEqual(stderr, b'')
+        run = subprocess.run([BINARY], capture_output=True, timeout=5,
+                             input=frame('{"jsonrpc":"2.0","id":1,"method":"initialize"}'))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(run.stdout.startswith(b'Content-Length:'), run.stdout)
+        info = json.loads(run.stdout.split(b'\r\n\r\n', 1)[1])['result']['serverInfo']
+        self.assertEqual(stdout.decode(), f"icl-lsp {info['version']}\n")
+
+    def test_invalid_arguments_exit_without_lsp_input(self):
+        for args in [('--unknown',), ('input.icl',), ('--help', '--unknown')]:
+            with self.subTest(args=args):
+                code, stdout, stderr = self.run_without_input(*args)
+                self.assertEqual(code, 2)
+                self.assertEqual(stdout, b'')
+                self.assertIn(b'icl-lsp', stderr)
+                self.assertIn(b'--help', stderr)
 
 
 class Protocol(unittest.TestCase):
