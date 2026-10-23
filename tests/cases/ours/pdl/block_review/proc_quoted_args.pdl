@@ -1,0 +1,4 @@
+# IEEE1687-2014 7.9.5/8: constructed procedure syntax boundary.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc p "argument" {iApply}

@@ -276,46 +276,107 @@ bool HasExpandedArguments(const Command& command) {
                      [](const Word& word) { return word.expanded; });
 }
 
-std::set<size_t> BodyWords(const Command& command) {
+std::set<size_t> BodyWords(const Command& command,
+                           std::set<size_t>* expressions, std::string* error) {
   if (HasExpandedArguments(command)) return {};
   const auto& words = command.words;
   const std::string& name = words.front().value;
   const size_t size = words.size();
+  const auto invalid = [&]() {
+    *error = "invalid Tcl command structure for " + name;
+    return std::set<size_t>{};
+  };
+  static const std::map<std::string, std::pair<size_t, size_t>> kWordCounts = {
+      {"proc", {4, 4}},       {"set", {2, 3}},
+      {"while", {3, 3}},      {"for", {5, 5}},
+      {"catch", {2, 4}},      {"if", {3, INT_MAX}},
+      {"try", {2, INT_MAX}},  {"switch", {3, INT_MAX}},
+      {"expr", {2, INT_MAX}}, {"foreach", {4, INT_MAX}},
+      {"lmap", {4, INT_MAX}}};
+  const auto count = kWordCounts.find(name);
+  if (count != kWordCounts.end() &&
+      (size < count->second.first || size > count->second.second)) {
+    return invalid();
+  }
   if ((name == "iProc" || name == "proc") && size == 4) return {3};
-  if ((name == "foreach" || name == "lmap") && size >= 4) return {size - 1};
+  if (name == "foreach" || name == "lmap") {
+    if (size % 2 != 0) return invalid();
+    for (size_t i = 1; i + 1 < size; ++i) {
+      if (!words[i].literal) continue;
+      bool valid = false;
+      const auto variables = SplitList(words[i].value, &valid);
+      if (!valid || (i % 2 != 0 && variables.empty())) return invalid();
+    }
+    return {size - 1};
+  }
   if (name == "for" && size == 5) return {1, 3, 4};
   if (name == "while" && size == 3) return {2};
   if (name == "catch" && size >= 2) return {1};
   if (name == "try" && size >= 2) {
     std::set<size_t> result{1};
-    for (size_t i = 2; i < size; ++i) {
-      if (words[i].value == "finally" && i + 1 < size) result.insert(i + 1);
-      if ((words[i].value == "on" || words[i].value == "trap") &&
-          i + 3 < size) {
-        result.insert(i + 3);
-        i += 3;
+    bool fallthrough = false;
+    for (size_t i = 2; i < size; i += 4) {
+      if (!words[i].literal) return result;
+      const auto& handler = words[i].value;
+      const auto matches = [&](const std::string& keyword) {
+        return !handler.empty() &&
+               keyword.compare(0, handler.size(), handler) == 0;
+      };
+      if (matches("finally")) {
+        if (i + 2 != size || fallthrough) return invalid();
+        result.insert(i + 1);
+        return result;
       }
+      if ((!matches("on") && !matches("trap")) || i + 3 >= size) {
+        return invalid();
+      }
+      if (matches("on") && words[i + 1].literal) {
+        static const std::set<std::string> kCodes = {"ok", "error", "return",
+                                                     "break", "continue"};
+        int code = 0;
+        if (!kCodes.count(words[i + 1].value) &&
+            Tcl_GetInt(ParserInterpreter(), words[i + 1].value.c_str(),
+                       &code) != TCL_OK) {
+          return invalid();
+        }
+      }
+      for (size_t j : {i + 1, i + 2}) {
+        if (j == i + 1 && !matches("trap")) continue;
+        if (words[j].literal) {
+          bool valid = false;
+          SplitList(words[j].value, &valid);
+          if (!valid) return invalid();
+        }
+      }
+      fallthrough = words[i + 3].literal && words[i + 3].value == "-";
+      if (!fallthrough) result.insert(i + 3);
     }
+    if (fallthrough) return invalid();
     return result;
   }
   if (name == "namespace" && size == 4 && words[1].value == "eval") return {3};
   if (name == "if" && size >= 3) {
     std::set<size_t> result;
-    size_t i = 2;
-    while (i < size) {
+    size_t test = 1;
+    while (true) {
+      if (test + 1 >= size) return invalid();
+      expressions->insert(test);
+      size_t i = test + 1;
+      // A dynamic word may be the optional "then" or the body itself.
+      if (!words[i].literal) return result;
       if (words[i].value == "then") ++i;
-      if (i >= size) break;
+      if (i >= size) return invalid();
       result.insert(i++);
-      if (i < size && words[i].value == "elseif") {
-        i += 2;
-      } else if (i < size && words[i].value == "else") {
-        if (i + 1 < size) result.insert(i + 1);
-        break;
-      } else {
-        break;
+      if (i == size || !words[i].literal) return result;
+      if (words[i].value == "elseif") {
+        test = i + 1;
+        continue;
       }
+      if (words[i].value == "else") ++i;
+      if (i + 1 != size) return invalid();
+      result.insert(i);
+      return result;
     }
-    return result;
   }
   return {};
 }
@@ -351,6 +412,13 @@ void Render(const std::string& source, const std::vector<Command>& commands,
     *output += indent;
     if (!command.comment.empty()) {
       *output += command.comment;
+    } else if (HasExpandedArguments(command)) {
+      auto range = command.range;
+      while (range.end > range.begin &&
+             (source[range.end - 1] == '\n' || source[range.end - 1] == '\r')) {
+        --range.end;
+      }
+      *output += Text(source, range);
     } else {
       for (size_t i = 0; i < command.words.size(); ++i) {
         if (i) *output += ' ';
@@ -454,12 +522,19 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
     Command command;
     command.range = {
         start, std::min(end, start + static_cast<size_t>(parsed.commandSize))};
+    size_t token_end = start;
+    bool static_expansion = false;
     for (TclCount i = 0; i < parsed.numTokens;) {
       const auto& token = parsed.tokenPtr[i];
       Word word;
       word.range = {
           static_cast<size_t>(token.start - ParserData()),
           static_cast<size_t>(token.start - ParserData() + token.size)};
+      // Tcl folds constant {*} lists into tokens, omitting the source prefix.
+      static_expansion |=
+          Text(source_, {token_end, word.range.begin}).find("{*}") !=
+          std::string::npos;
+      token_end = word.range.end;
       word.content = word.range;
       const std::string raw = Text(source_, word.range);
       const bool braced =
@@ -513,29 +588,58 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
       command.words.push_back(std::move(word));
       i += token.numComponents + 1;
     }
+    static_expansion |=
+        Text(source_, {token_end, command.range.end}).find("{*}") !=
+        std::string::npos;
+    if (static_expansion) {
+      if (command.words.empty()) {
+        command.words.emplace_back();
+        command.words.front().range = command.range;
+      }
+      command.words.front().expanded = true;
+    }
+    std::set<size_t> expressions;
+    std::string structure_error;
     const auto bodies =
-        command.words.empty() ? std::set<size_t>{} : BodyWords(command);
+        command.words.empty() || result != TCL_OK
+            ? std::set<size_t>{}
+            : BodyWords(command, &expressions, &structure_error);
+    if (!structure_error.empty()) {
+      Error(command.words[0].range, structure_error);
+    }
     for (const size_t i : bodies) {
       auto& word = command.words[i];
-      if (word.literal && (source_[word.range.begin] == '{' ||
-                           source_[word.range.begin] == '"')) {
+      if (word.literal) {
         word.body = source_[word.range.begin] == '{';
         word.script = Parse(word.content.begin, word.content.end, depth + 1);
       }
     }
-    if (!command.words.empty() && !HasExpandedArguments(command)) {
+    if (result == TCL_OK && !command.words.empty() &&
+        !HasExpandedArguments(command)) {
       const auto& name = command.words[0].value;
-      std::set<size_t> expressions;
-      if ((name == "if" || name == "while" || name == "expr") &&
-          command.words.size() > 1) {
+      if (name == "while" && command.words.size() > 1) {
         expressions.insert(1);
       }
-      if (name == "for" && command.words.size() == 5) expressions.insert(2);
-      if (name == "if") {
-        for (size_t i = 1; i + 1 < command.words.size(); ++i) {
-          if (command.words[i].value == "elseif") expressions.insert(i + 1);
+      if (name == "expr" && command.words.size() == 2 &&
+          command.words[1].literal) {
+        ParseExpression(&command.words[1], depth);
+      } else if (name == "expr" && command.words.size() > 2 &&
+                 std::all_of(command.words.begin() + 1, command.words.end(),
+                             [](const Word& word) { return word.literal; })) {
+        std::string text;
+        for (size_t i = 1; i < command.words.size(); ++i) {
+          if (i > 1) text += ' ';
+          text += command.words[i].value;
         }
+        Tcl_Parse expression{};
+        if (Tcl_ParseExpr(ParserInterpreter(), text.data(),
+                          static_cast<TclCount>(text.size()),
+                          &expression) != TCL_OK) {
+          Error(command.range, "invalid Tcl expression");
+        }
+        Tcl_FreeParse(&expression);
       }
+      if (name == "for" && command.words.size() == 5) expressions.insert(2);
       for (const size_t i : expressions) {
         auto& word = command.words[i];
         if (word.literal && source_[word.range.begin] == '{') {
@@ -545,6 +649,9 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
       if (name == "switch" && command.words.size() >= 3) {
         size_t i = 1;
         bool known_options = true;
+        bool has_mode = false;
+        bool regexp = false;
+        bool requires_regexp = false;
         while (i < command.words.size()) {
           if (!command.words[i].literal) {
             // A dynamic first argument may introduce options; preserve its
@@ -552,27 +659,78 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
             known_options = false;
             break;
           }
-          const auto option = command.words[i].value;
+          auto option = command.words[i].value;
           if (option.empty() || option[0] != '-') break;
+          static const std::vector<std::string> kSwitchOptions = {
+              "--",      "-exact",    "-glob",    "-regexp",
+              "-nocase", "-matchvar", "-indexvar"};
+          std::string matched;
+          int matches = 0;
+          for (const auto& candidate : kSwitchOptions) {
+            if (candidate.compare(0, option.size(), option) == 0) {
+              matched = candidate;
+              ++matches;
+            }
+          }
+          if (matches != 1) {
+            Error(command.words[i].range, "invalid or ambiguous switch option");
+            known_options = false;
+            break;
+          }
+          option = matched;
           ++i;
           if (option == "--") break;
-          if (option == "-matchvar" || option == "-indexvar") ++i;
+          if (option == "-exact" || option == "-glob" || option == "-regexp") {
+            if (has_mode) {
+              Error(command.words[i - 1].range,
+                    "switch permits only one match mode");
+            }
+            has_mode = true;
+            regexp = option == "-regexp";
+          }
+          if (option == "-matchvar" || option == "-indexvar") {
+            requires_regexp = true;
+            if (i == command.words.size()) {
+              Error(command.words[i - 1].range,
+                    "switch option requires a variable name");
+            }
+            ++i;
+          }
+        }
+        if (known_options && requires_regexp && !regexp) {
+          Error(command.words[0].range,
+                "switch match/index variables require -regexp");
         }
         if (!known_options) i = command.words.size();
         if (i < command.words.size()) ++i;  // Skip the switched value.
+        if (known_options && i >= command.words.size()) {
+          Error(command.words[0].range,
+                "switch requires a value and pattern/body pairs");
+        }
         if (i + 1 == command.words.size()) {
           auto& list = command.words[i];
-          if (list.literal && source_[list.range.begin] == '{') {
+          if (list.literal) {
             bool valid = false;
             const auto values = SplitList(list.value, &valid);
-            if (!valid || values.size() % 2 != 0) {
+            if (!valid || values.empty() || values.size() % 2 != 0 ||
+                values.back() == "-") {
               Error(list.range, "switch expects pattern/body pairs");
             } else {
               const auto spans = ListSpans(source_, list.content);
               for (size_t k = 1; k < spans.size(); k += 2) {
-                if (source_[spans[k].begin] != '{') continue;
-                auto script =
-                    Parse(spans[k].begin + 1, spans[k].end - 1, depth + 1);
+                auto body = spans[k];
+                const char delimiter = source_[body.begin];
+                if (delimiter == '{' || delimiter == '"') {
+                  ++body.begin;
+                  --body.end;
+                }
+                // Escaped list elements need decoded-to-source mapping.
+                if (delimiter != '{' &&
+                    Text(source_, body).find('\\') != std::string::npos) {
+                  continue;
+                }
+                if (Text(source_, body) == "-") continue;
+                auto script = Parse(body.begin, body.end, depth + 1);
                 list.substitutions.insert(
                     list.substitutions.end(),
                     std::make_move_iterator(script.begin()),
@@ -581,10 +739,16 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
             }
           }
         } else {
+          if (known_options && i < command.words.size() &&
+              ((command.words.size() - i) % 2 != 0 ||
+               (command.words.back().literal &&
+                command.words.back().value == "-"))) {
+            Error(command.words[0].range, "switch expects pattern/body pairs");
+          }
           for (size_t j = i + 1; j < command.words.size(); j += 2) {
             auto& word = command.words[j];
-            if (word.literal && source_[word.range.begin] == '{') {
-              word.body = true;
+            if (word.literal && word.value != "-") {
+              word.body = source_[word.range.begin] == '{';
               word.script =
                   Parse(word.content.begin, word.content.end, depth + 1);
             }
@@ -596,11 +760,10 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
       const size_t error = parsed.incomplete ? end : start;
       Error({error, std::min(end, error + 1)}, ParseError(parsed.errorType));
     }
+    const size_t next = start + static_cast<size_t>(parsed.commandSize);
     Tcl_FreeParse(&parsed);
     if (!command.words.empty()) commands.push_back(std::move(command));
-    if (result != TCL_OK || commands.empty()) break;
-    const size_t next =
-        start + static_cast<size_t>(commands.back().range.end - start);
+    if (result != TCL_OK) break;
     if (next <= begin) break;
     begin = next;
   }
@@ -649,6 +812,14 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
     auto& words = command.words;
     const auto& name = words[0].value;
     const auto spec = Specs().find(name);
+    if (context.level == 0) {
+      for (const auto& word : words) {
+        if (word.command_substitution) {
+          Error(word.range,
+                "command substitution is not permitted in PDL level-0");
+        }
+      }
+    }
     if (HasExpandedArguments(command)) {
       if (context.level == 0) {
         Error(words[0].range,
@@ -679,13 +850,21 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       }
     }
     const auto literal = [&](size_t i) {
-      return i < words.size() ? words[i].value : std::string();
+      if (i >= words.size()) return std::string();
+      return context.level == 0 && !words[i].literal
+                 ? Text(source_, words[i].content)
+                 : words[i].value;
     };
     const auto check_identifier = [&](size_t index,
-                                      bool (*valid)(const std::string&)) {
-      if (index < words.size() && words[index].literal &&
-          !valid(literal(index))) {
-        Error(words[index].range, "invalid PDL identifier for " + name);
+                                      bool (*valid)(const std::string&),
+                                      bool argument_ref = false) {
+      if (index < words.size() &&
+          (words[index].literal || context.level == 0)) {
+        const auto value = literal(index);
+        if (!valid(value) && !(argument_ref && !value.empty() &&
+                               value[0] == '$' && IsNumber(value))) {
+          Error(words[index].range, "invalid PDL identifier for " + name);
+        }
       }
     };
     if (context.level == 0 && context.owner >= 0 &&
@@ -695,12 +874,19 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
     }
     if (name == "iProcsForModule") check_identifier(1, IsQualifiedScalar);
     if (name == "iProc") check_identifier(1, IsScalar);
+    if (name == "iProc" && context.level == 0 && words.size() == 4) {
+      for (size_t i : {2U, 3U}) {
+        if (source_[words[i].range.begin] != '{') {
+          Error(words[i].range,
+                "level-0 iProc arguments and body require braces");
+        }
+      }
+    }
     if (name == "iCall") {
       check_identifier(1, IsProcedurePath);
       if (context.level == 0) {
         for (size_t i = 2; i < words.size(); ++i) {
-          if (words[i].literal && !IsNumber(literal(i)) &&
-              !IsHierSignal(literal(i))) {
+          if (!IsNumber(literal(i)) && !IsHierSignal(literal(i))) {
             Error(words[i].range, "invalid PDL argument for iCall");
           }
         }
@@ -714,11 +900,13 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
     }
     if (name == "iPDLLevel") {
       if (words.size() < 2 ||
-          (words[1].literal && literal(1) != "0" && literal(1) != "1") ||
-          (words.size() != 2 &&
-           (words.size() != 4 ||
-            (words[2].literal && literal(2) != "-version") ||
-            (words[3].literal && literal(3) != "STD_1687_2014")))) {
+          ((words[1].literal || context.level == 0) && literal(1) != "0" &&
+           literal(1) != "1") ||
+          (words.size() != 2 && (words.size() != 4 ||
+                                 ((words[2].literal || context.level == 0) &&
+                                  literal(2) != "-version") ||
+                                 ((words[3].literal || context.level == 0) &&
+                                  literal(3) != "STD_1687_2014")))) {
         Error(words[0].range, "expected iPDLLevel 0|1 -version STD_1687_2014");
       } else {
         context.level = !words[1].literal ? -1 : (literal(1) == "0" ? 0 : 1);
@@ -731,8 +919,8 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       }
       context.name_space.clear();
       context.namespace_known = true;
-      if (words.size() == 4 &&
-          (!words[2].literal || literal(2) == "-iProcNameSpace")) {
+      if (words.size() == 4 && ((!words[2].literal && context.level != 0) ||
+                                literal(2) == "-iProcNameSpace")) {
         check_identifier(3, IsScalar);
         context.name_space = literal(3);
         context.namespace_known = words[2].literal && words[3].literal;
@@ -773,7 +961,8 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       }
     }
     const auto option = kOptions.find(name);
-    if (option != kOptions.end() && words.size() == 2 && words[1].literal &&
+    if (option != kOptions.end() && words.size() == 2 &&
+        (words[1].literal || context.level == 0) &&
         !option->second.count(literal(1))) {
       Error(words[1].range, "invalid option for " + name + ": " + literal(1));
     }
@@ -794,7 +983,7 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
                                    const std::map<std::string, int>& allowed) {
       std::set<std::string> seen;
       for (size_t i = start; i < words.size(); ++i) {
-        if (!words[i].literal) return;
+        if (!words[i].literal && context.level != 0) return;
         const auto found = allowed.find(literal(i));
         if (found == allowed.end() || !seen.insert(literal(i)).second ||
             i + found->second >= words.size()) {
@@ -805,7 +994,10 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       }
     };
     const auto check_number = [&](size_t index, bool enumeration, bool scan) {
-      if (index >= words.size() || !words[index].literal) return;
+      if (index >= words.size() ||
+          (!words[index].literal && context.level != 0)) {
+        return;
+      }
       std::string value = literal(index);
       if (scan) {
         std::string digits;
@@ -835,8 +1027,8 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
     if (name == "iWrite" || name == "iRead" || name == "iState") {
       check_number(2, name != "iState", false);
     }
-    if (name == "iRunLoop" && words.size() > 1 && words[1].literal &&
-        literal(1) != "-time") {
+    if (name == "iRunLoop" && words.size() > 1 &&
+        (words[1].literal || context.level == 0) && literal(1) != "-time") {
       check_number(literal(1) == "-tck" ? 2 : 1, false, false);
     }
     if (name == "iWrite") {
@@ -863,7 +1055,7 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       bool had_format = false;
       for (size_t i = 2; i < words.size() && words[i].literal; ++i) {
         if (literal(i) == "-chain") {
-          check_identifier(++i, IsScalar);
+          check_identifier(++i, IsScalar, true);
         } else if (literal(i) == "-hex" || literal(i) == "-bin" ||
                    literal(i) == "-dec") {
           if (had_format) {
@@ -879,18 +1071,20 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
                         {"-LastMiscompareValue", 0}});
     }
     if (name == "iSetFail") check_options(2, {{"-quit", 0}});
-    if (name == "iRunLoop" && words.size() >= 2 && words[1].literal) {
+    if (name == "iRunLoop" && words.size() >= 2 &&
+        (words[1].literal || context.level == 0)) {
       if (literal(1) == "-time") {
         if (words.size() != 3) {
           Error(words[1].range, "iRunLoop -time requires a time value");
-        } else if (words[2].literal && !IsTime(literal(2))) {
+        } else if ((words[2].literal || context.level == 0) &&
+                   !IsTime(literal(2))) {
           Error(words[2].range, "invalid PDL time value");
         }
       } else if (literal(1) == "-tck") {
         if (words.size() != 3) {
           Error(words[1].range, "iRunLoop -tck requires a cycle count");
         }
-      } else if (words.size() > 2 && words[2].literal) {
+      } else if (words.size() > 2 && (words[2].literal || context.level == 0)) {
         if ((literal(2) != "-tck" || words.size() != 3) &&
             (literal(2) != "-sck" || words.size() != 4)) {
           Error(words[2].range, "invalid iRunLoop clock option");
@@ -898,17 +1092,18 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
         if (literal(2) == "-sck") check_identifier(3, IsHierSignal);
       }
     }
-    if (name == "iScan" && words.size() >= 3 && words[1].literal) {
+    if (name == "iScan" && words.size() >= 3 &&
+        (words[1].literal || context.level == 0)) {
       const size_t interface = literal(1) == "-ir" ? 2 : 1;
-      check_identifier(interface, IsInstancePath);
+      check_identifier(interface, IsInstancePath, true);
       size_t i = interface + 1;
       if (literal(i) == "-chain") {
-        check_identifier(i + 1, IsScalar);
+        check_identifier(i + 1, IsScalar, true);
         i += 2;
       }
       if (i >= words.size()) {
         Error(words[0].range, "iScan requires a scan length");
-      } else if (words[i].literal) {
+      } else if (words[i].literal || context.level == 0) {
         check_number(i, false, false);
         check_options(i + 1, {{"-si", 1}, {"-so", 1}, {"-stable", 0}});
         for (size_t j = i + 1; j + 1 < words.size(); ++j) {
@@ -926,10 +1121,13 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       if (i == 1) {
         Error(words[0].range, "iOverrideScanInterface requires an interface");
       }
-      for (size_t j = 1; j < i; ++j) check_identifier(j, IsInstancePath);
+      for (size_t j = 1; j < i; ++j) {
+        check_identifier(j, IsInstancePath, true);
+      }
       check_options(i, {{"-capture", 1}, {"-update", 1}, {"-broadcast", 1}});
       for (size_t j = i + 1; j < words.size(); j += 2) {
-        if (words[j].literal && literal(j) != "on" && literal(j) != "off") {
+        if ((words[j].literal || context.level == 0) && literal(j) != "on" &&
+            literal(j) != "off") {
           Error(words[j].range, "scan interface options require on or off");
         }
       }
@@ -962,10 +1160,18 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
                                  : std::vector<std::string>{};
       if (!valid) Error(words[2].range, "invalid procedure argument list");
       bool had_default = false;
-      size_t search = words[2].content.begin;
+      const auto argument_spans = ListSpans(source_, words[2].content);
+      const auto content = [&](ByteRange range) {
+        if (range.end > range.begin &&
+            (source_[range.begin] == '{' || source_[range.begin] == '"')) {
+          ++range.begin;
+          --range.end;
+        }
+        return range;
+      };
       std::set<std::string> names;
-      for (const auto& argument : arguments) {
-        const auto parts = SplitList(argument, &valid);
+      for (size_t i = 0; i < arguments.size(); ++i) {
+        const auto parts = SplitList(arguments[i], &valid);
         if (!valid || parts.empty() || parts.size() > 2) {
           Error(words[2].range, "invalid procedure argument");
           continue;
@@ -982,21 +1188,19 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
         }
         had_default |= parts.size() == 2;
         if (!names.insert(parts[0]).second) {
-          Error(words[2].range, "duplicate procedure argument");
-        }
-        const size_t found = source_.find(parts[0], search);
-        if (found == std::string::npos || found >= words[2].content.end) {
+          if (name == "iProc") {
+            Error(words[2].range, "duplicate procedure argument");
+          }
           continue;
         }
-        search = found + parts[0].size();
-        Declare({parts[0],
-                 "Variable",
-                 "argument " + parts[0],
-                 "",
-                 "",
-                 {found, search},
-                 {found, search},
-                 child.owner});
+        if (i >= argument_spans.size()) continue;
+        const auto fields = ListSpans(source_, content(argument_spans[i]));
+        if (fields.empty()) continue;
+        const auto name_range = content(fields.front());
+        // Decoded names need a source map; never guess another occurrence.
+        if (Text(source_, name_range) != parts[0]) continue;
+        Declare({parts[0], "Variable", "argument " + parts[0], "", "",
+                 name_range, name_range, child.owner});
       }
     } else if (name == "namespace" && literal(1) == "eval") {
       child.tcl_namespace = Qualify(context.tcl_namespace, literal(2));
@@ -1025,8 +1229,9 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
         "iRead",           "iWrite", "iState",         "iTake",
         "iRelease",        "iClock", "iClockOverride", "iGetReadData",
         "iGetMiscompares", "iPrefix"};
-    if (kObjectCommands.count(name) && words.size() > 1 && literal(1) != "-") {
-      if (words[1].literal &&
+    if (kObjectCommands.count(name) && words.size() > 1 &&
+        !(name == "iPrefix" && literal(1) == "-")) {
+      if ((words[1].literal || context.level == 0) &&
           !(name == "iTake" && literal(1) == "-persistent") &&
           !IsHierSignal(literal(1))) {
         Error(words[1].range, "invalid PDL object identifier");
@@ -1065,9 +1270,6 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
 void Document::AnalyzeWords(std::vector<Word>* words, const Context& context,
                             const Context& child) {
   for (auto& word : *words) {
-    if (context.level == 0 && word.command_substitution) {
-      Error(word.range, "command substitution is not permitted in PDL level-0");
-    }
     for (const auto& variable : word.variables) {
       const bool global =
           context.owner < 0 || variable.second.find("::") != std::string::npos;

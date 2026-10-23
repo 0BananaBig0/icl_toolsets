@@ -25,7 +25,7 @@ uninitialized interpreter per thread. It never calls `Tcl_Init` or any evaluatio
 API. A regression using an `exec touch` substitution verifies non-execution.
 
 Recognized braced bodies include `iProc`, `proc`, `if`, `foreach`, `lmap`, `for`,
-`while`, `catch`, `try` and `namespace eval`. Braced expressions are checked;
+`while`, `catch`, `try` and `namespace eval`. Literal expressions are checked;
 `switch` pattern/body lists are validated while retaining their original spelling.
 Other braced words remain data. Command substitutions are checked and retained
 verbatim. Source NUL bytes and inputs exceeding the Tcl parser's supported count
@@ -115,10 +115,16 @@ audit, literal object/procedure path checks, quoted-body validation, Tcl
 continuation fixes and maintained positive/negative command fixtures. Known
 quoted bodies are analyzed while their spelling is preserved in output.
 
+The [independent syntax checks](pdl-syntax-oracles.md) add a bounded Tcl oracle,
+IEEE command/lexical properties, nested inputs and CLI/LSP agreement checks.
+Literal multiword `expr` arguments are concatenated before syntax checking;
+dynamic expression construction is deferred. These checks do not execute PDL.
+
 ## Reproducible verification
 
 ```sh
 make check-dynamic formatcheck namingcheck BISON=/usr/bin/bison
+make pdl-syntaxcheck BISON=/usr/bin/bison
 python3 tests/src/test_pdl_tools.py \
   --formatter build/pdl-format-static --server build/pdl-lsp-static
 readelf -l build/pdl-lsp-static

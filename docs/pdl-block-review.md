@@ -1,5 +1,8 @@
 # PDL block review — IEEE 1687-2014
 
+The subsequent [independent syntax validation](pdl-syntax-oracles.md) records
+additional Tcl-oracle findings, fixes and the latest verification results.
+
 This review concerns PDL clauses 7–8. Enum and DataOutPort belong to ICL clause 6;
 they are not PDL grammar blocks. The two languages retain separate parsers,
 keyword sets and trees. Passing the tests below establishes the listed static
@@ -230,3 +233,170 @@ Missing-level fragments, abbreviated declarations and documented/observed vendor
 extensions remain accepted. Only the first diagnostic is reported. Tcl 8.6,
 target-host static portability and an actual PDL coc.nvim session require
 separate verification.
+
+
+## Follow-up validation review — 2026-10-23
+
+The follow-up starts from `e86539c` and follows the same block order. The
+additional cases are independently constructed under
+`tests/cases/ours/pdl/block_review/`; the manifest retains their clause mappings.
+The existing IEEE/Tessent adaptations and pinned upstream comparison above
+remain the reference inputs.
+
+- **Lexical and parameter references:** explicit level-0 checks now validate
+  the original spelling of nonliteral words. Valid `$argument` and vector
+  references remain accepted; malformed suffixes, concatenations and Tcl
+  `${argument}` construction are rejected in level-0. Level-1 retains Tcl
+  substitution rules. Missing brackets/parentheses, brace suffixes and CRLF
+  positions have exact diagnostic assertions at CLI/LSP boundaries.
+- **Procedures:** level-0 argument lists and bodies require braces (§7.9.5).
+  Literal bare/quoted level-1 bodies are analyzed without changing their word
+  spelling. Tcl `proc` permits duplicate formals, unlike PDL `iProc`; navigation
+  resolves the first binding, consistent with a harmless Tcl runtime probe.
+- **Data/clock commands:** the reset marker `-` is restricted to `iPrefix`.
+  An argument reference in an `iScan` interface/length or `iRunLoop` count no
+  longer bypasses checks on the remaining literal operands and option flags.
+- **Nested Tcl:** one positional walk identifies `if` tests and bodies,
+  including an implicit final else body. A body containing the text `elseif`
+  is no longer mistaken for a keyword. Literal quoted/bare switch bodies are
+  checked as scripts, while fallthrough `-` remains data. Escaped unbraced
+  switch-list elements remain conservative because decoding requires a mapping
+  back to original source positions.
+- **Expansion preservation:** Tcl's parser folds constant `{*}` lists into
+  tokens and can remove an empty expansion entirely. The shared AST now tracks
+  the omitted expansion prefix and preserves the original command spelling.
+  Empty expansion no longer stops parsing and drops later commands. Explicit
+  level-0 rejects expansion. Constructed Tcl execution-equivalence tests cover
+  quoted/braced/escaped elements and empty expansions; vendor PDL is never run.
+- **Navigation:** real protocol tests cover qualified hierarchical calls,
+  missing/noninstance paths, global Tcl fallback, missing symbols and duplicate
+  Tcl formals. Both executables continue using `pdl::Document` for parsing,
+  analysis and formatting; no parallel parser or token definitions were added.
+
+The new source checks scan gaps between consecutive Tcl word tokens once per
+command; they do not rescan each command for every token. Existing recursion
+limits and non-evaluating Tcl APIs remain in place. Runtime-created bodies and
+arbitrary Tcl dataflow are still outside static validation.
+
+### Follow-up verification and installation
+
+The independent read-only review found one introduced issue: a synthetic word
+for an empty expansion had no source range. An exact-position regression failed
+first, then passed after assigning the command range. No other reproducible
+introduced defect was reported. This review does not certify complete language
+conformance.
+
+| Check | Follow-up result |
+|---|---|
+| Full dynamic regression, format and naming checks | `make check-dynamic formatcheck namingcheck BISON=/usr/bin/bison -j4` passed. The final diagnostic-range fix was then verified with `make pdlcheck formatcheck namingcheck BISON=/usr/bin/bison -j4`. |
+| Final dynamic PDL suite | 29 functional methods, 176 block cases and all 79 corpus files passed; 73 vendor positives and six expected negatives. |
+| Rebuilt static PDL suite | The same functional, block and corpus suites passed. |
+| Installed dynamic and static PDL suite | The same three suites passed separately for each installed variant. |
+| Installation identity and command-line behavior | All eight installed hashes match the build outputs; every installed `--help` and `--version` exits without waiting for input. All four static binaries have neither ELF `INTERP` nor `NEEDED` entries. |
+| Final `make coverage BISON=/usr/bin/bison -j4` | **Strict gate failed**, exit 2: 3,787/3,885 authored lines (97.5%) and 6,307/10,437 branches (60.4%). |
+| PDL document coverage | 1,002/1,049 lines (95.5%), 2,222/3,531 branches (62.9%). |
+| ICL authored Flex/Bison logic | Bison 563/563 lines; Flex 211/213 lines. Rule reach remains 334/334 grammar rules and 119/119 scanner rules over 2,324 files. |
+
+The strict thresholds remain 100% lines / 90% branches. Compared with the prior
+review, overall line coverage rose from 96.7% to 97.5% and PDL document line
+coverage from 92.6% to 95.5%; neither the tests nor these percentages prove full
+syntax support. Uncovered paths remain, including defensive errors and compiler
+exception/cleanup edges. The final coverage run executes the final source and
+new tests; generated parser/scanner implementation and Tcl internals remain
+excluded. Five optional reference-ANTLR integration tests were skipped because
+`ICL_REF_DIR` was unset.
+
+After the builds and corpus checks completed, three native formatter runs on the
+same 868,139-byte SLM fixture took 0.02327/0.02269/0.02230 seconds (median
+0.02269 s), with maximum child peak RSS 18,600 KiB. The environment and measurement
+method are the same as above. This is consistent with the prior 0.0227 s median;
+no speedup is claimed. Earlier runs during compilation/testing were excluded
+from this comparison because of concurrent load.
+
+Both installation commands shown above were rerun. Dynamic executables are in
+`/home/banana/.local/bin`; static executables are in
+`build/install-static/bin`. `pdl-lsp` supplies the shared formatter through
+`textDocument/formatting`, so the maintained coc.nvim configuration needs only
+one PDL server entry. No personal editor configuration was changed.
+
+Tcl 8.6, a real PDL coc.nvim session, remote target portability and hardware
+retargeting remain unverified. Static linking still reports the documented
+Tcl/glibc optional NSS warnings. Escaped unbraced switch-list bodies and arbitrary
+runtime-produced Tcl bodies retain conservative static handling. These limits
+and the failing strict coverage gate remain open requirements; this review is
+not a claim that every PDL program is completely checked.
+
+
+## Continued block review — 2026-10-23
+
+The repeated review request continues from the verified 176-case follow-up,
+without replacing its fixtures or collecting vendor sources again. Lexical cases
+were confirmed first, followed by procedure definitions and then each command
+block in standard order. Sixteen new independently constructed cases cover
+fixed level-0 declaration/option positions, matching level-1 dynamic forms,
+quoted scan-data LF/CRLF continuations and an incomplete Tcl variable delimiter.
+The manifest now contains 192 cases.
+
+A procedure navigation regression exposed a separate source-location defect:
+`proc p {{first value} {value 1}} {return $value}` resolved `$value` to the first
+argument's default instead of the second argument's declaration. The equivalent
+`iProc` case failed too. Parameter declarations now use the existing Tcl list
+span walker, including nested braced/quoted names. This replaces repeated name
+searches through the remaining source with bounded list walks. Escaped decoded
+names that cannot be matched to their actual spelling stay unresolved, rather
+than selecting an unrelated occurrence. The functional suite includes exact LSP positions for these cases.
+
+The command audit identified remaining level-0 checks that were incorrectly
+skipped when a word contained `$`: the level/version/option fields of a later
+`iPDLLevel`, the `iProcsForModule` namespace flag, fixed `iReset`/`iApply`/`iMerge`
+options, and `iOverrideScanInterface` on/off values. Their normative productions
+(§§7.9.3–4, .9, .13–14, .18) require fixed literals at these positions, rather
+than `ARGUMENT_REF`. The generic argument-reference forms remain valid where
+specified. Level-1 dynamic arguments remain accepted. Missing/abbreviated stream
+declarations and previously documented vendor extensions keep their compatibility
+behavior.
+
+A fresh comparison of the pinned upstream `pdl.g4` found exactly the same 24
+command names as the independent local command table, with neither missing nor
+extra commands. No `.pdl` fixture exists in that checkout. The matching gaps and
+upstream grammar defects listed earlier still apply; no ICL rules or tokens were
+imported into PDL. The shared AST and analysis/formatting pipeline are unchanged.
+
+
+### Continuation results
+
+The independent read-only continuation review found no blocking introduced
+issue. It ran 20 additional declaration/option probes and five LSP formal-range
+probes, including nested quoting and LF/CRLF continuations. All reviewer inputs are now retained in
+`tests/cases/ours/pdl/review_probes.json` and exercised by the maintained
+functional runner: 12 Tcl execution-equivalence inputs, 25 diagnostic inputs
+(including two directly derived regressions), and five navigation inputs. Only
+these independently constructed harmless Tcl programs are executed. The suite
+now has 34 functional methods. Retaining the probes exposed a missing check for
+Tcl `if` without its required expression/body; a failing CLI/LSP regression
+preceded the shared parser fix.
+
+| Check | Result |
+|---|---|
+| Full dynamic regression and Google style | `make check-dynamic formatcheck namingcheck BISON=/usr/bin/bison -j4` passed. The final `if` diagnostic fix and retained probes were then verified with `make pdlcheck formatcheck namingcheck`, full coverage suites, static builds and both installed variants. |
+| Final PDL suites | 34 functional methods, 192 block cases, 79 vendor streams; all passed for static builds and both installed variants. |
+| Strict authored coverage | **Failed unchanged 100%/90% gate**: 3,810/3,895 lines (97.8%), 6,375/10,479 branches (60.8%). |
+| PDL document coverage | 1,025/1,059 lines (96.8%), 2,290/3,573 branches (64.1%). |
+| Installed identity and ELF checks | All eight hashes match; help/version exit; all four static binaries have no ELF `INTERP`/`NEEDED`. |
+| Representative CLI performance | 868,139-byte fixture: 0.02479/0.02246/0.02033 seconds, median 0.02246 s; peak child RSS 18,536 KiB. Same native command/environment as above; no speedup claim. |
+
+The final `make coverage BISON=/usr/bin/bison -j4` rebuilt the instrumented
+binaries, ran all suites including the 192 block cases and 42 retained probe
+inputs, regenerated gcov reports and failed the unchanged strict gate (exit 2).
+The table records that final report. No sources or branches were excluded to
+improve the figures. The full ICL regression still reaches 334/334
+grammar rules and 119/119 scanner rules; five optional reference-ANTLR tests
+remain skipped because `ICL_REF_DIR` is unset.
+
+Both installation commands were rerun, keeping the dynamic tools under
+`/home/banana/.local/bin` and static tools under `build/install-static/bin`.
+The installer prints the maintained ICL/PDL coc.nvim settings. Both installed
+PDL variants passed the functional, block and vendor-corpus suites separately.
+The non-evaluating design, Tcl 8.6/editor/target-runtime verification limits,
+conservative escaped-source handling and unmet strict coverage requirements
+remain as documented above. No claim of complete PDL conformance is made.

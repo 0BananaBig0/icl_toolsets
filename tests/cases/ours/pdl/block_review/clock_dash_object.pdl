@@ -1,0 +1,4 @@
+# IEEE1687-2014 7.9.15: reset marker is not a clock object.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc p {} {iClock -}

@@ -15,6 +15,7 @@ FORMATTER = None
 SERVER = None
 ROOT = Path(__file__).resolve().parents[2]
 HEADER = 'iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\n'
+REVIEW_PROBES = json.loads((ROOT / 'tests/cases/ours/pdl/review_probes.json').read_text())
 
 
 class Formatter(unittest.TestCase):
@@ -112,6 +113,15 @@ class Formatter(unittest.TestCase):
             'switch -regexp -indexvar indices abc {abc} {puts yes}\n',
             'switch -- x {x - y {puts yes} default {puts no}}\n',
             'try {error boom} on error {message options} {puts handled} finally {puts done}\n',
+            'proc p {x x} {return $x}\nputs [p 1 2]\n',
+            'if {0} {elseif} {puts ok}\n',
+            'puts {*}{stdout hello}\n',
+            'puts {*}{stdout {hello world}}\n',
+            'puts {*}{stdout "hello world"}\n',
+            'puts {*}{stdout hello\\ world}\n',
+            'puts hello {*}{ }\n',
+            '{*}{}\nputs ok\n',
+            '{*}{puts hello}\n',
         )
         for script in scripts:
             with self.subTest(script=script):
@@ -127,6 +137,19 @@ class Formatter(unittest.TestCase):
         run = self.run_format(scan)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(chr(92) + '\n0000', run.stdout)
+
+    def test_retained_review_tcl_equivalence(self):
+        for text in REVIEW_PROBES['equivalence']:
+            with self.subTest(text=text):
+                formatted = self.run_format(text)
+                self.assertEqual(formatted.returncode, 0, formatted.stderr)
+                self.assertEqual(self.run_format(formatted.stdout).stdout, formatted.stdout)
+                before = subprocess.run(['tclsh'], input=text, text=True,
+                                        capture_output=True, timeout=5)
+                after = subprocess.run(['tclsh'], input=formatted.stdout, text=True,
+                                       capture_output=True, timeout=5)
+                self.assertEqual((after.returncode, after.stdout, after.stderr),
+                                 (before.returncode, before.stdout, before.stderr))
 
     def test_level_zero_rejects_command_substitution(self):
         source = HEADER.replace('Level 1', 'Level 0') + 'iProc run {} {iWrite reg [iCall helper]}\n'
@@ -346,7 +369,9 @@ class LanguageServer(unittest.TestCase):
                 self.assertEqual(self.query('definition', 3, 8), [])
         for version, (command, reset) in enumerate((
                 ('iPrefix $path', 'iPrefix -'),
-                ('iUseProcNameSpace $ns', 'iUseProcNameSpace -')), start=3):
+                ('iUseProcNameSpace $ns', 'iUseProcNameSpace -'),
+                ('iPrefix {*}$args', 'iPrefix -'),
+                ('iUseProcNameSpace {*}$args', 'iUseProcNameSpace -')), start=3):
             with self.subTest(command=command):
                 source = HEADER + ('iProc target {} {iApply}\n'
                                    'iProc caller {} {\n' + command + '\n'
@@ -371,6 +396,82 @@ class LanguageServer(unittest.TestCase):
                 stdout, stderr = process.communicate()
                 self.assertEqual(process.returncode, 2 if option == '--unknown' else 0)
                 self.assertIn(b'pdl-lsp', stderr if option == '--unknown' else stdout)
+
+    def test_hierarchical_qualified_calls_and_unresolved_paths(self):
+        icl = self.root / 'hierarchy.icl'
+        icl.write_text('Module Leaf { DataInPort reg; }\n'
+                       'Module Demo { Instance child Of Leaf; DataInPort plain; }\n')
+        procedures = self.root / 'leaf.pdl'
+        procedures.write_text('iProcsForModule Leaf -iProcNameSpace vendor\n'
+                              'iProc action {} {iApply}\n')
+        self.client.notify('workspace/didChangeWatchedFiles', {'changes': [
+            {'uri': path.as_uri(), 'type': 1} for path in (icl, procedures)]})
+        text = HEADER + ('iProc run {} {\n'
+                         'iCall child.vendor::action\n'
+                         'iCall missing.vendor::action\n'
+                         'iCall plain.vendor::action\n'
+                         'iCall child.vendor::absent\n'
+                         'iRead plain.invalid\n}\n')
+        self.assertEqual(self.open(text)['diagnostics'], [])
+        target = self.query('definition', 3, 15)
+        self.assertEqual(target[0]['uri'], procedures.as_uri())
+        self.assertEqual(target[0]['range']['start']['line'], 1)
+        for line in (4, 5, 6, 7):
+            self.assertEqual(self.query('definition', line, 10), [])
+
+    def test_tcl_fallback_and_missing_symbols(self):
+        text = ('proc global {} {return ok}\nnamespace eval ns {\n'
+                'proc caller {} {\nglobal\nmissing\nputs $absent\n}\n}\n# comment\n')
+        self.assertEqual(self.open(text)['diagnostics'], [])
+        target = self.query('definition', 3, 2)
+        self.assertEqual(target[0]['range']['start']['line'], 0)
+        for line, column in ((4, 2), (5, 8), (8, 4)):
+            self.assertEqual(self.query('definition', line, column), [])
+
+    def test_duplicate_tcl_formals_resolve_to_first_binding(self):
+        self.assertEqual(self.open('proc p {x x} {return $x}\n')['diagnostics'], [])
+        target = self.query('definition', 0, 22)
+        self.assertEqual(target[0]['range']['start'], {'line': 0, 'character': 8})
+
+    def test_formal_navigation_does_not_select_previous_default(self):
+        for version, keyword in enumerate(('proc', 'iProc'), start=1):
+            with self.subTest(keyword=keyword):
+                text = HEADER + keyword + ' p {{first value} {value 1}} {return $value}\n'
+                if keyword == 'iProc':
+                    text = text.replace('return $value', 'iWrite reg $value')
+                self.assertEqual(self.open(text, version)['diagnostics'], [])
+                line = text.splitlines()[2]
+                target = self.query('definition', 2, line.rfind('$value') + 1)
+                self.assertEqual(target[0]['range']['start'],
+                                 {'line': 2, 'character': line.index('{value') + 1})
+
+    def test_nested_formal_name_ranges_and_escaped_names(self):
+        for version, formal in enumerate(('{{value} 1}', '{"value" 1}',
+                                         r'{v\x61lue value}'), start=1):
+            text = 'proc p {' + formal + '} {return $value}\n'
+            self.assertEqual(self.open(text, version)['diagnostics'], [])
+            target = self.query('definition', 0, text.rfind('$value') + 1)
+            if '\\' in formal:
+                self.assertEqual(target, [])
+            else:
+                self.assertEqual(target[0]['range']['start'],
+                                 {'line': 0, 'character': text.index('value')})
+
+    def test_retained_review_diagnostics(self):
+        for version, case in enumerate(REVIEW_PROBES['diagnostics'], start=1):
+            with self.subTest(text=case['text']):
+                diagnostics = self.open(case['text'], version)['diagnostics']
+                self.assertEqual(not diagnostics, case['valid'])
+                formatted = subprocess.run([FORMATTER], input=case['text'].encode(),
+                                           capture_output=True, timeout=5)
+                self.assertEqual(formatted.returncode, 0 if case['valid'] else 2)
+
+    def test_retained_review_navigation(self):
+        for version, case in enumerate(REVIEW_PROBES['navigation'], start=1):
+            with self.subTest(text=case['text']):
+                self.assertEqual(self.open(case['text'], version)['diagnostics'], [])
+                target = self.query('definition', **case['query'])
+                self.assertEqual(target[0]['range']['start'], case['target'])
 
 
 if __name__ == '__main__':

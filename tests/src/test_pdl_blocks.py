@@ -55,6 +55,13 @@ def main():
                     and m['params']['uri'] == uri, case['path'])['params']['diagnostics']
                 if bool(diagnostics) == valid:
                     failures.append(f"{case['block']} {case['path']}: wrong LSP diagnostics {diagnostics}")
+                expected = case.get('diagnostic')
+                if expected:
+                    if expected['message'] not in run.stderr.decode('utf-8', errors='replace'):
+                        failures.append(f"{case['path']}: wrong CLI diagnostic {run.stderr!r}")
+                    if (not diagnostics or diagnostics[0]['message'] != expected['message']
+                            or diagnostics[0]['range']['start'] != expected['start']):
+                        failures.append(f"{case['path']}: expected diagnostic {expected}, got {diagnostics}")
                 reply = client.request('textDocument/formatting', {'textDocument': {'uri': uri},
                     'options': {'tabSize': 2, 'insertSpaces': True}})
                 assert reply and 'result' in reply, reply

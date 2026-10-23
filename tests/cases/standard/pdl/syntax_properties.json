@@ -1,0 +1,241 @@
+{
+  "source": "IEEE1687-2014 clauses7-8, independently constructed production instances, not copied production code",
+  "commands": [
+    {
+      "name": "iPDLLevel",
+      "clause": "7.9.3",
+      "text": "iPDLLevel 0 -version STD_1687_2014",
+      "stream": true,
+      "level": 0,
+      "invalid": "iPDLLevel 2 -version STD_1687_2014"
+    },
+    {
+      "name": "iProcsForModule",
+      "clause": "7.9.4",
+      "text": "iProcsForModule Vendor::Demo -iProcNameSpace procedures",
+      "stream": true,
+      "level": 0,
+      "invalid": "iProcsForModule Demo -bad vendor"
+    },
+    {
+      "name": "iProc",
+      "clause": "7.9.5",
+      "text": "iProc procedure {arg {default 0b10}} {iWrite reg $arg}",
+      "stream": true,
+      "level": 0,
+      "invalid": "iProc broken {arg}"
+    },
+    {
+      "name": "iUseProcNameSpace",
+      "clause": "7.9.6",
+      "text": "iUseProcNameSpace procedures",
+      "stream": false,
+      "level": 0,
+      "invalid": "iUseProcNameSpace bad::name"
+    },
+    {
+      "name": "iPrefix",
+      "clause": "7.9.7",
+      "text": "iPrefix block.child",
+      "stream": false,
+      "level": 0,
+      "invalid": "iPrefix child..inst"
+    },
+    {
+      "name": "iCall",
+      "clause": "7.9.8",
+      "text": "iCall child.procedures::run 0xAA Ready reg[3:0]",
+      "stream": false,
+      "level": 0,
+      "invalid": "iCall child.::bad"
+    },
+    {
+      "name": "iReset",
+      "clause": "7.9.9",
+      "text": "iReset -sync",
+      "stream": false,
+      "level": 0,
+      "invalid": "iReset -async"
+    },
+    {
+      "name": "iRead",
+      "clause": "7.9.10",
+      "text": "iRead reg[3:0] 0xA",
+      "stream": false,
+      "level": 0,
+      "invalid": "iRead"
+    },
+    {
+      "name": "iWrite",
+      "clause": "7.9.11",
+      "text": "iWrite reg($bit) $data",
+      "stream": false,
+      "level": 0,
+      "invalid": "iWrite reg"
+    },
+    {
+      "name": "iScan",
+      "clause": "7.9.12",
+      "text": "iScan -ir scan -chain chain 8 -si 0xAA -so 0xXX -stable",
+      "stream": false,
+      "level": 0,
+      "invalid": "iScan scan 8 -si"
+    },
+    {
+      "name": "iOverrideScanInterface",
+      "clause": "7.9.13",
+      "text": "iOverrideScanInterface a.scan b.scan -capture off -update on -broadcast off",
+      "stream": false,
+      "level": 0,
+      "invalid": "iOverrideScanInterface -capture on"
+    },
+    {
+      "name": "iApply",
+      "clause": "7.9.14",
+      "text": "iApply -together",
+      "stream": false,
+      "level": 0,
+      "invalid": "iApply -bad"
+    },
+    {
+      "name": "iClock",
+      "clause": "7.9.15",
+      "text": "iClock clock",
+      "stream": false,
+      "level": 0,
+      "invalid": "iClock"
+    },
+    {
+      "name": "iClockOverride",
+      "clause": "7.9.16",
+      "text": "iClockOverride clock -source source -freqMultiplier 2 -freqDivider 3",
+      "stream": false,
+      "level": 0,
+      "invalid": "iClockOverride clock -freqDivider"
+    },
+    {
+      "name": "iRunLoop",
+      "clause": "7.9.17",
+      "text": "iRunLoop -time 1.0e-3ns",
+      "stream": false,
+      "level": 0,
+      "invalid": "iRunLoop -time 1e-3ns"
+    },
+    {
+      "name": "iMerge",
+      "clause": "7.9.18",
+      "text": "iMerge -begin\niCall run\niMerge -end",
+      "stream": false,
+      "level": 0,
+      "invalid": "iMerge -unknown"
+    },
+    {
+      "name": "iTake",
+      "clause": "7.9.19",
+      "text": "iTake resource",
+      "stream": false,
+      "level": 0,
+      "invalid": "iTake resource -unknown"
+    },
+    {
+      "name": "iRelease",
+      "clause": "7.9.20",
+      "text": "iRelease resource",
+      "stream": false,
+      "level": 0,
+      "invalid": "iRelease"
+    },
+    {
+      "name": "iNote",
+      "clause": "7.9.21",
+      "text": "iNote -comment {message}",
+      "stream": false,
+      "level": 0,
+      "also_valid": "iNote -unknown arbitrary parameters remain legal"
+    },
+    {
+      "name": "iState",
+      "clause": "7.9.22",
+      "text": "iState reg 0b01 -LastWrittenValue",
+      "stream": false,
+      "level": 0,
+      "invalid": "iState reg 1 -bad"
+    },
+    {
+      "name": "iGetReadData",
+      "clause": "8.4.1",
+      "text": "iGetReadData scan -chain chain -hex",
+      "stream": false,
+      "level": 1,
+      "invalid": "iGetReadData reg -hex -bin"
+    },
+    {
+      "name": "iGetMiscompares",
+      "clause": "8.4.2",
+      "text": "iGetMiscompares reg -bin",
+      "stream": false,
+      "level": 1,
+      "invalid": "iGetMiscompares scan -chain"
+    },
+    {
+      "name": "iGetStatus",
+      "clause": "8.4.3",
+      "text": "iGetStatus -clear",
+      "stream": false,
+      "level": 1,
+      "invalid": "iGetStatus -bad"
+    },
+    {
+      "name": "iSetFail",
+      "clause": "8.4.4",
+      "text": "iSetFail {failure} -quit",
+      "stream": false,
+      "level": 1,
+      "invalid": "iSetFail message -unknown"
+    }
+  ],
+  "numbers": {
+    "valid": [
+      "0",
+      "123",
+      "0005",
+      "0xAa",
+      "0XAF",
+      "0b10X",
+      "0Bxx",
+      "$data"
+    ],
+    "invalid": [
+      "-1",
+      "+1",
+      "1_0",
+      "0b2",
+      "0xG",
+      "0x",
+      "1.0",
+      "4'hA"
+    ]
+  },
+  "objects": {
+    "valid": [
+      "r",
+      "r_1",
+      "a.b.r",
+      "r[0]",
+      "r[0xF:0]",
+      "r($bit)",
+      "$reg"
+    ],
+    "invalid": [
+      "0r",
+      "_r",
+      "r.",
+      ".r",
+      "r::x",
+      "r[-1]",
+      "r[1:]",
+      "r[0]tail",
+      "r..x"
+    ]
+  }
+}

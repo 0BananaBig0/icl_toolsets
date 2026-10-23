@@ -1,0 +1,9 @@
+# IEEE1687-2014 7.6-7.8: constructed argument-reference boundary.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {bit left right data reg iface chain length} {
+iWrite reg[$left:$right] $data
+iRead reg($bit) $data
+iRead $reg 0b1
+iScan $iface -chain $chain $length -si $data
+}

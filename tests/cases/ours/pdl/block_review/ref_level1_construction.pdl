@@ -1,0 +1,6 @@
+# Clause8: runtime Tcl string construction remains valid.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc example {bit left right data reg iface chain length} {
+iWrite ${reg}$bit 0x$data
+}

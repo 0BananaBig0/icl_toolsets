@@ -479,3 +479,16 @@ ignored `tests/generated/ours/keyword_contexts/`.
 mappings. Canonical categories are Synopsys SLM (47) and Tessent (32). Six
 nonportable argument lists are explicit negative cases; the other 73 are positive
 formatter/LSP cases. These fixtures retain their original notices and ownership.
+
+## Independent PDL syntax checks
+
+`standard/pdl/syntax_properties.json` contains independently constructed IEEE
+1687-2014 clauses 7–8 command and lexical instances, including invalid variants.
+They are completed test inputs, not verbatim excerpts or tool output.
+`ours/pdl/tcl_syntax_oracle.json` contains bounded, harmless Tcl examples and
+retained independent-review probes. Only these maintained Tcl examples are
+executed in safe interpreters; imported/vendor PDL is never executed.
+`tests/src/test_pdl_syntax_properties.py` materializes whitespace and nesting
+variants under ignored `tests/generated/pdl_syntax/`. Seeds and the generator
+are maintained source; generated inputs and reports do not enter Git. See
+[methods and limitations](../../docs/pdl-syntax-oracles.md).

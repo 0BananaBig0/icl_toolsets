@@ -935,5 +935,466 @@
     "valid": true,
     "source": "ours",
     "clause": "8.1"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_bad_object.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_bad_suffix.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_bad_concat.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_bad_data_concat.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_bad_data_vector.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_bad_braced_name.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_valid_vectors.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6-7.8"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/ref_level1_construction.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8.1-8.2"
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/missing_bracket.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6(k),8.2",
+    "diagnostic": {
+      "message": "missing close bracket",
+      "start": {
+        "line": 2,
+        "character": 0
+      }
+    }
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/missing_parenthesis.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6(k),8.2",
+    "diagnostic": {
+      "message": "missing close parenthesis",
+      "start": {
+        "line": 2,
+        "character": 0
+      }
+    }
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/extra_brace_text.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6(k),8.2",
+    "diagnostic": {
+      "message": "extra characters after close brace",
+      "start": {
+        "line": 1,
+        "character": 0
+      }
+    }
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/crlf_error_position.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6(k),8.2",
+    "diagnostic": {
+      "message": "missing close bracket",
+      "start": {
+        "line": 3,
+        "character": 0
+      }
+    }
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_unbraced_args.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_unbraced_body.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_quoted_args.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_quoted_body.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_level1_bare_valid.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_level1_bare_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_bad_argument_fields.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/proc_empty_argument.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.5,8.2"
+  },
+  {
+    "block": "iRead",
+    "path": "ours/pdl/block_review/read_dash_object.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.10"
+  },
+  {
+    "block": "iWrite",
+    "path": "ours/pdl/block_review/write_dash_object.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.11"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_ref_length_bad_data.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_ref_interface_bad_length.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_ref_chain.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.7,7.9.12"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_dynamic_flag_level0.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.12"
+  },
+  {
+    "block": "iClock",
+    "path": "ours/pdl/block_review/clock_dash_object.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.15"
+  },
+  {
+    "block": "iClockOverride",
+    "path": "ours/pdl/block_review/clock_override_dash_object.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.16"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_ref_bad_option.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_ref_bad_port.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_ref_valid.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "iRunLoop",
+    "path": "ours/pdl/block_review/runloop_missing_time.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.17"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/tcl_duplicate_formals.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/if_body_named_elseif.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/if_implicit_else_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_quoted_list_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_quoted_words_bad.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_quoted_list_valid.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_odd_list.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/expanded_level_zero.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/expanded_empty_level_zero.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.6,8.2",
+    "diagnostic": {
+      "message": "argument expansion is not permitted in PDL level-0",
+      "start": {
+        "line": 3,
+        "character": 0
+      }
+    }
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/switch_dynamic_options.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "tcl",
+    "path": "ours/pdl/block_review/expanded_level_declaration.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6,8.2"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/level0_dynamic_level.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3-4"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/level0_dynamic_version_flag.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3-4"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/level0_dynamic_version.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3-4"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/level0_dynamic_binding_flag.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.3-4"
+  },
+  {
+    "block": "procedures",
+    "path": "ours/pdl/block_review/level1_dynamic_declarations.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.3-4"
+  },
+  {
+    "block": "iReset",
+    "path": "ours/pdl/block_review/ireset_dynamic_option_level0.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.9"
+  },
+  {
+    "block": "iReset",
+    "path": "ours/pdl/block_review/ireset_dynamic_option_level1.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.9"
+  },
+  {
+    "block": "iApply",
+    "path": "ours/pdl/block_review/iapply_dynamic_option_level0.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.14"
+  },
+  {
+    "block": "iApply",
+    "path": "ours/pdl/block_review/iapply_dynamic_option_level1.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.14"
+  },
+  {
+    "block": "iMerge",
+    "path": "ours/pdl/block_review/imerge_dynamic_option_level0.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iMerge",
+    "path": "ours/pdl/block_review/imerge_dynamic_option_level1.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.18"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "ours/pdl/block_review/ioverridescaninterface_dynamic_option_level0.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iOverrideScanInterface",
+    "path": "ours/pdl/block_review/ioverridescaninterface_dynamic_option_level1.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.9.13"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_quoted_continuation_lf.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k6),7.7,7.9.12",
+    "preserve": [
+      "\"0b0011\\\n  0011\""
+    ]
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_quoted_continuation_crlf.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.6(k6),7.7,7.9.12",
+    "preserve": [
+      "\"0b0011\\\r\n  0011\""
+    ]
+  },
+  {
+    "block": "lexical",
+    "path": "ours/pdl/block_review/missing_variable_brace.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "8.2",
+    "diagnostic": {
+      "message": "invalid Tcl/PDL syntax",
+      "start": {
+        "line": 2,
+        "character": 20
+      }
+    }
   }
 ]

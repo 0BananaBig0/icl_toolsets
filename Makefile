@@ -236,11 +236,15 @@ icl-static: check-tools $(STATIC_BIN) $(LSP_STATIC_BIN)
 
 pdl-static: check-tools $(PDL_STATIC_BIN) $(PDL_LSP_STATIC_BIN)
 
-pdlcheck: pdl-dynamic
+pdlcheck: pdl-syntaxcheck
 	python3 tests/src/test_pdl_tools.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
 	python3 tests/tests/test_import_pdl_corpus.py
 	python3 tests/src/test_pdl_corpus.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
 	python3 tests/src/test_pdl_blocks.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
+
+.PHONY: pdl-syntaxcheck
+pdl-syntaxcheck: pdl-dynamic
+	python3 tests/src/test_pdl_syntax_properties.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
 
 $(STATIC_BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
 	@mkdir -p $(@D)
@@ -401,6 +405,7 @@ coverage: $(COV_BINARIES)
 	@python3 tests/src/test_pdl_tools.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
 	@python3 tests/src/test_pdl_corpus.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
 	@python3 tests/src/test_pdl_blocks.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
+	@python3 tests/src/test_pdl_syntax_properties.py --formatter $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp --report $(COV_DIR)/pdl-syntax-report.json
 	@python3 tests/run_tests.py --binary $(COV_DIR)/icl-format
 	@python3 tests/lsp_test.py --binary $(COV_DIR)/icl-lsp \
 	  --cli $(COV_DIR)/icl-format

@@ -1,0 +1,445 @@
+{
+  "source": "ours: bounded constructed Tcl builtin examples; Tcl safe interpreter is the acceptance oracle",
+  "cases": [
+    {
+      "name": "if_true",
+      "text": "if {1} {set x 1}\n"
+    },
+    {
+      "name": "if_then",
+      "text": "if {1} then {set x 1}\n"
+    },
+    {
+      "name": "if_elseif",
+      "text": "if {0} {} elseif {1} then {set x 1} else {}\n"
+    },
+    {
+      "name": "if_implicit_else",
+      "text": "if {0} {} {set x 1}\n"
+    },
+    {
+      "name": "if_missing_then_body",
+      "text": "if {1} then\n"
+    },
+    {
+      "name": "if_missing_elseif_expr",
+      "text": "if {0} {} elseif\n"
+    },
+    {
+      "name": "if_missing_elseif_body",
+      "text": "if {0} {} elseif {1}\n"
+    },
+    {
+      "name": "if_missing_else_body",
+      "text": "if {0} {} else\n"
+    },
+    {
+      "name": "if_extra_else_word",
+      "text": "if {0} {} else {} extra\n"
+    },
+    {
+      "name": "if_extra_implicit_word",
+      "text": "if {0} {} {} extra\n"
+    },
+    {
+      "name": "while_valid",
+      "text": "while {0} {}\n"
+    },
+    {
+      "name": "while_missing",
+      "text": "while {0}\n"
+    },
+    {
+      "name": "while_extra",
+      "text": "while {0} {} extra\n"
+    },
+    {
+      "name": "for_valid",
+      "text": "for {} {0} {} {}\n"
+    },
+    {
+      "name": "for_missing",
+      "text": "for {} {0} {}\n"
+    },
+    {
+      "name": "for_extra",
+      "text": "for {} {0} {} {} extra\n"
+    },
+    {
+      "name": "foreach_valid",
+      "text": "foreach x {1} y {2} {set z 3}\n"
+    },
+    {
+      "name": "foreach_empty_vars",
+      "text": "foreach {} {1} {}\n"
+    },
+    {
+      "name": "foreach_missing",
+      "text": "foreach x {}\n"
+    },
+    {
+      "name": "foreach_odd",
+      "text": "foreach x {} y {}\n"
+    },
+    {
+      "name": "lmap_valid",
+      "text": "lmap x {1} {set x}\n"
+    },
+    {
+      "name": "lmap_missing",
+      "text": "lmap x {}\n"
+    },
+    {
+      "name": "catch_valid",
+      "text": "catch {set x 1} result options\n"
+    },
+    {
+      "name": "catch_missing",
+      "text": "catch\n"
+    },
+    {
+      "name": "catch_extra",
+      "text": "catch {} x y z\n"
+    },
+    {
+      "name": "proc_valid",
+      "text": "proc p {x} {set x}; p 1\n"
+    },
+    {
+      "name": "proc_missing",
+      "text": "proc p {}\n"
+    },
+    {
+      "name": "proc_extra",
+      "text": "proc p {} {} extra\n"
+    },
+    {
+      "name": "set_valid",
+      "text": "set x 1; set x\n"
+    },
+    {
+      "name": "set_missing",
+      "text": "set\n"
+    },
+    {
+      "name": "set_extra",
+      "text": "set x 1 extra\n"
+    },
+    {
+      "name": "try_valid",
+      "text": "try {set x 1} on error {message options} {} finally {}\n"
+    },
+    {
+      "name": "try_missing",
+      "text": "try\n"
+    },
+    {
+      "name": "try_unknown_handler",
+      "text": "try {} invalid\n"
+    },
+    {
+      "name": "try_missing_finally",
+      "text": "try {} finally\n"
+    },
+    {
+      "name": "try_after_finally",
+      "text": "try {} finally {} extra\n"
+    },
+    {
+      "name": "try_missing_handler_body",
+      "text": "try {} on error {m o}\n"
+    },
+    {
+      "name": "try_many_vars",
+      "text": "try {} on error {a b c} {}\n"
+    },
+    {
+      "name": "try_bad_code",
+      "text": "try {} on bogus {} {}\n"
+    },
+    {
+      "name": "switch_list",
+      "text": "switch -- x {x {set y 1} default {set y 0}}\n"
+    },
+    {
+      "name": "switch_words",
+      "text": "switch -- x x {set y 1} default {set y 0}\n"
+    },
+    {
+      "name": "switch_abbreviation",
+      "text": "switch -g x x {set y 1}\n"
+    },
+    {
+      "name": "switch_missing",
+      "text": "switch -- x\n"
+    },
+    {
+      "name": "switch_odd_words",
+      "text": "switch -- x x {} default\n"
+    },
+    {
+      "name": "switch_bad_option",
+      "text": "switch -bogus x x {}\n"
+    },
+    {
+      "name": "switch_trailing_fallthrough",
+      "text": "switch -- x {x -}\n"
+    },
+    {
+      "name": "switch_empty_list",
+      "text": "switch -- x {}\n"
+    },
+    {
+      "name": "data_not_script",
+      "text": "set data {if {1} then}\n"
+    },
+    {
+      "name": "switch_matchvar_short",
+      "text": "switch -regexp -m captures x x {}\n"
+    },
+    {
+      "name": "switch_indexvar_short",
+      "text": "switch -r -i indexes x x {}\n"
+    },
+    {
+      "name": "switch_missing_option_operand",
+      "text": "switch -regexp -matchvar\n"
+    },
+    {
+      "name": "switch_nocase",
+      "text": "switch -nocase X x {}\n"
+    },
+    {
+      "name": "switch_dynamic",
+      "text": "set options -glob; switch $options x x {}\n"
+    },
+    {
+      "name": "if_dynamic_body",
+      "text": "set script {}; if {1} $script\n"
+    },
+    {
+      "name": "if_dynamic_elseif",
+      "text": "set condition 1; if {0} {} elseif $condition {}\n"
+    },
+    {
+      "name": "try_dynamic_handler",
+      "text": "set handler on; try {} $handler error {} {}\n"
+    },
+    {
+      "name": "quoted_escape",
+      "text": "set data \"a\\\"b\"\n"
+    },
+    {
+      "name": "opaque_data",
+      "text": "set data {a;b#c}\n"
+    },
+    {
+      "name": "quote_suffix",
+      "text": "set value \"a\"b\n"
+    },
+    {
+      "name": "brace_suffix",
+      "text": "set value {a}b\n"
+    },
+    {
+      "name": "missing_quote",
+      "text": "set value \"a\n"
+    },
+    {
+      "name": "missing_brace",
+      "text": "set value {a\n"
+    },
+    {
+      "name": "missing_bracket",
+      "text": "set value [set x 1\n"
+    },
+    {
+      "name": "missing_var_brace",
+      "text": "set value ${a\n"
+    },
+    {
+      "name": "missing_array_paren",
+      "text": "set value $a(\n"
+    },
+    {
+      "name": "array",
+      "text": "set a(0) 1; set x $a(0)\n"
+    },
+    {
+      "name": "substitution",
+      "text": "set x [set y 2]\n"
+    },
+    {
+      "name": "continued_comment",
+      "text": "# comment\\\nset data ignored\nset x 1\n"
+    },
+    {
+      "name": "review_switch_matchvar_without_regexp",
+      "text": "switch -matchvar m x x {}\n"
+    },
+    {
+      "name": "review_switch_indexvar_without_regexp",
+      "text": "switch -indexvar m x x {}\n"
+    },
+    {
+      "name": "review_switch_regexp_glob",
+      "text": "switch -regexp -matchvar m -glob x x {}\n"
+    },
+    {
+      "name": "review_switch_glob_regexp",
+      "text": "switch -glob -matchvar m -regexp x x {}\n"
+    },
+    {
+      "name": "review_switch_repeated_mode",
+      "text": "switch -glob -glob x x {}\n"
+    },
+    {
+      "name": "review_switch_conflicting_modes",
+      "text": "switch -exact -glob x x {}\n"
+    },
+    {
+      "name": "review_try_malformed_variables",
+      "text": "try {} on error \"{\" {}\n"
+    },
+    {
+      "name": "review_try_malformed_prefix",
+      "text": "try {} trap \"{\" {} {}\n"
+    },
+    {
+      "name": "review_try_trailing_fallthrough",
+      "text": "try {} on error {} -\n"
+    },
+    {
+      "name": "review_try_fallthrough_finally",
+      "text": "try {} on error {} - finally {}\n"
+    },
+    {
+      "name": "review_foreach_malformed_values",
+      "text": "foreach x \"{\" {}\n"
+    },
+    {
+      "name": "review_lmap_malformed_values",
+      "text": "lmap x \"{\" {}\n"
+    },
+    {
+      "name": "review_expr_split_operator",
+      "text": "expr {1 +} {2}\n"
+    },
+    {
+      "name": "review_expr_split_parentheses",
+      "text": "expr {(} {1 + 2)}\n"
+    },
+    {
+      "name": "review_expr_dynamic_suffix",
+      "text": "set suffix 2; expr {1 +} $suffix\n"
+    },
+    {
+      "name": "review_try_empty_variables",
+      "text": "try {} on error {} {}\n"
+    },
+    {
+      "name": "review_try_empty_prefix",
+      "text": "try {} trap {} {} {}\n"
+    },
+    {
+      "name": "review_try_handler_fallthrough",
+      "text": "try {} on error {} - on ok {} {}\n"
+    },
+    {
+      "name": "review_if_dynamic_then",
+      "text": "set then then; if {1} $then {set a 1}\n"
+    },
+    {
+      "name": "review_if_dynamic_else",
+      "text": "set else else; if {0} {} $else {set a 1}\n"
+    },
+    {
+      "name": "review_try_dynamic_finally",
+      "text": "set handler finally; try {} $handler {}\n"
+    },
+    {
+      "name": "review_switch_dynamic_value",
+      "text": "set x x; switch -- $x {x {}}\n"
+    },
+    {
+      "name": "review_expr_split_words",
+      "text": "expr {1} + {2}\n"
+    },
+    {
+      "name": "review_switch_matchvar_before_regexp",
+      "text": "switch -matchvar m -regexp x x {}\n"
+    },
+    {
+      "name": "review_switch_dynamic_mode",
+      "text": "set mode -regexp; switch -matchvar m $mode x x {}\n"
+    },
+    {
+      "name": "review_try_dynamic_variables",
+      "text": "set vars {m o}; try {} on error $vars {}\n"
+    },
+    {
+      "name": "review_try_dynamic_prefix",
+      "text": "set prefix {}; try {} trap $prefix {} {}\n"
+    },
+    {
+      "name": "review_foreach_dynamic_values",
+      "text": "set data {1 2}; foreach x $data {}\n"
+    },
+    {
+      "name": "review_expr_missing",
+      "text": "expr\n"
+    },
+    {
+      "name": "review_expr_missing_operand",
+      "text": "expr {1} +\n"
+    },
+    {
+      "name": "review_expr_quoted_missing_operand",
+      "text": "expr \"1 +\"\n"
+    },
+    {
+      "name": "review_try_signed_code",
+      "text": "try {} on +1 {} {}\n"
+    },
+    {
+      "name": "review_try_spaced_code",
+      "text": "try {} on { 1 } {} {}\n"
+    },
+    {
+      "name": "review_try_short_on",
+      "text": "try {} o error {} {}\n"
+    },
+    {
+      "name": "review_try_short_trap",
+      "text": "try {} tr {} {} {}\n"
+    },
+    {
+      "name": "review_try_short_finally",
+      "text": "try {} f {}\n"
+    },
+    {
+      "name": "review_try_short_code",
+      "text": "try {} on err {} {}\n"
+    },
+    {
+      "name": "review_try_zero_code",
+      "text": "try {} on 0 {} {}\n"
+    },
+    {
+      "name": "review_try_one_code",
+      "text": "try {} on 1 {} {}\n"
+    },
+    {
+      "name": "review_try_custom_code",
+      "text": "try {} on 5 {} {}\n"
+    },
+    {
+      "name": "review_try_initialized_code",
+      "text": "if {1} {}; try {} on 1 {} {}\n"
+    },
+    {
+      "name": "review_try_initialized_signed_code",
+      "text": "while {0} {}; try {} on +1 {} {}\n"
+    }
+  ]
+}

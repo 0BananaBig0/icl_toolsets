@@ -1,0 +1,6 @@
+# IEEE1687-2014 7.9.12: argument references do not change grammar positions.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc p {iface chain length data option} {
+iScan si -chain $chain $length -si $data
+}

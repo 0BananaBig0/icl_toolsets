@@ -1,0 +1,3 @@
+# Independently constructed Tcl boundary regression; IEEE 1687-2014 clauses 7.6, 8.2.
+iPDLLevel 1 -version STD_1687_2014
+switch $flags {this is opaque data}

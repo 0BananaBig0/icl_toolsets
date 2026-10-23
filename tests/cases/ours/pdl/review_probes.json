@@ -1,0 +1,182 @@
+{
+  "source": "ours",
+  "description": "Retained independent PDL review inputs plus directly derived regressions; ours provenance; never vendor execution.",
+  "equivalence": [
+    "proc p {} {puts {*}{stdout hello}}\np\n",
+    "puts {*}{stdout hello};puts bye\n",
+    "puts {*}{stdout {} hello}\n",
+    "puts {*}{-nonewline stdout {a;b}}\n",
+    "{*}{};puts ok\n",
+    "proc p {} {{*}{puts hello}}\np\n",
+    "if {0} {puts no} elseif {0} {puts no} {puts yes}\n",
+    "switch -- a {a \"puts yes\" default {puts no}}\n",
+    "switch -- a a \"puts yes\" default {puts no}\n",
+    "proc p {x x} {puts $x}\np 1 2\n",
+    "puts {*}{hello} ; puts bye\n",
+    "proc p {x x y} {puts $x}\np 1 2 3\n"
+  ],
+  "diagnostics": [
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niReset $flag\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niApply $flag\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niMerge $flag\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niOverrideScanInterface scan -capture $flag\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niOverrideScanInterface scan -update $flag\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niOverrideScanInterface scan -broadcast $flag\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niPDLLevel $level\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niPDLLevel 0 $flag STD_1687_2014\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niPDLLevel 0 -version $version\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 0 -version STD_1687_2014\niProcsForModule Demo\niProcsForModule Demo $flag ns\n",
+      "valid": false
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niReset $flag\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niApply $flag\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niMerge $flag\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niOverrideScanInterface scan -capture $flag\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niOverrideScanInterface scan -update $flag\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niOverrideScanInterface scan -broadcast $flag\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niPDLLevel $level\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niPDLLevel 0 $flag STD_1687_2014\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niPDLLevel 0 -version $version\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\niProcsForModule Demo $flag ns\n",
+      "valid": true
+    },
+    {
+      "text": "iPDLLevel 0\n\n{*}{}\n",
+      "valid": false
+    },
+    {
+      "text": "if {1 +} {}\n",
+      "valid": false
+    },
+    {
+      "text": "if {1 +}\n",
+      "valid": false
+    },
+    {
+      "text": "if\n",
+      "valid": false
+    },
+    {
+      "text": "if {1}\n",
+      "valid": false
+    },
+    {
+      "text": "try {} finally -\n",
+      "valid": true,
+      "note": "Valid script syntax; undefined command at runtime is not a syntax error."
+    }
+  ],
+  "navigation": [
+    {
+      "text": "proc p {{first value} {value 1}} {return $value}\n",
+      "query": {
+        "line": 0,
+        "character": 42
+      },
+      "target": {
+        "line": 0,
+        "character": 23
+      }
+    },
+    {
+      "text": "proc p {{first value} {{value} 1}} {return $value}\n",
+      "query": {
+        "line": 0,
+        "character": 44
+      },
+      "target": {
+        "line": 0,
+        "character": 24
+      }
+    },
+    {
+      "text": "proc p {{first value} {\"value\" 1}} {return $value}\n",
+      "query": {
+        "line": 0,
+        "character": 44
+      },
+      "target": {
+        "line": 0,
+        "character": 24
+      }
+    },
+    {
+      "text": "proc p {{first value} \\\n {value 1}} {return $value}\n",
+      "query": {
+        "line": 1,
+        "character": 21
+      },
+      "target": {
+        "line": 1,
+        "character": 2
+      }
+    },
+    {
+      "text": "proc p {{first value} \\\r\n {value 1}} {return $value}\n",
+      "query": {
+        "line": 1,
+        "character": 21
+      },
+      "target": {
+        "line": 1,
+        "character": 2
+      }
+    }
+  ]
+}
