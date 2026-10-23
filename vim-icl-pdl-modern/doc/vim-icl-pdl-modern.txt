@@ -1,0 +1,66 @@
+*vim-icl-pdl-modern.txt*  ICL and PDL syntax highlighting
+
+vim-icl-pdl-modern                              *vim-icl-pdl-modern*
+
+Standalone keyword/regex highlighting for IEEE 1687-2014 ICL and PDL.
+Requires Vim/Neovim with its standard syntax/tcl.vim runtime; no additional
+plugins or compiled tools. Syntax highlighting does not validate a program.
+
+INSTALLATION                                   *icl-pdl-modern-install*
+
+With vim-plug, use a local standalone directory: >
+  Plug '/absolute/path/to/vim-icl-pdl-modern', {'for': ['icl', 'pdl']}
+<
+Or use a published plugin-only repository URL. An 'rtp' subdirectory setting
+on the complete toolsets repository does NOT restrict its download.
+See README.md for native package installation and remote publication status.
+
+The plugin detects *.icl and *.pdl; *.icl overrides Vim's Clean association.
+Remove any old FileType pdl autocmd that forces syntax=tcl. Ordinary *.tcl
+buffers are not changed. Enable syntax and filetype plugins: >
+  syntax enable
+  filetype plugin on
+<
+No indentation settings, mappings, format commands or LSP settings are changed.
+
+HIGHLIGHT GROUPS                                *icl-pdl-modern-groups*
+
+Group                  Default link
+iclTypeKeyword         Structure
+iclTypeReference       Keyword
+iclTypeName            Type
+iclDeclaration         Keyword
+iclPort                Type
+iclName                Identifier
+iclProperty            Keyword
+iclConstant            Constant
+iclInclude             Include
+iclParameter           Identifier
+iclNumber              Number
+iclOperator            Operator
+iclString              String
+iclTodo                Todo
+iclBlockComment        Comment
+iclLineComment         Comment
+pdlCommand             Statement
+pdlProcedure           Function
+pdlConstant            Constant
+pdlNumber              Number
+pdlOption              PreProc
+
+PDL also uses the editor's tcl* highlight groups. Default links respect existing
+custom links; use a ColorScheme autocmd to restore overrides after theme changes.
+
+LIMITATIONS                                     *icl-pdl-modern-limits*
+
+These are regex/keyword rules, not semantic highlighting. Names equal to ICL
+keywords can receive keyword colors outside recognized declaration/reference
+positions. Arbitrary Tcl data and runtime-generated code cannot be distinguished
+reliably; PDL inherits the builtin Tcl highlighter's heuristics. Highlighted
+options are not a guarantee that an option is valid for the preceding command.
+Malformed source is displayed without parser diagnostics. Use an optional
+language server for syntax checking and navigation.
+
+Maintained in icl_toolsets. Inspired by bfrg/vim-c-cpp-modern; original MIT code.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

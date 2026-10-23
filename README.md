@@ -186,6 +186,11 @@ this is not a Tcl runtime, retargeter or complete PDL semantic validator. See
 
 ### Vim/Neovim with coc.nvim
 
+For standalone syntax highlighting, use
+[vim-icl-pdl-modern](vim-icl-pdl-modern/README.md). It supports ICL and PDL without
+coc.nvim, a compiler or the language servers, and can be installed separately
+from the toolsets. Keep coc.nvim for diagnostics, formatting and navigation.
+
 Install [coc.nvim](https://github.com/neoclide/coc.nvim) and its prerequisites,
 and ensure both language servers are on the editor's `PATH`. Vim users need a coc.nvim-compatible
 Vim version; the tested setup uses Vim 9.2. Follow coc.nvim's current requirements
@@ -220,7 +225,7 @@ augroup icl_toolsets
   autocmd!
   autocmd BufNewFile,BufRead *.icl set filetype=icl
   autocmd BufNewFile,BufRead *.pdl set filetype=pdl
-  autocmd FileType pdl setlocal syntax=tcl
+  autocmd FileType pdl if empty(globpath(&runtimepath, 'syntax/pdl.vim')) | setlocal syntax=tcl | endif
 augroup END
 
 nmap <silent> gd <Plug>(coc-definition)
@@ -230,6 +235,9 @@ nmap <silent> gr <Plug>(coc-references)
 
 The explicit `set filetype=icl` overrides Vim's built-in association of `.icl`
 with the Clean language. Existing coc.nvim navigation mappings can be reused.
+The highlighting plugin supplies file detection itself; its users can omit these
+filetype autocmds. Replace any old unconditional `setlocal syntax=tcl` PDL autocmd
+with the fallback above, or remove it, to retain the plugin's PDL highlighting.
 After changing the configuration, run `:CocRestart` and reopen the ICL file, or
 set `:set filetype=icl` in the current buffer.
 

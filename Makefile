@@ -246,6 +246,14 @@ pdlcheck: pdl-syntaxcheck
 pdl-syntaxcheck: pdl-dynamic
 	python3 tests/src/test_pdl_syntax_properties.py --formatter $(PDL_BIN) --server $(PDL_LSP_BIN)
 
+.PHONY: vim-plugin-check vim-plugin-dist
+vim-plugin-check:
+	python3 tests/vim-icl-pdl-modern/test_plugin.py
+
+vim-plugin-dist:
+	@mkdir -p $(BUILD_DIR)/dist
+	tar -czf $(BUILD_DIR)/dist/vim-icl-pdl-modern.tar.gz vim-icl-pdl-modern
+
 $(STATIC_BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ -o $@
@@ -530,7 +538,7 @@ define coc_body
 	@echo "Add to vimrc:"
 	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
 	@echo '  autocmd BufNewFile,BufRead *.pdl set filetype=pdl'
-	@echo '  autocmd FileType pdl setlocal syntax=tcl'
+	@echo "  autocmd FileType pdl if empty(globpath(&runtimepath, 'syntax/pdl.vim')) | setlocal syntax=tcl | endif"
 	@echo "Indentation follows your existing Vim/coc shiftwidth and tabstop settings."
 	@echo "Formatting: :call CocAction('format'); optional format on save:"
 	@echo "  autocmd BufWritePre *.icl call CocAction('format')"
@@ -601,7 +609,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck
+check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck vim-plugin-check
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
@@ -692,13 +700,14 @@ dist: dynamic
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	# Recursive: the corpus is sorted into per-source subdirectories, and a
 	# flat copy would ship an empty set while appearing to succeed.
-	cp -r tests/cases tests/golden tests/src tests/tests $(DIST_DIR)/tests/
+	cp -r tests/cases tests/golden tests/src tests/tests tests/vim-icl-pdl-modern $(DIST_DIR)/tests/
 	# unit_tests.cc is part of `make check` (the `unitcheck` target builds it),
 	# so a tarball without it cannot run its own test suite. The copy list was
 	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.
 	cp tests/*.py tests/*.cc tests/*.vim tests/*.sh tests/*.lua $(DIST_DIR)/tests/
 	cp Makefile README.md LICENSE .clang-format .clang-tidy $(DIST_DIR)/
 	cp -r docs $(DIST_DIR)/
+	cp -r vim-icl-pdl-modern $(DIST_DIR)/
 	@echo "PREBUILT = 1" > $(DIST_DIR)/.prebuilt
 	tar --exclude=__pycache__ --exclude='*.pyc' -czf $(DIST_OUT)/$(DIST_DIR).tar.gz $(DIST_DIR)
 	@rm -rf $(DIST_DIR)
