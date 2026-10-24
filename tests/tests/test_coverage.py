@@ -31,4 +31,14 @@ class CoverageReader(unittest.TestCase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('executable', p.stderr.lower())
 
+    def test_source_lines_resolve_from_report_directory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in coverage.SOURCES:
+                Path(tmp, name + '.gcov').write_text('#####:1:placeholder\nbranch 0 never executed\n')
+            run = subprocess.run([sys.executable, str(ROOT / 'tests/coverage.py')],
+                                 cwd=tmp, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn('<source not found>', run.stdout)
+        self.assertIn((ROOT / 'src/icl_driver.cc').read_text().splitlines()[0], run.stdout)
+
 if __name__ == '__main__': unittest.main()

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the standalone runtime in real Vim/Neovim, optionally with vim-plug."""
+import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -88,6 +90,53 @@ class Plugin(unittest.TestCase):
         if not plug.is_file():
             self.skipTest('vim-plug absent; set VIM_PLUG to its plug.vim')
         self.run_editor('vim', plug, install=True)
+
+
+class Corpus(unittest.TestCase):
+    def run_corpus(self, editor):
+        executable = shutil.which(editor)
+        if not executable:
+            self.skipTest(f'{editor} not installed')
+        probes = json.loads(SCRIPT.with_name('corpus_probes.json').read_text())
+        for language in ('icl', 'pdl'):
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as directory:
+                temp = Path(directory)
+                files = sorted((ROOT / 'tests').rglob('*.' + language))
+                self.assertTrue(files, f'no {language} corpus files')
+                before = {str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                          for path in files}
+                selected = {str(ROOT / path): checks for path, checks in probes.items()
+                            if path.endswith('.' + language)}
+                self.assertTrue(selected)
+                self.assertTrue(selected.keys() <= before.keys())
+                manifest = {'files': list(before), 'probes': selected}
+                (temp / 'manifest.json').write_text(json.dumps(manifest))
+                shutil.copytree(PLUGIN, temp / 'plugin')
+                env = dict(os.environ, ICL_PDL_PLUGIN=str(temp / 'plugin'),
+                           ICL_PDL_TEMP=directory, ICL_PDL_LANGUAGE=language,
+                           NVIM_LOG_FILE=str(temp / 'nvim.log'))
+                run = subprocess.run(
+                    [executable, '-Nu', 'NONE', '-n', '-i', 'NONE', '-R', '-es',
+                     '-S', str(SCRIPT.with_name('test_corpus.vim'))],
+                    env=env, capture_output=True, text=True, timeout=600)
+                result = temp / 'result.json'
+                self.assertTrue(result.exists(), run.stderr + run.stdout)
+                report = json.loads(result.read_text())
+                self.assertEqual(run.returncode, 0, report)
+                self.assertEqual(report['errors'], [])
+                self.assertEqual(report['files'], len(files))
+                self.assertEqual(report['probes'], sum(map(len, selected.values())))
+                self.assertGreater(report['lines'], 0)
+                for path, digest in before.items():
+                    self.assertEqual(hashlib.sha256(Path(path).read_bytes()).hexdigest(),
+                                     digest, f'corpus file modified: {path}')
+                print(editor, language, json.dumps(report), flush=True)
+
+    def test_vim_collected_files(self):
+        self.run_corpus('vim')
+
+    def test_neovim_collected_files(self):
+        self.run_corpus('nvim')
 
 
 if __name__ == '__main__':

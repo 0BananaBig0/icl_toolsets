@@ -1,0 +1,57 @@
+{
+  "tests/cases/standard/enum/result.icl": [
+    ["Module Example", "Module", "iclTypeKeyword"],
+    ["Module Example", "Example", "iclTypeName"],
+    ["Enum result", "Enum", "iclTypeKeyword"],
+    ["Enum result", "result", "iclTypeName"],
+    ["Enum result", "2'b00", "iclNumber"]
+  ],
+  "tests/cases/standard/scan_register/example.icl": [
+    ["// IEEE", "IEEE", "iclLineComment"],
+    ["Module Example", "ScanInPort", "iclPort"],
+    ["Module Example", "ScanRegister", "iclDeclaration"],
+    ["Module Example", "TDR", "iclName"],
+    ["Module Example", "ScanInSource", "iclProperty"]
+  ],
+  "tests/cases/pass/tessent/tessent_merged_icl.icl": [
+    ["Module wrapped_pmm_ip {", "wrapped_pmm_ip", "iclTypeName"],
+    ["ScanRegister SIB1[2:0] {", "ScanRegister", "iclDeclaration"],
+    ["ScanInSource SIB1mux;", "3'b000", "iclNumber"],
+    ["ScanInSource SIB1mux;", "ResetValue", "iclProperty"]
+  ],
+  "tests/cases/standard/pdl/basic.pdl": [
+    ["# Adapted/completed", "IEEE", "tclComment"],
+    ["iPDLLevel 0", "iPDLLevel", "pdlCommand"],
+    ["iPDLLevel 0", "-version", "pdlOption"],
+    ["iPDLLevel 0", "STD_1687_2014", "pdlConstant"],
+    ["iProc start_bist", "start_bist", "pdlProcedure"],
+    ["iWrite BIST_engage", "iWrite", "pdlCommand"],
+    ["iWrite BIST_engage", "0b1", "pdlNumber"],
+    ["iWrite BIST_mode", "$bist_mode", "tclVarRef"],
+    ["iRunLoop 10000", "-tck", "pdlOption"],
+    ["iCall start_bist", "start_bist", "pdlProcedure"]
+  ],
+  "tests/cases/standard/pdl/block_review/level1_example.pdl": [
+    ["set my_value", "iGetReadData", "pdlCommand"],
+    ["if {$my_value", "if", "tclConditional"],
+    ["if {$my_value", "$my_value", "tclVarRef"],
+    ["if {$my_value", "device is on fire", "tclString"],
+    ["if {$my_value", "iGetStatus", "pdlCommand"]
+  ],
+  "tests/cases/tessent/pdl/block_review/integer_time.pdl": [
+    ["iRunLoop -time 400ns", "iRunLoop", "pdlCommand"],
+    ["iRunLoop -time 400ns", "-time", "pdlOption"]
+  ],
+  "tests/cases/pdl_eda/syn_slm/SIB_LOOP_SEL_8e49ca05bc6b56a1.pdl": [
+    ["iProc write_Value", "write_Value", "pdlProcedure"],
+    ["iWrite Value", "iWrite", "pdlCommand"],
+    ["iWrite Value", "$value", "tclVarRef"],
+    ["iRead Value", "iRead", "pdlCommand"]
+  ],
+  "tests/cases/pdl_eda/tessent/ICLNetwork_55ec04cdb29e44cf.pdl": [
+    ["iProcsForModule gps_baseband", "iProcsForModule", "pdlCommand"],
+    ["iProc gps_baseband {}", "gps_baseband", "pdlProcedure"],
+    ["iNote \"Activate selection for scan mux", "iNote", "pdlCommand"],
+    ["iNote \"Activate selection for scan mux", "Activate", "tclString"]
+  ]
+}

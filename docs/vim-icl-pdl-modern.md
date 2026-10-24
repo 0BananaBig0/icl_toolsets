@@ -39,6 +39,37 @@ undo and indentation preservation in Vim and Neovim. It also uses real installed
 vim-plug with filetype lazy loading. Set `VIM_PLUG=/path/to/plug.vim` if needed;
 missing editors or vim-plug are reported as skipped. No network is needed.
 The tests are included in `make check-dynamic`.
+The full check runs them after corpus-generating tests have finished, including
+under parallel Make, so fixtures cannot be rewritten during the editor scan.
+
+The corpus tests recursively discover **every `.icl` and `.pdl` file currently
+under `tests/`**, including negative fixtures, golden outputs, and any generated
+cases present at run time. They open each file read-only in both Vim and Neovim,
+verify language detection and syntax loading, and query syntax at the first
+nonblank and final byte of every line, with the long-line syntax limit disabled.
+Files are batched into one editor process per language and buffers are wiped
+between files. SHA-256 checks confirm that input contents remain unchanged.
+Modelines are disabled; no corpus PDL is executed.
+
+`tests/vim-icl-pdl-modern/corpus_probes.json` adds hand-checked token expectations
+on existing IEEE, Tessent, and Synopsys examples. Each entry specifies a unique
+line substring, a token substring, and its expected syntax group. These check
+declarations, commands, numeric literals, comments, strings, Tcl variables and
+command substitutions. The full-file scans detect loading and highlighting
+engine errors; only these explicit probes and the separate constructed tests
+assert particular colors/groups. They do not prove every token is highlighted
+correctly, nor validate the input language's grammar.
+
+Run just the collected-file checks with:
+
+```sh
+python3 tests/vim-icl-pdl-modern/test_plugin.py Corpus -v
+```
+
+The command prints file, line, probe and elapsed-time counts for each editor and
+language. Generated cases are not prerequisites and are not recreated by this
+test; a fresh checkout therefore has fewer inputs. No corpus copies or editor
+reports are committed. Manifest files and reports live in temporary directories.
 
 The archive `build/dist/vim-icl-pdl-modern.tar.gz` contains only the standalone
 plugin. It can be unpacked into a native package directory. It is a generated
@@ -68,7 +99,7 @@ Verify that exported history contains no `src/`, `tests/` or parent build files
 before publishing. Update the plugin README with the real installation URL only
 when that remote exists. No plugin-only remote has been created by this change.
 
-## Verification on 2026-10-24
+## Initial plugin verification on 2026-10-24
 
 Tested with Vim 9.2 and Neovim 0.12.6 on Linux/WSL2:
 
@@ -97,3 +128,31 @@ Online publication, a GUI colorscheme review and older editor versions were not
 verified. No plugin-only remote was configured or published by this change; local
 vim-plug usage and native package installation are available now. The existing C++ strict-coverage
 shortfall is unchanged; that coverage run was not repeated for Vimscript work.
+
+## Collected-file follow-up on 2026-10-24
+
+Both editors scanned the same complete local corpus without syntax-engine errors:
+
+| Language | Maintained files | Generated files present | Total lines | Explicit probes |
+| --- | ---: | ---: | ---: | ---: |
+| ICL | 2,337 | 36,150 | 449,130 | 14 |
+| PDL | 275 | 438 | 76,495 | 25 |
+
+This is 39,200 files (38,487 ICL and 713 PDL), all checked in each editor.
+During `make check-dynamic BISON=/usr/bin/bison -j4`, headless corpus processing
+took about 51 seconds for ICL and 3 seconds for PDL in Vim, and 94 seconds for ICL
+and 4 seconds for PDL in Neovim. Timing includes opening and wiping buffers plus
+syntax queries and probes, but excludes Python discovery and hashing. These are
+Linux/WSL2 measurements with Vim 9.2 and Neovim 0.12.6, not interactive redraw or
+peak-memory measurements. Input hashes were unchanged.
+
+Mutation checks on temporary plugin copies removed the `Module` and `iPDLLevel`
+highlighting rules separately. The real-file probes failed in each case, while
+the unmodified copies passed. No plugin runtime changes were needed. Independent
+review found no issues in the corpus tests or the Make ordering change.
+
+`make check-dynamic BISON=/usr/bin/bison -j4` passed, including all six plugin
+test methods with no plugin skips. Five optional external ANTLR checks were
+skipped because `ICL_REF_DIR` is unset. The final Make ordering was also checked
+with `make -n check-dynamic BISON=/usr/bin/bison`. Strict C++ line/branch coverage
+and GUI color rendering were not rerun for this test-only change.

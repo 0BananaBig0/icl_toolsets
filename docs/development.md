@@ -76,6 +76,13 @@ or error branches have executed. See [verification](icl-verification.md) for the
 measurement scope and remaining gaps. Generated Bison/Flex implementation code
 is excluded; handwritten `.l`/`.yy` logic and C++ headers remain in scope.
 
+Coverage reports are stored under `.worktree/coverage/` (ignored by Git).
+Instrumented binaries and counters remain in `build/cov/`. `make coverage`
+moves gcov's output into the report folder before applying the strict gate;
+`make clean` removes both locations. To reread existing reports without rerunning
+the tests, use `cd .worktree/coverage && python3 ../../tests/coverage.py`.
+This report directory is separate from Git checkouts under `.worktrees/`.
+
 For focused checks:
 
 ```sh

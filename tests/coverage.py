@@ -73,7 +73,8 @@ def source_line(name, number):
     original keeps this independent of gcov's formatting and of whether the
     file was emitted at all.
     """
-    for directory in ('src', '.'):
+    root = Path(__file__).resolve().parents[1]
+    for directory in (root / 'src', root):
         path = os.path.join(directory, name)
         if os.path.exists(path):
             with open(path, encoding='utf-8', errors='replace') as handle:

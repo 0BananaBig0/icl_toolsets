@@ -38,6 +38,7 @@ gen/
 # because it is build output, not prose for a reader.
 .codegraph/
 .worktrees/
+.worktree/
 .superpowers/
 
 *.swp

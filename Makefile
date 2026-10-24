@@ -356,6 +356,7 @@ codegraph: $(ALL_OBJECTS)
 # Unit tests are linked against the same instrumented objects, so their counts
 # merge with the end-to-end runs instead of being measured separately.
 COV_DIR := $(BUILD_DIR)/cov
+COV_REPORT_DIR := .worktree/coverage
 COV_CXXFLAGS := -fprofile-arcs -ftest-coverage -g -O0 -MMD -MP
 -include $(wildcard $(COV_DIR)/*.d)
 
@@ -403,7 +404,8 @@ $(COV_DIR)/unittests: $(COV_UNIT)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
 coverage: $(COV_BINARIES)
-	@rm -f $(COV_DIR)/*.gcda *.gcov
+	@mkdir -p $(COV_REPORT_DIR)
+	@rm -f $(COV_DIR)/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
 	@python3 tests/regression.py --binary $(COV_DIR)/icl-format
 	@python3 tests/src/test_icl_conformance.py --binary $(COV_DIR)/icl-format
 	@python3 tests/block_review.py --binary $(COV_DIR)/icl-format
@@ -419,7 +421,8 @@ coverage: $(COV_BINARIES)
 	  --cli $(COV_DIR)/icl-format
 	@$(COV_DIR)/unittests
 	@gcov -b -c -o $(COV_DIR) $(COV_REPORT_OBJECTS) > /dev/null
-	@python3 tests/coverage.py --min-line 100 --min-branch 90 --strict
+	@mv *.gcov $(COV_REPORT_DIR)/
+	@cd $(COV_REPORT_DIR) && python3 $(abspath tests/coverage.py) --min-line 100 --min-branch 90 --strict
 
 # ---- grammar and scanner coverage ----
 #
@@ -609,7 +612,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck vim-plugin-check
+check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/regression.py --binary $(BIN)
@@ -631,6 +634,7 @@ check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck vim
 	@python3 tests/src/test_icl_protocol.py --binary $(LSP_BIN)
 	@python3 tests/src/test_icl_diagnostics.py --binary $(LSP_BIN)
 	@$(MAKE) --no-print-directory gramcov
+	@$(MAKE) --no-print-directory vim-plugin-check
 
 COC_ROOT ?= /tmp/cocvim
 COC_PLUGIN ?= $(COC_ROOT)/coc.nvim
@@ -717,7 +721,7 @@ version:
 	@echo $(VERSION)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(COV_REPORT_DIR)
 
 distclean: clean
 	rm -rf $(GEN_DIR) $(DIST_OUT) $(DIST_DIR) $(DIST_DIR).tar.gz
