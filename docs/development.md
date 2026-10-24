@@ -64,7 +64,7 @@ checks may need additional tools described by their scripts.
 | `make syntaxcheck` | Independent IEEE whitespace/comment and nested-index transformations; generated inputs remain ignored. |
 | `make check` | Full suite with the default dynamic/static build prerequisites. |
 | `make unitcheck` | AST/layout/JSON unit assertions without generating the parser. |
-| `make goldencheck` | ICL/PDL byte-exact formatting through file/stdin, plus runner safeguards. |
+| `make goldencheck` | ICL/PDL byte-exact golden outputs, second-pass stability, CLI/LSP parity and runner safeguards. |
 | `make corpuscheck` | Importer/provenance checks and all maintained ICL duplicate checks. |
 | `make gramcov` | Distinct Bison production and Flex rule hits. |
 | `make coverage` | Strict handwritten line/branch coverage gate. |
@@ -77,19 +77,20 @@ or error branches have executed. See [verification](icl-verification.md) for the
 measurement scope and remaining gaps. Generated Bison/Flex implementation code
 is excluded; handwritten `.l`/`.yy` logic and C++ headers remain in scope.
 
-Coverage reports are stored under `.worktree/coverage/` (ignored by Git).
+Coverage reports are stored under `.worktrees/coverage/` (ignored by Git).
 Instrumented binaries and counters remain in `build/cov/`. `make coverage`
 moves gcov's output into the report folder before applying the strict gate;
 `make clean` removes both locations. To reread existing reports without rerunning
-the tests, use `cd .worktree/coverage && python3 ../../tests/coverage.py`.
-This report directory is separate from Git checkouts under `.worktrees/`.
+the tests, use `cd .worktrees/coverage && python3 ../../tests/coverage.py`.
+Only that coverage subdirectory is removed by `make clean`; sibling checkouts
+and archived reports are retained.
 
 For focused checks:
 
 ```sh
 python3 tests/src/test_icl_conformance.py --binary build/icl-format --block enum
-python3 tests/golden_test.py --binary build/icl-format
-python3 tests/golden_test.py --language pdl --case 'nested*' --timeout 10
+python3 tests/golden_test.py --binary build/icl-format --server build/icl-lsp
+python3 tests/golden_test.py --language pdl --case 'nested*' --server build/pdl-lsp
 python3 tests/src/test_icl_lsp.py --binary build/icl-lsp
 python3 tests/src/test_icl_protocol.py --binary build/icl-lsp
 ```
@@ -104,6 +105,8 @@ See [the Verilator comparison](verilator-testing-practices.md) for the adopted
 golden/scenario practices and architecture decisions. Expected files are reviewed
 test specifications. `--update` is an explicit maintenance operation and is never
 used by regression; inspect its diff before accepting a formatting change.
+See [formatter self-tests](formatter-self-tests.md) for the exact first/second
+pass contract, explicit baseline updates and their limitations.
 
 The duplicate audit compares exact file bytes and namespace-aware module
 identities. Whole-file formatting variants and complete examples can require
@@ -140,6 +143,37 @@ notifications are ignored. Keep diagnostics off protocol stdout.
 
 ## Source distribution and generated output
 
+### Local workspace layout
+
+Use `.worktrees/` as the single ignored location for local Git worktrees and
+retained reports. Local contents may include:
+
+| Path | Role |
+|---|---|
+| `.worktrees/icl-conformance/` | Registered detached Git checkout; inspect with `git worktree list`. |
+| `.worktrees/coverage/` | Generated gcov reports; recreated by `make coverage`. |
+| `.worktrees/audit-fixes/`, `.worktrees/pre-integration/` | Retained local audit/integration records; ordinary directories, not registered checkouts. |
+
+These local contents are not required to build or install the tools and are
+not included in a clone. Git worktrees are identified by Git's registration,
+not merely by being inside `.worktrees/`. Use `git worktree move` when relocating
+a registered checkout; use ordinary file moves for report directories.
+
+The former singular report directory was consolidated into `.worktrees/`.
+Coverage and audit files were moved without overwriting existing entries, and
+their contents and file modes were verified. The registered checkout stayed at
+its existing path. Do not use the former directory name for new output.
+
+The 2026-10-25 consolidation verified 87 moved entries, a clean registered
+checkout, and the cleanup regression. Full `make check-dynamic` passed, as did
+66 local documentation links and the README's coc.nvim JSON comparison.
+`make coverage` wrote reports to the new location; its functional checks passed,
+while the existing strict gate remained at 97.5% lines / 61.7% branches.
+Local evidence is ignored under `build/worktree-consolidation.json`,
+`build/worktrees-regression.log` and `build/worktrees-coverage.log`.
+
+### Source archives and installation
+
 ```sh
 make dist
 ```
@@ -155,11 +189,11 @@ graphs and generated stress fixtures must stay out of Git. Imported vendor ICL
 and reviewed test expectations/provenance are maintained test inputs. Keep
 temporary extraction and analysis output under ignored `build/`.
 
-`make install-dynamic` and `make install-static` install both tools using the same
-command names and write an installation manifest. They print the single `icl`
-language-server entry for diagnostics, navigation and shared-engine formatting,
-plus standalone CLI usage. The optional external CLI adapter remains documented
-in `editor/coc-cli.json`. Installation verification must exercise the installed
+`make install-dynamic` and `make install-static` install all four tools using the
+same command names and write an installation manifest. They print one `icl`
+and one `pdl` language-server entry, each supplying diagnostics, navigation and
+shared-engine formatting, plus standalone CLI usage. The optional external CLI
+adapter remains documented in `editor/coc-cli.json`. Installation verification must exercise the installed
 paths, not only the build-directory binaries.
 
 ## Code navigation and quality

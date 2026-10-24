@@ -362,7 +362,7 @@ codegraph: $(ALL_OBJECTS)
 # Unit tests are linked against the same instrumented objects, so their counts
 # merge with the end-to-end runs instead of being measured separately.
 COV_DIR := $(BUILD_DIR)/cov
-COV_REPORT_DIR := .worktree/coverage
+COV_REPORT_DIR := .worktrees/coverage
 COV_CXXFLAGS := -fprofile-arcs -ftest-coverage -g -O0 -MMD -MP
 -include $(wildcard $(COV_DIR)/*.d)
 

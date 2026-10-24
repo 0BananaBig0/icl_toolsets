@@ -78,6 +78,6 @@ python3 tests/tree_clean_test.py
 ```
 
 Logs and build artifacts stay ignored under `build/symbol-review-*` and
-`.worktree/coverage`. No commit, push, installation, or live coc.nvim session was
+`.worktrees/coverage`. No commit, push, installation, or live coc.nvim session was
 performed. The final full-run log is `build/symbol-review-final-regression.log`;
 the final coverage log is `build/symbol-review-coverage.log`.

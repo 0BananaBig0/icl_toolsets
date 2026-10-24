@@ -100,6 +100,10 @@ the original requests and implementation history.
   UTF-16, document lifecycle, workspace resolution and editor integration.
   Borrow applicable public Flex/Bison/parser/formatter/LSP practices, documented
   in [testing practices](icl-testing-practices.md).
+  For maintained golden cases, require `F(input) == expected` and
+  `F(F(input)) == F(input)` through CLI and LSP formatting. Ordinary regression
+  must not rewrite expected files; explicit updates require successful checks
+  and review. See [formatter self-tests](formatter-self-tests.md).
 - **T3 — Example sources:** turn IEEE grammar/regex examples and Tessent examples
   into test inputs. Complete partial examples with the minimum valid context
   and identify those additions. Keep fixtures in `tests/`, categorized by source
@@ -169,6 +173,10 @@ the original requests and implementation history.
   provenance/licenses may stay beside their inputs. Keep the MIT project
   license and third-party notices. Document package names according to the
   actual build output rather than renaming them implicitly.
+- **D5 — Local workspace layout:** use `.worktrees/` for local Git worktrees
+  and retained report directories, with coverage under `.worktrees/coverage/`.
+  Keep them ignored and preserve Git worktree registrations when relocating
+  checkouts. Cleanup must not remove sibling checkouts or archived reports.
 
 ## Acceptance evidence map
 
@@ -181,6 +189,7 @@ the original requests and implementation history.
 | T2–T5 | Source manifests, corpus audit, `make corpuscheck`, dated test reports and limitations. |
 | D1–D3 | Dynamic/static builds where supported, `make dist`, extracted archive build with generators disabled, installed-path smoke tests. |
 | D4 | README/docs link checks, package contents, license/provenance review. |
+| D5 | `git worktree list`, ignored-report checks and the Makefile cleanup regression. |
 
 See the [documentation index](README.md) for the maintained records. New evidence
 must state its scope and date; a requirements checklist is not itself a test result.

@@ -80,5 +80,5 @@ The strict coverage command's functional suites passed, but its existing gate
 still fails: **4,295/4,405 lines (97.5%)** and **7,344/11,927 branches (61.6%)**,
 below the required 100%/90%. The new position header is included and has 18/18
 lines covered; its remaining three branch edges are allocation exception paths.
-Logs and generated outputs remain ignored under `build/` and `.worktree/`.
+Logs and generated outputs remain ignored under `build/` and `.worktrees/`.
 No commit, push, user installation, or live coc.nvim session is included.

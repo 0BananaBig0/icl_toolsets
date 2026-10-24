@@ -113,6 +113,6 @@ python3 tests/tree_clean_test.py
 
 Logs remain ignored under `build/review-public/`: `regression-final.log`,
 `static.log`, `style.log`, `editor-recheck.log`, and `coverage.log`. Coverage
-reports remain under `.worktree/coverage/`. No generated reports, reference
+reports are now under `.worktrees/coverage/`. No generated reports, reference
 checkouts or binaries are added to Git. This review does not install tools or
 change personal editor settings, and does not commit or push changes.

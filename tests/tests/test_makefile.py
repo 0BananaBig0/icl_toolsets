@@ -9,6 +9,13 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 class BuildGraph(unittest.TestCase):
+    def test_coverage_cleanup_preserves_other_worktrees(self):
+        run = subprocess.run(['make', '-n', 'clean'], cwd=ROOT,
+                             capture_output=True, text=True, check=True)
+        removals = [shlex.split(line)[2:] for line in run.stdout.splitlines()
+                    if line.startswith('rm -rf ')]
+        self.assertEqual(removals, [['build', '.worktrees/coverage']])
+
     def test_grammar_coverage_header_dependencies(self):
         target = 'build/gramcov/format_job.o'
         subprocess.run(['make', target, 'BISON=/usr/bin/bison'], cwd=ROOT,
