@@ -20,7 +20,7 @@ syntax match pdlProcedure contained /\<[A-Za-z][A-Za-z0-9_.:]*\>/
 syntax keyword pdlConstant STD_1687_2014 containedin=tclEmbeddedStatement
 syntax match pdlNumber /\<0[xX][0-9a-fA-FxX]\+\>/ containedin=tclEmbeddedStatement
 syntax match pdlNumber /\<0[bB][01xX]\+\>/ containedin=tclEmbeddedStatement
-syntax match pdlOption /\%(^\|\s\)\zs-\%(version\|iProcNameSpace\|sync\|ir\|chain\|si\|so\|stable\|capture\|update\|broadcast\|together\|end_in_pause\|source\|freqMultiplier\|freqDivider\|tck\|sck\|time\|begin\|end\|persistent\|bin\|hex\|dec\|clear\|quit\|LastWrittenValue\|LastReadValue\|LastMiscompareValue\|ignore_when_value_already_present\)\>/ containedin=tclEmbeddedStatement
+syntax match pdlOption /\%(^\|\s\)\zs-\%(version\|iProcNameSpace\|sync\|ir\|chain\|si\|so\|stable\|capture\|update\|broadcast\|together\|end_in_pause\|source\|freqMultiplier\|freqDivider\|tck\|sck\|time\|begin\|end\|persistent\|comment\|status\|bin\|hex\|dec\|clear\|quit\|LastWrittenValue\|LastReadValue\|LastMiscompareValue\|ignore_when_value_already_present\)\>/ containedin=tclEmbeddedStatement
 
 highlight default link pdlCommand Statement
 highlight default link pdlProcedure Function

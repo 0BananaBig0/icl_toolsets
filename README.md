@@ -13,8 +13,14 @@ ICL and PDL.
 
 **ICL (Instrument Connectivity Language)** and **PDL (Procedural Description
 Language)** have separate syntax and analysis. PDL analysis parses Tcl without
-executing source. These tools help edit IJTAG files; they do not generate test
-patterns, retarget procedures, or replace vendor design checks.
+executing source. Each language's formatter and server share parsing, analysis,
+and formatting, so terminal and editor formatting use the same rules. These
+tools help edit IJTAG files; they do not generate test patterns, retarget
+procedures, or replace vendor design checks.
+
+For editor diagnostics, navigation, and formatting, build the executables and
+configure coc.nvim below. For colors and filetype detection alone, go directly
+to [Install highlighting only](#install-highlighting-only).
 
 ## Build and install the executables
 
@@ -37,6 +43,9 @@ icl-lsp --version
 pdl-format --version
 pdl-lsp --version
 ```
+
+All four commands support `--help` and `--version` without starting a language
+server session.
 
 The build produces all four commands in `build/`; you can run them there before
 installing. Installation puts them in `~/.local/bin` by default and prints
@@ -280,8 +289,11 @@ use a local plugin directory or copy that directory alone as described in the
 [plugin installation guide](vim-icl-pdl-modern/README.md).
 
 The plugin is a highlighter, not a syntax validator. It has separate ICL rules
-and extends the editor's built-in Tcl highlighting for PDL. Ordinary `.tcl`
-filetypes are unchanged. Use the language servers for diagnostics and navigation.
+and extends the editor's built-in Tcl highlighting for PDL. It highlights all
+24 IEEE PDL command names and recognized options, including `iNote -comment`
+and `iNote -status`, with tests for command substitutions and quoted text.
+Ordinary `.tcl` filetypes are unchanged. Use the language servers for diagnostics
+and navigation.
 
 ## Support boundaries
 
@@ -295,14 +307,24 @@ integration. This does not establish complete language or semantic conformance.
   evaluated; generic AccessLink payloads remain opaque.
 - PDL analysis does not execute Tcl, infer runtime-generated names or scripts,
   validate all ICL-dependent values, or schedule/retarget patterns.
+- Some statically written Tcl forms also receive limited analysis: escaped
+  `switch` list bodies and scripts assembled from multiple `namespace eval`
+  arguments are not reconstructed. PDL rejects NUL input and nesting above
+  128 levels. See the [PDL syntax limits](docs/pdl-syntax-oracles.md) for details.
 - Symbol rename, range formatting, and inferred HDL implementation targets are
   not provided. Formatting does not align assignments into columns.
 
-Vim/Neovim highlighting is corpus-tested. ICL has also been tested in a real
-Vim/coc.nvim session; PDL services are tested through stdio LSP clients, with a
-full PDL Vim/coc.nvim session still unverified. Current verification evidence,
-including the unmet strict coverage gate, is in the
-[documentation index](docs/README.md) and [PDL support guide](docs/pdl-tools.md).
+The [2026-10-24 audit](docs/combined-language-audit.md) passed sequential ICL/PDL
+block checks, the full dynamic regression, focused static and installed-tool
+checks, and the Vim/Neovim corpus tests. Strict handwritten-code coverage remains
+below the project's required thresholds; passing these tests does not prove
+complete syntax support.
+
+ICL has also been tested in a real Vim/coc.nvim session; PDL services are tested
+through stdio LSP clients, with a full PDL Vim/coc.nvim session still unverified.
+The latest audit did not rerun a live coc.nvim session or a Tcl 8.6 build. Detailed
+results and compatibility decisions are in the [documentation index](docs/README.md)
+and [PDL support guide](docs/pdl-tools.md).
 
 ## Documentation and license
 

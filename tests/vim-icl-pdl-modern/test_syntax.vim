@@ -184,6 +184,15 @@ call setline(14, ['iGetReadData reg -hex',
 call CheckGroup(14, '-hex', 'pdlOption')
 call CheckGroup(15, '-hex', 'pdlOption')
 call CheckGroup(16, '-hex', 'tclString')
+" IEEE 1687-2014 7.9.21: tags are options, but quoted note text is data.
+call setline(17, ['iNote -comment "test conditions should be stable now"',
+      \ 'iNote -status "INFO: PLLs started"',
+      \ 'set note "[iNote -status "ready"]"',
+      \ 'iNote -comment "-status is literal text"'])
+call CheckGroup(17, '-comment', 'pdlOption')
+call CheckGroup(18, '-status', 'pdlOption')
+call CheckGroup(19, '-status', 'pdlOption')
+call CheckGroup(20, '-status', 'tclString')
 call assert_equal('# %s', &commentstring)
 call assert_equal([3, 6, 0], [&shiftwidth, &tabstop, &expandtab])
 

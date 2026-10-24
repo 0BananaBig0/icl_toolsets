@@ -38,6 +38,12 @@
     ["if {$my_value", "device is on fire", "tclString"],
     ["if {$my_value", "iGetStatus", "pdlCommand"]
   ],
+  "tests/cases/standard/pdl/block_review/note_examples.pdl": [
+    ["iNote -status", "iNote", "pdlCommand"],
+    ["iNote -status", "-status", "pdlOption"],
+    ["iNote -comment", "-comment", "pdlOption"],
+    ["iNote -comment", "test conditions", "tclString"]
+  ],
   "tests/cases/tessent/pdl/block_review/integer_time.pdl": [
     ["iRunLoop -time 400ns", "iRunLoop", "pdlCommand"],
     ["iRunLoop -time 400ns", "-time", "pdlOption"]

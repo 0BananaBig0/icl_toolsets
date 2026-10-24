@@ -8,6 +8,7 @@ usage, editor setup, supported features and practical limitations.
 | Document | Purpose |
 |---|---|
 | [Project requirements](requirements.md) | Current product, architecture, quality, testing and delivery requirements. |
+| [Combined language/editor audit](combined-language-audit.md) | Latest sequential ICL/PDL block revalidation, upstream comparison, highlighting fix and verification. |
 | [PDL tools](pdl-tools.md) | Separate Tcl/PDL architecture, static dependency build, analysis limits and verification. |
 | [PDL block review](pdl-block-review.md) | IEEE clauses 7–8, PDL fixtures, upstream comparison and syntax-review evidence. |
 | [Developer guide](development.md) | Shared processing pipeline, source layout, build/test commands and contribution practices. |
