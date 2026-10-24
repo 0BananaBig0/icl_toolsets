@@ -197,8 +197,8 @@ it, add this to your vimrc or Neovim Vimscript configuration:
 ```vim
 augroup icl_toolsets
   autocmd!
-  autocmd BufNewFile,BufRead *.icl set filetype=icl
-  autocmd BufNewFile,BufRead *.pdl set filetype=pdl
+  autocmd BufNewFile,BufRead *.icl setlocal filetype=icl
+  autocmd BufNewFile,BufRead *.pdl setlocal filetype=pdl
   autocmd FileType pdl if empty(globpath(&runtimepath, 'syntax/pdl.vim')) | setlocal syntax=tcl | endif
 augroup END
 ```
@@ -262,7 +262,7 @@ Ambiguous definitions are left unresolved rather than selecting an arbitrary tar
 
 ### Troubleshooting
 
-- Check `:set filetype?`: it should be `icl` or `pdl`.
+- Check `:setlocal filetype?`: it should be `icl` or `pdl`.
 - Check `:echo executable('icl-lsp')` or `:echo executable('pdl-lsp')`.
   Configure an absolute command path if the editor has a different `PATH`.
 - Inspect `:CocInfo` and `:CocCommand workspace.showOutput`.

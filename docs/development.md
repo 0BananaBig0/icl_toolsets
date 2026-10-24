@@ -116,7 +116,7 @@ make coccheck COC_VIM=/path/to/vim COC_PLUGIN=/path/to/coc.nvim
 
 Keep editor checks isolated from personal configuration. The tested Vim/coc
 setup and the untested optional CLI adapter are distinguished in the verification
-report. Vim's `.icl` association must be overridden with `set filetype=icl`;
+report. Vim's `.icl` association must be overridden with `setlocal filetype=icl`;
 `setfiletype` alone may leave the file classified as Clean. coc.nvim forwards the
 buffer's indentation setting to LSP formatting.
 

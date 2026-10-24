@@ -775,7 +775,7 @@ differs between the two programs, so it is emitted at the end of every install:
 the `languageserver` block for icl-lsp, the `icl-format` command lines, and the
 two vimrc lines.
 
-`set filetype=icl` rather than `setfiletype icl`, because vim's own
+`setlocal filetype=icl` rather than `setfiletype icl`, because vim's own
 filetype.vim maps `*.icl` to the Clean language and `setfiletype` silently does
 nothing once a filetype is set — which leaves coc never starting the server.
 `shiftwidth=2` is included because coc forwards it as LSP `tabSize`; vim
@@ -1605,7 +1605,7 @@ This is independent confirmation of the pitfall behind the coc configuration:
 `*.icl` is genuinely claimed by another language, which is why vim's
 `filetype.vim` maps it to Clean and why `setfiletype icl` — which is a no-op
 once a filetype is already set — silently leaves the buffer as Clean and coc
-never starts. `set filetype=icl` is required.
+never starts. `setlocal filetype=icl` is required.
 
 **The reference grammar is a prototype.** Its README says "Note: Work may still
 be in progress", and it has 6 stars and 24 commits. It is the most complete

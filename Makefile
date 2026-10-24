@@ -531,7 +531,7 @@ endef
 
 # One server supplies both language services and editor formatting.
 #
-# `set filetype=icl` — not `setfiletype` — is deliberate: vim's own filetype.vim
+# `setlocal filetype=icl` — not `setfiletype` — is deliberate: vim's own filetype.vim
 # maps *.icl to the Clean language, and setfiletype silently does nothing once
 # a filetype is already set, which leaves coc never starting the server.
 define coc_body
@@ -541,8 +541,8 @@ define coc_body
 	@cat docs/editor/coc-lsp.json
 	@echo ""
 	@echo "Add to vimrc:"
-	@echo '  autocmd BufNewFile,BufRead *.icl set filetype=icl'
-	@echo '  autocmd BufNewFile,BufRead *.pdl set filetype=pdl'
+	@echo '  autocmd BufNewFile,BufRead *.icl setlocal filetype=icl'
+	@echo '  autocmd BufNewFile,BufRead *.pdl setlocal filetype=pdl'
 	@echo "  autocmd FileType pdl if empty(globpath(&runtimepath, 'syntax/pdl.vim')) | setlocal syntax=tcl | endif"
 	@echo "Indentation follows your existing Vim/coc shiftwidth and tabstop settings."
 	@echo "Formatting: :call CocAction('format'); optional format on save:"

@@ -66,13 +66,13 @@ runtime! plugin/**/*.vim
 " coc launches a language server for the configured filetypes only, so *.icl
 " must be recognised *as icl*.
 "
-" Note `set filetype=` rather than `setfiletype`: vim's own filetype.vim maps
+" Note `setlocal filetype=` rather than `setfiletype`: vim's own filetype.vim maps
 " *.icl to `clean` (the Clean programming language), and `setfiletype` is a
 " no-op once a filetype is set — the gentle form silently loses, and then no
 " language server is ever started.
 augroup icl_ft
   autocmd!
-  autocmd BufNewFile,BufRead *.icl set filetype=icl
+  autocmd BufNewFile,BufRead *.icl setlocal filetype=icl
 augroup END
 
 call s:log('=== environment ===')
