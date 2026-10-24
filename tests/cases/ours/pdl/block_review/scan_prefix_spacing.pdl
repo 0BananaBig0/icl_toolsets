@@ -1,0 +1,20 @@
+# Constructed controls for IEEE 1687-2014 7.7/7.8/7.9.12.
+# Demo is assumed to expose an eight-bit black-box scan interface named scan.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc probe {} {
+  if {1} {
+    iScan scan 8 -si { 0b10 10 } -so " 0B1X 01 "
+    iScan scan 8 -si {0xA
+f} -so "0Xx X"
+    iScan scan 8 -si "0b1\
+01" -so {0X\
+Af}
+    iScan scan 8 -si 15 -so 0xx
+  }
+}
+iProc dynamic {bits} {
+  iScan scan 8 -si "0b$bits\
+01"
+  iScan scan 8 -si "\x30b1010"
+}

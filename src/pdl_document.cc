@@ -671,8 +671,17 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
         --word.content.end;
       }
       word.expanded = token.type == TCL_TOKEN_EXPAND_WORD;
+      // A continuation changes whitespace, not whether a word is constant.
       word.literal =
-          !word.expanded && (braced || token.type == TCL_TOKEN_SIMPLE_WORD);
+          !word.expanded &&
+          (braced || std::all_of(parsed.tokenPtr + i + 1,
+                                 parsed.tokenPtr + i + 1 + token.numComponents,
+                                 [](const Tcl_Token& part) {
+                                   return part.type == TCL_TOKEN_TEXT ||
+                                          (part.type == TCL_TOKEN_BS &&
+                                           part.size >= 2 &&
+                                           part.start[1] == '\n');
+                                 }));
       word.value =
           word.literal ? LiteralValue(Text(source_, word.content)) : "";
       bool saw_vector = false;
@@ -1165,9 +1174,13 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
           }
           if (c != ' ' && c != '\t' && c != '\r' && c != '\n') digits += c;
         }
-        if (digits != value && (digits.size() < 2 || digits[0] != '0' ||
-                                (digits[1] != 'x' && digits[1] != 'X' &&
-                                 digits[1] != 'b' && digits[1] != 'B'))) {
+        // Scan whitespace may separate digits, never the prefix characters.
+        const auto prefix = value.find_first_not_of(" \t\r\n");
+        if (digits != value &&
+            (prefix == std::string::npos || value.size() - prefix < 2 ||
+             value[prefix] != '0' ||
+             (value[prefix + 1] != 'x' && value[prefix + 1] != 'X' &&
+              value[prefix + 1] != 'b' && value[prefix + 1] != 'B'))) {
           Error(words[index].range,
                 "multiline iScan data requires a binary or hex prefix");
         }

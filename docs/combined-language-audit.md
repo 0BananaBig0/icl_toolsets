@@ -155,3 +155,71 @@ were not edited.
 
 Raw logs remain under ignored `build/combined-audit/`; the execution checklist is in
 [the plan](superpowers/plans/2026-10-24-combined-language-audit.md).
+
+## Follow-up: scan-data lexical boundaries
+
+The renewed audit starts from `605012d` and reuses the source inventory above.
+IEEE 1687-2014 §7.7 (printed154/PDF168) and §7.9.12 (169–170/183–184)
+require the `0b`/`0x` prefix to remain contiguous while allowing whitespace
+between scan-data digits. §7.8 also permits uppercase prefixes. The pinned
+upstream `pdl.g4` uses the same contiguous prefix; no new command or token is
+needed in either language.
+
+The PDL validator previously removed all scan-data whitespace before validating
+the prefix, accepting invalid input such as `iScan scan 8 -si {0 b1010}`.
+Four new negative fixtures exposed this through both real CLI and LSP services:
+braced binary, quoted hexadecimal, a newline inside the prefix, and a quoted
+continuation inside the prefix. A valid-control fixture covers both prefix
+cases, spaces and continuations after the prefix, nested script bodies, decimal
+data, unknown bits and dynamic/other escaped words. These constructed fixtures
+live in `tests/cases/ours/pdl/block_review/` and are listed in `pdl_blocks.json`.
+
+The fix checks the prefix in the original semantic word before compacting its
+digits. The continuation case additionally exposed constant words being treated
+as dynamic: Tcl text and continuation-only tokens now retain literal status.
+Variable substitutions and other backslash escapes remain conservative. The
+source word is not rewritten; both PDL tools use the same corrected document
+and validator. Both checks remain linear in input size with no new dependency.
+
+Before the fix, all four negative fixtures were accepted without CLI or LSP
+diagnostics. After fixing prefix validation, the continuation case still failed;
+after correcting literal classification, all 22 iScan checks passed. All 46
+PDL executable test methods also passed. The complete sequential pass then
+passed 46 ICL categories / 2,055 cases and 22 PDL categories / 197 cases.
+
+ICL Enum and DataOutPort were checked first, followed by the other manifest
+blocks. Existing nested and lexical fixtures remain unchanged. The ICL and PDL
+ASTs and token inventories remain separate, and each formatter/LSP pair retains
+its shared processing path. Vim's PDL number rules already require contiguous
+prefixes; highlighting remains separate from parser diagnostics. New fixtures
+are included automatically in the editor corpus scan.
+
+Coverage inspection then identified the remaining level-0 error path for raw
+interpolated scan data containing a continuation. Two additional LF/CRLF
+negative fixtures exercise that path; they ensure an argument reference cannot
+be embedded inside a level-0 number. This branch remains necessary for malformed
+nonliteral inputs and was retained, rather than removed as supposedly dead code.
+The final manifest has **199 PDL cases**, including **24 iScan cases**.
+
+| Follow-up verification | Result |
+|---|---|
+| Independent integrated review | No actionable findings; checked prefix boundaries, LF/CRLF normalization, literal/dynamic classification, source ranges, shared adapters and highlighting. |
+| Google style/naming and full `check-dynamic` | Passed, including real ANTLR adapter tests, ICL grammar/scanner reachability and the initial 197-case PDL manifest. |
+| Final two error-path fixtures | Passed in the focused dynamic block, the complete static and installed 199-case block suite, and the repeated coverage run. |
+| Vim/Neovim | Full regression passed 38,487 ICL and initially 718 PDL files per editor; the existing corpus driver then rechecked all 720 final PDL files / 76,561 lines with 29 probes and no errors in each editor. |
+| Static build and focused checks | All four tools built; shared CLI 12/12, shared protocol 2/2, PDL tools 46/46, final PDL block suite 199/199 passed. |
+| Reference-query performance | 32,000 variables / 926,670 bytes: 12.7 ms dynamic and 9.4 ms static on this host; both below the existing 2 s regression bound. This is not a speedup claim. |
+| Strict coverage | Functional checks passed; gate still failed at **4,135/4,244 lines (97.4%) and 6,973/11,343 branches (61.5%)**. Thresholds remain 100%/90%. |
+| Installation | `make install-dynamic BISON=/usr/bin/bison` installed all four 1.0.0 tools under `/home/banana/.local/bin`. |
+| Installed checks | Shared CLI 12/12, shared protocol 2/2, PDL blocks 199/199, PDL tools 46/46 and ICL LSP 44/44 passed. All four help/version commands exited within five seconds. |
+
+The new source logic was exercised by coverage. `pdl_document.cc` reaches
+1,286/1,329 lines (96.8%) and 2,829/4,325 branches (65.4%). ICL authored action
+line counts remain 570/570 for Bison and 211/213 for Flex. Existing semantic,
+dynamic-script, live-coc/Tcl-version and platform limitations above still apply;
+none of these results establishes complete language conformance. No generated
+outputs are tracked and no vendor PDL was evaluated.
+
+The
+[follow-up plan](superpowers/plans/2026-10-24-language-boundary-followup.md)
+records execution; raw logs remain under ignored `build/boundary-audit/`.

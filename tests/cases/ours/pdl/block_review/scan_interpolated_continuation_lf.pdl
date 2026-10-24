@@ -1,0 +1,8 @@
+# Constructed negative: IEEE 1687-2014 7.7/7.9.12 allows ARGUMENT_REF
+# as a whole value, not interpolated into a level-0 scan number.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule Demo
+iProc probe {bits} {
+  iScan scan 8 -si "0b10\
+$bits"
+}

@@ -1,0 +1,9 @@
+# Constructed negative: a continuation cannot join the prefix characters.
+iPDLLevel 1 -version STD_1687_2014
+iProcsForModule Demo
+iProc probe {} {
+  if {1} {
+    iScan scan 8 -si "0\
+xAf"
+  }
+}

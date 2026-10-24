@@ -136,6 +136,12 @@ braced script bodies, including `iProc`, `proc`, and Tcl control flow, and
 normalizes command boundaries. Data words and substitutions retain their spelling;
 quoted/dynamic bodies are not reflowed. PDL removes most blank lines.
 
+For multiline `iScan` data, spaces and line continuations may separate digits,
+but the `0b`/`0x` prefix must stay together: `{0b10 10}` is valid, while
+`{0 b1010}` is rejected. Uppercase prefixes are also accepted. Constant words
+containing line continuations receive the same validation in the CLI and LSP;
+values requiring runtime substitution remain subject to the analysis limits below.
+
 Invalid input produces a diagnostic and is not rewritten. With multiple inputs,
 valid files can still be processed when another fails. Reformatting an already
 formatted file leaves its contents unchanged; `-w` also preserves its modification
@@ -314,11 +320,12 @@ integration. This does not establish complete language or semantic conformance.
 - Symbol rename, range formatting, and inferred HDL implementation targets are
   not provided. Formatting does not align assignments into columns.
 
-The [2026-10-24 audit](docs/combined-language-audit.md) passed sequential ICL/PDL
-block checks, the full dynamic regression, focused static and installed-tool
-checks, and the Vim/Neovim corpus tests. Strict handwritten-code coverage remains
-below the project's required thresholds; passing these tests does not prove
-complete syntax support.
+The [2026-10-24 audit and follow-up](docs/combined-language-audit.md#follow-up-scan-data-lexical-boundaries)
+record passing sequential ICL/PDL block checks, the full dynamic regression,
+focused static and installed-tool checks, and the Vim/Neovim corpus tests. The
+follow-up adds malformed scan-data and LF/CRLF continuation cases. Strict
+handwritten-code coverage remains below the project's required thresholds;
+passing these tests does not prove complete syntax support.
 
 ICL has also been tested in a real Vim/coc.nvim session; PDL services are tested
 through stdio LSP clients, with a full PDL Vim/coc.nvim session still unverified.

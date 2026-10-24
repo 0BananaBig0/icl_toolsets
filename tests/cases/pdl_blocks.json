@@ -1384,6 +1384,55 @@
     ]
   },
   {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_prefix_spacing.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "7.7,7.8,7.9.12 contiguous prefix and scan whitespace"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_split_binary_prefix.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.8,7.9.12 contiguous prefix and scan whitespace"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_split_hex_prefix.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.8,7.9.12 contiguous prefix and scan whitespace"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_split_prefix_newline.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.8,7.9.12 contiguous prefix and scan whitespace"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_split_prefix_continuation.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.8,7.9.12 contiguous prefix and scan whitespace"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_interpolated_continuation_lf.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.12 level-0 scan data excludes interpolated arguments"
+  },
+  {
+    "block": "iScan",
+    "path": "ours/pdl/block_review/scan_interpolated_continuation_crlf.pdl",
+    "valid": false,
+    "source": "ours",
+    "clause": "7.7,7.9.12 level-0 scan data excludes interpolated arguments"
+  },
+  {
     "block": "lexical",
     "path": "ours/pdl/block_review/missing_variable_brace.pdl",
     "valid": false,
