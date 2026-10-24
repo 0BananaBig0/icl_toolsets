@@ -479,6 +479,57 @@ class LanguageServer(unittest.TestCase):
         key = self.query('definition', 5, 9)
         self.assertEqual(key[0]['range']['start'], dict(line=0, character=8))
 
+    def test_procedure_keys_preserve_newlines_in_tcl_names(self):
+        source = ('namespace eval {a\nb} {proc c {} {}}\n'
+                  'namespace eval a {proc {b\nc} {} {}}\n'
+                  '{::a\nb::c}\n{::a::b\nc}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column, target_line, target_column in (
+                (4, 3, 1, 9), (6, 3, 2, 24)):
+            with self.subTest(line=line):
+                definitions = self.query('definition', line, column)
+                self.assertEqual(len(definitions), 1, definitions)
+                self.assertEqual(definitions[0]['range']['start'],
+                                 dict(line=target_line, character=target_column))
+                refs = self.query('references', line, column,
+                                  context={'includeDeclaration': True})
+                self.assertEqual(sorted(r['range']['start']['line'] for r in refs),
+                                 [target_line, line])
+
+    def test_namespace_eval_inside_proc_has_its_own_variable_frame(self):
+        source = ('proc outer {} {\nset x local\nnamespace eval N {\n'
+                  'set x namespace\nputs $x\n}\nputs $x\n}\n'
+                  'puts $::N::x\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column, target_line in ((4, 6, 3), (6, 6, 1), (8, 11, 3)):
+            with self.subTest(line=line):
+                definitions = self.query('definition', line, column)
+                self.assertEqual(len(definitions), 1, definitions)
+                self.assertEqual(definitions[0]['range']['start'],
+                                 dict(line=target_line, character=4))
+        refs = self.query('references', 4, 6,
+                          context={'includeDeclaration': True})
+        self.assertEqual(sorted(r['range']['start']['line'] for r in refs), [3, 4, 8])
+
+    def test_dynamic_namespace_inside_proc_does_not_alias_local_variables(self):
+        source = ('proc outer {ns} {\nset x local\nnamespace eval $ns {\n'
+                  'set x unknown\nputs $x\n}\nputs $x\n}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        self.assertEqual(self.query('definition', 4, 6), [])
+        self.assertNotIn('x', {s['label'] for s in self.query('completion', 4, 6)})
+        self.assertEqual(self.query('definition', 6, 6)[0]['range']['start'],
+                         dict(line=1, character=4))
+        # Namespace-name substitutions are still evaluated in the parent frame.
+        self.assertEqual(self.query('definition', 2, 17)[0]['range']['start'],
+                         dict(line=0, character=12))
+
+    def test_namespace_body_substitution_completion_uses_parent_frame(self):
+        source = 'proc outer {x} {\nnamespace eval N "puts $x"\n}\n'
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        self.assertEqual(self.query('definition', 1, 24)[0]['range']['start'],
+                         dict(line=0, character=12))
+        self.assertIn('x', {s['label'] for s in self.query('completion', 1, 24)})
+
     def test_namespace_variable_binding_is_shared_with_procedures(self):
         source = ('namespace eval A {\nvariable x 1\nproc p {} {\n'
                   'variable x\nset x 2\nputs $x\n}\n'

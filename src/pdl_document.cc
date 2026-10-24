@@ -542,11 +542,6 @@ std::string ParseError(int type) {
   }
 }
 
-std::string ProcedureKey(const std::string& binding, const std::string& ns,
-                         const std::string& name) {
-  return binding + '\n' + ns + '\n' + name;
-}
-
 void Render(const std::string& source, const std::vector<Command>& commands,
             int depth, int width, std::string* output) {
   const std::string indent(depth * width, ' ');
@@ -1401,6 +1396,8 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
                  name_range, name_range, child.owner});
       }
     } else if (name == "namespace" && literal(1) == "eval") {
+      // Namespace evaluation creates a variable frame outside procedure locals.
+      child.owner = -1;
       child.tcl_namespace = Qualify(context.tcl_namespace, literal(2));
       child.tcl_namespace_known =
           words.size() > 2 && words[2].literal &&
@@ -1507,7 +1504,8 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
     }
     contexts_.push_back({{command.range.begin, scope.end}, context});
     // Tcl reports a zero-length body token for an unfinished procedure.
-    if (child.owner != context.owner && words.size() == 4) {
+    if ((name == "proc" || name == "iProc") && child.owner != context.owner &&
+        words.size() == 4) {
       auto body = words.back().content;
       if (words.back().range.begin == words.back().range.end) {
         body.end = command.range.end;
@@ -1594,7 +1592,7 @@ void Workspace::Reindex() {
   for (const auto& item : documents_) {
     const auto* doc = item.second.get();
     uris_[doc] = item.first;
-    std::map<std::string, size_t> last;
+    std::map<ProcedureKey, size_t> last;
     for (size_t i = 0; i < doc->declarations().size(); ++i) {
       const auto& d = doc->declarations()[i];
       if (!doc->CanFormat() && d.module >= 0 && d.kind != "Module" &&
@@ -1611,7 +1609,7 @@ void Workspace::Reindex() {
         if (!d.static_context || (d.kind == "iProc" && d.binding.empty())) {
           continue;
         }
-        last[ProcedureKey(d.binding, d.name_space, d.name)] = i;
+        last[{d.binding, d.name_space, d.name}] = i;
       }
     }
     for (const auto& entry : last) {
@@ -1673,11 +1671,10 @@ SymbolRef Workspace::Resolve(const Document& document,
   }
   if (use.kind == "proc") {
     const auto qualified = SplitQualified(Qualify(use.name_space, use.name));
-    auto found =
-        procedures_.find(ProcedureKey("", qualified.first, qualified.second));
+    auto found = procedures_.find({"", qualified.first, qualified.second});
     if (found == procedures_.end() && use.name.rfind("::", 0) != 0) {
       const auto global = SplitQualified(Qualify("", use.name));
-      found = procedures_.find(ProcedureKey("", global.first, global.second));
+      found = procedures_.find({"", global.first, global.second});
     }
     return found != procedures_.end() && found->second.size() == 1
                ? found->second.front()
@@ -1696,7 +1693,7 @@ SymbolRef Workspace::Resolve(const Document& document,
     ns = name.substr(0, separator);
     name.erase(0, separator + 2);
   }
-  const auto found = procedures_.find(ProcedureKey(binding, ns, name));
+  const auto found = procedures_.find({binding, ns, name});
   if (found == procedures_.end() || found->second.size() != 1) return {};
   return found->second.front();
 }

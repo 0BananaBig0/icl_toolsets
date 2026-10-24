@@ -137,7 +137,8 @@ class Workspace {
 
  private:
   std::map<std::string, std::shared_ptr<Document>> documents_;
-  std::map<std::string, std::vector<SymbolRef>> procedures_;
+  using ProcedureKey = std::tuple<std::string, std::string, std::string>;
+  std::map<ProcedureKey, std::vector<SymbolRef>> procedures_;
   std::map<const Document*, std::string> uris_;
   SymbolRef IclModule(const std::string& name) const;
   SymbolRef IclObject(const std::string& binding,
