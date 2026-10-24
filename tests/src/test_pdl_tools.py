@@ -432,6 +432,48 @@ class LanguageServer(unittest.TestCase):
         self.assertIn('tcl_local', tcl_scope)
         self.assertNotIn('special', tcl_scope)
 
+    def test_unknown_tcl_namespace_does_not_invent_global_symbols(self):
+        source = ('namespace eval $ns {\nproc hidden {arg} {puts $arg}\n'
+                  'set hidden_var 1\nproc ::visible {} {}\n}\n'
+                  'hidden\nputs $hidden_var\n::visible\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        self.assertEqual(self.query('definition', 5, 2), [])
+        self.assertEqual(self.query('definition', 6, 8), [])
+        self.assertEqual(self.query('definition', 7, 4)[0]['range']['start']['line'], 3)
+        labels = {s['label'] for s in self.query('completion', 5, 2)}
+        self.assertNotIn('hidden', labels)
+        self.assertNotIn('hidden_var', labels)
+        self.assertIn('visible', labels)
+        # Local arguments remain known even when their procedure's namespace is not.
+        self.assertEqual(self.query('definition', 1, 25)[0]['range']['start']['line'], 1)
+
+    def test_relative_qualified_tcl_command_falls_back_to_global(self):
+        source = ('namespace eval lib {proc helper {} {}}\n'
+                  'namespace eval outer {\nlib::helper\n'
+                  '::lib::helper\n}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line in (2, 3):
+            with self.subTest(line=line):
+                result = self.query('definition', line, 5)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['range']['start']['line'], 0)
+
+    def test_global_bindings_support_qualified_names_and_arrays(self):
+        source = ('set x 1\nnamespace eval A {set arr(k) 2}\n'
+                  'namespace eval inner {\nproc p {} {\n'
+                  'global x A::arr\nputs $x\nputs $arr(k)\n'
+                  'set x 3\n}\n}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column, target in ((5, 6, 0), (6, 7, 1), (7, 4, 0)):
+            with self.subTest(line=line):
+                result = self.query('definition', line, column)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['range']['start']['line'], target)
+        labels = {s['label'] for s in self.query('completion', 5, 6)}
+        self.assertTrue({'x', 'arr'} <= labels)
+        refs = self.query('references', 0, 4, context={'includeDeclaration': False})
+        self.assertTrue({5, 7} <= {r['range']['start']['line'] for r in refs})
+
     def test_procedure_and_variable_navigation_completion_references(self):
         text = HEADER + 'iProc run {value} {\niCall helper $value\n}\n'
         self.assertEqual(self.open(text)['diagnostics'], [])

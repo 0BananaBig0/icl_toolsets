@@ -10,6 +10,51 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lsp_test import Client
 
 
+def object_references(server, benchmark):
+    results = []
+    for size in ((2000, 4000, 8000, 16000, 32000) if benchmark else (32000,)):
+        client = Client(str(server.resolve()))
+        try:
+            client.request('initialize', {})
+            sources = {
+                'file:///objects.icl': 'Module M {\n' + ''.join(
+                    f'DataInPort r{i};\n' for i in range(size)) + '}\n',
+                'file:///references.pdl': 'iProcsForModule M\n' + ''.join(
+                    f'iRead r{i}\n' for i in range(size)),
+            }
+            for uri, source in sources.items():
+                client.notify('textDocument/didOpen', {'textDocument': dict(
+                    uri=uri, languageId=uri.rsplit('.', 1)[1], version=1, text=source)})
+                diagnostics = client.wait(
+                    lambda m: m.get('method') == 'textDocument/publishDiagnostics'
+                    and m['params']['uri'] == uri, 'diagnostics')
+                assert diagnostics and not diagnostics['params']['diagnostics'], diagnostics
+            query = dict(textDocument={'uri': 'file:///references.pdl'},
+                         position=dict(line=1, character=7),
+                         context={'includeDeclaration': False})
+            times = []
+            for _ in range(3 if benchmark else 1):
+                start = time.monotonic()
+                reply = client.request('textDocument/references', query)
+                times.append(time.monotonic() - start)
+                assert reply and [r['range']['start']['line'] for r in reply['result']] == [1], reply
+            result = dict(objects=size, bytes=sum(len(s) for s in sources.values()), seconds=times)
+            results.append(result)
+            if not benchmark:
+                assert times[0] < 2.0, result
+            # Reindexing must remove old members and retain genuine ambiguity.
+            for version, text in ((2, 'Module M { DataInPort other; }\n'),
+                                  (3, 'Module M {}\nModule M {}\n')):
+                client.notify('textDocument/didChange', {
+                    'textDocument': dict(uri='file:///objects.icl', version=version),
+                    'contentChanges': [{'text': text}]})
+                reply = client.request('textDocument/references', query)
+                assert reply and reply['result'] == [], reply
+        finally:
+            client.stop()
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--server', required=True, type=Path)
@@ -46,6 +91,7 @@ def main():
                 assert times[0] < 2.0, results[-1]
         finally:
             client.stop()
+    results.extend(object_references(args.server, args.benchmark))
     print(json.dumps(results, indent=2))
 
 

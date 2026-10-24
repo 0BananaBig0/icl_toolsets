@@ -1313,13 +1313,18 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
       }
       auto qualified =
           SplitQualified(Qualify(context.tcl_namespace, literal(1)));
-      if (name == "proc") child.tcl_namespace = qualified.first;
+      if (name == "proc") {
+        child.tcl_namespace = qualified.first;
+        child.tcl_namespace_known =
+            context.tcl_namespace_known || literal(1).rfind("::", 0) == 0;
+      }
       Declare({name == "proc" ? qualified.second : literal(1), name,
                name + " " + literal(1) + " " + Text(source_, words[2].range),
                name == "iProc" ? context.binding : "",
                name == "iProc" ? context.name_space : qualified.first,
                words[1].content, command.range, -1, "",
-               name != "iProc" || context.namespace_known});
+               name == "iProc" ? context.namespace_known
+                               : child.tcl_namespace_known});
       bool valid = true;
       const auto arguments = words[2].literal
                                  ? SplitList(words[2].value, &valid)
@@ -1370,6 +1375,19 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
       }
     } else if (name == "namespace" && literal(1) == "eval") {
       child.tcl_namespace = Qualify(context.tcl_namespace, literal(2));
+      child.tcl_namespace_known =
+          words.size() > 2 && words[2].literal &&
+          (context.tcl_namespace_known || literal(2).rfind("::", 0) == 0);
+    }
+    if (name == "global" && context.owner >= 0) {
+      for (size_t i = 1; i < words.size(); ++i) {
+        if (!words[i].literal) continue;
+        const auto qualified = SplitQualified(Qualify("", literal(i)));
+        variable_bindings_[{context.owner, "", qualified.second}] = {
+            -1, qualified.first, qualified.second};
+        uses_.push_back({words[i].content, qualified.second, "Variable", "",
+                         qualified.first, -1, -1});
+      }
     }
     if (name == "set" || name == "variable") {
       const size_t end =
@@ -1391,11 +1409,16 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
                    : std::make_pair(std::string(), variable);
         VariableKey key{global ? -1 : context.owner, qualified.first,
                         qualified.second};
+        const bool known = !global || context.tcl_namespace_known ||
+                           variable.rfind("::", 0) == 0;
+        // Keep an unknown namespace binding distinct from a procedure local.
+        if (!known) std::get<0>(key) = -2;
         if (name == "variable" && context.owner >= 0) {
           variable_bindings_[{context.owner, "", qualified.second}] = key;
         }
         const auto binding = variable_bindings_.find(key);
         if (binding != variable_bindings_.end()) key = binding->second;
+        if (std::get<0>(key) == -2) continue;
         auto range = words[i].content;
         range.end = range.begin + ArrayName(raw).size();
         if (name == "set" && words.size() == 2) {
@@ -1413,8 +1436,10 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
                        context.prefix,
                        context.call_namespace_known && context.prefix_known});
     } else if (spec == Specs().end() && words[0].literal) {
-      uses_.push_back({words[0].content, name, "proc", "",
-                       context.tcl_namespace, context.owner, -1});
+      uses_.push_back(
+          {words[0].content, name, "proc", "", context.tcl_namespace,
+           context.owner, -1, "",
+           context.tcl_namespace_known || name.rfind("::", 0) == 0});
     }
     static const std::set<std::string> kObjectCommands = {
         "iRead",           "iWrite", "iState",         "iTake",
@@ -1479,8 +1504,10 @@ void Document::AnalyzeWords(std::vector<Word>* words, const Context& context,
                  : std::make_pair(std::string(), name);
       auto range = variable.first;
       range.end = range.begin + name.size();
-      uses_.push_back({range, qualified.second, "Variable", "", qualified.first,
-                       global ? -1 : context.owner, -1});
+      uses_.push_back(
+          {range, qualified.second, "Variable", "", qualified.first,
+           global ? -1 : context.owner, -1, "",
+           !global || context.tcl_namespace_known || name.rfind("::", 0) == 0});
     }
     if (!word.substitutions.empty()) {
       Analyze(&word.substitutions, context, word.content);
@@ -1535,6 +1562,7 @@ std::string Document::Dump() const {
 void Workspace::Reindex() {
   procedures_.clear();
   modules_.clear();
+  members_.clear();
   uris_.clear();
   for (const auto& item : documents_) {
     const auto* doc = item.second.get();
@@ -1542,6 +1570,9 @@ void Workspace::Reindex() {
     std::map<std::string, size_t> last;
     for (size_t i = 0; i < doc->declarations().size(); ++i) {
       const auto& d = doc->declarations()[i];
+      if (!doc->CanFormat() && d.module >= 0 && d.kind != "Module") {
+        members_[doc][{d.module, d.name}].push_back({doc, i});
+      }
       if (d.kind == "Module") {
         const auto key =
             d.name_space.empty() ? d.name : d.name_space + "::" + d.name;
@@ -1549,7 +1580,7 @@ void Workspace::Reindex() {
       }
       if (d.kind == "iProc" || d.kind == "proc") {
         // Runtime binding or namespace values have no static target.
-        if (d.kind == "iProc" && (d.binding.empty() || !d.static_context)) {
+        if (!d.static_context || (d.kind == "iProc" && d.binding.empty())) {
           continue;
         }
         last[ProcedureKey(d.binding, d.name_space, d.name)] = i;
@@ -1579,16 +1610,13 @@ SymbolRef Workspace::IclObject(const std::string& binding,
     name.erase(name.find_first_of("([") == std::string::npos
                    ? name.size()
                    : name.find_first_of("(["));
-    SymbolRef member;
-    for (size_t i = 0; i < scope.document->declarations().size(); ++i) {
-      const auto& d = scope.document->declarations()[i];
-      if (d.module == static_cast<int>(scope.index) && d.kind != "Module" &&
-          d.name == name) {
-        if (member) return {};
-        member = {scope.document, i};
-      }
-    }
-    if (!member || dot == std::string::npos) return member;
+    const auto document = members_.find(scope.document);
+    if (document == members_.end()) return {};
+    const auto found =
+        document->second.find({static_cast<int>(scope.index), name});
+    if (found == document->second.end() || found->second.size() != 1) return {};
+    const auto member = found->second.front();
+    if (dot == std::string::npos) return member;
     if (member.declaration().kind != "Instance") return {};
     scope = IclModule(member.declaration().target);
     begin = dot + 1;
@@ -1619,9 +1647,9 @@ SymbolRef Workspace::Resolve(const Document& document,
     const auto qualified = SplitQualified(Qualify(use.name_space, use.name));
     auto found =
         procedures_.find(ProcedureKey("", qualified.first, qualified.second));
-    if (found == procedures_.end() &&
-        use.name.find("::") == std::string::npos) {
-      found = procedures_.find(ProcedureKey("", "", use.name));
+    if (found == procedures_.end() && use.name.rfind("::", 0) != 0) {
+      const auto global = SplitQualified(use.name);
+      found = procedures_.find(ProcedureKey("", global.first, global.second));
     }
     return found != procedures_.end() && found->second.size() == 1
                ? found->second.front()
@@ -1655,6 +1683,7 @@ std::vector<SymbolRef> Workspace::Complete(const Document& document,
   for (size_t i = 0; i < document.declarations().size(); ++i) {
     const auto& d = document.declarations()[i];
     if (d.kind == "Variable" && d.module == owner &&
+        (owner >= 0 || context.tcl_namespace_known) &&
         d.name_space == (owner < 0 ? context.tcl_namespace : "")) {
       result.push_back({&document, i});
     }
@@ -1672,7 +1701,8 @@ std::vector<SymbolRef> Workspace::Complete(const Document& document,
     const auto& d = symbol.declaration();
     const bool visible =
         d.kind == "proc"
-            ? (d.name_space == context.tcl_namespace || d.name_space.empty())
+            ? (context.tcl_namespace_known &&
+               (d.name_space == context.tcl_namespace || d.name_space.empty()))
             : (context.has_binding && !context.binding.empty() &&
                context.call_namespace_known && d.binding == context.binding &&
                d.name_space == context.call_namespace);

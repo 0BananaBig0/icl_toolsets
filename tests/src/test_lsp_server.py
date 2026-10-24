@@ -21,6 +21,115 @@ def limits():
 
 
 class WorkspaceReads(unittest.TestCase):
+    def test_watcher_preserves_scan_exclusions(self):
+        for language, binary in BINARIES.items():
+            for directory in ('build', '.generated'):
+                with self.subTest(language=language, directory=directory), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    source = 'Module Child {}\n' if language == 'icl' else 'proc child {} {}\n'
+                    library = root / ('library.' + language)
+                    library.write_text(source)
+                    excluded = root / directory / library.name
+                    excluded.parent.mkdir()
+                    excluded.write_text(source)
+                    client = Client(binary)
+                    try:
+                        client.request('initialize', {'rootUri': root.as_uri()})
+                        query = lambda: client.request('workspace/symbol', {'query': 'Child' if language == 'icl' else 'child'})['result']
+                        self.assertEqual(len(query()), 1)
+                        for event in (1, 2):
+                            client.notify('workspace/didChangeWatchedFiles', {
+                                'changes': [dict(uri=excluded.as_uri(), type=event)]})
+                            self.assertEqual(len(query()), 1)
+                        # Exclusion is automatic-index policy, not an editor ban.
+                        client.notify('textDocument/didOpen', {'textDocument': dict(
+                            uri=excluded.as_uri(), languageId=language, version=1, text=source)})
+                        self.assertEqual(len(query()), 2)
+                        client.notify('textDocument/didClose', {'textDocument': {'uri': excluded.as_uri()}})
+                        self.assertEqual(len(query()), 1)
+                    finally:
+                        client.stop()
+
+    def test_symlink_identity_and_unsaved_overlays(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                library = root / ('library.' + language)
+                alias = root / ('alias.' + language)
+                source = 'Module Child {}\n' if language == 'icl' else 'proc child {} {}\n'
+                name = 'Child' if language == 'icl' else 'child'
+                library.write_text(source)
+                alias.symlink_to(library)
+                client = Client(binary)
+                try:
+                    client.request('initialize', {'rootUri': root.as_uri()})
+                    query = lambda word: client.request('workspace/symbol', {'query': word})['result']
+                    self.assertEqual(len(query(name)), 1)
+                    for path, version, replacement in ((alias, 10, 'Edited'), (library, 1, 'Second')):
+                        client.notify('textDocument/didOpen', {'textDocument': dict(
+                            uri=path.as_uri(), languageId=language, version=version,
+                            text=source.replace(name, replacement))})
+                        symbols = query(replacement)
+                        self.assertEqual(len(symbols), 1)
+                        self.assertEqual(symbols[0]['location']['uri'], path.as_uri())
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=alias.as_uri(), type=2)]})
+                    self.assertEqual(len(query('Second')), 1)
+                    for path, expected in ((alias, 'Edited'), (library, 'Second')):
+                        symbols = client.request('textDocument/documentSymbol', {
+                            'textDocument': {'uri': path.as_uri()}})['result']
+                        self.assertEqual([s['name'] for s in symbols], [expected])
+                        self.assertEqual(symbols[0]['location']['uri'], path.as_uri())
+                    client.notify('textDocument/didClose', {'textDocument': {'uri': library.as_uri()}})
+                    symbols = query('Edited')
+                    self.assertEqual(len(symbols), 1)
+                    self.assertEqual(symbols[0]['location']['uri'], alias.as_uri())
+                    client.notify('textDocument/didClose', {'textDocument': {'uri': alias.as_uri()}})
+                    self.assertEqual(len(query(name)), 1)
+                finally:
+                    client.stop()
+
+    def test_watcher_skips_symlink_directories_but_explicit_roots_work(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                workspace = root / 'workspace'
+                workspace.mkdir()
+                external = root / 'external'
+                external.mkdir()
+                link = workspace / 'linked'
+                link.symlink_to(external, target_is_directory=True)
+                source = 'Module External {}\n' if language == 'icl' else 'proc External {} {}\n'
+                path = link / ('library.' + language)
+                path.write_text(source)
+                client = Client(binary)
+                try:
+                    client.request('initialize', {'rootUri': workspace.as_uri()})
+                    query = lambda: client.request('workspace/symbol', {'query': 'External'})['result']
+                    self.assertEqual(query(), [])
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=path.as_uri(), type=2)]})
+                    self.assertEqual(query(), [])
+                    client.notify('textDocument/didOpen', {'textDocument': dict(
+                        uri=path.as_uri(), languageId=language, version=1, text=source)})
+                    self.assertEqual(len(query()), 1)
+                    client.notify('textDocument/didClose', {'textDocument': {'uri': path.as_uri()}})
+                    self.assertEqual(query(), [])
+                finally:
+                    client.stop()
+                client = Client(binary)
+                try:
+                    client.request('initialize', {'workspaceFolders': [
+                        dict(uri=workspace.as_uri(), name='parent'),
+                        dict(uri=link.as_uri(), name='explicit')]})
+                    self.assertEqual(len(client.request('workspace/symbol', {'query': 'External'})['result']), 1)
+                    path.write_text(source.replace('External', 'Updated'))
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=path.as_uri(), type=2)]})
+                    self.assertEqual(len(client.request('workspace/symbol', {'query': 'Updated'})['result']), 1)
+                finally:
+                    client.stop()
+
     def test_client_responses_do_not_receive_responses(self):
         for language, binary in BINARIES.items():
             with self.subTest(language=language):
@@ -40,6 +149,53 @@ class WorkspaceReads(unittest.TestCase):
                         reply = client.request('workspace/symbol', {'query': ''})
                         self.assertIsNotNone(reply)
                         self.assertEqual(client.drain(), [])
+                finally:
+                    client.stop()
+
+    def test_symlink_retarget_and_target_deletion_remove_stale_symbols(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                workspace = root / 'workspace'
+                workspace.mkdir()
+                source = 'Module Old {}\n' if language == 'icl' else 'proc Old {} {}\n'
+                old = root / ('old.' + language)
+                new = root / ('new.' + language)
+                old.write_text(source)
+                new.write_text(source.replace('Old', 'New'))
+                alias = workspace / ('alias.' + language)
+                alias.symlink_to(old)
+                client = Client(binary)
+                try:
+                    client.request('initialize', {'rootUri': workspace.as_uri()})
+                    query = lambda: [s['name'] for s in client.request('workspace/symbol', {'query': ''})['result']]
+                    self.assertEqual(query(), ['Old'])
+                    alias.unlink()
+                    alias.symlink_to(new)
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=alias.as_uri(), type=2)]})
+                    self.assertEqual(query(), ['New'])
+                    second = workspace / ('second.' + language)
+                    second.symlink_to(new)
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=second.as_uri(), type=1)]})
+                    self.assertEqual(query(), ['New'])
+                    for opened in (alias, second):
+                        client.notify('textDocument/didOpen', {'textDocument': dict(
+                            uri=opened.as_uri(), languageId=language, version=1,
+                            text=source.replace('Old', 'Buffered'))})
+                    alias.unlink()
+                    alias.symlink_to(old)
+                    # Closing an inactive alias must refresh its retarget even
+                    # when the client's watcher has not delivered an event.
+                    client.notify('textDocument/didClose', {'textDocument': {'uri': alias.as_uri()}})
+                    self.assertEqual(sorted(query()), ['Buffered', 'Old'])
+                    client.notify('textDocument/didClose', {'textDocument': {'uri': second.as_uri()}})
+                    self.assertEqual(sorted(query()), ['New', 'Old'])
+                    new.unlink()
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=second.as_uri(), type=2)]})
+                    self.assertEqual(query(), ['Old'])
                 finally:
                     client.stop()
 

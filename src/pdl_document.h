@@ -72,7 +72,7 @@ class Document {
     int owner = -1;
     bool has_binding = false;
     bool namespace_known = true, call_namespace_known = true,
-         prefix_known = true;
+         prefix_known = true, tcl_namespace_known = true;
     std::string binding, name_space, call_namespace, tcl_namespace, prefix;
   };
   using VariableKey = std::tuple<int, std::string, std::string>;
@@ -135,6 +135,9 @@ class Workspace {
   SymbolRef IclObject(const std::string& binding,
                       const std::string& path) const;
   std::map<std::string, std::vector<SymbolRef>> modules_;
+  using MemberKey = std::pair<int, std::string>;
+  std::map<const Document*, std::map<MemberKey, std::vector<SymbolRef>>>
+      members_;
 };
 
 struct FormatRequest {

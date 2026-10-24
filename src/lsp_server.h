@@ -354,10 +354,7 @@ class LspServer {
       }
     } else if (method == "textDocument/didClose") {
       const auto uri = UriOf(Params(message));
-      open_versions_.erase(uri);
-      workspace_.documents().erase(uri);
-      ReadDisk(uri);
-      workspace_.Reindex();
+      Close(uri);
       PublishDiagnostics(uri, nullptr);
     } else if (method == "workspace/didChangeWatchedFiles") {
       WatchedFiles(Params(message));
@@ -431,13 +428,16 @@ class LspServer {
 
   void Open(const std::string& uri, const std::string& text,
             std::int64_t version) {
-    const auto old = open_versions_.find(uri);
-    if (old != open_versions_.end() && version >= 0 && old->second >= version) {
+    const auto old = open_documents_.find(uri);
+    if (old != open_documents_.end() && version >= 0 &&
+        old->second.version >= version) {
       return;
     }
-    open_versions_[uri] = version;
+    const auto key = DocumentKey(uri);
     auto document = Language::Parse(text, uri);
-    workspace_.documents()[uri] = document;
+    open_documents_[uri] = {key, version, document};
+    active_uris_[key] = uri;
+    workspace_.documents()[key] = document;
     workspace_.Reindex();
     PublishDiagnostics(uri, document.get());
   }
@@ -455,9 +455,9 @@ class LspServer {
     }
     Json::Members params{{"uri", Json::String(uri)},
                          {"diagnostics", Json::Array(std::move(diagnostics))}};
-    const auto version = open_versions_.find(uri);
-    if (version != open_versions_.end() && version->second >= 0) {
-      params.emplace_back("version", Json::Int(version->second));
+    const auto version = open_documents_.find(uri);
+    if (version != open_documents_.end() && version->second.version >= 0) {
+      params.emplace_back("version", Json::Int(version->second.version));
     }
     WriteMessage(Json::Object(
         {{"jsonrpc", Json::String("2.0")},
@@ -468,11 +468,11 @@ class LspServer {
   Json Formatting(const Json& params) {
     const Json* document = params.Find("textDocument");
     const std::string uri = GetString(document, "uri");
-    const auto it = workspace_.documents().find(uri);
-    if (it == workspace_.documents().end() || !open_versions_.count(uri)) {
+    const auto it = open_documents_.find(uri);
+    if (it == open_documents_.end()) {
       return Json::Array({});
     }
-    const std::string& text = it->second->source();
+    const std::string& text = it->second.document->source();
 
     // Honour the editor's tabSize: it is the same knob the CLI exposes as -n,
     // so the two front ends agree on what "indent" means. Clamping is shared
@@ -482,7 +482,7 @@ class LspServer {
     request.indent_width =
         static_cast<int>(GetInt(params.Find("options"), "tabSize", 2));
 
-    const auto outcome = Language::Format(*it->second, request);
+    const auto outcome = Language::Format(*it->second.document, request);
     // A file with a syntax error is left untouched: returning no edits is the
     // only safe answer, since there is no formatted form to hand back. So is
     // a file that is already formatted — sending an edit that replaces the
@@ -502,21 +502,111 @@ class LspServer {
     return Json::Array(std::move(edits));
   }
 
-  void ReadDisk(const std::string& uri) {
-    if (open_versions_.count(uri)) return;
+  static std::string FileKey(const std::string& uri) {
+    const auto path = FilePath(uri);
+    if (path.empty()) return uri;
+    std::error_code error;
+    const auto canonical = std::filesystem::weakly_canonical(path, error);
+    return error ? uri : FileUri(canonical.string());
+  }
+
+  std::string DocumentKey(const std::string& uri) const {
+    const auto open = open_documents_.find(uri);
+    return open == open_documents_.end() ? FileKey(uri) : open->second.key;
+  }
+
+  std::string ClientUri(const std::string& key) const {
+    const auto found = active_uris_.find(key);
+    return found == active_uris_.end() ? key : found->second;
+  }
+
+  bool AutoIndex(const std::string& uri) const {
+    const std::filesystem::path path = FilePath(uri);
+    if (path.empty() || !Language::Accepts(path)) return false;
+    const auto included = [&](const std::filesystem::path& root) {
+      const auto relative = path.lexically_normal().lexically_relative(root);
+      if (relative.empty() || *relative.begin() == "..") return false;
+      auto directory = root;
+      for (const auto& component : relative.parent_path()) {
+        const auto name = component.string();
+        if (name == "build" || (!name.empty() && name[0] == '.')) return false;
+        directory /= component;
+        std::error_code error;
+        if (std::filesystem::is_symlink(directory, error)) return false;
+      }
+      return true;
+    };
+    return roots_.empty() ? included(path.root_path())
+                          : std::any_of(roots_.begin(), roots_.end(), included);
+  }
+
+  void DropDisk(const std::string& uri) {
+    const auto found = disk_keys_.find(uri);
+    if (found == disk_keys_.end()) return;
+    const auto key = found->second;
+    disk_keys_.erase(found);
+    std::error_code error;
+    if (!active_uris_.count(key) &&
+        (!std::filesystem::is_regular_file(FilePath(key), error) ||
+         std::none_of(disk_keys_.begin(), disk_keys_.end(),
+                      [&](const auto& item) { return item.second == key; }))) {
+      workspace_.documents().erase(key);
+    }
+  }
+
+  void Close(const std::string& uri) {
+    const auto found = open_documents_.find(uri);
+    if (found == open_documents_.end()) return;
+    const auto key = found->second.key;
+    open_documents_.erase(found);
+    if (ClientUri(key) == uri) {
+      active_uris_.erase(key);
+      workspace_.documents().erase(key);
+      for (const auto& other : open_documents_) {
+        if (other.second.key == key) {
+          active_uris_[key] = other.first;
+          workspace_.documents()[key] = other.second.document;
+          break;
+        }
+      }
+      if (!active_uris_.count(key)) {
+        // Restore the original identity even if an open symlink was retargeted.
+        for (const auto& item : disk_keys_) {
+          if (item.second == key && FileKey(item.first) == key) {
+            ReadDisk(item.first);
+            break;
+          }
+        }
+      }
+    }
+    ReadDisk(uri);
+    workspace_.Reindex();
+  }
+
+  void ReadDisk(const std::string& uri, bool refresh = true) {
+    // The directory iterator already enforces exclusions during initial scans.
+    if (refresh && !AutoIndex(uri)) return;
     const std::string path = FilePath(uri);
     std::error_code error;
     if (!std::filesystem::is_regular_file(path, error)) {
-      workspace_.documents().erase(uri);
+      DropDisk(uri);
+      return;
+    }
+    const auto key = FileKey(uri);
+    const auto previous = disk_keys_.find(uri);
+    if (previous != disk_keys_.end() && previous->second != key) DropDisk(uri);
+    disk_keys_[uri] = key;
+    if (active_uris_.count(key) ||
+        (!refresh && workspace_.documents().count(key))) {
       return;
     }
     std::ifstream file(path, std::ios::binary);
     std::string text;
     if (!file || !ReadTextStream(file, &text)) {
-      workspace_.documents().erase(uri);
+      workspace_.documents().erase(key);
       return;
     }
-    workspace_.documents()[uri] = Language::Parse(std::move(text), uri);
+    workspace_.documents()[key] = Language::Parse(std::move(text), uri);
   }
 
   void ScanWorkspace(const Json& params) {
@@ -534,6 +624,9 @@ class LspServer {
     }
     for (const auto& root : roots) {
       if (root.empty()) continue;
+      roots_.push_back(std::filesystem::path(root).lexically_normal());
+    }
+    for (const auto& root : roots_) {
       std::error_code error;
       std::filesystem::recursive_directory_iterator it(
           root, std::filesystem::directory_options::skip_permission_denied,
@@ -546,7 +639,7 @@ class LspServer {
             (name.empty() || name[0] == '.' || name == "build")) {
           it.disable_recursion_pending();
         } else if (it->is_regular_file(error) && Language::Accepts(path)) {
-          ReadDisk(FileUri(path.string()));
+          ReadDisk(FileUri(path.string()), false);
         }
         it.increment(error);
         if (error) break;
@@ -560,12 +653,10 @@ class LspServer {
     if (!changes) return;
     for (const auto& change : changes->elements()) {
       const auto uri = GetString(&change, "uri");
-      if (!open_versions_.count(uri)) {
-        if (GetInt(&change, "type", 0) == 3) {
-          workspace_.documents().erase(uri);
-        } else {
-          ReadDisk(uri);
-        }
+      if (GetInt(&change, "type", 0) == 3) {
+        DropDisk(uri);
+      } else {
+        ReadDisk(uri);
       }
     }
     workspace_.Reindex();
@@ -574,7 +665,7 @@ class LspServer {
   Json Location(SymbolRef symbol, bool body = false) const {
     const auto& d = symbol.declaration();
     return Json::Object(
-        {{"uri", Json::String(workspace_.Uri(symbol.document))},
+        {{"uri", Json::String(ClientUri(workspace_.Uri(symbol.document)))},
          {"range",
           SourceRange(*symbol.document, body ? d.range : d.name_range)}});
   }
@@ -591,7 +682,8 @@ class LspServer {
   }
 
   Json Symbols(const Json& params, bool all) const {
-    const auto uri = UriOf(params), query = GetString(&params, "query");
+    const auto uri = DocumentKey(UriOf(params)),
+               query = GetString(&params, "query");
     Json::Elements result;
     for (const auto& item : workspace_.documents()) {
       if (!all && item.first != uri) continue;
@@ -606,10 +698,18 @@ class LspServer {
     return Json::Array(std::move(result));
   }
 
-  Json SemanticRequest(const std::string& method, const Json& params) const {
+  Json SemanticRequest(const std::string& method, const Json& params) {
+    const auto open = open_documents_.find(UriOf(params));
+    if (open != open_documents_.end() &&
+        ClientUri(open->second.key) != open->first) {
+      // Two editor buffers may share a file but contain different unsaved text.
+      active_uris_[open->second.key] = open->first;
+      workspace_.documents()[open->second.key] = open->second.document;
+      workspace_.Reindex();
+    }
     if (method == "workspace/symbol") return Symbols(params, true);
     if (method == "textDocument/documentSymbol") return Symbols(params, false);
-    const auto found = workspace_.documents().find(UriOf(params));
+    const auto found = workspace_.documents().find(DocumentKey(UriOf(params)));
     if (found == workspace_.documents().end()) {
       return method == "textDocument/hover" ? Json::Null() : Json::Array({});
     }
@@ -661,7 +761,7 @@ class LspServer {
             if ((declarations || candidate.declaration < 0) &&
                 workspace_.Resolve(*item.second, candidate) == symbol) {
               result.push_back(Json::Object(
-                  {{"uri", Json::String(item.first)},
+                  {{"uri", Json::String(ClientUri(item.first))},
                    {"range", SourceRange(*item.second, candidate.range)}}));
             }
           }
@@ -676,7 +776,14 @@ class LspServer {
   }
 
   Workspace workspace_;
-  std::map<std::string, std::int64_t> open_versions_;
+  struct OpenDocument {
+    std::string key;
+    std::int64_t version;
+    std::shared_ptr<Document> document;
+  };
+  std::map<std::string, OpenDocument> open_documents_;
+  std::map<std::string, std::string> active_uris_, disk_keys_;
+  std::vector<std::filesystem::path> roots_;
   bool register_watcher_ = false;
   bool exit_requested_ = false;
 };
