@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -86,6 +87,7 @@ class Document {
   std::vector<size_t> line_starts_{0};
   std::vector<Command> commands_;
   std::vector<Declaration> declarations_;
+  std::map<std::tuple<int, std::string, std::string>, int> variables_;
   std::vector<NameUse> uses_;
   ByteRange error_range_;
   std::string error_message_;

@@ -171,3 +171,48 @@ without removing error handling or required tests. Avoid speculative abstraction
 For performance changes, measure representative merged ICL and larger/deeper
 inputs with command, toolchain, input size, wall time and peak memory recorded.
 Do not claim a speedup from code inspection alone.
+
+## Formatter I/O and parser regression checks
+
+The common formatter CLI reads files and stdin through checked stream reads.
+File output uses a unique sibling temporary file, checked writes, metadata
+updates, sync and close, then rename. A failure before replacement leaves the
+destination unchanged. Existing symlinks retain their link and resolve to the
+target; dangling output symlinks are rejected. Replacement preserves ownership
+and ordinary permission bits, but does not preserve extended attributes or ACLs.
+Other hard links retain the previous inode. Directory sync and concurrent
+external changes are outside this replacement guarantee.
+
+Run the focused checks for both languages with:
+
+```sh
+python3 tests/src/test_format_cli.py --icl build/icl-format --pdl build/pdl-format
+python3 tests/src/test_icl_semantics.py --binary build/icl-format --benchmark
+```
+
+The CLI suite injects write failures with a child-only file-size limit. These
+children set `GCOV_PREFIX=/dev/null` because the same limit would truncate gcov
+counter files. Their exit-time coverage counters are deliberately excluded;
+their functional assertions still run. Normal I/O cases contribute counters
+when run against instrumented binaries.
+
+ICL name uses retain token-index spans into the shared parsed document instead
+of copying each dotted path prefix. Comparison operand source spans come from
+the grammar, preserving enum context through parentheses, subscripts and unary
+operators. PDL declarations reuse a variable identity within the same owner,
+namespace and name; subsequent assignments are references to that identity.
+
+The 2026-10-24 path benchmark used GCC 16.2.1, `-O2`, Linux/WSL2 and the command
+above. Inputs contained 500/1000/2000/4000 repeated dotted components (about
+1/2/4/8 KiB). Median results from three new runs were:
+
+| Components | Baseline RSS (KiB) | New RSS (KiB) | Baseline wall (ms) | New wall (ms) |
+| --- | ---: | ---: | ---: | ---: |
+| 500 | 9,276 | 4,676 | 10.28 | 4.88 |
+| 1,000 | 23,316 | 4,820 | 18.83 | 4.34 |
+| 2,000 | 74,132 | 4,792 | 75.20 | 4.83 |
+| 4,000 | 270,456 | 5,632 | 274.59 | 5.89 |
+
+Wall time includes process startup and is noisy at this scale. The regression
+also runs the 4,000-component case under a 128 MiB address-space limit. This
+measures parsing/formatting of this input, not LSP throughput for all workloads.

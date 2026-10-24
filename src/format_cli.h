@@ -3,10 +3,17 @@
 #ifndef ICL_TOOLSETS_SRC_FORMAT_CLI_H_
 #define ICL_TOOLSETS_SRC_FORMAT_CLI_H_
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <cerrno>
+#include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -120,12 +127,86 @@ class FormatCli {
   };
 
   static bool WriteFile(const std::string& path, const std::string& data) {
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    if (!out) {
-      std::cerr << Language::Name() << ": cannot write '" << path << "'\n";
+    const auto error = [&](int code) {
+      std::cerr << Language::Name() << ": cannot write '" << path
+                << "': " << std::strerror(code) << "\n";
       return false;
+    };
+    std::error_code status_error;
+    auto destination = std::filesystem::canonical(path, status_error);
+    if (status_error) {
+      std::error_code link_error;
+      // Never replace a dangling symlink with a different kind of file.
+      if (std::filesystem::is_symlink(path, link_error)) {
+        return error(status_error.value());
+      }
+      destination = std::filesystem::weakly_canonical(path, status_error);
+      if (status_error) return error(status_error.value());
     }
-    out << data;
+
+    struct stat original{};
+    const bool exists = ::stat(destination.c_str(), &original) == 0;
+    if (!exists && errno != ENOENT) return error(errno);
+    if (exists) {
+      if (!S_ISREG(original.st_mode)) return error(EINVAL);
+      // Renaming only requires directory permissions; respect file permissions.
+      const int check = ::open(destination.c_str(),
+                               O_WRONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
+      if (check < 0) return error(errno);
+      const int result = ::fstat(check, &original);
+      const int code = errno;
+      if (::close(check) != 0) return error(errno);
+      if (result != 0) return error(code);
+      if (!S_ISREG(original.st_mode)) return error(EINVAL);
+    }
+
+    std::string temporary =
+        (destination.parent_path() / ".icl-toolsets-XXXXXX").string();
+    int descriptor = ::mkstemp(temporary.data());
+    if (descriptor < 0) return error(errno);
+    const auto fail = [&] {
+      const int code = errno;
+      if (descriptor >= 0) ::close(descriptor);
+      ::unlink(temporary.c_str());
+      return error(code);
+    };
+    size_t offset = 0;
+    while (offset < data.size()) {
+      const auto written =
+          ::write(descriptor, data.data() + offset, data.size() - offset);
+      if (written < 0) {
+        if (errno == EINTR) continue;
+        return fail();
+      }
+      if (written == 0) {
+        errno = EIO;
+        return fail();
+      }
+      offset += static_cast<size_t>(written);
+    }
+
+    mode_t mode;
+    if (exists) {
+      struct stat created{};
+      if (::fstat(descriptor, &created) != 0) return fail();
+      if ((created.st_uid != original.st_uid ||
+           created.st_gid != original.st_gid) &&
+          ::fchown(descriptor, original.st_uid, original.st_gid) != 0) {
+        return fail();
+      }
+      mode = original.st_mode & 07777;
+    } else {
+      const mode_t mask = ::umask(0);
+      ::umask(mask);
+      mode = 0666 & ~mask;
+    }
+    if (::fchmod(descriptor, mode) != 0 || ::fsync(descriptor) != 0) {
+      return fail();
+    }
+    const int closed = ::close(descriptor);
+    descriptor = -1;
+    if (closed != 0) return fail();
+    if (::rename(temporary.c_str(), destination.c_str()) != 0) return fail();
     return true;
   }
 
@@ -141,11 +222,23 @@ class FormatCli {
       *error = "cannot open '" + path + "'";
       return false;
     }
-    std::ostringstream buffer;
-    buffer << stream.rdbuf();
-    *text = buffer.str();
+    return ReadStream(stream, path, text, error);
+  }
+
+  static bool ReadStream(std::istream& stream, const std::string& name,
+                         std::string* text, std::string* error) {
+    text->clear();
+    char buffer[16384];
+    while (stream.read(buffer, sizeof(buffer)) || stream.gcount() > 0) {
+      text->append(buffer, static_cast<size_t>(stream.gcount()));
+    }
+    if (stream.bad() || !stream.eof() ||
+        (&stream == &std::cin && std::ferror(stdin))) {
+      *error = "cannot read '" + name + "'";
+      return false;
+    }
     if (text->find('\0') != std::string::npos) {
-      *error = "not a text file (contains NUL bytes): '" + path + "'";
+      *error = "not a text file (contains NUL bytes): '" + name + "'";
       return false;
     }
     return true;
@@ -196,8 +289,11 @@ class FormatCli {
     // the result may be written back.
     std::vector<Job> jobs;
     if (options.from_stdin) {
-      std::string text((std::istreambuf_iterator<char>(std::cin)),
-                       std::istreambuf_iterator<char>());
+      std::string text;
+      if (!ReadStream(std::cin, "<stdin>", &text, &error)) {
+        std::cerr << Language::Name() << ": " << error << "\n";
+        return 2;
+      }
       jobs.push_back({"<stdin>", std::move(text), false});
     } else {
       for (const std::string& path : options.inputs) {
@@ -236,6 +332,11 @@ class FormatCli {
       }
     }
 
+    std::cout.flush();
+    if (!std::cout) {
+      std::cerr << Language::Name() << ": cannot write to stdout\n";
+      had_error = true;
+    }
     if (had_error) return 2;
     if (options.check && would_change) return 1;
     return 0;

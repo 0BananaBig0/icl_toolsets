@@ -9,6 +9,7 @@
 #include <functional>
 #include <set>
 #include <sstream>
+#include <string_view>
 
 #include "icl_semantics.h"
 
@@ -108,6 +109,118 @@ std::vector<std::string> SplitList(const std::string& text, bool* valid) {
 bool IsListSpace(char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' ||
          c == '\v';
+}
+
+// Tcl's parser recursively descends substitutions before returning tokens.
+// Walk their delimiters first, leaving syntax validation to Tcl itself.
+size_t ExcessiveNesting(std::string_view text, int depth, bool expression) {
+  enum class Mode { kScript, kExpression, kQuote, kArray };
+  struct Frame {
+    Mode mode;
+    bool command_start = true, word_start = true;
+  };
+  std::vector<Frame> frames{{expression ? Mode::kExpression : Mode::kScript}};
+  for (size_t i = 0; i < text.size(); ++i) {
+    auto& frame = frames.back();
+    const char c = text[i];
+    const bool script = frame.mode == Mode::kScript;
+    const bool expr = frame.mode == Mode::kExpression;
+    if (c == '\\') {
+      if (i + 1 < text.size()) {
+        const bool continuation = text[i + 1] == '\n';
+        ++i;
+        if (continuation) {
+          while (i + 1 < text.size() &&
+                 (text[i + 1] == ' ' || text[i + 1] == '\t')) {
+            ++i;
+          }
+          if (script) frame.word_start = true;
+          continue;
+        }
+      }
+      frame.command_start = frame.word_start = false;
+      continue;
+    }
+    if (script && frame.command_start && c == '#') {
+      while (i < text.size() && text[i] != '\n') {
+        if (text[i] == '\\' && i + 1 < text.size()) ++i;
+        ++i;
+      }
+      continue;
+    }
+    if (script && (IsListSpace(c) || c == ';')) {
+      frame.word_start = true;
+      if (c == '\n' || c == ';') frame.command_start = true;
+      continue;
+    }
+    if (c == ']' && script && frames.size() > 1) {
+      frames.pop_back();
+      --depth;
+      continue;
+    }
+    if (c == ')' && frame.mode == Mode::kArray) {
+      frames.pop_back();
+      --depth;
+      continue;
+    }
+    if (c == '"' && frame.mode == Mode::kQuote) {
+      frames.pop_back();
+      continue;
+    }
+    const bool word_start = frame.word_start;
+    frame.command_start = frame.word_start = false;
+    if (c == '{' && (expr || (script && word_start))) {
+      if (script && text.substr(i, 3) == "{*}" && i + 3 < text.size() &&
+          !IsListSpace(text[i + 3]) && text[i + 3] != ';' &&
+          text[i + 3] != ']') {
+        i += 2;
+        frame.word_start = true;
+        continue;
+      }
+      int braces = 1;
+      while (++i < text.size()) {
+        if (text[i] == '\\' && i + 1 < text.size()) {
+          ++i;
+        } else if (text[i] == '{') {
+          ++braces;
+        } else if (text[i] == '}' && --braces == 0) {
+          break;
+        }
+      }
+    } else if (c == '"' && (expr || (script && word_start))) {
+      frames.push_back({Mode::kQuote});
+    } else if (c == '[') {
+      if (++depth > 128) return i;
+      frames.push_back({Mode::kScript});
+    } else if (c == '$' && i + 1 < text.size()) {
+      if (text[i + 1] == '{') {
+        i = text.find('}', i + 2);
+        if (i == std::string_view::npos) break;
+        continue;
+      }
+      const size_t start = i + 1;
+      size_t end = start;
+      while (end < text.size()) {
+        const unsigned char ch = text[end];
+        if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+            (ch >= '0' && ch <= '9') || ch == '_' || ch >= 128) {
+          ++end;
+        } else if (ch == ':' && end + 1 < text.size() && text[end + 1] == ':') {
+          while (end < text.size() && text[end] == ':') ++end;
+        } else {
+          break;
+        }
+      }
+      if (end > start && end < text.size() && text[end] == '(') {
+        if (++depth > 128) return end;
+        frames.push_back({Mode::kArray});
+        i = end;
+      } else {
+        i = end - 1;
+      }
+    }
+  }
+  return std::string_view::npos;
 }
 
 // SplitList validates the list first; this walk only recovers original spans.
@@ -500,6 +613,13 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
     Error({begin, begin}, "script nesting exceeds 128 levels");
     return commands;
   }
+  const auto excessive = ExcessiveNesting(
+      std::string_view(ParserData() + begin, end - begin), depth, false);
+  if (excessive != std::string_view::npos) {
+    Error({begin + excessive, begin + excessive + 1},
+          "script nesting exceeds 128 levels");
+    return commands;
+  }
   while (begin < end) {
     Tcl_Parse parsed{};
     const int result =
@@ -631,13 +751,17 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
           if (i > 1) text += ' ';
           text += command.words[i].value;
         }
-        Tcl_Parse expression{};
-        if (Tcl_ParseExpr(ParserInterpreter(), text.data(),
-                          static_cast<TclCount>(text.size()),
-                          &expression) != TCL_OK) {
-          Error(command.range, "invalid Tcl expression");
+        if (ExcessiveNesting(text, depth, true) != std::string_view::npos) {
+          Error(command.range, "script nesting exceeds 128 levels");
+        } else {
+          Tcl_Parse expression{};
+          if (Tcl_ParseExpr(ParserInterpreter(), text.data(),
+                            static_cast<TclCount>(text.size()),
+                            &expression) != TCL_OK) {
+            Error(command.range, "invalid Tcl expression");
+          }
+          Tcl_FreeParse(&expression);
         }
-        Tcl_FreeParse(&expression);
       }
       if (name == "for" && command.words.size() == 5) expressions.insert(2);
       for (const size_t i : expressions) {
@@ -771,6 +895,15 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
 }
 
 void Document::ParseExpression(Word* word, int depth) {
+  const auto excessive = ExcessiveNesting(
+      std::string_view(ParserData() + word->content.begin,
+                       word->content.end - word->content.begin),
+      depth, true);
+  if (excessive != std::string_view::npos) {
+    const size_t offset = word->content.begin + excessive;
+    Error({offset, offset + 1}, "script nesting exceeds 128 levels");
+    return;
+  }
   Tcl_Parse expression{};
   const int status = Tcl_ParseExpr(
       ParserInterpreter(), ParserData() + word->content.begin,
@@ -798,6 +931,18 @@ void Document::ParseExpression(Word* word, int depth) {
 
 void Document::Declare(Declaration declaration) {
   const int index = static_cast<int>(declarations_.size());
+  if (declaration.kind == "Variable") {
+    const auto found = variables_.emplace(
+        std::make_tuple(declaration.module, declaration.name_space,
+                        declaration.name),
+        index);
+    if (!found.second) {
+      uses_.push_back({declaration.name_range, declaration.name,
+                       declaration.kind, declaration.binding,
+                       declaration.name_space, declaration.module, -1});
+      return;
+    }
+  }
   uses_.push_back({declaration.name_range, declaration.name, declaration.kind,
                    declaration.binding, declaration.name_space,
                    declaration.module, index});

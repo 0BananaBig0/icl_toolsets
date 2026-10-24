@@ -29,7 +29,12 @@ Recognized braced bodies include `iProc`, `proc`, `if`, `foreach`, `lmap`, `for`
 `switch` pattern/body lists are validated while retaining their original spelling.
 Other braced words remain data. Command substitutions are checked and retained
 verbatim. Source NUL bytes and inputs exceeding the Tcl parser's supported count
-are rejected; recursive script parsing is limited to 128 levels.
+are rejected; recursive script parsing is limited to 128 levels. An iterative
+delimiter preflight enforces this limit before Tcl recursively parses command
+and array substitutions, including substitutions in expressions. Escaped
+brackets, comments and opaque braced data do not consume substitution depth.
+Excessive nesting produces a diagnostic in both the formatter and language
+server; no PDL is evaluated.
 
 ## Builds
 

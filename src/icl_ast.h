@@ -90,16 +90,6 @@ struct ParsedReference {
   int end_column = 1;
 };
 
-// Syntactic categories needed by LogicSignal, without evaluating expressions.
-struct LogicValue {
-  std::string text;
-  bool is_integer = false;
-  bool is_number = false;
-  bool is_numeric_concat = false;
-  bool is_enum = false;
-  bool has_unknown = false;
-};
-
 class AstComment;
 class AstStatement;
 class AstBlock;
@@ -124,6 +114,17 @@ struct SourceSpan {
   int last_line = 0;
   int first_column = 1;
   int last_column = 1;
+};
+
+// Syntactic categories needed by LogicSignal, without evaluating expressions.
+struct LogicValue {
+  std::string text;
+  bool is_integer = false;
+  bool is_number = false;
+  bool is_numeric_concat = false;
+  bool is_enum = false;
+  bool has_unknown = false;
+  std::optional<SourceSpan> reference;
 };
 
 // Builds a span from line numbers. Taking plain ints (rather than Bison's
@@ -301,6 +302,13 @@ class AstUnit {
   const std::vector<AstNode*>& top_level() const { return top_level_; }
   const std::vector<SourceToken>& tokens() const { return tokens_; }
   std::vector<SourceToken>& tokens() { return tokens_; }
+  const std::vector<std::pair<SourceSpan, SourceSpan>>& EnumComparisons()
+      const {
+    return enum_comparisons_;
+  }
+  std::vector<std::pair<SourceSpan, SourceSpan>>& EnumComparisons() {
+    return enum_comparisons_;
+  }
 
   // Visits every top-level node in source order.
   void Accept(AstVisitor& visitor) const {
@@ -311,6 +319,7 @@ class AstUnit {
 
  private:
   std::vector<SourceToken> tokens_;
+  std::vector<std::pair<SourceSpan, SourceSpan>> enum_comparisons_;
   std::vector<std::unique_ptr<AstNode>> nodes_;
   std::vector<AstNode*> top_level_;
 };

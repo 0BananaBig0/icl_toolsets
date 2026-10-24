@@ -1044,6 +1044,10 @@ logic_compare
               "unknown left operand");
         YYERROR;
       }
+      if ($4.is_enum) {
+        driver.unit().EnumComparisons().push_back(
+            {$1.reference.value_or(SourceSpan{}), *$4.reference});
+      }
       $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text;
     }
   ;
@@ -1067,6 +1071,7 @@ logic_unary
       $$.text = $1 + $2 + $3.text;
       $$.is_numeric_concat = $1 == "~" && $3.is_number;
       $$.has_unknown = $3.has_unknown;
+      $$.reference = $3.reference;
     }
   ;
 
@@ -1105,6 +1110,9 @@ logic_atom
     {
       $$.text = $1.text;
       $$.is_enum = $1.is_scalar;
+      $$.reference = SpanOf(@1, @1);
+      $$.reference->last_line = $1.end_line;
+      $$.reference->last_column = $1.end_column;
     }
   | LPAREN token_gap logic_expr RPAREN token_gap
     {

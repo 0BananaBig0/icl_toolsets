@@ -114,6 +114,12 @@ Formatting preserves comments and string contents, normalizes spacing and
 indentation, and limits consecutive blank lines
 to one. Formatting an already formatted file produces the same result.
 With `-w`, an unchanged file keeps its modification time.
+Changed files are written to a temporary file in the destination directory and
+replaced only after the write succeeds. The destination directory must therefore
+be writable. Existing symlinks retain their targets, and file ownership and
+permission bits are preserved; dangling symlink outputs are rejected. Replacing
+one hard-linked path leaves other hard links with their original contents.
+Extended attributes and ACLs are not preserved by replacement.
 
 Input rejected by the parser or its local semantic checks reports a diagnostic
 instead of formatted output; `-w` leaves that input unchanged. When formatting

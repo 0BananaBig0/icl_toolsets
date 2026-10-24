@@ -2,6 +2,7 @@
 """PDL executable boundaries: no evaluation, shared formatting and real LSP."""
 import argparse
 import json
+import resource
 from pathlib import Path
 import subprocess
 import sys
@@ -18,10 +19,84 @@ HEADER = 'iPDLLevel 1 -version STD_1687_2014\niProcsForModule Demo\n'
 REVIEW_PROBES = json.loads((ROOT / 'tests/cases/ours/pdl/review_probes.json').read_text())
 
 
+def parser_limits():
+    resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
+    resource.setrlimit(resource.RLIMIT_STACK, (8 * 1024 * 1024,) * 2)
+    resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024,) * 2)
+    resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
+
+
 class Formatter(unittest.TestCase):
     def run_format(self, text, *args):
         return subprocess.run([FORMATTER, *args], input=text, text=True,
                               capture_output=True, timeout=5)
+
+    def test_deep_substitutions_fail_safely_in_cli_and_lsp(self):
+        deep = '[' * 30000 + 'list' + ']' * 30000
+        for source in ('set x ' + deep + '\n',
+                       'set x "' + deep + '"\n',
+                       'proc p {} {set x ' + deep + '}\n',
+                       'expr {' + deep + '}\n',
+                       'set x ' + '$a(' * 30000 + 'x' + ')' * 30000 + '\n'):
+            with self.subTest(prefix=source[:20]):
+                run = subprocess.run([FORMATTER], input=source, text=True,
+                                     capture_output=True, timeout=10, preexec_fn=parser_limits)
+                self.assertEqual(run.returncode, 2, run.stderr)
+                self.assertIn('nesting', run.stderr)
+                messages = [
+                    dict(jsonrpc='2.0', id=1, method='initialize', params={}),
+                    dict(jsonrpc='2.0', method='textDocument/didOpen', params={
+                        'textDocument': dict(uri='file:///tmp/deep.pdl',
+                                             languageId='pdl', version=1, text=source)}),
+                    dict(jsonrpc='2.0', id=2, method='shutdown', params={}),
+                    dict(jsonrpc='2.0', method='exit', params={}),
+                ]
+                wire = b''
+                for message in messages:
+                    body = json.dumps(message).encode()
+                    wire += b'Content-Length: %d\r\n\r\n' % len(body) + body
+                run = subprocess.run([SERVER], input=wire, capture_output=True,
+                                     timeout=10, preexec_fn=parser_limits)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn(b'nesting', run.stdout)
+                self.assertIn(b'publishDiagnostics', run.stdout)
+
+    def test_substitution_depth_boundary(self):
+        for depth in (128, 129):
+            nested = '[' * depth + 'list' + ']' * depth
+            for source in ('set x ' + nested + '\n',
+                           'set x "' + nested + '"\n',
+                           'expr {' + nested + '}\n',
+                           'set x ' + '$a(' * depth + 'x' + ')' * depth + '\n'):
+                with self.subTest(depth=depth, prefix=source[:20]):
+                    run = self.run_format(source)
+                    self.assertEqual(run.returncode, 0 if depth == 128 else 2,
+                                     run.stderr)
+                    if depth == 129:
+                        self.assertIn('nesting', run.stderr)
+
+    def test_iterative_expression_operators_remain_supported(self):
+        for expression in ('(' * 30000 + '1' + ')' * 30000,
+                           '!' * 30000 + '1'):
+            run = subprocess.run([FORMATTER], input='expr {' + expression + '}\n',
+                                 text=True, capture_output=True, timeout=10,
+                                 preexec_fn=parser_limits)
+            self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_literal_brackets_do_not_consume_substitution_depth(self):
+        brackets = '[' * 30000 + ']' * 30000
+        for source in ('set x {' + brackets + '}\n',
+                       '# ' + brackets + '\nset x 1\n',
+                       'set x "' + brackets.replace('[', r'\[') + '"\n',
+                       'set x ${' + brackets + '}\n',
+                       'set x [list {' + brackets + '}]\n',
+                       'set x "[list {' + brackets + '}]"\n',
+                       'set x [# ' + brackets + '\nlist ok]\n',
+                       'list {*}{' + brackets + '}\n',
+                       'list \\\n{' + brackets + '}\n'):
+            with self.subTest(prefix=source[:20]):
+                run = self.run_format(source)
+                self.assertEqual(run.returncode, 0, run.stderr)
 
     def test_nested_scripts_are_formatted_but_data_is_preserved(self):
         source = HEADER + 'iProc run {} {\nset data {a\n  b}\nif {1} {\niWrite reg[7:0] 0xA5; iApply\n}\n}\n'
@@ -282,6 +357,31 @@ class LanguageServer(unittest.TestCase):
         self.assertIn('helper', str(self.query('hover', 3, 8)))
         symbols = self.request('textDocument/documentSymbol', {'textDocument': {'uri': self.uri}})
         self.assertIn('run', {s['name'] for s in symbols})
+
+    def test_repeated_assignments_share_one_scoped_variable(self):
+        source = ('proc p {} {set x 1; set x 2; puts $x}\n'
+                  'proc q {} {set x 3; puts $x}\n'
+                  'proc a {x} {set x 4; puts $x}\n'
+                  'namespace eval A {set x 1; set x 2; puts $x}\n'
+                  'namespace eval B {set x 1; puts $x}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, text in enumerate(source.splitlines()):
+            positions = [i for i, char in enumerate(text) if char == 'x']
+            for position in positions:
+                with self.subTest(line=line, position=position):
+                    refs = self.query('references', line, position,
+                                      context={'includeDeclaration': True})
+                    self.assertEqual(sorted((ref['range']['start']['line'],
+                                             ref['range']['start']['character'])
+                                            for ref in refs),
+                                     [(line, column) for column in positions])
+                    refs = self.query('references', line, position,
+                                      context={'includeDeclaration': False})
+                    self.assertEqual(sorted(ref['range']['start']['character']
+                                            for ref in refs), positions[1:])
+                    definition = self.query('definition', line, position)
+                    self.assertEqual(definition[0]['range']['start'],
+                                     dict(line=line, character=positions[0]))
 
     def test_icl_binding_and_prefixed_object_navigation(self):
         icl = self.root / 'model.icl'

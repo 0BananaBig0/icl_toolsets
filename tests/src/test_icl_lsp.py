@@ -167,6 +167,40 @@ class LanguageServices(unittest.TestCase):
         self.expect_location(self.query('definition', 'DefaultLoadValue ON', offset=18), self.uri, self.main, "ON = 1'b1", length=2)
         self.expect_location(self.query('definition', 'other == ON', offset=10), self.uri, self.main, "ON = 2'b11", length=2)
 
+    def test_enum_comparison_operand_context(self):
+        for version, expression in enumerate(('mode == (ON)', 'mode[$IDX] == ON',
+                           '(mode[$IDX]) != ((ON))', '((mode[0])) == ON',
+                           '(child.mode[$IDX]) == (ON)',
+                           '~mode == ON', '!(mode[$IDX]) == (ON)',
+                           'mode[$IDX:0] == /* right */ (ON)',
+                           '(mode == (ON)) && (mode[$IDX] != ON)'), 2):
+            with self.subTest(expression=expression):
+                self.main = ("Module M { Parameter IDX = 0; "
+                             "Enum E { OFF = 1'b0; ON = 1'b1; } "
+                             "DataInPort mode[1:0] { RefEnum E; } DataInPort ON; "
+                             "Instance child Of M; "
+                             "LogicSignal enabled { " + expression + '; } }')
+                self.assertEqual(self.open(self.uri, self.main, version)['params']['diagnostics'], [])
+                for occurrence in range(expression.count('ON')):
+                    self.expect_location(self.query('definition', 'ON', occurrence + 2),
+                                         self.uri, self.main, "ON = 1'b1", length=2)
+                if '$IDX' in expression:
+                    self.expect_location(self.query('definition', '$IDX', offset=1),
+                                         self.uri, self.main, 'Parameter IDX', offset=10, length=3)
+
+    def test_each_hierarchical_path_component(self):
+        self.use_fixture('hierarchy.icl')
+        for offset, declaration, name_offset, length in (
+                (0, 'Instance mid', 9, 3),
+                (4, 'Instance leaf', 9, 4),
+                (9, 'DataOutPort out', 12, 3)):
+            with self.subTest(component=declaration):
+                self.expect_location(self.query('definition', 'mid.leaf.out', offset=offset),
+                                     self.uri, self.main, declaration, offset=name_offset, length=length)
+        for offset, names in ((4, {'leaf'}), (9, {'Source', 'out'})):
+            with self.subTest(completion=offset):
+                self.assertEqual({i['label'] for i in self.query('completion', 'mid.leaf.out', offset=offset)}, names)
+
     def test_deep_alias_and_keyword_name(self):
         self.use_fixture('hierarchy.icl')
         self.expect_location(self.query('definition', 'mid.leaf.out', offset=10), self.uri, self.main, 'DataOutPort out', offset=12, length=3)

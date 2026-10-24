@@ -181,6 +181,12 @@ const NameUse* ParsedDocument::UseAt(size_t offset) const {
 
 void ParsedDocument::Build() {
   const auto& tokens = driver_.unit().tokens();
+  std::unordered_map<size_t, size_t> enum_signals;
+  for (const auto& comparison : driver_.unit().EnumComparisons()) {
+    const auto signal = Range(comparison.first);
+    enum_signals[Range(comparison.second).begin] =
+        signal.end > signal.begin ? signal.end - 1 : 0;
+  }
   auto token_index = [&](size_t byte) {
     return static_cast<size_t>(
         std::lower_bound(tokens.begin(), tokens.end(), byte,
@@ -357,21 +363,11 @@ void ParsedDocument::Build() {
         use.enum_owner = parent;
         use.enum_or_signal = true;
       }
-      if (i > first + 1 &&
-          (tokens[i - 1].text == "==" || tokens[i - 1].text == "!=") &&
-          !uses_.empty()) {
-        use.enum_signal = uses_.back().path;
-      }
-      if (i >= 2 && tokens[i - 1].text == ".") {
-        std::vector<std::string> prefix;
-        size_t j = i;
-        while (j >= 2 && tokens[j - 1].text == ".") {
-          j -= 2;
-          prefix.push_back(tokens[j].text);
-        }
-        std::reverse(prefix.begin(), prefix.end());
-        prefix.push_back(token.text);
-        use.path = std::move(prefix);
+      const auto signal = enum_signals.find(token.begin);
+      if (signal != enum_signals.end()) use.enum_signal = signal->second;
+      use.path_tokens = {i, i + 1};
+      if (i >= 2 && tokens[i - 1].text == "." && !uses_.empty()) {
+        use.path_tokens.begin = uses_.back().path_tokens.begin;
       }
       uses_.push_back(std::move(use));
     }
@@ -476,26 +472,29 @@ SymbolRef SemanticWorkspace::EnumMember(SymbolRef owner,
 SymbolRef SemanticWorkspace::Resolve(const ParsedDocument& doc,
                                      const NameUse& use) const {
   if (use.declaration >= 0) return {&doc, static_cast<size_t>(use.declaration)};
-  if (use.path.empty()) return {};
-  if (use.module_type) return Module(use.name_space, use.path.back(), &doc);
+  if (use.name.empty()) return {};
+  if (use.module_type) return Module(use.name_space, use.name, &doc);
   if (use.module < 0) return {};
   SymbolRef scope{&doc, static_cast<size_t>(use.module)};
   if (use.instance >= 0) {
     scope = Implementation({&doc, static_cast<size_t>(use.instance)});
   }
-  if (use.parameter) return Member(scope, use.path.front(), true);
+  if (use.parameter) return Member(scope, use.name, true);
   if (use.enum_owner >= 0) {
-    const auto member = EnumMember({&doc, static_cast<size_t>(use.enum_owner)},
-                                   use.path.back());
+    const auto member =
+        EnumMember({&doc, static_cast<size_t>(use.enum_owner)}, use.name);
     if (member || !use.enum_or_signal) return member;
   }
-  if (!use.enum_signal.empty()) {
-    NameUse signal{{}, use.enum_signal, use.module};
-    return EnumMember(Resolve(doc, signal), use.path.back());
+  if (use.enum_signal) {
+    const auto* signal = doc.UseAt(*use.enum_signal);
+    return signal ? EnumMember(Resolve(doc, *signal), use.name) : SymbolRef{};
   }
-  SymbolRef result = Member(scope, use.path.front(), use.parameter);
-  for (size_t i = 1; result && i < use.path.size(); ++i) {
-    result = Member(Implementation(result), use.path[i]);
+  const auto& tokens = doc.driver().unit().tokens();
+  const auto path = use.path_tokens;
+  SymbolRef result =
+      Member(scope, path.end ? tokens[path.begin].text : use.name);
+  for (size_t i = path.begin + 2; result && i < path.end; i += 2) {
+    result = Member(Implementation(result), tokens[i].text);
   }
   return result;
 }
@@ -569,14 +568,13 @@ std::vector<SymbolRef> SemanticWorkspace::Complete(const ParsedDocument& doc,
         // statement yet. Resolve its dot-separated prefix in the parser's
         // current module scope.
         auto name = prev - 1;
-        std::vector<std::string> path{name->text};
         while (name - tokens.begin() >= 2 && (name - 1)->text == ".") {
           name -= 2;
-          path.push_back(name->text);
         }
-        std::reverse(path.begin(), path.end());
-        scope =
-            Implementation(Resolve(doc, NameUse{{}, std::move(path), module}));
+        NameUse prefix{{}, (prev - 1)->text, module};
+        prefix.path_tokens = {static_cast<size_t>(name - tokens.begin()),
+                              static_cast<size_t>(prev - tokens.begin())};
+        scope = Implementation(Resolve(doc, prefix));
       }
     }
   }

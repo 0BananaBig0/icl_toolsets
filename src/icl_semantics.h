@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -23,14 +24,15 @@ struct Declaration {
   int parent = -1;
 };
 struct NameUse {
-  NameUse(ByteRange span, std::vector<std::string> names, int scope,
-          int declared = -1)
+  NameUse(ByteRange span, std::string name, int scope, int declared = -1)
       : range(span),
-        path(std::move(names)),
+        name(std::move(name)),
         module(scope),
         declaration(declared) {}
   ByteRange range;
-  std::vector<std::string> path;
+  std::string name;
+  // Half-open token span; dotted components share the document's tokens.
+  ByteRange path_tokens;
   int module = -1;
   int declaration = -1;
   int instance = -1;
@@ -38,7 +40,7 @@ struct NameUse {
   bool parameter = false;
   int enum_owner = -1;
   bool enum_or_signal = false;
-  std::vector<std::string> enum_signal;
+  std::optional<size_t> enum_signal;
   std::string name_space;
 };
 

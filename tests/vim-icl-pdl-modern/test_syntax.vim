@@ -40,11 +40,16 @@ call assert_equal('# %s', &commentstring)
 " The iRead option here is a highlighting probe, not a syntax-validity claim.
 call setline(1, ['iWrite r 0xAA', 'set s "[iCall ns::proc]"',
       \ 'set s "[iRead r 0xAA -hex]"',
-      \ 'set data "[iPDLLevel 1 -version STD_1687_2014]"'])
+      \ 'set data "[iPDLLevel 1 -version STD_1687_2014]"',
+      \ 'iNote "STD_1687_2014"',
+      \ 'set data "[iNote "STD_1687_2014"]"'])
 call CheckGroup(1, 'iWrite', 'pdlCommand')
 call CheckGroup(2, 'ns::proc', 'pdlProcedure')
 call CheckGroup(3, '-hex', 'pdlOption')
 call CheckGroup(4, '-version', 'pdlOption')
+call CheckGroup(4, 'STD_1687_2014', 'pdlConstant')
+call CheckGroup(5, 'STD_1687_2014', 'tclString')
+call CheckGroup(6, 'STD_1687_2014', 'tclString')
 execute 'edit! ' . fnameescape($ICL_PDL_TEMP . '/example.icl')
 call assert_equal('icl', &filetype, 'override builtin Clean association')
 call assert_equal('icl', get(b:, 'current_syntax', ''))
@@ -84,6 +89,61 @@ call assert_equal([3, 6, 0], [&shiftwidth, &tabstop, &expandtab])
 let icl_comments = &comments
 execute b:undo_ftplugin
 call assert_equal(&g:comments, &comments)
+
+" Numbers may span lexer NUMGAP whitespace/comments, which retain their groups.
+call setline(1, ["Module M { Parameter P = 'h", 'A5;',
+      \ "Parameter Q = 'h /* comment */ A5;",
+      \ "Parameter R = $WIDTH /* width */ 'B // digits", '10_x;',
+      \ "Parameter S = 8", "/* width */ 'D /* digits", '*/ 12_3;',
+      \ "Parameter T = 'H /* stars **/ FF; Parameter after = 1;",
+      \ 'ToClockPort c { Period 10ns; }',
+      \ 'Attribute text = "8''h /* text */ A5 10ns";',
+      \ "Parameter bad = 'h;", 'A5; Parameter following = 2;',
+      \ "Parameter bad = 'b /* no digits */ ;", 'FACE;',
+      \ "Parameter bad = 'h /* closed */ ; /* separate */ FACE;",
+      \ 'Module Next {}', '}'])
+call CheckGroup(1, "'h", 'iclNumber')
+call CheckGroup(2, 'A5', 'iclNumber')
+call CheckGroup(3, "'h", 'iclNumber')
+call CheckGroup(3, 'comment', 'iclBlockComment')
+call CheckGroup(3, 'A5', 'iclNumber')
+call CheckGroup(4, '$WIDTH', 'iclNumber')
+call CheckGroup(4, 'width', 'iclBlockComment')
+call CheckGroup(4, "'B", 'iclNumber')
+call CheckGroup(4, 'digits', 'iclLineComment')
+call CheckGroup(5, '10_x', 'iclNumber')
+call CheckGroup(6, '8', 'iclNumber')
+call CheckGroup(7, 'width', 'iclBlockComment')
+call CheckGroup(7, "'D", 'iclNumber')
+call CheckGroup(7, 'digits', 'iclBlockComment')
+call CheckGroup(8, '*/', 'iclBlockComment')
+call CheckGroup(8, '12_3', 'iclNumber')
+call CheckGroup(9, 'stars', 'iclBlockComment')
+call CheckGroup(9, 'FF', 'iclNumber')
+call CheckGroup(9, 'after', 'iclName')
+call CheckGroup(10, '10ns', 'iclNumber')
+call CheckGroup(10, 'ns', 'iclNumber')
+call CheckGroup(11, 'A5', 'iclString')
+call CheckGroup(11, '10ns', 'iclString')
+call CheckGroup(13, 'A5', '')
+call CheckGroup(13, 'following', 'iclName')
+call CheckGroup(14, 'no digits', 'iclBlockComment')
+call CheckGroup(15, 'FACE', '')
+call CheckGroup(16, 'FACE', '')
+call CheckGroup(17, 'Module', 'iclTypeKeyword')
+for unit in ['as', 'fs', 'ps', 'ns', 'us', 'ms', 's']
+  call setline(19, 'ToClockPort c { Period 1_000' . unit . '; }')
+  call CheckGroup(19, '1_000' . unit, 'iclNumber')
+  call CheckGroup(19, unit . ';', 'iclNumber')
+endfor
+call setline(19, ["Parameter P = 'h /* stars ***", '*/ A5;'])
+call CheckGroup(19, "'h", 'iclNumber')
+call CheckGroup(19, 'stars', 'iclBlockComment')
+call CheckGroup(20, 'A5', 'iclNumber')
+call setline(19, ['Parameter bad = 10nseconds;',
+      \ "Parameter bad = 'h /* unterminated", 'A5;'])
+call CheckGroup(19, '10nseconds', '')
+call CheckGroup(21, 'A5', 'iclBlockComment')
 
 execute 'edit! ' . fnameescape($ICL_PDL_TEMP . '/example.pdl')
 call assert_equal('pdl', &filetype)

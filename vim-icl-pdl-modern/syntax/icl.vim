@@ -30,9 +30,14 @@ syntax keyword iclConstant STD_1149_1_2001 STD_1149_1_2013 Generic High Low Risi
 syntax match iclInclude /#include\>/
 syntax match iclParameter /\$[A-Za-z][A-Za-z0-9_]*/
 syntax match iclNumber /\<[0-9][0-9_]*\>/
-syntax match iclNumber /\%([0-9][0-9_]*\|\$[A-Za-z][A-Za-z0-9_]*\)\=\s*'[bB]\s*[01xX][01xX_]*\>/
-syntax match iclNumber /\%([0-9][0-9_]*\|\$[A-Za-z][A-Za-z0-9_]*\)\=\s*'[hH]\s*[0-9a-fA-FxX][0-9a-fA-FxX_]*\>/
-syntax match iclNumber /\%([0-9][0-9_]*\|\$[A-Za-z][A-Za-z0-9_]*\)\=\s*'[dD]\s*[0-9][0-9_]*\>/
+syntax match iclNumber /\<[0-9][0-9_]*\%(as\|fs\|ps\|ns\|us\|ms\|s\)\>/
+" Mirror lexer NUMGAP; keep comments inside a literal in their comment groups.
+let s:gap = '\%([ \t\r]\|\n\|//[^\n]*\n\|/\*\%(\_[^*]\|\*\+\_[^*/]\)*\*\+/\)*'
+let s:based = '\%(\%(\<[0-9][0-9_]*\|\$[A-Za-z][A-Za-z0-9_]*\)' . s:gap . '\)\='
+execute "syntax match iclNumber #" . s:based . "'[bB]" . s:gap . '[01xX][01xX_]*\># contains=iclBlockComment,iclLineComment'
+execute "syntax match iclNumber #" . s:based . "'[hH]" . s:gap . '[0-9a-fA-FxX][0-9a-fA-FxX_]*\># contains=iclBlockComment,iclLineComment'
+execute "syntax match iclNumber #" . s:based . "'[dD]" . s:gap . '[0-9][0-9_]*\># contains=iclBlockComment,iclLineComment'
+unlet s:gap s:based
 syntax match iclOperator /[~!&|^=+*%\/<>-]/
 syntax region iclString start=/"/ skip=/\\\\\|\\"/ end=/"/
 syntax keyword iclTodo TODO FIXME XXX NOTE contained
