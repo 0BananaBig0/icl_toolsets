@@ -22,6 +22,7 @@
 
 #include "json.h"
 #include "text_input.h"
+#include "text_position.h"
 #include "utf8.h"
 
 #ifndef ICL_FORMAT_VERSION
@@ -132,14 +133,6 @@ inline Json Position(std::int64_t line, std::int64_t character) {
 }
 
 // Protocol positions are UTF-16 code units; parser locations remain byte based.
-inline size_t Utf16Length(const std::string& text, size_t begin, size_t end) {
-  size_t units = 0;
-  for (size_t i = begin; i < end; ++i) {
-    const auto c = static_cast<unsigned char>(text[i]);
-    if ((c & 0xC0) != 0x80) units += c >= 0xF0 ? 2 : 1;
-  }
-  return units;
-}
 template <class Document>
 Json SourcePosition(const Document& doc, size_t byte) {
   byte = std::min(byte, doc.source().size());
@@ -147,8 +140,7 @@ Json SourcePosition(const Document& doc, size_t byte) {
       static_cast<size_t>(std::upper_bound(doc.line_starts().begin(),
                                            doc.line_starts().end(), byte) -
                           doc.line_starts().begin() - 1);
-  return Position(line,
-                  Utf16Length(doc.source(), doc.line_starts()[line], byte));
+  return Position(line, doc.Utf16Length(doc.line_starts()[line], byte));
 }
 template <class Document, class Range>
 Json SourceRange(const Document& doc, Range range) {

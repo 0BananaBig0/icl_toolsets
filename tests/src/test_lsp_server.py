@@ -8,6 +8,7 @@ import resource
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +22,61 @@ def limits():
 
 
 class WorkspaceReads(unittest.TestCase):
+    def test_reference_positions_scale_on_long_unicode_lines(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language):
+                client = Client(binary)
+                try:
+                    client.request('initialize', {})
+                    uri = 'file:///long-line.' + language
+                    count = 16000 if language == 'icl' else 32000
+                    prefix = ('Module M { DataInPort p; ' if language == 'icl'
+                              else 'set p 1; ')
+                    declaration = prefix.index(' p') + 1
+                    chunks = [prefix]
+                    expected = [declaration]
+                    position = len(prefix)
+                    for i in range(count):
+                        chunk = (f'/*é汉😀*/ DataOutPort q{i} {{ Source p; }} ' if language == 'icl'
+                                 else 'puts {é汉😀}; puts $p; ')
+                        use = chunk.index(' p;') + 1 if language == 'icl' else chunk.index('$p') + 1
+                        expected.append(position + len(chunk[:use].encode('utf-16-le')) // 2)
+                        position += len(chunk.encode('utf-16-le')) // 2
+                        chunks.append(chunk)
+                    chunks.append('}\n' if language == 'icl' else '\n')
+                    source = ''.join(chunks)
+                    client.notify('textDocument/didOpen', {'textDocument': dict(
+                        uri=uri, languageId=language, version=1, text=source)})
+                    diagnostic = client.wait(lambda m: m.get('method') ==
+                                             'textDocument/publishDiagnostics', 'diagnostics')
+                    self.assertEqual(diagnostic['params']['diagnostics'], [])
+                    start = time.monotonic()
+                    result = client.request('textDocument/references', {
+                        'textDocument': {'uri': uri},
+                        'position': dict(line=0, character=declaration),
+                        'context': {'includeDeclaration': True}})['result']
+                    seconds = time.monotonic() - start
+                    self.assertLess(seconds, 2.0, f'{language}: {len(source.encode())} bytes, {seconds}s')
+                    self.assertEqual([r['range']['start']['character'] for r in result], expected)
+                    self.assertTrue(all(r['range']['start']['line'] == 0 and
+                                        r['range']['end'] == dict(line=0, character=e + 1)
+                                        for r, e in zip(result, expected)))
+                    # A replacement document must not retain the old checkpoints.
+                    replacement = ('Module M { /*😀*/ DataInPort p; DataOutPort q { Source p; } }\n'
+                                   if language == 'icl' else 'set label {😀}; set p 1; puts $p;\n')
+                    use = replacement.rindex(' p;') + 1 if language == 'icl' else replacement.index('$p') + 1
+                    declaration = replacement.index(' p ') + 1 if language == 'pdl' else replacement.index(' p;') + 1
+                    client.notify('textDocument/didChange', {
+                        'textDocument': dict(uri=uri, version=2),
+                        'contentChanges': [{'text': replacement}]})
+                    result = client.request('textDocument/definition', {
+                        'textDocument': {'uri': uri}, 'position': dict(
+                            line=0, character=len(replacement[:use].encode('utf-16-le')) // 2)})['result']
+                    self.assertEqual(result[0]['range']['start'], dict(
+                        line=0, character=len(replacement[:declaration].encode('utf-16-le')) // 2))
+                finally:
+                    client.stop()
+
     def test_invalid_utf8_disk_text_never_reaches_protocol(self):
         invalid = (b'\xe9', b'\x80', b'\xc0\xaf', b'\xe0\x80\x80',
                    b'\xed\xa0\x80', b'\xf0\x80\x80\x80',

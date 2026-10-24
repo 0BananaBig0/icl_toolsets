@@ -136,7 +136,8 @@ const std::vector<std::string>& IclKeywords() {
   return kWords;
 }
 
-ParsedDocument::ParsedDocument(std::string text) : source_(std::move(text)) {
+ParsedDocument::ParsedDocument(std::string text)
+    : source_(std::move(text)), utf16_index_(source_) {
   line_starts_.push_back(0);
   for (size_t i = 0; i < source_.size(); ++i) {
     if (source_[i] == '\n') line_starts_.push_back(i + 1);

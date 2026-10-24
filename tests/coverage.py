@@ -31,7 +31,7 @@ SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'icl_ast.h', 'icl_driver.h', 'icl_semantics.h', 'format_tree.h', 'json.h',
            'pdl_document.cc', 'pdl_document.h', 'pdl_format_main.cc',
            'pdl_lsp_main.cc', 'format_cli.h', 'lsp_server.h', 'text_input.h',
-           'utf8.h']
+           'utf8.h', 'text_position.h']
 
 
 LINE = re.compile(r'^\s*([0-9]+\*?|#####|=====|-):\s*(\d+):')

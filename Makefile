@@ -455,6 +455,7 @@ GRAMCOV_BIN := $(GRAMCOV_DIR)/icl-format
 GRAMCOV_SRCS := $(SHARED_SOURCES) $(CLI_SOURCES)
 GRAMCOV_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(GRAMCOV_DIR)/%.o,$(GRAMCOV_SRCS)) \
     $(GRAMCOV_DIR)/icl_parser.o $(GRAMCOV_DIR)/icl_lexer.o
+-include $(wildcard $(GRAMCOV_DIR)/*.d)
 
 $(GRAMCOV_DIR):
 	mkdir -p $(GRAMCOV_DIR)
@@ -471,16 +472,19 @@ $(GRAMCOV_LEXER): $(SRC_DIR)/icl_lexer.l $(GRAMCOV_DIR)/icl_parser.hh
 	$(FLEX) -d --outfile=$(GRAMCOV_LEXER) --header-file=$(GRAMCOV_DIR)/icl_lexer.h $<
 
 $(GRAMCOV_DIR)/%.o: $(SRC_DIR)/%.cc $(GRAMCOV_DIR)/icl_parser.hh | $(GRAMCOV_DIR)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -MMD -MP -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
 	  $(CPPFLAGS) -c $< -o $@
 
 $(GRAMCOV_DIR)/icl_parser.o: $(GRAMCOV_PARSER) | $(GRAMCOV_DIR)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -MMD -MP -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
 	  $(CPPFLAGS) -c $< -o $@
 
 $(GRAMCOV_DIR)/icl_lexer.o: $(GRAMCOV_LEXER) | $(GRAMCOV_DIR)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -MMD -MP -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
 	  $(CPPFLAGS) -c $< -o $@
+
+# Also replace old objects built before header dependency tracking was enabled.
+$(GRAMCOV_OBJS): Makefile
 
 $(GRAMCOV_BIN): $(GRAMCOV_OBJS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ -o $@
@@ -689,7 +693,7 @@ unitcheck: $(UNIT_BIN)
 
 $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc \
     $(SRC_DIR)/json.cc $(SRC_DIR)/icl_ast.h $(SRC_DIR)/format_tree.h \
-    $(SRC_DIR)/json.h
+    $(SRC_DIR)/json.h $(SRC_DIR)/utf8.h $(SRC_DIR)/text_position.h
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) \
 	  tests/unit_tests.cc $(SRC_DIR)/format_tree.cc $(SRC_DIR)/json.cc -o $@

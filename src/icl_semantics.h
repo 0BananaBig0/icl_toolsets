@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "icl_driver.h"
+#include "text_position.h"
 
 namespace icl {
 struct ByteRange {
@@ -56,6 +57,9 @@ class ParsedDocument {
   const IclDriver& driver() const { return driver_; }
   bool ok() const { return ok_; }
   const std::vector<size_t>& line_starts() const { return line_starts_; }
+  size_t Utf16Length(size_t begin, size_t end) const {
+    return utf16_index_.Length(source_, begin, end);
+  }
   const std::vector<Declaration>& declarations() const { return declarations_; }
   const std::vector<NameUse>& uses() const { return uses_; }
   const std::map<int, std::map<size_t, std::string>>& namespace_uses() const {
@@ -70,6 +74,7 @@ class ParsedDocument {
   void Build();
 
   std::string source_;
+  toolsets::Utf16Index utf16_index_;
   IclDriver driver_;
   bool ok_ = false;
   std::vector<size_t> line_starts_;

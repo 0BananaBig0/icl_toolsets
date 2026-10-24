@@ -17,6 +17,7 @@
 #include "format_tree.h"
 #include "icl_ast.h"
 #include "json.h"
+#include "text_position.h"
 
 namespace icl {
 namespace {
@@ -324,6 +325,30 @@ void TestJsonRejects() {
             nested.Find("a")->elements().empty());
 }
 
+void TestUtf16Index() {
+  const std::string sample = "aé汉😀\r\n";
+  const size_t prefix[] = {0, 1, 2, 2, 3, 3, 3, 5, 5, 5, 5, 6, 7};
+  std::string text;
+  for (int i = 0; i < 70; ++i) text += sample;
+  const toolsets::Utf16Index index(text);
+  bool correct = true;
+  for (size_t byte = 0; byte <= text.size(); ++byte) {
+    const size_t expected = (byte / sample.size()) * 7 +
+                            prefix[byte % sample.size()];
+    correct &= index.Length(text, 0, byte) == expected;
+    correct &= index.Length(text, byte, text.size()) == 490 - expected;
+    correct &= index.Length(text, byte, byte) == 0;
+  }
+  Check("UTF-16 checkpoints preserve all byte prefixes across Unicode and CRLF",
+        correct);
+  for (size_t size : {0U, 255U, 256U, 257U, 512U}) {
+    const std::string ascii(size, 'x');
+    const toolsets::Utf16Index ascii_index(ascii);
+    Check("UTF-16 index handles empty input and exact checkpoint boundaries",
+          ascii_index.Length(ascii, 0, size) == size);
+  }
+}
+
 void TestConcatenatedValues() {
   ParsedValue left("1'b0", 1), right("1'b1", 1);
   right.Append("", ParsedValue("1'b0", 1));
@@ -352,6 +377,7 @@ int main() {
   TestRenderIsStable();
   TestJsonEscapes();
   TestJsonRejects();
+  TestUtf16Index();
   TestConcatenatedValues();
   std::cout << "========================================================\n";
   std::cout << "PASS=" << icl::g_pass << "  FAIL=" << icl::g_fail << "\n";

@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "text_position.h"
+
 namespace pdl {
 
 struct ByteRange {
@@ -22,6 +24,8 @@ struct Word {
   bool literal = false;
   bool body = false;
   bool command_substitution = false;
+  // A vector suffix is static PDL syntax but remains substitution in Tcl.
+  bool vector_substitution = false;
   bool expanded = false;
   std::vector<Command> script;
   std::vector<Command> substitutions;
@@ -59,6 +63,9 @@ class Document {
   ByteRange ErrorRange() const { return error_range_; }
   int error_line() const;
   const std::vector<size_t>& line_starts() const { return line_starts_; }
+  size_t Utf16Length(size_t begin, size_t end) const {
+    return utf16_index_.Length(source_, begin, end);
+  }
   const std::vector<Declaration>& declarations() const { return declarations_; }
   const std::vector<NameUse>& uses() const { return uses_; }
   const NameUse* UseAt(size_t byte) const;
@@ -91,6 +98,7 @@ class Document {
   void Error(ByteRange range, std::string message);
   void Declare(Declaration declaration);
   std::string source_;
+  toolsets::Utf16Index utf16_index_;
   bool is_icl_ = false;
   std::string parser_source_;
   std::vector<size_t> line_starts_{0};

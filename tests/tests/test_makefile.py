@@ -9,6 +9,32 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 class BuildGraph(unittest.TestCase):
+    def test_grammar_coverage_header_dependencies(self):
+        target = 'build/gramcov/format_job.o'
+        subprocess.run(['make', target, 'BISON=/usr/bin/bison'], cwd=ROOT,
+                       capture_output=True, text=True, check=True)
+        for header in ('src/icl_semantics.h', 'src/text_position.h'):
+            with self.subTest(header=header):
+                # Hold generated headers fixed: their empty rule can otherwise
+                # make a dry run pretend to rebuild unrelated objects.
+                run = subprocess.run(['make', '-n', '-o', 'build/gramcov/icl_parser.hh',
+                                      '-W', header, target,
+                                      'BISON=/usr/bin/bison'], cwd=ROOT,
+                                     capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn('-c src/format_job.cc', run.stdout)
+
+    def test_unit_header_dependencies(self):
+        subprocess.run(['make', 'build/unit_tests', 'BISON=/usr/bin/bison'],
+                       cwd=ROOT, capture_output=True, text=True, check=True)
+        for header in ('src/text_position.h', 'src/utf8.h'):
+            with self.subTest(header=header):
+                run = subprocess.run(['make', '-n', '-W', header, 'build/unit_tests',
+                                      'BISON=/usr/bin/bison'],
+                                     cwd=ROOT, capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn('tests/unit_tests.cc', run.stdout)
+
     def test_installed_headers_resolve_without_checkout(self):
         with tempfile.TemporaryDirectory() as directory:
             prefix = Path(directory)

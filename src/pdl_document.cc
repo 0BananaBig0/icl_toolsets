@@ -573,7 +573,7 @@ int ClampIndentWidth(int requested) {
 }
 
 Document::Document(std::string source, bool is_icl)
-    : source_(std::move(source)), is_icl_(is_icl) {
+    : source_(std::move(source)), utf16_index_(source_), is_icl_(is_icl) {
   for (size_t i = 0; i < source_.size(); ++i) {
     if (source_[i] == '\n') line_starts_.push_back(i + 1);
   }
@@ -696,7 +696,6 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
                                  }));
       word.value =
           word.literal ? LiteralValue(Text(source_, word.content)) : "";
-      bool saw_vector = false;
       for (TclCount j = i + 1; j <= i + token.numComponents; ++j) {
         const auto& part = parsed.tokenPtr[j];
         const size_t offset = part.start - ParserData();
@@ -710,7 +709,7 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
         if (part.type == TCL_TOKEN_COMMAND && part.size >= 2) {
           const auto inside = source_.substr(offset + 1, part.size - 2);
           if (offset > word.range.begin && IsVector(inside)) {
-            saw_vector = true;
+            word.vector_substitution = true;
             for (size_t k = 0; k < inside.size(); ++k) {
               if (inside[k] != '$') continue;
               const size_t first = ++k;
@@ -727,7 +726,8 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
                                     std::make_move_iterator(nested.end()));
         }
       }
-      if (saw_vector && word.variables.empty() && !word.command_substitution) {
+      if (word.vector_substitution && word.variables.empty() &&
+          !word.command_substitution) {
         word.literal = true;
         word.value = Text(source_, word.content);
       }
@@ -771,7 +771,9 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
         ParseExpression(&command.words[1], depth);
       } else if (name == "expr" && command.words.size() > 2 &&
                  std::all_of(command.words.begin() + 1, command.words.end(),
-                             [](const Word& word) { return word.literal; })) {
+                             [](const Word& word) {
+                               return word.literal && !word.vector_substitution;
+                             })) {
         std::string text;
         for (size_t i = 1; i < command.words.size(); ++i) {
           if (i > 1) text += ' ';
@@ -792,7 +794,7 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
       if (name == "for" && command.words.size() == 5) expressions.insert(2);
       for (const size_t i : expressions) {
         auto& word = command.words[i];
-        if (word.literal && source_[word.range.begin] == '{') {
+        if (word.literal) {
           ParseExpression(&word, depth);
         }
       }
@@ -921,6 +923,7 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
 }
 
 void Document::ParseExpression(Word* word, int depth) {
+  if (word->vector_substitution) return;
   const auto excessive = ExcessiveNesting(
       std::string_view(ParserData() + word->content.begin,
                        word->content.end - word->content.begin),
@@ -1582,7 +1585,8 @@ void Workspace::Reindex() {
     std::map<std::string, size_t> last;
     for (size_t i = 0; i < doc->declarations().size(); ++i) {
       const auto& d = doc->declarations()[i];
-      if (!doc->CanFormat() && d.module >= 0 && d.kind != "Module") {
+      if (!doc->CanFormat() && d.module >= 0 && d.kind != "Module" &&
+          d.kind != "EnumMember") {
         members_[doc][{d.module, d.name}].push_back({doc, i});
       }
       if (d.kind == "Module") {

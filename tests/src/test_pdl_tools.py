@@ -296,6 +296,64 @@ class Formatter(unittest.TestCase):
 
 
 class LanguageServer(unittest.TestCase):
+    def test_literal_control_expressions_are_checked_in_cli_and_lsp(self):
+        version = 0
+        for expression in ('{1 +}', '"1 +"', '1+', '"1 +\\\n  "'):
+            for command in ('if %s {}', 'while %s {}', 'for {} %s {} {}',
+                            '::if %s {}', 'if 0 {} elseif %s {}'):
+                source = command % expression + '\n'
+                version += 1
+                with self.subTest(source=source):
+                    run = subprocess.run([FORMATTER], input=source, text=True,
+                                         capture_output=True, timeout=5)
+                    self.assertEqual(run.returncode, 2, run.stderr)
+                    self.assertIn('invalid Tcl expression', run.stderr)
+                    diagnostics = self.open(source, version)['diagnostics']
+                    self.assertEqual(len(diagnostics), 1)
+                    self.assertIn('invalid Tcl expression', diagnostics[0]['message'])
+        for expression in ('{1 + 2}', '"1 + 2"', '1+2', '$condition',
+                           '"$lhs + $rhs"', '"1 +\\\n  2"'):
+            source = 'if ' + expression + ' {iApply}\n'
+            version += 1
+            with self.subTest(source=source):
+                run = subprocess.run([FORMATTER], input=source, text=True,
+                                     capture_output=True, timeout=5)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(self.open(source, version)['diagnostics'], [])
+        for expression in ('1[0]', '"1[0]"'):
+            for command in ('if %s {}', 'while %s {break}',
+                            'for {} %s {} {break}', 'expr %s', 'expr %s + 2'):
+                source = 'proc 0 {} {return 1}\n' + command % expression + '\n'
+                version += 1
+                with self.subTest(source=source):
+                    run = subprocess.run([FORMATTER], input=source, text=True,
+                                         capture_output=True, timeout=5)
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    self.assertEqual(self.open(source, version)['diagnostics'], [])
+
+    def test_enum_members_do_not_shadow_icl_object_navigation(self):
+        model = self.root / 'enum_objects.icl'
+        model.write_text("Module Leaf {\n Enum E { status = 1'b0; only_enum = 1'b1; }\n"
+                         ' ScanInPort si;\n'
+                         ' ScanRegister status[0] { ScanInSource si; }\n}\n'
+                         "Module Top { Enum E { child = 1'b0; } Instance child Of Leaf; }\n")
+        self.client.notify('workspace/didChangeWatchedFiles', {'changes': [
+            dict(uri=model.as_uri(), type=1)]})
+        source = ('iProcsForModule Leaf\niRead status\niRead only_enum\n'
+                  'iProcsForModule Top\niRead child.status\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column in ((1, 7), (4, 16)):
+            with self.subTest(line=line):
+                result = self.query('definition', line, column)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['uri'], model.as_uri())
+                self.assertEqual(result[0]['range']['start']['line'], 3)
+        self.assertEqual(self.query('definition', 2, 9), [])
+        model.write_text('Module Leaf { DataInPort status; DataInPort status; }\n')
+        self.client.notify('workspace/didChangeWatchedFiles', {'changes': [
+            dict(uri=model.as_uri(), type=2)]})
+        self.assertEqual(self.query('definition', 1, 7), [])
+
     def test_global_tcl_builtins_check_nested_syntax(self):
         cases = ('::if {1 +} {}', '::while {1 +} {}',
                  '::for {} {1 +} {} {}', '::expr {1 +}', '::expr 1 +',
