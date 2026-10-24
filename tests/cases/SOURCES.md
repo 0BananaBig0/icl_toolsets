@@ -2,6 +2,16 @@
 
 Every file under `tests/cases/` sits in a directory naming where it came from. `pass/` files must format cleanly, idempotently and without losing a character; `fail/` files must be rejected with exit code 2. Both are run through stdin *and* through a real file.
 
+## Additional public corpus — 2026-10-24
+
+- [warptap wrapper chain](pass/warptap/README.md): one byte-identical ICL golden
+  fixture, five new module definitions, Apache-2.0. The smaller block-only
+  example was excluded because its modules occur in the chain.
+- [Origen PDL](upstream/pdl/origen/README.md): the original incomplete upstream
+  example is an expected negative; a separately completed version is positive.
+  Both enter CLI/LSP procedure checks and the editor corpus, with MIT notice
+  retained. The upstream ICL examples already exist here and were not copied.
+
 ## PDL fixtures — 2026-10-23
 
 The [PDL block manifest](pdl_blocks.json) additionally classifies maintained
@@ -394,12 +404,12 @@ Attribute or AccessLink), 1 from `du2693742095/IJTAG_extension` (mostly
 commented-out modules, which the formatter must reproduce byte for byte).
 See [the historical record](../../docs/history/requirements-legacy.md) §5.53.
 
-## A note on PDL
+## Historical note on PDL (before PDL support was added)
 
 The reference repository ships `pdl.g4` (210 lines) alongside `icl.g4`. PDL is
 the other half of IEEE 1687 and a separate file type, so this corpus has no
 PDL cases and this tool has no PDL support — see [the historical record](../../docs/history/requirements-legacy.md) §5.54. What is
-covered is the boundary: `fail/upstream/pdl_hash_comment.icl` (`#` is not an
+covered was the boundary: `fail/upstream/pdl_hash_comment.icl` (`#` is not an
 ICL comment) and `pass/upstream/pdl_shared_lexer.icl` (shared `SCALAR_ID`,
 `$arg`, time units; and the `0x` spelling that ICL does not have).
 

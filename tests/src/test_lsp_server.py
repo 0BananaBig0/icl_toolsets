@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Workspace filesystem errors must not terminate either language server."""
+"""Shared LSP transport, document-sync and workspace filesystem regressions."""
 import argparse
 import json
 import os
@@ -21,6 +21,57 @@ def limits():
 
 
 class WorkspaceReads(unittest.TestCase):
+    def test_client_responses_do_not_receive_responses(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language):
+                client = Client(binary)
+                try:
+                    client.request('initialize', {'capabilities': {'workspace': {
+                        'didChangeWatchedFiles': {'dynamicRegistration': True}}}})
+                    client.notify('initialized', {})
+                    registration = client.wait(
+                        lambda m: m.get('method') == 'client/registerCapability',
+                        'watcher registration')
+                    self.assertIsNotNone(registration)
+                    for payload in ({'result': None}, {'error': {
+                            'code': -32601, 'message': 'registration unavailable'}}):
+                        client.send(dict(jsonrpc='2.0', id=registration['id'], **payload))
+                        # A following request is a barrier: no timing-based sleep.
+                        reply = client.request('workspace/symbol', {'query': ''})
+                        self.assertIsNotNone(reply)
+                        self.assertEqual(client.drain(), [])
+                finally:
+                    client.stop()
+
+    def test_ranged_changes_do_not_replace_full_document(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
+                client = Client(binary)
+                try:
+                    client.request('initialize', {})
+                    uri = (Path(tmp) / ('buffer.' + language)).as_uri()
+                    source = ('Module Original {}\n' if language == 'icl'
+                              else 'proc Original {} {}\n')
+                    client.notify('textDocument/didOpen', {'textDocument': dict(
+                        uri=uri, languageId=language, version=1, text=source)})
+                    client.notify('textDocument/didChange', {
+                        'textDocument': dict(uri=uri, version=2),
+                        'contentChanges': [{'range': {
+                            'start': dict(line=0, character=0),
+                            'end': dict(line=0, character=1)}, 'text': ''}]})
+                    reply = client.request('workspace/symbol', {'query': 'Original'})
+                    self.assertIsNotNone(reply)
+                    self.assertEqual([s['name'] for s in reply['result']], ['Original'])
+                    # An ignored change must not advance the stored version.
+                    client.notify('textDocument/didChange', {
+                        'textDocument': dict(uri=uri, version=2),
+                        'contentChanges': [{'text': source.replace('Original', 'Updated')}]})
+                    reply = client.request('workspace/symbol', {'query': 'Updated'})
+                    self.assertIsNotNone(reply)
+                    self.assertEqual([s['name'] for s in reply['result']], ['Updated'])
+                finally:
+                    client.stop()
+
     def test_replaced_files_drop_stale_symbols(self):
         for language, binary in BINARIES.items():
             for kind in ('directory', 'fifo'):

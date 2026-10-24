@@ -276,6 +276,11 @@ class LspServer {
 
  private:
   void Handle(const Json& message) {
+    // Client replies to our watcher registration are responses, not requests.
+    if (!message.Find("method") &&
+        (message.Find("result") || message.Find("error"))) {
+      return;
+    }
     const std::string method = GetString(&message, "method");
     const Json* id = message.Find("id");
     const bool is_request = id != nullptr && !id->is_null();
@@ -340,7 +345,9 @@ class LspServer {
         // which is far worse than ignoring the change. Full sync means the
         // field is always a string; anything else is a client we cannot trust.
         const Json* text = last.Find("text");
-        if (text != nullptr && text->type() == Json::Type::kString) {
+        // A ranged edit cannot replace a full-sync document safely.
+        if (!last.Find("range") && text != nullptr &&
+            text->type() == Json::Type::kString) {
           Open(uri, text->string_value(),
                GetInt(params.Find("textDocument"), "version", -1));
         }

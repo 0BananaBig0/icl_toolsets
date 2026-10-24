@@ -27,3 +27,21 @@ use forms already covered — but it is the only file here exercising
 `SelectedBy` on a bit-range (`SelectedBy SELREG[1:0]`).
 
 All three pass, idempotent and character-preserving.
+
+## Pinned wrapper-chain addition (2026-10-24)
+
+[`wsp1500_chain.icl`](https://github.com/ranaumarnadeem/warptap/blob/7853bfe199ea66de1583173c147a8ddf758635bc/tests/fixtures/golden_icl/wsp1500_chain.icl)
+is imported byte-for-byte at revision
+`7853bfe199ea66de1583173c147a8ddf758635bc` (8,076 bytes, SHA-256
+`967f3f424f64b3fe0fd80921f39aaa8d18f5a6951e10197a42af7b39b03c41bb`).
+The upstream Apache-2.0 [LICENSE](LICENSE) is retained; that revision has no
+NOTICE file. This is an upstream golden fixture, not a build artifact produced
+by this repository.
+
+It adds five previously absent module definitions with wrapper instruction
+enums, DataMux selectors, ScanInterface Chain blocks, inversion and hierarchical
+instance connections. The separately downloaded `wsp1500_block.icl` contains
+the first two definitions already present in this chain and is not imported.
+The existing AST inventory checks module duplication across the maintained
+corpus. It is tested through the ICL formatter corpus, conformance/diagnostic
+manifest, real LSP hierarchy navigation and Vim/Neovim syntax probes.

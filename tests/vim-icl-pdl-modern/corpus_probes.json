@@ -1,4 +1,15 @@
 {
+  "tests/cases/pass/warptap/wsp1500_chain.icl": [
+    ["Enum blk_ops {", "blk_ops", "iclTypeName"],
+    ["Instance u1 Of blk2", "blk2", "iclTypeName"],
+    ["Instance u1 Of blk2", "~wrst", "iclOperator"]
+  ],
+  "tests/cases/upstream/pdl/origen/e22_completed.pdl": [
+    ["iPDLLevel 0", "STD_1687_2014", "pdlConstant"],
+    ["iProc ResetInstr", "ResetInstr", "pdlProcedure"],
+    ["iWrite In 0x1", "0x1", "pdlNumber"],
+    ["iRead Out", "iRead", "pdlCommand"]
+  ],
   "tests/cases/standard/enum/result.icl": [
     ["Module Example", "Module", "iclTypeKeyword"],
     ["Module Example", "Example", "iclTypeName"],

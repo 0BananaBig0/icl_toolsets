@@ -62,6 +62,18 @@ class LanguageServices(unittest.TestCase):
         if length is not None:
             self.assertEqual(result[0]['range']['end'], dict(line=start['line'], character=start['character'] + length))
 
+    def test_public_wrapper_hierarchy(self):
+        self.main = (CASES.parents[1] / 'pass/warptap/wsp1500_chain.icl').read_text()
+        self.assertEqual(self.open(self.uri, self.main, 2)['params']['diagnostics'], [])
+        self.expect_location(self.query('definition', 'Source u1.wso', offset=11),
+                             self.uri, self.main, 'ScanOutPort wso',
+                             occurrence=1, offset=12, length=3)
+        self.expect_location(self.query('implementation', 'Source u1.wso', offset=8),
+                             self.uri, self.main, 'Module blk2 {')
+        labels = {item['label'] for item in self.query(
+            'completion', 'Source u1.wso', offset=10)}
+        self.assertTrue({'wso', 'WIR', 'core'} <= labels, labels)
+
     def test_capabilities(self):
         for key in ['completionProvider', 'definitionProvider', 'declarationProvider', 'implementationProvider', 'hoverProvider', 'referencesProvider', 'documentSymbolProvider', 'workspaceSymbolProvider']:
             self.assertTrue(self.capabilities.get(key), key)

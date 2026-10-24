@@ -12328,5 +12328,11 @@
     "block": "parameter",
     "accept": false,
     "source": "Constructed independent review probe: IEEE1687-2014 \u00a76.3.8(j,o), \u00a76.5.4; literal/alias width boundaries and conservative deferral"
+  },
+  {
+    "path": "cases/pass/warptap/wsp1500_chain.icl",
+    "block": "module",
+    "accept": true,
+    "source": "ranaumarnadeem/warptap 7853bfe199ea66de1583173c147a8ddf758635bc tests/fixtures/golden_icl/wsp1500_chain.icl; Apache-2.0; byte-identical"
   }
 ]

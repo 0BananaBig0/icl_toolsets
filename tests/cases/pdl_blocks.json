@@ -1445,5 +1445,26 @@
         "character": 20
       }
     }
+  },
+  {
+    "block": "procedures",
+    "path": "upstream/pdl/origen/e22_original.pdl",
+    "valid": false,
+    "source": "upstream",
+    "clause": "7.9.1,7.9.5; Origen-SDK/ijtag examples/e22.pdl",
+    "diagnostic": {
+      "message": "wrong number of arguments for iProc",
+      "start": {
+        "line": 1,
+        "character": 0
+      }
+    }
+  },
+  {
+    "block": "procedures",
+    "path": "upstream/pdl/origen/e22_completed.pdl",
+    "valid": true,
+    "source": "upstream",
+    "clause": "7.9.1,7.9.5; Origen-SDK/ijtag examples/e22.pdl"
   }
 ]
