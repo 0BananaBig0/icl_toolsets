@@ -33,6 +33,10 @@ executed or copied into our source/tests.
 | Verilator source naming/layout | Not copied: keep Google-style names, `src/`, provenance-classified `tests/cases/`, developer `docs/`, and the independently installable Vim runtime. |
 
 This improves test organization rather than moving working production files.
+The runner now also checks second-pass CLI stability and both LSP formatting
+passes; see [formatter self-tests](formatter-self-tests.md) for the current
+commands and baseline-update safeguards. The counts below describe the original
+Verilator-inspired change.
 Source/expected pairs change together. The reusable runner owns execution and
 comparison; its self-tests live in `tests/tests/test_golden_test.py`. Language
 fixtures retain separate roots, and both formatter/LSP pairs still share their

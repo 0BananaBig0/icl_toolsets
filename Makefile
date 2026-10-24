@@ -251,10 +251,10 @@ vim-plugin-check:
 	python3 tests/vim-icl-pdl-modern/test_plugin.py
 
 .PHONY: goldencheck
-goldencheck: $(BIN) $(PDL_BIN)
+goldencheck: $(BIN) $(PDL_BIN) $(LSP_BIN) $(PDL_LSP_BIN)
 	python3 tests/tests/test_golden_test.py
-	python3 tests/golden_test.py --binary $(BIN)
-	python3 tests/golden_test.py --language pdl --binary $(PDL_BIN)
+	python3 tests/golden_test.py --binary $(BIN) --server $(LSP_BIN)
+	python3 tests/golden_test.py --language pdl --binary $(PDL_BIN) --server $(PDL_LSP_BIN)
 
 vim-plugin-dist:
 	@mkdir -p $(BUILD_DIR)/dist
@@ -413,8 +413,8 @@ coverage: $(COV_BINARIES)
 	@mkdir -p $(COV_REPORT_DIR)
 	@rm -f $(COV_DIR)/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
 	@python3 tests/tests/test_golden_test.py
-	@python3 tests/golden_test.py --binary $(COV_DIR)/icl-format
-	@python3 tests/golden_test.py --language pdl --binary $(COV_DIR)/pdl-format
+	@python3 tests/golden_test.py --binary $(COV_DIR)/icl-format --server $(COV_DIR)/icl-lsp
+	@python3 tests/golden_test.py --language pdl --binary $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
 	@python3 tests/src/test_format_cli.py --icl $(COV_DIR)/icl-format --pdl $(COV_DIR)/pdl-format
 	@python3 tests/src/test_lsp_server.py --icl $(COV_DIR)/icl-lsp --pdl $(COV_DIR)/pdl-lsp
 	@python3 tests/regression.py --binary $(COV_DIR)/icl-format
