@@ -21,28 +21,30 @@ formatting and navigation.
 
 ## vim-plug installation
 
-From an existing local checkout of `icl_toolsets`, add this between
-`plug#begin()` and `plug#end()` (adjust the absolute path):
+Assuming `icl_toolsets` is published under the GitHub account `0BananaBig0`,
+add this between your existing `plug#begin()` and `plug#end()` calls:
 
 ```vim
-Plug '/home/banana/cpp_workspace/icl-format/vim-icl-pdl-modern', {'for': ['icl', 'pdl']}
+Plug '0BananaBig0/icl_toolsets', {'rtp': 'vim-icl-pdl-modern', 'for': ['icl', 'pdl']}
 ```
 
-Vim-plug uses only this directory as the plugin runtime. It downloads nothing
-and does not build or install the rest of the project. The directory must remain
-available. Reopen the editor after adding the line.
+Reload your vimrc or Neovim configuration, run `:PlugInstall`, then reopen the
+editor and an `.icl` or `.pdl` file. Vim-plug resolves the repository to
+https://github.com/0BananaBig0/icl_toolsets.
 
-For remote installation, use a **published plugin-only repository**:
+Only `vim-icl-pdl-modern/` is loaded as the plugin runtime. The repository is
+downloaded, but no formatters, language servers, or compiler dependencies are
+built or installed. Avoiding the download of unrelated source requires a
+separately published plugin-only repository or a local directory.
+
+For an existing local checkout, use this alternative (adjust the absolute path):
 
 ```vim
-" Replace the URL with the actual published plugin-only repository URL.
-Plug 'https://YOUR-HOST/YOUR-ACCOUNT/vim-icl-pdl-modern.git', {'for': ['icl', 'pdl']}
+Plug '/absolute/path/to/icl_toolsets/vim-icl-pdl-modern', {'for': ['icl', 'pdl']}
 ```
 
-Then run `:PlugInstall`. A remote release is not created merely by adding this
-folder to `icl_toolsets`. Pointing vim-plug at the full toolsets repository with
-`{'rtp': 'vim-icl-pdl-modern'}` still downloads that repository. A dedicated
-plugin-only repository is needed to avoid fetching unrelated code/history.
+The local alternative downloads nothing. Keep that directory available and
+reopen the editor after adding the line.
 
 If your vimrc previously had this line, remove it:
 

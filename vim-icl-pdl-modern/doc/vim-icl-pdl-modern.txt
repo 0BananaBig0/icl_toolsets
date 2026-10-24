@@ -8,12 +8,18 @@ plugins or compiled tools. Syntax highlighting does not validate a program.
 
 INSTALLATION                                   *icl-pdl-modern-install*
 
-With vim-plug, use a local standalone directory: >
+With vim-plug, assuming GitHub publication at 0BananaBig0/icl_toolsets: >
+  Plug '0BananaBig0/icl_toolsets', {'rtp': 'vim-icl-pdl-modern', 'for': ['icl', 'pdl']}
+<
+Place this between plug#begin() and plug#end(), reload your configuration,
+run :PlugInstall and reopen the editor. Only the plugin subdirectory is loaded;
+the full repository is downloaded, but the executables are not built/installed.
+
+Alternatively, use a local standalone directory: >
   Plug '/absolute/path/to/vim-icl-pdl-modern', {'for': ['icl', 'pdl']}
 <
-Or use a published plugin-only repository URL. An 'rtp' subdirectory setting
-on the complete toolsets repository does NOT restrict its download.
-See README.md for native package installation and remote publication status.
+The local alternative downloads nothing. See README.md for native package
+installation and the requirements for a plugin-only remote download.
 
 The plugin detects *.icl and *.pdl; *.icl overrides Vim's Clean association.
 Remove any old FileType pdl autocmd that forces syntax=tcl. Ordinary *.tcl
