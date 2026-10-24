@@ -54,6 +54,7 @@ class Document {
   explicit Document(std::string source, bool is_icl = false);
   const std::string& source() const { return source_; }
   bool ok() const { return error_message_.empty(); }
+  bool CanFormat() const { return !is_icl_; }
   const std::string& error_message() const { return error_message_; }
   ByteRange ErrorRange() const { return error_range_; }
   int error_line() const;
@@ -61,11 +62,11 @@ class Document {
   const std::vector<Declaration>& declarations() const { return declarations_; }
   const std::vector<NameUse>& uses() const { return uses_; }
   const NameUse* UseAt(size_t byte) const;
-  int ModuleAt(size_t byte) const;
   std::string Format(int indent_width) const;
   std::string Dump() const;
 
  private:
+  friend class Workspace;
   struct Context {
     int level = 1;
     int owner = -1;
@@ -74,20 +75,30 @@ class Document {
          prefix_known = true;
     std::string binding, name_space, call_namespace, tcl_namespace, prefix;
   };
+  using VariableKey = std::tuple<int, std::string, std::string>;
+  struct ContextSpan {
+    ByteRange range;
+    Context context;
+  };
+  const Context& ContextAt(size_t byte) const;
   const char* ParserData() const;
   std::vector<Command> Parse(size_t begin, size_t end, int depth);
   void ParseExpression(Word* word, int depth);
-  void Analyze(std::vector<Command>* commands, Context context);
+  void Analyze(std::vector<Command>* commands, Context context,
+               ByteRange scope);
   void AnalyzeWords(std::vector<Word>* words, const Context& context,
                     const Context& child);
   void Error(ByteRange range, std::string message);
   void Declare(Declaration declaration);
   std::string source_;
+  bool is_icl_ = false;
   std::string parser_source_;
   std::vector<size_t> line_starts_{0};
   std::vector<Command> commands_;
   std::vector<Declaration> declarations_;
-  std::map<std::tuple<int, std::string, std::string>, int> variables_;
+  std::map<VariableKey, int> variables_;
+  std::map<VariableKey, VariableKey> variable_bindings_;
+  std::vector<ContextSpan> contexts_;
   std::vector<NameUse> uses_;
   ByteRange error_range_;
   std::string error_message_;

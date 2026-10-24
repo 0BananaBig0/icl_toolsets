@@ -407,6 +407,7 @@ coverage: $(COV_BINARIES)
 	@mkdir -p $(COV_REPORT_DIR)
 	@rm -f $(COV_DIR)/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
 	@python3 tests/src/test_format_cli.py --icl $(COV_DIR)/icl-format --pdl $(COV_DIR)/pdl-format
+	@python3 tests/src/test_lsp_server.py --icl $(COV_DIR)/icl-lsp --pdl $(COV_DIR)/pdl-lsp
 	@python3 tests/regression.py --binary $(COV_DIR)/icl-format
 	@python3 tests/src/test_icl_conformance.py --binary $(COV_DIR)/icl-format
 	@python3 tests/block_review.py --binary $(COV_DIR)/icl-format
@@ -617,7 +618,9 @@ check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/src/test_format_cli.py --icl $(BIN) --pdl $(PDL_BIN)
+	@python3 tests/src/test_lsp_server.py --icl $(LSP_BIN) --pdl $(PDL_LSP_BIN)
 	@python3 tests/src/test_icl_semantics.py --binary $(BIN)
+	@python3 tests/src/test_pdl_document.py --server $(PDL_LSP_BIN)
 	@python3 tests/regression.py --binary $(BIN)
 	@python3 tests/src/test_icl_conformance.py --binary $(BIN)
 	@python3 tests/tests/test_antlr_diff.py

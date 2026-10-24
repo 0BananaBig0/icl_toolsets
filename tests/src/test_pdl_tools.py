@@ -339,6 +339,99 @@ class LanguageServer(unittest.TestCase):
                                   text=True, capture_output=True, check=True).stdout
         self.assertEqual(edits[0]['newText'], expected)
 
+    def test_imported_icl_document_cannot_be_formatted_as_pdl(self):
+        self.uri = (self.root / 'model.icl').as_uri()
+        text = 'Module Model { DataInPort data; }\n'
+        self.open(text)
+        edits = self.request('textDocument/formatting', dict(
+            textDocument={'uri': self.uri}, options={'tabSize': 2, 'insertSpaces': True}))
+        self.assertEqual(edits, [])
+        symbols = self.request('textDocument/documentSymbol', {'textDocument': {'uri': self.uri}})
+        self.assertIn('Model', {s['name'] for s in symbols})
+
+    def test_array_assignments_and_reads_share_the_array_identity(self):
+        source = ('proc p {key} {\nset a(first) 1\nset a(second) 2\n'
+                  'puts $a(first)\nset a($key) 3\nputs $a($key)\n}\n'
+                  'proc q {} {set a(first) 9; puts $a(first)}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column in ((1, 4), (2, 4), (3, 6), (4, 4), (5, 6)):
+            with self.subTest(line=line):
+                definitions = self.query('definition', line, column)
+                self.assertEqual(len(definitions), 1, definitions)
+                self.assertEqual(definitions[0]['range']['start'], dict(line=1, character=4))
+                refs = self.query('references', line, column,
+                                  context={'includeDeclaration': True})
+                self.assertEqual(sorted(r['range']['start']['line'] for r in refs),
+                                 [1, 2, 3, 4, 5])
+        key = self.query('definition', 5, 9)
+        self.assertEqual(key[0]['range']['start'], dict(line=0, character=8))
+
+    def test_namespace_variable_binding_is_shared_with_procedures(self):
+        source = ('namespace eval A {\nvariable x 1\nproc p {} {\n'
+                  'variable x\nset x 2\nputs $x\n}\n'
+                  'proc q {} {set x 3; puts $x}\n}\n'
+                  'namespace eval B {variable x 9}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column in ((1, 9), (3, 9), (4, 4), (5, 6)):
+            with self.subTest(line=line):
+                definitions = self.query('definition', line, column)
+                self.assertEqual(len(definitions), 1, definitions)
+                self.assertEqual(definitions[0]['range']['start'], dict(line=1, character=9))
+                refs = self.query('references', line, column,
+                                  context={'includeDeclaration': True})
+                self.assertEqual(sorted(r['range']['start']['line'] for r in refs), [1, 3, 4, 5])
+        completion = {s['label'] for s in self.query('completion', 5, 6)}
+        self.assertIn('x', completion)
+
+    def test_completion_retains_namespace_and_module_context(self):
+        source = ('proc global_only {} {}\nnamespace eval A {\n'
+                  'proc local_only {} {}\nset a 1\nlocal_only\n}\n'
+                  'namespace eval B {set hidden 1}\nglobal_only\n'
+                  'iProcsForModule Demo\niProc run {} {}\niCall run\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        local = {s['label'] for s in self.query('completion', 4, 3)}
+        self.assertIn('local_only', local)
+        self.assertIn('a', local)
+        self.assertNotIn('hidden', local)
+        global_scope = {s['label'] for s in self.query('completion', 7, 3)}
+        self.assertIn('global_only', global_scope)
+        self.assertNotIn('local_only', global_scope)
+        self.assertNotIn('a', global_scope)
+        pdl = {s['label'] for s in self.query('completion', 10, 8)}
+        self.assertIn('run', pdl)
+        self.assertIn('helper', pdl)
+
+    def test_qualified_arrays_and_multi_variable_namespace_bindings(self):
+        source = ('namespace eval A {\nvariable x 1 y 2\nset arr(k) 3\n'
+                  'proc p {} {\nvariable x y_value y\n'
+                  'puts $x\nputs $y\nset ::A::arr(other) 4\n'
+                  'puts $::A::arr(k)\n}\nputs ${arr(k)}\n}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, column, target_line, target_column in (
+                (5, 6, 1, 9), (6, 6, 1, 13), (7, 9, 2, 4),
+                (8, 11, 2, 4), (10, 7, 2, 4)):
+            with self.subTest(line=line):
+                result = self.query('definition', line, column)
+                self.assertEqual(len(result), 1, result)
+                self.assertEqual(result[0]['range']['start'],
+                                 dict(line=target_line, character=target_column))
+
+    def test_completion_keeps_pdl_call_namespaces_separate_from_tcl(self):
+        source = ('iProcsForModule Demo -iProcNameSpace selected\n'
+                  'iProc special {} {}\niUseProcNameSpace selected\niCall special\n'
+                  'iUseProcNameSpace -\niCall helper\n'
+                  'namespace eval selected {\nproc tcl_local {} {}\ntcl_local\n}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        selected = {s['label'] for s in self.query('completion', 3, 8)}
+        self.assertIn('special', selected)
+        self.assertNotIn('tcl_local', selected)
+        default = {s['label'] for s in self.query('completion', 5, 8)}
+        self.assertIn('helper', default)
+        self.assertNotIn('special', default)
+        tcl_scope = {s['label'] for s in self.query('completion', 8, 3)}
+        self.assertIn('tcl_local', tcl_scope)
+        self.assertNotIn('special', tcl_scope)
+
     def test_procedure_and_variable_navigation_completion_references(self):
         text = HEADER + 'iProc run {value} {\niCall helper $value\n}\n'
         self.assertEqual(self.open(text)['diagnostics'], [])
@@ -408,6 +501,14 @@ class LanguageServer(unittest.TestCase):
         labels = {item['label'] for item in self.query('completion', 3, 6)}
         self.assertIn('value', labels)
         self.assertIn('helper', labels)
+
+    def test_completion_does_not_leak_empty_procedure_arguments(self):
+        for version, command in enumerate(('proc', 'iProc'), 1):
+            with self.subTest(command=command):
+                self.assertEqual(self.open(HEADER + command + ' run {value} {}\n\n',
+                                           version)['diagnostics'], [])
+                labels = {item['label'] for item in self.query('completion', 3, 0)}
+                self.assertNotIn('value', labels)
 
     def test_qualified_tcl_procedures_and_nested_namespaces(self):
         text = HEADER + ('namespace eval outer {\n'

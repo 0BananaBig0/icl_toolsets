@@ -21,6 +21,7 @@
 #include <string>
 
 #include "json.h"
+#include "text_input.h"
 
 #ifndef ICL_FORMAT_VERSION
 #define ICL_FORMAT_VERSION "0.0.0"
@@ -497,13 +498,17 @@ class LspServer {
   void ReadDisk(const std::string& uri) {
     if (open_versions_.count(uri)) return;
     const std::string path = FilePath(uri);
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(path, error)) {
       workspace_.documents().erase(uri);
       return;
     }
-    std::string text((std::istreambuf_iterator<char>(file)), {});
-    if (file.bad()) return;
+    std::ifstream file(path, std::ios::binary);
+    std::string text;
+    if (!file || !ReadTextStream(file, &text)) {
+      workspace_.documents().erase(uri);
+      return;
+    }
     workspace_.documents()[uri] = Language::Parse(std::move(text), uri);
   }
 

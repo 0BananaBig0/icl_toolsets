@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include "text_input.h"
+
 #ifndef ICL_FORMAT_VERSION
 #define ICL_FORMAT_VERSION "0.0.0"
 #endif
@@ -227,13 +229,7 @@ class FormatCli {
 
   static bool ReadStream(std::istream& stream, const std::string& name,
                          std::string* text, std::string* error) {
-    text->clear();
-    char buffer[16384];
-    while (stream.read(buffer, sizeof(buffer)) || stream.gcount() > 0) {
-      text->append(buffer, static_cast<size_t>(stream.gcount()));
-    }
-    if (stream.bad() || !stream.eof() ||
-        (&stream == &std::cin && std::ferror(stdin))) {
+    if (!ReadTextStream(stream, text)) {
       *error = "cannot read '" + name + "'";
       return false;
     }

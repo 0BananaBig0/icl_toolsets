@@ -18,6 +18,11 @@ not reuse ICL grammar, tokens or AST definitions. `format_cli.h` and
 `lsp_server.h` share file handling and protocol behavior across language adapters.
 PDL workspace navigation reads ICL through the existing ICL parser and projects
 its declarations into navigation records; it does not parse ICL with Tcl.
+Imported ICL buffers are explicitly ineligible for PDL formatting, preventing
+an empty PDL tree from replacing their contents. Both language servers ignore
+nonregular watched paths (including directories and FIFOs), discard stale disk
+symbols when a file becomes unreadable, and preserve open-buffer precedence.
+Checked stream reading is shared with the formatter CLI in `text_input.h`.
 
 The frontend calls `Tcl_ParseCommand`, `Tcl_ParseExpr` and `Tcl_SplitList`.
 Expression parsing requires interpreter stack storage, so it creates an
@@ -102,13 +107,22 @@ procedure definitions in one stream use the last definition; ambiguous definitio
 across streams remain unresolved. Literal ICL module/object references and
 instance prefixes support cross-language navigation.
 
+Static array writes and reads resolve to the same base variable, including
+literal bases with dynamic indices. Literal `variable` declarations in Tcl
+procedures bind local names to namespace variables. Completion retains lexical
+Tcl namespaces, PDL module/call namespaces and procedure arguments, including
+unfinished procedure bodies; empty completed bodies do not leak arguments into
+the enclosing scope. These records are shared by navigation and completion in
+the PDL document, without evaluating Tcl.
+
 This is conservative static analysis, not complete Tcl/PDL semantic evaluation:
 
 - Unknown commands and dynamically constructed script bodies remain
   opaque. Runtime command names, aliases, `eval` and dataflow are not inferred.
 - ICL width overflow, enum membership and full connectivity are not checked for
   PDL values. Timing and command scheduling require a retargeting environment.
-- Completion covers keywords, statically visible procedures and local variables;
+- Completion covers keywords, statically visible procedures, local and namespace
+  variables, and explicit namespace bindings;
   contextual ICL object completion is not yet supplied.
 - Formatting preserves word spelling and data, normalizes command boundaries,
   and removes most blank lines; it does not reflow quoted/dynamic script bodies.
@@ -135,6 +149,8 @@ python3 tests/src/test_pdl_tools.py \
 readelf -l build/pdl-lsp-static
 readelf -d build/pdl-lsp-static
 python3 tests/src/benchmark_pdl.py
+python3 tests/src/test_lsp_server.py --icl build/icl-lsp --pdl build/pdl-lsp
+python3 tests/src/test_pdl_document.py --server build/pdl-lsp --benchmark
 make coverage BISON=/usr/bin/bison
 ```
 
@@ -149,11 +165,34 @@ Fixtures are classified in [test sources](../tests/cases/SOURCES.md).
 The benchmark generates inputs in memory, reports actual input size, median wall
 time across three processes and maximum child peak RSS via GNU time. Expected
 workload is interactive editing of roughly 100 KB–1 MB procedure files. Parsing
-and rendering traverse commands/words; unresolved symbol resolution may scan
-declarations. It does not claim a measured speedup or bound runtime Tcl behavior.
+and rendering traverse commands/words. Variable resolution uses a map keyed by
+scope, namespace and base name instead of scanning every declaration for every
+use. Other symbol kinds can still require declaration scans; runtime Tcl behavior
+is outside this benchmark's scope.
 Coverage includes the shared template headers and PDL sources; generated Tcl,
 Flex and Bison internals are excluded. The strict 100% line / 90% branch acceptance
 gate remains enabled even when unmet. Dated results are recorded below.
+
+### 2026-10-24 reference-lookup regression
+
+`test_pdl_document.py` checks exact reference locations for 32,000 declarations
+and 32,000 reads (926,670 bytes), with a two-second optimized-build request budget.
+On Linux/WSL2 with GCC 16 and `-O2`, the same request took 3.398 seconds before
+indexed variable lookup and 0.013 seconds after it. Three request timings at
+2,000 / 4,000 / 8,000 variables had medians of 1.258 / 2.054 / 3.403 ms after the
+change, versus approximately 12.8 / 52 / 219 ms before it. These timings cover
+reference requests after parsing, not startup, parsing or peak memory. They
+demonstrate this workload's scaling, not a bound for all workspace operations.
+
+The final dynamic regression and focused static regressions passed, including
+46 PDL executable/LSP tests and both servers' directory/FIFO replacement tests.
+Five optional ANTLR checks were skipped without `ICL_REF_DIR`. The instrumented
+functional tests also passed, but `make coverage` failed its unchanged strict
+gate: 4,125/4,234 lines (97.4%) and 6,959/11,331 branches (61.4%). The preceding
+baseline was 97.5% lines / 61.4% branches and already failed that gate. The new
+`text_input.h` reached 6/6 lines and 18/24 branches; unreadable-regular-file paths
+in the shared LSP reader remain uncovered. Functional regression success does
+not establish full error-path coverage.
 
 The subsequent [PDL block-review results](pdl-block-review.md#verification-and-remaining-limits)
 supersede the historical verification snapshots below. They include 133

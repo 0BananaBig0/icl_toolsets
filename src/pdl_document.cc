@@ -384,6 +384,11 @@ std::pair<std::string, std::string> SplitQualified(const std::string& name) {
                               name.substr(separator + 2));
 }
 
+std::string ArrayName(const std::string& name) {
+  return !name.empty() && name.back() == ')' ? name.substr(0, name.find('('))
+                                             : name;
+}
+
 bool HasExpandedArguments(const Command& command) {
   return std::any_of(command.words.begin(), command.words.end(),
                      [](const Word& word) { return word.expanded; });
@@ -556,7 +561,7 @@ int ClampIndentWidth(int requested) {
 }
 
 Document::Document(std::string source, bool is_icl)
-    : source_(std::move(source)) {
+    : source_(std::move(source)), is_icl_(is_icl) {
   for (size_t i = 0; i < source_.size(); ++i) {
     if (source_[i] == '\n') line_starts_.push_back(i + 1);
   }
@@ -587,7 +592,7 @@ Document::Document(std::string source, bool is_icl)
     parser_source_ = NormalizeContinuations(source_);
   }
   commands_ = Parse(0, source_.size(), 0);
-  Analyze(&commands_, {});
+  Analyze(&commands_, {}, {0, source_.size()});
 }
 
 void Document::Error(ByteRange range, std::string message) {
@@ -949,7 +954,9 @@ void Document::Declare(Declaration declaration) {
   declarations_.push_back(std::move(declaration));
 }
 
-void Document::Analyze(std::vector<Command>* commands, Context context) {
+void Document::Analyze(std::vector<Command>* commands, Context context,
+                       ByteRange scope) {
+  contexts_.push_back({scope, context});
   bool merging = false;
   ByteRange merge_range;
   for (auto& command : *commands) {
@@ -981,6 +988,7 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
       } else if (name == "iPDLLevel") {
         context.level = -1;
       }
+      contexts_.push_back({{command.range.begin, scope.end}, context});
       AnalyzeWords(&words, context, context);
       continue;
     }
@@ -1350,16 +1358,41 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
     } else if (name == "namespace" && literal(1) == "eval") {
       child.tcl_namespace = Qualify(context.tcl_namespace, literal(2));
     }
-    if ((name == "set" || name == "variable") && words.size() >= 3 &&
-        words[1].literal) {
-      const bool global =
-          context.owner < 0 || literal(1).find("::") != std::string::npos;
-      const auto qualified =
-          global ? SplitQualified(Qualify(context.tcl_namespace, literal(1)))
-                 : std::make_pair(std::string(), literal(1));
-      Declare({qualified.second, "Variable", name + " " + literal(1), "",
-               qualified.first, words[1].content, words[1].range,
-               global ? -1 : context.owner});
+    if (name == "set" || name == "variable") {
+      const size_t end =
+          name == "set" ? std::min(words.size(), size_t{2}) : words.size();
+      for (size_t i = 1; i < end; i += 2) {
+        const auto raw = Text(source_, words[i].content);
+        const auto variable =
+            ArrayName(words[i].literal ? words[i].value : raw);
+        // A dynamic index still names a static array; a dynamic base does not.
+        if (!words[i].literal &&
+            (name != "set" || variable == raw ||
+             variable.find_first_of("$[\\\"{ \t\r\n") != std::string::npos)) {
+          continue;
+        }
+        const bool global = name == "variable" || context.owner < 0 ||
+                            variable.find("::") != std::string::npos;
+        const auto qualified =
+            global ? SplitQualified(Qualify(context.tcl_namespace, variable))
+                   : std::make_pair(std::string(), variable);
+        VariableKey key{global ? -1 : context.owner, qualified.first,
+                        qualified.second};
+        if (name == "variable" && context.owner >= 0) {
+          variable_bindings_[{context.owner, "", qualified.second}] = key;
+        }
+        const auto binding = variable_bindings_.find(key);
+        if (binding != variable_bindings_.end()) key = binding->second;
+        auto range = words[i].content;
+        range.end = range.begin + ArrayName(raw).size();
+        if (name == "set" && words.size() == 2) {
+          uses_.push_back({range, std::get<2>(key), "Variable", "",
+                           std::get<1>(key), std::get<0>(key), -1});
+        } else {
+          Declare({std::get<2>(key), "Variable", name + " " + variable, "",
+                   std::get<1>(key), range, words[i].range, std::get<0>(key)});
+        }
+      }
     }
     if (name == "iCall" && words.size() >= 2 && words[1].literal) {
       uses_.push_back({words[1].content, literal(1), "iProc", context.binding,
@@ -1407,6 +1440,15 @@ void Document::Analyze(std::vector<Command>* commands, Context context) {
                          name == "iPrefix" || context.prefix_known});
       }
     }
+    contexts_.push_back({{command.range.begin, scope.end}, context});
+    // Tcl reports a zero-length body token for an unfinished procedure.
+    if (child.owner != context.owner && words.size() == 4) {
+      auto body = words.back().content;
+      if (words.back().range.begin == words.back().range.end) {
+        body.end = command.range.end;
+      }
+      contexts_.push_back({body, child});
+    }
     AnalyzeWords(&words, context, child);
   }
   if (merging) Error(merge_range, "iMerge -begin has no matching -end");
@@ -1416,18 +1458,32 @@ void Document::AnalyzeWords(std::vector<Word>* words, const Context& context,
                             const Context& child) {
   for (auto& word : *words) {
     for (const auto& variable : word.variables) {
+      const auto name = ArrayName(variable.second);
       const bool global =
-          context.owner < 0 || variable.second.find("::") != std::string::npos;
+          context.owner < 0 || name.find("::") != std::string::npos;
       const auto qualified =
-          global
-              ? SplitQualified(Qualify(context.tcl_namespace, variable.second))
-              : std::make_pair(std::string(), variable.second);
-      uses_.push_back({variable.first, qualified.second, "Variable", "",
-                       qualified.first, global ? -1 : context.owner, -1});
+          global ? SplitQualified(Qualify(context.tcl_namespace, name))
+                 : std::make_pair(std::string(), name);
+      auto range = variable.first;
+      range.end = range.begin + name.size();
+      uses_.push_back({range, qualified.second, "Variable", "", qualified.first,
+                       global ? -1 : context.owner, -1});
     }
-    Analyze(&word.substitutions, context);
-    if (!word.script.empty()) Analyze(&word.script, child);
+    if (!word.substitutions.empty()) {
+      Analyze(&word.substitutions, context, word.content);
+    }
+    if (word.body || !word.script.empty()) {
+      Analyze(&word.script, child, word.content);
+    }
   }
+}
+
+const Document::Context& Document::ContextAt(size_t byte) const {
+  for (auto it = contexts_.rbegin(); it != contexts_.rend(); ++it) {
+    if (it->range.begin <= byte && byte <= it->range.end) return it->context;
+  }
+  static const Context kEmpty;
+  return kEmpty;
 }
 
 const NameUse* Document::UseAt(size_t byte) const {
@@ -1435,18 +1491,6 @@ const NameUse* Document::UseAt(size_t byte) const {
     if (use.range.begin <= byte && byte < use.range.end) return &use;
   }
   return nullptr;
-}
-
-int Document::ModuleAt(size_t byte) const {
-  int owner = -1;
-  for (size_t i = 0; i < declarations_.size(); ++i) {
-    const auto& d = declarations_[i];
-    if ((d.kind == "iProc" || d.kind == "proc") && d.range.begin <= byte &&
-        byte <= d.range.end) {
-      owner = static_cast<int>(i);
-    }
-  }
-  return owner;
 }
 
 std::string Document::Format(int indent_width) const {
@@ -1550,14 +1594,13 @@ SymbolRef Workspace::Resolve(const Document& document,
   const auto path = use.prefix.empty() ? use.name : use.prefix + "." + use.name;
   if (use.kind == "IclObject") return IclObject(use.binding, path);
   if (use.kind == "Variable") {
-    for (size_t i = 0; i < document.declarations().size(); ++i) {
-      const auto& d = document.declarations()[i];
-      if (d.kind == "Variable" && d.name == use.name &&
-          d.module == use.module && d.name_space == use.name_space) {
-        return {&document, i};
-      }
-    }
-    return {};
+    Document::VariableKey key{use.module, use.name_space, use.name};
+    const auto binding = document.variable_bindings_.find(key);
+    if (binding != document.variable_bindings_.end()) key = binding->second;
+    const auto found = document.variables_.find(key);
+    return found == document.variables_.end()
+               ? SymbolRef{}
+               : SymbolRef{&document, static_cast<size_t>(found->second)};
   }
   if (use.kind == "proc") {
     const auto qualified = SplitQualified(Qualify(use.name_space, use.name));
@@ -1593,24 +1636,34 @@ std::vector<SymbolRef> Workspace::Complete(const Document& document,
                                            size_t byte,
                                            bool* member_context) const {
   *member_context = false;
-  const int owner = document.ModuleAt(byte);
-  std::string binding, ns;
-  if (owner >= 0) {
-    binding = document.declarations()[owner].binding;
-    ns = document.declarations()[owner].name_space;
-  }
+  const auto& context = document.ContextAt(byte);
+  const int owner = context.owner;
   std::vector<SymbolRef> result;
   for (size_t i = 0; i < document.declarations().size(); ++i) {
     const auto& d = document.declarations()[i];
-    if (d.kind == "Variable" && d.module == owner) {
+    if (d.kind == "Variable" && d.module == owner &&
+        d.name_space == (owner < 0 ? context.tcl_namespace : "")) {
       result.push_back({&document, i});
+    }
+  }
+  for (const auto& alias : document.variable_bindings_) {
+    if (std::get<0>(alias.first) != owner) continue;
+    const auto found = document.variables_.find(alias.second);
+    if (found != document.variables_.end()) {
+      result.push_back({&document, static_cast<size_t>(found->second)});
     }
   }
   for (const auto& item : procedures_) {
     if (item.second.size() != 1) continue;
     const auto symbol = item.second.front();
     const auto& d = symbol.declaration();
-    if ((d.binding.empty() || d.binding == binding) && d.name_space == ns) {
+    const bool visible =
+        d.kind == "proc"
+            ? (d.name_space == context.tcl_namespace || d.name_space.empty())
+            : (context.has_binding && !context.binding.empty() &&
+               context.call_namespace_known && d.binding == context.binding &&
+               d.name_space == context.call_namespace);
+    if (visible) {
       result.push_back(symbol);
     }
   }
@@ -1644,6 +1697,11 @@ std::string FormatOutcome::Diagnostic(const std::string& name) const {
 FormatOutcome FormatParsedDocument(const Document& document,
                                    const FormatRequest& request) {
   FormatOutcome result;
+  if (!document.CanFormat()) {
+    result.error_line = 1;
+    result.error_message = "ICL documents cannot be formatted as PDL";
+    return result;
+  }
   result.ok = document.ok();
   if (!result.ok) {
     result.error_line = document.error_line();
