@@ -21,6 +21,134 @@ def limits():
 
 
 class WorkspaceReads(unittest.TestCase):
+    def test_invalid_utf8_disk_text_never_reaches_protocol(self):
+        invalid = (b'\xe9', b'\x80', b'\xc0\xaf', b'\xe0\x80\x80',
+                   b'\xed\xa0\x80', b'\xf0\x80\x80\x80',
+                   b'\xf4\x90\x80\x80', b'\xf5\x80\x80\x80')
+        for language, binary in BINARIES.items():
+            for value in invalid:
+                with self.subTest(language=language, value=value), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    path = root / ('invalid.' + language)
+                    path.write_bytes(b'Module Bad { Parameter P = "caf' + value + b'"; }\n'
+                                     if language == 'icl' else b'proc caf' + value + b' {} {}\n')
+                    messages = [
+                        dict(id=1, method='initialize', params={'rootUri': root.as_uri()}),
+                        dict(id=2, method='workspace/symbol', params={'query': ''}),
+                        dict(id=3, method='textDocument/hover', params={
+                            'textDocument': {'uri': path.as_uri()},
+                            'position': {'line': 0, 'character': 23}}),
+                        dict(id=4, method='shutdown', params={}),
+                        dict(method='exit', params={}),
+                    ]
+                    wire = b''
+                    for message in messages:
+                        body = json.dumps(dict(jsonrpc='2.0', **message)).encode()
+                        wire += b'Content-Length: %d\r\n\r\n' % len(body) + body
+                    run = subprocess.run([binary], input=wire, capture_output=True, timeout=10)
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    replies = {}
+                    output = run.stdout
+                    while output:
+                        header, output = output.split(b'\r\n\r\n', 1)
+                        length = int(header.split(b':', 1)[1])
+                        reply = json.loads(output[:length].decode('utf-8'))
+                        output = output[length:]
+                        if 'id' in reply:
+                            replies[reply['id']] = reply
+                    self.assertEqual(replies[2]['result'], [])
+                    self.assertIsNone(replies[3]['result'])
+                    self.assertIn(b'UTF-8', run.stderr)
+
+    def test_equivalent_uri_delete_removes_disk_alias(self):
+        for language, binary in BINARIES.items():
+            for symlink in (False, True):
+                with self.subTest(language=language, symlink=symlink), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    workspace = root / 'workspace'
+                    workspace.mkdir()
+                    path = workspace / ('caf\u00e9.' + language)
+                    source = 'Module Stale {}\n' if language == 'icl' else 'proc Stale {} {}\n'
+                    if symlink:
+                        target = root / ('external.' + language)
+                        target.write_text(source)
+                        path.symlink_to(target)
+                    else:
+                        path.write_text(source)
+                    client = Client(binary)
+                    try:
+                        client.request('initialize', {'rootUri': workspace.as_uri()})
+                        query = lambda: client.request('workspace/symbol', {'query': 'Stale'})['result']
+                        self.assertEqual(len(query()), 1)
+                        path.unlink()
+                        uri = path.as_uri().replace('%C3%A9', '%c3%a9').replace('caf', '%63af')
+                        client.notify('workspace/didChangeWatchedFiles', {
+                            'changes': [dict(uri=uri, type=3)]})
+                        self.assertEqual(query(), [])
+                    finally:
+                        client.stop()
+
+    def test_encoding_watcher_recovery_preserves_open_overlay(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                path = root / ('encoding.' + language)
+                source = ('Module Good { Parameter P = "caf\u00e9 \u6c49 \U0001f600"; }\n'
+                          if language == 'icl' else 'proc Good {} {set x "caf\u00e9 \u6c49 \U0001f600"}\n')
+                path.write_text(source)
+                client = Client(binary)
+                try:
+                    client.request('initialize', {'rootUri': root.as_uri()})
+                    query = lambda word: client.request('workspace/symbol', {'query': word})['result']
+                    self.assertEqual(len(query('Good')), 1)
+                    path.write_bytes(source.encode() + b'# truncated: \xf0\x90')
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=path.as_uri(), type=2)]})
+                    self.assertEqual(query('Good'), [])
+                    client.notify('textDocument/didOpen', {'textDocument': dict(
+                        uri=path.as_uri(), languageId=language, version=1,
+                        text=source.replace('Good', 'Overlay'))})
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=path.as_uri(), type=2)]})
+                    self.assertEqual(len(query('Overlay')), 1)
+                    client.notify('textDocument/didClose', {'textDocument': {'uri': path.as_uri()}})
+                    self.assertEqual(query('Overlay'), [])
+                    path.write_text(source)
+                    client.notify('workspace/didChangeWatchedFiles', {
+                        'changes': [dict(uri=path.as_uri(), type=2)]})
+                    self.assertEqual(len(query('Good')), 1)
+                finally:
+                    client.stop()
+
+    @unittest.skipUnless(Path('/proc/self/io').exists(), 'requires Linux process I/O counters')
+    def test_close_reads_ordinary_file_once(self):
+        for language, binary in BINARIES.items():
+            for invalid in (False, True):
+                with self.subTest(language=language, invalid=invalid), tempfile.TemporaryDirectory() as tmp:
+                    path = Path(tmp) / ('large.' + language)
+                    source = ('Module Large {\n' + ''.join(f'DataInPort p{i};\n' for i in range(16000)) + '}\n'
+                              if language == 'icl' else ''.join(f'set v{i} {i}\n' for i in range(16000)))
+                    disk = source.encode() + (b'\xe9' if invalid else b'')
+                    path.write_bytes(disk)
+                    client = Client(binary)
+                    try:
+                        client.request('initialize', {'rootUri': Path(tmp).as_uri()})
+                        client.notify('textDocument/didOpen', {'textDocument': dict(
+                            uri=path.as_uri(), languageId=language, version=1, text=source)})
+                        barrier = lambda: client.request('workspace/symbol', {'query': 'ZZmissing'})
+                        barrier()
+                        def read_bytes():
+                            counters = dict(line.split(': ') for line in Path(f'/proc/{client.proc.pid}/io').read_text().splitlines())
+                            return int(counters['rchar'])
+                        before = read_bytes()
+                        client.notify('textDocument/didClose', {'textDocument': {'uri': path.as_uri()}})
+                        barrier()
+                        count = read_bytes() - before
+                        self.assertGreaterEqual(count, len(disk))
+                        self.assertLess(count, len(disk) + 16384, f'duplicate disk reads: {count}')
+                    finally:
+                        client.stop()
+
     def test_watcher_preserves_scan_exclusions(self):
         for language, binary in BINARIES.items():
             for directory in ('build', '.generated'):

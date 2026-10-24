@@ -389,6 +389,18 @@ std::string ArrayName(const std::string& name) {
                                              : name;
 }
 
+std::string RecognizedCommand(const std::string& name) {
+  if (name.rfind("::", 0) != 0) return name;
+  const auto begin = name.find_first_not_of(':');
+  if (begin == std::string::npos) return name;
+  const auto unqualified = name.substr(begin);
+  // Normalize Tcl builtins only; user namespaces and PDL commands stay intact.
+  static const std::set<std::string> kBuiltins = {
+      "proc",   "set",  "while",   "for",  "catch",     "if",     "try",
+      "switch", "expr", "foreach", "lmap", "namespace", "global", "variable"};
+  return kBuiltins.count(unqualified) ? unqualified : name;
+}
+
 bool HasExpandedArguments(const Command& command) {
   return std::any_of(command.words.begin(), command.words.end(),
                      [](const Word& word) { return word.expanded; });
@@ -398,7 +410,7 @@ std::set<size_t> BodyWords(const Command& command,
                            std::set<size_t>* expressions, std::string* error) {
   if (HasExpandedArguments(command)) return {};
   const auto& words = command.words;
-  const std::string& name = words.front().value;
+  const auto name = RecognizedCommand(words.front().value);
   const size_t size = words.size();
   const auto invalid = [&]() {
     *error = "invalid Tcl command structure for " + name;
@@ -750,7 +762,7 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
     }
     if (result == TCL_OK && !command.words.empty() &&
         !HasExpandedArguments(command)) {
-      const auto& name = command.words[0].value;
+      const auto name = RecognizedCommand(command.words[0].value);
       if (name == "while" && command.words.size() > 1) {
         expressions.insert(1);
       }
@@ -971,7 +983,7 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
   for (auto& command : *commands) {
     if (command.words.empty()) continue;
     auto& words = command.words;
-    const auto& name = words[0].value;
+    const auto name = RecognizedCommand(words[0].value);
     const auto spec = Specs().find(name);
     if (context.level == 0) {
       for (const auto& word : words) {
@@ -1437,9 +1449,9 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
                        context.call_namespace_known && context.prefix_known});
     } else if (spec == Specs().end() && words[0].literal) {
       uses_.push_back(
-          {words[0].content, name, "proc", "", context.tcl_namespace,
+          {words[0].content, words[0].value, "proc", "", context.tcl_namespace,
            context.owner, -1, "",
-           context.tcl_namespace_known || name.rfind("::", 0) == 0});
+           context.tcl_namespace_known || words[0].value.rfind("::", 0) == 0});
     }
     static const std::set<std::string> kObjectCommands = {
         "iRead",           "iWrite", "iState",         "iTake",

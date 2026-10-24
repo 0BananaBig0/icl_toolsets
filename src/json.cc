@@ -13,6 +13,8 @@
 #include <limits>
 #include <string>
 
+#include "utf8.h"
+
 namespace icl {
 namespace {
 
@@ -194,21 +196,10 @@ class Parser {
         const auto first = static_cast<unsigned char>(c);
         if (first < 0x20) return false;
         if (first >= 0x80) {
-          if (first < 0xC2 || first > 0xF4) return false;
-          const size_t count = first < 0xE0 ? 2 : first < 0xF0 ? 3 : 4;
-          uint32_t codepoint = first & (0x7F >> count);
           const size_t begin = pos_ - 1;
-          for (size_t i = 1; i < count; ++i) {
-            if (pos_ == text_.size()) return false;
-            const auto next = static_cast<unsigned char>(text_[pos_++]);
-            if ((next & 0xC0) != 0x80) return false;
-            codepoint = (codepoint << 6) | (next & 0x3F);
-          }
-          if ((count == 3 && codepoint < 0x800) ||
-              (count == 4 && codepoint < 0x10000) || codepoint > 0x10FFFF ||
-              (codepoint >= 0xD800 && codepoint <= 0xDFFF)) {
-            return false;
-          }
+          const size_t count = toolsets::Utf8SequenceLength(text_, begin);
+          if (!count) return false;
+          pos_ = begin + count;
           out->append(text_, begin, count);
         } else {
           out->push_back(c);

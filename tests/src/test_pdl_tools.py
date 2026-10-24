@@ -296,6 +296,41 @@ class Formatter(unittest.TestCase):
 
 
 class LanguageServer(unittest.TestCase):
+    def test_global_tcl_builtins_check_nested_syntax(self):
+        cases = ('::if {1 +} {}', '::while {1 +} {}',
+                 '::for {} {1 +} {} {}', '::expr {1 +}', '::expr 1 +',
+                 '::proc p {} {iWrite reg}', '::::proc p {} {::if {1 +} {}}',
+                 '::namespace eval n {::proc p {} {iWrite reg}}',
+                 '::catch {iWrite reg}', '::try {iWrite reg}',
+                 '::foreach x {1} {iWrite reg}', '::lmap x {1} {iWrite reg}',
+                 '::switch x {x {iWrite reg}}', '::set',
+                 'iPDLLevel 0\n::iWrite reg 1', 'iPDLLevel 0\n::proc p {} {}')
+        for version, source in enumerate(cases, 1):
+            with self.subTest(source=source):
+                run = subprocess.run([FORMATTER], input=source + '\n', text=True,
+                                     capture_output=True, timeout=5)
+                self.assertEqual(run.returncode, 2, run.stderr)
+                self.assertTrue(self.open(source + '\n', version)['diagnostics'])
+
+    def test_global_tcl_spelling_and_navigation_are_preserved(self):
+        source = ('::namespace eval n {\n::proc helper {arg} {\n'
+                  '::set local $arg\nreturn $local\n}\n}\n'
+                  '::n::helper 1\n'
+                  '::proc ::custom::if {x y} {}\n::custom::if {1 +} {}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        self.assertEqual(self.query('definition', 6, 7)[0]['range']['start']['line'], 1)
+        self.assertEqual(self.query('definition', 3, 9)[0]['range']['start']['line'], 2)
+        self.assertEqual(self.query('definition', 8, 11)[0]['range']['start']['line'], 7)
+        first = subprocess.run([FORMATTER], input=source, text=True,
+                               capture_output=True, timeout=5)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn('::proc helper', first.stdout)
+        self.assertIn('::custom::if {1 +} {}', first.stdout)
+        second = subprocess.run([FORMATTER], input=first.stdout, text=True,
+                                capture_output=True, timeout=5)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(second.stdout, first.stdout)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

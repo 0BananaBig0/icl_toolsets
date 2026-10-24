@@ -22,6 +22,7 @@
 
 #include "json.h"
 #include "text_input.h"
+#include "utf8.h"
 
 #ifndef ICL_FORMAT_VERSION
 #define ICL_FORMAT_VERSION "0.0.0"
@@ -541,7 +542,7 @@ class LspServer {
   }
 
   void DropDisk(const std::string& uri) {
-    const auto found = disk_keys_.find(uri);
+    const auto found = disk_keys_.find(FileUri(FilePath(uri)));
     if (found == disk_keys_.end()) return;
     const auto key = found->second;
     disk_keys_.erase(found);
@@ -569,17 +570,19 @@ class LspServer {
           break;
         }
       }
-      if (!active_uris_.count(key)) {
-        // Restore the original identity even if an open symlink was retargeted.
-        for (const auto& item : disk_keys_) {
-          if (item.second == key && FileKey(item.first) == key) {
-            ReadDisk(item.first);
-            break;
-          }
+    }
+    const auto refreshed_key = AutoIndex(uri) ? FileKey(uri) : std::string();
+    ReadDisk(uri);
+    if (refreshed_key != key && !active_uris_.count(key) &&
+        !workspace_.documents().count(key)) {
+      // A retargeted alias can require restoring a second, original identity.
+      for (const auto& item : disk_keys_) {
+        if (item.second == key && FileKey(item.first) == key) {
+          ReadDisk(item.first);
+          break;
         }
       }
     }
-    ReadDisk(uri);
     workspace_.Reindex();
   }
 
@@ -593,9 +596,11 @@ class LspServer {
       return;
     }
     const auto key = FileKey(uri);
-    const auto previous = disk_keys_.find(uri);
+    // Decode/re-encode without collapsing symlinks or symlink-sensitive "..".
+    const auto disk_uri = FileUri(path);
+    const auto previous = disk_keys_.find(disk_uri);
     if (previous != disk_keys_.end() && previous->second != key) DropDisk(uri);
-    disk_keys_[uri] = key;
+    disk_keys_[disk_uri] = key;
     if (active_uris_.count(key) ||
         (!refresh && workspace_.documents().count(key))) {
       return;
@@ -604,6 +609,12 @@ class LspServer {
     std::string text;
     if (!file || !ReadTextStream(file, &text)) {
       workspace_.documents().erase(key);
+      return;
+    }
+    if (!IsValidUtf8(text)) {
+      workspace_.documents().erase(key);
+      std::cerr << Language::Name() << ": skipping non-UTF-8 file " << disk_uri
+                << '\n';
       return;
     }
     workspace_.documents()[key] = Language::Parse(std::move(text), uri);
