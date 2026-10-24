@@ -1466,5 +1466,47 @@
     "valid": true,
     "source": "upstream",
     "clause": "7.9.1,7.9.5; Origen-SDK/ijtag examples/e22.pdl"
+  },
+  {
+    "block": "formatting",
+    "path": "ours/pdl/golden/nested_control.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8; Tcl script syntax; handwritten formatting contract"
+  },
+  {
+    "block": "formatting",
+    "path": "ours/pdl/golden/literal_data.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8; Tcl script syntax; handwritten formatting contract"
+  },
+  {
+    "block": "formatting",
+    "path": "ours/pdl/golden/substitutions.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8; Tcl script syntax; handwritten formatting contract"
+  },
+  {
+    "block": "formatting",
+    "path": "ours/pdl/golden/expanded_arguments.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8; Tcl script syntax; handwritten formatting contract"
+  },
+  {
+    "block": "formatting",
+    "path": "ours/pdl/golden/comments.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8; Tcl script syntax; handwritten formatting contract"
+  },
+  {
+    "block": "formatting",
+    "path": "ours/pdl/golden/handlers.pdl",
+    "valid": true,
+    "source": "ours",
+    "clause": "8; Tcl script syntax; handwritten formatting contract"
   }
 ]

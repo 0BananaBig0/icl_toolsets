@@ -64,6 +64,7 @@ checks may need additional tools described by their scripts.
 | `make syntaxcheck` | Independent IEEE whitespace/comment and nested-index transformations; generated inputs remain ignored. |
 | `make check` | Full suite with the default dynamic/static build prerequisites. |
 | `make unitcheck` | AST/layout/JSON unit assertions without generating the parser. |
+| `make goldencheck` | ICL/PDL byte-exact formatting through file/stdin, plus runner safeguards. |
 | `make corpuscheck` | Importer/provenance checks and all maintained ICL duplicate checks. |
 | `make gramcov` | Distinct Bison production and Flex rule hits. |
 | `make coverage` | Strict handwritten line/branch coverage gate. |
@@ -88,6 +89,7 @@ For focused checks:
 ```sh
 python3 tests/src/test_icl_conformance.py --binary build/icl-format --block enum
 python3 tests/golden_test.py --binary build/icl-format
+python3 tests/golden_test.py --language pdl --case 'nested*' --timeout 10
 python3 tests/src/test_icl_lsp.py --binary build/icl-lsp
 python3 tests/src/test_icl_protocol.py --binary build/icl-lsp
 ```
@@ -97,6 +99,11 @@ adding cases. New test scripts belong under `tests/`, mirroring the tested sourc
 path. Cases belong under `tests/cases/`, grouped by provenance and grammar block.
 Maintain positive, negative, nested, boundary and malformed-input coverage.
 Do not weaken an expectation merely because a reference parser accepts it.
+
+See [the Verilator comparison](verilator-testing-practices.md) for the adopted
+golden/scenario practices and architecture decisions. Expected files are reviewed
+test specifications. `--update` is an explicit maintenance operation and is never
+used by regression; inspect its diff before accepting a formatting change.
 
 The duplicate audit compares exact file bytes and namespace-aware module
 identities. Whole-file formatting variants and complete examples can require

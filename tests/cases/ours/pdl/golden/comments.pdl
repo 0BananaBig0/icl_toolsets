@@ -1,0 +1,7 @@
+iPDLLevel 1
+iProcsForModule GoldenComments
+# Commands in comments are data: iWrite reg 0x1
+iProc run {} { # comment at body start
+iNote "literal # and ; and {braces}"; # trailing comment
+iApply
+}

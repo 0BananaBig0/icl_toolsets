@@ -15,6 +15,7 @@ and it is deliberately brittle: a change in formatting behaviour is supposed
 to break these.
 
     python3 tests/golden_test.py --binary build/icl-format
+    python3 tests/golden_test.py --language pdl --case 'nested*'
     python3 tests/golden_test.py --update      # re-record every expectation
 
 --update exists because the expectations are output, not intent: they are
@@ -23,69 +24,106 @@ away — the diff that --update produces is the thing to review.
 """
 
 import argparse
+import difflib
+import fnmatch
+import math
 import os
 import subprocess
 import sys
 
 HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'golden')
+PDL_HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        'cases', 'ours', 'pdl', 'golden')
 
 
-def cases():
+def cases(language='icl'):
     out = []
-    for name in sorted(os.listdir(HERE)):
-        if name.endswith('.icl'):
-            out.append(name[:-len('.icl')])
+    root = HERE if language == 'icl' else PDL_HERE
+    for name in sorted(os.listdir(root)):
+        if name.endswith('.' + language):
+            out.append(name[:-(len(language) + 1)])
     return out
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--binary', default='build/icl-format')
+    parser.add_argument('--language', choices=('icl', 'pdl'), default='icl')
+    parser.add_argument('--binary', help='default: build/<language>-format')
+    parser.add_argument('--case', default='*', help='case-name glob (quote wildcard patterns)')
+    parser.add_argument('--timeout', type=float, default=10,
+                        help='wall-clock seconds per formatter invocation (default: 10)')
     parser.add_argument('--update', action='store_true',
                         help='re-record the expected output for every case')
     args = parser.parse_args()
+    if not math.isfinite(args.timeout) or args.timeout <= 0:
+        parser.error('--timeout must be finite and greater than zero')
+    args.binary = args.binary or 'build/' + args.language + '-format'
 
     if not os.path.exists(args.binary):
         print('error: no binary at %s; run make first' % args.binary,
               file=sys.stderr)
         return 2
 
+    root = HERE if args.language == 'icl' else PDL_HERE
+    try:
+        selected = [name for name in cases(args.language) if fnmatch.fnmatchcase(name, args.case)]
+    except OSError as error:
+        print('error discovering golden cases: ' + str(error), file=sys.stderr)
+        return 2
+    if not selected:
+        print('error: no golden cases match ' + args.case, file=sys.stderr)
+        return 2
+
     passed = 0
     failed = []
-    for name in cases():
-        src = os.path.join(HERE, name + '.icl')
-        exp = os.path.join(HERE, name + '.expected')
-        result = subprocess.run([args.binary, src], capture_output=True)
-        if result.returncode != 0:
-            failed.append('%s: exit %d %s'
-                          % (name, result.returncode,
-                             result.stderr.decode('utf-8', 'replace')[:70]))
+    for name in selected:
+        src = os.path.join(root, name + '.' + args.language)
+        exp = os.path.join(root, name + '.expected')
+        try:
+            with open(src, 'rb') as handle:
+                source = handle.read()
+            outputs = []
+            for mode, command, options in (
+                    ('file', [args.binary, src], {}),
+                    ('stdin', [args.binary], {'input': source})):
+                result = subprocess.run(command, capture_output=True,
+                                        timeout=args.timeout, **options)
+                if result.returncode != 0:
+                    failed.append('%s [%s]: exit %d %s' % (
+                        name, mode, result.returncode,
+                        result.stderr.decode('utf-8', 'replace')[:200]))
+                    break
+                outputs.append(result.stdout)
+            if len(outputs) != 2:
+                continue
+            if outputs[0] != outputs[1]:
+                failed.append(name + ': file/stdin outputs differ')
+                continue
+            actual = outputs[0]
+            if args.update:
+                with open(exp, 'wb') as handle:
+                    handle.write(actual)
+                passed += 1
+                continue
+            with open(exp, 'rb') as handle:
+                expected = handle.read()
+        except subprocess.TimeoutExpired:
+            failed.append('%s [%s]: timed out after %g seconds' % (name, mode, args.timeout))
             continue
-        actual = result.stdout
-        if args.update:
-            with open(exp, 'wb') as f:
-                f.write(actual)
-            passed += 1
+        except OSError as error:
+            failed.append(name + ': ' + str(error))
             continue
-        if not os.path.exists(exp):
-            failed.append('%s: no .expected file; run with --update' % name)
-            continue
-        with open(exp, 'rb') as f:
-            expected = f.read()
         if actual == expected:
             passed += 1
             continue
-        # A readable diff: the first line that differs, with the two versions.
-        a = actual.decode('utf-8', 'replace').split('\n')
-        e = expected.decode('utf-8', 'replace').split('\n')
-        where = next((i for i in range(max(len(a), len(e)))
-                      if i >= len(a) or i >= len(e) or a[i] != e[i]), 0)
-        failed.append('%s: differs at line %d\n       got %r\n  expected %r'
-                      % (name, where + 1,
-                         a[where] if where < len(a) else '<missing>',
-                         e[where] if where < len(e) else '<missing>'))
+        # Byte comparison decides the result; the diff is only explanatory.
+        difference = ''.join(difflib.unified_diff(
+            expected.decode('utf-8', 'backslashreplace').splitlines(keepends=True),
+            actual.decode('utf-8', 'backslashreplace').splitlines(keepends=True),
+            fromfile=exp, tofile=name + '.actual'))
+        failed.append(name + ': output differs\n' + difference)
 
-    print('golden: PASS=%d  FAIL=%d' % (passed, len(failed)))
+    print('%s golden: PASS=%d  FAIL=%d' % (args.language, passed, len(failed)))
     for line in failed:
         print('  [FAIL] ' + line)
     if failed:

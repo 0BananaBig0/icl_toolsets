@@ -250,6 +250,12 @@ pdl-syntaxcheck: pdl-dynamic
 vim-plugin-check:
 	python3 tests/vim-icl-pdl-modern/test_plugin.py
 
+.PHONY: goldencheck
+goldencheck: $(BIN) $(PDL_BIN)
+	python3 tests/tests/test_golden_test.py
+	python3 tests/golden_test.py --binary $(BIN)
+	python3 tests/golden_test.py --language pdl --binary $(PDL_BIN)
+
 vim-plugin-dist:
 	@mkdir -p $(BUILD_DIR)/dist
 	tar -czf $(BUILD_DIR)/dist/vim-icl-pdl-modern.tar.gz vim-icl-pdl-modern
@@ -406,6 +412,9 @@ $(COV_DIR)/unittests: $(COV_UNIT)
 coverage: $(COV_BINARIES)
 	@mkdir -p $(COV_REPORT_DIR)
 	@rm -f $(COV_DIR)/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
+	@python3 tests/tests/test_golden_test.py
+	@python3 tests/golden_test.py --binary $(COV_DIR)/icl-format
+	@python3 tests/golden_test.py --language pdl --binary $(COV_DIR)/pdl-format
 	@python3 tests/src/test_format_cli.py --icl $(COV_DIR)/icl-format --pdl $(COV_DIR)/pdl-format
 	@python3 tests/src/test_lsp_server.py --icl $(COV_DIR)/icl-lsp --pdl $(COV_DIR)/pdl-lsp
 	@python3 tests/regression.py --binary $(COV_DIR)/icl-format
@@ -614,7 +623,7 @@ coccheck: $(LSP_BIN)
 # regression, and a failure there names the file that broke.
 check: all
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck
+check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck goldencheck
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/src/test_format_cli.py --icl $(BIN) --pdl $(PDL_BIN)
@@ -630,7 +639,6 @@ check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck
 	@python3 tests/tests/test_regression.py
 	@python3 tests/tests/test_makefile.py
 	@python3 tests/tests/test_tree_clean_test.py
-	@python3 tests/golden_test.py --binary $(BIN)
 	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)
 	@python3 tests/block_review.py --binary $(BIN)

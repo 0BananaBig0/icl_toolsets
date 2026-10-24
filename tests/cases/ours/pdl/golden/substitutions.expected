@@ -1,0 +1,8 @@
+iPDLLevel 1
+iProcsForModule GoldenSubstitutions
+iProc run {value} {
+  set message "prefix [list  one   two] $value"
+  iWrite data [expr {$value + 1}]
+  iNote $message
+  iApply
+}

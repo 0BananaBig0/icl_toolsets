@@ -12,6 +12,13 @@ Every file under `tests/cases/` sits in a directory naming where it came from. `
   Both enter CLI/LSP procedure checks and the editor corpus, with MIT notice
   retained. The upstream ICL examples already exist here and were not copied.
 
+## Verilator-inspired formatting contracts — 2026-10-24
+
+[ours/pdl/golden](ours/pdl/golden/README.md) contains six handwritten PDL
+source/expected pairs. Only the testing approach is inspired by Verilator;
+the fixtures are original ICL Toolsets tests, not upstream Verilog examples.
+They enter exact-byte CLI tests, PDL block/LSP checks and editor corpus discovery.
+
 ## PDL fixtures — 2026-10-23
 
 The [PDL block manifest](pdl_blocks.json) additionally classifies maintained

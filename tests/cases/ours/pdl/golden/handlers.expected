@@ -1,0 +1,12 @@
+iPDLLevel 1
+namespace eval GoldenHandlers {
+  proc run {} {
+    try {
+      iApply
+    } on error {message options} {
+      puts $message
+    } finally {
+      iNote "cleanup"
+    }
+  }
+}

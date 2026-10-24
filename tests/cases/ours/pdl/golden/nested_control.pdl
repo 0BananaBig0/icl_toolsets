@@ -1,0 +1,3 @@
+iPDLLevel 1
+iProcsForModule GoldenNested
+iProc run {mode} {if {$mode} {iWrite control 0x1;iApply} else {foreach r {first second} {iRead $r;iApply}}}
