@@ -372,8 +372,20 @@ bool IsProcedurePath(const std::string& text) {
 }
 
 std::string Qualify(const std::string& current, const std::string& name) {
-  if (name.compare(0, 2, "::") == 0) return name.substr(2);
-  return current.empty() ? name : current + "::" + name;
+  std::string normalized;
+  normalized.reserve(name.size());
+  for (size_t i = 0; i < name.size();) {
+    if (name[i] == ':' && i + 1 < name.size() && name[i + 1] == ':') {
+      normalized += "::";
+      do {
+        ++i;
+      } while (i < name.size() && name[i] == ':');
+    } else {
+      normalized += name[i++];
+    }
+  }
+  if (normalized.compare(0, 2, "::") == 0) return normalized.substr(2);
+  return current.empty() ? normalized : current + "::" + normalized;
 }
 
 std::pair<std::string, std::string> SplitQualified(const std::string& name) {
@@ -1664,7 +1676,7 @@ SymbolRef Workspace::Resolve(const Document& document,
     auto found =
         procedures_.find(ProcedureKey("", qualified.first, qualified.second));
     if (found == procedures_.end() && use.name.rfind("::", 0) != 0) {
-      const auto global = SplitQualified(use.name);
+      const auto global = SplitQualified(Qualify("", use.name));
       found = procedures_.find(ProcedureKey("", global.first, global.second));
     }
     return found != procedures_.end() && found->second.size() == 1

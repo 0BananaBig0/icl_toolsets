@@ -22,6 +22,36 @@ def limits():
 
 
 class WorkspaceReads(unittest.TestCase):
+    def test_large_full_sync_text_retains_ownership_and_version(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language):
+                client = Client(binary)
+                try:
+                    client.request('initialize', {})
+                    uri = 'file:///large-sync.' + language
+                    prefix = ('//' if language == 'icl' else '#') + 'x' * (4 * 1024 * 1024) + '\n'
+                    source = prefix + ('Module First {}\n' if language == 'icl' else 'proc First {} {}\n')
+                    client.notify('textDocument/didOpen', {'textDocument': dict(
+                        uri=uri, languageId=language, version=1, text=source)})
+                    query = lambda name: client.request('workspace/symbol', {'query': name})['result']
+                    self.assertEqual(len(query('First')), 1)
+                    replacement = source.replace('First', 'Second')
+                    for version, text in ((2, replacement), (1, source)):
+                        client.notify('textDocument/didChange', {
+                            'textDocument': dict(uri=uri, version=version),
+                            'contentChanges': [{'text': text}]})
+                        self.assertEqual(len(query('Second')), 1)
+                        self.assertEqual(query('First'), [])
+                    edits = client.request('textDocument/formatting', {
+                        'textDocument': {'uri': uri},
+                        'options': dict(tabSize=2, insertSpaces=True)})['result']
+                    if edits:
+                        self.assertTrue(edits[0]['newText'].startswith(prefix))
+                        self.assertIn('Second', edits[0]['newText'])
+                        self.assertNotIn('First', edits[0]['newText'])
+                finally:
+                    client.stop()
+
     def test_reference_positions_scale_on_long_unicode_lines(self):
         for language, binary in BINARIES.items():
             with self.subTest(language=language):

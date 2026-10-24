@@ -296,6 +296,26 @@ class Formatter(unittest.TestCase):
 
 
 class LanguageServer(unittest.TestCase):
+    def test_equivalent_tcl_namespace_spellings_resolve(self):
+        source = ('namespace eval n {\nvariable value 1\nproc target {} {}\n'
+                  'proc a:b {} {}\n}\n'
+                  '::n::::target\n:::n::target\n'
+                  'puts $::n::::value\n::n::::a:b\n'
+                  'namespace eval ::::n {target; puts $value}\n')
+        self.assertEqual(self.open(source)['diagnostics'], [])
+        for line, word, target in ((5, 'target', 2), (6, 'target', 2),
+                                   (7, 'value', 1), (8, 'a:b', 3),
+                                   (9, 'target', 2), (9, 'value', 1)):
+            with self.subTest(line=line, word=word):
+                column = source.splitlines()[line].index(word)
+                result = self.query('definition', line, column)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]['range']['start']['line'], target)
+        references = self.query('references', 2, 6, context={'includeDeclaration': True})
+        self.assertEqual(sorted(r['range']['start']['line'] for r in references), [2, 5, 6, 9])
+        # This normalization is Tcl-specific; PDL namespace grammar stays strict.
+        self.assertTrue(self.open('iPDLLevel 0\niProcsForModule n::::M\n', 2)['diagnostics'])
+
     def test_literal_control_expressions_are_checked_in_cli_and_lsp(self):
         version = 0
         for expression in ('{1 +}', '"1 +"', '1+', '"1 +\\\n  "'):

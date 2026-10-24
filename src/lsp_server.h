@@ -419,15 +419,14 @@ class LspServer {
     });
   }
 
-  void Open(const std::string& uri, const std::string& text,
-            std::int64_t version) {
+  void Open(const std::string& uri, std::string text, std::int64_t version) {
     const auto old = open_documents_.find(uri);
     if (old != open_documents_.end() && version >= 0 &&
         old->second.version >= version) {
       return;
     }
     const auto key = DocumentKey(uri);
-    auto document = Language::Parse(text, uri);
+    auto document = Language::Parse(std::move(text), uri);
     open_documents_[uri] = {key, version, document};
     active_uris_[key] = uri;
     workspace_.documents()[key] = document;

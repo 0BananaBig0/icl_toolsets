@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <cerrno>
+#include <charconv>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -84,8 +85,13 @@ class FormatCli {
           *error = "missing value for " + arg;
           return false;
         }
-        options->indent_width = std::atoi(argv[++i]);
-        if (options->indent_width <= 0) {
+        const std::string value = argv[++i];
+        const char* begin = value.data();
+        const char* end = begin + value.size();
+        if (begin != end && *begin == '+') ++begin;
+        const auto parsed = std::from_chars(begin, end, options->indent_width);
+        if (parsed.ec != std::errc() || parsed.ptr != end ||
+            options->indent_width <= 0) {
           *error = "--indent must be a positive integer";
           return false;
         }

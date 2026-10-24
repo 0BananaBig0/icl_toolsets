@@ -26,6 +26,29 @@ def restrict_writes():
 
 
 class FileIO(unittest.TestCase):
+    def test_indent_requires_a_complete_positive_integer(self):
+        for language, binary in BINARIES.items():
+            with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / ('input.' + language)
+                path.write_text(SOURCES[language])
+                for value in ('4junk', '4.5', '4294967297', '2147483648',
+                              '999999999999999999999999', '', '+', '0', '-1', ' 4', '4 '):
+                    with self.subTest(value=value):
+                        path.write_text(SOURCES[language])
+                        run = subprocess.run([binary, '--indent', value, '-w', str(path)],
+                                             capture_output=True, timeout=5)
+                        self.assertEqual(run.returncode, 2, run.stderr)
+                        self.assertIn(b'--indent', run.stderr)
+                        self.assertEqual(path.read_text(), SOURCES[language])
+                for value, canonical in (('+4', '4'), ('04', '4'), ('2147483647', '16')):
+                    with self.subTest(value=value):
+                        run = subprocess.run([binary, '--indent', value, str(path)],
+                                             capture_output=True, timeout=5)
+                        expected = subprocess.run([binary, '--indent', canonical, str(path)],
+                                                  capture_output=True, check=True, timeout=5)
+                        self.assertEqual(run.returncode, 0, run.stderr)
+                        self.assertEqual(run.stdout, expected.stdout)
+
     def test_failed_in_place_write_preserves_source(self):
         for language, binary in BINARIES.items():
             with self.subTest(language=language), tempfile.TemporaryDirectory() as tmp:
