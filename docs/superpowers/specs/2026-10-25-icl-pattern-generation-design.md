@@ -151,6 +151,15 @@ connections taking precedence and ambiguity diagnosed. One generic
 each implemented IEEE primitive/vendor model, document/version, constraints and
 tests. An unsupported model affecting a target must fail explicitly.
 
+IEEE 1687 is the first authority. If it leaves behavior implicit, consult the
+applicable Tessent IJTAG manual, ATPG manual, user guide and command/reference
+guide, recording release and topic and identifying vendor-specific behavior.
+If these sources still do not resolve a material ambiguity, ask the user before
+implementing that behavior and continue independent work. Inspect
+Honza255/icl_parser for actual retargeting/pattern-generation capabilities and
+use relevant algorithms and tests as implementation references, not normative
+rules.
+
 Flatten by visiting instantiated objects and remapping endpoints, not repeatedly
 copying every module's already flattened descendants. Maintain a collision-free,
 deterministic mapping between original hierarchical paths and legal flat ICL

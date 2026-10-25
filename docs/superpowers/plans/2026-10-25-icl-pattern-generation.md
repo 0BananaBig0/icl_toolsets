@@ -18,6 +18,11 @@ GNU Make, Python unittest regression.
 - All original requirements remain acceptance targets; intermediate milestones
   are not permission to drop model coverage, optimization or round-trip checks.
 - Reuse existing parsers and AST/CST, keeping languages and runtime execution separate.
+- Resolve behavior from IEEE 1687 first; when it is not explicit, consult the
+  release-specific Tessent IJTAG, ATPG, user and command/reference manuals.
+  Record source/version and distinguish vendor behavior. Ask the user if these
+  sources leave a material ambiguity. Inspect Honza255/icl_parser retargeting
+  capabilities and tests for applicable implementation ideas, not authority.
 - Google C++ style; generated outputs remain ignored; test scripts under `tests/`.
 - No implicit hardware reset; unknown initial logic state; source-located errors.
 - Preserve existing formatters/LSPs/Vim plugin; complete regression after changes.

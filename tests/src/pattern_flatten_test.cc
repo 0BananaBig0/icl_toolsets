@@ -331,6 +331,40 @@ Module Top {
               interface.chains[0].attributes.count("first"),
           "parallel chains preserve controls, values and attributes");
 }
+void TestOneHotScanGroups() {
+  // Completed/cascaded IEEE 1687-2014 6.4.14 example with vector directions.
+  pattern::Design design;
+  design.AddIcl("one_hot_scan.icl", R"(
+Module Leaf {
+  ScanInPort si[1:0];
+  DataInPort select;
+  ScanOutPort so[1:0] { Source si; Enable select; }
+}
+Module Top {
+  ScanInPort si[1:0];
+  DataInPort selects[1:0];
+  Instance a Of Leaf { InputPort si = si; InputPort select = selects[0]; }
+  Instance b Of Leaf { InputPort si = si; InputPort select = selects[1]; }
+  OneHotScanGroup group[1:0] { Port a.so; Port ~b.so; }
+  Alias reversed[0:1] = group[0:1];
+  OneHotScanGroup nested[0:1] { Port reversed; }
+  ScanOutPort so[0:1] { Source nested; }
+}
+)");
+  const auto original = pattern::Elaborate(design, "Top");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat.icl", text);
+  const auto flat = pattern::Elaborate(flat_design, "Top");
+  Require(pattern::SerializeIcl(flat) == text,
+          "cascaded one-hot scan groups replay with inverted vector sources");
+  const auto& sources = flat.NodeAt("group").one_hot_sources;
+  Require(sources.size() == 2 && sources[0].size() == 2 &&
+              flat.nodes[sources[0][0].node].name == "a.so" &&
+              sources[0][0].index == 1 && sources[0][1].index == 0 &&
+              sources[1][0].inverted && sources[1][1].inverted,
+          "all contributors, bit order and inversions survive flattening");
+}
 }  // namespace
 
 int main() {
@@ -342,6 +376,7 @@ int main() {
     TestNamespaceBinding();
     TestIndependentResetDomains();
     TestScanInterfaces();
+    TestOneHotScanGroups();
     std::cout << "PASS: canonical flat ICL and original PDL binding\n";
   } catch (const std::exception& error) {
     std::cerr << "FAIL: " << error.what() << '\n';

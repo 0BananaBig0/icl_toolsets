@@ -102,6 +102,7 @@ struct NetlistNode {
   std::map<std::string, Constant> constants;
   std::optional<BitReference> reset;
   std::vector<MuxChoice> choices;
+  std::vector<std::vector<BitReference>> one_hot_sources;
   std::vector<LogicInstruction> logic;
   Attributes attributes;
   std::optional<ScanInterface> scan_interface;

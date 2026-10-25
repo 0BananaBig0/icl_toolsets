@@ -503,6 +503,21 @@ class Elaborator {
     node->scan_interface = std::move(interface);
   }
 
+  void ConnectOneHotScan(NetlistNode* node) {
+    const auto& block = dynamic_cast<const icl::AstBlock&>(*node->ast);
+    const auto& module = netlist_.scopes[node->scope].definition;
+    for (const auto* item : block.body()) {
+      if (!dynamic_cast<const icl::AstStatement*>(item)) continue;
+      auto expression = Tokens(module, *item, node->scope);
+      ++expression.begin;
+      --expression.end;
+      auto source = netlist_.Resolve(expression, node->Width(), false,
+                                     one_hot_bits_remaining_);
+      one_hot_bits_remaining_ -= source.size();
+      node->one_hot_sources.push_back(std::move(source));
+    }
+  }
+
   void ValidateInterfaces() {
     std::map<std::pair<size_t, std::string>, std::vector<size_t>> ports;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
@@ -665,6 +680,10 @@ class Elaborator {
       try {
         if (node.model == ModelKind::kInterface) {
           ConnectInterface(&node);
+          continue;
+        }
+        if (node.kind == "OneHotScanGroup") {
+          ConnectOneHotScan(&node);
           continue;
         }
         node.active_low = ActiveLow(node);
@@ -890,6 +909,13 @@ class Elaborator {
           std::upper_bound(offsets.begin(), offsets.end(), bit) -
           offsets.begin() - 1);
     };
+    const auto bit_id = [&](const BitReference& ref) {
+      const auto& source = netlist_.nodes.at(ref.node);
+      const size_t index = static_cast<size_t>(source.left >= source.right
+                                                   ? source.left - ref.index
+                                                   : ref.index - source.left);
+      return offsets[ref.node] + index;
+    };
     const auto dependencies = [&](size_t bit) {
       std::vector<size_t> result;
       const size_t id = owner(bit);
@@ -898,11 +924,7 @@ class Elaborator {
       const size_t position = bit - offsets[id];
       const auto append = [&](const BitReference& ref) {
         if (ref.node == std::numeric_limits<size_t>::max()) return;
-        const auto& source = netlist_.nodes[ref.node];
-        const size_t index = static_cast<size_t>(source.left >= source.right
-                                                     ? source.left - ref.index
-                                                     : ref.index - source.left);
-        result.push_back(offsets[ref.node] + index);
+        result.push_back(bit_id(ref));
       };
       for (const auto& input : node.inputs) {
         if (input.first != "SelectedBy" &&
@@ -915,6 +937,8 @@ class Elaborator {
       for (const auto& choice : node.choices) {
         append(choice.source.at(position));
       }
+      for (const auto& source : node.one_hot_sources)
+        append(source.at(position));
       std::sort(result.begin(), result.end());
       result.erase(std::unique(result.begin(), result.end()), result.end());
       return result;
@@ -924,6 +948,35 @@ class Elaborator {
       std::vector<size_t> dependencies;
     };
     std::vector<unsigned char> state(offsets.back());
+    const bool has_scan_groups = std::any_of(
+        netlist_.nodes.begin(), netlist_.nodes.end(),
+        [](const NetlistNode& node) { return !node.one_hot_sources.empty(); });
+    std::vector<unsigned char> enabled_scan(has_scan_groups ? offsets.back()
+                                                            : 0);
+    const auto enabled = [&](const BitReference& ref) {
+      return ref.node != std::numeric_limits<size_t>::max() &&
+             enabled_scan[bit_id(ref)] != 0;
+    };
+    const auto propagate_enable = [&](size_t bit) {
+      const size_t id = owner(bit);
+      const auto& node = netlist_.nodes[id];
+      const auto position = bit - offsets[id];
+      if (node.kind == "OneHotScanGroup" ||
+          (node.kind == "ScanOutPort" && node.inputs.count("Enable"))) {
+        enabled_scan[bit] = 1;
+      } else if (node.model == ModelKind::kAlias ||
+                 node.kind == "ScanOutPort" || node.kind == "ScanInPort") {
+        const auto source = node.inputs.find("Source");
+        enabled_scan[bit] =
+            source != node.inputs.end() && enabled(source->second.at(position));
+      } else if (node.kind == "ScanMux") {
+        enabled_scan[bit] =
+            std::any_of(node.choices.begin(), node.choices.end(),
+                        [&](const MuxChoice& choice) {
+                          return enabled(choice.source.at(position));
+                        });
+      }
+    };
     std::vector<Visit> stack;
     for (size_t root = 0; root < state.size(); ++root) {
       if (state[root]) continue;
@@ -932,6 +985,7 @@ class Elaborator {
       while (!stack.empty()) {
         auto& frame = stack.back();
         if (frame.next == frame.dependencies.size()) {
+          if (has_scan_groups) propagate_enable(frame.bit);
           state[frame.bit] = 2;
           stack.pop_back();
           continue;
@@ -948,11 +1002,22 @@ class Elaborator {
         }
       }
     }
+    for (const auto& node : netlist_.nodes) {
+      for (const auto& source : node.one_hot_sources) {
+        if (!std::all_of(source.begin(), source.end(), enabled)) {
+          throw std::runtime_error(
+              node.origin + ": " + node.name +
+              ": scan group source needs an enabled "
+              "ScanOutPort or OneHotScanGroup in its data fan-in");
+        }
+      }
+    }
   }
 
   Design& design_;
   Netlist netlist_;
   size_t logic_bits_remaining_ = 4 * 1024 * 1024;
+  size_t one_hot_bits_remaining_ = 4 * 1024 * 1024;
   std::map<std::string, Template> templates_;
   std::map<std::pair<size_t, std::string>, std::vector<size_t>> kinds_;
   std::map<std::pair<size_t, std::string>, std::vector<size_t>>

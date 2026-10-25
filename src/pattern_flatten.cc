@@ -226,7 +226,8 @@ std::string RenderAttributes(const Attributes& attributes) {
 }
 
 std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
-  if (node.model == ModelKind::kGroup || node.model == ModelKind::kAccessLink) {
+  if ((node.model == ModelKind::kGroup && node.kind != "OneHotScanGroup") ||
+      node.model == ModelKind::kAccessLink) {
     throw std::runtime_error(node.origin +
                              ": flat serialization is not implemented for " +
                              node.kind);
@@ -254,7 +255,11 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                                      : Signals(netlist, source->second)) +
         ";\n";
   }
-  if (node.scan_interface) {
+  if (node.kind == "OneHotScanGroup") {
+    for (const auto& source : node.one_hot_sources) {
+      result += "Port " + Signals(netlist, source) + ";\n";
+    }
+  } else if (node.scan_interface) {
     const auto append_ports = [&](const std::vector<BitReference>& ports,
                                   const std::optional<Constant>& load) {
       for (const auto& port : ports) {

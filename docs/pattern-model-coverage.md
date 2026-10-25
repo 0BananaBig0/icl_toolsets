@@ -9,6 +9,12 @@ The new elaboration layer consumes `icl::ParsedDocument`, its existing AST,
 declaration index, and lexer tokens. It does not define a second ICL grammar.
 PDL execution consumes `pdl::Document`; the editor tools never execute Tcl.
 
+The existing formatter/LSP frontend already supports ScanInterface and Chain
+syntax, and LSP regression tests cover ScanInterface definition lookup. The
+generator additionally constructs elaborated interface models, resolves implicit
+controls, and serializes/reimports those models for pattern generation. These
+capabilities reuse the existing shared AST and declaration index.
+
 ## Normative and vendor evidence
 
 - IEEE 1687-2014 §6.3.8: numeric bases, width, X padding, significant-bit truncation.
@@ -46,6 +52,7 @@ PDL execution consumes `pdl::Document`; the editor tools never execute Tcl.
 | Bit order, partial input bindings, inversion, aliases | `TestBitConnections`, `TestConnectionErrors`, `TestUnsizedSources` | Full semantic source-kind checks |
 | Reset polarity, unique-parent/default/ambiguous reset | `TestResetInference` | Child-output precedence, TRST/TMS, nested local-reset simulation |
 | Enum reset values and ScanMux connectivity | `TestMuxAndEnum` | All mux kinds, overlapping selector checks, state transitions |
+| OneHotScanGroup | `TestOneHotScanGroups`, `TestOneHotScanErrors`, `TestOneHotScanMuxFanIn`, `TestOneHotScanLimits`: contributors, inversion/ranges, structural enable fan-in, per-bit cycles and flat replay | Runtime enable solving and at-most-one-active-source constraints |
 | LogicSignal | `tests/src/pattern_logic_test.cc`: shared AST, exhaustive small truth tables, enum/parameter widths, X masks, invalid operands, recursion and allocation limits | Full corpus and retargeting integration |
 | Selectable DataRegister and output enables | `TestDataRegisterControls`: WriteEnSource, double inversion, Enable and width errors | State transitions and access justification |
 | Register semantic constraints | `TestRegisterRules`: required scan source/rightmost tap, reset/default conflicts, enum widths | Remaining signal-kind rules and state semantics |
@@ -53,7 +60,7 @@ PDL execution consumes `pdl::Document`; the editor tools never execute Tcl.
 | ScanInterface | `TestScanInterfaces` and `TestInterfaceKinds`: four interface types, chains, default loads, implicit controls and invalid membership | Blackbox reset path-length proof, unique-selectability proof and scheduler integration |
 | DataRegister access models and AccessLink | Existing parser only | Address/callback/scan/TAP models and scheduling |
 | Tessent edge-triggered reset | Manual reviewed | Edge history and builtin model implementation |
-| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains and original PDL bindings | Groups/AccessLink, clock properties and end-to-end scheduling replay |
+| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains and original PDL bindings | OneHotDataGroup/PortGroup/AccessLink, clock properties and end-to-end scheduling replay |
 | Shortest configuration sequence and iMerge | Not implemented | State search, cost oracle and semantic barriers |
 | Local-reset source-preserving output | Not implemented | Transitive releases, safe batching, exact iProc preservation |
 | CLI/build/install/output safety | Not implemented | All requested options, staged output, dynamic/static installation |
@@ -187,3 +194,31 @@ reset-domain and interface changes. It includes dynamic/static checks,
 5,000-instance flat replay, 334/334 grammar productions, 119/119 scanner rules,
 and full Vim/Neovim corpus checks (38,488 ICL and 728 PDL files each).
 This does not complete the missing generator/scheduler/model requirements above.
+
+## OneHotScanGroup elaboration
+
+IEEE 1687-2014 §6.4.14 (printed pp. 127–128) defines the group as a distributed
+scan multiplexer. Elaboration now records every Port contributor from the shared
+AST, preserves concatenation/range direction and inversion, enforces equal
+widths, and includes all contributor edges in the existing iterative bit-level
+cycle check. Structural enabled-source information is propagated along data
+paths through ports, aliases and scan muxes in dependency order. An enabled
+ScanOutPort or another OneHotScanGroup must exist in each source signal's data
+fan-in. Runtime choice of a usable path and the one-active-source condition
+remain scheduler obligations; structural acceptance is not a configuration proof.
+
+The enable information uses one byte per expanded graph bit and is allocated
+only when scan groups exist. Group contributor storage is bounded at 4,194,304
+bit references per elaborated design. The tests exercise a 3,000-group chain
+without recursive graph traversal and reject compact inputs that exceed the
+reference limit. Exhausting this budget is a resource error, not evidence that
+hardware is unreachable.
+
+The OneHotScanGroup checkpoint passed the complete `make check` regression
+with the established reference environment after the final source/test edits,
+including static/dynamic checks, 334/334 grammar productions, 119/119 scanner
+rules and the full Vim/Neovim corpora. ASan/UBSan also passed with leak detection
+disabled. The latest strict coverage measurement is 6,588/6,897 handwritten lines
+(95.5%) and 10,862/18,096 raw branches (60.0%); the gate remains unmet. That
+measurement preceded the final fixture-only corrections to hierarchical port
+references; those corrected fixtures passed focused, sanitizer and full checks.

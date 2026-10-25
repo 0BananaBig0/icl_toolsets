@@ -56,6 +56,12 @@ execution-free contract of the formatters or language servers.
   standard. Keep vendor extensions explicitly identified. Preserve the supplied
   tool-produced, user-modified merged ICL as a regression baseline. Use online
   sources or mirrors when necessary and record source/version information.
+  When IEEE 1687 does not explicitly resolve a behavior, consult the Tessent
+  IJTAG manual and applicable ATPG manual, user guide and command/reference
+  guide before choosing an implementation. Record the release and topic and
+  distinguish vendor behavior from normative IEEE behavior. If these references
+  still leave a material ambiguity, ask the user while continuing independent
+  work; do not invent a default.
 - **L4 — Independent comparison:** compare
   [Honza255/icl_parser](https://github.com/Honza255/icl_parser) in three ways:
   tests it has that we lack, keywords it defines that we lack, and grammar or
@@ -63,6 +69,9 @@ execution-free contract of the formatters or language servers.
   against IEEE 1687, implement justified missing support and record dispositions
   in the [comparison](honza-icl-comparison.md). A keyword count alone is not a
   grammar audit.
+  For pattern generation, also inspect its retargeting implementation and tests
+  for applicable ideas, verifying its actual capabilities before relying on it.
+  Third-party implementation behavior is not normative authority.
 
 ## Shared architecture and code quality
 

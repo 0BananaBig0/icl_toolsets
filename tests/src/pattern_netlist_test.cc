@@ -395,6 +395,79 @@ void TestInterfaceKinds() {
         test.second);
   }
 }
+void TestOneHotScanErrors() {
+  const std::vector<std::pair<std::string, std::string>> cases = {
+      {"OneHotScanGroup group[1:0] { Port si; }", "width"},
+      {"OneHotScanGroup group { Port group; }", "cycle"},
+      {"Alias a = group; OneHotScanGroup group { Port a; }", "cycle"},
+      {"OneHotScanGroup group { Port bare.so; }", "enabled ScanOutPort"},
+      {"OneHotScanGroup group { Port wrong.so; }", "enabled ScanOutPort"}};
+  for (const auto& test : cases) {
+    pattern::Design design;
+    design.AddIcl(
+        "one_hot_invalid.icl",
+        "Module Bare { ScanInPort si; ScanOutPort so { Source si; } } "
+        "Module Wrong { DataOutPort so { Source 1'b0; Enable 1'b1; } } "
+        "Module M { ScanInPort si; Instance bare Of Bare { InputPort si = si; "
+        "} "
+        "Instance wrong Of Wrong; " +
+            test.first + " }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, test.second);
+  }
+}
+
+void TestOneHotScanMuxFanIn() {
+  pattern::Design design;
+  design.AddIcl("group_mux.icl", R"(
+Module Leaf {
+  ScanInPort si;
+  DataInPort enable;
+  ScanOutPort so { Source si; Enable enable; }
+}
+Module M {
+  ScanInPort si;
+  DataInPort enable;
+  DataInPort select;
+  Instance child Of Leaf { InputPort si = si; InputPort enable = enable; }
+  ScanMux route SelectedBy select { 1'b0: si; 1'b1: child.so; }
+  OneHotScanGroup group { Port route; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "M");
+  Require(netlist.NodeAt("group").one_hot_sources.size() == 1,
+          "scan group preserves a mux with an enabled source in its fan-in");
+}
+
+void TestOneHotScanLimits() {
+  const std::string leaf =
+      "Module Leaf { Parameter W = 1; ScanInPort si[$W-1:0]; DataInPort en; "
+      "ScanOutPort so[$W-1:0] { Source si; Enable en; } } ";
+  std::string source =
+      leaf +
+      "Module M { ScanInPort si; DataInPort en; "
+      "Instance child Of Leaf { InputPort si = si; InputPort en = en; } ";
+  for (size_t i = 0; i < 3000; ++i) {
+    source += "OneHotScanGroup g" + std::to_string(i) + " { Port " +
+              (i ? "g" + std::to_string(i - 1) : "child.so") + "; } ";
+  }
+  source += "}";
+  pattern::Design deep;
+  deep.AddIcl("deep_group.icl", source);
+  const auto netlist = pattern::Elaborate(deep, "M");
+  Require(netlist.NodeAt("g2999").one_hot_sources.size() == 1,
+          "large group DAG traverses without recursive stack growth");
+
+  pattern::Design wide;
+  source = leaf +
+           "Module M { ScanInPort si[65535:0]; DataInPort en; "
+           "Instance child Of Leaf { Parameter W = 65536; InputPort si = si; "
+           "InputPort en = en; } "
+           "OneHotScanGroup group[65535:0] { ";
+  for (size_t i = 0; i < 65; ++i) source += "Port child.so; ";
+  source += "} }";
+  wide.AddIcl("wide_group.icl", source);
+  Fails([&] { pattern::Elaborate(wide, "M"); }, "bit limit");
+}
 }  // namespace
 
 int main() {
@@ -404,7 +477,8 @@ int main() {
         TestMuxAndEnum, TestConnectionErrors, TestUnsizedSources,
         TestImplicitScanBit, TestEnumAndPhysicalScanNames, TestPerBitGraph,
         TestOverrideTypes, TestKeywordEnumSymbols, TestDataRegisterControls,
-        TestRegisterRules, TestInterfaceKinds}) {
+        TestRegisterRules, TestInterfaceKinds, TestOneHotScanErrors,
+        TestOneHotScanMuxFanIn, TestOneHotScanLimits}) {
     try {
       test();
     } catch (const std::exception& error) {
