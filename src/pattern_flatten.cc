@@ -231,7 +231,8 @@ std::string RenderAttributes(const Attributes& attributes) {
 }
 
 std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
-  if ((node.model == ModelKind::kGroup && node.kind != "OneHotScanGroup") ||
+  if ((node.model == ModelKind::kGroup && node.kind != "OneHotScanGroup" &&
+       node.kind != "OneHotDataGroup") ||
       node.model == ModelKind::kAccessLink) {
     throw std::runtime_error(node.origin +
                              ": flat serialization is not implemented for " +
@@ -260,7 +261,12 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                                      : Signals(netlist, source->second)) +
         ";\n";
   }
-  if (node.kind == "OneHotScanGroup") {
+  if (node.kind == "OneHotScanGroup" || node.kind == "OneHotDataGroup") {
+    if (node.has_addressed_contributors) {
+      throw std::runtime_error(
+          node.origin +
+          ": addressed one-hot group serialization is not implemented");
+    }
     for (const auto& source : node.one_hot_sources) {
       result += "Port " + Signals(netlist, source) + ";\n";
     }

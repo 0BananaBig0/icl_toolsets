@@ -54,6 +54,7 @@ capabilities reuse the existing shared AST and declaration index.
 | Reset polarity, unique-parent/default/ambiguous reset | `TestResetInference` | Child-output precedence, TRST/TMS, nested local-reset simulation |
 | Enum reset values and ScanMux connectivity | `TestMuxAndEnum` | All mux kinds, overlapping selector checks, state transitions |
 | OneHotScanGroup | `TestOneHotScanGroups`, `TestOneHotScanErrors`, `TestOneHotScanMuxFanIn`, `TestOneHotScanLimits`: contributors, inversion/ranges, structural enable fan-in, per-bit cycles and flat replay | Runtime enable solving and at-most-one-active-source constraints |
+| OneHotDataGroup Port contributions | `TestOneHotDataPorts`, `TestOneHotDataErrors`, `TestOneHotDataBitDependencies`, `TestOneHotAddressedPort`, `TestOneHotDataLimits`, `TestOneHotDataGroups`: source widths/directions, unknown leading bits, structural enables, cycles and canonical replay | Addressed Instance/DataRegister contributions, implicit address/data associations and runtime enable solving |
 | LogicSignal | `tests/src/pattern_logic_test.cc`: shared AST, exhaustive small truth tables, enum/parameter widths, X masks, invalid operands, recursion and allocation limits | Full corpus and retargeting integration |
 | Selectable DataRegister and output enables | `TestDataRegisterControls`: WriteEnSource, double inversion, Enable and width errors | State transitions and access justification |
 | Register semantic constraints | `TestRegisterRules`: required scan source/rightmost tap, reset/default conflicts, enum widths | Remaining signal-kind rules and state semantics |
@@ -61,7 +62,7 @@ capabilities reuse the existing shared AST and declaration index.
 | ScanInterface | `TestScanInterfaces` and `TestInterfaceKinds`: four interface types, chains, default loads, implicit controls and invalid membership | Blackbox reset path-length proof, unique-selectability proof and scheduler integration |
 | DataRegister access models and AccessLink | Existing parser only | Address/callback/scan/TAP models and scheduling |
 | Tessent edge-triggered reset | Manual reviewed | Edge history and builtin model implementation |
-| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains and original PDL bindings | OneHotDataGroup/PortGroup/AccessLink, clock properties and end-to-end scheduling replay |
+| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains, port-based one-hot groups and original PDL bindings | Addressed OneHotDataGroup members, PortGroup/AccessLink, clock properties and end-to-end scheduling replay |
 | Shortest configuration sequence and iMerge | Not implemented | State search, cost oracle and semantic barriers |
 | Local-reset source-preserving output | Not implemented | Transitive releases, safe batching, exact iProc preservation |
 | CLI/build/install/output safety | Not implemented | All requested options, staged output, dynamic/static installation |
@@ -254,3 +255,64 @@ disabled. The latest strict coverage measurement is 6,588/6,897 handwritten line
 (95.5%) and 10,862/18,096 raw branches (60.0%); the gate remains unmet. That
 measurement preceded the final fixture-only corrections to hierarchical port
 references; those corrected fixtures passed focused, sanitizer and full checks.
+
+## OneHotDataGroup Port elaboration
+
+IEEE 1687-2014 §6.4.15 (printed pp. 128–130) permits narrower Port contributors
+and specifies explicit, forwarded and instance-address-based enabling. Port
+contributors now reuse the one-hot scan netlist infrastructure with separate
+scan/data enable flags. Original contributor widths, inversion and declaration
+bit order are retained. `NetlistNode::OneHotSourceBit` maps an output offset to
+its contributor bit or an unknown leading bit, following the measured Tessent
+2026.2 Port behavior documented in [the oracle report](tessent-oracle.md).
+
+Cycle checking uses the aligned bit dependencies, including enable dependencies,
+so a leading unknown position cannot create a false feedback cycle. Structural
+enable validation recognizes forwarded DataOutPorts, other data groups and
+ports in an instance with AddressValue; it does not prove an enable can be driven
+or that exactly one source will be active. Runtime selection remains scheduler
+work. Flat serialization/reimport preserves Port-based groups and mixed source
+widths. Both short and block forms of nested Instance/DataRegister contributors
+produce an explicit unsupported-addressed-serialization error, rather than
+silently disappearing. Their defaults, address evaluation and scheduling remain
+unfinished.
+
+Independent review identified a work-bound problem: a wide group with narrow
+contributors could visit every contributor at every leading X position even
+though stored references stayed below the allocation limit. Sources are now
+stably ordered by descending width (source order is immaterial in §6.4.15), so
+dependency traversal stops at the first wholly padded source. Traversal cost is
+bounded by graph bits plus actual contributor references, apart from sorting,
+dependency deduplication and node lookup. Equal-width scan contributor ordering
+is unchanged.
+
+The maintained benchmark adds a 100,109-byte input with a 1,048,576-bit group
+and 10,000 scalar contributors. Before the fix it took 24,602.9 ms to elaborate;
+the ten-second regression guard then reproduced the failure. After the fix,
+two optimized runs took 29.1 and 27.8 ms for the same elaboration. The second
+whole benchmark run, including the existing 5,000-instance flat-replay case,
+took 0.76 seconds and 166,264 KiB peak RSS. Environment: g++ 16.2.1 `-O2`,
+Linux 6.18.33.2 WSL2, with other verification jobs active. These measurements
+describe this workload, not end-to-end generator throughput. Reproduce with
+`make pattern-netlist-benchmark BISON=/usr/bin/bison` or
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' build/pattern_netlist_benchmark`.
+
+Focused dynamic/static tests, Google clang-format/clang-tidy and Clang ASan/UBSan
+passed. LeakSanitizer remained disabled because this environment does not support
+its tracing requirements. Tests include the actual vendor-probed width fixture,
+invalid enables and widths, descending/ascending padding cycles, mixed-width
+flat replay, addressed-member rejection, a 3,000-group chain and contributor
+allocation limits. `make coverage BISON=/usr/bin/bison -j2` ran the instrumented
+tests and failed the unchanged strict gate: 6,657/6,965 handwritten lines (95.6%)
+and 10,993/18,258 raw branches (60.2%), against required 100%/90%. The log is
+`build/onehot-data-coverage.log`. This remains an acceptance gap; it is not
+reported as a passing check.
+
+After all implementation and review fixes, the complete regression exited 0:
+`ICL_REF_DIR=/tmp/icl-reference-honza-20261021
+PATH="$PWD/build/combined-audit/reference-venv/bin:$PATH"
+make check BISON=/usr/bin/bison -j4` (log: `build/onehot-data-regression.log`).
+It includes 334/334 grammar productions, 119/119 scanner rules, static/dynamic
+checks, and both Vim and Neovim corpora with 38,489 ICL and 734 PDL files each.
+The executable, scheduler, local-reset rewrite and complete model coverage are
+still unfinished; this checkpoint completes only Port-based group foundations.

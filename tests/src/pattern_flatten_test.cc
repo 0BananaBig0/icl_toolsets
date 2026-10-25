@@ -421,6 +421,7 @@ Module Leaf {
   DataInPort select;
   ScanOutPort so[1:0] { Source si; Enable select; }
 }
+
 Module Top {
   ScanInPort si[1:0];
   DataInPort selects[1:0];
@@ -446,6 +447,42 @@ Module Top {
               sources[1][0].inverted && sources[1][1].inverted,
           "all contributors, bit order and inversions survive flattening");
 }
+void TestOneHotDataGroups() {
+  pattern::Design design;
+  design.AddIcl("one_hot_data.icl", R"(
+Module Leaf {
+  DataInPort d[7:0]; DataInPort en;
+  DataOutPort raw[7:0] { Source d; Enable en; }
+  DataOutPort forwarded[7:0] { Source raw; }
+}
+Module Top {
+  DataInPort d[7:0]; DataInPort en;
+  Instance child Of Leaf { InputPort d = d; InputPort en = en; }
+  OneHotDataGroup g[15:0] { Port child.raw[3]; Port child.forwarded; Port ~child.raw[0:7]; }
+  OneHotDataGroup cascaded[0:31] { Port g; }
+  DataOutPort observed[0:31] { Source cascaded; }
+}
+)");
+  const auto original = pattern::Elaborate(design, "Top");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design replay;
+  replay.AddIcl("flat.icl", text);
+  const auto flat = pattern::Elaborate(replay, "Top");
+  Require(pattern::SerializeIcl(flat) == text,
+          "one-hot data groups replay byte identically");
+  const auto& sources = flat.NodeAt("g").one_hot_sources;
+  bool scalar = false, forwarded = false, reversed = false;
+  for (const auto& source : sources) {
+    const auto name = flat.nodes[source[0].node].name;
+    scalar |= source.size() == 1 && name == "child.raw" && source[0].index == 3;
+    forwarded |= source.size() == 8 && name == "child.forwarded";
+    reversed |= source.size() == 8 && name == "child.raw" &&
+                source[0].inverted && source[0].index == 0;
+  }
+  Require(sources.size() == 3 && scalar && forwarded && reversed &&
+              flat.NodeAt("cascaded").one_hot_sources[0].size() == 16,
+          "short source widths, inversions and cascades survive flattening");
+}
 }  // namespace
 
 int main() {
@@ -458,6 +495,26 @@ int main() {
     TestIndependentResetDomains();
     TestScanInterfaces();
     TestOneHotScanGroups();
+    TestOneHotDataGroups();
+    for (const std::string member :
+         {"DataRegister r;", "DataRegister r { AddressValue 0; }",
+          "Instance child Of Leaf;",
+          "Instance child Of Leaf { AddressValue 0; }"}) {
+      pattern::Design design;
+      design.AddIcl(
+          "addressed_group.icl",
+          "Module Leaf {} Module M { OneHotDataGroup g { " + member + " } }");
+      const auto netlist = pattern::Elaborate(design, "M");
+      bool rejected = false;
+      try {
+        pattern::SerializeIcl(netlist);
+      } catch (const std::runtime_error& error) {
+        rejected = std::string(error.what()).find("addressed one-hot") !=
+                   std::string::npos;
+      }
+      Require(rejected,
+              "unsupported addressed members must not disappear from flat ICL");
+    }
     TestInstanceAttributeReplay();
     TestInstanceMetadataValidation();
     std::cout << "PASS: canonical flat ICL and original PDL binding\n";

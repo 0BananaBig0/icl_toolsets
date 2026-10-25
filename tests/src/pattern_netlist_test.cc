@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: MIT
 #include "pattern_netlist.h"
 
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+
+#include "text_input.h"
 
 namespace {
 void Require(bool condition, const std::string& message) {
@@ -445,6 +448,128 @@ void TestOneHotScanErrors() {
   }
 }
 
+void TestOneHotDataPorts() {
+  std::ifstream input("tests/cases/ours/pattern_generation/one_hot_width.icl");
+  std::string source;
+  Require(toolsets::ReadTextStream(input, &source),
+          "read Tessent width fixture");
+  pattern::Design design;
+  design.AddIcl("one_hot_width.icl", source);
+  for (const std::string top :
+       {"EqualWidthProbe", "WidthProbe", "AscendingWidthProbe"}) {
+    const auto netlist = pattern::Elaborate(design, top);
+    const auto& group = netlist.NodeAt("wide");
+    Require(
+        group.one_hot_sources.size() == 1 &&
+            group.one_hot_sources[0].size() == 8,
+        "retain the original narrower contributor without synthetic signals");
+    const auto& bits = group.one_hot_sources[0];
+    Require(netlist.nodes[bits[0].node].name == "driver.value" &&
+                bits.front().index == 7 && bits.back().index == 0,
+            "contributor order follows the declared signal direction");
+    const auto first = group.OneHotSourceBit(0, 0);
+    if (top != "EqualWidthProbe") {
+      Require(first.node == std::numeric_limits<size_t>::max() &&
+                  first.constant == 'x',
+              "Tessent: leading excess bits are unknown, not zero-filled");
+    } else {
+      Require(first.node == bits.front().node && first.index == 7,
+              "equal widths need no padding");
+    }
+    Require(group.OneHotSourceBit(0, group.Width() - 1).index == 0,
+            "right alignment follows significance even for ascending groups");
+    bool rejected = false;
+    try {
+      group.OneHotSourceBit(0, group.Width());
+    } catch (const std::out_of_range&) {
+      rejected = true;
+    }
+    Require(rejected, "out-of-range group bit offsets are rejected");
+  }
+}
+
+void TestOneHotDataErrors() {
+  for (const auto& test : std::vector<std::pair<std::string, std::string>>{
+           {"OneHotDataGroup g { Port wide; }", "width"},
+           {"OneHotDataGroup g { Port g; }", "cycle"},
+           {"OneHotDataGroup g { Port plain; }", "enabled DataOutPort"},
+           {"OneHotDataGroup g { Port scan; }", "enabled DataOutPort"},
+           {"OneHotDataGroup g { Port via; } DataOutPort via { Source g; }",
+            "cycle"},
+           {"DataOutPort small { Source 1'b0; Enable en; } "
+            "DataOutPort large[1:0] { Source g[1],1'b0; Enable en; } "
+            "OneHotDataGroup g[1:0] { Port small; Port large; }",
+            "cycle"}}) {
+    pattern::Design design;
+    design.AddIcl("bad_data_group.icl",
+                  "Module M { DataInPort en; DataInPort d; ScanInPort si; "
+                  "DataOutPort wide[1:0] { Source 2'b00; Enable en; } "
+                  "DataOutPort plain { Source d; } "
+                  "ScanOutPort scan { Source si; Enable en; } " +
+                      test.first + " }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, test.second);
+  }
+}
+
+void TestOneHotDataBitDependencies() {
+  // Only the rightmost output bit depends on this scalar contributor. The
+  // leading X bit breaks the apparent object-level feedback loop.
+  for (const bool ascending : {false, true}) {
+    for (const bool cyclic : {false, true}) {
+      const int source_bit = cyclic ? (ascending ? 1 : 0) : (ascending ? 0 : 1);
+      pattern::Design design;
+      design.AddIcl("padding_dependencies.icl",
+                    "Module M { DataInPort en; OneHotDataGroup g" +
+                        std::string(ascending ? "[0:1]" : "[1:0]") +
+                        " { Port selected; } DataOutPort selected { Source g[" +
+                        std::to_string(source_bit) + "]; Enable en; } }");
+      if (cyclic) {
+        Fails([&] { pattern::Elaborate(design, "M"); }, "cycle");
+      } else {
+        const auto netlist = pattern::Elaborate(design, "M");
+        Require(netlist.NodeAt("g").one_hot_sources[0].size() == 1,
+                "unknown leading bits do not create false connection cycles");
+      }
+    }
+  }
+}
+
+void TestOneHotAddressedPort() {
+  pattern::Design design;
+  design.AddIcl("address_enable.icl", R"(
+Module Leaf { DataOutPort out { Source 1'b0; } }
+Module M {
+  OneHotDataGroup addressed { Instance child Of Leaf { AddressValue 1; } }
+  OneHotDataGroup g { Port child.out; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "M");
+  Require(netlist.NodeAt("g").one_hot_sources.size() == 1,
+          "IEEE 6.4.15(d)(3) recognizes instance-addressed output ports");
+}
+
+void TestOneHotDataLimits() {
+  std::string source =
+      "Module M { DataInPort en; DataOutPort out { Source 1'b0; Enable en; } ";
+  for (size_t i = 0; i < 3000; ++i) {
+    source += "OneHotDataGroup g" + std::to_string(i) + " { Port " +
+              (i ? "g" + std::to_string(i - 1) : "out") + "; } ";
+  }
+  pattern::Design deep;
+  deep.AddIcl("deep_data_group.icl", source + "}");
+  Require(
+      pattern::Elaborate(deep, "M").NodeAt("g2999").one_hot_sources.size() == 1,
+      "data enable propagation traverses deep groups without recursion");
+  source =
+      "Module M { DataInPort en; DataOutPort out[65535:0] { Source 0; Enable "
+      "en; } "
+      "OneHotDataGroup g[131071:0] { ";
+  for (size_t i = 0; i < 65; ++i) source += "Port out; ";
+  pattern::Design wide;
+  wide.AddIcl("wide_data_group.icl", source + "} }");
+  Fails([&] { pattern::Elaborate(wide, "M"); }, "bit limit");
+}
+
 void TestOneHotScanMuxFanIn() {
   pattern::Design design;
   design.AddIcl("group_mux.icl", R"(
@@ -501,14 +626,30 @@ void TestOneHotScanLimits() {
 
 int main() {
   int failures = 0;
-  for (const auto test :
-       {TestSpecialization, TestErrors, TestBitConnections, TestResetInference,
-        TestMuxAndEnum, TestConnectionErrors, TestUnsizedSources,
-        TestImplicitScanBit, TestEnumAndPhysicalScanNames, TestPerBitGraph,
-        TestOverrideTypes, TestKeywordEnumSymbols, TestDataRegisterControls,
-        TestRegisterRules, TestInterfaceKinds, TestOneHotScanErrors,
-        TestOneHotScanMuxFanIn, TestOneHotScanLimits,
-        TestAddressedInstanceMetadata}) {
+  for (const auto test : {TestSpecialization,
+                          TestErrors,
+                          TestBitConnections,
+                          TestResetInference,
+                          TestMuxAndEnum,
+                          TestConnectionErrors,
+                          TestUnsizedSources,
+                          TestImplicitScanBit,
+                          TestEnumAndPhysicalScanNames,
+                          TestPerBitGraph,
+                          TestOverrideTypes,
+                          TestKeywordEnumSymbols,
+                          TestDataRegisterControls,
+                          TestRegisterRules,
+                          TestInterfaceKinds,
+                          TestOneHotScanErrors,
+                          TestOneHotScanMuxFanIn,
+                          TestOneHotScanLimits,
+                          TestAddressedInstanceMetadata,
+                          TestOneHotDataPorts,
+                          TestOneHotDataErrors,
+                          TestOneHotDataBitDependencies,
+                          TestOneHotAddressedPort,
+                          TestOneHotDataLimits}) {
     try {
       test();
     } catch (const std::exception& error) {

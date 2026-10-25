@@ -767,7 +767,7 @@ $(BUILD_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(BUILD_DIR
 
 .PHONY: pattern-netlist-benchmark
 pattern-netlist-benchmark: $(BUILD_DIR)/pattern_netlist_benchmark
-	@$(BUILD_DIR)/pattern_netlist_benchmark
+	@python3 tests/src/test_pattern_netlist_benchmark.py $(BUILD_DIR)/pattern_netlist_benchmark
 
 $(BUILD_DIR)/pattern_netlist_benchmark: tests/src/pattern_netlist_benchmark.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@

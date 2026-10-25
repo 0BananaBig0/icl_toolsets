@@ -102,13 +102,18 @@ struct NetlistNode {
   std::map<std::string, Constant> constants;
   std::optional<BitReference> reset;
   std::vector<MuxChoice> choices;
+  // Original Port widths; narrower data contributors are right-aligned with X
+  // in the leading output positions. Keep raw widths for lossless ICL replay.
   std::vector<std::vector<BitReference>> one_hot_sources;
+  bool has_addressed_contributors = false;
   std::vector<LogicInstruction> logic;
   Attributes attributes;
   std::optional<ScanInterface> scan_interface;
   size_t Width() const {
     return static_cast<size_t>(left > right ? left - right : right - left) + 1;
   }
+  // position is an offset in group declaration order, not a numeric bit index.
+  BitReference OneHotSourceBit(size_t source, size_t position) const;
 };
 
 struct InstanceScope {
