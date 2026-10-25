@@ -45,6 +45,22 @@ GNU Make, Python unittest regression.
 
 ## Review focus
 
+### Tessent oracle extension (user-authorized 2026-10-25)
+
+- [ ] Run isolated remote narrow/equal-width and direction-control probes with
+  Tessent; use fresh outputs, checked return codes and tool-error detection.
+- [ ] Add `tests/tessent_oracle.py` and mirrored
+  `tests/tests/test_tessent_oracle.py`: test manifest/path validation, safe Tcl
+  emission, complete corpus accounting, stale/missing/error outputs, and local
+  reset input routing before implementation. Use Python's standard library and
+  the existing shared PDL frontend rather than a new PDL parser.
+- [ ] Maintain complete fixtures under `tests/cases/ours/pattern_generation/`
+  and source-classified existing-network cases. Run Tessent scripts remotely
+  in a fresh project-owned directory, retrieving evidence into ignored `build/`.
+- [ ] Integrate the generator comparison when Tasks 4–6 provide the executable
+  and reset rewrite; until then report it as blocked, never passing. Run focused
+  harness tests and the complete repository regression after edits.
+
 1. Identical module names in different ICL namespaces must never collide (task 1).
 2. A failed later input must not damage input files or publish partial results (task 6).
 3. Flattened names must not lose original procedure binding or bit order (task 2/7).

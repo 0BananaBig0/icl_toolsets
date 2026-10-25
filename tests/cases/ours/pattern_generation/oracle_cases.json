@@ -1,0 +1,139 @@
+{
+  "cases": [
+    {
+      "id": "EqualWidthProbe_0096",
+      "top": "EqualWidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "WidthProbe_0096",
+      "top": "WidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "WidthProbe_ff96",
+      "top": "WidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_ff96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "WidthProbe_xx96",
+      "top": "WidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_xx96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "WidthProbe_96xx",
+      "top": "WidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_96xx.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "AscendingWidthProbe_0096",
+      "top": "AscendingWidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "AscendingWidthProbe_ff96",
+      "top": "AscendingWidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_ff96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "AscendingWidthProbe_xx96",
+      "top": "AscendingWidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_xx96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "AscendingWidthProbe_96xx",
+      "top": "AscendingWidthProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/one_hot_width.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_96xx.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "tessent_iwrite",
+      "top": "chip",
+      "icl_origin": "test/tessent_ijtag/test_iWrite/chip_top.icl",
+      "pdl": [
+        "tests/cases/tessent/pattern_generation/iwrite_oracle.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "tessent_multi_from_so",
+      "top": "chip",
+      "icl_origin": "test/tessent_ijtag/test_multi_from_so_sib/chip_top.icl",
+      "pdl": [
+        "tests/cases/ours/pattern_generation/initial_reset.pdl",
+        "tests/cases/pdl_eda/tessent/patterns_ead355c089124c05.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

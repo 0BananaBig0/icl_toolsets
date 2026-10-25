@@ -1,0 +1,27 @@
+# Adapted from test/tessent_ijtag/test_iWrite/test_iWrite.tcl (Huaxiao Liang).
+# Explicit reset replaces open_pattern_set's implicit initial reset.
+iReset
+iWrite TDR_1.SR[0] 1
+iWrite TDR_1.SR[1] 1
+iWrite TDR_1.SR[2] 0
+iWrite TDR_1.SR[3] 0
+iApply
+iRead TDR_1.SR[0] 1
+iRead TDR_1.SR[1] 1
+iRead TDR_1.SR[2] 0
+iRead TDR_1.SR[3] 0
+iApply
+iWrite TDR_1.SR[0] 0
+iWrite TDR_1.SR[1] 0
+iWrite TDR_1.SR[2] 1
+iWrite TDR_1.SR[3] 1
+iWrite TDR_2.SR[0] 1
+iWrite TDR_2.SR[1] 1
+iWrite TDR_2.SR[2] 0
+iWrite TDR_2.SR[3] 0
+iApply
+iWrite TDR_1.SR[1] 1
+iWrite TDR_1.SR[2] 0
+iWrite TDR_2.SR[1] 0
+iWrite TDR_2.SR[2] 1
+iApply

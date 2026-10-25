@@ -670,6 +670,7 @@ check: pattern-runtime-static-check pattern-flatten-static-check
 check-dynamic: dynamic
 check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck goldencheck pattern-design-check
 check check-dynamic: pattern-runtime-check pattern-flatten-check
+check check-dynamic: tessent-oracle-check
 check check-dynamic: pattern-expression-check pattern-netlist-check pattern-logic-check pattern-netlist-benchmark
 check check-dynamic:
 	@python3 tests/tree_clean_test.py
@@ -703,6 +704,14 @@ COC_PLUGIN ?= $(COC_ROOT)/coc.nvim
 COC_VIM ?= /usr/local/vim9/bin/vim
 
 # Parser-backed inventory is test support, not an installed executable.
+.PHONY: tessent-oracle-check
+tessent-oracle-check: $(BUILD_DIR)/pdl_pattern_trace $(BUILD_DIR)/icl_corpus_inventory
+	@python3 tests/tests/test_tessent_oracle.py
+	@PDL_TRACE=$(BUILD_DIR)/pdl_pattern_trace python3 tests/src/test_pdl_pattern_trace.py
+
+$(BUILD_DIR)/pdl_pattern_trace: tests/src/pdl_pattern_trace.cc $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/json.o
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+
 $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc \
     $(SHARED_OBJECTS) $(BUILD_DIR)/json.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@

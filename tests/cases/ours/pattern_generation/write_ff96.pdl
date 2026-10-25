@@ -1,0 +1,3 @@
+# Distinguishes constant upper bits from controllable upper bits.
+iWrite observed 0xff96
+iApply

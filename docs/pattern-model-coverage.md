@@ -200,7 +200,7 @@ This does not complete the missing generator/scheduler/model requirements above.
 
 [Pattern generation references](pattern-retargeting-references.md) records the
 IEEE/Tessent authority order, inspected Honza retargeting capabilities, and the
-unresolved OneHotDataGroup padding decision submitted to the user.
+OneHotDataGroup Port-width behavior subsequently measured with Tessent 2026.2.
 
 Elaboration preserves instance attributes separately from module attributes and
 evaluates instance AddressValue in the enclosing scope. Flat origin metadata
@@ -214,6 +214,11 @@ This is preparation for addressed models. It does not yet provide complete
 OneHotDataGroup flattening, implicit address/data connections or runtime
 configuration. Tests for the new fields and metadata replay are in
 `tests/src/pattern_netlist_test.cc` and `tests/src/pattern_flatten_test.cc`.
+
+The [Tessent differential harness](tessent-oracle.md) now preserves executable
+width experiments and two complete existing network cases. Eleven vendor runs
+matched their expected outcomes. This is reference evidence only: the missing
+generator executable and local-reset rewrite still block end-to-end comparison.
 
 The metadata changes passed focused dynamic/static tests, ASan/UBSan (leak
 detection disabled) and the complete `make check` regression. After the final

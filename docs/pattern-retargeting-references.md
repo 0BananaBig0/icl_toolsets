@@ -40,7 +40,7 @@ them as an oracle. Do not copy its use of a side-effecting solver call inside
 Also distinguish solver `unknown`/budget exhaustion from proven unreachable
 targets; the inspected bounded solver path does not make that distinction.
 
-## Addressed models: inspected sources and open decision
+## Addressed models: inspected sources and vendor experiment
 
 IEEE 1687-2014 provides these relevant rules:
 
@@ -68,10 +68,21 @@ The locally available Tessent manuals are v2023.4, under
 - `tshell_ijtag_user/topics/Concept_IclPdlLimitations_id25d0043e.html`: lists
   vendor limitations; these do not remove our IEEE support requirements.
 
-**Pending user decision:** the inspected IEEE rules and Tessent topics do not
+The inspected IEEE rules and Tessent topics do not
 explicitly state alignment and padding for a selected source narrower than its
 OneHotDataGroup. Searches of the IJTAG, Shell Reference, Shell User and ATPG
 manuals did not locate an explicit rule. Numeric-literal padding does not by
-itself resolve signal padding. Asked whether to right-align with unknown upper
-bits, zero-fill, or use another specified rule; no behavior is assumed pending
-that answer. Instance metadata preservation can proceed independently.
+itself resolve signal padding. At the user's direction, Tessent Shell **2026.2**
+was exercised on 2026-10-25, separately from the v2023.4 manual review.
+
+An enabled eight-bit DataOutPort contributing to a 16-bit OneHotDataGroup is
+right-aligned in declaration/significance order; the leading eight group bits
+are unknown. `iWrite observed 0bXXXXXXXX10010110` succeeds for both `[15:0]`
+and `[0:15]` declarations. `0x0096`, `0xff96` and
+`0b10010110XXXXXXXX` fail with `fixed to 'unknown'` on the leading bits.
+The equal-width eight-bit control succeeds with `0x0096`.
+
+This resolves the tested **Port contribution** case, not every DataRegister or
+addressed Instance contribution. It is not a test of numeric padding for an
+ordinary 16-bit ScanRegister. The test inputs, command flow, results and remaining
+comparison dependencies are recorded in [Tessent oracle verification](tessent-oracle.md).

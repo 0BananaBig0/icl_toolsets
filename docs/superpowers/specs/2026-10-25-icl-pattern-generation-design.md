@@ -252,6 +252,34 @@ Retain diagnostic source maps separately from canonical serialization metadata.
 
 ## Acceptance tests
 
+### Tessent differential oracle (2026-10-25 addition)
+
+Use the lianghuaxiao account and the existing flows under
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag` as references. Run new
+experiments in isolated directories created for this project; preserve the
+existing cases. Establish narrower OneHotDataGroup behavior experimentally
+before choosing padding/alignment semantics.
+
+Inventory every ICL/PDL file in `tests/`, retaining an explicit disposition for
+syntax-negative tests, unpaired fragments, complete runnable cases and missing
+dependencies. A parser input is not automatically a complete executable network.
+Maintain source-attributed complete case manifests and emit Tessent scripts
+using `write_patterns -pdl` in `patterns -ijtag` analysis mode. Record the actual
+Tessent release, input hashes, command, exit status, tool errors and output files.
+
+For differential execution, our generator reads the original source PDL and
+produces both flattened PDL and the `--local_reset` rewrite. Tessent must read
+that rewrite, including preserved procedures, rather than the source PDL or our
+fully flattened output. Never substitute a hand-written reset fix and claim the
+generator supplied it. Cases without a generator executable or reset rewrite
+are blocked comparisons, even when a standalone Tessent experiment succeeds.
+
+PDL output wrappers, comments and spelling may differ between generators.
+Compare canonical executable operations using the shared PDL frontend; report
+structural differences separately from proved behavioral mismatches. Different
+valid schedules require state/target and cost checks, not an unconditional
+byte-equality assertion. Keep vendor-generated patterns and logs ignored.
+
 All new test scripts belong under `tests/`, mirroring their source paths.
 Classify fixtures by IEEE, Tessent, existing repository/corpus or self-constructed
 origin. Keep generated output/build data ignored; maintained expected files are
