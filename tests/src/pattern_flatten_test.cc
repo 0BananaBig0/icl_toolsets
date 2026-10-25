@@ -204,11 +204,12 @@ iProc dormant {} { iNote $U }
   }
 }
 
-std::string WithMetadata(const std::string& body, const std::string& nodes) {
+std::string WithMetadata(const std::string& body, const std::string& nodes,
+                         const std::string& scopes = R"([["","Top",[],[]]])") {
   const std::string json =
       "{\"version\":1,\"modules\":[[\"Top\",[]]],"
-      "\"scopes\":[[\"\",\"Top\",[],[]]],\"nodes\":" +
-      nodes + "}";
+      "\"scopes\":" +
+      scopes + ",\"nodes\":" + nodes + "}";
   std::string quoted;
   for (char c : json) {
     if (c == '"' || c == '\\') quoted += '\\';
@@ -331,6 +332,86 @@ Module Top {
               interface.chains[0].attributes.count("first"),
           "parallel chains preserve controls, values and attributes");
 }
+void TestInstanceMetadataValidation() {
+  const std::string root = R"(["","Top",[],[]])";
+  const auto load = [&](const std::string& scopes) {
+    pattern::Design design;
+    design.AddIcl("metadata.icl", WithMetadata("", "[]", scopes));
+    return pattern::Elaborate(design, "Top");
+  };
+  const auto old = load("[" + root + "]");
+  Require(old.scopes[0].instance_attributes.empty(),
+          "earlier four-field scope metadata remains readable");
+  const auto addressed =
+      load("[" + root + R"(,["child","Top",[],[],[],[false,true,"1000"]]])");
+  Require(addressed.scopes[1].address_value &&
+              addressed.scopes[1].address_value->data == "1000",
+          "numeric address metadata retains its value");
+  const auto text = pattern::SerializeIcl(addressed);
+  pattern::Design replay;
+  replay.AddIcl("replay.icl", text);
+  Require(pattern::SerializeIcl(pattern::Elaborate(replay, "Top")) == text,
+          "address metadata replay is canonical");
+  const std::vector<std::pair<std::string, std::string>> invalid = {
+      {R"([["","Top",[],[],[],null]])", "root cannot"},
+      {R"([["","Top",[],[],[]]])", "scope fields"},
+      {"[" + root + R"(,["child","Top",[],[],[["a",null],["a",null]],null]])",
+       "scope attribute"},
+      {"[" + root + R"(,["child","Top",[],[],[["bad.name",null]],null]])",
+       "scope attribute"},
+      {"[" + root + R"(,["child","Top",[],[],[],[true,false,"8"]]])",
+       "must be numeric"},
+      {"[" + root + R"(,["child","Top",[],[],[],[false,true,"2"]]])",
+       "parameter value"}};
+  for (const auto& item : invalid) {
+    bool rejected = false;
+    try {
+      load(item.first);
+    } catch (const std::runtime_error& error) {
+      rejected = true;
+      Require(std::string(error.what()).find(item.second) != std::string::npos,
+              "unexpected metadata error: " + std::string(error.what()));
+    }
+    Require(rejected, "malformed instance metadata must be rejected");
+  }
+}
+
+void TestInstanceAttributeReplay() {
+  pattern::Design design;
+  design.AddIcl("instance_attributes.icl", R"(
+Module Leaf {
+  Parameter VALUE = 3;
+  Attribute label = "module";
+  DataOutPort result { Source 1'b0; }
+}
+Module Top {
+  Parameter VALUE = 9;
+  Instance child Of Leaf {
+    Attribute label = "instance";
+    Attribute enclosing = $VALUE;
+    Attribute flag;
+  }
+  Instance sibling Of Leaf;
+}
+)");
+  const auto original = pattern::Elaborate(design, "Top");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat.icl", text);
+  const auto flat = pattern::Elaborate(flat_design, "Top");
+  const auto& child = flat.scopes.at(flat.NodeAt("child.result").scope);
+  const auto& sibling = flat.scopes.at(flat.NodeAt("sibling.result").scope);
+  Require(
+      child.attributes.at("label")->data == "module" &&
+          child.instance_attributes.at("label")->data == "instance" &&
+          child.instance_attributes.at("enclosing")->AsInteger() == 9 &&
+          !child.instance_attributes.at("flag") &&
+          sibling.instance_attributes.empty(),
+      "flat replay preserves per-instance attributes and parent evaluation");
+  Require(pattern::SerializeIcl(flat) == text,
+          "instance attribute metadata is byte stable");
+}
+
 void TestOneHotScanGroups() {
   // Completed/cascaded IEEE 1687-2014 6.4.14 example with vector directions.
   pattern::Design design;
@@ -377,6 +458,8 @@ int main() {
     TestIndependentResetDomains();
     TestScanInterfaces();
     TestOneHotScanGroups();
+    TestInstanceAttributeReplay();
+    TestInstanceMetadataValidation();
     std::cout << "PASS: canonical flat ICL and original PDL binding\n";
   } catch (const std::exception& error) {
     std::cerr << "FAIL: " << error.what() << '\n';

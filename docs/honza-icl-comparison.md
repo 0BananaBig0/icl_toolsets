@@ -1,7 +1,9 @@
 # Honza ICL comparison — 2026-10-22
 
 Reference: https://github.com/Honza255/icl_parser at `333f8bc7a54964138ac14a34fde9e942c496436d`.
-Only `src/icl_parser/icl.g4` is compared; the separate PDL grammar supplies no ICL tokens.
+The grammar comparison below uses `src/icl_parser/icl.g4`; the separate PDL
+grammar supplies no ICL tokens. The retargeting review is recorded separately
+in [pattern generation references](pattern-retargeting-references.md).
 
 ## Keywords and productions
 

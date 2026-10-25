@@ -309,7 +309,7 @@ class Elaborator {
     }
     const auto& description = Describe(module);
     const size_t scope_id = netlist_.scopes.size();
-    netlist_.scopes.push_back({path, module, parent, {}, {}, {}, {}});
+    netlist_.scopes.push_back({path, module, parent, {}, {}, {}, {}, {}, {}});
     if (parent != std::numeric_limits<size_t>::max()) {
       netlist_.scopes[parent].children.push_back(scope_id);
     }
@@ -421,10 +421,23 @@ class Elaborator {
         AddScope(design_.ResolveInstance(module, index),
                  Path(path, declaration.name), scope_id, values, depth + 1);
         if (const auto* block = dynamic_cast<const icl::AstBlock*>(ast)) {
+          netlist_.scopes[child_scope].instance_attributes =
+              ReadAttributes(module, block, scope_id);
           for (const auto* item : block->body()) {
             if (dynamic_cast<const icl::AstComment*>(item)) continue;
             auto expression = Tokens(module, *item, scope_id);
             const auto& tokens = SourceTokens(netlist_, scope_id);
+            if (tokens[expression.begin].text == "AddressValue") {
+              ++expression.begin;
+              --expression.end;
+              auto value = netlist_.Value(expression);
+              if (value.is_string) {
+                throw std::runtime_error(
+                    "instance AddressValue must be numeric");
+              }
+              netlist_.scopes[child_scope].address_value = std::move(value);
+              continue;
+            }
             if (tokens[expression.begin].text != "InputPort") continue;
             const auto& port_name = tokens[expression.begin + 1].text;
             const auto found =
@@ -937,8 +950,9 @@ class Elaborator {
       for (const auto& choice : node.choices) {
         append(choice.source.at(position));
       }
-      for (const auto& source : node.one_hot_sources)
+      for (const auto& source : node.one_hot_sources) {
         append(source.at(position));
+      }
       std::sort(result.begin(), result.end());
       result.erase(std::unique(result.begin(), result.end()), result.end());
       return result;

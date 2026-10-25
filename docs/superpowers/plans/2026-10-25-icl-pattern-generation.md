@@ -23,6 +23,7 @@ GNU Make, Python unittest regression.
   Record source/version and distinguish vendor behavior. Ask the user if these
   sources leave a material ambiguity. Inspect Honza255/icl_parser retargeting
   capabilities and tests for applicable implementation ideas, not authority.
+  Keep findings in [pattern generation references](../../pattern-retargeting-references.md).
 - Google C++ style; generated outputs remain ignored; test scripts under `tests/`.
 - No implicit hardware reset; unknown initial logic state; source-located errors.
 - Preserve existing formatters/LSPs/Vim plugin; complete regression after changes.

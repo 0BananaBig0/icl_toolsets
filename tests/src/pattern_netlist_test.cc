@@ -395,6 +395,35 @@ void TestInterfaceKinds() {
         test.second);
   }
 }
+void TestAddressedInstanceMetadata() {
+  pattern::Design design;
+  design.AddIcl("addressed.icl", R"(
+Module Leaf { Parameter A = 1; Attribute label = "module"; }
+Module Top {
+  Parameter A = 8'h80;
+  OneHotDataGroup group {
+    Instance child Of Leaf {
+      AddressValue $A;
+      Attribute label = "instance";
+      Attribute address = $A;
+      Attribute flag;
+    }
+  }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto& child = netlist.scopes.at(1);
+  Require(child.address_value && child.address_value->data == "10000000" &&
+              child.address_value->sized,
+          "instance address is evaluated in the enclosing parameter scope");
+  Require(child.attributes.at("label")->data == "module" &&
+              child.instance_attributes.at("label")->data == "instance" &&
+              child.instance_attributes.at("address")->data == "10000000" &&
+              !child.instance_attributes.at("flag"),
+          "instance attributes retain their own values without replacing "
+          "module attributes");
+}
+
 void TestOneHotScanErrors() {
   const std::vector<std::pair<std::string, std::string>> cases = {
       {"OneHotScanGroup group[1:0] { Port si; }", "width"},
@@ -478,7 +507,8 @@ int main() {
         TestImplicitScanBit, TestEnumAndPhysicalScanNames, TestPerBitGraph,
         TestOverrideTypes, TestKeywordEnumSymbols, TestDataRegisterControls,
         TestRegisterRules, TestInterfaceKinds, TestOneHotScanErrors,
-        TestOneHotScanMuxFanIn, TestOneHotScanLimits}) {
+        TestOneHotScanMuxFanIn, TestOneHotScanLimits,
+        TestAddressedInstanceMetadata}) {
     try {
       test();
     } catch (const std::exception& error) {

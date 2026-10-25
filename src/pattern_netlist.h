@@ -119,6 +119,8 @@ struct InstanceScope {
   std::map<std::string, size_t> members;
   std::vector<size_t> children;
   Attributes attributes;
+  Attributes instance_attributes;
+  std::optional<Constant> address_value;
 };
 
 struct Netlist {

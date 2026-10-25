@@ -50,6 +50,7 @@ capabilities reuse the existing shared AST and declaration index.
 | Integer and numeric/string constants | `tests/src/pattern_expression_test.cc` | Broader real-corpus evaluation; resource-bound tests |
 | Parameterized instance hierarchy and widths | `TestSpecialization`, `TestErrors` | Corpus specialization and flat serialization |
 | Bit order, partial input bindings, inversion, aliases | `TestBitConnections`, `TestConnectionErrors`, `TestUnsizedSources` | Full semantic source-kind checks |
+| Instance attributes and addresses | `TestAddressedInstanceMetadata`, `TestInstanceAttributeReplay`, `TestInstanceMetadataValidation`: parent-scope values, separate module/instance attributes, metadata validation and replay | Addressed-group connections, address comparison and scheduling |
 | Reset polarity, unique-parent/default/ambiguous reset | `TestResetInference` | Child-output precedence, TRST/TMS, nested local-reset simulation |
 | Enum reset values and ScanMux connectivity | `TestMuxAndEnum` | All mux kinds, overlapping selector checks, state transitions |
 | OneHotScanGroup | `TestOneHotScanGroups`, `TestOneHotScanErrors`, `TestOneHotScanMuxFanIn`, `TestOneHotScanLimits`: contributors, inversion/ranges, structural enable fan-in, per-bit cycles and flat replay | Runtime enable solving and at-most-one-active-source constraints |
@@ -194,6 +195,32 @@ reset-domain and interface changes. It includes dynamic/static checks,
 5,000-instance flat replay, 334/334 grammar productions, 119/119 scanner rules,
 and full Vim/Neovim corpus checks (38,488 ICL and 728 PDL files each).
 This does not complete the missing generator/scheduler/model requirements above.
+
+## Reference policy and addressed-instance preparation
+
+[Pattern generation references](pattern-retargeting-references.md) records the
+IEEE/Tessent authority order, inspected Honza retargeting capabilities, and the
+unresolved OneHotDataGroup padding decision submitted to the user.
+
+Elaboration preserves instance attributes separately from module attributes and
+evaluates instance AddressValue in the enclosing scope. Flat origin metadata
+retains those values using two optional trailing scope fields; the original
+four-field records remain readable. The decoder rejects duplicate/invalid
+attribute names, nonnumeric addresses, invalid field counts and instance
+properties on the top module. No attribute override policy is inferred from
+storing the two sets separately.
+
+This is preparation for addressed models. It does not yet provide complete
+OneHotDataGroup flattening, implicit address/data connections or runtime
+configuration. Tests for the new fields and metadata replay are in
+`tests/src/pattern_netlist_test.cc` and `tests/src/pattern_flatten_test.cc`.
+
+The metadata changes passed focused dynamic/static tests, ASan/UBSan (leak
+detection disabled) and the complete `make check` regression. After the final
+braces-only style correction, clang-tidy, focused checks and a repeat complete
+regression also passed, including both full editor corpora. Strict coverage for
+this checkpoint measured 6,621/6,929 lines (95.6%) and 10,917/18,158 raw branches
+(60.1%). The 100% line / 90% branch gate is still unmet; thresholds are unchanged.
 
 ## OneHotScanGroup elaboration
 

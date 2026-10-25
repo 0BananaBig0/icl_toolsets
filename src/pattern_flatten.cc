@@ -181,10 +181,15 @@ Json Metadata(const Netlist& netlist) {
       parameters.push_back(
           Json::Array({Json::String(item.first), Value(item.second)}));
     }
-    scopes.push_back(Json::Array({Json::String(scope.path),
-                                  Json::String(scope.definition.name()),
-                                  Json::Array(std::move(parameters)),
-                                  AttributeValues(scope.attributes)}));
+    Json::Elements fields{
+        Json::String(scope.path), Json::String(scope.definition.name()),
+        Json::Array(std::move(parameters)), AttributeValues(scope.attributes)};
+    if (!scope.instance_attributes.empty() || scope.address_value) {
+      fields.push_back(AttributeValues(scope.instance_attributes));
+      fields.push_back(scope.address_value ? Value(*scope.address_value)
+                                           : Json::Null());
+    }
+    scopes.push_back(Json::Array(std::move(fields)));
   }
   for (const auto& node : netlist.nodes) {
     Json::Elements special;
@@ -384,6 +389,23 @@ Constant ReadValue(const Json& json) {
   }
   return result;
 }
+
+Attributes ReadAttributes(const Json& json) {
+  Attributes result;
+  for (const auto& attribute : Array(json)) {
+    const auto& parts = Array(attribute, 2);
+    const auto name = String(parts[0]);
+    if (!Identifier(name) || name == kOrigins ||
+        !result
+             .emplace(name, parts[1].is_null()
+                                ? std::nullopt
+                                : std::optional<Constant>(ReadValue(parts[1])))
+             .second) {
+      throw std::runtime_error("invalid flat scope attribute");
+    }
+  }
+  return result;
+}
 BitReference ReadReference(const Netlist& netlist, const Json& json) {
   const auto& fields = Array(json, 4);
   BitReference bit;
@@ -501,7 +523,10 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     }
   }
   for (const auto& item : scope_data) {
-    const auto& fields = Array(item, 4);
+    const auto& fields = Array(item);
+    if (fields.size() != 4 && fields.size() != 6) {
+      throw std::runtime_error("invalid flat scope fields");
+    }
     InstanceScope scope;
     scope.path = String(fields[0]);
     const auto module_name = String(fields[1]);
@@ -549,16 +574,18 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     if (scope.parameters.size() != module_parameters.at(module_name).size()) {
       throw std::runtime_error("missing flat parameter value");
     }
-    for (const auto& attribute : Array(fields[3])) {
-      const auto& parts = Array(attribute, 2);
-      const auto name = String(parts[0]);
-      if (!Identifier(name) || name == kOrigins ||
-          !scope.attributes
-               .emplace(name, parts[1].is_null() ? std::nullopt
-                                                 : std::optional<Constant>(
-                                                       ReadValue(parts[1])))
-               .second) {
-        throw std::runtime_error("invalid flat scope attribute");
+    scope.attributes = ReadAttributes(fields[3]);
+    if (fields.size() == 6) {
+      if (scopes.empty()) {
+        throw std::runtime_error("flat root cannot have instance properties");
+      }
+      scope.instance_attributes = ReadAttributes(fields[4]);
+      if (!fields[5].is_null()) {
+        scope.address_value = ReadValue(fields[5]);
+        if (scope.address_value->is_string) {
+          throw std::runtime_error(
+              "flat instance AddressValue must be numeric");
+        }
       }
     }
     if (scopes.empty() &&
