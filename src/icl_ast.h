@@ -116,6 +116,15 @@ struct SourceSpan {
   int last_column = 1;
 };
 
+// Operator structure retained by the shared parser; formatters keep original
+// text.
+struct LogicExpression {
+  SourceSpan span;
+  std::string operation;
+  const LogicExpression* left = nullptr;
+  const LogicExpression* right = nullptr;
+};
+
 // Syntactic categories needed by LogicSignal, without evaluating expressions.
 struct LogicValue {
   std::string text;
@@ -125,6 +134,7 @@ struct LogicValue {
   bool is_enum = false;
   bool has_unknown = false;
   std::optional<SourceSpan> reference;
+  const LogicExpression* expression = nullptr;
 };
 
 // Builds a span from line numbers. Taking plain ints (rather than Bison's
@@ -197,12 +207,14 @@ class AstStatement : public AstNode {
  public:
   AstStatement(const std::string& text, SourceSpan span,
                NamedKind kind = NamedKind::kNone, std::string name = "",
-               std::optional<ParsedValue> value = std::nullopt)
+               std::optional<ParsedValue> value = std::nullopt,
+               const LogicExpression* logic = nullptr)
       : AstNode(span),
         text_(text),
         kind_(kind),
         name_(std::move(name)),
-        value_(std::move(value)) {}
+        value_(std::move(value)),
+        logic_(logic) {}
 
   void Accept(AstVisitor& visitor) const override { visitor.Visit(*this); }
 
@@ -211,12 +223,14 @@ class AstStatement : public AstNode {
   NamedKind named_kind() const { return kind_; }
   const std::string& name() const { return name_; }
   const std::optional<ParsedValue>& value() const { return value_; }
+  const LogicExpression* Logic() const { return logic_; }
 
  private:
   std::string text_;
   NamedKind kind_;
   std::string name_;
   std::optional<ParsedValue> value_;
+  const LogicExpression* logic_;
 };
 
 // Any `HEADER { ... }` construct: Module / Enum / Alias-with-block /
@@ -298,6 +312,17 @@ class AstUnit {
     return raw;
   }
 
+  const LogicExpression* MakeLogicExpression(
+      SourceSpan span, std::string operation,
+      const LogicExpression* left = nullptr,
+      const LogicExpression* right = nullptr) {
+    auto expression = std::make_unique<LogicExpression>(
+        LogicExpression{span, std::move(operation), left, right});
+    const auto* raw = expression.get();
+    logic_expressions_.push_back(std::move(expression));
+    return raw;
+  }
+
   std::vector<AstNode*>& top_level() { return top_level_; }
   const std::vector<AstNode*>& top_level() const { return top_level_; }
   const std::vector<SourceToken>& tokens() const { return tokens_; }
@@ -321,6 +346,7 @@ class AstUnit {
   std::vector<SourceToken> tokens_;
   std::vector<std::pair<SourceSpan, SourceSpan>> enum_comparisons_;
   std::vector<std::unique_ptr<AstNode>> nodes_;
+  std::vector<std::unique_ptr<LogicExpression>> logic_expressions_;
   std::vector<AstNode*> top_level_;
 };
 

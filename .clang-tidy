@@ -12,7 +12,7 @@ CheckOptions:
   readability-identifier-naming.EnumConstantPrefix: k
   readability-identifier-naming.FunctionCase: CamelCase
   # Google permits snake_case accessors. Generator hooks keep their ABI names.
-  readability-identifier-naming.FunctionIgnoredRegexp: '^(main|yylex|error|yyterminate|text|is_multiline|span|set_span|named_kind|name|value|header|body|top_level|unit|error_line|error_span|error_message|is_blank_line|indent|source_line|set_source_line|trailing|set_trailing|type|is_null|bool_value|int_value|string_value|elements|declaration|source|driver|ok|line_starts|declarations|uses|namespace_uses|members|documents|tokens)$'
+  readability-identifier-naming.FunctionIgnoredRegexp: '^(main|yylex|error|yyterminate|text|is_multiline|span|set_span|named_kind|name|value|header|body|top_level|unit|error_line|error_span|error_message|is_blank_line|indent|source_line|set_source_line|trailing|set_trailing|type|is_null|bool_value|int_value|string_value|elements|declaration|source|driver|ok|line_starts|declarations|uses|namespace_uses|members|documents|tokens|commands|modules|operations|warnings)$'
   readability-identifier-naming.VariableCase: lower_case
   readability-identifier-naming.MemberCase: lower_case
   readability-identifier-naming.PrivateMemberSuffix: _

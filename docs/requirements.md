@@ -7,6 +7,12 @@ and [corpus deduplication](../tests/cases/CORPUS_DEDUPLICATION.md) for the later
 corpus audit. The [historical record](history/requirements-legacy.md) preserves
 the original requests and implementation history.
 
+The requested `icl-pattern-generation` executable is a separate, unimplemented
+extension. Its [requirements and design draft](superpowers/specs/2026-10-25-icl-pattern-generation-design.md)
+records ordered overrides, netlist elaboration, configuration scheduling,
+local-reset rewriting and round-trip acceptance tests. It does not change the
+execution-free contract of the formatters or language servers.
+
 ## Product behavior
 
 - **P1 — Formatter:** `icl-format` must format ICL as a language-aware formatter,

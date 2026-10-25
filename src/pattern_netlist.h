@@ -1,0 +1,115 @@
+// Copyright 2026 The ICL Toolsets Authors.
+// SPDX-License-Identifier: MIT
+#ifndef ICL_TOOLSETS_SRC_PATTERN_NETLIST_H_
+#define ICL_TOOLSETS_SRC_PATTERN_NETLIST_H_
+
+#include <cstdint>
+#include <limits>
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "pattern_design.h"
+#include "pattern_expression.h"
+
+namespace pattern {
+struct Expression {
+  size_t scope = 0;
+  size_t begin = 0, end = 0;
+};
+
+enum class VirtualSignal { kNone, kGlobalReset, kAsyncGlobalReset };
+enum class ModelKind {
+  kPort,
+  kRegister,
+  kMux,
+  kLogic,
+  kAlias,
+  kEnum,
+  kInterface,
+  kGroup,
+  kAccessLink
+};
+
+struct BitReference {
+  // A missing node denotes a literal bit rather than an object connection.
+  size_t node = std::numeric_limits<size_t>::max();
+  int64_t index = 0;
+  char constant = 'x';
+  bool inverted = false;
+  VirtualSignal virtual_signal = VirtualSignal::kNone;
+};
+
+struct MuxChoice {
+  std::vector<Constant> codes;
+  std::vector<BitReference> source;
+};
+
+enum class LogicOperation {
+  kLiteral,
+  kSignal,
+  kConcat,
+  kInvert,
+  kNot,
+  kAnd,
+  kOr,
+  kXor,
+  kReduceAnd,
+  kReduceOr,
+  kReduceXor,
+  kEqual,
+  kNotEqual
+};
+
+struct LogicInstruction {
+  LogicOperation operation = LogicOperation::kLiteral;
+  size_t left = 0, right = 0, width = 0;
+  Constant literal;
+  std::vector<BitReference> signals;
+};
+
+struct NetlistNode {
+  std::string name, kind, origin;
+  ModelKind model = ModelKind::kPort;
+  size_t scope = 0;
+  const icl::AstNode* ast = nullptr;
+  int64_t left = 0, right = 0;
+  bool indexed = false;
+  std::map<std::string, Expression> properties;
+  std::map<std::string, std::vector<BitReference>> inputs;
+  std::map<std::string, Constant> constants;
+  std::optional<BitReference> reset;
+  std::vector<MuxChoice> choices;
+  std::vector<LogicInstruction> logic;
+  size_t Width() const {
+    return static_cast<size_t>(left > right ? left - right : right - left) + 1;
+  }
+};
+
+struct InstanceScope {
+  std::string path;
+  ModuleDefinition definition;
+  size_t parent = std::numeric_limits<size_t>::max();
+  std::map<std::string, Constant> parameters;
+  std::map<std::string, size_t> members;
+  std::vector<size_t> children;
+};
+
+struct Netlist {
+  std::string top_module;
+  std::vector<InstanceScope> scopes;
+  std::vector<NetlistNode> nodes;
+  std::map<std::string, size_t> node_ids;
+  const NetlistNode& NodeAt(const std::string& path) const;
+  int64_t Integer(const Expression& expression) const;
+  Constant Value(const Expression& expression, size_t width = 0) const;
+  Expression ExpressionAt(size_t scope, icl::SourceSpan span) const;
+  std::vector<BitReference> Resolve(const Expression& expression,
+                                    size_t width = 0, bool scan_input = false,
+                                    size_t max_bits = 1024 * 1024) const;
+};
+
+Netlist Elaborate(Design& design, const std::string& top);
+}  // namespace pattern
+#endif  // ICL_TOOLSETS_SRC_PATTERN_NETLIST_H_

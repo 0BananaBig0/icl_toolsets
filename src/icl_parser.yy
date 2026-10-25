@@ -998,7 +998,7 @@ logic_body
         YYERROR;
       }
       $$ = std::move($1);
-      $$.push_back(driver.MakeStatement($2.text + ";", SpanOf(@2, @3)));
+      $$.push_back(driver.MakeLogicStatement(std::move($2), SpanOf(@2, @3)));
       $$.insert($$.end(), $4.begin(), $4.end());
     }
   ;
@@ -1008,6 +1008,8 @@ logic_expr
     { $$ = std::move($1); }
   | logic_expr BOOL_OP token_gap logic_bit
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @4), $2,
+                                           $1.expression, $4.expression);
       $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text;
       $$.has_unknown = $1.has_unknown || $4.has_unknown;
     }
@@ -1018,6 +1020,8 @@ logic_bit
     { $$ = std::move($1); }
   | logic_bit BIT_OP token_gap logic_bit_term
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @4), $2,
+                                           $1.expression, $4.expression);
       $$.text = std::move($1.text) + " " + $2 + " " + $3 + $4.text;
       $$.has_unknown = $1.has_unknown || $4.has_unknown;
     }
@@ -1028,6 +1032,7 @@ logic_bit_term
     { $$ = std::move($1); }
   | BIT_OP token_gap logic_bit_term
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @3), $1, $3.expression);
       $$.text = $1 + $2 + $3.text;
       $$.has_unknown = $3.has_unknown;
     }
@@ -1038,6 +1043,8 @@ logic_compare
     { $$ = std::move($1); }
   | logic_concat COMPARE_OP token_gap logic_concat
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @4), $2,
+                                           $1.expression, $4.expression);
       if ($1.has_unknown || !($4.is_numeric_concat || $4.is_enum)) {
         error(@2,
               "comparison requires numeric or enum right operand and no "
@@ -1057,6 +1064,8 @@ logic_concat
     { $$ = std::move($1); }
   | logic_concat COMMA token_gap logic_unary
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @4), ",",
+                                           $1.expression, $4.expression);
       $$.text = std::move($1.text) + ", " + $3 + $4.text;
       $$.is_numeric_concat = $1.is_numeric_concat && $4.is_numeric_concat;
       $$.has_unknown = $1.has_unknown || $4.has_unknown;
@@ -1068,6 +1077,7 @@ logic_unary
     { $$ = std::move($1); }
   | NOT_OP token_gap logic_unary
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @3), $1, $3.expression);
       $$.text = $1 + $2 + $3.text;
       $$.is_numeric_concat = $1 == "~" && $3.is_number;
       $$.has_unknown = $3.has_unknown;
@@ -1080,6 +1090,7 @@ logic_integer
     { $$ = std::move($1); }
   | logic_integer MATH_OP token_gap logic_atom
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @4), "integer");
       if (!$1.is_integer || !$4.is_integer) {
         error(@2, "integer arithmetic requires decimal or parameter operands");
         YYERROR;
@@ -1092,22 +1103,26 @@ logic_integer
 logic_atom
   : INTEGER token_gap
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @1), "integer");
       $$.text = $1 + $2;
       $$.is_integer = $$.is_number = $$.is_numeric_concat = true;
     }
   | PARAMREF token_gap
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @1), "integer");
       $$.text = $1 + $2;
       $$.is_integer = $$.is_number = $$.is_numeric_concat = true;
     }
   | based_number
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @1), "number");
       $$.text = std::move($1.text);
       $$.is_number = $$.is_numeric_concat = true;
       $$.has_unknown = $1.has_unknown;
     }
   | signal_reference
     {
+      $$.expression = driver.unit().MakeLogicExpression(SpanOf(@1, @1), "reference");
       $$.text = $1.text;
       $$.is_enum = $1.is_scalar;
       $$.reference = SpanOf(@1, @1);

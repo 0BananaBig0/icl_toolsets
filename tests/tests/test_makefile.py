@@ -9,6 +9,20 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 class BuildGraph(unittest.TestCase):
+    def test_regression_entrypoints_share_the_suite(self):
+        for target in ('check', 'check-dynamic'):
+            with self.subTest(target=target):
+                run = subprocess.run(['make', '-n', target, 'BISON=/usr/bin/bison'],
+                                     cwd=ROOT, capture_output=True, text=True)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                for required in ('tests/regression.py', 'tests/lsp_test.py',
+                                 'tests/fuzz.py', 'tests/grammar_coverage.py',
+                                 'tests/vim-icl-pdl-modern/test_plugin.py'):
+                    self.assertIn(required, run.stdout)
+                if target == 'check-dynamic':
+                    self.assertNotIn(' -static ', run.stdout)
+                    self.assertNotIn('build/pattern_runtime_test-static', run.stdout)
+
     def test_coverage_cleanup_preserves_other_worktrees(self):
         run = subprocess.run(['make', '-n', 'clean'], cwd=ROOT,
                              capture_output=True, text=True, check=True)

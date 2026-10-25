@@ -114,6 +114,13 @@ PDL_SOURCES := $(SRC_DIR)/pdl_document.cc $(SRC_DIR)/pdl_format_main.cc \
 
 SOURCES := $(SHARED_SOURCES) $(CLI_SOURCES) $(LSP_SOURCES) $(PDL_SOURCES)
 PDL_OBJECT := $(BUILD_DIR)/pdl_document.o
+PATTERN_SOURCES := $(SRC_DIR)/pattern_design.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_runtime.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_expression.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_netlist.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_logic.cc
+PATTERN_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PATTERN_SOURCES))
+SOURCES += $(PATTERN_SOURCES)
 
 # bison / flex outputs. Kept in $(GEN_DIR) so that `make clean` cannot leave a
 # stale generated parser behind a hand-edited .yy file.
@@ -131,6 +138,7 @@ LSP_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(LSP_SOURCES))
 
 OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 OBJECTS += $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PDL_SOURCES))
+OBJECTS += $(PATTERN_OBJECTS)
 
 # ---- statically linked binary ----
 #
@@ -209,6 +217,7 @@ check-tcl-static:
 	fi
 
 $(BUILD_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
+$(BUILD_DIR)/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
 
 $(PDL_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_format_main.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) -o $@
@@ -375,12 +384,18 @@ COV_LSP := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(LSP_SOURCES
 COV_UNIT := $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/unit_tests.o
 COV_BINARIES := $(COV_DIR)/icl-format $(COV_DIR)/icl-lsp $(COV_DIR)/unittests
 COV_BINARIES += $(COV_DIR)/pdl-format $(COV_DIR)/pdl-lsp
+COV_PATTERN := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(PATTERN_SOURCES))
+COV_BINARIES += $(COV_DIR)/pattern_design_test $(COV_DIR)/pattern_runtime_test
+COV_BINARIES += $(COV_DIR)/pattern_expression_test $(COV_DIR)/pattern_netlist_test
+COV_BINARIES += $(COV_DIR)/pattern_logic_test
 COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
     $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
 COV_REPORT_OBJECTS += $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o \
     $(COV_DIR)/pdl_lsp_main.o
+COV_REPORT_OBJECTS += $(COV_PATTERN)
 
 $(COV_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
+$(COV_DIR)/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
 
 $(COV_DIR):
 	mkdir -p $(COV_DIR)
@@ -409,6 +424,21 @@ $(COV_DIR)/pdl-lsp: $(COV_SHARED) $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_lsp_m
 $(COV_DIR)/unittests: $(COV_UNIT)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
+$(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern_design.o $(COV_SHARED)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+$(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl_document.o
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+
+$(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+$(COV_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+$(COV_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
 coverage: $(COV_BINARIES)
 	@mkdir -p $(COV_REPORT_DIR)
 	@rm -f $(COV_DIR)/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
@@ -431,6 +461,11 @@ coverage: $(COV_BINARIES)
 	@python3 tests/lsp_test.py --binary $(COV_DIR)/icl-lsp \
 	  --cli $(COV_DIR)/icl-format
 	@$(COV_DIR)/unittests
+	@$(COV_DIR)/pattern_design_test
+	@$(COV_DIR)/pattern_runtime_test
+	@$(COV_DIR)/pattern_expression_test
+	@$(COV_DIR)/pattern_netlist_test
+	@$(COV_DIR)/pattern_logic_test
 	@gcov -b -c -o $(COV_DIR) $(COV_REPORT_OBJECTS) > /dev/null
 	@mv *.gcov $(COV_REPORT_DIR)/
 	@cd $(COV_REPORT_DIR) && python3 $(abspath tests/coverage.py) --min-line 100 --min-branch 90 --strict
@@ -626,8 +661,12 @@ coccheck: $(LSP_BIN)
 # The corpus in tests/cases/ runs first: it is the cheapest way to see a
 # regression, and a failure there names the file that broke.
 check: all
+check: pattern-runtime-static-check
 check-dynamic: dynamic
-check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck goldencheck
+check check-dynamic: unitcheck corpuscheck syntaxcheck keywordcheck pdlcheck goldencheck pattern-design-check
+check check-dynamic: pattern-runtime-check
+check check-dynamic: pattern-expression-check pattern-netlist-check pattern-logic-check
+check check-dynamic:
 	@python3 tests/tree_clean_test.py
 	@python3 tests/pdl_separation_test.py --binary $(BIN)
 	@python3 tests/src/test_format_cli.py --icl $(BIN) --pdl $(PDL_BIN)
@@ -690,6 +729,54 @@ UNIT_BIN := $(BUILD_DIR)/unit_tests
 
 unitcheck: $(UNIT_BIN)
 	@$(UNIT_BIN)
+
+.PHONY: pattern-design-check
+pattern-design-check: $(BUILD_DIR)/pattern_design_test
+	@$(BUILD_DIR)/pattern_design_test
+
+$(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/pattern_design.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+.PHONY: pattern-expression-check
+pattern-expression-check: $(BUILD_DIR)/pattern_expression_test
+	@$(BUILD_DIR)/pattern_expression_test
+
+$(BUILD_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+.PHONY: pattern-netlist-check
+pattern-netlist-check: $(BUILD_DIR)/pattern_netlist_test
+	@$(BUILD_DIR)/pattern_netlist_test
+
+$(BUILD_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+.PHONY: pattern-netlist-benchmark
+pattern-netlist-benchmark: $(BUILD_DIR)/pattern_netlist_benchmark
+	@$(BUILD_DIR)/pattern_netlist_benchmark
+
+$(BUILD_DIR)/pattern_netlist_benchmark: tests/src/pattern_netlist_benchmark.cc $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+.PHONY: pattern-logic-check
+pattern-logic-check: $(BUILD_DIR)/pattern_logic_test
+	@$(BUILD_DIR)/pattern_logic_test
+
+$(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+.PHONY: pattern-runtime-check pattern-runtime-static-check
+pattern-runtime-check: $(BUILD_DIR)/pattern_runtime_test
+	@$(BUILD_DIR)/pattern_runtime_test
+
+$(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+
+pattern-runtime-static-check: $(BUILD_DIR)/pattern_runtime_test-static
+	@$(BUILD_DIR)/pattern_runtime_test-static
+
+$(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
 
 $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc \
     $(SRC_DIR)/json.cc $(SRC_DIR)/icl_ast.h $(SRC_DIR)/format_tree.h \

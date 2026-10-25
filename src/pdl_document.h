@@ -13,6 +13,20 @@
 #include "text_position.h"
 
 namespace pdl {
+// Tcl list syntax is shared by static validation and generator execution.
+std::vector<std::string> SplitList(const std::string& text, bool* valid);
+
+struct CommandSpec {
+  int minimum, maximum, level;
+};
+const CommandSpec* FindCommandSpec(const std::string& name);
+
+struct ParseContext {
+  int level = 1;
+  std::string binding;
+  std::string procedure_namespace;
+  bool analyze = true;
+};
 
 struct ByteRange {
   size_t begin = 0, end = 0;
@@ -27,6 +41,7 @@ struct Word {
   // A vector suffix is static PDL syntax but remains substitution in Tcl.
   bool vector_substitution = false;
   bool expanded = false;
+  std::vector<ByteRange> vector_ranges;
   std::vector<Command> script;
   std::vector<Command> substitutions;
   std::vector<std::pair<ByteRange, std::string>> variables;
@@ -55,7 +70,8 @@ struct NameUse {
 // PDL syntax and semantic data are independent of the ICL AST and tokens.
 class Document {
  public:
-  explicit Document(std::string source, bool is_icl = false);
+  explicit Document(std::string source, bool is_icl = false,
+                    const ParseContext& initial = {});
   const std::string& source() const { return source_; }
   bool ok() const { return error_message_.empty(); }
   bool CanFormat() const { return !is_icl_; }
@@ -68,6 +84,7 @@ class Document {
   }
   const std::vector<Declaration>& declarations() const { return declarations_; }
   const std::vector<NameUse>& uses() const { return uses_; }
+  const std::vector<Command>& commands() const { return commands_; }
   const NameUse* UseAt(size_t byte) const;
   std::string Format(int indent_width) const;
   std::string Dump() const;

@@ -11,6 +11,18 @@ coverage = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(coverage)
 
 class CoverageReader(unittest.TestCase):
+    def test_generator_misses_fail_the_coverage_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in coverage.SOURCES:
+                Path(tmp, name + '.gcov').write_text('1:1:covered;\n')
+            Path(tmp, 'pattern_logic.cc.gcov').write_text('#####:1:uncovered;\n')
+            run = subprocess.run(
+                [sys.executable, str(ROOT / 'tests/coverage.py'),
+                 '--strict', '--min-line', '100'],
+                cwd=tmp, capture_output=True, text=True)
+        self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+        self.assertIn('pattern_logic.cc', run.stdout)
+
     def test_counts_and_duplicate_source_lines(self):
         self.assertEqual(coverage.line_coverage(ROOT/'tests/cases/ours/coverage/counts.txt'), (2, 5, [2, 4, 5]))
 

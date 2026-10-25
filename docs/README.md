@@ -8,6 +8,8 @@ usage, editor setup, supported features and practical limitations.
 | Document | Purpose |
 |---|---|
 | [Project requirements](requirements.md) | Current product, architecture, quality, testing and delivery requirements. |
+| [Pattern-generation design](superpowers/specs/2026-10-25-icl-pattern-generation-design.md) | Complete requested scope and architecture; implementation in progress, executable not yet delivered. |
+| [Pattern-generation model coverage](pattern-model-coverage.md) | Evidence for parameter, connection, reset and runtime foundations; explicit remaining model and delivery gaps. |
 | [Combined language/editor audit](combined-language-audit.md) | Sequential ICL/PDL block revalidation, upstream comparison, highlighting fix and verification. |
 | [PDL tools](pdl-tools.md) | Separate Tcl/PDL architecture, static dependency build, analysis limits and verification. |
 | [PDL block review](pdl-block-review.md) | IEEE clauses 7–8, PDL fixtures, upstream comparison and syntax-review evidence. |

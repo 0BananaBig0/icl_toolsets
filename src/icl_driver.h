@@ -39,6 +39,11 @@ class IclDriver {
     return unit_.Make<AstStatement>(text, span);
   }
 
+  AstStatement* MakeLogicStatement(LogicValue value, SourceSpan span) {
+    return unit_.Make<AstStatement>(value.text + ";", span, NamedKind::kNone,
+                                    "", std::nullopt, value.expression);
+  }
+
   AstStatement* MakeParameter(const std::string& keyword,
                               const std::string& name, const std::string& text,
                               ParsedValue value, SourceSpan span) {

@@ -24,9 +24,6 @@ Tcl_Interp* ParserInterpreter() {
       interpreter(Tcl_CreateInterp(), Tcl_DeleteInterp);
   return interpreter.get();
 }
-struct CommandSpec {
-  int minimum, maximum, level;
-};
 const std::map<std::string, CommandSpec>& Specs() {
   static const std::map<std::string, CommandSpec> kSpecs = {
       {"iPDLLevel", {1, 3, 0}},
@@ -92,18 +89,6 @@ std::string LiteralValue(std::string text) {
     value += text[i];
   }
   return value;
-}
-
-std::vector<std::string> SplitList(const std::string& text, bool* valid) {
-  TclCount count = 0;
-  const char** values = nullptr;
-  *valid = Tcl_SplitList(nullptr, text.c_str(), &count, &values) == TCL_OK;
-  std::vector<std::string> result;
-  if (*valid) {
-    for (TclCount i = 0; i < count; ++i) result.emplace_back(values[i]);
-    Tcl_Free(reinterpret_cast<char*>(values));
-  }
-  return result;
 }
 
 bool IsListSpace(char c) {
@@ -579,7 +564,7 @@ int ClampIndentWidth(int requested) {
   return requested < 1 ? 2 : std::min(requested, 16);
 }
 
-Document::Document(std::string source, bool is_icl)
+Document::Document(std::string source, bool is_icl, const ParseContext& initial)
     : source_(std::move(source)), utf16_index_(source_), is_icl_(is_icl) {
   for (size_t i = 0; i < source_.size(); ++i) {
     if (source_[i] == '\n') line_starts_.push_back(i + 1);
@@ -611,7 +596,13 @@ Document::Document(std::string source, bool is_icl)
     parser_source_ = NormalizeContinuations(source_);
   }
   commands_ = Parse(0, source_.size(), 0);
-  Analyze(&commands_, {}, {0, source_.size()});
+  if (!initial.analyze) return;
+  Context context;
+  context.level = initial.level;
+  context.binding = initial.binding;
+  context.has_binding = !initial.binding.empty();
+  context.name_space = initial.procedure_namespace;
+  Analyze(&commands_, context, {0, source_.size()});
 }
 
 void Document::Error(ByteRange range, std::string message) {
@@ -717,6 +708,8 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
           const auto inside = source_.substr(offset + 1, part.size - 2);
           if (offset > word.range.begin && IsVector(inside)) {
             word.vector_substitution = true;
+            word.vector_ranges.push_back(
+                {offset, offset + static_cast<size_t>(part.size)});
             for (size_t k = 0; k < inside.size(); ++k) {
               if (inside[k] != '$') continue;
               const size_t first = ++k;
@@ -1756,6 +1749,23 @@ const std::vector<std::string>& Keywords() {
     return words;
   }();
   return kKeywords;
+}
+
+std::vector<std::string> SplitList(const std::string& text, bool* valid) {
+  TclCount count = 0;
+  const char** values = nullptr;
+  *valid = Tcl_SplitList(nullptr, text.c_str(), &count, &values) == TCL_OK;
+  std::vector<std::string> result;
+  if (*valid) {
+    for (TclCount i = 0; i < count; ++i) result.emplace_back(values[i]);
+    Tcl_Free(reinterpret_cast<char*>(values));
+  }
+  return result;
+}
+
+const CommandSpec* FindCommandSpec(const std::string& name) {
+  const auto found = Specs().find(name);
+  return found == Specs().end() ? nullptr : &found->second;
 }
 
 std::string FormatOutcome::Diagnostic(const std::string& name) const {
