@@ -32,6 +32,36 @@ class Oracle(unittest.TestCase):
                                 capture_output=True, check=True)
         self.assertEqual(result.stdout, value + '\n')
 
+    def test_bsdl_staging_script_inventory_and_integrity(self):
+        source = self.root / 'tests/model with $ and [chars].vhd'
+        source.write_text('entity Probe is end Probe;\n')
+        self.case['bsdl'] = source.relative_to(self.root).as_posix()
+        bundle = self.root / 'bundle'
+        report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+        directory = bundle / 'simple'
+        staged = directory / 'model.bsdl'
+        self.assertTrue(staged.is_file(), 'BSDL must be staged with the ICL/PDL')
+        self.assertEqual(staged.read_bytes(), source.read_bytes())
+        self.assertEqual(report['cases'][0]['inputs']['model.bsdl'],
+                         hashlib.sha256(source.read_bytes()).hexdigest())
+        self.assertIn('-bsdl_file [file join $here "model.bsdl"]',
+                      (directory / 'run.tcl').read_text())
+        inventory = oracle.catalog(self.root, [self.case])
+        self.assertEqual(inventory[self.case['bsdl']]['cases'], ['simple'])
+        staged.write_text('modified')
+        with self.assertRaisesRegex(ValueError, 'changed input model.bsdl'):
+            oracle.run_bundle(bundle, '/no/tool', 1)
+
+    def test_invalid_bsdl_inputs_are_rejected_before_staging(self):
+        for index, invalid in enumerate(['../escape.bsdl', '/outside.bsdl',
+                                         'tests/missing.bsdl', '', [], None]):
+            with self.subTest(invalid=invalid):
+                self.case['bsdl'] = invalid
+                with self.assertRaises(ValueError):
+                    oracle.prepare(self.root, [self.case], self.root / f'bundle_{index}',
+                                   reference_only=True)
+                self.assertFalse((self.root / f'bundle_{index}').exists())
+
     def test_missing_generator_is_blocked_not_reference_success(self):
         report = oracle.prepare(self.root, [self.case], self.root / 'bundle')
         self.assertEqual(report['cases'][0]['status'], 'blocked_generator')
@@ -105,14 +135,22 @@ class Oracle(unittest.TestCase):
             'a=sys.argv\n'
             'p=pathlib.Path(a[a.index("--pdl")+1])\n'
             'assert "iWrite r 1" in p.read_text()\n'
+            'b=pathlib.Path(a[a.index("--bsdl")+1])\n'
+            'assert b.read_text() == "entity Probe is end Probe;"\n'
             'pathlib.Path(a[a.index("--output")+1]).write_text("iWrite r 1\\niApply\\n")\n'
             'pathlib.Path(a[a.index("--local_reset")+1]).write_text('
             '"# reset rewrite\\niWrite reset 1\\niApply\\niWrite r 1\\niApply\\n")\n')
         generator.chmod(0o755)
         self.case['requires_local_reset'] = True
+        self.case['bsdl'] = 'tests/source.bsdl'
+        (self.root / self.case['bsdl']).write_text('entity Probe is end Probe;')
         report = oracle.prepare(self.root, [self.case], self.root / 'bundle',
                                 generator=generator)
         self.assertEqual(report['cases'][0]['status'], 'ready_comparison')
+        command = report['cases'][0]['generator_command']
+        self.assertIn('--bsdl', command)
+        self.assertEqual(Path(command[command.index('--bsdl') + 1]).read_text(),
+                         'entity Probe is end Probe;')
         script = (self.root / 'bundle/simple/run.tcl').read_text()
         self.assertIn('local_reset.pdl', script)
         self.assertNotIn('source_0.pdl', script)

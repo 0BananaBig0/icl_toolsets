@@ -33,7 +33,8 @@ SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'pdl_lsp_main.cc', 'format_cli.h', 'lsp_server.h', 'text_input.h',
            'utf8.h', 'text_position.h',
            'pattern_design.cc', 'pattern_design.h', 'pattern_expression.cc',
-           'pattern_netlist.cc', 'pattern_netlist.h', 'pattern_logic.cc',
+           'pattern_bsdl.cc', 'pattern_address.cc', 'pattern_netlist.cc', 'pattern_netlist.h',
+           'pattern_logic.cc',
            'pattern_runtime.cc', 'pattern_flatten.cc']
 
 

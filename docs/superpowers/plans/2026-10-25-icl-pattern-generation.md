@@ -209,3 +209,28 @@ Implementation is in progress. Ordered ICL loading and PDL runtime foundations
 are tested; typed elaboration, scheduling, CLI delivery and end-to-end round trips
 remain unfinished. Actual commands and results are recorded in the ignored
 progress ledger; passing foundation checks does not complete later tasks.
+
+### Task 2 continuation: BSDL metadata dependency
+
+AccessLink's IEEE 1149.1 model needs an external BSDLEntity (IEEE 1687-2014
+6.4.17 and the inspected Tessent AccessLink/read_icl topics). Continue the
+provisional separate `--bsdl` input design; no existing CLI behavior changes.
+
+- [x] Add a separate BSDL metadata reader, with independent lexical rules and
+  no ICL/PDL token reuse. Read static entity attributes, scalar TAP port roles,
+  opcode alternatives and widths, capture/ID codes and register associations.
+  Retain other attributes for later model construction; this is not a complete
+  VHDL compiler or proof that an AccessLink can be exercised.
+- [x] Test the maintained Tessent-accepted BSDL companion, comments/strings,
+  case-insensitive VHDL identifiers, constant string concatenation, opcode
+  alternatives, malformed/unsupported required values and resource limits.
+- [x] Connect the metadata loader to the design registry without changing ICL
+  override/top-selection semantics. Failed BSDL loads must not alter prior data.
+- [ ] Only after metadata is verified, construct TAP/AccessLink models and check
+  their instruction/interface/ActiveSignal behavior against the recorded oracle.
+
+Use bounded linear scanning for BSDL source (16 MiB input, 4 MiB decoded-value
+budget); do not expand unknown expressions or load external VHDL packages.
+Missing package-defined values needed by the TAP must fail explicitly. New code
+belongs in `src/pattern_bsdl.*` and tests in `tests/src/pattern_bsdl_test.cc`, with
+Makefile/static/sanitizer/coverage integration before completion claims.

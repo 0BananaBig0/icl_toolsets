@@ -15,6 +15,8 @@
 #include "pattern_expression.h"
 
 namespace pattern {
+constexpr size_t kMaxAddressBits = 4 * 1024 * 1024;
+
 struct Expression {
   size_t scope = 0;
   size_t begin = 0, end = 0;
@@ -45,6 +47,15 @@ struct BitReference {
 struct MuxChoice {
   std::vector<Constant> codes;
   std::vector<BitReference> source;
+};
+
+enum class OneHotSourceKind { kPort, kInstance, kRegister };
+
+struct OneHotSource {
+  std::vector<BitReference> bits;
+  OneHotSourceKind kind = OneHotSourceKind::kPort;
+  // Instance scope ID or DataRegister node ID; unused for Port contributors.
+  size_t object = std::numeric_limits<size_t>::max();
 };
 
 enum class LogicOperation {
@@ -102,10 +113,9 @@ struct NetlistNode {
   std::map<std::string, Constant> constants;
   std::optional<BitReference> reset;
   std::vector<MuxChoice> choices;
-  // Original Port widths; narrower data contributors are right-aligned with X
+  // Original contributor widths; narrower data sources are right-aligned with X
   // in the leading output positions. Keep raw widths for lossless ICL replay.
-  std::vector<std::vector<BitReference>> one_hot_sources;
-  bool has_addressed_contributors = false;
+  std::vector<OneHotSource> one_hot_sources;
   std::vector<LogicInstruction> logic;
   Attributes attributes;
   std::optional<ScanInterface> scan_interface;

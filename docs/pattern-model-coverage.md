@@ -50,19 +50,20 @@ capabilities reuse the existing shared AST and declaration index.
 | Integer and numeric/string constants | `tests/src/pattern_expression_test.cc` | Broader real-corpus evaluation; resource-bound tests |
 | Parameterized instance hierarchy and widths | `TestSpecialization`, `TestErrors` | Corpus specialization and flat serialization |
 | Bit order, partial input bindings, inversion, aliases | `TestBitConnections`, `TestConnectionErrors`, `TestUnsizedSources` | Full semantic source-kind checks |
-| Instance attributes and addresses | `TestAddressedInstanceMetadata`, `TestInstanceAttributeReplay`, `TestInstanceMetadataValidation`: parent-scope values, separate module/instance attributes, metadata validation and replay | Addressed-group connections, address comparison and scheduling |
+| Instance attributes and addresses | `TestAddressedInstanceMetadata`, `TestInstanceAttributeReplay`, `TestInstanceMetadataValidation`: parent-scope values, separate module/instance attributes, metadata validation and replay | Runtime address selection and scheduling |
 | Reset polarity, unique-parent/default/ambiguous reset | `TestResetInference` | Child-output precedence, TRST/TMS, nested local-reset simulation |
 | Enum reset values and ScanMux connectivity | `TestMuxAndEnum` | All mux kinds, overlapping selector checks, state transitions |
 | OneHotScanGroup | `TestOneHotScanGroups`, `TestOneHotScanErrors`, `TestOneHotScanMuxFanIn`, `TestOneHotScanLimits`: contributors, inversion/ranges, structural enable fan-in, per-bit cycles and flat replay | Runtime enable solving and at-most-one-active-source constraints |
-| OneHotDataGroup Port contributions | `TestOneHotDataPorts`, `TestOneHotDataErrors`, `TestOneHotDataBitDependencies`, `TestOneHotAddressedPort`, `TestOneHotDataLimits`, `TestOneHotDataGroups`: source widths/directions, unknown leading bits, structural enables, cycles and canonical replay | Addressed Instance/DataRegister contributions, implicit address/data associations and runtime enable solving |
+| OneHotDataGroup contributions | Port/Register/Instance contributor tests: widths/directions, unknown leading bits, structural enables, cycles, addressed data defaults and metadata-backed canonical replay | Runtime enable solving, uniqueness/conflict checks and vendor-portable flattened hardware semantics |
+| Address/control requirements | `tests/src/pattern_address_test.cc`: implicit/explicit domains, aliases, wide additive offsets, scan-register boundaries, source provenance, resource guards and replay | Global feasibility/uniqueness, gated or partial/reordered bindings, read deactivation and scheduling |
 | LogicSignal | `tests/src/pattern_logic_test.cc`: shared AST, exhaustive small truth tables, enum/parameter widths, X masks, invalid operands, recursion and allocation limits | Full corpus and retargeting integration |
 | Selectable DataRegister and output enables | `TestDataRegisterControls`: WriteEnSource, double inversion, Enable and width errors | State transitions and access justification |
 | Register semantic constraints | `TestRegisterRules`: required scan source/rightmost tap, reset/default conflicts, enum widths | Remaining signal-kind rules and state semantics |
 | Clock/control gates | Existing parser and initial connections | Typed clock models and control associations |
 | ScanInterface | `TestScanInterfaces` and `TestInterfaceKinds`: four interface types, chains, default loads, implicit controls and invalid membership | Blackbox reset path-length proof, unique-selectability proof and scheduler integration |
-| DataRegister access models and AccessLink | Existing parser only | Address/callback/scan/TAP models and scheduling |
+| DataRegister access models and AccessLink | Addressed register data connections and address/control requirements; selectable register structural inputs | Callback execution, AccessLink/TAP models, state transitions and scheduling |
 | Tessent edge-triggered reset | Manual reviewed | Edge history and builtin model implementation |
-| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains, port-based one-hot groups and original PDL bindings | Addressed OneHotDataGroup members, PortGroup/AccessLink, clock properties and end-to-end scheduling replay |
+| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains, typed one-hot contributors, addressed data defaults and original PDL bindings | Vendor-portable address/control flattening, PortGroup/AccessLink, clock properties and end-to-end scheduling replay |
 | Shortest configuration sequence and iMerge | Not implemented | State search, cost oracle and semantic barriers |
 | Local-reset source-preserving output | Not implemented | Transitive releases, safe batching, exact iProc preservation |
 | CLI/build/install/output safety | Not implemented | All requested options, staged output, dynamic/static installation |
@@ -316,3 +317,254 @@ It includes 334/334 grammar productions, 119/119 scanner rules, static/dynamic
 checks, and both Vim and Neovim corpora with 38,489 ICL and 734 PDL files each.
 The executable, scheduler, local-reset rewrite and complete model coverage are
 still unfinished; this checkpoint completes only Port-based group foundations.
+
+## Addressed-instance implicit data input connections
+
+`Elaborator::ConnectAddressedData` reuses the declaration-ordered kind index
+and shared `BitReference` connections. After explicit input bindings are
+resolved, addressed instances with no explicit data binding consume the leading
+parent logical data bits. A partial or whole binding to any child DataInPort
+suppresses defaults for the complete child data bus. Missing or insufficient
+parent data raises a source-located width error. Unaddressed instances retain
+ordinary explicit-connection semantics. See [Tessent probe evidence](tessent-oracle.md#addressed-instance-data-defaults)
+for source authority and measured behavior.
+
+Mapping uses a cursor over parent ports, copying only the consumed references;
+it does not expand the full parent bus per child. Work is proportional to
+connected bits plus child ports (and kind-index lookups), bounded to 4,194,304
+implicit data references per elaboration. The existing one-million-bit per-object
+limit still applies. The source fixtures and `TestAddressedDataDefaults` cover
+both vector directions, ordering different from alphabetical names, sibling and
+nested scopes, partial/whole overrides, no default on ordinary instances,
+insufficient/missing parent width, and aggregate allocation rejection.
+
+This does not complete addressed-register semantics, address arithmetic or
+read/write enable selection. Addressed group serialization still rejects
+unsupported members explicitly, so no addressed flat-replay claim is made.
+
+A representative scale check maps 5,000 one-bit addressed children from a
+1,048,576-bit parent (`247,909` source bytes). Elaboration took 28.3 ms on its
+first run and 48.6 ms while full regression, coverage and sanitizer jobs were
+active; this is not a before/after speedup claim. The combined benchmark
+(including existing 5,000-instance flat replay and sparse one-hot checks) took
+1.10 s wall time / 166,248 KiB peak RSS with g++ 16.2.1 `-O2` on WSL2 Linux
+6.18.33.2. Reproduce with `make pattern-netlist-benchmark BISON=/usr/bin/bison`
+and `/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M'
+build/pattern_netlist_benchmark`.
+
+Focused tests, Google style checks, independent review and ASan/UBSan checks
+passed; LeakSanitizer was disabled as in the preceding checkpoints. All five
+new maintained remote cases matched their expected outcomes, and both successful
+PDL exports parsed with the shared trace helper. These are reference measurements,
+not generator comparisons. Strict coverage ran and remains below the unchanged
+100% line / 90% raw branch gate: **6,692/7,000 lines (95.6%)** and
+**11,030/18,314 branches (60.2%)** (`build/address-defaults-coverage.log`).
+
+The complete `make check BISON=/usr/bin/bison -j4` run with the reference
+environment exited 0 after the final code/test edits
+(`build/address-defaults-regression.log`). It covered 334/334 grammar productions,
+119/119 scanner rules, static/dynamic checks, and both Vim and Neovim corpora
+with 38,492 ICL and 735 PDL files each. The strict coverage gate above remains
+separate and failed.
+
+## Typed addressed contributors and structural flat replay
+
+`OneHotSource` now distinguishes `Port`, `Instance` and `DataRegister` contributors.
+It retains the original bit vector and either an instance scope ID or a register
+node ID. The former `has_addressed_contributors` flag is removed: a nested member
+now has real connectivity, participates in width/budget checks and contributes to
+per-bit dependency traversal. Instance outputs concatenate in declaration order,
+with each vector traversed left-to-right (IEEE 1687-2014 §6.4.6.7(f), p.89).
+Narrow contributors retain their original widths and leading unknown positions;
+see the addressed-contributor experiments in [the oracle report](tessent-oracle.md).
+
+Addressed registers retain evaluated `AddressValue` constants. Their implicit
+`WriteDataSource` is the rightmost part of their **own module's** logical data-in
+bus (§6.4.9(r,v), p.121), including mixed vector directions and multiple ports.
+This association is built after flat-origin restoration, so flattened physical
+root ports cannot accidentally replace the original local bus. Existing shared
+parser checks reject misplaced/mixed register access declarations; elaboration
+also checks restored membership, widths, numeric address type and access type.
+Address arithmetic, address-source selection and read/write-enable behavior
+remain separate unfinished obligations.
+
+Flat output embeds each direct register once in its group. An instance's output
+contribution becomes a `Port` concatenation, with its original scope recorded in
+optional version-1 `instance_contributors` metadata. Import verifies source
+identity, parent scope, uniqueness, complete logicalDataOut width, bit order and
+polarity. Metadata node rows use the existing name index for deterministic order:
+width-sorting nested register declarations can change their transient node IDs.
+Tests cover both standalone register and instance groups, mixed widths/types,
+malformed origin records, and original PDL target binding after reimport.
+
+This establishes **structural serialization/reimport**, not vendor-portable flat
+hardware semantics or equivalent generated patterns. Our tool uses origin
+metadata to retain implicit local buses and enable associations. An instance
+contributor with no DataOutPorts still raises an explicit serialization error;
+it is not silently dropped. The scheduler and control models must be completed
+before testing the requested original-versus-flat generated-PDL equivalence.
+
+Independent review exposed compact address-constant expansion: 100 scalar
+registers containing `AddressValue 1048576'b0` occupied 100 MiB of retained
+address data from just 4,638 source bytes (108,544 KiB measured RSS). Retained
+instance and register address constants now share a 4,194,304-bit budget, checked
+before retaining each value. Flat import applies the same combined limit to
+register constants and restored scope addresses. Tests first demonstrated that
+the oversized input was accepted, then verified rejection, including the mixed
+instance/register path and metadata import. Signal/reference limits remain
+independent; address values cannot evade them merely by using scalar registers.
+
+The existing benchmark now resolves the previously omitted 5,000 instance
+contributors of a scalar group. With a 1,048,576-bit parent data bus and 247,909
+source bytes, elaboration measured 62.8 ms; the complete benchmark took 0.66 s
+wall / 162,432 KiB peak RSS (g++ 16.2.1 `-O2`, WSL2 Linux 6.18.33.2). This performs
+more work than the previous placeholder model, so it is not a speedup claim.
+Use `make pattern-netlist-benchmark BISON=/usr/bin/bison` to reproduce.
+
+Focused dynamic tests, the scale benchmark and Clang ASan/UBSan passed after the
+review fix. Strict coverage again failed the unchanged 100%/90% gate:
+**6,838/7,154 handwritten lines (95.6%)** and **11,263/18,658 raw branches
+(60.4%)**, logged in `build/address-contributors-coverage.log`. This measurement
+preceded a braces-only Google style correction; no behavioral logic changed in
+that correction. Final clang-tidy passed. LeakSanitizer remains disabled due to
+the environment limitation already recorded above.
+
+After the final style correction, the complete regression exited 0:
+`ICL_REF_DIR=/tmp/icl-reference-honza-20261021
+PATH="$PWD/build/combined-audit/reference-venv/bin:$PATH"
+make check BISON=/usr/bin/bison -j4`
+(log: `build/address-contributors-final-regression.log`). It includes static and
+dynamic checks, 334/334 grammar productions, 119/119 scanner rules, and both
+Vim/Neovim corpora with 38,493 ICL and 737 PDL files each. The final ASan/UBSan
+rerun also exited 0 (`build/address-contributors-reviewed-sanitizers.log`). The
+separate strict coverage gate remains failed as reported above.
+
+## Address/control requirement resolution
+
+`src/pattern_address.{h,cc}` consumes the existing immutable `Netlist` and returns
+an addressed DataRegister's effective address signals, computed numeric address,
+and read or write enable source. It does not execute PDL, schedule operations,
+initialize registers, or prove global address uniqueness. The netlist must
+outlive the resolver and must not be changed while it is in use.
+
+The implementation follows IEEE 1687-2014 §6.4.6.24–26, §6.4.7(s–u), and
+§6.4.9(l–n,r,s,u). Port order is declaration order and vector order is left to
+right. Implicit addressed ancestors share one cached bus; instance offsets and
+the register AddressValue are summed with arbitrary-width binary arithmetic.
+An explicit scan-register source establishes a new domain. Explicit complete
+parent-bus bindings preserve the parent's domain. Read and write enables resolve
+independently, and the requested control must share primary-input provenance or
+one ScanRegister with the address. Missing, constant, inverted, logic-driven or
+mixed-register sources fail with the target's source location.
+
+Numeric leading zeros do not inflate a computed address. A value that actually
+exceeds the effective bus width is rejected rather than silently truncated.
+This intentionally differs from the measured Tessent overflow behavior described
+in [the oracle notes](tessent-oracle.md#address-domain-probes-2026-10-25).
+ReadEnPort's automatic deactivation, write data/state constraints, conflicts,
+global uniqueness and shortest-pattern scheduling remain later obligations.
+
+`tests/src/pattern_address_test.cc` covers explicit/implicit connections,
+scan-driven banks, nested 72-bit sums, mixed vector directions and declaration
+order, significant-width checks, repeated failure/cache recovery, illegal source
+provenance, canonical flat replay and 2,000 siblings sharing a 4,096-bit bus.
+Port indexing is O(nodes); inherited domain storage is shared rather than copied
+per descendant. Cached signal references plus offset bits have a 4,194,304-bit
+budget. The focused suite measured 0.03 s wall and 21,264 KiB peak RSS on the
+existing WSL2/g++ optimized build; this is a new workload, not a speedup claim.
+Reproduce with `/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M'
+build/pattern_address_test` after `make pattern-address-check`.
+
+Independent review found and reproduced three issues before delivery: disabled
+DataOutPort forwarding was treated as a direct wire; aliases could discard an
+ancestor's address offset; and unrelated million-bit parent buses were allocated
+again for each tiny scan-driven bank. Resolution now rejects gated forwarding,
+stops at the parent-domain identity through aliases, and compares cached widths
+before streaming parent references. The alias test requires 4 + 2 + 1 = 7 both
+before and after flat replay, with explicit and implicit parent bindings.
+
+The regression adds 10,000 independently scan-driven banks under an unrelated
+1,048,576-bit parent address. The old implementation exceeded its 10-second test
+guard; the corrected **whole** expanded suite, including 2,000 shared-bus siblings,
+ran in 0.58 s wall / 114,436 KiB peak RSS with g++ `-O2`. The 0.03 s measurement
+above was the earlier, smaller suite and is not a comparable baseline. Tests also
+exercise oversized logical buses and repeated failures at the retained-offset
+budget. Gated control constraints, reordered/partial parent logical-address
+bindings and global configuration feasibility are not implemented by this
+resolver; unsupported paths fail explicitly. Scheduling remains unfinished.
+
+Final strict coverage after the added primary-input and reordered-mapping checks:
+**7,025/7,347 handwritten lines (95.6%)**, **11,541/19,060 raw branches
+(60.6%)**. `pattern_address.cc` reaches **187/193 lines (96.9%)** and
+**273/402 branches (67.9%)**. The unchanged 100%/90% gate still fails;
+`build/address-last-tests-coverage.log` records the failure. ASan/UBSan passes,
+with leak detection disabled as previously documented. Google format/tidy and
+focused dynamic/static checks pass. The post-review complete regression passed
+(`build/address-final-regression.log`); a subsequent complete run includes the
+last two test-only additions and is recorded separately below when finished.
+
+The final complete `make check` run after all address source/test changes exited
+0 (`build/address-delivery-regression.log`). It includes 334/334 grammar
+productions, 119/119 scanner rules, static/dynamic tests, and both Vim and Neovim
+corpora: 38,499 ICL / 738 PDL files each. Final ASan/UBSan after the last tests also
+exited 0 (`build/address-last-tests-sanitizers.log`). Strict coverage remains
+failed as reported above. This verifies the delivered foundation changes, not
+the unfinished pattern-generation executable.
+
+## BSDL metadata foundation
+
+`pattern_bsdl.*` extracts the selected entity's static instruction width,
+opcodes (including alternatives and masks), instruction capture, optional
+IDCODE/boundary length, register associations and scalar TAP port roles.
+VHDL identifiers use case-insensitive lookup; instruction names inside attribute
+strings retain their spelling. The lexer is independent of ICL and PDL.
+Integer constants and concatenated string constants are supported; required
+unresolved or unsupported expressions produce source-located errors.
+
+This is not a complete VHDL/BSDL conformance checker or an executable TAP model.
+Other attributes retain their original expression and origin. In particular,
+`TAP_SCAN_CLOCK` is retained as opaque metadata: the future hardware/timing model
+must validate it before use. Instruction legality, electrical pin relationships,
+package-defined values and generic AccessLink semantics are not inferred.
+
+`Design::AddBsdl` parses before insertion. Entity lookup is case-insensitive in a
+separate registry, without changing ICL top selection or module overrides.
+Duplicate BSDL entities are rejected with both locations; malformed or duplicate
+loads preserve prior metadata. This intentionally does not introduce a BSDL
+override policy absent from the requested ICL/PDL override requirements.
+
+`tests/src/pattern_bsdl_test.cc` uses the maintained Tessent-accepted 1,409-byte
+AccessLink companion, static expressions, comments/quotes, malformed inputs,
+every truncated source prefix, single-byte deletions, truncated embedded tables,
+constant cycles/expansion and a 10,000-port input. Resource limits are 16 MiB
+source, 1,048,576 tokens, nesting 128, and separate 4 MiB budgets for decoded
+strings and retained attribute/register-association payloads. These payload
+budgets are not total RSS limits: token vectors and maps have additional costs.
+Port and metadata maps use logarithmic lookup; lexical scanning is linear in
+input size, and expression expansion is budgeted.
+
+Tests reproduced and fixed acceptance of constrained `bit(...)` TAP pins and
+memory amplification through multi-target attributes and register associations.
+Independent review's 82,990-byte input retained 64 MiB of repeated register
+names before the fix; copies now charge the budget before insertion. The whole
+expanded focused suite measured 0.11 s wall / 71,196 KiB peak RSS on WSL2
+6.18.33.2, g++ 16.2.1, `-O2`. Reproduce with
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' build/pattern_bsdl_test`.
+This is a new workload, not a comparative throughput claim.
+
+After the additional duplicate-declaration and numeric-token tests, the BSDL
+reader reaches **404/406 lines (99.5%)**, **760/1,068 raw branches (71.2%)**.
+The two unexecuted lines are defensive end-of-declaration and unclosed-string
+guards behind the lexer sentinel and prior balanced-statement validation.
+Overall handwritten coverage is **7,447/7,771 lines (95.8%)** and
+**12,324/20,164 branches (61.1%)**. The unchanged 100%/90% gate fails
+(`build/bsdl-final-coverage.log`); neither focused nor complete regression
+success should be interpreted as satisfying that coverage gate.
+Google formatting/tidy and focused dynamic/static tests pass. ASan/UBSan passes
+with leak detection disabled (`build/bsdl-final-verification-sanitize.log`).
+The final complete `make check` run after all source/test changes exited 0
+(`build/bsdl-final-regression.log`), including 334/334 grammar productions,
+119/119 scanner rules, dynamic/static checks and Vim/Neovim corpora of
+38,500 ICL / 739 PDL files each. BSDL metadata loading is verified at this
+checkpoint; TAP construction, scheduling, CLI/local-reset output and actual
+generator-versus-Tessent equivalence remain incomplete.

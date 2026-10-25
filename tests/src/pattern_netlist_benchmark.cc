@@ -86,6 +86,30 @@ Module Top {
                      std::chrono::steady_clock::now() - sparse_start)
                      .count()
               << '\n';
+    std::string data_source =
+        "Module DataLeaf { DataInPort d; DataOutPort q { Source d; } } "
+        "Module DataTop { DataInPort bus[1048575:0]; OneHotDataGroup g { ";
+    for (size_t i = 0; i < kInstances; ++i) {
+      data_source += "Instance i" + std::to_string(i) +
+                     " Of DataLeaf { AddressValue " + std::to_string(i) +
+                     "; } ";
+    }
+    data_source += "} }";
+    pattern::Design data_design;
+    data_design.AddIcl("data_defaults.icl", data_source);
+    const auto data_start = std::chrono::steady_clock::now();
+    const auto data = pattern::Elaborate(data_design, "DataTop");
+    const auto& last = data.NodeAt("i4999.d").inputs.at("Source");
+    if (last.size() != 1 || last[0].node != data.node_ids.at("bus") ||
+        last[0].index != 1048575) {
+      throw std::runtime_error("wide parent data default mapping mismatch");
+    }
+    std::cout << "data_parent_width=" << kWidth << " children=" << kInstances
+              << " source_bytes=" << data_source.size() << " elaborate_ms="
+              << std::chrono::duration<double, std::milli>(
+                     std::chrono::steady_clock::now() - data_start)
+                     .count()
+              << '\n';
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

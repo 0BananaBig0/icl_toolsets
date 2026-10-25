@@ -1,0 +1,3 @@
+# Address-default oracle input; these probes have no local-reset TDRs.
+iWrite child.r 0x96
+iApply

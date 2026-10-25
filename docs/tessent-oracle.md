@@ -153,3 +153,187 @@ Neovim checks over 38,489 ICL and 734 PDL files each. Strict handwritten-code
 coverage was not rerun for this test-harness addition; its previously documented
 unmet thresholds remain unchanged. A passing regression is not full generator
 conformance or completed vendor comparison coverage.
+
+## Addressed-instance data defaults
+
+The additional fixture `tests/cases/tessent/pattern_generation/address_defaults.icl`
+is a completed adaptation of the *Tessent Shell Reference Manual v2023.4*,
+`Instance`, Example 2. The exact local topic is
+`htmldocs/tshell_ref/topics/Command_Instance_id9dd6ea02.html` under the manual
+root. `tests/cases/ours/pattern_generation/address_partial_data.icl` supplies
+independent explicit-binding, split-bus and insufficient-width variants. All
+five use `write_address_child.pdl`; none requires a local-reset TDR release.
+They are included in the maintained oracle manifest.
+
+The topology probe `tests/src/tessent_address_defaults.tcl` loads both fixture
+files beside the script. Set `ICL_TOOLSETS_PROBE_TOP` to one of the five top
+module names below (default `AddressDefaultsTop`). Run in a fresh directory:
+
+```sh
+ICL_TOOLSETS_PROBE_TOP=SplitDefaultTop tessent -shell \
+  -dofile tessent_address_defaults.tcl -logfile tessent.log
+```
+
+It uses `patterns -ijtag`, queries fan-in after `set_current_design` in setup,
+then enters analysis to export PDL. Expected-error probes exit nonzero; that is
+not a successful pattern export. Use the oracle harness for automated outcome
+classification. Tool-generated logs/PDL belong under ignored `build/` locally.
+
+Observed with **Tessent Shell 2026.2** in the isolated remote directory
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_address_defaults_20261025_Mwxclr`:
+
+| Top module | Observed data connectivity and pattern outcome |
+| --- | --- |
+| `AddressDefaultsTop` | Child `data[7:0]` maps to parent `data[15:8]`; `iWrite child.r 0x96` exports PDL driving address 5 (instance 4 plus register 1) |
+| `SplitDefaultTop` | Child `upper[3:0]` maps to `{zfirst[1:0], asecond[0:1]}`, and `lower[0:3]` maps to `asecond[2:5]`; PDL export succeeds |
+| `PartialDataTop` | Explicit child `data[7:4]` maps to `override_data[3:0]`; remaining child data bits have no fan-in; the requested write has no solution |
+| `ExplicitDataTop` | Explicit `upper` maps to `override_data`; the entire `lower` port has no fan-in; the requested write has no solution |
+| `ShortDataTop` | Elaboration fails with ICL48-1: parent logical data width 4 is smaller than required child width 8 |
+
+IEEE 1687-2014 §6.4.6.6(c), printed p.87, defines logical data ordering:
+ports top-to-bottom, each vector left-to-right. §6.4.7(v), printed p.112,
+requires addressed-instance data defaults. The narrower-child leading-bit
+mapping and suppression of the **entire child logical data bus** by any explicit
+data binding are measured vendor behavior, not additional quoted IEEE rules.
+
+The probe also shows that child AddressPort and WriteEnPort/ReadEnPort fan-in
+includes address arithmetic/selection: child `address[1]` depends on parent
+`address[1]` and `address[0]`; enables depend on the full parent address. Thus
+these controls cannot be implemented as ordinary direct wire defaults. This
+checkpoint adds only the verified DataInPort defaults; addressed control/model
+semantics and end-to-end generator comparisons remain open.
+
+The maintained runner reproduced all **5/5 expected outcomes**, with input and
+script hashes matching the staged sources. Both successful exports passed the
+shared-parser static trace helper. Retrieved evidence is in
+`build/address-defaults-evidence/address-defaults-oracle/`; generated artifacts
+are not tracked. The manifest now has 16 cases in total. No run here compares
+our generator, which still lacks its executable and scheduler.
+
+## Addressed register and instance contributors
+
+`tests/cases/ours/pattern_generation/addressed_contributors.icl` supplies complete
+self-constructed direct-register and nested-instance probes for IEEE 1687-2014
+§6.4.15(b,c). Additional modules exercise mixed source widths and split logical
+data buses in local tests. Tessent Shell 2026.2 ran the eight maintained cases in
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_contributors_20261025_BN5L5k`.
+
+Both tested groups have a 16-bit output supplied by an 8-bit contributor; the
+instance case reverses the group/output vector direction. Observed results:
+
+| Operation, for each contributor type | Tessent result |
+| --- | --- |
+| `iWrite observed 0x0096; iApply` | Rejects the leading output bits as fixed to unknown |
+| `iWrite observed 0bXXXXXXXX10010110; iApply` | No solution; writing through this output does not automatically establish the addressed storage value in these probes |
+| `iWrite target 0x96; iApply; iRead observed 0bXXXXXXXX10010110; iApply` | Exports PDL successfully |
+| Same direct write, then `iRead observed 0x0096; iApply` | Also exports PDL, including comparisons of the high output bits |
+
+`target` is an alias for the actual register. The successful direct writes drive
+address 1 in the direct-register case and 17 (instance 16 plus register 1) in the
+instance case. The failed writes identify the leading bits as structurally
+unknown. A successful `iRead` on a primary output records an expected comparison;
+it does **not** prove that the ICL model supplies those expected values or that
+hardware would pass the test. In particular, the second read result must not be
+interpreted as zero padding. No pattern simulation or hardware-equivalence check
+was performed.
+
+The first experimental manifests incorrectly predicted automatic output-write
+justification and rejection of expected high read values. Those experimental
+runs failed those predictions; their logs are retained under ignored `build/`.
+The final manifest records the measured distinctions and reproduced **8/8
+expected outcomes**. All four successful PDL exports parsed with the shared trace
+helper, and all retrieved input/script hashes match the staged source bytes.
+Evidence: `build/address-contributors-final-evidence/`. The maintained manifest
+now contains 24 cases. End-to-end comparisons remain blocked by the unfinished
+generator/scheduler/local-reset implementation.
+
+## Address-domain probes (2026-10-25)
+
+The self-constructed `address_domains/` fixtures separate each top into its own
+input file: Tessent validates modules while loading, so an invalid unused module
+can contaminate another probe. Tessent Shell **2026.2** ran these cases in
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_domains_20261025_DEq8hc`.
+The corrected isolated run matched **5/5 measured expectations**:
+
+| Top | Observed result |
+| --- | --- |
+| `ExplicitParentAddress` | ICL114-1 rejects explicit AddressPort input binding on an AddressValue instance, even when it is the complete parent address bus |
+| `ExplicitScanAddress` | ICL128-1 rejects an addressable instance without parent AddressPort definitions; diagnostic explicitly says direct address bindings are currently unsupported |
+| `ScanAddressBoundary` | An ordinary bank instance driven by one ScanRegister is accepted; writing `bank.child.r` drives register address 1 plus instance offset 4, write enable, and data through `control[17:0]` |
+| `AddressOverflow` | Parent address width 2, instance offset 4, register address 1: exports root address **1**, truncating the mathematical sum 5 |
+| `WideZeroAddress` | Direct register address `8'b00000001` under a 2-bit logical address is accepted and exports address 1 |
+
+The bank's scan register declares `ResetValue 0`, required by Tessent ICL79-1
+for its ReadEnPort source's implicit `iApplyEndState 0`. The runner still opens
+with `-no_initial_ireset`; this declaration does not execute a reset. Earlier
+unsuccessful probes lacked that declaration or overrode an unsigned parameter
+with a sized value (ICL36-1), so they did not establish address behavior.
+
+IEEE 1687-2014 §6.4.9(r,s,u), printed p.121, requires additive computed addresses
+and sufficient logicalAddress width. Our address resolver rejects sum 5 on a
+2-bit bus; Tessent's measured truncation is recorded as a vendor difference,
+not adopted as a standard rule. Explicit parent bindings remain supported by the
+resolver under §6.4.7(s)'s explicit-connection exception, despite the Tessent
+limitation. These two cases are intentional compatibility differences and
+must not become claims of identical generator/vendor output.
+
+Generated evidence resides in `build/address-domains-corrected-evidence/`.
+The maintained manifest contains 29 cases. Three successful exports have been
+checked by the shared PDL trace parser; no hardware simulation or completed
+pattern-generator comparison is claimed.
+
+## AccessLink with external BSDL
+
+`AccessLink_ActiveSignal` is a complete self-constructed ICL/BSDL/PDL input set
+under `tests/cases/ours/pattern_generation/access_link/`. Its BSDL defines a
+four-bit TAP instruction register and distinct IJTAG_ON/IJTAG_OFF opcodes. Both
+instructions select the instrument interface; only IJTAG_ON activates
+`tap.long_setup`, which selects the instrument register in a ScanMux.
+
+Tessent Shell **2026.2** successfully loaded the BSDL, elaborated the network and
+exported these operations (no initial reset):
+
+```tcl
+iWrite tap.INSTRUCTION[3:0] 0b0011
+iRead tap.INSTRUCTION[3:0] 0b0001
+iApply
+iWrite core.r[7:0] 0b10010110
+iApply
+```
+
+The initial exploratory fixture included a ResetPort and ResetValue; Tessent
+rejected ambiguous reset inference (ICL124-1) because the generated TAP has
+multiple ToResetPorts. The final fixture omits reset behavior to isolate
+instruction selection; it does not assume the register starts at zero. The
+handwritten exploratory runner is `tests/src/tessent_access_link.tcl`.
+Generated expanded ICL stays under ignored `build/`; it parses with our shared
+ICL frontend but is not a verified independent model of the TAP.
+
+The maintained oracle manifest accepts an optional **single** `bsdl` repository
+path per case, matching Tessent's `read_icl -bsdl_file` option. The harness stages
+it as `model.bsdl`, checks its hash along with the ICL/PDL/script, and forwards
+`--bsdl model.bsdl` to the proposed generator input interface in comparison mode.
+Inventory includes explicitly declared inputs regardless of filename extension
+(including `.vhd` BSDL files). A missing, changed or out-of-repository BSDL does
+not silently disappear. The generator's BSDL loader and TAP construction remain
+unimplemented, so comparison is still blocked when the generator is absent.
+
+The maintained runner reproduced the positive outcome, all staged input/script
+hashes match, and the shared PDL parser confirms the five operations above.
+Evidence: `build/access-link-oracle-evidence/`, from the isolated remote
+`icl_toolsets_domains_20261025_DEq8hc` directory. The manifest now has 30 cases;
+this is a vendor reference test, not generator equivalence or HDL simulation.
+
+The final inventory after this addition records 35 manifest-assigned source
+files, 36,588 generated syntax inputs, 88 syntax-negative files and 2,529 unpaired
+files (39,240 total, now including BSDL inputs). Running comparison preparation
+for the AccessLink case returns `blocked_generator`, as expected while the real
+executable is absent. The 17 harness tests and three shared-parser trace tests
+pass; they do not substitute for the blocked generator comparison.
+
+After the final inventory correction, the complete repository regression exited
+0 (`build/address-accesslink-final-regression.log`), including all 17 oracle
+harness tests, three trace tests, 334/334 grammar productions, 119/119 scanner
+rules, and Vim/Neovim checks over 38,500 ICL / 739 PDL files each. The separate
+strict C++ coverage gate remains below its unchanged thresholds; the most recent
+measurement is documented in [model coverage](pattern-model-coverage.md).

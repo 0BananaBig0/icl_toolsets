@@ -55,6 +55,10 @@ def validate(root, cases):
             raise ValueError(f'{name}: PDL and exactly one ICL source form required')
         for source in case.get('icl', []) + case['pdl']:
             input_path(root, source)
+        if 'bsdl' in case:
+            if not isinstance(case['bsdl'], str) or not case['bsdl']:
+                raise ValueError(f'{name}: bsdl must name a repository file')
+            input_path(root, case['bsdl'])
 
 
 def origin_files(root, origin):
@@ -99,15 +103,19 @@ def catalog(root, cases):
     assigned = {}
     for case in cases:
         names = case.get('icl', []) + case['pdl']
+        if case.get('bsdl'):
+            names.append(case['bsdl'])
         if case.get('icl_origin'):
             names += ['tests/cases/' + m['path'] for m in origin_files(root, case['icl_origin'])]
         for name in names:
             assigned.setdefault(name, set()).add(case['id'])
     report = {}
     for path in sorted((root / 'tests').rglob('*')):
-        if not path.is_file() or path.suffix.lower() not in ('.icl', '.pdl'):
+        if not path.is_file():
             continue
         name = path.relative_to(root).as_posix()
+        if name not in assigned and path.suffix.lower() not in ('.icl', '.pdl', '.bsdl', '.bsd'):
+            continue
         status = ('manifest_case' if name in assigned else
                   'generated_syntax_case' if name.startswith('tests/generated/') else
                   'syntax_negative' if '/fail/' in name else 'unpaired')
@@ -131,12 +139,15 @@ def run_process(argv, cwd, console, timeout):
     return code, time.monotonic() - start
 
 
-def tessent_script(top, icl_names, pdl_names):
+def tessent_script(top, icl_names, pdl_names, bsdl_name=None):
     lines = ['# patterns -ijtag: setup for loading; analysis for PDL/export.',
              'set here [file dirname [info script]]', 'if {[catch {',
              '  set_context patterns -ijtag']
     for name in icl_names:
-        lines.append('  read_icl [file join $here ' + tcl_word(name) + '] -force')
+        command = '  read_icl [file join $here ' + tcl_word(name) + '] -force'
+        if bsdl_name:
+            command += ' -bsdl_file [file join $here ' + tcl_word(bsdl_name) + ']'
+        lines.append(command)
     lines += ['  set_current_design ' + tcl_word(top),
               '  set_system_mode analysis',
               '  open_pattern_set oracle -no_initial_ireset']
@@ -183,14 +194,20 @@ def prepare(root, cases, output, generator=None, reference_only=False, inventory
             dest = f'source_{i}.pdl'
             (directory / dest).write_bytes(input_path(root, name).read_bytes())
             pdl_names.append(dest)
+        bsdl_name = 'model.bsdl' if case.get('bsdl') else None
+        bsdl_names = [bsdl_name] if bsdl_name else []
+        if bsdl_name:
+            (directory / bsdl_name).write_bytes(input_path(root, case['bsdl']).read_bytes())
         item['inputs'] = {name: hashlib.sha256((directory / name).read_bytes()).hexdigest()
-                          for name in icl_names + pdl_names}
+                          for name in icl_names + pdl_names + bsdl_names}
         if not reference_only:
             command = [str(generator.resolve()), '--icl',
                        *[str(directory / n) for n in icl_names], '--pdl',
                        *[str(directory / n) for n in pdl_names],
                        '--top_module', case['top'], '--output', str(directory / 'ours.pdl'),
                        '--local_reset', str(directory / 'local_reset.pdl')]
+            if bsdl_name:
+                command += ['--bsdl', str(directory / bsdl_name)]
             item['generator_command'] = command
             code, elapsed = run_process(command, directory, directory / 'generator.log', 120)
             item['generator_exit'], item['generator_seconds'] = code, elapsed
@@ -201,7 +218,7 @@ def prepare(root, cases, output, generator=None, reference_only=False, inventory
             pdl_names = ['local_reset.pdl']
         item['tessent_pdl_inputs'] = pdl_names
         item['status'] = 'ready_reference_only' if reference_only else 'ready_comparison'
-        (directory / 'run.tcl').write_text(tessent_script(case['top'], icl_names, pdl_names))
+        (directory / 'run.tcl').write_text(tessent_script(case['top'], icl_names, pdl_names, bsdl_name))
         for name in ['run.tcl'] + pdl_names + ([] if reference_only else ['ours.pdl']):
             item['inputs'][name] = hashlib.sha256((directory / name).read_bytes()).hexdigest()
     (output / 'bundle.json').write_text(json.dumps(report, indent=2) + '\n')
@@ -239,8 +256,10 @@ def run_bundle(bundle, tessent, timeout):
                for name in ('result.pdl', 'console.log', 'tessent.log')):
             raise FileExistsError(f'{case["id"]}: stale run artifacts')
         required = ['run.tcl'] + case['tessent_pdl_inputs']
+        if case.get('bsdl'):
+            required.append('model.bsdl')
         if any(name not in case['inputs'] for name in required):
-            raise ValueError(f'{case["id"]}: missing script/PDL integrity hash')
+            raise ValueError(f'{case["id"]}: missing script/input integrity hash')
         for name, digest in case['inputs'].items():
             if hashlib.sha256(input_path(directory, name).read_bytes()).hexdigest() != digest:
                 raise ValueError(f'{case["id"]}: changed input {name}')

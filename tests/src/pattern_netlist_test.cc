@@ -26,6 +26,123 @@ void Fails(Action action, const std::string& expected) {
   throw std::runtime_error("expected failure: " + expected);
 }
 
+void TestAddressedDataDefaults() {
+  pattern::Design design;
+  for (const auto* file :
+       {"tests/cases/tessent/pattern_generation/address_defaults.icl",
+        "tests/cases/ours/pattern_generation/address_partial_data.icl",
+        "tests/cases/ours/pattern_generation/address_data_hierarchy.icl"}) {
+    std::ifstream input(file);
+    std::string source;
+    Require(input.good() && toolsets::ReadTextStream(input, &source),
+            "read addressed data fixture");
+    design.AddIcl(file, source);
+  }
+  auto netlist = pattern::Elaborate(design, "AddressDefaultsTop");
+  const auto& data = netlist.NodeAt("child.data");
+  Require(data.inputs.count("Source"), "addressed data defaults are connected");
+  const auto& bits = data.inputs.at("Source");
+  Require(bits.size() == 8 &&
+              bits.front().node == netlist.node_ids.at("data") &&
+              bits.front().index == 15 && bits.back().index == 8,
+          "narrow child consumes leading parent data bits (Tessent 2026.2)");
+
+  netlist = pattern::Elaborate(design, "SplitDefaultTop");
+  const auto& upper = netlist.NodeAt("child.upper").inputs.at("Source");
+  const auto& lower = netlist.NodeAt("child.lower").inputs.at("Source");
+  Require(upper[0].node == netlist.node_ids.at("zfirst") &&
+              upper[0].index == 1 && upper[1].index == 0 &&
+              upper[2].node == netlist.node_ids.at("asecond") &&
+              upper[2].index == 0 && upper[3].index == 1 &&
+              lower[0].node == netlist.node_ids.at("asecond") &&
+              lower[0].index == 2 && lower[3].index == 5,
+          "logical data buses follow declaration order and vector direction");
+  netlist = pattern::Elaborate(design, "ExplicitDataTop");
+  Require(netlist.NodeAt("child.upper").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("override_data") &&
+              !netlist.NodeAt("child.lower").inputs.count("Source"),
+          "any explicit data binding suppresses all implicit data binding");
+  netlist = pattern::Elaborate(design, "PartialDataTop");
+  const auto& partial = netlist.NodeAt("child.data").inputs.at("Source");
+  Require(partial[0].node == netlist.node_ids.at("override_data") &&
+              partial[4].constant == '?' && partial[7].constant == '?',
+          "partial explicit input leaves holes disconnected");
+  Fails([&] { pattern::Elaborate(design, "ShortDataTop"); },
+        "logical DataIn width");
+  Fails([&] { pattern::Elaborate(design, "MissingDataTop"); },
+        "child.data: parent logical DataIn width");
+  netlist = pattern::Elaborate(design, "NestedDataTop");
+  Require(netlist.NodeAt("unaddressed.data").inputs.empty(),
+          "ordinary instances do not acquire addressed data defaults");
+  for (const std::string instance : {"a", "b", "c"}) {
+    const auto& middle = netlist.NodeAt(instance + ".data").inputs.at("Source");
+    const auto& leaf =
+        netlist.NodeAt(instance + ".leaf.data").inputs.at("Source");
+    Require(middle[0].node == netlist.node_ids.at("data") &&
+                middle[0].index == 7 && middle[7].index == 0 &&
+                leaf[0].node == netlist.node_ids.at(instance + ".data") &&
+                leaf[0].index == 0 && leaf[7].index == 7,
+            "nested and sibling data defaults retain immediate parent mapping");
+  }
+  Fails([&] { pattern::Elaborate(design, "DataBudgetTop"); },
+        "implicit data connection bit limit");
+}
+
+void TestAddressedGroupErrors() {
+  const std::vector<std::pair<std::string, std::string>> cases = {
+      {"OneHotDataGroup g[7:0] { DataRegister r[15:0] { AddressValue 1; } }",
+       "source width exceeds group"},
+      {"OneHotDataGroup g[7:0] { Instance child Of Leaf { AddressValue 0; } }",
+       "source width exceeds group"},
+      {"DataRegister r { AddressValue 1; }", "belong"},
+      {"OneHotDataGroup g { DataRegister r { AddressValue 1; WriteEnSource "
+       "1'b1; } }",
+       "access types"},
+      {"OneHotDataGroup g[15:0] { DataRegister r[15:0] { AddressValue 1; } }",
+       "register exceeds module logical DataIn width"},
+      {"Parameter A = \"address\"; OneHotDataGroup g { DataRegister r { "
+       "AddressValue $A; } }",
+       "AddressValue must be numeric"},
+      {"OneHotDataGroup g { DataRegister r; }", "requires AddressValue"}};
+  for (const auto& item : cases) {
+    pattern::Design design;
+    Fails(
+        [&] {
+          design.AddIcl("addressed_invalid.icl",
+                        "Module Leaf { DataOutPort hi[7:0] { Source 8'b0; } "
+                        "DataOutPort lo { Source 1'b0; } } "
+                        "Module M { DataInPort d[7:0]; " +
+                            item.first + " }");
+          pattern::Elaborate(design, "M");
+        },
+        item.second);
+  }
+  std::string source =
+      "Module M { DataInPort d[65535:0]; OneHotDataGroup g[65535:0] { ";
+  for (size_t i = 0; i < 65; ++i) {
+    source += "DataRegister r" + std::to_string(i) +
+              "[65535:0] { AddressValue " + std::to_string(i) + "; } ";
+  }
+  source += "} }";
+  pattern::Design large;
+  large.AddIcl("addressed_limit.icl", source);
+  Fails([&] { pattern::Elaborate(large, "M"); }, "source bit limit");
+  for (bool instances : {false, true}) {
+    pattern::Design addresses;
+    source = "Module Leaf {} Module M { DataInPort d; OneHotDataGroup g { ";
+    for (size_t i = 0; i < 5; ++i) {
+      source += instances && i < 3
+                    ? "Instance c" + std::to_string(i) + " Of Leaf"
+                    : "DataRegister r" + std::to_string(i);
+      source += " { AddressValue 1048576'b0; } ";
+    }
+    source += "} }";
+    addresses.AddIcl("address_constants.icl", source);
+    Fails([&] { pattern::Elaborate(addresses, "M"); },
+          "address constant bit limit");
+  }
+}
+
 void TestSpecialization() {
   pattern::Design design;
   design.AddIcl("parameters.icl", R"(
@@ -461,9 +578,9 @@ void TestOneHotDataPorts() {
     const auto& group = netlist.NodeAt("wide");
     Require(
         group.one_hot_sources.size() == 1 &&
-            group.one_hot_sources[0].size() == 8,
+            group.one_hot_sources[0].bits.size() == 8,
         "retain the original narrower contributor without synthetic signals");
-    const auto& bits = group.one_hot_sources[0];
+    const auto& bits = group.one_hot_sources[0].bits;
     Require(netlist.nodes[bits[0].node].name == "driver.value" &&
                 bits.front().index == 7 && bits.back().index == 0,
             "contributor order follows the declared signal direction");
@@ -527,7 +644,7 @@ void TestOneHotDataBitDependencies() {
         Fails([&] { pattern::Elaborate(design, "M"); }, "cycle");
       } else {
         const auto netlist = pattern::Elaborate(design, "M");
-        Require(netlist.NodeAt("g").one_hot_sources[0].size() == 1,
+        Require(netlist.NodeAt("g").one_hot_sources[0].bits.size() == 1,
                 "unknown leading bits do not create false connection cycles");
       }
     }
@@ -627,6 +744,8 @@ void TestOneHotScanLimits() {
 int main() {
   int failures = 0;
   for (const auto test : {TestSpecialization,
+                          TestAddressedDataDefaults,
+                          TestAddressedGroupErrors,
                           TestErrors,
                           TestBitConnections,
                           TestResetInference,

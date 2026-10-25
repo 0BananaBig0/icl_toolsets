@@ -86,3 +86,42 @@ This resolves the tested **Port contribution** case, not every DataRegister or
 addressed Instance contribution. It is not a test of numeric padding for an
 ordinary 16-bit ScanRegister. The test inputs, command flow, results and remaining
 comparison dependencies are recorded in [Tessent oracle verification](tessent-oracle.md).
+
+## AccessLink and external BSDL dependency
+
+IEEE 1687-2014 §6.4.17, printed pp.133–135, distinguishes standard IEEE 1149.1
+AccessLinks from opaque generic controllers. Standard links live at the top
+level, refer to an external BSDLEntity and its INSTRUCTION_OPCODE entries, and
+select ordered, single-chain child ScanInterfaces. ActiveSignals are named
+outputs in the link's namespace and are active only for instructions listing
+them. Generic-controller semantics are deliberately left unspecified; accepting
+its text is not enough to infer a hardware model.
+
+Annex E.29/E.30, pp.249–252, demonstrates implicit scan-interface attachment,
+serial concatenation and qualified `Tap1.toSWIR` connections. E.30 contains
+obsolete spellings (`STD_1149_1`, `BSDL_Entity`) and typographical mistakes;
+new fixtures must use the normative §6.4.17 grammar and complete missing
+instrument definitions rather than copying those mistakes.
+
+Tessent Shell Reference Manual **v2023.4**,
+`tshell_ref/topics/Command_Accesslink_id84260660.html`, explicitly requires
+`read_icl ... -bsdl_file ...` and a matching BSDL entity. It states support for
+the 1149.1-2001 BSDL form, separately from the IEEE grammar accepting 2013.
+Elaboration replaces the AccessLink with a generated TAP instance under the same
+instance name and adds its external TAP ports. The generated instruction and
+scan-path models depend on BSDL attributes; ICL alone does not supply their
+widths or opcodes. The documented reset value of that generated model is not an
+instruction to reset hardware automatically.
+
+The current repository fixtures under `standard/access_link/` and
+`tessent/access_link/` are syntax examples, not complete AccessLink retargeting
+inputs: they lack the referenced BSDL and include placeholder instrument ports.
+The generator design registry now accepts selected BSDL entities through
+`AddBsdl(path, text, entity)`. Its independent metadata reader extracts static
+TAP attributes; it does not load VHDL packages or construct TAP hardware.
+Duplicate BSDL entities are rejected, preserving the earlier model; this is
+separate from the requested ordered ICL overrides. The provisional CLI design
+uses a separate `--bsdl` input, but the executable and its options remain
+unfinished. TAP construction and native AccessLink retargeting are still needed
+for fully expanded debug ICL. No opcode, TAP width, missing default connection
+or generic controller behavior should be invented to hide this gap.

@@ -120,6 +120,8 @@ PATTERN_SOURCES += $(SRC_DIR)/pattern_expression.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_netlist.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_logic.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_flatten.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_address.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_bsdl.cc
 PATTERN_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PATTERN_SOURCES))
 SOURCES += $(PATTERN_SOURCES)
 
@@ -388,6 +390,7 @@ COV_BINARIES += $(COV_DIR)/pdl-format $(COV_DIR)/pdl-lsp
 COV_PATTERN := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(PATTERN_SOURCES))
 COV_BINARIES += $(COV_DIR)/pattern_design_test $(COV_DIR)/pattern_runtime_test
 COV_BINARIES += $(COV_DIR)/pattern_expression_test $(COV_DIR)/pattern_netlist_test
+COV_BINARIES += $(COV_DIR)/pattern_address_test $(COV_DIR)/pattern_bsdl_test
 COV_BINARIES += $(COV_DIR)/pattern_logic_test $(COV_DIR)/pattern_flatten_test
 COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
     $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
@@ -425,7 +428,7 @@ $(COV_DIR)/pdl-lsp: $(COV_SHARED) $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_lsp_m
 $(COV_DIR)/unittests: $(COV_UNIT)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
-$(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern_design.o $(COV_SHARED)
+$(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
 $(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl_document.o
@@ -437,10 +440,13 @@ $(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/js
 $(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(COV_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+$(COV_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(COV_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+$(COV_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(COV_DIR)/pattern_address.o $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+$(COV_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
 coverage: $(COV_BINARIES)
@@ -468,7 +474,9 @@ coverage: $(COV_BINARIES)
 	@$(COV_DIR)/pattern_design_test
 	@$(COV_DIR)/pattern_runtime_test
 	@$(COV_DIR)/pattern_expression_test
+	@$(COV_DIR)/pattern_bsdl_test
 	@$(COV_DIR)/pattern_netlist_test
+	@python3 tests/src/test_pattern_address.py $(COV_DIR)/pattern_address_test
 	@$(COV_DIR)/pattern_logic_test
 	@$(COV_DIR)/pattern_flatten_test
 	@gcov -b -c -o $(COV_DIR) $(COV_REPORT_OBJECTS) > /dev/null
@@ -748,7 +756,7 @@ unitcheck: $(UNIT_BIN)
 pattern-design-check: $(BUILD_DIR)/pattern_design_test
 	@$(BUILD_DIR)/pattern_design_test
 
-$(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/pattern_design.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-expression-check
@@ -762,21 +770,21 @@ $(BUILD_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(BUI
 pattern-netlist-check: $(BUILD_DIR)/pattern_netlist_test
 	@$(BUILD_DIR)/pattern_netlist_test
 
-$(BUILD_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-netlist-benchmark
 pattern-netlist-benchmark: $(BUILD_DIR)/pattern_netlist_benchmark
 	@python3 tests/src/test_pattern_netlist_benchmark.py $(BUILD_DIR)/pattern_netlist_benchmark
 
-$(BUILD_DIR)/pattern_netlist_benchmark: tests/src/pattern_netlist_benchmark.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_netlist_benchmark: tests/src/pattern_netlist_benchmark.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-logic-check
 pattern-logic-check: $(BUILD_DIR)/pattern_logic_test
 	@$(BUILD_DIR)/pattern_logic_test
 
-$(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-runtime-check pattern-runtime-static-check
@@ -858,3 +866,38 @@ pattern-flatten-static-check: $(BUILD_DIR)/pattern_flatten_test-static
 
 $(BUILD_DIR)/pattern_flatten_test-static: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
+
+.PHONY: pattern-address-check pattern-address-static-check
+pattern-address-check: $(BUILD_DIR)/pattern_address_test
+	@python3 tests/src/test_pattern_address.py $(BUILD_DIR)/pattern_address_test
+
+pattern-address-static-check: $(BUILD_DIR)/pattern_address_test-static
+	@python3 tests/src/test_pattern_address.py $(BUILD_DIR)/pattern_address_test-static
+
+$(BUILD_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(BUILD_DIR)/pattern_address.o $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+$(BUILD_DIR)/pattern_address_test-static: tests/src/pattern_address_test.cc $(BUILD_DIR)/pattern_address.o $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
+
+check check-dynamic: pattern-address-check
+check check-static: pattern-address-static-check
+
+.PHONY: pattern-bsdl-check pattern-bsdl-static-check
+pattern-bsdl-check: $(BUILD_DIR)/pattern_bsdl_test
+	@$(BUILD_DIR)/pattern_bsdl_test
+
+pattern-bsdl-static-check: $(BUILD_DIR)/pattern_bsdl_test-static
+	@$(BUILD_DIR)/pattern_bsdl_test-static
+
+$(BUILD_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(BUILD_DIR)/pattern_bsdl.o
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+$(BUILD_DIR)/pattern_bsdl_test-static: tests/src/pattern_bsdl_test.cc $(BUILD_DIR)/pattern_bsdl.o
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
+
+$(COV_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(COV_DIR)/pattern_bsdl.o
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+check check-dynamic: pattern-bsdl-check
+check check-static: pattern-bsdl-static-check

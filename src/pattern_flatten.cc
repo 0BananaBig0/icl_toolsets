@@ -166,7 +166,7 @@ Json AttributeValues(const Attributes& attributes) {
 }
 
 Json Metadata(const Netlist& netlist) {
-  Json::Elements scopes, nodes, modules;
+  Json::Elements scopes, nodes, modules, contributors;
   for (const auto& module : netlist.module_parameters) {
     Json::Elements parameters;
     for (const auto& parameter : module.second) {
@@ -191,7 +191,17 @@ Json Metadata(const Netlist& netlist) {
     }
     scopes.push_back(Json::Array(std::move(fields)));
   }
-  for (const auto& node : netlist.nodes) {
+  // Nested registers can change node IDs when width-sorted groups are parsed.
+  for (const auto& entry : netlist.node_ids) {
+    const auto& node = netlist.nodes.at(entry.second);
+    for (size_t i = 0; i < node.one_hot_sources.size(); ++i) {
+      const auto& source = node.one_hot_sources[i];
+      if (source.kind == OneHotSourceKind::kInstance) {
+        contributors.push_back(
+            Json::Array({Json::String(node.name), Json::Int(i),
+                         Json::String(netlist.scopes.at(source.object).path)}));
+      }
+    }
     Json::Elements special;
     for (const auto& input : node.inputs) {
       if (input.first == "LogicDependencies") continue;
@@ -214,10 +224,15 @@ Json Metadata(const Netlist& netlist) {
          node.reset ? Reference(netlist, *node.reset) : Json::Null(),
          Json::Array(std::move(special)), Json::Bool(node.active_low)}));
   }
-  return Json::Object({{"version", Json::Int(1)},
+  Json::Members fields{{"version", Json::Int(1)},
                        {"modules", Json::Array(std::move(modules))},
                        {"scopes", Json::Array(std::move(scopes))},
-                       {"nodes", Json::Array(std::move(nodes))}});
+                       {"nodes", Json::Array(std::move(nodes))}};
+  if (!contributors.empty()) {
+    fields.emplace_back("instance_contributors",
+                        Json::Array(std::move(contributors)));
+  }
+  return Json::Object(std::move(fields));
 }
 
 std::string RenderAttributes(const Attributes& attributes) {
@@ -262,13 +277,17 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
         ";\n";
   }
   if (node.kind == "OneHotScanGroup" || node.kind == "OneHotDataGroup") {
-    if (node.has_addressed_contributors) {
-      throw std::runtime_error(
-          node.origin +
-          ": addressed one-hot group serialization is not implemented");
-    }
     for (const auto& source : node.one_hot_sources) {
-      result += "Port " + Signals(netlist, source) + ";\n";
+      if (source.kind == OneHotSourceKind::kRegister) {
+        result += Declaration(netlist, netlist.nodes.at(source.object));
+      } else {
+        if (source.bits.empty()) {
+          throw std::runtime_error(node.origin +
+                                   ": addressed one-hot instance without "
+                                   "DataOutPorts cannot be serialized");
+        }
+        result += "Port " + Signals(netlist, source.bits) + ";\n";
+      }
     }
   } else if (node.scan_interface) {
     const auto append_ports = [&](const std::vector<BitReference>& ports,
@@ -456,7 +475,19 @@ std::string SerializeIcl(const Netlist& netlist) {
   text +=
       "\nAttribute " + std::string(kOrigins) + " = " + Quote(metadata) + ";\n";
   text += RenderAttributes(netlist.scopes[0].attributes);
-  for (const auto& node : netlist.nodes) text += Declaration(netlist, node);
+  std::set<size_t> nested;
+  for (const auto& node : netlist.nodes) {
+    for (const auto& source : node.one_hot_sources) {
+      if (source.kind == OneHotSourceKind::kRegister &&
+          !nested.insert(source.object).second) {
+        throw std::runtime_error(
+            "DataRegister belongs to multiple one-hot groups");
+      }
+    }
+  }
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    if (!nested.count(id)) text += Declaration(netlist, netlist.nodes[id]);
+  }
   text += "}\n";
   const auto formatted = icl::FormatDocument(text, {});
   if (!formatted.ok) {
@@ -513,6 +544,17 @@ bool RestoreFlatOrigins(Netlist* netlist) {
   std::map<std::string, size_t> scope_ids;
   std::vector<size_t> depths;
   std::map<std::string, std::set<std::string>> module_parameters;
+  size_t address_bits_remaining = kMaxAddressBits;
+  const auto count_address = [&](const Constant& value) {
+    if (value.data.size() > address_bits_remaining) {
+      throw std::runtime_error("flat address constant bit limit exceeded");
+    }
+    address_bits_remaining -= value.data.size();
+  };
+  for (const auto& node : netlist->nodes) {
+    const auto address = node.constants.find("AddressValue");
+    if (address != node.constants.end()) count_address(address->second);
+  }
   for (const auto& entry : Array(*modules)) {
     const auto& fields = Array(entry, 2);
     const auto name = String(fields[0]);
@@ -592,6 +634,7 @@ bool RestoreFlatOrigins(Netlist* netlist) {
           throw std::runtime_error(
               "flat instance AddressValue must be numeric");
         }
+        count_address(*scope.address_value);
       }
     }
     if (scopes.empty() &&
@@ -680,6 +723,53 @@ bool RestoreFlatOrigins(Netlist* netlist) {
   netlist->node_ids = std::move(names);
   netlist->scopes = std::move(scopes);
   netlist->module_parameters = std::move(module_parameters);
+  if (const auto* contributors = json.Find("instance_contributors")) {
+    std::map<size_t, std::vector<size_t>> outputs;
+    for (size_t id = 0; id < netlist->nodes.size(); ++id) {
+      const auto& node = netlist->nodes[id];
+      if (node.kind == "DataOutPort") outputs[node.scope].push_back(id);
+    }
+    std::set<size_t> used;
+    for (const auto& entry : Array(*contributors)) {
+      const auto& fields = Array(entry, 3);
+      const auto group_id = netlist->node_ids.find(String(fields[0]));
+      const auto scope_id = scope_ids.find(String(fields[2]));
+      if (group_id == netlist->node_ids.end() || scope_id == scope_ids.end()) {
+        throw std::runtime_error("invalid flat instance contributor identity");
+      }
+      auto& group = netlist->nodes.at(group_id->second);
+      const size_t index = Index(fields[1], group.one_hot_sources.size());
+      const size_t scope = scope_id->second;
+      auto& source = group.one_hot_sources[index];
+      if (group.kind != "OneHotDataGroup" ||
+          source.kind != OneHotSourceKind::kPort ||
+          !used.insert(scope).second ||
+          netlist->scopes[scope].parent != group.scope) {
+        throw std::runtime_error("invalid flat instance contributor");
+      }
+      size_t offset = 0;
+      for (size_t id : outputs[scope]) {
+        const auto& port = netlist->nodes[id];
+        for (size_t i = 0; i < port.Width(); ++i) {
+          const int64_t bit = port.left + (port.left <= port.right ? 1 : -1) *
+                                              static_cast<int64_t>(i);
+          if (offset >= source.bits.size() || source.bits[offset].node != id ||
+              source.bits[offset].index != bit ||
+              source.bits[offset].inverted ||
+              source.bits[offset].virtual_signal != VirtualSignal::kNone) {
+            throw std::runtime_error(
+                "flat instance contributor conflicts with ICL");
+          }
+          ++offset;
+        }
+      }
+      if (!offset || offset != source.bits.size()) {
+        throw std::runtime_error("invalid flat instance contributor width");
+      }
+      source.kind = OneHotSourceKind::kInstance;
+      source.object = scope;
+    }
+  }
   return true;
 }
 }  // namespace pattern

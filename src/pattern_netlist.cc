@@ -116,6 +116,7 @@ class Elaborator {
     AddScope(module, "", std::numeric_limits<size_t>::max(), {}, 0);
     Connect();
     if (!RestoreFlatOrigins(&netlist_)) InferResets();
+    ConnectAddressedRegisters();
     ValidateInterfaces();
     CheckCombinationalCycles();
     return std::move(netlist_);
@@ -309,6 +310,7 @@ class Elaborator {
     }
     const auto& description = Describe(module);
     const size_t scope_id = netlist_.scopes.size();
+    scope_ids_.emplace(path, scope_id);
     netlist_.scopes.push_back({path, module, parent, {}, {}, {}, {}, {}, {}});
     if (parent != std::numeric_limits<size_t>::max()) {
       netlist_.scopes[parent].children.push_back(scope_id);
@@ -430,12 +432,8 @@ class Elaborator {
             if (tokens[expression.begin].text == "AddressValue") {
               ++expression.begin;
               --expression.end;
-              auto value = netlist_.Value(expression);
-              if (value.is_string) {
-                throw std::runtime_error(
-                    "instance AddressValue must be numeric");
-              }
-              netlist_.scopes[child_scope].address_value = std::move(value);
+              netlist_.scopes[child_scope].address_value =
+                  ReadAddressValue(expression);
               continue;
             }
             if (tokens[expression.begin].text != "InputPort") continue;
@@ -524,28 +522,62 @@ class Elaborator {
       auto expression = Tokens(module, *item, node->scope);
       const auto& keyword =
           SourceTokens(netlist_, node->scope)[expression.begin].text;
-      if (keyword == "Instance" || keyword == "DataRegister") {
-        node->has_addressed_contributors = true;
-      }
-      if (keyword != "Port") {
+      OneHotSource source;
+      const auto append = [&](size_t id) {
+        const auto& member = netlist_.nodes[id];
+        if (member.Width() > node->Width() - source.bits.size()) {
+          throw std::runtime_error("one-hot source width exceeds group width");
+        }
+        if (member.Width() > one_hot_bits_remaining_) {
+          throw std::runtime_error("one-hot source bit limit exceeded");
+        }
+        one_hot_bits_remaining_ -= member.Width();
+        for (size_t i = 0; i < member.Width(); ++i) {
+          source.bits.push_back(
+              {id,
+               member.left + (member.left <= member.right ? 1 : -1) *
+                                 static_cast<int64_t>(i),
+               'x', false});
+        }
+      };
+      if (keyword == "Port") {
+        ++expression.begin;
+        --expression.end;
+        source.bits = netlist_.Resolve(
+            expression, node->kind == "OneHotScanGroup" ? node->Width() : 0,
+            false, one_hot_bits_remaining_);
+        one_hot_bits_remaining_ -= source.bits.size();
+      } else if (keyword == "Instance" || keyword == "DataRegister") {
+        const auto name = Path(
+            netlist_.scopes[node->scope].path,
+            SourceTokens(netlist_, node->scope)[expression.begin + 1].text);
+        if (keyword == "Instance") {
+          source.kind = OneHotSourceKind::kInstance;
+          source.object = scope_ids_.at(name);
+          for (size_t id : kinds_[{source.object, "DataOutPort"}]) append(id);
+        } else {
+          source.kind = OneHotSourceKind::kRegister;
+          source.object = netlist_.node_ids.at(name);
+          if (!netlist_.nodes[source.object].properties.count("AddressValue")) {
+            throw std::runtime_error(
+                "addressed one-hot register requires AddressValue");
+          }
+          append(source.object);
+        }
+      } else {
         continue;
       }
-      ++expression.begin;
-      --expression.end;
-      auto source = netlist_.Resolve(
-          expression, node->kind == "OneHotScanGroup" ? node->Width() : 0,
-          false, one_hot_bits_remaining_);
-      if (source.size() > node->Width()) {
+      if (source.bits.size() > node->Width()) {
         throw std::runtime_error("one-hot source width exceeds group width");
       }
-      one_hot_bits_remaining_ -= source.size();
       node->one_hot_sources.push_back(std::move(source));
     }
     // IEEE 6.4.15 source order is immaterial. Width order lets graph traversal
     // stop at padded sources instead of doing width * contributor-count work.
-    std::stable_sort(
-        node->one_hot_sources.begin(), node->one_hot_sources.end(),
-        [](const auto& a, const auto& b) { return a.size() > b.size(); });
+    std::stable_sort(node->one_hot_sources.begin(), node->one_hot_sources.end(),
+                     [](const auto& a, const auto& b) {
+                       return a.bits.size() > b.bits.size();
+                     });
   }
 
   void ValidateInterfaces() {
@@ -670,6 +702,125 @@ class Elaborator {
     }
   }
 
+  Constant ReadAddressValue(const Expression& expression) {
+    auto value = netlist_.Value(expression);
+    if (value.is_string) {
+      throw std::runtime_error("AddressValue must be numeric");
+    }
+    if (value.data.size() > address_bits_remaining_) {
+      throw std::runtime_error("address constant bit limit exceeded");
+    }
+    address_bits_remaining_ -= value.data.size();
+    return value;
+  }
+
+  void ConnectAddressedRegisters() {
+    std::map<size_t, std::vector<size_t>> data_ports;
+    std::set<size_t> members;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.kind == "DataInPort") data_ports[node.scope].push_back(id);
+      for (const auto& source : node.one_hot_sources) {
+        if (source.kind == OneHotSourceKind::kRegister &&
+            (node.kind != "OneHotDataGroup" ||
+             netlist_.nodes.at(source.object).scope != node.scope ||
+             !members.insert(source.object).second)) {
+          throw std::runtime_error(node.origin +
+                                   ": invalid addressed register membership");
+        }
+      }
+    }
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      auto& node = netlist_.nodes[id];
+      if (node.kind != "DataRegister" ||
+          !node.constants.count("AddressValue")) {
+        continue;
+      }
+      try {
+        if (!members.count(id)) {
+          throw std::runtime_error(
+              "addressed register must belong to a OneHotDataGroup");
+        }
+        for (const std::string property :
+             {"WriteDataSource", "WriteEnSource", "ReadDataSource",
+              "ReadCallBack", "WriteCallBack"}) {
+          if (node.properties.count(property)) {
+            throw std::runtime_error(
+                "addressed register cannot mix access types");
+          }
+        }
+        auto& bits = node.inputs["WriteDataSource"];
+        bits.reserve(node.Width());
+        const auto& ports = data_ports[node.scope];
+        for (auto port = ports.rbegin();
+             port != ports.rend() && bits.size() < node.Width(); ++port) {
+          const auto& source = netlist_.nodes[*port];
+          for (size_t i = 0; i < source.Width() && bits.size() < node.Width();
+               ++i) {
+            bits.push_back(
+                {*port,
+                 source.right + (source.left <= source.right ? -1 : 1) *
+                                    static_cast<int64_t>(i),
+                 'x', false});
+          }
+        }
+        if (bits.size() != node.Width()) {
+          throw std::runtime_error(
+              "register exceeds module logical DataIn width");
+        }
+        std::reverse(bits.begin(), bits.end());
+      } catch (const std::exception& error) {
+        throw std::runtime_error(node.origin + ": " + node.name + ": " +
+                                 error.what());
+      }
+    }
+  }
+
+  void ConnectAddressedData() {
+    size_t remaining = 4 * 1024 * 1024;
+    for (size_t scope_id = 1; scope_id < netlist_.scopes.size(); ++scope_id) {
+      const auto& scope = netlist_.scopes[scope_id];
+      if (!scope.address_value) continue;
+      const auto& ports = kinds_[{scope_id, "DataInPort"}];
+      // Tessent disables defaults for the whole logical bus on any explicit
+      // data binding, including a partial binding of just one port.
+      if (std::any_of(ports.begin(), ports.end(), [&](size_t id) {
+            return netlist_.nodes[id].inputs.count("Source");
+          })) {
+        continue;
+      }
+      const auto& sources = kinds_[{scope.parent, "DataInPort"}];
+      size_t source_port = 0, source_offset = 0;
+      for (size_t id : ports) {
+        auto& port = netlist_.nodes[id];
+        if (port.Width() > remaining) {
+          throw std::runtime_error(
+              port.origin + ": " + port.name +
+              ": implicit data connection bit limit exceeded");
+        }
+        remaining -= port.Width();
+        auto& bits = port.inputs["Source"];
+        bits.reserve(port.Width());
+        for (size_t offset = 0; offset < port.Width(); ++offset) {
+          if (source_port == sources.size()) {
+            throw std::runtime_error(port.origin + ": " + port.name +
+                                     ": parent logical DataIn width too small");
+          }
+          const size_t source_id = sources[source_port];
+          const auto& source = netlist_.nodes[source_id];
+          const int64_t index =
+              source.left + (source.left <= source.right ? 1 : -1) *
+                                static_cast<int64_t>(source_offset);
+          bits.push_back({source_id, index, 'x', false});
+          if (++source_offset == source.Width()) {
+            ++source_port;
+            source_offset = 0;
+          }
+        }
+      }
+    }
+  }
+
   void Connect() {
     for (auto& node : netlist_.nodes) {
       if (node.model != ModelKind::kEnum) continue;
@@ -705,6 +856,7 @@ class Elaborator {
         if (i + 1 < width) bit += range.first <= range.second ? 1 : -1;
       }
     }
+    ConnectAddressedData();
     for (auto& node : netlist_.nodes) {
       if (node.model == ModelKind::kEnum) continue;
       try {
@@ -732,6 +884,9 @@ class Elaborator {
           if (name == "ResetValue" || name == "DefaultLoadValue" ||
               name == "iApplyEndState") {
             node.constants.emplace(name, ConstantValue(node, property.second));
+          }
+          if (name == "AddressValue") {
+            node.constants.emplace(name, ReadAddressValue(property.second));
           }
           if (name == "Source" || name == "ScanInSource" ||
               name == "CaptureSource" || name == "Enable" ||
@@ -968,7 +1123,8 @@ class Elaborator {
         append(choice.source.at(position));
       }
       for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
-        if (position < node.Width() - node.one_hot_sources[source].size()) {
+        if (position <
+            node.Width() - node.one_hot_sources[source].bits.size()) {
           break;
         }
         append(node.OneHotSourceBit(source, position));
@@ -1049,7 +1205,8 @@ class Elaborator {
     for (const auto& node : netlist_.nodes) {
       const unsigned char mask = node.kind == "OneHotDataGroup" ? 2 : 1;
       for (const auto& source : node.one_hot_sources) {
-        if (!std::all_of(source.begin(), source.end(),
+        if (source.kind == OneHotSourceKind::kRegister) continue;
+        if (!std::all_of(source.bits.begin(), source.bits.end(),
                          [&](const BitReference& bit) {
                            return (enabled(bit) & mask) != 0;
                          })) {
@@ -1067,8 +1224,10 @@ class Elaborator {
   Design& design_;
   Netlist netlist_;
   size_t logic_bits_remaining_ = 4 * 1024 * 1024;
+  size_t address_bits_remaining_ = kMaxAddressBits;
   size_t one_hot_bits_remaining_ = 4 * 1024 * 1024;
   std::map<std::string, Template> templates_;
+  std::map<std::string, size_t> scope_ids_;
   std::map<std::pair<size_t, std::string>, std::vector<size_t>> kinds_;
   std::map<std::pair<size_t, std::string>, std::vector<size_t>>
       reset_candidates_;
@@ -1082,7 +1241,7 @@ class Elaborator {
 
 BitReference NetlistNode::OneHotSourceBit(size_t source,
                                           size_t position) const {
-  const auto& bits = one_hot_sources.at(source);
+  const auto& bits = one_hot_sources.at(source).bits;
   if (position >= Width() || bits.size() > Width()) {
     throw std::out_of_range("invalid one-hot source bit position or width");
   }

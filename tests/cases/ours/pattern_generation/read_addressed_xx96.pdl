@@ -1,0 +1,5 @@
+# Initialize storage directly, then read through the wider group.
+iWrite target 0x96
+iApply
+iRead observed 0bXXXXXXXX10010110
+iApply

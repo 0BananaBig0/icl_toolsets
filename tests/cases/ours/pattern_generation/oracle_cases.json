@@ -134,6 +134,253 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "AddressDefaultsTop",
+      "top": "AddressDefaultsTop",
+      "icl": [
+        "tests/cases/tessent/pattern_generation/address_defaults.icl",
+        "tests/cases/ours/pattern_generation/address_partial_data.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "SplitDefaultTop",
+      "top": "SplitDefaultTop",
+      "icl": [
+        "tests/cases/tessent/pattern_generation/address_defaults.icl",
+        "tests/cases/ours/pattern_generation/address_partial_data.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "PartialDataTop",
+      "top": "PartialDataTop",
+      "icl": [
+        "tests/cases/tessent/pattern_generation/address_defaults.icl",
+        "tests/cases/ours/pattern_generation/address_partial_data.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "Unable to find a solution"
+    },
+    {
+      "id": "ExplicitDataTop",
+      "top": "ExplicitDataTop",
+      "icl": [
+        "tests/cases/tessent/pattern_generation/address_defaults.icl",
+        "tests/cases/ours/pattern_generation/address_partial_data.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "Unable to find a solution"
+    },
+    {
+      "id": "ShortDataTop",
+      "top": "ShortDataTop",
+      "icl": [
+        "tests/cases/tessent/pattern_generation/address_defaults.icl",
+        "tests/cases/ours/pattern_generation/address_partial_data.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "width of the logical"
+    },
+    {
+      "id": "RegisterContribution_read_xx96",
+      "top": "RegisterContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/read_addressed_xx96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "RegisterContribution_read_0096",
+      "top": "RegisterContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/read_addressed_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "RegisterContribution_write_xx96",
+      "top": "RegisterContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_xx96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "Unable to find a solution"
+    },
+    {
+      "id": "RegisterContribution_write_0096",
+      "top": "RegisterContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "InstanceContribution_read_xx96",
+      "top": "InstanceContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/read_addressed_xx96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "InstanceContribution_read_0096",
+      "top": "InstanceContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/read_addressed_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "InstanceContribution_write_xx96",
+      "top": "InstanceContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_xx96.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "Unable to find a solution"
+    },
+    {
+      "id": "InstanceContribution_write_0096",
+      "top": "InstanceContribution",
+      "icl": [
+        "tests/cases/ours/pattern_generation/addressed_contributors.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_0096.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "fixed to 'unknown'"
+    },
+    {
+      "id": "ExplicitParentAddress",
+      "top": "ExplicitParentAddress",
+      "icl": [
+        "tests/cases/ours/pattern_generation/address_domains/leaf.icl",
+        "tests/cases/ours/pattern_generation/address_domains/explicit_parent.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "must not define explicit InputPort"
+    },
+    {
+      "id": "ScanAddressBoundary",
+      "top": "ScanAddressBoundary",
+      "icl": [
+        "tests/cases/ours/pattern_generation/address_domains/leaf.icl",
+        "tests/cases/ours/pattern_generation/address_domains/scan_boundary.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/address_domains/write_target.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "AddressOverflow",
+      "top": "AddressOverflow",
+      "icl": [
+        "tests/cases/ours/pattern_generation/address_domains/leaf.icl",
+        "tests/cases/ours/pattern_generation/address_domains/overflow.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "WideZeroAddress",
+      "top": "WideZeroAddress",
+      "icl": [
+        "tests/cases/ours/pattern_generation/address_domains/wide_zero.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/address_domains/write_target.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "ExplicitScanAddress",
+      "top": "ExplicitScanAddress",
+      "icl": [
+        "tests/cases/ours/pattern_generation/address_domains/leaf.icl",
+        "tests/cases/ours/pattern_generation/address_domains/explicit_scan.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/write_address_child.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "does not have any AddressPort definitions"
+    },
+    {
+      "id": "AccessLink_ActiveSignal",
+      "top": "AccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/access_link/simple.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/access_link/write.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

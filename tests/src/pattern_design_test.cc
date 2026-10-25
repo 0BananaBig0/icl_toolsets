@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: MIT
 #include "pattern_design.h"
 
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+
+#include "text_input.h"
 
 namespace {
 void Require(bool condition, const std::string& message) {
@@ -102,6 +105,31 @@ void TestErrors() {
       "Module Top { Instance a Of A; } Module A { Instance a Of A; }");
   Fails([&] { reachable.SelectTop(""); }, "cycle");
 }
+void TestBsdlRegistry() {
+  std::ifstream input(
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl");
+  std::string text;
+  Require(input.good() && toolsets::ReadTextStream(input, &text),
+          "read BSDL companion");
+  pattern::Design design;
+  design.AddIcl("top.icl", "Module Top {}");
+  design.AddBsdl("tap.bsdl", text, "accessprobe");
+  const auto& tap = design.ResolveBsdl("ACCESSprobe");
+  Require(tap.entity == "AccessProbe" && tap.instruction_width == 4,
+          "case-insensitive BSDL entity resolution");
+  Fails([&] { design.AddBsdl("bad.bsdl", "entity broken is", "AccessProbe"); },
+        "bad.bsdl:");
+  Require(&tap == &design.ResolveBsdl("AccessProbe"),
+          "failed parse preserves prior metadata");
+  Fails([&] { design.AddBsdl("duplicate.bsdl", text, "ACCESSPROBE"); },
+        "already loaded");
+  Require(design.ResolveBsdl("AccessProbe").origin.find("tap.bsdl:") == 0 &&
+              design.warnings().empty(),
+          "duplicate BSDL does not override or generate ICL warnings");
+  Fails([&] { design.ResolveBsdl("Missing"); }, "Missing");
+  Require(design.modules().size() == 1 && design.SelectTop("").name() == "Top",
+          "BSDL metadata does not participate in ICL top selection");
+}
 }  // namespace
 
 int main() {
@@ -110,6 +138,7 @@ int main() {
     TestTopAfterReplacement();
     TestNamespaces();
     TestErrors();
+    TestBsdlRegistry();
     std::cout
         << "PASS: pattern design registry, namespaces, overrides and roots\n";
     return 0;

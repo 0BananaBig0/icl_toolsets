@@ -12,6 +12,12 @@ namespace {
 std::string Qualified(const std::string& name_space, const std::string& name) {
   return name_space.empty() ? name : name_space + "::" + name;
 }
+std::string BsdlKey(std::string entity) {
+  for (auto& c : entity) {
+    if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
+  }
+  return entity;
+}
 }  // namespace
 
 std::string ModuleDefinition::name() const {
@@ -67,6 +73,26 @@ void Design::AddIcl(const std::string& path, const std::string& text) {
     }
     modules_.insert_or_assign(key, std::move(module));
   }
+}
+
+void Design::AddBsdl(const std::string& path, const std::string& text,
+                     const std::string& entity) {
+  auto tap = ReadBsdlTap(path, text, entity);
+  const auto key = BsdlKey(tap.entity);
+  const auto previous = bsdl_taps_.find(key);
+  if (previous != bsdl_taps_.end()) {
+    throw std::runtime_error(tap.origin + ": BSDL entity " + tap.entity +
+                             " already loaded at " + previous->second.origin);
+  }
+  bsdl_taps_.emplace(key, std::move(tap));
+}
+
+const BsdlTap& Design::ResolveBsdl(const std::string& entity) const {
+  const auto found = bsdl_taps_.find(BsdlKey(entity));
+  if (found == bsdl_taps_.end()) {
+    throw std::runtime_error("no BSDL model loaded for entity " + entity);
+  }
+  return found->second;
 }
 
 const ModuleDefinition& Design::ResolveInstance(

@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "icl_semantics.h"
+#include "pattern_bsdl.h"
 
 namespace pattern {
 
@@ -30,6 +31,11 @@ struct ModuleDefinition {
 class Design {
  public:
   void AddIcl(const std::string& path, const std::string& text);
+  // BSDL has separate identities; duplicate entities are rejected, not
+  // replaced.
+  void AddBsdl(const std::string& path, const std::string& text,
+               const std::string& entity);
+  const BsdlTap& ResolveBsdl(const std::string& entity) const;
   const ModuleDefinition& SelectTop(const std::string& name);
   const ModuleDefinition& ResolveInstance(const ModuleDefinition& owner,
                                           size_t declaration_index) const;
@@ -41,6 +47,7 @@ class Design {
  private:
   void CheckHierarchy(const ModuleDefinition& top) const;
   std::map<std::string, ModuleDefinition> modules_;
+  std::map<std::string, BsdlTap> bsdl_taps_;
   std::vector<std::string> warnings_;
 };
 

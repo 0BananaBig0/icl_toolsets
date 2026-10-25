@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern_flatten.h"
 
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -9,6 +10,7 @@
 
 #include "pattern_logic.h"
 #include "pattern_runtime.h"
+#include "text_input.h"
 
 namespace {
 void Require(bool condition, const std::string& message) {
@@ -205,11 +207,15 @@ iProc dormant {} { iNote $U }
 }
 
 std::string WithMetadata(const std::string& body, const std::string& nodes,
-                         const std::string& scopes = R"([["","Top",[],[]]])") {
+                         const std::string& scopes = R"([["","Top",[],[]]])",
+                         const std::string& contributors = "") {
   const std::string json =
       "{\"version\":1,\"modules\":[[\"Top\",[]]],"
       "\"scopes\":" +
-      scopes + ",\"nodes\":" + nodes + "}";
+      scopes + ",\"nodes\":" + nodes +
+      (contributors.empty() ? ""
+                            : ",\"instance_contributors\":" + contributors) +
+      "}";
   std::string quoted;
   for (char c : json) {
     if (c == '"' || c == '\\') quoted += '\\';
@@ -441,12 +447,154 @@ Module Top {
   Require(pattern::SerializeIcl(flat) == text,
           "cascaded one-hot scan groups replay with inverted vector sources");
   const auto& sources = flat.NodeAt("group").one_hot_sources;
-  Require(sources.size() == 2 && sources[0].size() == 2 &&
-              flat.nodes[sources[0][0].node].name == "a.so" &&
-              sources[0][0].index == 1 && sources[0][1].index == 0 &&
-              sources[1][0].inverted && sources[1][1].inverted,
+  Require(sources.size() == 2 && sources[0].bits.size() == 2 &&
+              flat.nodes[sources[0].bits[0].node].name == "a.so" &&
+              sources[0].bits[0].index == 1 && sources[0].bits[1].index == 0 &&
+              sources[1].bits[0].inverted && sources[1].bits[1].inverted,
           "all contributors, bit order and inversions survive flattening");
 }
+void TestAddressedGroupReplay() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/addressed_contributors.icl";
+  std::ifstream input(path);
+  std::string source;
+  Require(input.good() && toolsets::ReadTextStream(input, &source),
+          "read addressed contributor fixture");
+  pattern::Design design;
+  design.AddIcl(path, source);
+  for (const std::string top :
+       {"RegisterContribution", "InstanceContribution"}) {
+    const auto original = pattern::Elaborate(design, top);
+    Require(original.NodeAt("wide").one_hot_sources.size() == 1,
+            "addressed contributors must have real bit connections");
+    const auto text = pattern::SerializeIcl(original);
+    pattern::Design replay;
+    replay.AddIcl("flat.icl", text);
+    const auto flat = pattern::Elaborate(replay, top);
+    Require(pattern::SerializeIcl(flat) == text,
+            "addressed contributors replay byte identically");
+    const std::string name = top == "RegisterContribution" ? "r" : "child.r";
+    Require(flat.NodeAt(name).constants.at("AddressValue").data == "1",
+            "register address survives flat replay");
+    Require(flat.NodeAt(name).inputs.count("WriteDataSource"),
+            "addressed register has an implicit write-data source");
+    const auto& write_data = flat.NodeAt(name).inputs.at("WriteDataSource");
+    Require(write_data.size() == 8 && write_data.front().index == 7 &&
+                write_data.back().index == 0 &&
+                flat.nodes[write_data[0].node].name ==
+                    (top == "RegisterContribution" ? "data" : "child.data"),
+            "addressed register consumes its own module logical data bus");
+    Require(flat.NodeAt("wide").OneHotSourceBit(0, 0).constant == 'x' &&
+                flat.NodeAt("wide").OneHotSourceBit(0, 15).index == 0,
+            "addressed contributors preserve padding and bit order");
+    pattern::Runtime before(design, original), after(replay, flat);
+    const std::string pdl = "iWrite " + name + " 0x96\niApply\n";
+    before.Execute("source.pdl", pdl);
+    after.Execute("source.pdl", pdl);
+    before.Finish();
+    after.Finish();
+    Require(
+        before.operations().size() == after.operations().size() &&
+            before.operations()[0].arguments == after.operations()[0].arguments,
+        "original PDL targets still bind on the flat addressed netlist");
+  }
+  const auto original = pattern::Elaborate(design, "MixedContribution");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design replay;
+  replay.AddIcl("mixed_flat.icl", text);
+  Require(pattern::SerializeIcl(
+              pattern::Elaborate(replay, "MixedContribution")) == text,
+          "width-sorted nested registers replay canonically");
+  const auto split = pattern::Elaborate(design, "SplitContribution");
+  const auto split_text = pattern::SerializeIcl(split);
+  pattern::Design split_replay;
+  split_replay.AddIcl("split_flat.icl", split_text);
+  const auto flat_split = pattern::Elaborate(split_replay, "SplitContribution");
+  Require(pattern::SerializeIcl(flat_split) == split_text,
+          "mixed register/instance contributors replay canonically");
+  const auto& bits = flat_split.NodeAt("child.r").inputs.at("WriteDataSource");
+  Require(bits.size() == 8 &&
+              bits[0].node == flat_split.node_ids.at("child.zfirst") &&
+              bits[0].index == 3 && bits[3].index == 0 &&
+              bits[4].node == flat_split.node_ids.at("child.asecond") &&
+              bits[4].index == 0 && bits[7].index == 3,
+          "register loads rightmost bits across declaration-ordered ports");
+  const auto& outputs = flat_split.NodeAt("wide").one_hot_sources[1];
+  Require(outputs.kind == pattern::OneHotSourceKind::kInstance &&
+              outputs.bits.size() == 8 &&
+              outputs.bits[0].node == flat_split.node_ids.at("child.zupper") &&
+              outputs.bits[0].index == 3 &&
+              outputs.bits[4].node == flat_split.node_ids.at("child.alower") &&
+              outputs.bits[4].index == 0 && outputs.bits[7].index == 3,
+          "instance contributes logicalDataOut in declaration order");
+}
+
+void TestInstanceContributorMetadata() {
+  const std::string scopes = R"([["","Top",[],[]],["child","Top",[],[]]])";
+  const std::string nodes =
+      R"([["n67","g",0,"OneHotDataGroup",false,null,[],false],
+          ["n6368696c642e6f","child.o",1,"DataOutPort",false,null,[],false]])";
+  const std::string body =
+      "DataOutPort n6368696c642e6f[1:0] { Source 2'b00; Enable 1'b1; } "
+      "OneHotDataGroup n67[1:0] { Port n6368696c642e6f; }";
+  for (const std::string contributors :
+       {R"([["g",0,""]])", R"([["g",1,"child"]])",
+        R"([["g",0,"child"],["g",0,"child"]])", R"([["child.o",0,"child"]])",
+        R"([["g",0,"missing"]])"}) {
+    bool rejected = false;
+    try {
+      pattern::Design design;
+      design.AddIcl("invalid_origin.icl",
+                    WithMetadata(body, nodes, scopes, contributors));
+      pattern::Elaborate(design, "Top");
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected, "invalid instance contributor metadata is rejected");
+  }
+  for (const std::string reference :
+       {"~n6368696c642e6f", "n6368696c642e6f[0:1]", "n6368696c642e6f[0]"}) {
+    bool rejected = false;
+    try {
+      pattern::Design design;
+      design.AddIcl(
+          "mismatched_origin.icl",
+          WithMetadata(
+              "DataOutPort n6368696c642e6f[1:0] { Source 2'b00; Enable 1'b1; } "
+              "OneHotDataGroup n67[1:0] { Port " +
+                  reference + "; }",
+              nodes, scopes, R"([["g",0,"child"]])"));
+      pattern::Elaborate(design, "Top");
+    } catch (const std::exception& error) {
+      rejected = std::string(error.what()).find("contributor conflicts") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "flat instance contribution must match complete logicalDataOut");
+  }
+}
+
+void TestFlatAddressBudget() {
+  std::string scopes = R"([["","Top",[],[]]])";
+  scopes.pop_back();
+  const std::string address(1048576, '0');
+  for (size_t i = 0; i < 5; ++i) {
+    scopes += ",[\"c" + std::to_string(i) +
+              "\",\"Top\",[],[],[],[false,true,\"" + address + "\"]]";
+  }
+  scopes += "]";
+  bool rejected = false;
+  try {
+    pattern::Design design;
+    design.AddIcl("flat_address_budget.icl", WithMetadata("", "[]", scopes));
+    pattern::Elaborate(design, "Top");
+  } catch (const std::exception& error) {
+    rejected = std::string(error.what()).find("address constant bit limit") !=
+               std::string::npos;
+  }
+  Require(rejected, "flat metadata cannot bypass retained address limits");
+}
+
 void TestOneHotDataGroups() {
   pattern::Design design;
   design.AddIcl("one_hot_data.icl", R"(
@@ -472,7 +620,8 @@ Module Top {
           "one-hot data groups replay byte identically");
   const auto& sources = flat.NodeAt("g").one_hot_sources;
   bool scalar = false, forwarded = false, reversed = false;
-  for (const auto& source : sources) {
+  for (const auto& contributor : sources) {
+    const auto& source = contributor.bits;
     const auto name = flat.nodes[source[0].node].name;
     scalar |= source.size() == 1 && name == "child.raw" && source[0].index == 3;
     forwarded |= source.size() == 8 && name == "child.forwarded";
@@ -480,7 +629,7 @@ Module Top {
                 source[0].inverted && source[0].index == 0;
   }
   Require(sources.size() == 3 && scalar && forwarded && reversed &&
-              flat.NodeAt("cascaded").one_hot_sources[0].size() == 16,
+              flat.NodeAt("cascaded").one_hot_sources[0].bits.size() == 16,
           "short source widths, inversions and cascades survive flattening");
 }
 }  // namespace
@@ -496,17 +645,19 @@ int main() {
     TestScanInterfaces();
     TestOneHotScanGroups();
     TestOneHotDataGroups();
+    TestAddressedGroupReplay();
+    TestInstanceContributorMetadata();
+    TestFlatAddressBudget();
     for (const std::string member :
-         {"DataRegister r;", "DataRegister r { AddressValue 0; }",
-          "Instance child Of Leaf;",
+         {"DataRegister r;", "Instance child Of Leaf;",
           "Instance child Of Leaf { AddressValue 0; }"}) {
       pattern::Design design;
       design.AddIcl(
           "addressed_group.icl",
           "Module Leaf {} Module M { OneHotDataGroup g { " + member + " } }");
-      const auto netlist = pattern::Elaborate(design, "M");
       bool rejected = false;
       try {
+        const auto netlist = pattern::Elaborate(design, "M");
         pattern::SerializeIcl(netlist);
       } catch (const std::runtime_error& error) {
         rejected = std::string(error.what()).find("addressed one-hot") !=
