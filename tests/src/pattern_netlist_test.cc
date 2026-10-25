@@ -335,6 +335,66 @@ void TestRegisterRules() {
     Fails([&] { pattern::Elaborate(design, "M"); }, test.second);
   }
 }
+void TestInterfaceKinds() {
+  using Kind = pattern::ScanInterfaceKind;
+  const std::vector<std::pair<std::string, Kind>> cases = {
+      {"ShiftEnPort shift; ScanInterface bus { Port si; Port so; "
+       "DefaultLoadValue 8'hda; }",
+       Kind::kClient},
+      {"ToShiftEnPort shift { Source 1'b1; } "
+       "ScanInterface bus { Port so; }",
+       Kind::kHost},
+      {"TMSPort tms; TRSTPort trst; "
+       "ScanInterface bus { Port si; Port so; Port tms; Port trst; }",
+       Kind::kClientTap},
+      {"ToTMSPort tms { Source 1'b0; } "
+       "ScanInterface bus { Port so; Port tms; }",
+       Kind::kHostTap}};
+  for (const auto& test : cases) {
+    pattern::Design design;
+    design.AddIcl("interface.icl",
+                  "Module M { ScanInPort si; "
+                  "ScanOutPort so { Source si; } " +
+                      test.first + " }");
+    const auto netlist = pattern::Elaborate(design, "M");
+    Require(netlist.NodeAt("bus").scan_interface->kind == test.second,
+            "IEEE client/host/TAP interface classification");
+  }
+  const std::vector<std::pair<std::string, std::string>> invalid = {
+      {"ShiftEnPort shift; ScanInterface bus { Port si; }",
+       "valid client/host"},
+      {"ShiftEnPort shift; ScanInterface bus { Port si; Port si; Port so; }",
+       "repeated ScanInterface port"},
+      {"ScanRegister r { ScanInSource si; } ScanInterface bus { Port r; }",
+       "invalid or repeated"},
+      {"ShiftEnPort shift; ToSelectPort select { Source 1'b1; } "
+       "ScanInterface bus { Port si; Port so; Port shift; Port select; }",
+       "valid client/host"},
+      {"ShiftEnPort shift; ScanInterface bus { Port si; "
+       "Chain c { Port si; Port so; } }",
+       "repeated ScanInterface port"},
+      {"ShiftEnPort shift; ScanInterface bus { DefaultLoadValue 1'b0; "
+       "Chain c { Port si; Port so; } }",
+       "DefaultLoadValue"},
+      {"ShiftEnPort shift; ScanInterface bus { "
+       "Chain c { Port si; Port shift; } }",
+       "one SI/SO pair"},
+      {"ShiftEnPort shift; ToShiftEnPort to_shift { Source 1'b1; } "
+       "ScanInterface bus { Port si; Port so; }",
+       "one valid"}};
+  for (const auto& test : invalid) {
+    pattern::Design design;
+    Fails(
+        [&] {
+          design.AddIcl("interface_invalid.icl",
+                        "Module M { ScanInPort si; "
+                        "ScanOutPort so { Source si; } " +
+                            test.first + " }");
+          pattern::Elaborate(design, "M");
+        },
+        test.second);
+  }
+}
 }  // namespace
 
 int main() {
@@ -344,7 +404,7 @@ int main() {
         TestMuxAndEnum, TestConnectionErrors, TestUnsizedSources,
         TestImplicitScanBit, TestEnumAndPhysicalScanNames, TestPerBitGraph,
         TestOverrideTypes, TestKeywordEnumSymbols, TestDataRegisterControls,
-        TestRegisterRules}) {
+        TestRegisterRules, TestInterfaceKinds}) {
     try {
       test();
     } catch (const std::exception& error) {

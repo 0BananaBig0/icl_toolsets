@@ -23,7 +23,7 @@ struct Constant {
 Constant EvaluateConstant(
     const std::vector<icl::SourceToken>& tokens, size_t begin, size_t end,
     const std::function<Constant(const std::string&)>& parameter,
-    size_t context_width = 0);
+    size_t context_width = 0, size_t max_string_bytes = 1024 * 1024);
 
 // Evaluates already parsed ICL integer tokens, with checked 64-bit
 // intermediates. Parameter lookup belongs to the elaborated instance, not the

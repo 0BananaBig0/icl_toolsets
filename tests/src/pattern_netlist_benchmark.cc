@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "pattern_netlist.h"
+#include "pattern_flatten.h"
 
 int main() {
   try {
@@ -37,12 +37,26 @@ Module Top {
         netlist.nodes.size() != 3 * kInstances + 2 ||
         netlist.NodeAt("i4999.r").Width() != 8)
       throw std::runtime_error("large hierarchy elaboration mismatch");
+    const auto text = pattern::SerializeIcl(netlist);
+    const auto serialized = std::chrono::steady_clock::now();
+    pattern::Design flat_design;
+    flat_design.AddIcl("flat.icl", text);
+    const auto flat_netlist = pattern::Elaborate(flat_design, "Top");
+    const auto replayed = std::chrono::steady_clock::now();
+    if (pattern::SerializeIcl(flat_netlist) != text)
+      throw std::runtime_error("large hierarchy replay mismatch");
     std::cout
         << "instances=" << kInstances << " source_bytes=" << source.size()
         << " nodes=" << netlist.nodes.size() << " parse_ms="
         << std::chrono::duration<double, std::milli>(parsed - start).count()
         << " elaborate_ms="
         << std::chrono::duration<double, std::milli>(elaborated - parsed)
+               .count()
+        << " flat_bytes=" << text.size() << " serialize_ms="
+        << std::chrono::duration<double, std::milli>(serialized - elaborated)
+               .count()
+        << " reimport_ms="
+        << std::chrono::duration<double, std::milli>(replayed - serialized)
                .count()
         << '\n';
   } catch (const std::exception& error) {

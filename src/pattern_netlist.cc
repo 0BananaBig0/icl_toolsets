@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "pattern_flatten.h"
 #include "pattern_logic.h"
 
 namespace pattern {
@@ -101,9 +102,21 @@ class Elaborator {
   Netlist Run(const std::string& top) {
     const auto& module = design_.SelectTop(top);
     netlist_.top_module = module.name();
+    for (const auto& entry : design_.modules()) {
+      auto& parameters = netlist_.module_parameters[entry.first];
+      for (const auto* node : entry.second.ast->body()) {
+        const auto* statement = dynamic_cast<const icl::AstStatement*>(node);
+        if (statement &&
+            (statement->named_kind() == icl::NamedKind::kParameter ||
+             statement->named_kind() == icl::NamedKind::kLocalParameter)) {
+          parameters.insert(statement->name());
+        }
+      }
+    }
     AddScope(module, "", std::numeric_limits<size_t>::max(), {}, 0);
     Connect();
-    InferResets();
+    if (!RestoreFlatOrigins(&netlist_)) InferResets();
+    ValidateInterfaces();
     CheckCombinationalCycles();
     return std::move(netlist_);
   }
@@ -261,6 +274,34 @@ class Elaborator {
     }
   }
 
+  Attributes ReadAttributes(const ModuleDefinition& module,
+                            const icl::AstBlock* block, size_t scope) const {
+    Attributes result;
+    if (!block) return result;
+    for (const auto* item : block->body()) {
+      const auto* statement = dynamic_cast<const icl::AstStatement*>(item);
+      if (!statement || statement->named_kind() != icl::NamedKind::kAttribute) {
+        continue;
+      }
+      if (statement->name() == kFlatOriginAttribute) {
+        if (block != module.ast || scope != 0) {
+          throw std::runtime_error(
+              "flat origin metadata requires a root module");
+        }
+        continue;
+      }
+      if (!statement->value()) {
+        result.emplace(statement->name(), std::nullopt);
+      } else {
+        auto expression = Tokens(module, *item, scope);
+        expression.begin += 3;
+        --expression.end;
+        result.emplace(statement->name(), netlist_.Value(expression));
+      }
+    }
+    return result;
+  }
+
   void AddScope(const ModuleDefinition& module, const std::string& path,
                 size_t parent, const Parameters& overrides, size_t depth) {
     if (depth > kMaxDepth || netlist_.scopes.size() >= kMaxObjects) {
@@ -268,12 +309,14 @@ class Elaborator {
     }
     const auto& description = Describe(module);
     const size_t scope_id = netlist_.scopes.size();
-    netlist_.scopes.push_back({path, module, parent, {}, {}, {}});
+    netlist_.scopes.push_back({path, module, parent, {}, {}, {}, {}});
     if (parent != std::numeric_limits<size_t>::max()) {
       netlist_.scopes[parent].children.push_back(scope_id);
     }
     try {
       ResolveParameters(scope_id, description, overrides);
+      netlist_.scopes[scope_id].attributes =
+          ReadAttributes(module, module.ast, scope_id);
       for (size_t index : description.declarations) {
         const auto& declaration = module.document->declarations()[index];
         if (declaration.kind == "Instance" || declaration.kind == "Parameter" ||
@@ -292,6 +335,8 @@ class Elaborator {
         node.model = Model(node.kind);
         node.scope = scope_id;
         node.ast = ast;
+        node.attributes = ReadAttributes(
+            module, dynamic_cast<const icl::AstBlock*>(ast), scope_id);
         node.origin = module.Location(declaration.name_range.begin);
         try {
           const auto expression = Tokens(module, *ast, scope_id);
@@ -415,6 +460,171 @@ class Elaborator {
     }
   }
 
+  ScanChain ReadInterfacePart(const NetlistNode& node,
+                              const icl::AstBlock& block) const {
+    ScanChain result;
+    const auto& module = netlist_.scopes[node.scope].definition;
+    result.attributes = ReadAttributes(module, &block, node.scope);
+    for (const auto* item : block.body()) {
+      const auto* statement = dynamic_cast<const icl::AstStatement*>(item);
+      if (!statement || statement->named_kind() == icl::NamedKind::kAttribute) {
+        continue;
+      }
+      auto expression = Tokens(module, *item, node.scope);
+      const auto& tokens = SourceTokens(netlist_, node.scope);
+      const auto keyword = tokens[expression.begin++].text;
+      --expression.end;
+      if (keyword == "Port") {
+        const auto bits = netlist_.Resolve(expression);
+        result.ports.insert(result.ports.end(), bits.begin(), bits.end());
+      } else if (keyword == "DefaultLoadValue") {
+        result.default_load = netlist_.Value(expression);
+      }
+    }
+    return result;
+  }
+
+  void ConnectInterface(NetlistNode* node) const {
+    const auto& block = dynamic_cast<const icl::AstBlock&>(*node->ast);
+    auto common = ReadInterfacePart(*node, block);
+    ScanInterface interface;
+    interface.ports = std::move(common.ports);
+    interface.default_load = std::move(common.default_load);
+    for (const auto* item : block.body()) {
+      const auto* chain = dynamic_cast<const icl::AstBlock*>(item);
+      if (!chain) continue;
+      auto data = ReadInterfacePart(*node, *chain);
+      const auto& module = netlist_.scopes[node->scope].definition;
+      const auto expression = Tokens(module, *chain, node->scope);
+      data.name =
+          SourceTokens(netlist_, node->scope)[expression.begin + 1].text;
+      interface.chains.push_back(std::move(data));
+    }
+    node->scan_interface = std::move(interface);
+  }
+
+  void ValidateInterfaces() {
+    std::map<std::pair<size_t, std::string>, std::vector<size_t>> ports;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.model == ModelKind::kPort) {
+        ports[{node.scope, node.kind}].push_back(id);
+      }
+    }
+    for (auto& node : netlist_.nodes) {
+      if (!node.scan_interface) continue;
+      try {
+        auto& interface = *node.scan_interface;
+        std::set<std::pair<size_t, int64_t>> seen;
+        const auto count_ports = [&](const std::vector<BitReference>& refs) {
+          std::map<std::string, size_t> counts;
+          for (const auto& ref : refs) {
+            const auto& port = netlist_.nodes.at(ref.node);
+            if (port.model != ModelKind::kPort || port.scope != node.scope ||
+                !seen.emplace(ref.node, ref.index).second) {
+              throw std::runtime_error(
+                  "invalid or repeated ScanInterface port");
+            }
+            ++counts[port.kind];
+          }
+          return counts;
+        };
+        auto common = count_ports(interface.ports);
+        std::set<std::string> chains;
+        for (const auto& chain : interface.chains) {
+          auto counts = count_ports(chain.ports);
+          if (!chains.insert(chain.name).second || counts.size() != 2 ||
+              counts["ScanInPort"] != 1 || counts["ScanOutPort"] != 1) {
+            throw std::runtime_error(
+                "ScanInterface Chain needs one SI/SO pair");
+          }
+        }
+        if (!interface.chains.empty() &&
+            (common.count("ScanInPort") || common.count("ScanOutPort") ||
+             interface.default_load)) {
+          throw std::runtime_error(
+              "ScanInterface mixes Chain and common scan data");
+        }
+
+        size_t matches = 0;
+        std::vector<BitReference> resolved;
+        for (const auto kind :
+             {ScanInterfaceKind::kClient, ScanInterfaceKind::kHost,
+              ScanInterfaceKind::kClientTap, ScanInterfaceKind::kHostTap}) {
+          const bool host = kind == ScanInterfaceKind::kHost ||
+                            kind == ScanInterfaceKind::kHostTap;
+          const bool tap = kind == ScanInterfaceKind::kClientTap ||
+                           kind == ScanInterfaceKind::kHostTap;
+          const std::string prefix = host ? "To" : "";
+          std::set<std::string> allowed = {"ScanInPort", "ScanOutPort",
+                                           prefix + "TCKPort"};
+          if (tap) {
+            allowed.insert(prefix + "TMSPort");
+            allowed.insert(prefix + "TRSTPort");
+          } else {
+            for (const std::string role :
+                 {"Select", "ShiftEn", "CaptureEn", "UpdateEn", "Reset"}) {
+              allowed.insert(prefix + role + "Port");
+            }
+          }
+          auto counts = common;
+          auto refs = interface.ports;
+          if (!tap) {
+            for (const std::string role :
+                 {"ShiftEn", "CaptureEn", "UpdateEn"}) {
+              const auto name = prefix + role + "Port";
+              const auto& candidates = ports[{node.scope, name}];
+              if (!counts.count(name) && candidates.size() == 1) {
+                const auto id = candidates.front();
+                const auto& port = netlist_.nodes[id];
+                counts[name] = port.Width();
+                for (int64_t bit = port.left;;
+                     bit += port.left <= port.right ? 1 : -1) {
+                  refs.push_back({id, bit});
+                  if (bit == port.right) break;
+                }
+              }
+            }
+          }
+          bool valid = true;
+          for (const auto& entry : counts) {
+            if (!allowed.count(entry.first) ||
+                (entry.first != prefix + "SelectPort" && entry.second > 1)) {
+              valid = false;
+            }
+          }
+          if (tap ? counts[prefix + "TMSPort"] != 1
+                  : !counts[prefix + "ShiftEnPort"] &&
+                        !counts[prefix + "SelectPort"]) {
+            valid = false;
+          }
+          if (host) {
+            if (!interface.chains.empty() ||
+                counts["ScanInPort"] + counts["ScanOutPort"] == 0) {
+              valid = false;
+            }
+          } else if (interface.chains.empty() && (counts["ScanInPort"] != 1 ||
+                                                  counts["ScanOutPort"] != 1)) {
+            valid = false;
+          }
+          if (valid) {
+            ++matches;
+            interface.kind = kind;
+            resolved = std::move(refs);
+          }
+        }
+        if (matches != 1) {
+          throw std::runtime_error(
+              "ScanInterface must have one valid client/host/TAP type");
+        }
+        interface.ports = std::move(resolved);
+      } catch (const std::exception& error) {
+        throw std::runtime_error(node.origin + ": " + node.name + ": " +
+                                 error.what());
+      }
+    }
+  }
+
   void Connect() {
     for (auto& node : netlist_.nodes) {
       if (node.model != ModelKind::kEnum) continue;
@@ -453,9 +663,25 @@ class Elaborator {
     for (auto& node : netlist_.nodes) {
       if (node.model == ModelKind::kEnum) continue;
       try {
+        if (node.model == ModelKind::kInterface) {
+          ConnectInterface(&node);
+          continue;
+        }
+        node.active_low = ActiveLow(node);
+        const auto ref = node.properties.find("RefEnum");
+        if (ref != node.properties.end()) {
+          const auto& tokens = SourceTokens(netlist_, node.scope);
+          node.enumeration =
+              netlist_.node_ids.at(Path(netlist_.scopes[node.scope].path,
+                                        tokens[ref->second.begin].text));
+          if (netlist_.nodes[*node.enumeration].model != ModelKind::kEnum) {
+            throw std::runtime_error("RefEnum does not name an Enum");
+          }
+        }
         for (const auto& property : node.properties) {
           const auto& name = property.first;
-          if (name == "ResetValue" || name == "DefaultLoadValue") {
+          if (name == "ResetValue" || name == "DefaultLoadValue" ||
+              name == "iApplyEndState") {
             node.constants.emplace(name, ConstantValue(node, property.second));
           }
           if (name == "Source" || name == "ScanInSource" ||

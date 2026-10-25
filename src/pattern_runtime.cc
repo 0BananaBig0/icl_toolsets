@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -59,6 +60,7 @@ class Runtime::Impl {
                          this, nullptr);
     frames_.push_back({});
     if (netlist) {
+      module_parameters_ = netlist->module_parameters;
       for (const auto& scope : netlist->scopes) {
         instance_scopes_.emplace(scope.path, &scope);
       }
@@ -316,6 +318,13 @@ class Runtime::Impl {
   }
 
   const ModuleDefinition& InstanceModule(const std::string& path) const {
+    if (!instance_scopes_.empty()) {
+      const auto found = instance_scopes_.find(path);
+      if (found == instance_scopes_.end()) {
+        throw std::runtime_error("unknown instance " + path);
+      }
+      return found->second->definition;
+    }
     const ModuleDefinition* module = &design_.modules().at(top_);
     size_t begin = 0;
     while (begin < path.size()) {
@@ -380,7 +389,8 @@ class Runtime::Impl {
     }
     if (name == "iProcsForModule") {
       binding_ = CommandName(words[1]);
-      if (!design_.modules().count(binding_)) {
+      if (!design_.modules().count(binding_) &&
+          !module_parameters_.count(binding_)) {
         throw std::runtime_error("unknown module " + binding_);
       }
       definition_namespace_ = "";
@@ -405,12 +415,18 @@ class Runtime::Impl {
           pdl::ParseContext{level_, binding_, definition_namespace_, false});
       if (!body->ok()) throw std::runtime_error(body->error_message());
       std::vector<std::string> parameters;
-      for (const auto* node : design_.modules().at(binding_).ast->body()) {
-        const auto* statement = dynamic_cast<const icl::AstStatement*>(node);
-        if (statement &&
-            (statement->named_kind() == icl::NamedKind::kParameter ||
-             statement->named_kind() == icl::NamedKind::kLocalParameter)) {
-          parameters.push_back(statement->name());
+      const auto module_parameters = module_parameters_.find(binding_);
+      if (module_parameters != module_parameters_.end()) {
+        parameters.assign(module_parameters->second.begin(),
+                          module_parameters->second.end());
+      } else {
+        for (const auto* node : design_.modules().at(binding_).ast->body()) {
+          const auto* statement = dynamic_cast<const icl::AstStatement*>(node);
+          if (statement &&
+              (statement->named_kind() == icl::NamedKind::kParameter ||
+               statement->named_kind() == icl::NamedKind::kLocalParameter)) {
+            parameters.push_back(statement->name());
+          }
         }
       }
       bool valid = false;
@@ -602,6 +618,7 @@ class Runtime::Impl {
   int level_ = 1;
   bool pending_ = false, failed_ = false, finished_ = false;
   bool internal_command_ = false;
+  std::map<std::string, std::set<std::string>> module_parameters_;
 };
 
 Runtime::Runtime(const Design& design, const std::string& top)

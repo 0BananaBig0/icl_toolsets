@@ -7,6 +7,7 @@
 #include <limits>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -69,6 +70,24 @@ struct LogicInstruction {
   std::vector<BitReference> signals;
 };
 
+using Attributes = std::map<std::string, std::optional<Constant>>;
+
+enum class ScanInterfaceKind { kClient, kHost, kClientTap, kHostTap };
+
+struct ScanChain {
+  std::string name;
+  std::vector<BitReference> ports;
+  std::optional<Constant> default_load;
+  Attributes attributes;
+};
+
+struct ScanInterface {
+  ScanInterfaceKind kind = ScanInterfaceKind::kClient;
+  std::vector<BitReference> ports;
+  std::optional<Constant> default_load;
+  std::vector<ScanChain> chains;
+};
+
 struct NetlistNode {
   std::string name, kind, origin;
   ModelKind model = ModelKind::kPort;
@@ -76,12 +95,16 @@ struct NetlistNode {
   const icl::AstNode* ast = nullptr;
   int64_t left = 0, right = 0;
   bool indexed = false;
+  bool active_low = false;
+  std::optional<size_t> enumeration;
   std::map<std::string, Expression> properties;
   std::map<std::string, std::vector<BitReference>> inputs;
   std::map<std::string, Constant> constants;
   std::optional<BitReference> reset;
   std::vector<MuxChoice> choices;
   std::vector<LogicInstruction> logic;
+  Attributes attributes;
+  std::optional<ScanInterface> scan_interface;
   size_t Width() const {
     return static_cast<size_t>(left > right ? left - right : right - left) + 1;
   }
@@ -94,10 +117,12 @@ struct InstanceScope {
   std::map<std::string, Constant> parameters;
   std::map<std::string, size_t> members;
   std::vector<size_t> children;
+  Attributes attributes;
 };
 
 struct Netlist {
   std::string top_module;
+  std::map<std::string, std::set<std::string>> module_parameters;
   std::vector<InstanceScope> scopes;
   std::vector<NetlistNode> nodes;
   std::map<std::string, size_t> node_ids;

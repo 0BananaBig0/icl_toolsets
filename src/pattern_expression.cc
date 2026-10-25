@@ -188,7 +188,7 @@ Constant Constant::Sized(size_t width) const {
 Constant EvaluateConstant(
     const std::vector<icl::SourceToken>& tokens, size_t begin, size_t end,
     const std::function<Constant(const std::string&)>& parameter,
-    size_t context_width) {
+    size_t context_width, size_t max_string_bytes) {
   if (begin >= end || end > tokens.size()) {
     throw std::runtime_error("empty ICL constant");
   }
@@ -217,7 +217,7 @@ Constant EvaluateConstant(
     } else {
       ++unsized;
     }
-    if (fixed_width > kMaxValueBits) {
+    if (fixed_width > (part.is_string ? max_string_bytes : kMaxValueBits)) {
       throw std::runtime_error("ICL constant exceeds size limit");
     }
     parts.push_back(std::move(part));

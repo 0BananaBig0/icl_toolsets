@@ -17,7 +17,8 @@ class BuildGraph(unittest.TestCase):
                 self.assertEqual(run.returncode, 0, run.stderr)
                 for required in ('tests/regression.py', 'tests/lsp_test.py',
                                  'tests/fuzz.py', 'tests/grammar_coverage.py',
-                                 'tests/vim-icl-pdl-modern/test_plugin.py'):
+                                 'tests/vim-icl-pdl-modern/test_plugin.py',
+                                 'build/pattern_flatten_test'):
                     self.assertIn(required, run.stdout)
                 if target == 'check-dynamic':
                     self.assertNotIn(' -static ', run.stdout)
