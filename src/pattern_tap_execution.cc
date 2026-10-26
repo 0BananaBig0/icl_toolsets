@@ -103,6 +103,15 @@ void TapExecution::Synchronize(const std::string& name) {
   state_.Drive(tap.ir_select,
                std::string(1, controller.Controller().IrSelect()));
 }
+void TapExecution::Assume(size_t node, const std::string& value) {
+  for (const auto& [name, tap] : netlist_.taps) {
+    if (node == tap.instruction_register) {
+      throw std::runtime_error(
+          "cannot assume controller-owned instruction state");
+    }
+  }
+  state_.SetRegister(node, state_.Value(node, true), value);
+}
 void TapExecution::Drive(const std::string& port, const std::string& value) {
   const size_t id = netlist_.node_ids.at(port);
   state_.Drive(id, value);

@@ -431,3 +431,24 @@ combined `make check` also passed after integration into the regression recipe
 (`build/tap-instruction-connections-final-regression.log`). The probe results
 establish connection precedence for the next implementation, not completion of
 native wiring or retargeting.
+
+### Tasks 4–6 continuation: single-TAP transaction integration
+
+- [x] Reuse the serial solver and native controller/event replay for IR/DR
+  transactions, requiring explicit reset and retaining instruction state.
+- [x] Constrain complete scan-interface events using the runtime's membership;
+  reject disabled/shadow behavior outside this model without publishing output.
+- [x] Expose repeatable `--bsdl ENTITY FILE`, protect BSDL input paths, preserve
+  `iReset -sync`, and omit synthetic instruction writes from emitted PDL.
+- [x] Check hand-derived serial bits, source/flat/generated replay, instruction
+  switching, reset variants, assumptions, disabled controls and diagnostics.
+- [x] Complete independent review, full regression, dynamic installation and
+  installed-program replay. Strict coverage still fails at 95.1% lines and 60.3%
+  raw branches; thresholds remain 100% and 90%.
+- [ ] Complete multi-TAP/shared-chain/shadow and addressed/one-hot scheduling,
+  merges/timing/resources, reset-only rewriting and full Tessent equivalence.
+
+The current support boundary and verification evidence are in
+[pattern-generation.md](../../pattern-generation.md). Earlier checkpoint notes
+record historical limitations; they do not override this integration record or
+remove any remaining requirement.

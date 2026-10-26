@@ -1,8 +1,8 @@
 # Pattern generation
 
 `icl-pattern-generation` is an experimental executable. It currently expands
-PDL procedures and Tcl computations and schedules ordinary single-input,
-single-output scan networks. It is **not yet the complete retargeter described
+PDL procedures and Tcl computations and schedules single-input,
+single-output scan networks, including single-TAP instruction/data scans. It is **not yet the complete retargeter described
 in the requirements**.
 
 ## Build and run
@@ -40,6 +40,19 @@ and the output is `out/<top>.pdl`. `--debug` also writes
 `<output-directory>/debug/<top>.icl`. Generated PDL contains explicit prerequisite
 writes and applies, without procedure calls or variables.
 
+For an IEEE 1149.1 AccessLink, load its BSDL entity explicitly (repeat the option
+for additional models):
+
+```sh
+icl-pattern-generation --icl design.icl --bsdl DEVICE device.bsdl \
+  --pdl setup.pdl --output result/Top.pdl --debug
+```
+
+The PDL must explicitly establish TAP state with `iReset` before transactions.
+`iReset -sync` uses five TMS-high cycles even when TRST exists; plain `iReset`
+uses TRST when available. Flattened debug ICL embeds the BSDL metadata and can
+be replayed without the external BSDL file.
+
 ## Current transaction support
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric
@@ -50,16 +63,23 @@ writes and applies, without procedure calls or variables.
 - ScanMux and compiled LogicSignal selection, including register-controlled
   SIB and local-reset prerequisites. Reset release cannot enable an update on
   the same edge retroactively.
+- Single-TAP IR/DR selection, retained instruction state across apply groups,
+  and explicit/implicit scan-interface controls. Each complete scan must operate
+  its observed storage without also clocking bypassed registers. Every accepted
+  transaction executes through the native TAP controller and child event model.
+  IR selection is internal to retargeting; generated PDL names actual instruments,
+  never synthetic instruction registers.
 - Source-attributed failures and invocation stacks. Structural disconnection,
   unsupported behavior and bounded solver exhaustion are distinct errors.
 
-The backend currently accepts one ordinary SI/SO path boundary. It rejects TAP
-transaction scheduling, explicit or implicit interface control scheduling,
-multiple outputs/shared chains, intermediate serial taps, one-hot/addressed
-transactions, feedback reset scheduling, iMerge, timing/resource commands and
-other unsupported operations. BSDL/TAP structure and native event replay exist,
-but do not yet make these generator cases supported. `--local_reset` is reserved
-and currently reports that its separate rewrite artifact is not implemented.
+The backend accepts one SI/SO boundary and at most one TAP. It rejects
+multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
+one-hot/addressed transactions, feedback reset scheduling, iMerge,
+timing/resource commands and other unsupported operations. Transactions needing
+shadow-register effects or independently gated interface events are outside the
+current complete-scan model; inability to schedule them is not proof of hardware
+unreachability. `--local_reset` remains reserved and reports that its separate
+rewrite artifact is not implemented.
 These restrictions are outstanding requirements, not a reduced final scope.
 
 ## Validation and limits
@@ -71,7 +91,8 @@ expected values separately from update values; these tests do not claim that
 unknown external hardware will match a requested expected value.
 
 A small independently enumerated nested-SIB model checks minimum scan count and
-shifted-bit cost. The solver searches increasing scan horizons up to 32 scans,
+shifted-bit cost. TAP transactions additionally count the IR/DR entry and exit
+cycles when comparing schedules within a horizon. The solver searches increasing scan horizons up to 32 scans,
 with resource/time limits; exceeding a bound is not a proof of unreachability.
 Optimality evidence is limited to this supported transaction model and each
 apply group. It does not establish global optimality over an entire PDL program.
@@ -87,7 +108,7 @@ Developer obligations remain in the [design](superpowers/specs/2026-10-25-icl-pa
 [model coverage ledger](pattern-model-coverage.md). No complete generator/Tessent
 pattern-equivalence result has been established.
 
-### Verification record (2026-10-26)
+### Serial-backend checkpoint (`26cee4a`, 2026-10-26)
 
 - `make check BISON=/usr/bin/bison -j4` passed after updating the installation
   test for the fifth executable and its Z3 header dependency. This includes
@@ -110,3 +131,28 @@ pattern-equivalence result has been established.
   not whole-corpus retargeting throughput or a speedup claim.
 
 Logs are generated under `build/pattern-generator-*.log` and remain outside Git.
+
+### Single-TAP integration verification (2026-10-26)
+
+- Final complete `make check BISON=/usr/bin/bison -j4` passed, including
+  dynamic/static generator tests, all 334 grammar/119 scanner rules, and both
+  editors over 38,627 ICL and 802 PDL files. Eight generator CLI tests include
+  TAP instruction switching, BSDL validation and original/flat/generated replay.
+- Google format/naming checks and focused Clang ASan/UBSan scheduler, generator
+  and state suites passed (leak detection disabled; Z3 was not instrumented).
+  Independent review found no blocking issue.
+- Strict coverage completed its instrumented suites but failed the unchanged
+  gate: **10,443/10,977 lines (95.1%)**, **17,019/28,230 raw branches (60.3%)**.
+  The new inline TAP accessors are included. This is not a coverage-gate pass.
+- `make install-dynamic` passed. The installed generator accepted a source ICL,
+  external BSDL and PDL, then reproduced identical PDL from its flattened ICL
+  and generated PDL.
+- On this host with g++ `-O2`, the expanded focused scheduler suite took 3.46 s
+  and 63,580 KiB maximum RSS while other regression work was active. This suite
+  includes bounded unsatisfiable cases; it is not a large-project throughput
+  measurement or a comparison against the earlier, smaller suite.
+
+Logs: `build/tap-scheduling-delivery-regression.log`,
+`build/tap-scheduling-coverage.log`, `build/tap-scheduling-sanitize.log`,
+`build/tap-scheduling-style.log`, and `build/tap-scheduling-install.log`.
+Full Tessent pattern equivalence remains unverified.

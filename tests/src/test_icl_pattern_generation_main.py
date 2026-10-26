@@ -58,6 +58,52 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "replay.pdl")
         self.assertEqual(original, (self.root / "replay.pdl").read_text())
 
+    def test_tap_round_trips(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
+        for name in ("simple.icl", "simple.bsdl"):
+            (self.root / name).write_bytes((fixture / name).read_bytes())
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule AccessTop\niReset -sync\niWrite core.r 0x59\niApply\n"
+            "iRead core.r 0x59\niWrite core.r 0xa6\niApply\n")
+        inputs = ("--icl", "simple.icl", "--bsdl", "AccessProbe", "simple.bsdl")
+        self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
+        original = (self.root / "out/AccessTop.pdl").read_text()
+        self.assertIn("iReset -sync\n", original)
+        self.assertIn("iWrite core.r 0b01011001", original)
+        self.assertNotIn("__", original)
+        flat = self.root / "out/debug/AccessTop.icl"
+        self.run_tool("--icl", flat, "--pdl", "source.pdl", "--output", "again/result.pdl", "--debug")
+        self.assertEqual(original, (self.root / "again/result.pdl").read_text())
+        self.assertEqual(flat.read_text(), (self.root / "again/debug/AccessTop.icl").read_text())
+        self.run_tool(*inputs, "--pdl", "out/AccessTop.pdl", "--output", "replay.pdl")
+        self.assertEqual(original, (self.root / "replay.pdl").read_text())
+        source = (self.root / "simple.bsdl").read_bytes()
+        self.run_tool(*inputs, "--pdl", "source.pdl", "--output", "simple.bsdl", ok=False)
+        self.assertEqual(source, (self.root / "simple.bsdl").read_bytes())
+
+    def test_tap_instruction_switching(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
+        source = (fixture / "simple.icl").read_text().replace(
+            "  AccessLink tap", "  Instance other Of AccessInstrument { InputPort mode = 1'b1; }\n  AccessLink tap"
+        ).replace("IJTAG_OFF { ScanInterface { core.client; } }",
+                  "IJTAG_OFF { ScanInterface { other.client; } }")
+        (self.root / "source.icl").write_text(source)
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule AccessTop\niReset\niWrite core.r 3\niApply\n"
+            "iWrite other.r 9\niApply\niWrite core.r 5\niApply\n")
+        inputs = ("--icl", "source.icl", "--bsdl", "AccessProbe", fixture / "simple.bsdl")
+        self.run_tool(*inputs, "--pdl", "source.pdl")
+        original = (self.root / "out/AccessTop.pdl").read_text()
+        self.assertEqual(original.count("iApply"), 3)
+        self.assertIn("iWrite other.r 0b00001001", original)
+        self.run_tool(*inputs, "--pdl", "out/AccessTop.pdl", "--output", "replay.pdl")
+        self.assertEqual(original, (self.root / "replay.pdl").read_text())
+
+    def test_bsdl_arguments(self):
+        for args in (("--bsdl",), ("--bsdl", "AccessProbe"),
+                     ("--bsdl", "AccessProbe", "--debug"), ("--bsdl", "", "file")):
+            self.assertIn("requires ENTITY FILE", self.run_tool(*args, ok=False).stdout)
+
     def test_input_aliases_and_failure_publication(self):
         source = (self.root / "source.pdl").read_bytes()
         self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--output", "source.pdl", ok=False)

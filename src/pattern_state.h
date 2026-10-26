@@ -24,6 +24,7 @@ class NetworkState {
   char Read(const BitReference& bit, bool scan = false) const;
   void Clock(const std::map<size_t, ScanControl>& controls, bool rising);
   void Reset();
+  void Restore(const NetworkState& state);
   bool IsDriven(size_t node) const;
   void SetGlobalReset(char synchronous, char asynchronous);
   // Controller-owned state, not a user write or an implicit initialization.

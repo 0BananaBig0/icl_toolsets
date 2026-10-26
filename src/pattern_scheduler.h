@@ -13,18 +13,20 @@
 
 namespace pattern {
 struct ScanStep {
+  bool instruction = false;
   std::string input, output, serial, serial_expected;
   std::map<std::string, std::string> loads;
   std::map<std::string, std::string> writes, expected;
 };
-// Plans complete serial transactions on ordinary scan boundaries. Assumptions
-// are explicit PDL state declarations, never inferred from ResetValue metadata.
+// Plans complete serial transactions on SI/SO boundaries or a single TAP.
+// State assumptions are explicit PDL declarations, never inferred from
+// ResetValue metadata.
 // The borrowed netlist must outlive the scheduler.
 class ScanScheduler {
  public:
   explicit ScanScheduler(const Netlist& netlist);
   ~ScanScheduler();
-  void Reset();
+  void Reset(bool synchronous = false);
   void Assume(const std::string& target, const std::string& bits);
   std::vector<ScanStep> Apply(const std::vector<Operation>& operations);
   std::string Value(const std::string& target) const;

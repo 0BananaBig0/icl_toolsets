@@ -1236,3 +1236,20 @@ multichain paths, one-hot/addressed access, feedback reset solving, full PDL
 commands/merging/timing/resource behavior, local-reset-only source rewriting,
 full-corpus generation and Tessent-generated pattern equivalence. Unsupported
 cases remain errors; none is counted as a successful generated case.
+
+## Single-TAP scheduler integration (2026-10-26)
+
+The executable now consumes the existing native TAP model. A symbolic frame
+chooses IR or DR, reuses the runtime's interface membership, constrains complete
+capture/shift/update events, and replays the result through `TapExecution`.
+Unknown initial TAP state requires explicit `iReset`; no reset is inserted.
+The CLI accepts `--bsdl ENTITY FILE`, protects BSDL inputs against output aliases,
+and preserves `iReset -sync`. Debug ICL carries BSDL metadata for standalone
+flat replay. Generated PDL omits internal instruction-register writes.
+
+Focused tests cover hand-derived serial bits, retained and switched instructions,
+TRST/synchronous/no-TRST reset, inherited ResetPort behavior, state assumptions,
+disabled clock/select/shift/update, source/call-stack errors, failed-state
+preservation, and original/flat/generated output equality. These checks do not
+establish support for arbitrary shadow events, multiple TAPs or the remaining
+retargeting requirements.

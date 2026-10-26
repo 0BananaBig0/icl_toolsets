@@ -12,6 +12,14 @@ namespace pattern {
 // scheduling.
 class TapExecution {
  public:
+  using InterfacePorts =
+      std::map<std::string, std::set<std::pair<size_t, int64_t>>>;
+  const NetworkState& State() const { return state_; }
+  const std::map<size_t, std::vector<InterfacePorts>>& RegisterInterfaces()
+      const {
+    return register_ports_;
+  }
+  void Assume(size_t node, const std::string& value);
   explicit TapExecution(const Netlist& netlist);
   void Drive(const std::string& port, const std::string& value);
   void RisingEdge(const std::string& clock);
@@ -33,8 +41,6 @@ class TapExecution {
   NetworkState state_;
   std::map<std::string, TapInstructionRegister> controllers_;
   std::map<size_t, std::set<size_t>> owned_registers_;
-  using InterfacePorts =
-      std::map<std::string, std::set<std::pair<size_t, int64_t>>>;
   std::map<size_t, std::vector<InterfacePorts>> register_ports_;
 };
 }  // namespace pattern

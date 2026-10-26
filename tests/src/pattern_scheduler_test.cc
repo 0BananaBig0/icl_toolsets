@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern_scheduler.h"
 
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <stdexcept>
@@ -9,10 +10,130 @@
 
 #include "pattern_design.h"
 #include "pattern_flatten.h"
+#include "pattern_tap.h"
 
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
+  const std::string directory =
+      "tests/cases/ours/pattern_generation/access_link/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(directory + name);
+    return std::string(std::istreambuf_iterator<char>(file), {});
+  };
+  pattern::Design design;
+  design.AddIcl("simple.icl", read("simple.icl"));
+  auto bsdl = read("simple.bsdl");
+  if (no_trst) {
+    const auto start = bsdl.find("  attribute TAP_SCAN_RESET");
+    bsdl.erase(start, bsdl.find('\n', start) + 1 - start);
+  }
+  design.AddBsdl("simple.bsdl", bsdl, "AccessProbe");
+  auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  if (implicit) {
+    for (auto& node : network.netlist.nodes) {
+      if (node.scan_interface &&
+          network.netlist.scopes[node.scope].path == "core") {
+        node.scan_interface.reset();
+      }
+    }
+  }
+  pattern::ScanScheduler scheduler(network.netlist);
+  Require(scheduler.Value("core.r") == "xxxxxxxx", "no implicit reset");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"core.r", "0x59"}, "tap-test:0", {}}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("explicit iReset") != std::string::npos;
+  }
+  Require(rejected, "unknown controller state must require explicit reset");
+  scheduler.Reset(synchronous);
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"core.r", "0x59"}, "tap-test:1", {}}});
+  Require(steps.size() == 2, "IR selection must precede DR write");
+  Require(steps[0].serial == "1100" && steps[1].serial == "10011010",
+          "hand-derived IJTAG_ON opcode and DR serial data");
+  Require(scheduler.Value("core.r") == "01011001",
+          "native TAP replay writes target");
+  Require(scheduler.Apply({{"iWrite", {"core.r", "0xa6"}, "tap-test:2", {}}})
+                  .size() == 1,
+          "reuse active instruction without redundant IR scan");
+  Require(scheduler.Value("core.r") == "10100110", "second DR transaction");
+  scheduler.Assume("core.r", "00000011");
+  const auto read_steps =
+      scheduler.Apply({{"iRead", {"core.r", "3"}, "tap-test:3", {}}});
+  Require(read_steps.size() == 1 && read_steps[0].serial == "11000000" &&
+              read_steps[0].serial_expected == "11000000",
+          "assumed fill and expected serial data use left/right bit order");
+  const auto previous = scheduler.Value("core.r");
+  rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"absent", "1"}, "tap-test:4", {}}});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("core.r") == previous,
+          "failed scheduling preserves committed hardware state");
+}
+void TestTapExternalReset() {
+  const std::string directory =
+      "tests/cases/ours/pattern_generation/access_link/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(directory + name);
+    return std::string(std::istreambuf_iterator<char>(file), {});
+  };
+  auto source = read("simple.icl");
+  source.insert(source.find("Instance core"), "ResetPort rst; ");
+  source.insert(
+      source.find("ScanInSource si;") + std::string("ScanInSource si;").size(),
+      " ResetValue 8'b00000000;");
+  pattern::Design design;
+  design.AddIcl("external-reset.icl", source);
+  design.AddBsdl("simple.bsdl", read("simple.bsdl"), "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  for (bool synchronous : {false, true}) {
+    pattern::ScanScheduler scheduler(network.netlist);
+    scheduler.Reset(synchronous);
+    Require(scheduler.Value("core.r") == "00000000",
+            "iReset must toggle top-level ResetPort as well as the TAP");
+    scheduler.Apply({{"iWrite", {"core.r[0]", "1"}, "reset:1", {}}});
+    Require(scheduler.Value("core.r") == "00000001",
+            "post-reset fill must use reset data");
+  }
+}
+void TestTapControlRejection() {
+  const std::string directory =
+      "tests/cases/ours/pattern_generation/access_link/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(directory + name);
+    return std::string(std::istreambuf_iterator<char>(file), {});
+  };
+  for (const auto* port : {"clock", "shift", "update", "select"}) {
+    auto source = read("simple.icl");
+    source.insert(source.find("InputPort mode"),
+                  "InputPort " + std::string(port) + " = 1'b0; ");
+    pattern::Design design;
+    design.AddIcl("disabled.icl", source);
+    design.AddBsdl("simple.bsdl", read("simple.bsdl"), "AccessProbe");
+    const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+    pattern::ScanScheduler scheduler(network.netlist);
+    scheduler.Reset();
+    bool rejected = false;
+    try {
+      scheduler.Apply(
+          {{"iWrite", {"core.r", "0x59"}, "disabled:1", {"iCall write"}}});
+    } catch (const std::exception& error) {
+      const std::string message = error.what();
+      rejected = message.find("disabled:1") != std::string::npos &&
+                 message.find("iCall write") != std::string::npos;
+    }
+    Require(
+        rejected && scheduler.Value("core.r") == "xxxxxxxx",
+        "disabled interface cannot produce a successful scan or change state");
+  }
 }
 void TestPrerequisites() {
   pattern::Design design;
@@ -211,6 +332,11 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestTapScheduling(false, false, false);
+    TestTapScheduling(true, false, false);
+    TestTapScheduling(false, true, true);
+    TestTapExternalReset();
+    TestTapControlRejection();
     TestPrerequisites();
     TestUnknownAndDisconnected();
     TestImplicitControl();

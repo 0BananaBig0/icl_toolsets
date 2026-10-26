@@ -312,15 +312,17 @@ verification results and development requirements belong in [docs/](docs/README.
 `icl-pattern-generation` is now buildable and installable. Its current backend
 expands procedures and schedules writes/reads through ordinary single-SI/SO
 ScanRegister, mux and logic networks, making SIB and local-reset prerequisites
-explicit. It checks every candidate with concrete event replay and supports
-original/flattened ICL and generated-PDL round trips.
+explicit. Single-TAP IR/DR scheduling is also supported with an explicit PDL
+`iReset`; supply its BSDL model with `--bsdl ENTITY FILE`. It checks every
+candidate with concrete event replay and supports original/flattened ICL and
+generated-PDL round trips.
 
 ```sh
 icl-pattern-generation --icl design.icl --pdl setup.pdl test.pdl \
   --top_module Top --output result/Top.pdl --debug --log result/run.log
 ```
 
-Full TAP/interface scheduling, addressed/one-hot models, merges and timing,
+Multi-TAP and shadow-register scheduling, addressed/one-hot models, merges and timing,
 the separate `--local_reset` artifact, and complete Tessent pattern comparison
 remain unfinished. Unsupported cases produce errors. This executable does not
 yet fulfill all pattern-generation requirements.

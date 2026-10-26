@@ -23,6 +23,7 @@
 namespace {
 struct Options {
   std::vector<std::string> icl, pdl;
+  std::vector<std::pair<std::string, std::string>> bsdl;
   std::string top, output, log, local_reset;
   bool debug = false;
 };
@@ -32,6 +33,17 @@ Options Parse(int argc, char** argv) {
     const std::string option = argv[i];
     if (option == "--debug") {
       result.debug = true;
+      continue;
+    }
+    if (option == "--bsdl") {
+      if (i + 2 >= argc || std::string(argv[i + 1]).empty() ||
+          std::string(argv[i + 2]).empty() ||
+          std::string(argv[i + 1]).rfind("--", 0) == 0 ||
+          std::string(argv[i + 2]).rfind("--", 0) == 0) {
+        throw std::runtime_error("--bsdl requires ENTITY FILE");
+      }
+      result.bsdl.emplace_back(argv[i + 1], argv[i + 2]);
+      i += 2;
       continue;
     }
     if (option == "--icl" || option == "--pdl") {
@@ -104,6 +116,9 @@ std::string Generate(const pattern::Netlist& netlist,
         }
         const auto steps = scheduler.Apply(pending);
         for (const auto& step : steps) {
+          // IR selection is internal to retargeting; synthetic registers are
+          // not user-facing PDL targets. Re-ingestion selects the same route.
+          if (step.instruction) continue;
           if (step.writes.empty() && step.expected.empty()) {
             throw std::runtime_error(
                 "scan transaction has no expressible PDL update");
@@ -123,8 +138,9 @@ std::string Generate(const pattern::Netlist& netlist,
           throw std::runtime_error(
               "iReset with pending actions requires queued-state integration");
         }
-        scheduler.Reset();
-        result += "iReset\n";
+        const bool synchronous = !operation.arguments.empty();
+        scheduler.Reset(synchronous);
+        result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iState") {
         if (!pending.empty()) {
           throw std::runtime_error(
@@ -202,6 +218,7 @@ int main(int argc, char** argv) {
         << "\n"
            "Usage: icl-pattern-generation --icl FILE... --pdl FILE... "
            "[options]\n"
+           "  --bsdl ENTITY FILE   Load an AccessLink BSDL model (repeatable)\n"
            "  --top_module NAME    Select the elaborated top (default: unique "
            "root)\n"
            "  --output PATH        Output PDL (default: out/<top>.pdl)\n"
@@ -212,8 +229,9 @@ int main(int argc, char** argv) {
            "Current scheduling: ordinary single SI/SO, scan registers, muxes,\n"
            "logic-controlled paths and local resets; literal "
            "iWrite/iApply/iState.\n"
-           "TAP, explicit interface controls, merges and clocks are "
-           "rejected.\n";
+           "Single-TAP IR/DR scans require explicit iReset. Multi-TAP, shadow\n"
+           "register transactions, merges and free-running clocks remain "
+           "unsupported.\n";
     return 0;
   }
   if (argc == 2 && std::string(argv[1]) == "--version") {
@@ -225,11 +243,15 @@ int main(int argc, char** argv) {
     const auto options = Parse(argc, argv);
     std::vector<std::string> inputs = options.icl;
     inputs.insert(inputs.end(), options.pdl.begin(), options.pdl.end());
+    for (const auto& [entity, path] : options.bsdl) inputs.push_back(path);
     CheckPaths(inputs, {options.output, options.log, options.local_reset});
     // Log output becomes writable only after alias validation.
     log_path = options.log;
     pattern::Design design;
     for (const auto& path : options.icl) design.AddIcl(path, Read(path));
+    for (const auto& [entity, path] : options.bsdl) {
+      design.AddBsdl(path, Read(path), entity);
+    }
     const std::string top = design.SelectTop(options.top).name();
     const auto output =
         options.output.empty() ? "out/" + top + ".pdl" : options.output;

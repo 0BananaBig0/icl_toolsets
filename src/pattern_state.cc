@@ -226,6 +226,17 @@ NetworkState::NetworkState(const Netlist& netlist)
     }
   }
 }
+void NetworkState::Restore(const NetworkState& state) {
+  if (&netlist_ != &state.netlist_) {
+    throw std::runtime_error("cannot restore state from a different netlist");
+  }
+  update_ = state.update_;
+  shift_ = state.shift_;
+  driven_ = state.driven_;
+  updated_ = state.updated_;
+  global_reset_ = state.global_reset_;
+  async_reset_ = state.async_reset_;
+}
 void NetworkState::Drive(size_t id, const std::string& value) {
   const auto& node = netlist_.nodes.at(id);
   Validate(value, node.Width());

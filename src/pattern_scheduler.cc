@@ -11,6 +11,7 @@
 
 #include "pattern_state.h"
 #include "pattern_symbolic.h"
+#include "pattern_tap_execution.h"
 #include "pattern_values.h"
 
 namespace pattern {
@@ -57,10 +58,13 @@ std::string Decode(const z3::model& model, const SymbolicValue& value) {
 class ScanScheduler::Impl {
  public:
   explicit Impl(const Netlist& netlist) : netlist_(netlist), state_(netlist) {
-    // These require temporal controller/address models, not direct SI/SO scans.
+    if (netlist.taps.size() > 1) {
+      throw std::runtime_error("multiple TAP scheduling is not implemented");
+    }
     if (!netlist.taps.empty()) {
-      throw std::runtime_error(
-          "TAP scheduling requires controller transaction integration");
+      tap_ = &netlist.taps.begin()->second;
+      execution_ = std::make_unique<TapExecution>(netlist);
+      state_.Restore(execution_->State());
     }
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
@@ -113,6 +117,19 @@ class ScanScheduler::Impl {
         }
       }
     }
+    if (tap_) {
+      control_masks_[tap_->instruction_register] =
+          std::string(netlist.nodes[tap_->instruction_register].Width(), '1');
+      for (const auto& [reg, interfaces] : execution_->RegisterInterfaces()) {
+        for (const auto& ports : interfaces) {
+          for (const auto& [kind, bits] : ports) {
+            if (kind == "ScanInPort" || kind == "ScanOutPort") continue;
+            for (const auto& [id, index] : bits) AddControl({id, index});
+          }
+        }
+      }
+      return;
+    }
     for (const auto& binding : EffectiveScanInterfaces(netlist)) {
       const auto check = [&](const std::vector<BitReference>& ports) {
         for (const auto& port : ports) {
@@ -129,7 +146,45 @@ class ScanScheduler::Impl {
       for (const auto& chain : binding.interface.chains) check(chain.ports);
     }
   }
-  void Reset() {
+  void Cycle(TapExecution* run, char tms, char tdi = '0') const {
+    run->Drive(netlist_.nodes.at(tap_->pins.at("tap_scan_mode")).name,
+               std::string(1, tms));
+    run->Drive(netlist_.nodes.at(tap_->pins.at("tap_scan_in")).name,
+               std::string(1, tdi));
+    const auto& clock = netlist_.nodes.at(tap_->pins.at("tap_scan_clock")).name;
+    run->RisingEdge(clock);
+    run->FallingEdge(clock);
+  }
+  void Reset(bool synchronous) {
+    if (tap_) {
+      auto run = std::make_unique<TapExecution>(*execution_);
+      const auto reset = tap_->pins.find("tap_scan_reset");
+      if (reset != tap_->pins.end()) {
+        const auto& pin = netlist_.nodes.at(reset->second).name;
+        if (!synchronous) run->Drive(pin, "0");
+        run->Drive(pin, "1");
+      }
+      if (synchronous || reset == tap_->pins.end()) {
+        for (int i = 0; i < 5; ++i) Cycle(run.get(), '1');
+      }
+      auto fill = initial_fill_;
+      for (size_t id : registers_) {
+        const auto& node = netlist_.nodes[id];
+        if (node.reset && run->State().Read(*node.reset) == '1') {
+          const auto& bits = node.constants.at("ResetValue").data;
+          for (size_t i = 0; i < bits.size(); ++i) {
+            if (bits[i] != 'x') fill[id][i] = bits[i];
+          }
+        }
+      }
+      Cycle(run.get(), '0');
+      state_.Restore(run->State());
+      execution_ = std::move(run);
+      fill_ = std::move(fill);
+      global_resets_ = "00";
+      tap_ready_ = true;
+      return;
+    }
     std::vector<size_t> pins;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
@@ -180,6 +235,7 @@ class ScanScheduler::Impl {
       entry->second.at(Offset(node, ref.index)) = bit;
     }
     for (const auto& [id, value] : changed) {
+      if (execution_) execution_->Assume(id, value);
       state_.SetRegister(id, state_.Value(id, true), value);
       for (size_t i = 0; i < value.size(); ++i) {
         if (value[i] != 'x') fill_.at(id)[i] = value[i];
@@ -391,11 +447,87 @@ class ScanScheduler::Impl {
   }
   struct Frame {
     Values state, loads, fill;
+    std::optional<SymbolicValue> instruction;
     std::map<size_t, z3::expr> active, read;
     std::vector<z3::expr> selected;
   };
+  void ConstrainControls(z3::optimize& solver, const Values& state,
+                         const Frame& frame) {
+    const auto ir = Known(*frame.instruction, true);
+    const auto zero = SymbolicValue::Literal(context_, "0");
+    const auto one = SymbolicValue::Literal(context_, "1");
+    const auto clock = tap_->pins.at("tap_scan_clock");
+    for (const std::string phase : {"capture", "shift", "update", "idle"}) {
+      Values pins = state;
+      for (const auto& [role, id] : tap_->controls) {
+        pins.insert_or_assign(
+            id, Choose(!ir && context_.bool_val(role == phase), one, zero));
+      }
+      pins.insert_or_assign(clock, phase == "update" ? one : zero);
+      SymbolicNetwork before(netlist_, context_, pins, global_resets_);
+      pins.insert_or_assign(clock, phase == "update" ? zero : one);
+      SymbolicNetwork after(netlist_, context_, pins, global_resets_);
+      for (size_t id : registers_) {
+        if (id == tap_->instruction_register) continue;
+        const auto active = frame.active.count(id) ? frame.active.at(id)
+                                                   : context_.bool_val(false);
+        const auto entry = execution_->RegisterInterfaces().find(id);
+        std::vector<TapExecution::InterfacePorts> defaults;
+        if (entry == execution_->RegisterInterfaces().end()) {
+          defaults.emplace_back();
+        }
+        const auto& interfaces = entry == execution_->RegisterInterfaces().end()
+                                     ? defaults
+                                     : entry->second;
+        for (const auto& [kind, role] :
+             std::map<std::string, std::string>{{"CaptureEnPort", "capture"},
+                                                {"ShiftEnPort", "shift"},
+                                                {"UpdateEnPort", "update"}}) {
+          auto effective = context_.bool_val(false);
+          for (const auto& ports : interfaces) {
+            const auto control = [&](const std::string& type,
+                                     z3::expr fallback) {
+              const auto found = ports.find(type);
+              if (found == ports.end()) return fallback;
+              auto enabled = context_.bool_val(true);
+              for (const auto& [port, index] : found->second) {
+                if (!netlist_.nodes[port].inputs.count("Source") &&
+                    !state_.IsDriven(port)) {
+                  enabled = enabled && fallback;
+                } else {
+                  enabled = enabled && Known(after.Read({port, index}), true);
+                }
+              }
+              return enabled;
+            };
+            auto enabled = control("SelectPort", active);
+            const auto clocks = ports.find("TCKPort");
+            if (clocks != ports.end()) {
+              for (const auto& [port, index] : clocks->second) {
+                enabled =
+                    enabled &&
+                    Known(before.Read({port, index}), phase == "update") &&
+                    Known(after.Read({port, index}), phase != "update");
+              }
+            }
+            effective =
+                effective ||
+                (enabled &&
+                 control(kind, !ir && context_.bool_val(role == phase)));
+          }
+          // A complete scan may not silently clock hidden or disabled storage.
+          solver.add(effective ==
+                     (active && !ir && context_.bool_val(role == phase)));
+        }
+      }
+    }
+  }
   std::vector<ScanStep> Solve(const std::vector<Operation>& operations) {
     if (operations.empty()) return {};
+    if (tap_ && !tap_ready_) {
+      throw std::runtime_error(
+          "TAP state is unknown; explicit iReset is required");
+    }
     std::map<size_t, std::string> goals, expected;
     std::set<size_t> required;
     for (const auto& operation : operations) {
@@ -418,6 +550,14 @@ class ScanScheduler::Impl {
             netlist_.nodes.at(ref.node).kind != "ScanRegister") {
           throw std::runtime_error(
               "read/write target requires a ScanRegister or its Alias");
+        }
+        if (tap_ &&
+            (ref.node == tap_->instruction_register ||
+             std::any_of(
+                 tap_->data_registers.begin(), tap_->data_registers.end(),
+                 [&](const auto& item) { return item.second == ref.node; }))) {
+          throw std::runtime_error(
+              "synthetic TAP registers are not PDL targets");
         }
         required.insert(ref.node);
         auto& values = read ? expected : goals;
@@ -487,6 +627,15 @@ class ScanScheduler::Impl {
       auto cycles = context_.int_val(0), changes = context_.int_val(0);
       for (size_t time = 0; time < horizon; ++time) {
         Frame frame;
+        if (tap_) {
+          const auto ir =
+              context_.bv_const(("ir_" + std::to_string(time)).c_str(), 1);
+          state.insert_or_assign(tap_->ir_select,
+                                 SymbolicValue{ir, context_.bv_val(1, 1)});
+          frame.instruction = SymbolicValue{ir, context_.bv_val(1, 1)};
+          cycles = cycles + z3::ite(ir == context_.bv_val(1, 1),
+                                    context_.int_val(6), context_.int_val(5));
+        }
         SymbolicNetwork values(netlist_, context_, state, global_resets_);
         std::vector<z3::expr> viable, observed;
         for (size_t i = 0; i < graph_.size(); ++i) {
@@ -550,6 +699,7 @@ class ScanScheduler::Impl {
                                              (observed[id] && gates[id][e]);
           }
         }
+        if (tap_) ConstrainControls(solver, state, frame);
         Values next = state;
         for (size_t id : registers_) {
           const auto& node = netlist_.nodes[id];
@@ -658,6 +808,8 @@ class ScanScheduler::Impl {
       const auto model = solver.get_model();
       // Replay into a copy: a failed model must not partially change state.
       NetworkState replay(state_);
+      auto tap_replay =
+          execution_ ? std::make_unique<TapExecution>(*execution_) : nullptr;
       auto fill = fill_;
       std::vector<ScanStep> steps;
       for (const auto& frame : frames) {
@@ -668,7 +820,7 @@ class ScanScheduler::Impl {
             reset.insert(id);
           }
         }
-        auto step = Replay(frame, model, expected, &replay);
+        auto step = Replay(frame, model, expected, &replay, tap_replay.get());
         for (const auto& [name, bits] : step.loads) {
           fill[netlist_.node_ids.at(name)] = bits;
         }
@@ -689,10 +841,8 @@ class ScanScheduler::Impl {
         }
         steps.push_back(std::move(step));
       }
-      // NetworkState borrows the immutable netlist and cannot be assigned.
-      for (size_t id : registers_) {
-        state_.SetRegister(id, replay.Value(id, true), replay.Value(id));
-      }
+      state_.Restore(replay);
+      execution_ = std::move(tap_replay);
       fill_ = std::move(fill);
       return steps;
     }
@@ -702,7 +852,7 @@ class ScanScheduler::Impl {
   }
   ScanStep Replay(const Frame& frame, const z3::model& model,
                   const std::map<size_t, std::string>& expected,
-                  NetworkState* replay) {
+                  NetworkState* replay, TapExecution* tap_replay) {
     size_t root = kMissing;
     for (size_t i = 0; i < frame.selected.size(); ++i) {
       if (model.eval(frame.selected[i], true).is_true()) root = roots_[i];
@@ -711,6 +861,10 @@ class ScanScheduler::Impl {
       throw std::runtime_error("solver selected no serial output");
     }
     ScanStep step;
+    if (tap_) {
+      step.instruction = Decode(model, *frame.instruction) == "1";
+      replay->Drive(tap_->ir_select, step.instruction ? "1" : "0");
+    }
     step.output = netlist_.nodes.at(graph_[root].bit.node).name;
     std::vector<std::pair<size_t, bool>> registers;
     bool inverted = false;
@@ -775,23 +929,46 @@ class ScanScheduler::Impl {
       }
       controls[id] = {'1', '0', '0', '1'};
     }
-    replay->Clock(controls, true);
-    for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
-    for (char bit : step.serial) {
-      replay->Drive(input, std::string(1, bit));
-      replay->Clock(controls, true);
-    }
-    for (auto& [id, control] : controls) control = {'0', '0', '1', '1'};
     std::set<size_t> writable;
-    for (const auto& [id, control] : controls) {
-      const auto& node = netlist_.nodes[id];
-      if (!node.reset || replay->Read(*node.reset) == '0') writable.insert(id);
+    if (tap_replay) {
+      for (char tms : std::string(step.instruction ? "1100" : "100")) {
+        Cycle(tap_replay, tms);
+      }
+      for (size_t i = 0; i < step.serial.size(); ++i) {
+        Cycle(tap_replay, i + 1 == step.serial.size() ? '1' : '0',
+              step.serial[i]);
+      }
+      for (const auto& [id, control] : controls) {
+        const auto& node = netlist_.nodes[id];
+        if (!node.reset || tap_replay->State().Read(*node.reset) == '0') {
+          writable.insert(id);
+        }
+      }
+      Cycle(tap_replay, '1');
+      Cycle(tap_replay, '0');
+      replay->Restore(tap_replay->State());
+    } else {
+      replay->Clock(controls, true);
+      for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
+      for (char bit : step.serial) {
+        replay->Drive(input, std::string(1, bit));
+        replay->Clock(controls, true);
+      }
+      for (auto& [id, control] : controls) control = {'0', '0', '1', '1'};
+      for (const auto& [id, control] : controls) {
+        const auto& node = netlist_.nodes[id];
+        if (!node.reset || replay->Read(*node.reset) == '0') {
+          writable.insert(id);
+        }
+      }
+      replay->Clock(controls, false);
     }
-    replay->Clock(controls, false);
     for (size_t id : writable) {
       const auto& node = netlist_.nodes[id];
       if (!node.reset || replay->Read(*node.reset) == '0') {
-        step.writes.emplace(node.name, step.loads.at(node.name));
+        if (!tap_ || id != tap_->instruction_register) {
+          step.writes.emplace(node.name, step.loads.at(node.name));
+        }
       }
     }
     for (size_t id : registers_) {
@@ -806,6 +983,9 @@ class ScanScheduler::Impl {
   }
   const Netlist& netlist_;
   NetworkState state_;
+  const TapRuntimeModel* tap_ = nullptr;
+  std::unique_ptr<TapExecution> execution_;
+  bool tap_ready_ = false;
   std::string global_resets_ = "xx";
   z3::context context_;
   std::vector<size_t> registers_, roots_, order_, reset_order_;
@@ -818,7 +998,7 @@ class ScanScheduler::Impl {
 ScanScheduler::ScanScheduler(const Netlist& netlist)
     : impl_(std::make_unique<Impl>(netlist)) {}
 ScanScheduler::~ScanScheduler() = default;
-void ScanScheduler::Reset() { impl_->Reset(); }
+void ScanScheduler::Reset(bool synchronous) { impl_->Reset(synchronous); }
 void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
   impl_->Assume(target, bits);
 }
