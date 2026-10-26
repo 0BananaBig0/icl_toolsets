@@ -358,6 +358,7 @@ Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.
 
+Start with the [complete input example](docs/pattern-generation.md#complete-serial-example).
 See the [generator guide](docs/pattern-generation.md) for commands, limits,
 round-trip checks and validation evidence. The four editor tools remain
 independent of PDL execution and pattern generation.

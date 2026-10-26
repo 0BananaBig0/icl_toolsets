@@ -79,7 +79,10 @@ PDL Document          -> bounded Runtime -> ordered Operation records
 Registers model ports, state, behavior and connections to other components;
 they are not expanded into internal flip-flop/gate netlists. The scheduler uses
 runtime interface membership and must replay candidate scans before committing
-state. See [current support](pattern-generation.md) and the
+state. `iApply -together` adds a shared update-cycle constraint; replay must
+confirm actual updates, not merely matching final values (a held reset may
+already provide those values). Prerequisite scans and read observations retain
+their own ordering. See [current support](pattern-generation.md) and the
 [model ledger](pattern-model-coverage.md) before extending an unsupported path.
 
 ## Build and test

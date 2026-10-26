@@ -2,8 +2,8 @@
 
 `icl-pattern-generation` is an experimental executable. It currently expands
 PDL procedures and Tcl computations and schedules single-input,
-single-output scan networks, including single-TAP instruction/data scans. It is **not yet the complete retargeter described
-in the requirements**.
+single-output scan networks, including single-TAP instruction/data scans. It is
+**not yet the complete retargeter described in the requirements**.
 
 ## Build and run
 
@@ -53,6 +53,59 @@ The PDL must explicitly establish TAP state with `iReset` before transactions.
 uses TRST when available. Flattened debug ICL embeds the BSDL metadata and can
 be replayed without the external BSDL file.
 
+## Complete serial example
+
+Save this as `network.icl`:
+
+```icl
+Module Network {
+  ScanInPort si;
+  ScanRegister gate { ScanInSource si; }
+  ScanRegister target[3:0] { ScanInSource gate; }
+  ScanMux route SelectedBy gate { 1'b0: gate; 1'b1: target[0]; }
+  ScanOutPort so { Source route; }
+}
+```
+
+Save this as `configure.pdl`:
+
+```tcl
+iPDLLevel 0
+iProcsForModule Network
+iState gate 0
+iWrite gate 1
+iWrite target 10
+iApply -together
+```
+
+Here `iState` is an explicit assumption supplied by the PDL author; the tool
+cannot establish it by reading a ResetValue. Use it only when that starting
+state is valid for the intended hardware.
+
+```sh
+icl-pattern-generation --icl network.icl --pdl configure.pdl \
+  --output result/Network.pdl --debug
+```
+
+The first scan opens `gate`. A second scan writes `gate` and `target` on the
+same update edge. The output therefore contains a prerequisite `iApply` followed
+by `iApply -together`. The first scan alone cannot meet the request because
+`target` is bypassed while that scan is shifted.
+
+To check serialization and generated-PDL stability:
+
+```sh
+icl-pattern-generation --icl result/debug/Network.icl --pdl configure.pdl \
+  --output result/from-flat.pdl
+icl-pattern-generation --icl network.icl --pdl result/Network.pdl \
+  --output result/second-pass.pdl
+cmp result/Network.pdl result/from-flat.pdl
+cmp result/Network.pdl result/second-pass.pdl
+```
+
+These comparisons check deterministic output for this example. They are not a
+substitute for hardware-state replay or a vendor comparison.
+
 ## Current transaction support
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric
@@ -98,7 +151,8 @@ unknown external hardware will match a requested expected value.
 
 A small independently enumerated nested-SIB model checks minimum scan count and
 shifted-bit cost. TAP transactions additionally count the IR/DR entry and exit
-cycles when comparing schedules within a horizon. The solver searches increasing scan horizons up to 32 scans,
+cycles when comparing schedules within a horizon. The solver searches increasing
+scan horizons up to 32 scans,
 with resource/time limits; exceeding a bound is not a proof of unreachability.
 Optimality evidence is limited to this supported transaction model and each
 apply group. It does not establish global optimality over an entire PDL program.
