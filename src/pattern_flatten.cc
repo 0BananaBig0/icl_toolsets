@@ -352,6 +352,8 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
       } else if (name == "RefEnum" && node.enumeration) {
         result += "RefEnum " + FlatName(netlist.nodes[*node.enumeration].name) +
                   ";\n";
+      } else if (name == "AccessTogether" && node.model == ModelKind::kAlias) {
+        result += "AccessTogether;\n";
       } else if (name == "ActivePolarity") {
         result += "ActivePolarity " +
                   std::to_string(netlist.Integer(property.second)) + ";\n";

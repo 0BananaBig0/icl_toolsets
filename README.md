@@ -338,7 +338,9 @@ uses five TMS-high cycles even when TRST exists. The scheduler selects IR/DR
 transactions and checks each result through concrete controller/event replay.
 `iApply -together` requires all queued writes to update on one TCK cycle;
 prerequisite scans may precede that cycle. It does not require reads to occur
-together.
+together. An ICL alias marked `AccessTogether` requires its register group to
+be accessed in one scan. Nested aliases and slices retain that constraint;
+unrelated queued accesses can use separate scans.
 
 `iRead` and `iWrite` accept numeric values or names from the target's `RefEnum`.
 An alias uses its own `RefEnum`; generated PDL spells the resolved values as
@@ -350,9 +352,9 @@ experimental generator can execute it.
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
-The generator's [verification record](docs/pattern-generation.md#top-level-pin-assumptions-verification-2026-10-26)
-lists the tests and measured vector-assumption improvement; it also records
-the strict coverage gate that remains unmet.
+The generator's [verification record](docs/pattern-generation.md#access-together-verification-2026-10-27)
+lists regression and replay checks, along with the strict coverage gate that
+remains unmet.
 
 For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must

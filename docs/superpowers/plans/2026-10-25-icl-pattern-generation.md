@@ -514,3 +514,21 @@ it does not complete the remaining access models, merging or reset-only output.
 
 DataRegister state/execution and readback-history flags remain unfinished, as
 do the previously listed access-model, merge and reset-rewrite requirements.
+
+### Task 4 continuation: Alias `AccessTogether`
+
+- [x] Resolve marked alias groups through the shared target resolver, preserving
+  full nested groups when a PDL command names a slice.
+- [x] Constrain each referenced register group to a single operation; keep
+  unrelated groups separate and defer grouped read comparisons when needed.
+- [x] Verify common accesses in concrete replay, retain debug-ICL markers and
+  preserve generated-PDL replay through explicit common-update applies.
+- [x] Reproduce and fix nested and overlapping-read edge cases; pass independent
+  review, focused native/CLI tests, Google style checks and sanitizers.
+- [x] Complete full regression, coverage accounting and installed CLI checks:
+  full `make check` and fifteen installed CLI tests passed; strict coverage
+  remains failed at 95.2% lines / 60.5% raw branches against unchanged 100%/90%
+  thresholds. See the 2026-10-27 generator-guide verification record.
+
+This completes a scoped alias feature, not the original generator requirements.
+Parallel ports, DataRegisters and alias `iApplyEndState` need separate work.

@@ -270,3 +270,26 @@ forbid resulting device operations. The current generator supports these pin
 assumptions alongside ScanRegister assumptions, including aliases and slices;
 DataRegister execution and readback-history flags remain separate unfinished
 work. Controller-owned instruction state still requires explicit TAP reset.
+
+### Alias access groups
+
+IEEE 1687-2014 §6.5.2(i), printed pp. 136–137, requires every element of
+an `AccessTogether` alias to be accessible in one scan-chain or parallel-port
+operation, updating together. Its explanation describes a single scan
+load/unload operation and requires an error when simultaneous access cannot
+be achieved. This differs from §7.9.14(c) `iApply -together`, which groups all
+queued writes and does not group reads.
+
+The serial backend enforces this when resolving a PDL alias target. A partial
+reference retains the full alias group; nested marked aliases expand that
+group transitively. This is the implementation's conservative application of
+“all elements”; no Tessent slice/nesting equivalence result is claimed. Read
+comparisons may wait past incidental prerequisite captures, and overlapping
+read groups share a legal comparison frame. The solver and concrete replay
+both check completion. Each unique referenced read/write group is expanded once per
+apply; constraints scale with the scan horizon and expanded group membership.
+Only grouped read targets add observation-frame decisions. Existing solver
+bounds still apply; no large-network throughput claim is made.
+
+The implementation does not validate all unused alias groups, implement
+parallel-port/DataRegister access, or implement `iApplyEndState` restoration.

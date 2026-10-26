@@ -577,6 +577,11 @@ class ScanScheduler::Impl {
     }
     std::map<size_t, std::string> goals, expected;
     std::set<size_t> required;
+    struct AccessGroup {
+      bool read = false;
+      std::set<size_t> members, requested;
+    };
+    std::map<std::pair<size_t, bool>, AccessGroup> groups;
     for (const auto& operation : operations) {
       const bool read = operation.command == "iRead";
       if ((!read && operation.command != "iWrite") ||
@@ -587,6 +592,35 @@ class ScanScheduler::Impl {
             "operations");
       }
       const auto target = ResolvePdlTarget(netlist_, operation.arguments[0]);
+      for (size_t alias : target.access_together) {
+        auto& group = groups[{alias, read}];
+        group.read = read;
+        if (group.members.empty()) {
+          std::set<size_t> pending{alias}, expanded;
+          while (!pending.empty()) {
+            const size_t current = *pending.begin();
+            pending.erase(pending.begin());
+            if (!expanded.insert(current).second) continue;
+            const auto full =
+                ResolvePdlTarget(netlist_, netlist_.nodes[current].name);
+            pending.insert(full.access_together.begin(),
+                           full.access_together.end());
+            for (const auto& bit : full.bits) {
+              if (bit.node == kMissing ||
+                  netlist_.nodes.at(bit.node).kind != "ScanRegister") {
+                throw std::runtime_error(
+                    "AccessTogether " + netlist_.nodes[alias].name +
+                    " requires ScanRegister members in the serial backend");
+              }
+              group.members.insert(bit.node);
+              required.insert(bit.node);
+            }
+          }
+        }
+        for (const auto& bit : target.bits) {
+          if (group.members.count(bit.node)) group.requested.insert(bit.node);
+        }
+      }
       const auto bits = operation.arguments.size() == 1
                             ? std::string(target.bits.size(), 'x')
                             : PdlDataValue(context_, netlist_, target,
@@ -622,6 +656,24 @@ class ScanScheduler::Impl {
         }
       }
     }
+    if (together && !goals.empty()) {
+      auto& group = groups[{kMissing, false}];
+      for (const auto& [id, goal] : goals) group.members.insert(id);
+    }
+    std::string access_context;
+    std::set<size_t> grouped_reads;
+    for (const auto& [key, group] : groups) {
+      if (group.read) {
+        grouped_reads.insert(group.requested.begin(), group.requested.end());
+      }
+      if (key.first != kMissing) {
+        access_context += " AccessTogether " + netlist_.nodes[key.first].name;
+      }
+    }
+    std::vector<size_t> read_order(grouped_reads.begin(), grouped_reads.end());
+    std::sort(read_order.begin(), read_order.end(), [&](size_t a, size_t b) {
+      return netlist_.nodes[a].name < netlist_.nodes[b].name;
+    });
     // Check structural SI/SO connectivity independently of unknown selectors.
     std::vector<bool> connected(graph_.size());
     for (size_t id : order_) {
@@ -671,7 +723,8 @@ class ScanScheduler::Impl {
         read.emplace(id, context_.bool_val(false));
       }
       std::vector<Frame> frames;
-      auto simultaneous = context_.bool_val(goals.empty());
+      std::vector<z3::expr> simultaneous(groups.size(),
+                                         context_.bool_val(false));
       auto cycles = context_.int_val(0), changes = context_.int_val(0);
       for (size_t time = 0; time < horizon; ++time) {
         Frame frame;
@@ -754,8 +807,15 @@ class ScanScheduler::Impl {
           const auto active = frame.active.count(id) ? frame.active.at(id)
                                                      : context_.bool_val(false);
           if (read.count(id)) {
-            frame.read.emplace(id, active && !read.at(id));
-            read.at(id) = read.at(id) || active;
+            // Incidental prerequisite captures do not fulfill a grouped read.
+            const auto ready =
+                grouped_reads.count(id)
+                    ? context_.bool_const(
+                          ("read_" + std::to_string(time) + "_" + node.name)
+                              .c_str())
+                    : context_.bool_val(true);
+            frame.read.emplace(id, active && ready && !read.at(id));
+            read.at(id) = read.at(id) || frame.read.at(id);
           }
           const auto loaded = context_.bv_const(
               ("load_" + std::to_string(time) + "_" + node.name).c_str(),
@@ -808,24 +868,36 @@ class ScanScheduler::Impl {
                          next.at(id));
         }
         SymbolicNetwork after(netlist_, context_, next, global_resets_);
-        if (together && !goals.empty()) {
+        size_t group_index = 0;
+        for (const auto& [key, group] : groups) {
           auto complete = context_.bool_val(true);
-          for (const auto& [id, goal] : goals) {
+          for (size_t id : group.members) {
             const auto active = frame.active.count(id)
                                     ? frame.active.at(id)
                                     : context_.bool_val(false);
-            const auto requested = SymbolicValue::Literal(context_, goal);
-            complete = complete && active &&
-                       frame.loads.at(id).bits == requested.bits &&
-                       next.at(id).known == requested.known &&
-                       next.at(id).bits == requested.bits;
-            const auto& node = netlist_.nodes[id];
-            if (node.reset) {
-              complete = complete && Known(values.Read(*node.reset), false) &&
-                         Known(after.Read(*node.reset), false);
+            complete = complete && active;
+            if (group.read) {
+              if (group.requested.count(id)) {
+                complete = complete && frame.read.at(id);
+              }
+            } else {
+              if (goals.count(id)) {
+                const auto requested =
+                    SymbolicValue::Literal(context_, goals.at(id));
+                complete = complete &&
+                           frame.loads.at(id).bits == requested.bits &&
+                           next.at(id).known == requested.known &&
+                           next.at(id).bits == requested.bits;
+              }
+              const auto& node = netlist_.nodes[id];
+              if (node.reset) {
+                complete = complete && Known(values.Read(*node.reset), false) &&
+                           Known(after.Read(*node.reset), false);
+              }
             }
           }
-          simultaneous = simultaneous || complete;
+          simultaneous[group_index] = simultaneous[group_index] || complete;
+          ++group_index;
         }
         for (size_t id : registers_) {
           const auto active = frame.active.count(id) ? frame.active.at(id)
@@ -855,7 +927,7 @@ class ScanScheduler::Impl {
                    state.at(id).bits == expected.bits);
       }
       for (const auto& [id, observed] : read) solver.add(observed);
-      if (together) solver.add(simultaneous);
+      for (const auto& complete : simultaneous) solver.add(complete);
       solver.minimize(cycles);
       solver.minimize(changes);
       // Deterministic tie-breaking, independent of source/flat node numbering.
@@ -865,6 +937,13 @@ class ScanScheduler::Impl {
           if (value != frame.loads.end()) {
             solver.minimize(z3::bv2int(value->second.bits, false));
           }
+        }
+      }
+      // Prefer the earliest legal grouped comparisons after scan/load costs.
+      for (const auto& frame : frames) {
+        for (size_t id : read_order) {
+          solver.maximize(z3::ite(frame.read.at(id), context_.int_val(1),
+                                  context_.int_val(0)));
         }
       }
       const auto result = solver.check();
@@ -880,7 +959,7 @@ class ScanScheduler::Impl {
           execution_ ? std::make_unique<TapExecution>(*execution_) : nullptr;
       auto fill = fill_;
       std::vector<ScanStep> steps;
-      bool simultaneous_replayed = goals.empty();
+      std::vector<bool> simultaneous_replayed(groups.size());
       for (const auto& frame : frames) {
         std::set<size_t> reset;
         for (size_t id : registers_) {
@@ -890,16 +969,28 @@ class ScanScheduler::Impl {
           }
         }
         auto step = Replay(frame, model, expected, &replay, tap_replay.get());
-        if (together && !simultaneous_replayed && !step.instruction) {
-          bool complete = true;
-          for (const auto& [id, goal] : goals) {
-            const auto found = step.writes.find(netlist_.nodes[id].name);
-            if (found == step.writes.end() || found->second != goal) {
-              complete = false;
+        size_t group_index = 0;
+        for (const auto& [key, group] : groups) {
+          bool complete = !step.instruction;
+          for (size_t id : group.members) {
+            const auto& name = netlist_.nodes[id].name;
+            if (group.read) {
+              complete =
+                  complete && step.loads.count(name) &&
+                  (!group.requested.count(id) || step.expected.count(name));
+            } else {
+              const auto found = step.writes.find(name);
+              complete = complete && found != step.writes.end() &&
+                         (!goals.count(id) || found->second == goals.at(id));
             }
           }
-          step.together = complete;
-          simultaneous_replayed = complete;
+          if (complete && !simultaneous_replayed[group_index]) {
+            // Preserve the verified update grouping after alias names are
+            // inlined.
+            step.together = step.together || !group.read;
+            simultaneous_replayed[group_index] = true;
+          }
+          ++group_index;
         }
         for (const auto& [name, bits] : step.loads) {
           fill[netlist_.node_ids.at(name)] = bits;
@@ -921,9 +1012,11 @@ class ScanScheduler::Impl {
         }
         steps.push_back(std::move(step));
       }
-      if (together && !simultaneous_replayed) {
+      if (std::find(simultaneous_replayed.begin(), simultaneous_replayed.end(),
+                    false) != simultaneous_replayed.end()) {
         throw std::runtime_error(
-            "concrete replay has no simultaneous update cycle");
+            "concrete replay has no simultaneous access cycle" +
+            access_context);
       }
       state_.Restore(replay);
       execution_ = std::move(tap_replay);
@@ -932,7 +1025,8 @@ class ScanScheduler::Impl {
     }
     throw std::runtime_error(
         "no schedule within 32 scans; reachability not proved (unknown "
-        "control, reset, or blocked path)");
+        "control, reset, or blocked path)" +
+        access_context);
   }
   ScanStep Replay(const Frame& frame, const z3::model& model,
                   const std::map<size_t, std::string>& expected,

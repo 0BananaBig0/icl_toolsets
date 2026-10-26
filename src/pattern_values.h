@@ -5,12 +5,15 @@
 
 #include <z3++.h>
 
+#include <set>
+
 #include "pattern_netlist.h"
 
 namespace pattern {
 struct PdlTarget {
   size_t declaration = 0;
   std::vector<BitReference> bits;
+  std::set<size_t> access_together;
 };
 std::string PdlNumber(z3::context& context, const std::string& text,
                       size_t width);

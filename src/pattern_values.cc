@@ -138,6 +138,9 @@ PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text) {
         throw std::runtime_error("cyclic PDL alias target");
       }
       const auto& alias = netlist.nodes.at(bit.node);
+      if (alias.properties.count("AccessTogether")) {
+        result.access_together.insert(bit.node);
+      }
       const auto source = alias.inputs.find("Source");
       if (source == alias.inputs.end()) {
         throw std::runtime_error("alias target has no source: " + alias.name);

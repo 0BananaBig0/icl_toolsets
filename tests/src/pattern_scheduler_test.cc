@@ -329,6 +329,123 @@ Module Network {
               scans[1].writes.at("child.r") == "0",
           "both requested writes appear on the verified common update edge");
 }
+void TestAccessTogether() {
+  pattern::Design design;
+  design.AddIcl("access-together.icl", R"(
+Module Network {
+ ScanInPort si;
+ ScanRegister gate { ScanInSource si; }
+ ScanRegister a { ScanInSource gate; }
+ ScanRegister b { ScanInSource gate; }
+ ScanMux route SelectedBy gate { 1'b0: a; 1'b1: b; }
+ ScanOutPort so { Source route; }
+ Alias pair[1:0] = a, b { AccessTogether; }
+ Alias nested = pair[1];
+ Alias outer[1:0] = gate, pair[1] { AccessTogether; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Network");
+  for (const auto& command : {"iWrite", "iRead"}) {
+    for (const auto& target : {"pair", "pair[1]", "nested", "outer[1]"}) {
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Assume("gate", "0");
+      scheduler.Assume("a", "0");
+      scheduler.Assume("b", "0");
+      bool rejected = false;
+      try {
+        scheduler.Apply({{command, {target, "1"}, "group.pdl:7", {}}});
+      } catch (const std::exception& error) {
+        const std::string message = error.what();
+        rejected = message.find("AccessTogether") != std::string::npos &&
+                   message.find(std::string(target) == "outer[1]"
+                                    ? "outer"
+                                    : "pair") != std::string::npos &&
+                   message.find("group.pdl:7") != std::string::npos;
+      }
+      Require(rejected && scheduler.Value("gate") == "0" &&
+                  scheduler.Value("a") == "0" && scheduler.Value("b") == "0",
+              "AccessTogether cannot span exclusive paths, even via a slice; "
+              "failure must preserve state and identify the alias");
+    }
+  }
+}
+void TestAccessTogetherPrerequisites() {
+  pattern::Design design;
+  design.AddIcl("access-prerequisites.icl", R"(
+Module Network {
+ ScanInPort si;
+ ScanRegister gate { ScanInSource si; }
+ ScanRegister a { ScanInSource gate; }
+ ScanRegister b { ScanInSource a; }
+ ScanMux route SelectedBy gate { 1'b0: a; 1'b1: b; }
+ ScanOutPort so { Source route; }
+ DataOutPort output { Source a; }
+ Alias pair[1:0] = a, ~b { AccessTogether; }
+ Alias nested = ~pair[1];
+ Alias invalid[1:0] = a, output { AccessTogether; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Network");
+  for (const auto& command : {"iWrite", "iRead"}) {
+    for (const auto& target : {"pair", "pair[1]", "nested"}) {
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Assume("gate", "0");
+      const auto scans =
+          scheduler.Apply({{command, {target, "1"}, "prerequisite:1", {}}});
+      Require(
+          scans.size() == 2 && scans.back().loads.count("a") &&
+              scans.back().loads.count("b"),
+          "full alias must participate even when only a slice is requested");
+      if (std::string(command) == "iRead") {
+        Require(
+            scans.front().expected.empty() && scans.back().expected.count("a"),
+            "first requested reads must wait for the entire access group");
+      } else {
+        Require(
+            scans.back().together &&
+                scans.back().writes.at("a") ==
+                    (std::string(target) == "pair" ||
+                             std::string(target) == "nested"
+                         ? "0"
+                         : "1"),
+            "alias inversion and partial writes survive simultaneous update");
+      }
+    }
+  }
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("gate", "0");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"invalid[1]", "1"}, "unsupported:1", {}}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("requires ScanRegister members") !=
+        std::string::npos;
+  }
+  Require(rejected && scheduler.Value("gate") == "0",
+          "unsupported full group members cannot be hidden behind a slice");
+
+  pattern::Design reset_design;
+  reset_design.AddIcl("reset-group.icl", R"(
+Module Child {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r { ScanInSource si; ResetValue 1'b0; }
+ ScanOutPort so { Source r; }
+}
+Module Network {
+ ScanInPort si;
+ ScanRegister release { ScanInSource si; }
+ Instance child Of Child { InputPort si = release; InputPort rst = ~release; }
+ ScanOutPort so { Source child.so; }
+ Alias pair[1:0] = release, child.r { AccessTogether; }
+})");
+  const auto reset_netlist = pattern::Elaborate(reset_design, "Network");
+  pattern::ScanScheduler reset(reset_netlist);
+  reset.Assume("release", "0");
+  const auto scans =
+      reset.Apply({{"iWrite", {"pair[1]", "1"}, "reset-group:1", {}}});
+  Require(scans.size() == 2 && !scans.front().together &&
+              scans.back().together && scans.back().writes.at("child.r") == "0",
+          "even an unrequested alias member must update after reset release");
+}
 void TestPrerequisites() {
   pattern::Design design;
   design.AddIcl("scheduler.icl", R"(
@@ -534,6 +651,8 @@ int main() {
     TestTapExternalReset();
     TestTapControlRejection();
     TestApplyTogether();
+    TestAccessTogether();
+    TestAccessTogetherPrerequisites();
     TestPrerequisites();
     TestUnknownAndDisconnected();
     TestImplicitControl();

@@ -58,14 +58,14 @@ full model coverage or Tessent equivalence.
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, clock edges and event-free top-level pin assumptions | Feedback resets, addressed behavior and vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL | Multi-TAP scheduling and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP complete-event constraints and concrete replay | Shared-chain, shadow-register and independently gated event scheduling |
-| Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations and partial/X writes | Multiple roots, overlapping intermediate taps, broader access models |
+| Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations, AccessTogether alias groups and partial/X writes | Multiple roots, overlapping intermediate taps, broader access models |
 | Idle cycles | Literal TCK counts on a reset single TAP; native state replay, fixed-point acceleration, retained output count | System clocks, absolute-time waits, external time-dependent instrument behavior |
 | Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle; `iApply -together` verified on a common update cycle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
 | Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
 | Tessent oracle | Isolated vendor probes, manifests and comparison harness | Complete reviewed pair execution, reset-rewrite routing and semantic equivalence |
-| Acceptance checks | Full regression, sanitizers/style and independent review passed through top-level pin assumptions; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.4%; full vendor equivalence is unverified |
+| Acceptance checks | Full regression, sanitizers/style and independent review passed through AccessTogether alias scheduling; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.5%; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values

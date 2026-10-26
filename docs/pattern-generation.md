@@ -170,6 +170,13 @@ broader syntax support and never execute PDL.
   checked in concrete replay and retained in generated PDL. Mutually exclusive
   paths cannot satisfy it; a bounded search failure does not prove general
   hardware unreachability.
+- `AccessTogether` on a referenced ICL Alias keeps its full ScanRegister group
+  in a single operation, including nested aliases and partial references.
+  Writes require simultaneous updates after reset release; reads compare their
+  requested bits together after any prerequisite scans. Unrelated accesses may
+  use separate scans. Unsupported port/DataRegister members are rejected.
+  Flattened ICL preserves the marker; emitted common updates use
+  `iApply -together`. This does not implement alias `iApplyEndState` behavior.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
   State assumptions accept scan registers and top-level DataInPort or SelectPort
   pins with no internal driver; aliases retain source bit ordering and inversion.
@@ -400,3 +407,35 @@ Logs: ignored `build/port-assumptions-{red,final-focused,sanitize,regression,
 coverage,install,installed-tests}.log`, `baseline*.log` and `optimized*.log`
 (all use the `build/port-assumptions-` prefix). Tessent equivalence was not rerun;
 remaining generator requirements are unchanged.
+
+### AccessTogether verification (2026-10-27)
+
+The generator now preserves and enforces referenced alias `AccessTogether`
+properties. Full groups include nested marked aliases even through slices;
+unsupported members fail explicitly. Independent review identified two important
+cases now covered by regression: a nested group hidden by an outer slice, and
+overlapping read groups that must defer comparisons past prerequisite scans.
+The shared target resolver, bounded scheduler and concrete replay implement
+these rules without a second ICL parser or AST.
+
+- Focused native scheduler/state/symbolic tests and fifteen generator CLI tests
+  passed. Cases cover exclusive paths, failure atomicity, inversion, partial and
+  nested aliases, reset-held unrequested members, unrelated accesses, overlapping
+  reads and byte-identical original/flat/generated-PDL replay.
+- Independent review and Google format/naming checks passed. Focused Clang
+  ASan/UBSan passed with leak checks disabled and external Z3 uninstrumented.
+
+- Full `make check BISON=/usr/bin/bison -j4` passed, including dynamic/static
+  checks, 334/334 grammar rules, 119/119 scanner rules, and Vim/Neovim corpus
+  runs over 38,631 ICL and 802 PDL files each.
+- Strict coverage passed its functional suites but failed the unchanged
+  100% line / 90% raw-branch gate: **10,657/11,191 lines (95.2%)** and
+  **17,411/28,800 raw branches (60.5%)**. Grammar-rule reachability is distinct
+  from authored-code coverage; it does not close this gap.
+- `make install-dynamic` and all fifteen CLI tests against the installed
+  generator passed. No generated sources, binaries or logs are added to Git.
+
+Logs: `build/access-together-{regression,coverage,final-focused,sanitize,
+install,installed-tests}.log`; failing pre-fix reproductions use the same prefix.
+No Tessent equivalence or large-network throughput claim is made;
+parallel-port/DataRegister access and `iApplyEndState` remain unfinished.

@@ -127,6 +127,43 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "again.pdl")
         self.assertEqual(original, (self.root / "again.pdl").read_text())
 
+    def test_access_together_round_trips(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_together.icl"
+        (self.root / "source.icl").write_bytes(fixture.read_bytes())
+        for operation in ("iWrite", "iRead"):
+            with self.subTest(operation=operation):
+                (self.root / "source.pdl").write_text(
+                    "iState gate 0\niState a 0\niState b 0\niState c 0\n"
+                    f"{operation} nested 1\n{operation} c 0\niApply\n")
+                self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug")
+                original = (self.root / "out/Network.pdl").read_text()
+                self.assertEqual(original.count("iApply"), 2)
+                flat = self.root / "out/debug/Network.icl"
+                self.assertIn("AccessTogether;", flat.read_text())
+                first_flat = flat.read_text()
+                self.run_tool("--icl", flat, "--pdl", "source.pdl", "--output", "again/result.pdl", "--debug")
+                self.assertEqual(original, (self.root / "again/result.pdl").read_text())
+                self.assertEqual(first_flat, (self.root / "again/debug/Network.icl").read_text())
+                self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "replay.pdl")
+                self.assertEqual(original, (self.root / "replay.pdl").read_text())
+
+    def test_access_together_overlapping_reads(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_together_overlap.icl"
+        (self.root / "source.icl").write_bytes(fixture.read_bytes())
+        (self.root / "source.pdl").write_text(
+            "iState gate 0\niRead first 0\niRead second 0\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug")
+        original = (self.root / "out/Network.pdl").read_text()
+        scans = original.split("iApply")
+        self.assertEqual(len(scans), 3)
+        self.assertNotIn("iRead", scans[0])
+        for target in ("a", "b", "c"):
+            self.assertIn(f"iRead {target} 0b0", scans[1])
+        self.run_tool("--icl", "out/debug/Network.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
+        self.assertEqual(original, (self.root / "flat.pdl").read_text())
+        self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "again.pdl")
+        self.assertEqual(original, (self.root / "again.pdl").read_text())
+
     def test_idle_transient_reset_fill(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
         (self.root / "source.pdl").write_text(
