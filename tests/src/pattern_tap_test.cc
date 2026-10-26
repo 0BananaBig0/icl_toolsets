@@ -5,6 +5,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -32,16 +33,16 @@ std::string Replace(std::string text, const std::string& from,
   text.replace(at, from.size(), to);
   return text;
 }
-pattern::TapInstructionModel Build(const std::string& icl,
-                                   const std::string& bsdl) {
+pattern::TapDatapathModel Build(const std::string& icl,
+                                const std::string& bsdl) {
   pattern::Design design;
   design.AddIcl("probe.icl", icl);
   design.AddBsdl("probe.bsdl", bsdl, "AccessProbe");
   const auto links =
       pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
-  return pattern::BuildTapInstructionModel(links[0]);
+  return pattern::BuildTapDatapathModel(links[0]);
 }
-char ReadBit(const pattern::TapInstructionModel& model,
+char ReadBit(const pattern::TapDatapathModel& model,
              const pattern::BitReference& bit, const std::string& instruction) {
   if (bit.node == std::numeric_limits<size_t>::max()) return bit.constant;
   if (bit.node == model.instruction_register) {
@@ -136,7 +137,7 @@ void TestMissingBinding() {
   missing.name = "tap";
   missing.origin = "missing.icl:1:1";
   try {
-    pattern::BuildTapInstructionModel(missing);
+    pattern::BuildTapDatapathModel(missing);
   } catch (const std::runtime_error& error) {
     Require(
         std::string(error.what()).find("missing.icl:1:1: AccessLink tap:") == 0,
@@ -155,7 +156,7 @@ void TestIndexedSignals() {
                    "AccessProbe");
     const auto links =
         pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
-    const auto model = pattern::BuildTapInstructionModel(links[0]);
+    const auto model = pattern::BuildTapDatapathModel(links[0]);
     const auto id = model.netlist.node_ids.at("long_setup");
     const auto& node = model.netlist.nodes.at(id);
     const bool single = std::string(file) == "single_bit.icl";
@@ -259,7 +260,7 @@ void TestSignalDiagnosticOrigin() {
       pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
   const auto& bad = links[0].instructions[0].active_signals.back();
   try {
-    pattern::BuildTapInstructionModel(links[0]);
+    pattern::BuildTapDatapathModel(links[0]);
   } catch (const std::runtime_error& error) {
     Require(
         std::string(error.what()).find(bad.origin + ":") != std::string::npos,
@@ -317,10 +318,242 @@ void TestCopiedTopLifetime() {
     const auto top = design.SelectTop("AccessTop");
     links = pattern::BindAccessLinks(design, top);
   }
-  const auto model = pattern::BuildTapInstructionModel(links[0]);
+  const auto model = pattern::BuildTapDatapathModel(links[0]);
   Require(ReadBit(model, {model.netlist.node_ids.at("long_setup"), 0},
                   "0011") == '1',
           "binding lifetime depends on Design, not a temporary top copy");
+}
+pattern::BitReference MuxSource(const pattern::NetlistNode& mux,
+                                const std::string& selector) {
+  std::optional<pattern::BitReference> result;
+  for (const auto& choice : mux.choices) {
+    for (const auto& code : choice.codes) {
+      Require(code.data.size() == selector.size(), "selector width");
+      bool match = true;
+      for (size_t bit = 0; bit < selector.size(); ++bit) {
+        if (code.data[bit] != 'x' && code.data[bit] != selector[bit])
+          match = false;
+      }
+      if (match) {
+        Require(!result || (result->node == choice.source.at(0).node &&
+                            result->index == choice.source.at(0).index),
+                "one register source per instruction");
+        result = choice.source.at(0);
+      }
+    }
+  }
+  Require(result.has_value(), "instruction has a scan path");
+  return *result;
+}
+void TestDataRegisterRoutes() {
+  const auto model =
+      Build(Read(kDirectory + "simple.icl"), Read(kDirectory + "simple.bsdl"));
+  const auto& nodes = model.netlist.nodes;
+  const auto ir_mux_id =
+      nodes.at(model.scan_output).inputs.at("Source")[0].node;
+  const auto& ir_mux = nodes.at(ir_mux_id);
+  Require(ir_mux.inputs.at("SelectedBy")[0].node == model.ir_select &&
+              nodes.at(model.ir_select).kind == "DataInPort" &&
+              MuxSource(ir_mux, "1").node == model.instruction_register,
+          "IR select chooses instruction register scan output");
+  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  for (const auto& probe :
+       std::vector<std::pair<std::string, std::string>>{{"0000", "BOUNDARY"},
+                                                        {"0001", "BOUNDARY"},
+                                                        {"0010", "DEVICE_ID"},
+                                                        {"1111", "BYPASS"}}) {
+    const auto source = MuxSource(dr_mux, probe.first);
+    Require(source.node == model.data_registers.at(probe.second) &&
+                source.index == 0,
+            "documented opcode selects the expected BSDL register");
+  }
+  const auto& bypass = nodes.at(model.data_registers.at("BYPASS"));
+  Require(bypass.Width() == 1 &&
+              bypass.inputs.at("CaptureSource")[0].constant == '0',
+          "bypass captures zero");
+  const auto& idcode = nodes.at(model.data_registers.at("DEVICE_ID"));
+  std::string captured;
+  for (const auto& bit : idcode.inputs.at("CaptureSource"))
+    captured += bit.constant;
+  Require(
+      idcode.Width() == 32 && captured == "00010000000000000000000000000011",
+      "IDCODE captures the BSDL value");
+  Require(nodes.at(model.data_registers.at("BOUNDARY")).Width() == 1 &&
+              !nodes.at(model.data_registers.at("BOUNDARY"))
+                   .inputs.count("CaptureSource"),
+          "boundary state is not invented from a scan length");
+  for (const auto& probe : std::vector<std::pair<std::string, std::string>>{
+           {"0011", "IJTAG_ON"}, {"0100", "IJTAG_OFF"}}) {
+    const auto returned = model.scan_returns.at(probe.second);
+    Require(MuxSource(dr_mux, probe.first).node == returned &&
+                nodes.at(returned).kind == "ScanInPort",
+            "selected AccessLink chain has its own scan-return boundary");
+  }
+  for (const auto& entry : model.data_registers) {
+    const auto& reg = nodes.at(entry.second);
+    Require(reg.inputs.at("ScanInSource")[0].node == model.scan_input &&
+                !reg.reset && !reg.constants.count("ResetValue"),
+            "data paths share TDI without silently assuming reset");
+  }
+}
+void TestInvalidDataRoutes() {
+  auto icl = Replace(Read(kDirectory + "simple.icl"), "Module AccessTop {",
+                     "Module AccessTop { Instance other Of AccessInstrument;");
+  icl = Replace(icl, "IJTAG_OFF { ScanInterface { core.client; } }",
+                "IJTAG_OFF { ScanInterface { other.client; } }");
+  const auto bsdl = Read(kDirectory + "simple.bsdl");
+  for (const auto& probe : std::vector<std::pair<std::string, std::string>>{
+           {Replace(bsdl, "IJTAG_OFF (0100)", "IJTAG_OFF (0011)"),
+            "conflicting"},
+           {Replace(bsdl, "IJTAG_ON (0011)", "IJTAG_ON (0XXX)"), "conflicting"},
+           {Replace(bsdl, "BYPASS (1111)", "BYPASS (XXXX)"), "conflicting"},
+           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN (BYPASS)"), "width"},
+           {Replace(bsdl, "BOUNDARY (EXTEST, SAMPLE)",
+                    "USER[1048576] (EXTEST, SAMPLE)"),
+            "width limit"},
+           {Replace(bsdl, "DEVICE_ID (IDCODE)", "DEVICE_ID[16] (IDCODE)"),
+            "width"},
+           {Replace(bsdl, "BYPASS (BYPASS)", "BYPASS[2] (BYPASS)"), "width"},
+           {Replace(bsdl, "BOUNDARY (EXTEST, SAMPLE)", "BOUNDARY (EXTEST)"),
+            "association"},
+           {Replace(bsdl, "BOUNDARY (EXTEST, SAMPLE)",
+                    "USER[2] (EXTEST), USER[3] (SAMPLE)"),
+            "inconsistent"}}) {
+    bool rejected = false;
+    try {
+      Build(icl, probe.first);
+    } catch (const std::runtime_error& error) {
+      const std::string message = error.what();
+      rejected = message.find(probe.second) != std::string::npos &&
+                 message.find("probe.bsdl:") != std::string::npos &&
+                 message.find("AccessLink tap") != std::string::npos;
+      Require(rejected, "unexpected data-route diagnostic: " + message);
+    }
+    Require(rejected, "invalid BSDL data-route mapping accepted");
+  }
+}
+void TestSharedRegisterRoutesAndNames() {
+  auto icl =
+      Replace(Read(kDirectory + "simple.icl"), "ActiveSignals { long_setup; }",
+              "ActiveSignals { long_setup; BYPASS; BOUNDARY; DEVICE_ID; "
+              "ir_select; tdo; scan_return; data_mux; ir_mux; }");
+  const auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "SAMPLE (0001)",
+                            "SAMPLE (0000, 0001)");
+  const auto model = Build(icl, bsdl);
+  const auto& nodes = model.netlist.nodes;
+  for (const auto& entry : model.data_registers) {
+    Require(nodes.at(entry.second).name != entry.first,
+            "register identities cannot collide with user ActiveSignals");
+  }
+  Require(nodes.at(model.ir_select).name != "ir_select" &&
+              nodes.at(model.scan_output).name != "tdo",
+          "datapath boundary names avoid ActiveSignals");
+  const auto& ir_mux =
+      nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
+  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  Require(MuxSource(dr_mux, "0000").node == model.data_registers.at("BOUNDARY"),
+          "multiple instruction aliases can select the same register");
+  const auto custom =
+      Build(Read(kDirectory + "simple.icl"),
+            Replace(Read(kDirectory + "simple.bsdl"),
+                    "BOUNDARY (EXTEST, SAMPLE)", "USER[9] (EXTEST, SAMPLE)"));
+  Require(
+      custom.netlist.nodes.at(custom.data_registers.at("USER")).Width() == 9 &&
+          !custom.netlist.nodes.at(custom.data_registers.at("USER"))
+               .inputs.count("CaptureSource"),
+      "explicit-width user registers preserve unknown capture state");
+}
+void TestSharedInterfaceRoutes() {
+  const auto bsdl = Replace(Read(kDirectory + "simple.bsdl"),
+                            "IJTAG_OFF (0100)", "IJTAG_OFF (0011)");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  Require(
+      model.scan_returns.at("IJTAG_ON") == model.scan_returns.at("IJTAG_OFF"),
+      "opcode aliases of the same ordered chain share one return boundary");
+  Require(ReadBit(model, {model.netlist.node_ids.at("long_setup"), 0},
+                  "0011") == '1',
+          "alias activation is the union of matching instructions");
+}
+std::string WideBsdl(const std::string& bypass_codes) {
+  auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "is 4;", "is 16;");
+  bsdl = Replace(bsdl, "is \"0001\";", "is \"0000000000000001\";");
+  for (const auto& code : std::vector<std::pair<std::string, std::string>>{
+           {"EXTEST (0000)", "EXTEST (0000000000000000)"},
+           {"SAMPLE (0001)", "SAMPLE (0000000000000001)"},
+           {"IDCODE (0010)", "IDCODE (0000000000000010)"},
+           {"IJTAG_ON (0011)", "IJTAG_ON (0000000000000011)"},
+           {"IJTAG_OFF (0100)", "IJTAG_OFF (0000000000000100)"}}) {
+    bsdl = Replace(bsdl, code.first, code.second);
+  }
+  return Replace(bsdl, "BYPASS (1111)",
+                 "BYPASS (1111111111111111," + bypass_codes + ")");
+}
+std::string Binary16(int value) {
+  std::string result(16, '0');
+  for (int bit = 0; bit < 16; ++bit) result[15 - bit] += (value >> bit) & 1;
+  return result;
+}
+void TestMaskedRouteBudget() {
+  std::string codes;
+  for (int i = 0; i < 6000; ++i) {
+    auto code = Binary16(32768 + i * 2);
+    code.back() = 'X';
+    if (!codes.empty()) codes += ",";
+    codes += code;
+  }
+  try {
+    Build(Read(kDirectory + "simple.icl"), WideBsdl(codes));
+  } catch (const std::runtime_error& error) {
+    Require(std::string(error.what()).find("opcode overlap work limit") !=
+                std::string::npos,
+            "distinct masked opcode comparison is bounded");
+    return;
+  }
+  throw std::runtime_error("masked alternatives bypass overlap work limit");
+}
+void TestManyExactRoutes() {
+  std::string codes;
+  for (int i = 256; i < 10256; ++i) {
+    if (!codes.empty()) codes += ",";
+    codes += Binary16(i);
+  }
+  const auto start = std::chrono::steady_clock::now();
+  const auto model = Build(Read(kDirectory + "simple.icl"), WideBsdl(codes));
+  const auto& nodes = model.netlist.nodes;
+  const auto& ir_mux =
+      nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
+  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  Require(MuxSource(dr_mux, "0000000100000000").node ==
+                  model.data_registers.at("BYPASS") &&
+              MuxSource(dr_mux, "0010100000001111").node ==
+                  model.data_registers.at("BYPASS"),
+          "10000 unique literal opcode routes avoid quadratic mask checks");
+  std::cout << "TAP model: 10000 additional literal opcodes, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+void TestActiveOnlyInstructions() {
+  auto icl = Replace(Read(kDirectory + "simple.icl"),
+                     "IJTAG_OFF { ScanInterface { core.client; } }",
+                     "IJTAG_OFF { ActiveSignals { off; } }");
+  icl = Replace(icl, "ScanInterface { core.client; }", "");
+  const auto bsdl =
+      Replace(Read(kDirectory + "simple.bsdl"), "BOUNDARY (EXTEST, SAMPLE)",
+              "BOUNDARY (EXTEST, SAMPLE), USER[8] (IJTAG_ON, IJTAG_OFF)");
+  const auto model = Build(icl, bsdl);
+  Require(
+      model.scan_returns.empty() &&
+          model.netlist.nodes.at(model.data_registers.at("USER")).Width() == 8,
+      "ActiveSignal-only instructions use their declared data register");
+  const auto& nodes = model.netlist.nodes;
+  const auto& ir_mux =
+      nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
+  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  Require(MuxSource(dr_mux, "0011").node == model.data_registers.at("USER") &&
+              MuxSource(dr_mux, "0100").node == model.data_registers.at("USER"),
+          "ActiveSignal-only alias instructions share declared register path");
 }
 void TestInstructionModel() {
   pattern::Design design;
@@ -329,7 +562,7 @@ void TestInstructionModel() {
                  "AccessProbe");
   const auto links =
       pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
-  const auto model = pattern::BuildTapInstructionModel(links[0]);
+  const auto model = pattern::BuildTapDatapathModel(links[0]);
   const auto& netlist = model.netlist;
   const auto& reg = netlist.nodes.at(model.instruction_register);
   Require(reg.kind == "ScanRegister" && reg.Width() == 4 &&
@@ -370,6 +603,13 @@ void TestInstructionModel() {
 }  // namespace
 int main() {
   try {
+    TestActiveOnlyInstructions();
+    TestMaskedRouteBudget();
+    TestManyExactRoutes();
+    TestSharedInterfaceRoutes();
+    TestInvalidDataRoutes();
+    TestSharedRegisterRoutesAndNames();
+    TestDataRegisterRoutes();
     TestCopiedTopLifetime();
     TestSignalDiagnosticOrigin();
     TestOverlappingRangeBudget();
@@ -383,7 +623,7 @@ int main() {
     TestOverlappingParameterizedSignals();
     TestManyAlternativesAndCaptureMask();
     TestMissingBinding();
-    std::cout << "pattern TAP instruction tests passed\n";
+    std::cout << "pattern TAP datapath tests passed\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
     return 1;

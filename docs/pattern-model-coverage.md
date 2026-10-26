@@ -620,8 +620,8 @@ TAP construction and end-to-end generator comparison remain unfinished.
 
 ## Instruction-register and ActiveSignal component
 
-`BuildTapInstructionModel` in `pattern_tap.*` constructs an owning standalone
-instruction-register component from a bound AccessLink. It generates in-memory
+`BuildTapDatapathModel` in `pattern_tap.*` contains the owning standalone
+instruction-register component built from a bound AccessLink. It generates in-memory
 ICL and passes it through the existing `Design`, `Elaborate`, shared AST and
 logic compiler. BSDL width and capture bits become a ScanRegister; each selected
 instruction has one shared decoder, including alternative/masked opcodes.
@@ -634,8 +634,8 @@ so a large opcode list does not exhaust the shared expression-depth limit.
 
 The result owns its parsed documents and can outlive the input binding/Design.
 It records the IR, scan-input and decoder node IDs. It is **not a complete TAP**:
-FSM behavior, resets, data-register routing, clock handling, external/child
-connections and retargeting remain unimplemented. No reset value or initial
+FSM behavior, resets, clock handling, external/child connections and retargeting
+remain unimplemented. The data-register extension is described below. No reset value or initial
 hardware state is inferred by this component. Indexed ActiveSignals are modeled
 natively even though the isolated Tessent 2026.2 probes reject their syntax.
 Those vendor outcomes remain expected errors, not equivalence passes.
@@ -702,3 +702,71 @@ paths remain uncovered. Evidence: `build/tap-vector-delivery-coverage.log`,
 334/334 grammar productions, 119/119 scanner rules, and Vim/Neovim tests of
 38,503 ICL and 739 PDL files each. Full TAP wiring, state/control behavior,
 scheduling and the generator executable remain unfinished.
+
+
+## TAP data-register datapath (2026-10-26)
+
+`BuildTapDatapathModel` now extends the same generated/shared-AST netlist with
+an IR/DR scan mux, scan output, and BSDL-declared data registers. `ir_select`
+is a generic `DataInPort` boundary for a future controller; IEEE ICL defines
+`ToIRSelectPort` for controller outputs, not an `IRSelectPort` input keyword.
+Each selected ordered AccessLink interface chain has a scan-return input.
+Instructions referencing the same ordered instance/interface names share that
+boundary; distinct orders remain distinct. These boundaries are not connected
+to child module ports yet.
+
+The model uses explicit `REGISTER_ACCESS` associations for instructions without
+an AccessLink scan chain:
+
+- `BYPASS`: one bit, CaptureSource zero.
+- `DEVICE_ID`: 32 bits, CaptureSource from `IDCODE_REGISTER`.
+- `BOUNDARY`: width from `BOUNDARY_LENGTH`; no invented capture value.
+- Other register names: require an explicit width; retain unknown capture
+  behavior instead of inferring hardware functionality.
+
+Shared register names produce one register and must agree on width. An
+ActiveSignal-only instruction can select its declared register. Missing
+associations/widths and inconsistent standard-register widths fail with both
+AccessLink and BSDL source context. Aggregate emitted data-register width is
+bounded at 1,048,576 bits. Fresh names prevent collisions with ActiveSignals.
+No reset or initialized instruction/data state is assumed.
+
+The modeled structure follows the *AccessLink* example in the Tessent Shell
+Reference Manual v2023.4 (local
+`htmldocs/tshell_ref/topics/Command_Accesslink_id84260660.html`), also visible in
+the retained Tessent 2026.2 expansion
+`build/access-link-no-reset-evidence/expanded.icl`. IEEE 1687-2014 §6.4.17(f),
+printed p.135, defines instruction-controlled chain ordering; §4.2.2, pp.12–15,
+describes separate instruction/data paths and their controller timing. This
+checkpoint implements datapath topology, not that timing or a complete BSDL
+conformance checker. No new successful vendor pattern comparison is claimed.
+
+Exact opcode aliases selecting the same route are accepted. Overlapping exact
+or masked opcodes selecting different routes are rejected rather than assigning
+an arbitrary priority. Exact codes are indexed; mask checks have a 16,777,216
+work-unit budget, including pair visits and compared bits. Budget exhaustion
+reports a resource limit, not a proof that the network is unreachable. Tests
+exercise both conflict orders, shared chains/registers, naming collisions,
+10,000 additional exact opcodes, and exhaustion with 6,000 distinct masks.
+The focused dynamic/static runs measured approximately 15–19 ms for the
+10,000-additional-opcode case, including input parsing, binding and elaboration
+(WSL2, g++ `-O2`); this is a scale check, not a before/after benchmark.
+
+The earlier component flat-replay tests now include the data registers and muxes.
+Tests also check literal register-selection expectations and capture constants;
+idempotency alone is not treated as proof of correct wiring. Remaining gaps
+include implicit BSDL register associations, unlisted instruction bit patterns,
+full TAP FSM/reset/clock behavior, child-port wiring and semantic equivalence of
+differently named interfaces. A later scheduler must not mistake an unmodeled
+route for proven disconnection. End-to-end generation remains unfinished.
+
+Final verification after all source/test changes: complete `make check` exited 0
+(`build/tap-datapath-regression.log`), including static/dynamic checks, 334/334
+ICL grammar productions, 119/119 scanner rules, and Vim/Neovim corpora of 38,503
+ICL and 739 PDL files each. ASan/UBSan passed with leak detection disabled
+(`build/tap-datapath-sanitize.log`); Google formatting/naming and diff checks
+passed. Strict coverage still fails at **7,934/8,262 lines (96.0%)** and
+**12,988/21,234 raw branches (61.2%)**. The datapath source reaches **342/347 lines
+(98.6%)**, **476/778 branches (61.2%)**
+(`build/tap-datapath-coverage.log`). Thresholds remain unchanged; no generator,
+full TAP, or vendor-equivalence completion is implied.

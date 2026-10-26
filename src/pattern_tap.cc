@@ -3,6 +3,7 @@
 #include "pattern_tap.h"
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -32,13 +33,13 @@ bool Identifier(const std::string& name) {
 class Builder {
  public:
   explicit Builder(const AccessLink& link) : link_(link) {}
-  TapInstructionModel Run() {
+  TapDatapathModel Run() {
     if (!link_.bsdl) throw std::runtime_error("missing bound BSDL metadata");
     ReadSignalRanges();
     const auto input = Fresh("tdi");
     const auto reg = Fresh("INSTRUCTION");
     const auto width = std::to_string(link_.bsdl->instruction_width);
-    Append("Module IclPatternInstruction {\nScanInPort " + input + ";\n");
+    Append("Module IclPatternTapDatapath {\nScanInPort " + input + ";\n");
     Append("ScanRegister " + reg + "[" +
            std::to_string(link_.bsdl->instruction_width - 1) +
            ":0] { ScanInSource " + input + "; CaptureSource " + width + "'b" +
@@ -115,13 +116,27 @@ class Builder {
       Append("DataOutPort " + entry.first + range + " { Source " + sources +
              "; }\n");
     }
+    const auto ir_select = Fresh("ir_select");
+    const auto output = Fresh("tdo");
+    std::map<std::string, std::string> registers, returns;
+    BuildDataPath(input, reg, width, ir_select, output, &registers, &returns);
     Append("}\n");
     Design design;
-    design.AddIcl(link_.origin + " (instruction component)", text_);
-    TapInstructionModel model;
-    model.netlist = Elaborate(design, "IclPatternInstruction");
+    design.AddIcl(link_.origin + " (TAP datapath)", text_);
+    TapDatapathModel model;
+    model.netlist = Elaborate(design, "IclPatternTapDatapath");
     model.instruction_register = model.netlist.node_ids.at(reg);
     model.scan_input = model.netlist.node_ids.at(input);
+    model.scan_output = model.netlist.node_ids.at(output);
+    model.ir_select = model.netlist.node_ids.at(ir_select);
+    for (const auto& entry : registers) {
+      model.data_registers.emplace(entry.first,
+                                   model.netlist.node_ids.at(entry.second));
+    }
+    for (const auto& entry : returns) {
+      model.scan_returns.emplace(entry.first,
+                                 model.netlist.node_ids.at(entry.second));
+    }
     for (const auto& decoder : decoders) {
       model.instruction_selects.emplace(
           decoder.first, model.netlist.node_ids.at(decoder.second));
@@ -130,6 +145,153 @@ class Builder {
   }
 
  private:
+  void ValidateRoutes(const std::map<std::string, std::string>& routes) const {
+    struct Route {
+      std::string source, instruction;
+    };
+    std::map<std::string, Route> seen;
+    std::vector<decltype(seen)::const_iterator> masked;
+    size_t work = kMaxModelBytes;
+    const auto spend = [&] {
+      if (!work) {
+        throw std::runtime_error(link_.bsdl->origin +
+                                 ": TAP opcode overlap work limit exceeded");
+      }
+      --work;
+    };
+    for (const auto& opcode : link_.bsdl->opcodes) {
+      const auto& source = routes.at(opcode.first);
+      const auto conflict = [&](const Route& prior) {
+        throw std::runtime_error(link_.bsdl->origin +
+                                 ": conflicting data-register routes for " +
+                                 prior.instruction + " and " + opcode.first);
+      };
+      for (const auto& code : opcode.second) {
+        const auto duplicate = seen.find(code);
+        if (duplicate != seen.end()) {
+          if (duplicate->second.source != source) conflict(duplicate->second);
+          continue;
+        }
+        const auto compare = [&](const auto& prior) {
+          spend();
+          if (prior.second.source == source) return;
+          for (size_t bit = 0; bit < code.size(); ++bit) {
+            spend();
+            if (code[bit] != 'x' && prior.first[bit] != 'x' &&
+                code[bit] != prior.first[bit]) {
+              return;
+            }
+          }
+          conflict(prior.second);
+        };
+        const bool mask = code.find('x') != std::string::npos;
+        if (mask) {
+          for (const auto& prior : seen) compare(prior);
+        } else {
+          for (const auto& prior : masked) compare(*prior);
+        }
+        const auto entry =
+            seen.emplace(code, Route{source, opcode.first}).first;
+        if (mask) masked.push_back(entry);
+      }
+    }
+  }
+  void BuildDataPath(const std::string& input,
+                     const std::string& instruction_reg,
+                     const std::string& instruction_width,
+                     const std::string& ir_select, const std::string& output,
+                     std::map<std::string, std::string>* registers,
+                     std::map<std::string, std::string>* returns) {
+    std::map<std::vector<std::pair<std::string, std::string>>, std::string>
+        chains;
+    for (const auto& instruction : link_.instructions) {
+      if (instruction.interfaces.empty()) continue;
+      std::vector<std::pair<std::string, std::string>> chain;
+      for (const auto& interface : instruction.interfaces) {
+        chain.emplace_back(interface.instance, interface.name);
+      }
+      auto found = chains.find(chain);
+      if (found == chains.end()) {
+        const auto name = Fresh("scan_return");
+        Append("ScanInPort " + name + ";\n");
+        found = chains.emplace(std::move(chain), name).first;
+      }
+      returns->emplace(instruction.name, found->second);
+    }
+    std::map<std::string, size_t> widths;
+    std::map<std::string, std::string> routes;
+    size_t remaining_bits = kMaxActiveBits;
+    for (const auto& opcode : link_.bsdl->opcodes) {
+      const auto returned = returns->find(opcode.first);
+      if (returned != returns->end()) {
+        routes.emplace(opcode.first, returned->second);
+        continue;
+      }
+      const auto association = link_.bsdl->registers.find(opcode.first);
+      if (association == link_.bsdl->registers.end()) {
+        throw std::runtime_error(
+            link_.bsdl->origin +
+            ": no data-register association for instruction " + opcode.first);
+      }
+      const auto& reg = association->second;
+      auto width = reg.width;
+      std::string capture;
+      if (reg.name == "BYPASS") {
+        width = 1;
+        capture = "0";
+      } else if (reg.name == "BOUNDARY") {
+        width = link_.bsdl->boundary_width;
+      } else if (reg.name == "DEVICE_ID") {
+        width = link_.bsdl->idcode ? std::optional<size_t>(32) : std::nullopt;
+        if (width) capture = *link_.bsdl->idcode;
+      }
+      if (!width || !*width || (reg.width && reg.width != width)) {
+        throw std::runtime_error(
+            link_.bsdl->origin +
+            ": missing or inconsistent width for BSDL register " + reg.name);
+      }
+      auto found = registers->find(reg.name);
+      if (found == registers->end()) {
+        if (*width > remaining_bits) {
+          throw std::runtime_error(
+              link_.bsdl->origin +
+              ": TAP data-register width limit exceeded: " + reg.name);
+        }
+        remaining_bits -= *width;
+        const auto name = Fresh(reg.name);
+        Append("ScanRegister " + name + "[" + std::to_string(*width - 1) +
+               ":0] { ScanInSource " + input + ";");
+        if (!capture.empty()) {
+          Append(" CaptureSource " + std::to_string(*width) + "'b" + capture +
+                 ";");
+        }
+        Append(" }\n");
+        found = registers->emplace(reg.name, name).first;
+        widths.emplace(reg.name, *width);
+      } else if (widths.at(reg.name) != *width) {
+        throw std::runtime_error(link_.bsdl->origin +
+                                 ": inconsistent width for BSDL register " +
+                                 reg.name);
+      }
+      routes.emplace(opcode.first, found->second + "[0]");
+    }
+    ValidateRoutes(routes);
+    const auto data_mux = Fresh("data_mux");
+    const auto ir_mux = Fresh("ir_mux");
+    Append("ScanMux " + data_mux + " SelectedBy " + instruction_reg + " {\n");
+    for (const auto& opcode : link_.bsdl->opcodes) {
+      bool first = true;
+      for (const auto& code : opcode.second) {
+        Append((first ? "" : " | ") + instruction_width + "'b" + code);
+        first = false;
+      }
+      Append(" : " + routes.at(opcode.first) + ";\n");
+    }
+    Append("}\nDataInPort " + ir_select + ";\nScanMux " + ir_mux +
+           " SelectedBy " + ir_select + " { 1'b1 : " + instruction_reg +
+           "[0]; 1'b0 : " + data_mux + "; }\nScanOutPort " + output +
+           " { Source " + ir_mux + "; }\n");
+  }
   static std::string BaseName(const std::string& text) {
     return text.substr(0, text.find('['));
   }
@@ -274,7 +436,7 @@ class Builder {
   size_t next_name_ = 0;
 };
 }  // namespace
-TapInstructionModel BuildTapInstructionModel(const AccessLink& link) {
+TapDatapathModel BuildTapDatapathModel(const AccessLink& link) {
   try {
     return Builder(link).Run();
   } catch (const std::exception& error) {

@@ -275,6 +275,24 @@ Design must outlive the result and must not be modified while bindings are used.
   outputs using normative semantics; vendor rejection is not a reason to remove
   valid IEEE grammar or reduce the final requirements.
 
-`BuildTapInstructionModel` is an internal component builder, not the completed
+`BuildTapDatapathModel` is an internal component builder, not the completed
 AccessLink elaborator or generator. No CLI, installation or pattern-equivalence
 completion follows from these component checks.
+
+
+### Task 2 continuation: TAP data paths
+
+- [x] Extend the shared-front-end component with explicit BSDL data registers,
+  IR/DR ScanMux paths and instruction-chain return boundaries; retain unknown
+  capture state where no source is defined.
+- [x] Reuse register and ordered-chain identities across instruction aliases;
+  reject conflicting exact/masked opcode routes with source context and bounded
+  overlap work. Verify named-bit routing, known captures and flat replay.
+- [x] Exercise 10,000 additional literal opcodes, masked-budget exhaustion,
+  missing/inconsistent associations, generated-name collisions and shared paths.
+- [ ] Complete implicit BSDL mappings and unspecified opcode handling from the
+  governing standards/manuals; connect the datapath boundaries to the controller
+  and elaborated child interfaces with their controls, clocks and resets.
+
+The component is still not a complete TAP or a generator executable. Resource
+limits and unsupported routes must not be converted into unreachability claims.
