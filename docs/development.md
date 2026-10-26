@@ -48,6 +48,40 @@ scanner state between documents; do not introduce concurrent parsing without
 changing that ownership model. The semantic index is not a hardware elaborator.
 ICL and PDL must keep separate language definitions.
 
+## Pattern-generation architecture
+
+The generator consumes the existing language frontends. It does not add a
+second ICL or PDL parser, and editor tools do not execute the runtime.
+
+```text
+ICL ParsedDocument/AST -> ordered Design -> elaborated Netlist -> TAP expansion
+PDL Document          -> bounded Runtime -> ordered Operation records
+                                          |
+                                          v
+                           ScanScheduler / symbolic constraints
+                                          |
+                                          v
+                           NetworkState / TapExecution replay
+                                          |
+                                          v
+                           staged PDL and optional flat ICL
+```
+
+| Source | Responsibility |
+|---|---|
+| `pattern_design.*`, `pattern_netlist.*`, `pattern_expression.*`, `pattern_logic.*` | Ordered module registry, specialized hierarchy, external connections and behavioral models. |
+| `pattern_bsdl.*`, `pattern_access_link.*`, `pattern_tap.*`, `pattern_tap_network.*` | BSDL metadata, AccessLink resolution, TAP controller and child wiring. |
+| `pattern_runtime.*` | Bounded Tcl/PDL execution and source-attributed operations; no invented hardware readback. |
+| `pattern_state.*`, `pattern_tap_execution.*` | Unknown-initial hardware state and concrete event execution. |
+| `pattern_symbolic.*`, `pattern_values.*`, `pattern_scheduler.*` | Z3 constraints, PDL values/targets and complete-scan scheduling. |
+| `pattern_flatten.*`, `icl_pattern_generation_main.cc`, `file_output.h` | Canonical structural output, CLI orchestration and shared staged file replacement. |
+
+Registers model ports, state, behavior and connections to other components;
+they are not expanded into internal flip-flop/gate netlists. The scheduler uses
+runtime interface membership and must replay candidate scans before committing
+state. See [current support](pattern-generation.md) and the
+[model ledger](pattern-model-coverage.md) before extending an unsupported path.
+
 ## Build and test
 
 Run from the repository root. Override `BISON` when the default executable is
@@ -56,8 +90,8 @@ checks may need additional tools described by their scripts.
 
 | Command | Checks or output |
 |---|---|
-| `make dynamic` | Dynamic ICL/PDL formatter and LSP pairs in `build/`. |
-| `make static` | Static variants; requires static runtime libraries and real static Tcl. |
+| `make dynamic` | All five dynamic executables in `build/`; the generator also needs Z3. |
+| `make static` | All five static variants; requires static runtime, Tcl and Z3 libraries. |
 | `make pdlcheck` | PDL functional/LSP tests, complete vendor corpus and source-attributed block cases. |
 | `make check-dynamic` | Full dynamic functional suite, live corpus diagnostics, syntax properties, corpus audit and grammar/scanner rule coverage. |
 | `make keywordcheck` | Independent keyword/identifier-context matrix through CLI and live LSP. |
@@ -66,6 +100,8 @@ checks may need additional tools described by their scripts.
 | `make unitcheck` | AST/layout/JSON unit assertions without generating the parser. |
 | `make goldencheck` | ICL/PDL byte-exact golden outputs, second-pass stability, CLI/LSP parity and runner safeguards. |
 | `make corpuscheck` | Importer/provenance checks and all maintained ICL duplicate checks. |
+| `make pattern-scheduler-check pattern-generation-check` | Focused scheduler and generator CLI/replay checks. |
+| `make pattern-scheduler-static-check pattern-generation-static-check` | The same contracts with static executables. |
 | `make gramcov` | Distinct Bison production and Flex rule hits. |
 | `make coverage` | Strict handwritten line/branch coverage gate. |
 | `make nvimcheck` | Neovim built-in LSP integration. |
@@ -76,6 +112,10 @@ met by the last recorded run. Full rule coverage does not prove that all actions
 or error branches have executed. See [verification](icl-verification.md) for the
 measurement scope and remaining gaps. Generated Bison/Flex implementation code
 is excluded; handwritten `.l`/`.yy` logic and C++ headers remain in scope.
+
+Run full regression and coverage sequentially: their fixture-generation paths
+overlap. The latest generator-inclusive measurements are recorded in
+[pattern-generation.md](pattern-generation.md).
 
 Coverage reports are stored under `.worktrees/coverage/` (ignored by Git).
 Instrumented binaries and counters remain in `build/cov/`. `make coverage`

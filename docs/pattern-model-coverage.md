@@ -45,30 +45,26 @@ capabilities reuse the existing shared AST and declaration index.
 
 ## Current evidence and remaining work
 
-| Model or obligation | Current evidence | Remaining acceptance work |
-| --- | --- | --- |
-| Ordered ICL definitions, namespaces, top selection | `tests/src/pattern_design_test.cc` | CLI diagnostics and failed-output publication |
-| Immediate PDL calls and procedure overrides | `tests/src/pattern_runtime_test.cc`, including specialized parameter injection | All remaining execution/control semantics and flat-design binding |
-| Integer and numeric/string constants | `tests/src/pattern_expression_test.cc` | Broader real-corpus evaluation; resource-bound tests |
-| Parameterized instance hierarchy and widths | `TestSpecialization`, `TestErrors` | Corpus specialization and flat serialization |
-| Bit order, partial input bindings, inversion, aliases | `TestBitConnections`, `TestConnectionErrors`, `TestUnsizedSources` | Full semantic source-kind checks |
-| Instance attributes and addresses | `TestAddressedInstanceMetadata`, `TestInstanceAttributeReplay`, `TestInstanceMetadataValidation`: parent-scope values, separate module/instance attributes, metadata validation and replay | Runtime address selection and scheduling |
-| Reset polarity, unique-parent/default/ambiguous reset | `TestResetInference` | Child-output precedence, TRST/TMS, nested local-reset simulation |
-| Enum reset values and ScanMux connectivity | `TestMuxAndEnum` | All mux kinds, overlapping selector checks, state transitions |
-| OneHotScanGroup | `TestOneHotScanGroups`, `TestOneHotScanErrors`, `TestOneHotScanMuxFanIn`, `TestOneHotScanLimits`: contributors, inversion/ranges, structural enable fan-in, per-bit cycles and flat replay | Runtime enable solving and at-most-one-active-source constraints |
-| OneHotDataGroup contributions | Port/Register/Instance contributor tests: widths/directions, unknown leading bits, structural enables, cycles, addressed data defaults and metadata-backed canonical replay | Runtime enable solving, uniqueness/conflict checks and vendor-portable flattened hardware semantics |
-| Address/control requirements | `tests/src/pattern_address_test.cc`: implicit/explicit domains, aliases, wide additive offsets, scan-register boundaries, source provenance, resource guards and replay | Global feasibility/uniqueness, gated or partial/reordered bindings, read deactivation and scheduling |
-| LogicSignal | `tests/src/pattern_logic_test.cc`: shared AST, exhaustive small truth tables, enum/parameter widths, X masks, invalid operands, recursion and allocation limits | Full corpus and retargeting integration |
-| Selectable DataRegister and output enables | `TestDataRegisterControls`: WriteEnSource, double inversion, Enable and width errors | State transitions and access justification |
-| Register semantic constraints | `TestRegisterRules`: required scan source/rightmost tap, reset/default conflicts, enum widths | Remaining signal-kind rules and state semantics |
-| Clock/control gates | Existing parser and initial connections | Typed clock models and control associations |
-| ScanInterface | `TestScanInterfaces` and `TestInterfaceKinds`: four interface types, chains, default loads, implicit controls and invalid membership | Blackbox reset path-length proof, unique-selectability proof and scheduler integration |
-| DataRegister access models and AccessLink | Addressed register data connections and address/control requirements; selectable register structural inputs | Callback execution, AccessLink/TAP models, state transitions and scheduling |
-| Tessent edge-triggered reset | Manual reviewed | Edge history and builtin model implementation |
-| Flattened ICL | `tests/src/pattern_flatten_test.cc`: canonical replay of ports, registers, muxes, logic, enums, aliases, attributes, reset domains, typed one-hot contributors, addressed data defaults and original PDL bindings | Vendor-portable address/control flattening, PortGroup/AccessLink, clock properties and end-to-end scheduling replay |
-| Shortest configuration sequence and iMerge | Not implemented | State search, cost oracle and semantic barriers |
-| Local-reset source-preserving output | Not implemented | Transitive releases, safe batching, exact iProc preservation |
-| CLI/build/install/output safety | Not implemented | All requested options, staged output, dynamic/static installation |
+This table describes the implementation at `556f14e`. The dated sections below
+are historical checkpoints; statements such as “not implemented” there describe
+that checkpoint, not the current CLI. Passing native tests does not establish
+full model coverage or Tessent equivalence.
+
+| Area | Current implementation/evidence | Remaining acceptance work |
+|---|---|---|
+| Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides | Complete runtime command coverage and broader real-pair generation |
+| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; source-located diagnostics | Full source-kind checks and corpus specialization |
+| Structural address/one-hot models | Contributor/domain/default/alias resolution and canonical metadata replay | Runtime uniqueness, enable solving, address selection and execution |
+| Native hardware state | Unknown initial state, reset propagation, separate shift/update storage and clock edges | Feedback resets, addressed behavior and vendor builtin models |
+| AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL | Multi-TAP scheduling and remaining BSDL/private capture forms |
+| ScanInterface controls | Runtime explicit/implicit membership; single-TAP complete-event constraints and concrete replay | Shared-chain, shadow-register and independently gated event scheduling |
+| Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations and partial/X writes | Multiple roots, overlapping intermediate taps, broader access models |
+| Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
+| Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
+| Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
+| Tessent oracle | Isolated vendor probes, manifests and comparison harness | Complete reviewed pair execution, reset-rewrite routing and semantic equivalence |
+| Acceptance checks | Full regression, sanitizers/style and independent review passed for `556f14e` | Strict coverage remains below 100% lines/90% raw branches: 95.1%/60.3% |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values

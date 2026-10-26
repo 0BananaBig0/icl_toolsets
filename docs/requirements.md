@@ -163,12 +163,15 @@ as atomic behavioral units; internal flip-flop or gate wiring is not required.
 
 ## Build, delivery and documentation
 
-- **D1 — Build:** provide dynamic and static variants of all four executables and
+- **D1 — Build:** provide dynamic and static variants of all five executables (the
+  four formatter/LSP commands plus `icl-pattern-generation`) and
   target deployment on Rocky Linux 8 and newer compatible environments. Git
   builds require C++17, GNU Make 4.3+, Bison 3.8+ and Flex 2.6+. Static variants
   require static runtime libraries and real static Tcl for PDL; dynamic builds
   must work without static libraries. PDL requires matching Tcl development
-  headers/libraries; ICL-only builds must remain usable without Tcl.
+  headers/libraries; the generator additionally requires Z3, including its static
+  archive for a static build. ICL-only editor builds must remain usable without
+  Tcl or Z3.
   Source archives must build without invoking Bison/Flex by including generated
   parser/scanner sources in the archive. Verify compatibility on the actual
   target before claiming it; an archive build on a newer host is insufficient.

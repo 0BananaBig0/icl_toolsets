@@ -1,7 +1,8 @@
 # icl_toolsets
 
 Format, inspect, and navigate IEEE 1687-2014 ICL and PDL in the terminal,
-Vim, or Neovim.
+Vim, or Neovim. Generate flattened PDL for the supported serial and single-TAP
+access networks.
 
 | Tool | Purpose |
 |---|---|
@@ -9,7 +10,7 @@ Vim, or Neovim.
 | `icl-lsp` | ICL diagnostics, completion, navigation, symbols, and editor formatting. |
 | `pdl-format` | Format PDL while respecting Tcl scripts, data, and substitutions. |
 | `pdl-lsp` | PDL diagnostics, completion, navigation, symbols, and editor formatting. |
-| `icl-pattern-generation` | Experimental PDL expansion and prerequisite scheduling for ordinary serial scan networks; see limitations below. |
+| `icl-pattern-generation` | Experimental PDL expansion and prerequisite scheduling for serial and single-TAP networks. |
 | `vim-icl-pdl-modern` | Standalone ICL/PDL highlighting and filetype detection. |
 
 ICL (**Instrument Connectivity Language**) and PDL (**Procedural Description
@@ -19,7 +20,7 @@ executing PDL/Tcl or generating patterns.
 
 Install the executables for formatting and language services. For highlighting
 alone, [install the Vim plugin](#highlighting-only) without building anything.
-The generator is available with a [limited serial backend](#pattern-generation-status); full retargeting remains under development.
+The generator is available with a [serial and single-TAP backend](#generate-pdl-patterns); full retargeting remains under development.
 
 ## Build and install
 
@@ -72,8 +73,9 @@ the matching Tcl shared library on the target machine. Use
 | `make pdl-dynamic` / `make pdl-static` | Only the PDL pair. |
 | `make` | Both variants of all five tools. |
 
-Static builds also need static C/C++ runtime libraries and a real Tcl archive
-compatible with the selected Tcl headers:
+Static builds also need static C/C++ runtime libraries, a real Tcl archive
+compatible with the selected Tcl headers, and a static Z3 archive for the
+generator:
 
 ```sh
 make static TCL_STATIC_LIB=/path/to/libtcl9.0.a
@@ -307,29 +309,55 @@ handwritten-code coverage target remains unmet. ICL has been tested in a live
 Vim/coc.nvim session; a full PDL coc.nvim session remains unverified. Detailed
 verification results and development requirements belong in [docs/](docs/README.md).
 
-## Pattern-generation status
+## Generate PDL patterns
 
-`icl-pattern-generation` is now buildable and installable. Its current backend
-expands procedures and schedules writes/reads through ordinary single-SI/SO
-ScanRegister, mux and logic networks, making SIB and local-reset prerequisites
-explicit. Single-TAP IR/DR scheduling is also supported with an explicit PDL
-`iReset`; supply its BSDL model with `--bsdl ENTITY FILE`. It checks every
-candidate with concrete event replay and supports original/flattened ICL and
-generated-PDL round trips.
+`icl-pattern-generation` expands procedures and Tcl computations, then emits
+level-0 PDL with explicit prerequisite writes and applies. It currently handles
+one ordinary SI/SO boundary or one IEEE 1149.1 TAP, with ScanRegisters, muxes,
+logic-controlled paths and acyclic local-reset dependencies. Hardware starts
+unknown: use explicit `iState` declarations where appropriate, and `iReset`
+before TAP transactions.
+
+For an ordinary scan network:
 
 ```sh
-icl-pattern-generation --icl design.icl --pdl setup.pdl test.pdl \
-  --top_module Top --output result/Top.pdl --debug --log result/run.log
+icl-pattern-generation --icl design.icl overrides.icl \
+  --pdl setup.pdl test.pdl --top_module Top \
+  --output result/Top.pdl --debug --log result/run.log
 ```
 
-Multi-TAP and shadow-register scheduling, addressed/one-hot models, merges and timing,
-the separate `--local_reset` artifact, and complete Tessent pattern comparison
-remain unfinished. Unsupported cases produce errors. This executable does not
-yet fulfill all pattern-generation requirements.
+For an AccessLink with a BSDL model:
 
-See the [generator guide](docs/pattern-generation.md) for supported commands,
-Z3 setup, limits and validation. The four editor tools remain independent of
-PDL execution and pattern generation.
+```sh
+icl-pattern-generation --icl design.icl --bsdl DEVICE device.bsdl \
+  --pdl setup.pdl test.pdl --output result/Top.pdl --debug
+```
+
+The PDL must contain `iReset` before the first TAP transaction. `iReset -sync`
+uses five TMS-high cycles even when TRST exists. The scheduler selects IR/DR
+transactions and checks each result through concrete controller/event replay.
+
+| Option | Behavior |
+|---|---|
+| `--icl FILE...` | Load ICL in order; later module definitions override earlier ones with warnings. |
+| `--pdl FILE...` | Execute PDL in source order; procedure replacements affect subsequent calls. |
+| `--bsdl ENTITY FILE` | Load an AccessLink BSDL model; repeat for additional models. |
+| `--top_module NAME` | Select the top; otherwise infer a unique root and print a warning. |
+| `--output PATH` | Write generated PDL; defaults to `out/<top>.pdl`. |
+| `--debug` | Also write `debug/<top>.icl` beside the output, including TAP/BSDL metadata for replay. |
+| `--log PATH` | Copy stdout diagnostics to a file. |
+| `--local_reset PATH` | Reserved; the separate procedure-preserving rewrite is not implemented. |
+
+This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
+scheduling, addressed/one-hot execution, merges/timing/resources, the separate
+local-reset artifact, and full Tessent pattern equivalence remain unfinished.
+Unsupported cases report errors. Search limits are reported as limits, not proof
+that a target is unreachable. Generated PDL describes register operations, not
+ATE pin-vector files. Input files are protected from output-path aliasing.
+
+See the [generator guide](docs/pattern-generation.md) for commands, limits,
+round-trip checks and validation evidence. The four editor tools remain
+independent of PDL execution and pattern generation.
 
 ## Documentation and license
 

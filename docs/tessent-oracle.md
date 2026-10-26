@@ -111,8 +111,11 @@ per-case timeout by default; the observed successful jobs took about 6.6 seconds
 
 Actual logs, generated PDL and reports are ignored build artifacts in
 `build/tessent-reference-final-results-20261025/`. They are not committed golden files.
-Normal preparation currently reports **11 blocked_generator** cases because
-`icl-pattern-generation` and its local-reset rewrite are not implemented yet.
+That historical preparation run reported **11 blocked_generator** cases before
+the executable existed. The generator now supports serial and single-TAP
+transactions; its separate local-reset rewrite remains unimplemented. The old
+blocked count is not a current generator result; rerun preparation and compare
+reviewed pairs before reporting vendor equivalence.
 End-to-end comparison, local-reset vendor cases and independent state-equivalence
 checks remain requirements; the reference results do not complete them.
 
@@ -125,7 +128,8 @@ outputs, altered scripts/rewrites, inventory accounting, exact source module
 reconstruction (including namespace resets), unsafe Tcl substitution and
 ambiguous procedure entries.
 Subprocess protocol fixtures simulate the tools only in unit tests; they are
-not evidence that the generator exists or performs retargeting.
+not evidence of generator/vendor equivalence. Native generator verification is
+recorded separately in [the generator guide](pattern-generation.md).
 
 Independent review exposed mixed vector/command substitutions and escaped words
 that could become empty operands in a trace, and an unexpected vendor success
