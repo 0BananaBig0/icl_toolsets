@@ -1,0 +1,2068 @@
+iProcsForModule chip_top
+
+iProc chip_top {} {
+
+   iReset
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 0: instruction = 4'b1111 -> DRMux = bypass"
+   iNote "Scan in verification pattern to the following scan register:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.bypass, load value = 1"
+   iWrite chip_top_rtl1_tessent_tap_main_inst.bypass 0b1
+   iRead  chip_top_rtl1_tessent_tap_main_inst.bypass 0b0
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan register:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.bypass, expected value = 1"
+   iWrite chip_top_rtl1_tessent_tap_main_inst.bypass 0b0
+   iRead  chip_top_rtl1_tessent_tap_main_inst.bypass 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iWrite chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0000
+   iRead  chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0001
+   iApply
+
+   iNote "Scan in verification pattern to the following scan register:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan register:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr\[5:0\], load value = 110011"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b110011
+   iRead  chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b000000
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr\[5:0\], expected value = 110011"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b000000
+   iRead  chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b110011
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = scan_in"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = scan_in"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = from_scan_out"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = scan_in"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr\[5:0\], load value = 001111"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr[5:0] 0b001111
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr[5:0] 0b000000
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr\[5:0\], expected value = 001111"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b1
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr[5:0] 0b000000
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr[5:0] 0b001111
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = scan_in"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = from_scan_out"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr\[5:0\], load value = 011110"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr[5:0] 0b011110
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr[5:0] 0b000000
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr\[5:0\], expected value = 011110"
+   iNote "  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr[5:0] 0b000000
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr[5:0] 0b011110
+   iWrite chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_pll_clock_0_inst.tdr_sib.sib 0b0
+   iWrite chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b0
+   iRead  chip_top_rtl2_tessent_occ_INCLK_inst.tdr_sib.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_edt_c1_tdr_inst.tdr\[0:0\], load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_edt_c1_tdr_inst.tdr[0] 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_edt_c1_tdr_inst.tdr\[0:0\], expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_edt_c1_tdr_inst.tdr[0] 0b0
+   iRead  chip_top_rtl2_tessent_edt_c1_tdr_inst.tdr[0] 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.ijtag_so_mux, selection 3: config_sib_shift_reg, enable_shift_reg = 2'b11 -> ijtag_so_mux = enable_shift_reg"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_si_mux, selection 0: streaming_through_ijtag_en_si_mux_select = 1'b0 -> streaming_through_ijtag_en_si_mux = config_sib_shift_reg"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_si_mux, selection 0: config_sib_shift_reg, enable_shift_reg = 2'b11 -> config_sib_si_mux = bus_out_shift_reg\[0\]"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg\[1:0\], load value = 00"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg\[1:0\], load value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg[1:0] 0b00
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg\[1:0\], expected value = 00"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg\[1:0\], expected value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg[1:0] 0b00
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.ijtag_so_mux, selection 1: config_sib_shift_reg, enable_shift_reg = 2'b00 -> ijtag_so_mux = enable_shift_reg"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_si_mux, selection 0: streaming_through_ijtag_en_si_mux_select = 1'b0 -> streaming_through_ijtag_en_si_mux = config_sib_shift_reg"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_si_mux, selection 1: config_sib_shift_reg, enable_shift_reg = 2'bxx -> config_sib_si_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.ijtag_so_mux, selection 0: config_sib_shift_reg, enable_shift_reg = 2'b10 -> ijtag_so_mux = packet_width_is_less_than_two_bus_clock_shift_reg"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_si_mux, selection 0: streaming_through_ijtag_en_si_mux_select = 1'b0 -> streaming_through_ijtag_en_si_mux = config_sib_shift_reg"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_si_mux, selection 1: config_sib_shift_reg, enable_shift_reg = 2'bxx -> config_sib_si_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg\[30:0\], load value = 1111111111111111111111111111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg\[1:0\], load value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg\[1:0\], load value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg\[1:0\], load value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg\[1:0\], load value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg\[27:0\], load value = 0000000000000000111111111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg\[27:0\], load value = 1111111111110000000000000000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg\[15:0\], load value = 1111111111111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg\[2:0\], load value = 111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg\[2:0\], load value = 001"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg, load value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg\[1:0\], load value = 00"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg, load value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg\[2:0\], load value = 000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg, load value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg, load value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg\[3:0\], load value = 0000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg\[6:0\], load value = 1111110"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg\[6:0\], load value = 1111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg\[6:0\], load value = 0000111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg\[6:0\], load value = 1110000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg\[5:0\], load value = 011111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg\[5:0\], load value = 111000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg, load value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg[30:0] 0b1111111111111111111111111111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg[27:0] 0b0000000000000000111111111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg[27:0] 0b1111111111110000000000000000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg[15:0] 0b1111111111111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg[2:0] 0b111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg[2:0] 0b001
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg[1:0] 0b00
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg[2:0] 0b000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg[3:0] 0b0000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg[6:0] 0b1111110
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg[6:0] 0b1111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg[6:0] 0b0000111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg[6:0] 0b1110000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg[5:0] 0b011111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg[5:0] 0b111000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg\[30:0\], expected value = 1111111111111111111111111111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg\[1:0\], expected value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg\[1:0\], expected value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg\[1:0\], expected value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg\[1:0\], expected value = 11"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg\[27:0\], expected value = 0000000000000000111111111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg\[27:0\], expected value = 1111111111110000000000000000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg\[15:0\], expected value = 1111111111111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg\[2:0\], expected value = 111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg\[2:0\], expected value = 001"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg\[1:0\], expected value = 00"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg\[2:0\], expected value = 000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg\[3:0\], expected value = 0000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg\[6:0\], expected value = 1111110"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg\[6:0\], expected value = 1111111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg\[6:0\], expected value = 0000111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg\[6:0\], expected value = 1110000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg\[5:0\], expected value = 011111"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg\[5:0\], expected value = 111000"
+   iNote "  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg[30:0] 0b0000000000000000000000000000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg[30:0] 0b1111111111111111111111111111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg[1:0] 0b11
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg[27:0] 0b0000000000000000000000000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg[27:0] 0b0000000000000000111111111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg[27:0] 0b0000000000000000000000000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg[27:0] 0b1111111111110000000000000000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg[15:0] 0b0000000000000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg[15:0] 0b1111111111111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg[2:0] 0b000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg[2:0] 0b111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg[2:0] 0b000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg[2:0] 0b001
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg[1:0] 0b00
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg[1:0] 0b00
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg[2:0] 0b000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg[2:0] 0b000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg[3:0] 0b0000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg[3:0] 0b0000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg[6:0] 0b0000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg[6:0] 0b1111110
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg[6:0] 0b0000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg[6:0] 0b1111111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg[6:0] 0b0000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg[6:0] 0b0000111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg[6:0] 0b0000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg[6:0] 0b1110000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg[5:0] 0b000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg[5:0] 0b011111
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg[5:0] 0b000000
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg[5:0] 0b111000
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg 0b1
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst.tdr\[5:0\], load value = 110000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b110000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst.tdr\[5:0\], expected value = 110000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b110000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst.tdr\[0:0\], load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst.tdr\[0:0\], load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst.tdr[0] 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst.tdr[0] 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst.tdr\[0:0\], expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst.tdr\[0:0\], expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst.tdr[0] 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_edt_c1_int_tdr_inst.tdr[0] 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst.tdr[0] 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_edt_c1_ext_tdr_inst.tdr[0] 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = scan_in"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = from_scan_out"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr\[5:0\], load value = 000111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr[5:0] 0b000111
+   iRead  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr[5:0] 0b000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr\[5:0\], expected value = 000111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr[5:0] 0b000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr[5:0] 0b000111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.ijtag_so_mux, selection 3: config_sib_shift_reg, enable_shift_reg = 2'b11 -> ijtag_so_mux = enable_shift_reg"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_si_mux, selection 0: streaming_through_ijtag_en_si_mux_select = 1'b0 -> streaming_through_ijtag_en_si_mux = config_sib_shift_reg"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_si_mux, selection 0: config_sib_shift_reg, enable_shift_reg = 2'b11 -> config_sib_si_mux = bus_out_shift_reg\[0\]"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg\[1:0\], load value = 11"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg\[1:0\], load value = 01"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg[1:0] 0b11
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg[1:0] 0b01
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg\[1:0\], expected value = 11"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg\[1:0\], expected value = 01"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg[1:0] 0b00
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_in_shift_reg[1:0] 0b11
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg[1:0] 0b00
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_out_shift_reg[1:0] 0b01
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.ijtag_so_mux, selection 1: config_sib_shift_reg, enable_shift_reg = 2'b00 -> ijtag_so_mux = enable_shift_reg"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_si_mux, selection 0: streaming_through_ijtag_en_si_mux_select = 1'b0 -> streaming_through_ijtag_en_si_mux = config_sib_shift_reg"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_si_mux, selection 1: config_sib_shift_reg, enable_shift_reg = 2'bxx -> config_sib_si_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.ijtag_so_mux, selection 0: config_sib_shift_reg, enable_shift_reg = 2'b10 -> ijtag_so_mux = packet_width_is_less_than_two_bus_clock_shift_reg"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_si_mux, selection 0: streaming_through_ijtag_en_si_mux_select = 1'b0 -> streaming_through_ijtag_en_si_mux = config_sib_shift_reg"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_si_mux, selection 1: config_sib_shift_reg, enable_shift_reg = 2'bxx -> config_sib_si_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_enable_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg\[30:0\], load value = 1111111111000000000000000000000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg\[1:0\], load value = 11"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg\[9:0\], load value = 1111111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg\[2:0\], load value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg\[2:0\], load value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg\[27:0\], load value = 1111111111111111111111111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg\[27:0\], load value = 0000000000000000000000111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg\[15:0\], load value = 1111110000000000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg\[2:0\], load value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg\[2:0\], load value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg\[1:0\], load value = 11"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_on_chip_compare_contribution_shift_reg, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_count_shift_reg\[7:0\], load value = 11111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_shift_reg\[7:0\], load value = 11111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg\[2:0\], load value = 000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg\[3:0\], load value = 0000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg\[6:0\], load value = 1000000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg\[6:0\], load value = 1111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg\[6:0\], load value = 1111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg\[6:0\], load value = 0000001"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg\[5:0\], load value = 111100"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg\[5:0\], load value = 001111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg[30:0] 0b1111111111000000000000000000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg[1:0] 0b11
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg[9:0] 0b1111111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg[27:0] 0b1111111111111111111111111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg[27:0] 0b0000000000000000000000111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg[15:0] 0b1111110000000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg[1:0] 0b11
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_on_chip_compare_contribution_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_count_shift_reg[7:0] 0b11111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_shift_reg[7:0] 0b11111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg[2:0] 0b000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg[3:0] 0b0000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg[6:0] 0b1000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg[6:0] 0b1111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg[6:0] 0b1111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg[6:0] 0b0000001
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg[5:0] 0b111100
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg[5:0] 0b001111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_enable_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg\[30:0\], expected value = 1111111111000000000000000000000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg\[1:0\], expected value = 11"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg\[9:0\], expected value = 1111111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg\[2:0\], expected value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg\[2:0\], expected value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg\[27:0\], expected value = 1111111111111111111111111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg\[27:0\], expected value = 0000000000000000000000111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg\[15:0\], expected value = 1111110000000000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg\[2:0\], expected value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg\[2:0\], expected value = 111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg\[1:0\], expected value = 11"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_on_chip_compare_contribution_shift_reg, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_count_shift_reg\[7:0\], expected value = 11111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_shift_reg\[7:0\], expected value = 11111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg\[2:0\], expected value = 000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg\[3:0\], expected value = 0000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg\[6:0\], expected value = 1000000"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg\[6:0\], expected value = 1111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg\[6:0\], expected value = 1111111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg\[6:0\], expected value = 0000001"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg\[5:0\], expected value = 111100"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg\[5:0\], expected value = 001111"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.streaming_through_ijtag_en_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_enable_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_enable_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg[30:0] 0b0000000000000000000000000000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_offset_shift_reg[30:0] 0b1111111111000000000000000000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.relative_initial_offset_enable_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg[1:0] 0b00
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bus_width_shift_reg[1:0] 0b11
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg[9:0] 0b0000000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.bits_per_packet_shift_reg[9:0] 0b1111111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg[2:0] 0b000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.to_scan_in_bits_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg[2:0] 0b000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_bits_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.from_scan_out_le_strobe_en_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg[27:0] 0b0000000000000000000000000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.total_shift_cnt_minus_one_shift_reg[27:0] 0b1111111111111111111111111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg[27:0] 0b0000000000000000000000000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.extra_shift_packets_shift_reg[27:0] 0b0000000000000000000000111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg[15:0] 0b0000000000000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_size_shift_reg[15:0] 0b1111110000000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg[2:0] 0b000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_count_minus_one_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg[2:0] 0b000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.timeslot_sharing_offset_shift_reg[2:0] 0b111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.force_suppress_capture_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg[1:0] 0b00
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.initial_bit0_position_shift_reg[1:0] 0b11
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_on_chip_compare_contribution_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_on_chip_compare_contribution_shift_reg 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_count_shift_reg[7:0] 0b00000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_count_shift_reg[7:0] 0b11111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_shift_reg[7:0] 0b00000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.on_chip_compare_group_shift_reg[7:0] 0b11111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.loop_back_en_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg[2:0] 0b000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.capture_packets_shift_reg[2:0] 0b000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.init_scan_load_used_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.disable_first_scan_load_masking_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg[3:0] 0b0000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packets_per_capture_clock_minus_one_shift_reg[3:0] 0b0000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg[6:0] 0b0000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_transition_packets_shift_reg[6:0] 0b1000000
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg[6:0] 0b0000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.scan_en_launch_packet_shift_reg[6:0] 0b1111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg[6:0] 0b0000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_transition_words_shift_reg[6:0] 0b1111111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg[6:0] 0b0000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.edt_update_falling_launch_word_shift_reg[6:0] 0b0000001
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg[5:0] 0b000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_shift_clock_low_width_shift_reg[5:0] 0b111100
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg[5:0] 0b000000
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.min_capture_clock_low_width_shift_reg[5:0] 0b001111
+   iWrite GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_ssn_scan_host_1_inst.inner.packet_width_is_less_than_two_bus_clock_shift_reg 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_ssn_inst.sib 0b0
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_occ_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_edt_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b0
+   iRead  GPS_1.gps_baseband_rtl1_tessent_sib_sri_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection of the following scan muxes:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 0: fsm.irSel = 1'b0 -> IRMux = DRMux"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.DRMux, selection 1: instruction = 4'b0000 -> DRMux = host_1_from_so"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.scan_in_mux, selection 0: sib = 1'b0 -> scan_in_mux = ijtag_si"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.scan_in_mux, selection 1: sib = 1'b1 -> scan_in_mux = ijtag_from_so"
+   iNote "Scan in verification pattern to the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_tdr_sri_ctrl_inst.tdr\[0:0\], load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, load value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, load value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, load value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, load value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, load value = 1"
+   iWrite chip_top_rtl1_tessent_tdr_sri_ctrl_inst.tdr[0] 0b1
+   iRead  chip_top_rtl1_tessent_tdr_sri_ctrl_inst.tdr[0] 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan registers:"
+   iNote "  chip_top_rtl1_tessent_tdr_sri_ctrl_inst.tdr\[0:0\], expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb3_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb2_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl1_tessent_sib_pb1_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_ssn_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl2_tessent_sib_edt_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_occ_inst.sib, expected value = 1"
+   iNote "  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib, expected value = 0"
+   iNote "  chip_top_rtl1_tessent_sib_sri_inst.sib, expected value = 1"
+   iWrite chip_top_rtl1_tessent_tdr_sri_ctrl_inst.tdr[0] 0b0
+   iRead  chip_top_rtl1_tessent_tdr_sri_ctrl_inst.tdr[0] 0b1
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Activate selection for scan mux chip_top_rtl1_tessent_tap_main_inst.IRMux, selection 1: fsm.irSel = 1'b1 -> IRMux = instruction\[0\]"
+   iNote "Scan in verification pattern to the following scan register:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.instruction\[3:0\], load value = 1011"
+   iWrite chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b1011
+   iRead  chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0001
+   iApply -end_in_pause
+
+   iNote "Scan out verification pattern from the following scan register:"
+   iNote "  chip_top_rtl1_tessent_tap_main_inst.instruction\[3:0\], expected value = 1011"
+   iWrite chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b1111
+   iRead  chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b1011
+   iApply
+
+
+}

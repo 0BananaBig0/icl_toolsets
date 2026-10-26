@@ -1508,5 +1508,40 @@
     "valid": true,
     "source": "ours",
     "clause": "8; Tcl script syntax; handwritten formatting contract"
+  },
+  {
+    "block": "iScan",
+    "path": "tessent/pdl/block_review/scan_skip_model_state.pdl",
+    "valid": true,
+    "source": "tessent",
+    "clause": "Tessent Shell Reference v2023.4 iScan -skip_model_state_simulation; constructed syntax case"
+  },
+  {
+    "block": "iScan",
+    "path": "tessent/pdl/block_review/scan_skip_model_duplicate.pdl",
+    "valid": false,
+    "source": "tessent",
+    "clause": "Tessent Shell Reference v2023.4 iScan -skip_model_state_simulation; constructed syntax case"
+  },
+  {
+    "block": "iScan",
+    "path": "tessent/pdl/block_review/scan_skip_model_value.pdl",
+    "valid": false,
+    "source": "tessent",
+    "clause": "Tessent Shell Reference v2023.4 iScan -skip_model_state_simulation; constructed syntax case"
+  },
+  {
+    "block": "iScan",
+    "path": "tessent/pdl/block_review/scan_skip_model_missing_length.pdl",
+    "valid": false,
+    "source": "tessent",
+    "clause": "Tessent Shell Reference v2023.4 iScan -skip_model_state_simulation; constructed syntax case"
+  },
+  {
+    "block": "iScan",
+    "path": "tessent/pdl/block_review/scan_skip_model_bad_data.pdl",
+    "valid": false,
+    "source": "tessent",
+    "clause": "Tessent Shell Reference v2023.4 iScan -skip_model_state_simulation; constructed syntax case"
   }
 ]

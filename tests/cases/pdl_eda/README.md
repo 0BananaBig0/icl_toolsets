@@ -1,19 +1,23 @@
 # PDL corpus from local EDA projects
 
-Read-only discovery on 2026-10-23 found **114** `.pdl` paths below
+Read-only discovery on 2026-10-23 initially found **114** `.pdl` paths below
 `~/remote_eda/lianghuaxiao`. The SSHFS mount maps this directory to
 `lianghuaxiao@192.168.6.20:/data/workspaces/lianghuaxiao`. The snapshot was
 collected using remote `find -type f -iname "*.pdl" -print0` and a NUL-list tar
-stream because traversal over SSHFS was slow. No remote files were changed.
+stream because traversal over SSHFS was slow. The 2026-10-26 refresh followed
+source links with `find -L` in the flat, hierarchical-with-SSN and hybrid-TK/LBIST
+Tessent 2026.2 projects. Their 373 PDL paths reduced to 76 complete streams;
+18 already existed and 58 were added. No remote files were changed.
 
 | Category | Source paths | Byte-unique canonical fixtures |
 |---|---:|---:|
 | Synopsys SLM | 77 | 47 |
-| Tessent | 37 | 32 |
-| Total | 114 | 79 |
+| Tessent | 376 | 90 |
+| Total | 453 | 137 |
 
-The 79 complete files total **4,483,090 bytes**; the largest is **868,139 bytes**.
-35 redundant copies were omitted. SHA-256 of the complete original bytes is the
+The 137 complete files total **7,869,372 bytes**; the largest is **868,139 bytes**.
+The 453 current paths and 12 historical revisions share those files instead of
+storing duplicate copies. SHA-256 of the complete original bytes is the
 identity criterion. Copyright headers, line endings, command streams, repeated
 procedure definitions and binding order are retained. Individual `iProc`
 definitions are deliberately not deduplicated: their meaning depends on context
@@ -21,7 +25,10 @@ and order. Source attribution is retained; these vendor files are not relicensed
 under the repository's MIT license.
 
 `sources.json` maps every original relative path to its canonical fixture,
-category and full SHA-256, and records each fixture's size. Copied
+category and full SHA-256, and records each fixture's size. Changed paths retain
+earlier hashes and fixture references in `previous_versions`; `snapshot` dates
+the refreshed source records. Regression checks validate historical references
+too, so refreshing a source cannot silently orphan an older test. Copied
 `syn_slm/tessent_example_*` examples are classified as Tessent;
 `test/tessent_ijtag/test_syn_slm_icl` belongs to Synopsys SLM. Categories describe
 origin; byte-identical copies share one canonical file even across categories.
@@ -42,7 +49,7 @@ runner verifies hashes, sizes, deduplication, provenance references, formatter
 idempotence, real stdio LSP diagnostics, and CLI/LSP formatting parity. It is also
 run against instrumented binaries by `make coverage`. It never evaluates PDL.
 
-**73 files are positive cases. Six are expected diagnostic cases**: generated
+**115 files are positive cases. 22 are expected diagnostic cases**: generated
 Tessent MBIST `iProc` argument lists place required arguments after arguments with
 defaults. IEEE 1687-2014 §7.9.5 (printed160/PDF174, rule a) requires the opposite
 ordering. Entries in `expected_diagnostics.json` pin each filename, error message
@@ -59,6 +66,13 @@ The corpus exposed these frontend gaps, now covered by focused regressions:
   and `iWrite ... -ignore_when_value_already_present {auto|off|on}` are documented
   in Tessent Shell Reference Manual v2023.4, topics `iNote`, `iApply`, `iTake`,
   and `iWrite`. Invalid or incomplete options remain errors.
+- `iScan -skip_model_state_simulation` is documented as a flag in the same
+  manual's `iScan` topic and occurs in all three projects' boundary-scan
+  patterns. Five constructed block cases check acceptance, duplicate flags,
+  unexpected flag values, missing length and malformed scan data. Both PDL
+  tools share the fix; Vim and Neovim recognize the flag without highlighting
+  its occurrences inside strings or comments as options. This is syntax
+  support, not implementation of the flag's retargeting behavior.
 - `iRunLoop -tck count` is observed in the Synopsys SLM corpus. Its acceptance is
   a corpus compatibility choice, not a claim of IEEE syntax or documented support
   in the Tessent v2023.4 manual (which shows count-first forms).
@@ -72,4 +86,4 @@ Reference HTML topics are under
 `~/win11/Desktop/tessent_2023_doc/htmldocs/tshell_ref/topics/`:
 `Command_Inote_idfc2e06a5.html`, `Command_Iapply_idd384fc82.html`,
 `Command_Itake_idd8a68c5f.html`, `Command_Iwrite_id82cc6234.html`, and
-`Command_Irunloop_id1c6d2724.html`.
+`Command_Irunloop_id1c6d2724.html`, and `Command_Iscan_idb66e0799.html`.

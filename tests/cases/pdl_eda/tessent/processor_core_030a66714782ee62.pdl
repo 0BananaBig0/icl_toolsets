@@ -1,0 +1,1132 @@
+#--------------------------------------------------------------------------
+#
+#  Unpublished work. Copyright 2026 Siemens
+#
+#  This material contains trade secrets or otherwise confidential 
+#  information owned by Siemens Industry Software Inc. or its affiliates 
+#  (collectively, SISW), or its licensors. Access to and use of this 
+#  information is strictly limited as set forth in the Customer's 
+#  applicable agreements with SISW.
+#
+#--------------------------------------------------------------------------
+#  File created by: Tessent Shell
+#          Version: 2026.2
+#       Created on: Mon Oct 26 08:52:03 CST 2026
+#--------------------------------------------------------------------------
+
+# Consolidated PDL for processor_core, design_id rtl2 
+
+iProcsForModule processor_core
+
+iProc processor_core_rtl1_tessent_mbist_c1_controller_HWDefault {
+    {controller_instance {}}
+    {bap_instance {}}
+    {config_path {}}
+    {memory_instances {}}
+    {clock_source {tck}}
+    {parallel_retention_time {0}}
+    {run_time_override {0}}
+    {run_length {100}}
+    {compare_go {Yes}}
+    {run_phases {all}}
+    {reduced_address_count {Off}}
+    {memory_reset {off}}
+    {persistent_bist_inputs {off}}
+    {disable_go_id_feedback {off}}
+    {strobe_count {}}
+    {retention_test_phase {all_phases}}
+    {check_repair_status {No}}
+    {compare_memory_go {No}}
+    {compare_go_id {No}}
+} {  
+      set short_chain_const_registers_dict [dict create]
+  if {"all" in $run_phases || "setup" in $run_phases } {
+  # [start] : Setup Phase {{{
+      if { $bap_instance ne "" } {
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr ignore
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr_bypass_sib_inst 0bx
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.ctl_group_sib 0bx
+        iWrite ${bap_instance}.BIST_ASYNC_RESET_tdr 0b1
+        iTake ${bap_instance}.BIST_ASYNC_RESET_tdr
+      }
+        iTake ${controller_instance}.MBISTPG_EN 
+        iWrite ${controller_instance}.MBISTPG_EN 0 
+        iTake ${controller_instance}.BIST_SETUP[1] 
+        iWrite ${controller_instance}.BIST_SETUP[1] 0
+      set icl_instance_path [get_icl_scope -iCall]
+      if { $icl_instance_path ne "" } {
+         append icl_instance_path "."
+      }
+      set ctl_mod_name [get_single_attribute_value [get_icl_instances [list ${icl_instance_path}$controller_instance]] -name master_module_name]
+      set tcd_path [get_config_elements -partition tcd Core($ctl_mod_name)/MemoryBistController -silent]
+      # Clock errors are caught when the 'iClock' is issued, which is done prior to invoking this iProc.
+      if { [catch_output {set clockPeriod [get_iclock_option ${icl_instance_path}${controller_instance}.BIST_CLK -period -in ns]} ] || $clockPeriod eq "" } {
+        return
+      }
+      set tcd_dict [dict create Controller [dict create] Interface [dict create]]
+      foreach_in_collection mem_collar_obj [get_config_elements MemoryCollar -in $tcd_path -silent] {
+        set mem_id [get_config_value -id memory_collar_id $mem_collar_obj]
+        dict set tcd_dict Interface $mem_id [dict create]
+        if { [sizeof_collection [get_config_elements -in $mem_collar_obj PortCounter/Comparator -silent]] > 0 } {
+          dict set tcd_dict Interface $mem_id comparator_location "interface"
+        } else {
+          dict set tcd_dict Interface $mem_id comparator_location "controller"
+        }
+      }
+        iNote "Setting up MemoryBist controller $controller_instance"
+        iNote  "Releasing asynchronous reset"
+        iWrite ${controller_instance}.MBISTPG_ASYNC_RESETN 1
+        iTake ${controller_instance}.MBISTPG_ASYNC_RESETN 
+        iApply
+        iWrite ${controller_instance}.BIST_SETUP[0] 0
+        iWrite ${controller_instance}.LV_TM 0
+      if { $reduced_address_count } {
+        iNote "Enabling reduced address simulation"
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN Off
+      }
+      if { $memory_reset } {
+        iNote "Enabling memory reset mode (writing zeros to all memory locations)"
+        iWrite ${controller_instance}.MBISTPG_MEM_RST On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_MEM_RST Off 
+      }
+      if { $persistent_bist_inputs } {
+        iNote "Maintaining BIST inputs to the memory"
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT Off 
+      }
+      if { $disable_go_id_feedback } {
+        iNote "Enabling diagnosis mode (GO_ID signals converted into compare status signals)"
+        iWrite ${controller_instance}.MBISTPG_DIAG_EN 0b1
+      } else {
+        iWrite ${controller_instance}.MBISTPG_DIAG_EN 0b0
+      }
+      if { [regexp -nocase {start_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Start to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b01
+      } elseif { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b10
+      } elseif { [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to End"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b11
+      } else { 
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b00
+      }
+      iRelease ${controller_instance}.BIST_SETUP[1]
+      iApply
+  # [end]   : Setup Phase }}}
+  }
+      set apply_run_phase yes
+    if { $apply_run_phase } {
+  # [start] : Init Phase {{{
+  if {"all" in $run_phases || "init" in $run_phases } {
+      iTake ${controller_instance}.BIST_SETUP[1]
+      iWrite ${controller_instance}.BIST_SETUP[1] 1
+      iWrite ${controller_instance}.RUN_MODE HWDefault
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Init Phase }}}
+  # [start] : Start Phase {{{
+  if {"all" in $run_phases || "start" in $run_phases } {
+      set check_go_pre_exec 1
+      set check_done_pre_exec 1
+      if { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] || [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        set check_go_pre_exec 0
+        set check_done_pre_exec 0
+      }
+      if { $check_go_pre_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is FAIL before execution"
+          iNote "tessent_pragma optional_iRead"
+          iRead ${controller_instance}.MBISTPG_GO Fail
+        }
+      }
+      if { $check_done_pre_exec } {
+        iNote "Checking DONE is FAIL before execution"
+        iNote "tessent_pragma optional_iRead"
+        iRead ${controller_instance}.MBISTPG_DONE Fail
+      }
+      iTake ${controller_instance}.MBISTPG_EN -persistent
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iNote "Starting MemoryBist controller execution : ${controller_instance}"
+      if { $bap_instance ne "" } {
+        iWrite ${bap_instance}.ChainBypassMode 1
+        iTake ${bap_instance}.ChainBypassMode
+      }
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Start Phase }}}
+  # [start] : Release Phase {{{
+  if {"release" in $run_phases} {
+    iRelease ${controller_instance}.MBISTPG_EN
+  }
+  # [end]   : Release Phase }}}
+  # [start] : Execute Phase {{{
+  if {"all" in $run_phases || "execute" in $run_phases } {
+      iEvent processor_core_rtl1_tessent_mbist_c1_controller_start_execution
+      if { "execute" in $run_phases } {
+        iTake ${controller_instance}.MBISTPG_EN
+        iWrite ${controller_instance}.MBISTPG_EN 1 -ignore_when_value_already_present "on"
+        iTake ${controller_instance}.BIST_SETUP[1]
+        iWrite ${controller_instance}.BIST_SETUP[1] 1 -ignore_when_value_already_present "on"
+        if { $bap_instance ne "" } {
+          iWrite ${bap_instance}.ChainBypassMode 1 -ignore_when_value_already_present "on"
+          iTake ${bap_instance}.ChainBypassMode
+        }
+        iApply
+      }
+      if {$clock_source eq "tck"} {
+        iRunLoop [expr $run_length+5] -tck
+      } else {
+        iRunLoop [expr $run_length+5] -sck ${controller_instance}.BIST_CLK
+      }
+  }
+  # [end]   : Execute Phase }}}
+  # [start] : Stop Phase {{{
+  if {"all" in $run_phases || "stop" in $run_phases } {
+      set check_go_post_exec 1
+      set check_done_post_exec 1
+      if { $check_go_post_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is PASS after execution completion"
+          iRead ${controller_instance}.MBISTPG_GO Pass
+        }
+      }
+      if { $check_done_post_exec } {
+        iNote "Checking DONE is PASS after execution completion"
+        iRead ${controller_instance}.MBISTPG_DONE Pass
+      }
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iEvent processor_core_rtl1_tessent_mbist_c1_controller_stop_execution
+      iApply
+      if { $bap_instance ne "" } {
+        iRelease ${bap_instance}.ChainBypassMode
+      }
+      iRelease ${controller_instance}.MBISTPG_EN
+      iRelease ${controller_instance}.BIST_SETUP[1]
+  }
+  # [end]   : Stop Phase }}}
+    }
+  # [start] : Compare Phase {{{
+  if {"all" in $run_phases || "compare" in $run_phases } {
+    set do_compare_phase [getenv TESSENT_MEMORY_BIST_FORCE_COMPARE_PHASE -boolean_default no]
+    if { $compare_go_id } {
+      set do_compare_phase yes
+    }
+    if { [string match -nocase {non_repairable} $check_repair_status] || $check_repair_status} {
+      set do_compare_phase yes
+    }
+    if { $compare_memory_go } {
+      set do_compare_phase yes
+    }
+    if {$strobe_count ne ""} {
+      set do_compare_phase yes
+    }
+    iWrite ${controller_instance}.RUN_MODE Idle
+    iRelease ${controller_instance}.FL_CNT_MODE
+    if { $do_compare_phase } {
+      iRead ${controller_instance}.MBISTPG_GO Ignore
+      iRead ${controller_instance}.MBISTPG_DONE Ignore
+      iApply
+      iTake ${controller_instance}.MBISTPG_EN
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iApply
+      if { [regexp -nocase {non.*repairable} $check_repair_status] } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+         iRead [dict get $memory_instances m2].RA_STATUS_REG 0b0
+      } elseif { $check_repair_status } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+         iRead [dict get $memory_instances m2].RA_STATUS_REG 0b0
+      }
+      if { $compare_memory_go} {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+         iRead [dict get $memory_instances m2].RA_STATUS_REG 0b0
+      }
+      if { $compare_go_id } {
+        dict for {reg_name reg_value} $short_chain_const_registers_dict {
+          iRead $reg_name $reg_value
+        }
+  
+        iNote "Checking GO_ID bits are PASS"
+        if { [dict exists $memory_instances m1] } {
+          iNote "tessent_pragma iReadVar [dict get $memory_instances m1].GO_ID_REG [dict get $memory_instances m1].GO_ID_REG"
+          iRead [dict get $memory_instances m1].GO_ID_REG 0b0
+        }
+        if { [dict exists $memory_instances m2] } {
+          iNote "tessent_pragma iReadVar [dict get $memory_instances m2].GO_ID_REG [dict get $memory_instances m2].GO_ID_REG"
+          iRead [dict get $memory_instances m2].GO_ID_REG 0b0
+        }
+      }
+          if {$strobe_count ne ""} {
+            iNote "Comparing strobe count"
+            iRead ${controller_instance}.STOP_ERROR_CNT_REG $strobe_count
+          } 
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iApply
+    }
+  }
+  # [end]   : Compare Phase }}}
+  # [start] : Shutdown Phase {{{
+  if {"all" in $run_phases || "shutdown" in $run_phases } {
+    iRelease ${controller_instance}.MBISTPG_EN
+    iRunLoop 1 -tck
+    iApply
+  }
+  # [end]   : Shutdown Phase }}}
+}
+
+iProc processor_core_rtl1_tessent_mbist_c1_controller_IncFailureLimit {
+    {controller_instance {}}
+    {bap_instance {}}
+    {config_path {}}
+    {memory_instances {}}
+    {clock_source {tck}}
+    {increment_failure_limit {off}}
+} {  
+  if { $bap_instance ne "" } {
+    iNote "tessent_pragma optional_iRead"
+    iRead ${bap_instance}.tdr ignore
+    iNote "tessent_pragma optional_iRead"
+    iRead ${bap_instance}.tdr_bypass_sib_inst 0bx
+    iNote "tessent_pragma optional_iRead"
+    iRead ${bap_instance}.ctl_group_sib 0bx
+    iWrite ${bap_instance}.BIST_ASYNC_RESET_tdr 0b1
+    iTake ${bap_instance}.BIST_ASYNC_RESET_tdr
+  }
+    iTake ${controller_instance}.MBISTPG_EN 
+    iWrite ${controller_instance}.MBISTPG_EN 0 
+    iTake ${controller_instance}.BIST_SETUP[1] 
+    iWrite ${controller_instance}.BIST_SETUP[1] 0
+    iApply
+  set icl_instance_path [get_icl_scope -iCall]
+  if { $icl_instance_path ne "" } {
+     append icl_instance_path "."
+  }
+  set ctl_mod_name [get_single_attribute_value [get_icl_instances [list ${icl_instance_path}$controller_instance]] -name master_module_name]
+  set tcd_path [get_config_elements -partition tcd Core($ctl_mod_name)/MemoryBistController -silent]
+  # Clock errors are caught when the 'iClock' is issued, which is done prior to invoking this iProc.
+  if { [catch_output {set clockPeriod [get_iclock_option ${icl_instance_path}${controller_instance}.BIST_CLK -period -in ns]} ] || $clockPeriod eq "" } {
+    return
+  }
+    if { $increment_failure_limit } {
+      iNote "Incrementing failure limit counter"
+      iWrite ${controller_instance}.MBISTPG_EN  1
+      iWrite ${controller_instance}.FL_CNT_MODE 0b10
+      iApply
+    }
+    iWrite ${controller_instance}.MBISTPG_EN  0
+    iWrite ${controller_instance}.FL_CNT_MODE 0b00 
+    iApply
+}
+
+iProc processor_core_rtl1_tessent_mbist_c1_controller_RunTimeProg {
+    {controller_instance {}}
+    {bap_instance {}}
+    {config_path {}}
+    {memory_instances {}}
+    {clock_source {tck}}
+    {parallel_retention_time {0}}
+    {run_time_override {0}}
+    {run_length {100}}
+    {compare_go {Yes}}
+    {run_phases {all}}
+    {freeze_step {off}}
+    {reduced_address_count {Off}}
+    algo_reg_val
+    algorithm
+    address_generator
+    data_generator
+    {memory_reset {off}}
+    {persistent_bist_inputs {off}}
+    operation_set
+    {disable_go_id_feedback {off}}
+    {failure_limit {0}}
+    {strobe_count {}}
+    enable_memory_list
+    {data_compare_time_slots {all}}
+    {retention_test_phase {all_phases}}
+    {extract_diagnosis_data {auto}}
+    {check_repair_status {No}}
+    {compare_memory_go {No}}
+    {compare_cmp_stat {off}}
+    {compare_go_id {No}}
+} {  
+      set short_chain_const_registers_dict [dict create]
+  # [start] : Setup Phase {{{
+  if {"all" in $run_phases || "setup" in $run_phases } {
+      if { $bap_instance ne "" } {
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr ignore
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr_bypass_sib_inst 0bx
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.ctl_group_sib 0bx
+        iWrite ${bap_instance}.BIST_ASYNC_RESET_tdr 0b1
+        iTake ${bap_instance}.BIST_ASYNC_RESET_tdr
+      }
+        iTake ${controller_instance}.MBISTPG_EN 
+        iWrite ${controller_instance}.MBISTPG_EN 0 
+        iTake ${controller_instance}.BIST_SETUP[1] 
+        iWrite ${controller_instance}.BIST_SETUP[1] 0
+      set icl_instance_path [get_icl_scope -iCall]
+      if { $icl_instance_path ne "" } {
+         append icl_instance_path "."
+      }
+      set ctl_mod_name [get_single_attribute_value [get_icl_instances [list ${icl_instance_path}$controller_instance]] -name master_module_name]
+      set tcd_path [get_config_elements -partition tcd Core($ctl_mod_name)/MemoryBistController -silent]
+      # Clock errors are caught when the 'iClock' is issued, which is done prior to invoking this iProc.
+      if { [catch_output {set clockPeriod [get_iclock_option ${icl_instance_path}${controller_instance}.BIST_CLK -period -in ns]} ] || $clockPeriod eq "" } {
+        return
+      }
+      set tcd_dict [dict create Controller [dict create] Interface [dict create]]
+      foreach_in_collection mem_collar_obj [get_config_elements MemoryCollar -in $tcd_path -silent] {
+        set mem_id [get_config_value -id memory_collar_id $mem_collar_obj]
+        dict set tcd_dict Interface $mem_id [dict create]
+        if { [sizeof_collection [get_config_elements -in $mem_collar_obj PortCounter/Comparator -silent]] > 0 } {
+          dict set tcd_dict Interface $mem_id comparator_location "interface"
+        } else {
+          dict set tcd_dict Interface $mem_id comparator_location "controller"
+        }
+      }
+        iNote "Setting up MemoryBist controller $controller_instance"
+        iNote  "Releasing asynchronous reset"
+        iWrite ${controller_instance}.MBISTPG_ASYNC_RESETN 1
+        iTake ${controller_instance}.MBISTPG_ASYNC_RESETN 
+        iApply
+        iWrite ${controller_instance}.BIST_SETUP[0] 0
+        iWrite ${controller_instance}.LV_TM 0
+        iWrite ${controller_instance}.MBISTPG_EN 1
+        iApply
+        if { $clock_source eq "tck" } {
+        iRunLoop 2 -tck
+        } 
+      if { ! [string match -nocase $freeze_step "off"] } {
+        iNote "Selecting controller step $freeze_step"
+        iWrite ${controller_instance}.STEP_COUNTER_FREEZE_REG On
+        iWrite ${controller_instance}.STEP_COUNTER_REG $freeze_step
+        dict set short_chain_const_registers_dict ${controller_instance}.STEP_COUNTER_FREEZE_REG On
+      } else {
+        iWrite ${controller_instance}.STEP_COUNTER_FREEZE_REG Off
+        iWrite ${controller_instance}.STEP_COUNTER_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.STEP_COUNTER_FREEZE_REG Off
+      }
+      if { $reduced_address_count } {
+        iNote "Enabling reduced address simulation"
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN Off
+      }
+      set common_algo Off
+      set algo_code 0b0
+      set microcode_en 0b0 
+      if { $algorithm ne "" } {
+        dict set DefaultAlgo smarchchkbcil {0b0}
+        set algorithm_l [string tolower ${algorithm}]
+        if { [dict exists $DefaultAlgo ${algorithm_l}] } {
+          iNote "Selecting algorithm ${algorithm}"
+          set algo_code [dict get $DefaultAlgo ${algorithm_l}]
+        } else {
+          add_config_message -error -display -config_object $config_path "Invalid algorithm specified : ${algorithm}. The allowed algorithms are [dict keys ${DefaultAlgo}]"
+          return -code error
+        }
+        if { [string match -nocase $freeze_step "off"] } {
+          set common_algo On
+        } else {
+        }
+      } else {
+        dict set StepAlgo 0 {0b0}
+        dict set StepAlgo 1 {0b0}
+        if { [string match -nocase $freeze_step "off"] } {
+        } else {
+          set algo_code [dict get $StepAlgo ${freeze_step}]
+        }
+      }
+      iWrite ${controller_instance}.ALGO_SEL_CNT_REG $common_algo
+      dict set short_chain_const_registers_dict ${controller_instance}.ALGO_SEL_CNT_REG $common_algo
+      if { [dict exists $address_generator load_row_address_a] } {
+         iWrite ${controller_instance}.A_ADD_REG_X 0b[dict get $address_generator load_row_address_a]
+      } else {
+         iWrite ${controller_instance}.A_ADD_REG_X 0b0
+      }
+      if { [dict exists $address_generator load_column_address_a] } {
+         iWrite ${controller_instance}.A_ADD_REG_Y 0b[dict get $address_generator load_column_address_a]
+      } else {
+         iWrite ${controller_instance}.A_ADD_REG_Y 0b0
+      }
+      if { [dict exists $address_generator load_row_address_b] } {
+         iWrite ${controller_instance}.B_ADD_REG_X 0b[dict get $address_generator load_row_address_b]
+      } else {
+         iWrite ${controller_instance}.B_ADD_REG_X 0b0
+      }
+      if { [dict exists $address_generator load_column_address_b] } {
+         iWrite ${controller_instance}.B_ADD_REG_Y 0b[dict get $address_generator load_column_address_b]
+      } else {
+         iWrite ${controller_instance}.B_ADD_REG_Y 0b0
+      }
+      if { [dict exists $data_generator load_expect_data] } {
+         iWrite ${controller_instance}.EDATA_REG 0b[dict get $data_generator load_expect_data]
+         if {[regexp {ADDR_BIT_SEL} EDATA_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.EDATA_REG 0b[dict get $data_generator load_expect_data] 
+         }
+      } else {
+         iWrite ${controller_instance}.EDATA_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} EDATA_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.EDATA_REG 0b0 
+           }
+         } 
+      }
+      if { [dict exists $data_generator load_write_data] } {
+         iWrite ${controller_instance}.WDATA_REG 0b[dict get $data_generator load_write_data]
+         if {[regexp {ADDR_BIT_SEL} WDATA_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.WDATA_REG 0b[dict get $data_generator load_write_data] 
+         }
+      } else {
+         iWrite ${controller_instance}.WDATA_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} WDATA_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.WDATA_REG 0b0 
+           }
+         } 
+      }
+      if { [dict exists $data_generator invert_data_with_column_bit] } {
+         iWrite ${controller_instance}.Y_ADDR_BIT_SEL_REG 0b[dict get $data_generator invert_data_with_column_bit]
+         if {[regexp {ADDR_BIT_SEL} Y_ADDR_BIT_SEL_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.Y_ADDR_BIT_SEL_REG 0b[dict get $data_generator invert_data_with_column_bit] 
+         }
+      } else {
+         iWrite ${controller_instance}.Y_ADDR_BIT_SEL_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} Y_ADDR_BIT_SEL_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.Y_ADDR_BIT_SEL_REG 0b0 
+           }
+         } 
+      }
+      if { [dict exists $data_generator invert_data_with_row_bit] } {
+         iWrite ${controller_instance}.X_ADDR_BIT_SEL_REG 0b[dict get $data_generator invert_data_with_row_bit]
+         if {[regexp {ADDR_BIT_SEL} X_ADDR_BIT_SEL_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.X_ADDR_BIT_SEL_REG 0b[dict get $data_generator invert_data_with_row_bit] 
+         }
+      } else {
+         iWrite ${controller_instance}.X_ADDR_BIT_SEL_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} X_ADDR_BIT_SEL_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.X_ADDR_BIT_SEL_REG 0b0 
+           }
+         } 
+      }
+      if {$data_generator ne ""} {
+         iWrite ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b1
+         dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b1
+      } else { 
+         iWrite ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b0
+         dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b0
+      }
+      if { $memory_reset } {
+        iNote "Enabling memory reset mode (writing zeros to all memory locations)"
+        iWrite ${controller_instance}.MBISTPG_MEM_RST On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_MEM_RST Off 
+      }
+      if { $persistent_bist_inputs } {
+        iNote "Maintaining BIST inputs to the memory"
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT Off 
+      }
+      if { $operation_set ne "" } {
+        dict set opsetList sync {0b0}
+        set operationSet [string tolower ${operation_set}]
+        if { [dict exists $opsetList ${operationSet}] } {
+          iNote "Selecting operation set ${operation_set}"
+          iWrite ${controller_instance}.OPSET_SELECT_REG [dict get $opsetList ${operationSet}]
+          iWrite ${controller_instance}.SELECT_COMMON_OPSET_REG 0b1
+          dict set short_chain_const_registers_dict ${controller_instance}.OPSET_SELECT_REG [dict get $opsetList ${operationSet}]
+          dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_OPSET_REG 0b1 
+        } else {
+            add_config_message -display -error -config_object $config_path "Invalid operation_set specified : ${operationSet}. The available operation_sets are [dict keys ${opsetList}]"
+            return -code error
+        }
+      } else {
+        dict set opsetList 0 {0b0}
+        dict set opsetList 1 {0b0}
+        if { ! [string match -nocase $freeze_step "off"] } {
+           if { [dict exists $opsetList ${freeze_step}] } {
+              iWrite ${controller_instance}.OPSET_SELECT_REG [dict get $opsetList ${freeze_step}]
+           }
+        }
+        iWrite ${controller_instance}.SELECT_COMMON_OPSET_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_OPSET_REG 0b0 
+      }
+      if { $disable_go_id_feedback } {
+        iNote "Enabling diagnosis mode (GO_ID signals converted into compare status signals)"
+        iWrite ${controller_instance}.DIAG_EN_REG 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.DIAG_EN_REG 0b1 
+      } else {
+        iWrite ${controller_instance}.DIAG_EN_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.DIAG_EN_REG 0b0 
+      }
+      if { [string match -nocase "auto*" $failure_limit] } {
+        iTake ${controller_instance}.FL_CNT_MODE
+        iWrite ${controller_instance}.FL_CNT_MODE 0b00
+        iWrite ${controller_instance}.STOP_ON_ERROR_REG 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.STOP_ON_ERROR_REG 0b1 
+      } elseif { $failure_limit > 0 } {
+        iNote "Enabling stop-on-nth-error diagnosis"
+        set failureLimit [expr $failure_limit-1]
+        iNote "Loading error counter with value $failureLimit"
+        iWrite ${controller_instance}.STOP_ON_ERROR_REG 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.STOP_ON_ERROR_REG 0b1 
+        iWrite ${controller_instance}.STOP_ERROR_CNT_REG $failureLimit
+        iTake ${controller_instance}.FL_CNT_MODE
+        iWrite ${controller_instance}.FL_CNT_MODE 0b00
+      } else {
+        iWrite ${controller_instance}.STOP_ON_ERROR_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.STOP_ON_ERROR_REG 0b0 
+      }
+      iWrite ${controller_instance}.FREEZE_STOP_ERROR_REG 0b0
+      dict set memoryIndexList m1 ${controller_instance}.MEM_SELECT_REG0 
+      if { [llength $enable_memory_list] > 0 } {
+        dict set regSelDisableList ${controller_instance}.MEM_SELECT_REG0 0
+      } else {
+        dict set regSelDisableList ${controller_instance}.MEM_SELECT_REG0 1 
+      }  
+      dict set memoryIndexList m2 ${controller_instance}.MEM_SELECT_REG0 
+      if { [llength $enable_memory_list] > 0 } {
+        dict set regSelDisableList ${controller_instance}.MEM_SELECT_REG0 0
+      } else {
+        dict set regSelDisableList ${controller_instance}.MEM_SELECT_REG0 1 
+      }  
+      foreach memInst $enable_memory_list  {
+        set memInstL [string tolower $memInst]
+        if { [dict exists $memoryIndexList $memInstL] } {
+          dict set regSelDisableList [dict get ${memoryIndexList} $memInstL] 1
+          iNote "Enabling memory instance $memInstL from memory test"
+        }
+      }
+      foreach {regi valuei} $regSelDisableList {
+         iWrite $regi 0b$valuei
+         dict set short_chain_const_registers_dict $regi 0b$valuei 
+      }
+      if { [string match -nocase $data_compare_time_slots "ALL"] } {
+        iWrite ${controller_instance}.CMP_EN_MASK_EN 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.CMP_EN_MASK_EN 0b0 
+      } else {
+        iWrite ${controller_instance}.CMP_EN_MASK_EN 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.CMP_EN_MASK_EN 0b1 
+        if { [string match -nocase $data_compare_time_slots "EVEN"] } {
+           iNote "Enabling even StrobeDataOut compares"
+           iWrite ${controller_instance}.CMP_EN_PARITY 0b1
+        } else {
+           iNote "Enabling odd StrobeDataOut compares"
+           iWrite ${controller_instance}.CMP_EN_PARITY 0b0
+        }
+      }
+      if { [regexp -nocase {start_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Start to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b01
+      } elseif { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b10
+      } elseif { [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to End"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b11
+      } else { 
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b00
+      }
+      iWrite ${controller_instance}.BIST_SETUP[0] 1
+      iWrite ${controller_instance}.MBISTPG_EN 0 
+        iApply
+        iRunLoop 1 -tck
+      iRelease ${controller_instance}.MBISTPG_EN
+  }
+  # [end]   : Setup Phase }}}
+  # [start] : Init Phase {{{
+  if {"all" in $run_phases || "init" in $run_phases } {
+      iTake ${controller_instance}.BIST_SETUP[1]
+      iWrite ${controller_instance}.BIST_SETUP[1] 1
+      if { [string match -nocase "auto*" $failure_limit] } {
+        iNote "Loading error counter from failure limit counter"
+        iWrite ${controller_instance}.FL_CNT_MODE 0b01
+      }
+      iWrite ${controller_instance}.RUN_MODE RunTimeProg
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Init Phase }}}
+  # [start] : Start Phase {{{
+  if {"all" in $run_phases || "start" in $run_phases } {
+      set check_go_pre_exec 1
+      set check_done_pre_exec 1
+      if { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] || [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        set check_go_pre_exec 0
+        set check_done_pre_exec 0
+      }
+      if { $check_go_pre_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is FAIL before execution"
+          iNote "tessent_pragma optional_iRead"
+          iRead ${controller_instance}.MBISTPG_GO Fail
+        }
+      }
+      if { $check_done_pre_exec } {
+        iNote "Checking DONE is FAIL before execution"
+        iNote "tessent_pragma optional_iRead"
+        iRead ${controller_instance}.MBISTPG_DONE Fail
+      }
+      iTake ${controller_instance}.MBISTPG_EN -persistent
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iNote "Starting MemoryBist controller execution : ${controller_instance}"
+      if { $bap_instance ne "" } {
+        iWrite ${bap_instance}.ChainBypassMode 1
+        iTake ${bap_instance}.ChainBypassMode
+      }
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Start Phase }}}
+  # [start] : Release Phase {{{
+  if {"release" in $run_phases} {
+    iRelease ${controller_instance}.MBISTPG_EN
+  }
+  # [end]   : Release Phase }}}
+  # [start] : Execute Phase {{{
+  if {"all" in $run_phases || "execute" in $run_phases } {
+      iEvent processor_core_rtl1_tessent_mbist_c1_controller_start_execution
+      if { "execute" in $run_phases } {
+        iTake ${controller_instance}.MBISTPG_EN
+        iWrite ${controller_instance}.MBISTPG_EN 1 -ignore_when_value_already_present "on"
+        iTake ${controller_instance}.BIST_SETUP[1]
+        iWrite ${controller_instance}.BIST_SETUP[1] 1 -ignore_when_value_already_present "on"
+        if { $bap_instance ne "" } {
+          iWrite ${bap_instance}.ChainBypassMode 1 -ignore_when_value_already_present "on"
+          iTake ${bap_instance}.ChainBypassMode
+        }
+        iApply
+      }
+      if {$clock_source eq "tck"} {
+        iRunLoop [expr $run_length+5] -tck
+      } else {
+        iRunLoop [expr $run_length+5] -sck ${controller_instance}.BIST_CLK
+      }
+  }
+  # [end]   : Execute Phase }}}
+  # [start] : Stop Phase {{{
+  if {"all" in $run_phases || "stop" in $run_phases } {
+      set check_go_post_exec 1
+      set check_done_post_exec 1
+      if { $check_go_post_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is PASS after execution completion"
+          iRead ${controller_instance}.MBISTPG_GO Pass
+        }
+      }
+      if { $check_done_post_exec } {
+        iNote "Checking DONE is PASS after execution completion"
+        iRead ${controller_instance}.MBISTPG_DONE Pass
+      }
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iEvent processor_core_rtl1_tessent_mbist_c1_controller_stop_execution
+      iApply
+      if { $bap_instance ne "" } {
+        iRelease ${bap_instance}.ChainBypassMode
+      }
+      iRelease ${controller_instance}.MBISTPG_EN
+      iRelease ${controller_instance}.BIST_SETUP[1]
+  }
+  # [end]   : Stop Phase }}}
+  # [start] : Compare Phase {{{
+  if {"all" in $run_phases || "compare" in $run_phases } {
+    set do_compare_phase [getenv TESSENT_MEMORY_BIST_FORCE_COMPARE_PHASE -boolean_default no]
+    if { $compare_go_id } {
+      set do_compare_phase yes
+    }
+    if { [string match -nocase {non_repairable} $check_repair_status] || $check_repair_status} {
+      set do_compare_phase yes
+    }
+    if { $compare_memory_go } {
+      set do_compare_phase yes
+    }
+    if {$strobe_count ne ""} {
+      set do_compare_phase yes
+    }
+    iWrite ${controller_instance}.RUN_MODE Idle
+    iRelease ${controller_instance}.FL_CNT_MODE
+    if { [string match -nocase "auto*" $failure_limit] } {
+      iWrite ${controller_instance}.FL_CNT_MODE 0b00
+    }
+    if { $do_compare_phase } {
+      iRead ${controller_instance}.MBISTPG_GO Ignore
+      iRead ${controller_instance}.MBISTPG_DONE Ignore
+      iApply
+      iTake ${controller_instance}.MBISTPG_EN
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iApply
+      if { $extract_diagnosis_data } {
+         iNote "Sampling registers containing diagnosis data"
+         iNote "Sampling 3-bit Operation Cycle Counter"
+         iRead ${controller_instance}.JCNT 0b0
+         iNote "Sampling 1-bit Step Counter"
+         iRead ${controller_instance}.STEP_COUNTER_REG 0b0
+         iNote "Sampling 6-bit Instruction Pointer"
+         iRead ${controller_instance}.INST_POINTER_REG 0b0
+         iNote "Sampling 2-bit RepeatLoop A Counter"
+         iRead ${controller_instance}.REPEATLOOP_A_CNTR_REG 0b0
+         iNote "Sampling 2-bit RepeatLoop B Counter"
+         iRead ${controller_instance}.REPEATLOOP_B_CNTR_REG 0b0
+         iNote "Sampling 9-bit X-Segment of Address Register A"
+         iRead ${controller_instance}.A_ADD_REG_X 0b0
+         iNote "Sampling 9-bit X-Segment of Address Register B"
+         iRead ${controller_instance}.B_ADD_REG_X 0b0
+         iNote "Sampling 4-bit Y-Segment of Address Register A"
+         iRead ${controller_instance}.A_ADD_REG_Y 0b0
+         iNote "Sampling 4-bit Y-Segment of Address Register B"
+         iRead ${controller_instance}.B_ADD_REG_Y 0b0
+         iNote "Sampling 12-bit Error Counter"
+         iRead ${controller_instance}.STOP_ERROR_CNT_REG 0b0
+      }
+      if { [regexp -nocase {non.*repairable} $check_repair_status] } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+         iRead [dict get $memory_instances m2].RA_STATUS_REG 0b0
+      } elseif { $check_repair_status } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+         iRead [dict get $memory_instances m2].RA_STATUS_REG 0b0
+      }
+      if { $compare_memory_go} {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+         iRead [dict get $memory_instances m2].RA_STATUS_REG 0b0
+      }
+      if { $compare_go_id } {
+        dict for {reg_name reg_value} $short_chain_const_registers_dict {
+          iRead $reg_name $reg_value
+        }
+  
+        iNote "Checking GO_ID bits are PASS"
+        if { [dict exists $memory_instances m1] } {
+          iNote "tessent_pragma iReadVar [dict get $memory_instances m1].GO_ID_REG [dict get $memory_instances m1].GO_ID_REG"
+          iRead [dict get $memory_instances m1].GO_ID_REG 0b0
+        }
+        if { [dict exists $memory_instances m2] } {
+          iNote "tessent_pragma iReadVar [dict get $memory_instances m2].GO_ID_REG [dict get $memory_instances m2].GO_ID_REG"
+          iRead [dict get $memory_instances m2].GO_ID_REG 0b0
+        }
+      }
+          if {$strobe_count ne ""} {
+            iNote "Comparing strobe count"
+            iRead ${controller_instance}.STOP_ERROR_CNT_REG $strobe_count
+          } 
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iApply
+    }
+  }
+  # [end]   : Compare Phase }}}
+  # [start] : Shutdown Phase {{{
+  if {"all" in $run_phases || "shutdown" in $run_phases } {
+    iRelease ${controller_instance}.MBISTPG_EN
+    iRunLoop 1 -tck
+    iApply
+  }
+  # [end]   : Shutdown Phase }}}
+} 
+
+iProcsForModule processor_core_rtl1_tessent_sib_1
+
+iProc setup {args} {  
+    if {[expr [llength $args]%2 != 0]} {
+    display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+    return -code error
+  }
+  array set ARGS {static_clock_control off}
+  array set ARGS $args
+  set static_clock_control $ARGS(static_clock_control)
+  
+  if {$static_clock_control ni {off external}} {
+    display_message -error "Invalid 'static_clock_control' value '$static_clock_control'. Valid values are 'off' and 'external'."
+    return -code error
+  }
+  iWrite ltest_occ_en 0b1
+  if {$static_clock_control eq "external"} {
+    iWrite ltest_static_clock_control_mode 0b1
+  } else {
+    iWrite ltest_static_clock_control_mode 0b0
+  }
+  iApply
+} 
+
+iProcsForModule processor_core_rtl2_tessent_edt_c1_ext
+
+iProc setup {args} {  
+   if {[expr [llength $args]%2 != 0]} {
+     display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+     return -code error
+  }
+  
+  set edt_bypass 0
+  foreach {param value} $args {
+     set param [string tolower $param]
+     if {$param eq "edt_bypass"} {
+        set edt_bypass $value
+     } else {
+        display_message -error "Invalid parameter '$param'. Valid parameter is 'edt_bypass'."
+        return -code error
+     }
+     if {![string is boolean -strict $value]} {
+        display_message -error "Invalid non-boolean value '$value' for parameter '$param'."
+        return -code error
+     }
+  }
+  
+  if {$edt_bypass} {
+     iWrite edt_bypass on
+  } else {
+     iWrite edt_bypass off
+  }
+  iApply
+} 
+
+iProcsForModule processor_core_rtl2_tessent_edt_c1_int
+
+iProc setup {args} {  
+   if {[expr [llength $args]%2 != 0]} {
+     display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+     return -code error
+  }
+  
+  set edt_bypass 0
+  foreach {param value} $args {
+     set param [string tolower $param]
+     if {$param eq "edt_bypass"} {
+        set edt_bypass $value
+     } else {
+        display_message -error "Invalid parameter '$param'. Valid parameter is 'edt_bypass'."
+        return -code error
+     }
+     if {![string is boolean -strict $value]} {
+        display_message -error "Invalid non-boolean value '$value' for parameter '$param'."
+        return -code error
+     }
+  }
+  
+  if {$edt_bypass} {
+     iWrite edt_bypass on
+  } else {
+     iWrite edt_bypass off
+  }
+  iApply
+} 
+
+iProcsForModule processor_core_rtl2_tessent_occ
+
+iProc setup {args} {  
+   if {[expr [llength $args]%2 != 0]} {
+     display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+     return -code error
+  }
+  set fast_capture_mode 0
+  set parent_mode 0
+  set capture_window_size 3
+  set inject_tck 0
+  set active_upstream_parent_occ 0
+  foreach {param value} $args {
+     set param [string tolower $param]
+     if {$param eq "capture_window_size"} {
+        set capture_window_size $value
+     } elseif {$param eq "fast_capture_mode"} {
+        set fast_capture_mode $value
+     } elseif {$param eq "active_upstream_parent_occ"} {
+        set active_upstream_parent_occ $value
+     } elseif {$param eq "inject_tck"} {
+        set inject_tck $value
+     } else {
+        display_message -error "Invalid parameter '$param'. Valid parameters are 'fast_capture_mode', 'capture_window_size', 'active_upstream_parent_occ' and 'inject_tck'."
+        return -code error
+     }
+  }
+  
+  if {![string is boolean -strict $fast_capture_mode]} {
+     display_message -error "Invalid non-boolean value '$fast_capture_mode' for parameter 'fast_capture_mode'."
+     return -code error
+  }
+  if {![string is boolean -strict $active_upstream_parent_occ]} {
+     display_message -error "Invalid non-boolean value '$active_upstream_parent_occ' for parameter 'active_upstream_parent_occ'."
+     return -code error
+  }
+  if {![string is boolean -strict $parent_mode]} {
+     display_message -error "Invalid non-boolean value '$parent_mode' for parameter 'parent_mode'."
+     return -code error
+  } elseif {$parent_mode} {
+     display_message -error "Parameter 'parent_mode' cannot be set to 1 as the controller type is not 'parent'."
+     return -code error
+  }
+  if {![string is integer -strict $capture_window_size]} {
+     display_message -error "Invalid non-integer value '$capture_window_size' for parameter 'capture_window_size'."
+     return -code error
+  }
+  if {$capture_window_size < 1 || $capture_window_size > 3} {
+     display_message -error "Invalid value '$capture_window_size' for parameter 'capture_window_size'. Must be 1 to 3."
+     return -code error
+  }
+  if {![string is boolean -strict $inject_tck]} {
+     display_message -error "Invalid non-boolean value '$inject_tck' for parameter 'inject_tck'."
+     return -code error
+  }
+  
+  iWrite test_mode 1;
+  iWrite fast_capture_mode [string is true $fast_capture_mode];
+  iWrite capture_cycle_width [expr {$capture_window_size - 1}];
+  iWrite active_upstream_parent_occ  [string is true $active_upstream_parent_occ]
+  iWrite inject_tck [string is true $inject_tck];
+  
+  iApply;
+} 
+
+iProcsForModule processor_core_rtl2_tessent_ssn_scan_host_1
+
+iProc setup {args} {  
+    set param_list {
+    packet_size 
+    timeslot_sharing_count_minus_one 
+    timeslot_sharing_offset
+    force_suppress_capture
+    bus_width
+    min_shift_clock_low_width 
+    min_capture_clock_low_width 
+    enable   
+    loop_back_en 
+    streaming_through_ijtag_en
+    initial_bit0_position 
+    initial_offset
+    relative_initial_offset_enable
+    bits_per_packet
+    extra_shift_packets
+    scan_en_transition_packets
+    scan_en_launch_packet
+    edt_update_falling_transition_words
+    edt_update_falling_launch_word
+    total_shift_cnt_minus_one
+    init_scan_load_used
+    disable_first_scan_load_masking
+    capture_packets
+    packets_per_capture_clock_minus_one
+    infinite_shift_mode
+  }
+  lappend param_list to_scan_in_bits
+  lappend param_list from_scan_out_bits
+  lappend param_list from_scan_out_le_strobe_en
+  array set PARAM {
+    enable                               0
+    timeslot_sharing_count_minus_one     0
+    timeslot_sharing_offset              0
+    force_suppress_capture               0
+    min_shift_clock_low_width            0 
+    min_capture_clock_low_width          0 
+    loop_back_en                         0 
+    streaming_through_ijtag_en           0
+    relative_initial_offset_enable       0
+    init_scan_load_used                  0
+    disable_first_scan_load_masking      0
+    packets_per_capture_clock_minus_one  0
+    extra_shift_packets                  0
+    scan_en_transition_packets           0
+    edt_update_falling_transition_words  0
+    infinite_shift_mode                  0
+    from_scan_out_le_strobe_en           0
+  }
+  array set PARAM $args
+  if {[getenv INIT_SCAN_LOAD_USED -default 0] eq "1"} {
+    set PARAM(init_scan_load_used) 1
+  }
+  if {[getenv INFINITE_SHIFT_MODE -default 0] eq "1"} {
+    set PARAM(infinite_shift_mode) 1
+  }
+  foreach {param value} $args {
+    if {$param ni $param_list} {
+      display_message -warning "Unknown argument '$param' passed to the setup iProc of module processor_core_rtl2_tessent_ssn_scan_host_1. It is ignored."
+    }
+  }
+  set missing_param 0
+  set disable_on_chip_compare_contribution_error 0
+  if {![info exists PARAM(streaming_through_ijtag_en)] || $PARAM(streaming_through_ijtag_en) in {0 0b0}} {
+    iNote "tessent_pragma iWriteVar enable inner.enable"
+  }
+  foreach param $param_list {
+    if {$PARAM(infinite_shift_mode)} {
+      if {$param eq "total_shift_cnt_minus_one"} {
+        continue
+      }
+    } else {
+      if {$param eq "infinite_shift_mode"} {
+        continue
+      }
+    }
+    if {$param eq "bits_per_packet"} {
+      if {$PARAM(timeslot_sharing_count_minus_one) > 0 && $PARAM(bits_per_packet) != 1} {
+        display_message "The parameter bits_per_packet value '$PARAM(bits_per_packet)' must be 1 when timeslot_sharing_count_minus_one is greather than 0."
+        return -code error
+      }
+    }
+    if {$param eq "scan_en_launch_packet" && ![info exists PARAM(scan_en_launch_packet)] && [info exists PARAM(scan_en_transition_packets)]} {
+      set PARAM(scan_en_launch_packet) [expr {int(ceil($PARAM(scan_en_transition_packets)/2))}]
+    }
+    if {$param eq "edt_update_falling_launch_word" && ![info exists PARAM(edt_update_falling_launch_word)] && [info exists PARAM(edt_update_falling_transition_words)]} {
+      set PARAM(edt_update_falling_launch_word) [expr {int(ceil($PARAM(edt_update_falling_transition_words)/2))}]
+    }
+    if {![info exists PARAM($param)]} {
+      display_message "Mandatory argument '$param' passed to the setup iProc of module processor_core_rtl2_tessent_ssn_scan_host_1 is missing."
+      set missing_param 1
+    } else {
+      if {$param eq "disable_on_chip_compare_contribution" &&  [info exists ::ssh_disable_contribution_icl_instance_name_list] &&  [get_icl_scope -icall] in $::ssh_disable_contribution_icl_instance_name_list} {
+        if {$PARAM(on_chip_compare_enable) ni {1 0b1}} {
+          display_message "'disable_on_chip_compare_contribution' bit cannot be set when 'on_chip_compare_enable' is set to 'off'."
+          set disable_on_chip_compare_contribution_error 1
+        } else {
+          puts "Setting $param to 1 for ICL Instance '[get_icl_scope -icall]'."
+          iWrite inner.${param} 0b1
+        }
+      } elseif {$param ne "enable" || $PARAM(streaming_through_ijtag_en) in {0 0b0}} {
+        iWrite inner.${param} $PARAM($param)
+      }
+    }
+  }
+    if {$PARAM(timeslot_sharing_count_minus_one) > 0} {
+      set error_status 0
+      if {$PARAM(scan_en_transition_packets) == 0} {
+        display_message "Unexpected condition encountered while programming SSH 'processor_core_rtl2_tessent_ssn_scan_host_1' for Hyper Throttling. \nPlease report this problem to Tessent customer support. \nThe parameter scan_en_transition_packets must be 1 or larger when timeslot_sharing_count_minus_one is greater than 0."
+        set error_status 1
+      }
+      set non_throttleable_packet_count_no_capture [expr {$PARAM(extra_shift_packets) +  max(($PARAM(scan_en_transition_packets)-1),0)}]
+      set non_throttleable_packet_count_for_capture [expr {$PARAM(capture_packets)*($PARAM(packets_per_capture_clock_minus_one)+1) +  $PARAM(scan_en_transition_packets)}]
+      if {$non_throttleable_packet_count_no_capture%[expr {$PARAM(timeslot_sharing_count_minus_one)+1}] != 0} {
+        display_message "Unexpected condition encountered while programming SSH 'processor_core_rtl2_tessent_ssn_scan_host_1' for Hyper Throttling. \nPlease report this problem to Tessent customer support. \nThe number of non-throttleable packets when capture is suppressed '$non_throttleable_packet_count_no_capture' must be a multiple of the timeslot_sharing_count_minus_one value plus one '[expr {$PARAM(timeslot_sharing_count_minus_one)+1}]'. \nThe number of non-throttleable packets when capture is suppressed is computed as follow: \nextra_shift_packets + max((scan_en_transition_packets - 1),0)."
+        set error_status 1
+      }
+      if {$non_throttleable_packet_count_for_capture%[expr {$PARAM(timeslot_sharing_count_minus_one)+1}] != 0} {
+        display_message "Unexpected condition encountered while programming SSH 'processor_core_rtl2_tessent_ssn_scan_host_1' for Hyper Throttling. \nPlease report this problem to Tessent customer support. \nThe number of extra non-throttleable packets when capture is not suppressed '$non_throttleable_packet_count_for_capture' must be a multiple of the timeslot_sharing_count_minus_one value plus one '[expr {$PARAM(timeslot_sharing_count_minus_one)+1}]'. \nThe number of extra non-throttleable packets when capture is not suppressed is computed as follow: \n(capture_packets*(packets_per_capture_clock_minus_one+1))+scan_en_transition_packets."
+        set error_status 1
+      }
+      if {$error_status} {
+        return -code error
+      }
+    }
+  if {$missing_param || $disable_on_chip_compare_contribution_error} {
+    return -code error
+  }
+  
+  if {1.0*$PARAM(packet_size)/$PARAM(bus_width) < 2} {
+    iWrite inner.packet_width_is_less_than_two_bus_clock 0b1
+  } else {
+    iWrite inner.packet_width_is_less_than_two_bus_clock 0b0
+  }
+  
+  iWrite inner.config_sib_shift_reg 0b0
+  iApply
+} 

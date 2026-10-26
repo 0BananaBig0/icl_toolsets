@@ -1,0 +1,8 @@
+# Constructed from Tessent Shell Reference v2023.4, iScan.
+iPDLLevel 0
+iProcsForModule Demo
+iScan tap 8 -skip_model_state_simulation
+iScan -ir tap -chain default 8 -si 0xA5 -so 0xXX -skip_model_state_simulation
+iScan tap 8 -skip_model_state_simulation -si 0xA5
+iScan -ir tap -chain default 8 -si 0xA5 -so 0xXX -stable -skip_model_state_simulation
+iApply

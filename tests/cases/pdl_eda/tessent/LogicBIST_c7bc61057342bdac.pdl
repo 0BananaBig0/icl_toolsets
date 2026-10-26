@@ -1,0 +1,621 @@
+iProcsForModule piccpu
+
+iTopProc serial_load_initial_settings {} {
+
+   iForcePort [list "reset"] 0b0
+   iForcePort [list "scan_en"] 0b0 -not_persistent
+   iApply
+
+   iReset
+
+}
+
+
+iProcsForModule piccpu
+
+iTopProc serial_load {} {
+
+   iForcePort [list "reset"] 0b0
+   iForcePort [list "scan_en"] 0b0 -not_persistent
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_occ_clk_inst.tdr_sib.sib 0b1
+   iRead  piccpu_rtl2_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iWrite piccpu_rtl2_tessent_occ_ramclk_inst.tdr_sib.sib 0b1
+   iRead  piccpu_rtl2_tessent_occ_ramclk_inst.tdr_sib.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_occ_clk_inst.tdr[9:0] 0b0000010001
+   iRead  piccpu_rtl2_tessent_occ_clk_inst.tdr[9:0] 0b0000000000
+   iWrite piccpu_rtl2_tessent_occ_clk_inst.tdr_sib.sib 0b1
+   iRead  piccpu_rtl2_tessent_occ_clk_inst.tdr_sib.sib 0b0
+   iWrite piccpu_rtl2_tessent_occ_ramclk_inst.tdr[9:0] 0b0000010001
+   iRead  piccpu_rtl2_tessent_occ_ramclk_inst.tdr[9:0] 0b0000000000
+   iWrite piccpu_rtl2_tessent_occ_ramclk_inst.tdr_sib.sib 0b1
+   iRead  piccpu_rtl2_tessent_occ_ramclk_inst.tdr_sib.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0101111111
+   iRead  piccpu_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0000000000
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.ltest_en 0b1
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.ltest_occ_en 0b1
+
+   iApply
+
+   iNote "Setting up controller piccpu_rtl2_tessent_lbist_inst"
+   iNote "    Number of patterns  : 211 (211 + 0 warm-up patterns)"
+   iNote "    Pattern Length      : 38"
+   iNote "    Shift Clk Select    : 0b00"
+   iNote "    Capture Phase Width : 0x7 Shift Clock Cycles"
+   iNote "    PRPG Seed : 0x13e909bd"
+   iNote "    MISR Seed : 0x000000"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b001
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.capture_phase_size[2:0] 0b111
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_lbist_inst.warmup_pattern_cnt_serial_load_0[9:0] piccpu_rtl2_tessent_lbist_inst.warmup_pattern_cnt[9:0]"
+   iWrite piccpu_rtl2_tessent_lbist_inst.warmup_pattern_cnt[9:0] 0b0011010011
+   iWrite piccpu_rtl2_tessent_lbist_inst.bit_cnt_max[5:0] 0b100101
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_lbist_inst.vector_cnt_serial_load_0[13:0] piccpu_rtl2_tessent_lbist_inst.vector_cnt[13:0]"
+   iWrite piccpu_rtl2_tessent_lbist_inst.vector_cnt[13:0] 0b00000011010100
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_lbist_inst.ncp_cnt_serial_load_0[7:0] piccpu_rtl2_tessent_lbist_inst.ncp_cnt[7:0]"
+   iWrite piccpu_rtl2_tessent_lbist_inst.ncp_cnt[7:0] 0b00000000
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ncp_3_limit[7:0] 0b11111111
+   iWrite piccpu_rtl2_tessent_lbist_inst.ncp_2_limit[7:0] 0b11100110
+   iWrite piccpu_rtl2_tessent_lbist_inst.ncp_1_limit[7:0] 0b11001101
+   iWrite piccpu_rtl2_tessent_lbist_inst.ncp_0_limit[7:0] 0b10110011
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_decompressor_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_decompressor_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_static_control_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_static_control_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_mask_shift_reg_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_mask_shift_reg_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_chain_mask_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_chain_mask_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_misr_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_misr_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_edt_lbist_c0_inst.lfsm_vec_serial_load_0[30:0] piccpu_rtl2_tessent_edt_lbist_c0_inst.lfsm_vec[30:0]"
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.lfsm_vec[30:0] 0b0010011111010010000100110111101
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_decompressor_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_decompressor_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.lbist_lp_hold_reg[3:0] 0b1000
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.lbist_lp_toggle_reg[3:0] 0b1111
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.lbist_lp_switching_reg[3:0] 0b0001
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_static_control_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_static_control_i.sib 0b0
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_edt_lbist_c0_inst.lbist_lp_mask_shift_reg_serial_load_0[30:0] piccpu_rtl2_tessent_edt_lbist_c0_inst.lbist_lp_mask_shift_reg[30:0]"
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.lbist_lp_mask_shift_reg[30:0] 0b1001000001010110000100001010001
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_mask_shift_reg_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_mask_shift_reg_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.bist_chain_mask[9:0] 0b1111111111
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.bist_chain_mask_load_en 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_chain_mask_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_chain_mask_i.sib 0b0
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_edt_lbist_c0_inst.misr_setup_serial_load_0[23:0] piccpu_rtl2_tessent_edt_lbist_c0_inst.misr[23:0]"
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.misr[23:0] 0b000000000000000000000000
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_misr_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_misr_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Starting controller piccpu_rtl2_tessent_lbist_inst in Normal mode, patterns 0 to 210"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b001
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "    Checking that the controller piccpu_rtl2_tessent_lbist_inst DONE signal is NO at the beginning of the test"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b011
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iNote "tessent_pragma iReadVar piccpu_rtl2_tessent_lbist_inst.bist_done_start_serial_load_0[0] piccpu_rtl2_tessent_lbist_inst.bist_en"
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_en 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.piccpu_rtl2_tessent_lbist_inst_mode_lbist_begin_0_end_210_warmup_0_extract_0_debug_0.start_monitor;"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b011
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iRunLoop -time 1296000ns
+   iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.piccpu_rtl2_tessent_lbist_inst_mode_lbist_begin_0_end_210_warmup_0_extract_0_debug_0.stop_monitor;"
+   iNote "Test Complete for controller piccpu_rtl2_tessent_lbist_inst"
+   iNote "    Checking that signal DONE is YES for controller piccpu_rtl2_tessent_lbist_inst"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b011
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iNote "tessent_pragma iReadVar piccpu_rtl2_tessent_lbist_inst.bist_done_end_serial_load_0[0] piccpu_rtl2_tessent_lbist_inst.bist_en"
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "Checking results of controller piccpu_rtl2_tessent_lbist_inst"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b001
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b001
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b1
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b1
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iNote "    Expected Signature for controller piccpu_rtl2_tessent_lbist_inst : 0xc1135a"
+   iWrite piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  piccpu_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b10
+   iRead  piccpu_rtl1_tessent_tdr_sri_ctrl_inst.tdr[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_single_chain_mode_logic_inst.single_chain_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_bist_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_low_power_shift_en_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.lbist_burn_in_reg 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iRead  piccpu_rtl2_tessent_lbist_inst.shift_clock_select[1:0] 0b00
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_sync_reset 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_clock_disable 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iRead  piccpu_rtl2_tessent_lbist_inst.bist_setup[2:0] 0b000
+   iWrite piccpu_rtl2_tessent_lbist_inst.bist_en 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_decompressor_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_decompressor_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_static_control_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_static_control_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_mask_shift_reg_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_lbist_lp_mask_shift_reg_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_chain_mask_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_chain_mask_i.sib 0b0
+   iNote "tessent_pragma iWriteVar piccpu_rtl2_tessent_edt_lbist_c0_inst.misr_setup_serial_load_0[23:0] piccpu_rtl2_tessent_edt_lbist_c0_inst.misr[23:0]"
+   iNote "tessent_pragma iReadVar piccpu_rtl2_tessent_edt_lbist_c0_inst.misr_serial_load_0[23:0] piccpu_rtl2_tessent_edt_lbist_c0_inst.misr[23:0]"
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.misr[23:0] 0b000000000000000000000000
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.misr[23:0] 0b110000010001001101011010
+   iWrite piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_misr_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_edt_lbist_c0_inst.piccpu_rtl2_tessent_edt_c0_sib_misr_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+   iWrite piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iRead  piccpu_rtl2_tessent_lbist_inst.ijtag_so_ff 0b0
+   iWrite piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iRead  piccpu_rtl2_tessent_sib_lbist_inst.sib 0b1
+   iWrite piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  piccpu_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  piccpu_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+
+}

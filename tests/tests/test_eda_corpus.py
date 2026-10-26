@@ -48,14 +48,19 @@ class CorpusTest(unittest.TestCase):
             self.assertNotIn(source['path'], origins)
             origins[source['path']] = source
             self.assertEqual(category(Path(source['path'])), source['category'])
-            self.assertTrue(set(source['modules']) <= ids)
-            referenced.update(source['modules'])
-            for comment in source['comments']:
-                self.assertGreaterEqual(comment, 0)
-                self.assertLess(comment, len(manifest['comments']))
+            versions = [source, *source.get('previous_versions', [])]
+            self.assertEqual(len(versions), len({v['sha256'] for v in versions}))
+            for version in versions:
+                self.assertTrue(set(version['modules']) <= ids)
+                referenced.update(version['modules'])
+                for comment in version['comments']:
+                    self.assertGreaterEqual(comment, 0)
+                    self.assertLess(comment, len(manifest['comments']))
         self.assertEqual(ids, referenced)
         for m in modules:
-            self.assertIn(m['id'], origins[m['source']]['modules'])
+            source = origins[m['source']]
+            self.assertTrue(any(m['id'] in v['modules'] for v in
+                                [source, *source.get('previous_versions', [])]))
             if Path(m['path']).parent.name == 'eda':
                 self.assertEqual(Path(m['path']).parts[1], origins[m['source']]['category'])
 

@@ -1,0 +1,160 @@
+#--------------------------------------------------------------------------
+#
+#  Unpublished work. Copyright 2026 Siemens
+#
+#  This material contains trade secrets or otherwise confidential 
+#  information owned by Siemens Industry Software Inc. or its affiliates 
+#  (collectively, SISW), or its licensors. Access to and use of this 
+#  information is strictly limited as set forth in the Customer's 
+#  applicable agreements with SISW.
+#
+#--------------------------------------------------------------------------
+#  File created by: Tessent Shell
+#          Version: 2026.2
+#       Created on: Mon Oct 26 08:51:47 CST 2026
+#--------------------------------------------------------------------------
+
+iProcsForModule processor_core_rtl2_tessent_ssn_scan_host_1
+iProc setup {args} {
+  set param_list {
+    packet_size 
+    timeslot_sharing_count_minus_one 
+    timeslot_sharing_offset
+    force_suppress_capture
+    bus_width
+    min_shift_clock_low_width 
+    min_capture_clock_low_width 
+    enable   
+    loop_back_en 
+    streaming_through_ijtag_en
+    initial_bit0_position 
+    initial_offset
+    relative_initial_offset_enable
+    bits_per_packet
+    extra_shift_packets
+    scan_en_transition_packets
+    scan_en_launch_packet
+    edt_update_falling_transition_words
+    edt_update_falling_launch_word
+    total_shift_cnt_minus_one
+    init_scan_load_used
+    disable_first_scan_load_masking
+    capture_packets
+    packets_per_capture_clock_minus_one
+    infinite_shift_mode
+  }
+  lappend param_list to_scan_in_bits
+  lappend param_list from_scan_out_bits
+  lappend param_list from_scan_out_le_strobe_en
+  array set PARAM {
+    enable                               0
+    timeslot_sharing_count_minus_one     0
+    timeslot_sharing_offset              0
+    force_suppress_capture               0
+    min_shift_clock_low_width            0 
+    min_capture_clock_low_width          0 
+    loop_back_en                         0 
+    streaming_through_ijtag_en           0
+    relative_initial_offset_enable       0
+    init_scan_load_used                  0
+    disable_first_scan_load_masking      0
+    packets_per_capture_clock_minus_one  0
+    extra_shift_packets                  0
+    scan_en_transition_packets           0
+    edt_update_falling_transition_words  0
+    infinite_shift_mode                  0
+    from_scan_out_le_strobe_en           0
+  }
+  array set PARAM $args
+  if {[getenv INIT_SCAN_LOAD_USED -default 0] eq "1"} {
+    set PARAM(init_scan_load_used) 1
+  }
+  if {[getenv INFINITE_SHIFT_MODE -default 0] eq "1"} {
+    set PARAM(infinite_shift_mode) 1
+  }
+  foreach {param value} $args {
+    if {$param ni $param_list} {
+      display_message -warning "Unknown argument '$param' passed to the setup iProc of module processor_core_rtl2_tessent_ssn_scan_host_1. It is ignored."
+    }
+  }
+  set missing_param 0
+  set disable_on_chip_compare_contribution_error 0
+  if {![info exists PARAM(streaming_through_ijtag_en)] || $PARAM(streaming_through_ijtag_en) in {0 0b0}} {
+    iNote "tessent_pragma iWriteVar enable inner.enable"
+  }
+  foreach param $param_list {
+    if {$PARAM(infinite_shift_mode)} {
+      if {$param eq "total_shift_cnt_minus_one"} {
+        continue
+      }
+    } else {
+      if {$param eq "infinite_shift_mode"} {
+        continue
+      }
+    }
+    if {$param eq "bits_per_packet"} {
+      if {$PARAM(timeslot_sharing_count_minus_one) > 0 && $PARAM(bits_per_packet) != 1} {
+        display_message "The parameter bits_per_packet value '$PARAM(bits_per_packet)' must be 1 when timeslot_sharing_count_minus_one is greather than 0."
+        return -code error
+      }
+    }
+    if {$param eq "scan_en_launch_packet" && ![info exists PARAM(scan_en_launch_packet)] && [info exists PARAM(scan_en_transition_packets)]} {
+      set PARAM(scan_en_launch_packet) [expr {int(ceil($PARAM(scan_en_transition_packets)/2))}]
+    }
+    if {$param eq "edt_update_falling_launch_word" && ![info exists PARAM(edt_update_falling_launch_word)] && [info exists PARAM(edt_update_falling_transition_words)]} {
+      set PARAM(edt_update_falling_launch_word) [expr {int(ceil($PARAM(edt_update_falling_transition_words)/2))}]
+    }
+    if {![info exists PARAM($param)]} {
+      display_message "Mandatory argument '$param' passed to the setup iProc of module processor_core_rtl2_tessent_ssn_scan_host_1 is missing."
+      set missing_param 1
+    } else {
+      if {$param eq "disable_on_chip_compare_contribution" && \
+          [info exists ::ssh_disable_contribution_icl_instance_name_list] && \
+          [get_icl_scope -icall] in $::ssh_disable_contribution_icl_instance_name_list} {
+        if {$PARAM(on_chip_compare_enable) ni {1 0b1}} {
+          display_message "'disable_on_chip_compare_contribution' bit cannot be set when 'on_chip_compare_enable' is set to 'off'."
+          set disable_on_chip_compare_contribution_error 1
+        } else {
+          puts "Setting $param to 1 for ICL Instance '[get_icl_scope -icall]'."
+          iWrite inner.${param} 0b1
+        }
+      } elseif {$param ne "enable" || $PARAM(streaming_through_ijtag_en) in {0 0b0}} {
+        iWrite inner.${param} $PARAM($param)
+      }
+    }
+  }
+    if {$PARAM(timeslot_sharing_count_minus_one) > 0} {
+      set error_status 0
+      if {$PARAM(scan_en_transition_packets) == 0} {
+        display_message "Unexpected condition encountered while programming SSH 'processor_core_rtl2_tessent_ssn_scan_host_1' for Hyper Throttling. \nPlease report this problem to Tessent customer support. \nThe parameter scan_en_transition_packets must be 1 or larger when timeslot_sharing_count_minus_one is greater than 0."
+        set error_status 1
+      }
+      set non_throttleable_packet_count_no_capture [expr {$PARAM(extra_shift_packets) + \
+                                                       max(($PARAM(scan_en_transition_packets)-1),0)}]
+      set non_throttleable_packet_count_for_capture [expr {$PARAM(capture_packets)*($PARAM(packets_per_capture_clock_minus_one)+1) + \
+                                                         $PARAM(scan_en_transition_packets)}]
+      if {$non_throttleable_packet_count_no_capture%[expr {$PARAM(timeslot_sharing_count_minus_one)+1}] != 0} {
+        display_message "Unexpected condition encountered while programming SSH 'processor_core_rtl2_tessent_ssn_scan_host_1' for Hyper Throttling. \nPlease report this problem to Tessent customer support. \nThe number of non-throttleable packets when capture is suppressed '$non_throttleable_packet_count_no_capture' must be a multiple of the timeslot_sharing_count_minus_one value plus one '[expr {$PARAM(timeslot_sharing_count_minus_one)+1}]'. \nThe number of non-throttleable packets when capture is suppressed is computed as follow: \nextra_shift_packets + max((scan_en_transition_packets - 1),0)."
+        set error_status 1
+      }
+      if {$non_throttleable_packet_count_for_capture%[expr {$PARAM(timeslot_sharing_count_minus_one)+1}] != 0} {
+        display_message "Unexpected condition encountered while programming SSH 'processor_core_rtl2_tessent_ssn_scan_host_1' for Hyper Throttling. \nPlease report this problem to Tessent customer support. \nThe number of extra non-throttleable packets when capture is not suppressed '$non_throttleable_packet_count_for_capture' must be a multiple of the timeslot_sharing_count_minus_one value plus one '[expr {$PARAM(timeslot_sharing_count_minus_one)+1}]'. \nThe number of extra non-throttleable packets when capture is not suppressed is computed as follow: \n(capture_packets*(packets_per_capture_clock_minus_one+1))+scan_en_transition_packets."
+        set error_status 1
+      }
+      if {$error_status} {
+        return -code error
+      }
+    }
+  if {$missing_param || $disable_on_chip_compare_contribution_error} {
+    return -code error
+  }
+ 
+  if {1.0*$PARAM(packet_size)/$PARAM(bus_width) < 2} {
+    iWrite inner.packet_width_is_less_than_two_bus_clock 0b1
+  } else {
+    iWrite inner.packet_width_is_less_than_two_bus_clock 0b0
+  }
+ 
+  iWrite inner.config_sib_shift_reg 0b0
+  iApply
+}

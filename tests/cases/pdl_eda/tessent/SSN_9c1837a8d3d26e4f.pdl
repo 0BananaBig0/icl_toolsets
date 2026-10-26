@@ -1,0 +1,128 @@
+iProcsForModule chip_top
+
+iProc default {} {
+
+   iReset
+   iNote "SSNContinuityVerify(default)"
+   iNote "Setting DFT signal ssn_en 'chip_top_rtl2_tessent_tdr_sri_ctrl_inst.ssn_en' to 0b1"
+   iWrite chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0000
+   iRead  chip_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0001
+   iApply
+
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b010000
+   iRead  chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b000000
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iRunLoop -time 160000ps
+   iRunLoop -time 160000ps
+
+}
+
+
+iProcsForModule chip_top
+
+iProc cfg_datapath {} {
+
+   iNote "iCall include_gps_blocks_in_ssn_datapath"
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b010000
+   iRead  chip_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[5:0] 0b000000
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb3_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb2_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iRead  chip_top_rtl1_tessent_sib_pb1_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.config_sib_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iRead  chip_top_rtl2_tessent_ssn_scan_host_1_inst.inner.enable_shift_reg 0b0
+   iWrite chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b1
+   iRead  chip_top_rtl2_tessent_ssn_mux_gps_byp_inst.select_secondary_bus 0b0
+   iWrite chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iRead  chip_top_rtl2_tessent_sib_ssn_inst.sib 0b1
+   iWrite chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iRead  chip_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iRead  chip_top_rtl1_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+
+}
+
+
+iProcsForModule chip_top
+
+iProc include_gps_baseband {} {
+
+   iNote "SSNContinuityVerify(include_gps_baseband)"
+   iRunLoop -time 160000ps
+   iRunLoop -time 160000ps
+
+}

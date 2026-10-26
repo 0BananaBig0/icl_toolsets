@@ -51,13 +51,13 @@ separators and recursive combinations supplement the existing keyword/rule
 coverage. A separate `ours/diagnostics/parameter_width_overflow.icl` is an explicit
 expected failure for the documented parameter-width elaboration limitation.
 
-## EDA project snapshot — 2026-10-22
+## EDA project snapshots — 2026-10-22 and 2026-10-26
 
-`pass/tessent/eda/` contains 78 standalone module fixtures and
+`pass/tessent/eda/` contains 202 standalone module fixtures and
 `pass/syn_slm/eda/` contains 39. Another 47 imported definitions share the four
 existing original baselines instead of separate copies. See [EDA_CORPUS.md](EDA_CORPUS.md) for the
-deduplication rules and [eda_sources.json](eda_sources.json) for all 180 original
-paths, hashes, source-to-module mappings and comments. This import is additional
+deduplication rules and [eda_sources.json](eda_sources.json) for all 230 original
+paths, 31 historical revisions, hashes, source-to-module mappings and comments. This import is additional
 to the earlier fixtures listed below. The subsequent
 [whole-corpus audit](CORPUS_DEDUPLICATION.md) consolidates redundant copies while
 preserving formatting variants and complete source examples.
@@ -491,10 +491,10 @@ ignored `tests/generated/ours/keyword_contexts/`.
 
 ## PDL from EDA projects
 
-[pdl_eda/](pdl_eda/README.md) preserves 79 complete byte-unique PDL streams from
-114 source paths below `~/remote_eda/lianghuaxiao`, with full hashes and source
-mappings. Canonical categories are Synopsys SLM (47) and Tessent (32). Six
-nonportable argument lists are explicit negative cases; the other 73 are positive
+[pdl_eda/](pdl_eda/README.md) preserves 137 complete byte-unique PDL streams from
+453 source paths and 12 historical revisions below `~/remote_eda/lianghuaxiao`, with full hashes and source
+mappings. Canonical categories are Synopsys SLM (47) and Tessent (90). 22
+nonportable argument lists are explicit negative cases; the other 115 are positive
 formatter/LSP cases. These fixtures retain their original notices and ownership.
 
 ## Independent PDL syntax checks

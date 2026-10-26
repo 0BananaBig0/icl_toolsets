@@ -1,0 +1,1265 @@
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__test_logic_reset {} {
+
+   iReset
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  test_logic_reset test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote "  * Reset the TAP by pulsing TRST to 1-0-1"
+   iReset
+   iGoToTapState IDLE
+   iNote " "
+   iNote "  * Check if RESET succeeded by shifting through the BYPASS register"
+   iScan tap -chain default 1 -si 0b1 -so 0b0
+   iApply
+
+   iNote " "
+   iNote "  * Pre-Load IR with instruction PRELOAD, which differs from the expected post-reset IR instruction"
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "  * Reset the TAP by setting TMS=1 for 5 TCK cycles."
+   iReset -sync
+   iGoToTapState IDLE
+   iNote " "
+   iNote "  * Check if RESET succeeded by shifting through the BYPASS register"
+   iScan tap -chain default 1 -si 0b1 -so 0b0
+   iApply
+
+   iNote " "
+   iNote "End of the test_logic_reset test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__inst_reg {} {
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  inst_reg test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote "  * Verify that the TAP FSM can skip the SHIFT-IR state via"
+   iNote "    IDLE -> SELECT-DR -> SELECT-IR -> CAPTURE-IR -> EXIT1-IR -> PAUSE-IR"
+   iGoToTapState IRPAUSE
+   iNote "  * Load TDI with a walking one pattern ...000001."
+   iNote "  * Compare TDO with the capture value 0001."
+   iNote "  * End shifting in PAUSE-IR state"
+   iScan -ir tap -chain default 4 -si 0b0001 -so 0b0001
+   iApply -end_in_pause
+
+   iNote "  * Load    TDI with a walking zero pattern ...111110."
+   iNote "  * Compare TDO with a walking one  pattern ...000001."
+   iNote " "
+   iScan -ir tap -chain default 4 -si 0b1110 -so 0b0001
+   iApply -end_in_pause
+
+   iNote "  * Load    TDI with the BYPASS instruction."
+   iNote "  * Compare TDO with a walking zero pattern ...111110."
+   iNote "  * End shifting in PAUSE-IR state"
+   iNote " "
+   iScan -ir tap -chain default 4 -si 0b1111 -so 0b1110
+   iApply -end_in_pause
+
+   iNote "  * Verify that the TAP FSM can remain in PAUSE-IR."
+   iRunLoop 1 -tck
+   iNote "  * Verify that the TAP FSM can go to the IDLE state and skip the SHIFT-IR state via"
+   iNote "    PAUSE-IR -> EXIT2-IR -> UPDATE-IR -> IDLE"
+   iGoToTapState IDLE
+   iNote "  * Load    TDI with the BYPASS instruction."
+   iNote "  * Compare TDO with the capture value 0001."
+   iNote "  * End shifting in IDLE state"
+   iNote " "
+   iScan -ir tap -chain default 4 -si 0b1111 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "End of the inst_reg test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__bypass_reg {} {
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  bypass_reg test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote "  * Load Instruction Register with BYPASS instruction: 1111."
+   iScan -ir tap -chain default 4 -si 0b1111 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "  * Verify that the TAP FSM can skip the SHIFT-DR state via:"
+   iNote "    IDLE -> SELECT-DR -> CAPTURE-DR -> EXIT1-DR -> PAUSE-DR"
+   iGoToTapState DRPAUSE
+   iNote " "
+   iNote "  * Load BYPASS register with a logic one."
+   iNote "  * Compare BYPASS captured value with the standard-imposed value of logic zero."
+   iNote "  * End shifting in PAUSE-DR state"
+   iScan tap -chain default 1 -si 0b1 -so 0b0
+   iApply -end_in_pause
+
+   iNote " "
+   iNote "  * Load BYPASS register with a zero (Skipping capture-DR state)."
+   iNote "  * Compare TDO with previous scanned-in value of one."
+   iNote "  * End shifting in PAUSE-DR state"
+   iScan tap -chain default 1 -si 0b0 -so 0b1
+   iApply -end_in_pause
+
+   iNote " "
+   iNote "  * Verify that the TAP FSM can remain in PAUSE-DR."
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Verify that the TAP FSM can skip the IDLE state between two DR-STATES, via:"
+   iNote "    PAUSE-DR -> EXIT2-DR -> UPDATE-DR -> SELECT-DR -> CAPTURE-DR -> EXIT1-DR -> PAUSE-DR."
+   iGoToTapState DRPAUSE
+   iNote " "
+   iNote "  * Load BYPASS register with a logic one."
+   iNote "  * Compare BYPASS captured value with the standard-imposed value of logic zero."
+   iNote "  * End shifting in IDLE state"
+   iScan tap -chain default 1 -si 0b1 -so 0b0
+   iApply
+
+   iNote " "
+   iNote "End of the bypass_reg test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iProc JtagBscanTestStep__bscan_reg {} {
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  bscan_reg test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote "  * Load bscan with a walking one pattern ...000001."
+   iNote "  * End shifting in PAUSE-DR state"
+   iNote " "
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply -end_in_pause
+
+   iNote "  * Load bscan with a walking zero pattern ...111110."
+   iNote "  * Compare TDO with a walking one  pattern ...000001."
+   iNote " "
+   iScan tap -chain default 90 -si 0b111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110 -so 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001 -skip_model_state_simulation
+   iApply -end_in_pause
+
+   iNote "  * Load bscan with a safe pattern (load each cell BSDL SAFE value)."
+   iNote "  * Compare TDO with a walking zero pattern ...111110."
+   iNote "  * End shifting on IDLE state"
+   iNote " "
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -so 0b111111111111111111111111111111111111111111111111111111111111111111111111111111111111111110 -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "End of the bscan_reg test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__input {} {
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  input test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "  * Loading bscan chain with an EVEN pattern:"
+   iNote "        EVEN pins = 1  and  ODD pins = 0"
+   iNote "    All control cells are disabled"
+   iScan tap -chain default 90 -si 0b010010001000100010001000100010001000100010001000100010001000100010010101010101010101000100 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with EXTEST instruction."
+   iScan -ir tap -chain default 4 -si 0b0010 -so 0b0001
+   iApply
+
+   iNote "  * Setting input Pins with an ODD pattern:"
+   iNote "        EVEN pins = 0  and  ODD pins = 1"
+   iNote "    Setting  TA_CCI2B  to '0'"
+   iNote "    Setting  TA_CCI2A  to '1'"
+   iNote "    Setting  TA_CCI1B  to '0'"
+   iNote "    Setting  TA_CCI1A  to '1'"
+   iNote "    Setting  TA_CCI0B  to '0'"
+   iNote "    Setting  TA_CCI0A  to '1'"
+   iNote "    Setting  TACLK  to '0'"
+   iNote "    Setting  SIGN2  to '1'"
+   iNote "    Setting  SIGN1  to '0'"
+   iNote "    Setting  RESET_N  to '1'"
+   iNote "    Setting  REF_CLK  to '0'"
+   iNote "    Setting  MAG2  to '1'"
+   iNote "    Setting  MAG1  to '0'"
+   iNote "    Setting  LFXT_CLK  to '1'"
+   iNote "    Setting  INCLK  to '0'"
+   iNote "    Setting  GPIO4_7  to '1'"
+   iNote "    Setting  GPIO4_6  to '0'"
+   iNote "    Setting  GPIO4_5  to '1'"
+   iNote "    Setting  GPIO4_4  to '0'"
+   iNote "    Setting  GPIO4_3  to '1'"
+   iNote "    Setting  GPIO4_2  to '0'"
+   iNote "    Setting  GPIO4_1  to '1'"
+   iNote "    Setting  GPIO4_0  to '0'"
+   iNote "    Setting  GPIO3_7  to '1'"
+   iNote "    Setting  GPIO3_6  to '0'"
+   iNote "    Setting  GPIO3_5  to '1'"
+   iNote "    Setting  GPIO3_4  to '0'"
+   iNote "    Setting  GPIO3_3  to '1'"
+   iNote "    Setting  GPIO3_2  to '0'"
+   iNote "    Setting  GPIO3_1  to '1'"
+   iNote "    Setting  GPIO3_0  to '0'"
+   iNote "    Setting  GPIO2_7  to '1'"
+   iNote "    Setting  GPIO2_6  to '0'"
+   iNote "    Setting  GPIO2_5  to '1'"
+   iNote "    Setting  GPIO2_4  to '0'"
+   iNote "    Setting  GPIO2_3  to '1'"
+   iNote "    Setting  GPIO2_2  to '0'"
+   iNote "    Setting  GPIO2_1  to '1'"
+   iNote "    Setting  GPIO2_0  to '0'"
+   iNote "    Setting  GPIO1_7  to '1'"
+   iNote "    Setting  GPIO1_6  to '0'"
+   iNote "    Setting  GPIO1_5  to '1'"
+   iNote "    Setting  GPIO1_4  to '0'"
+   iNote "    Setting  GPIO1_3  to '1'"
+   iNote "    Setting  GPIO1_2  to '0'"
+   iNote "    Setting  GPIO1_1  to '1'"
+   iNote "    Setting  GPIO1_0  to '0'"
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b01010101010101010101010101010101010101010101010
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Checking bscan captured values from previous pattern and"
+   iNote "    loading bscan chain with an ODD pattern:"
+   iNote "        EVEN pins = 0  and  ODD pins = 1"
+   iNote "    All control cells are disabled"
+   iScan tap -chain default 90 -si 0b001000100010001000100010001000100010001000100010001000100010001000101010101010101010010001 -so 0b010000100010001000100010001000100010001000100010001000100010001000101010110010101010000100 -skip_model_state_simulation
+   iApply
+
+   iNote "  * Setting input Pins with an EVEN pattern:"
+   iNote "        EVEN pins = 1  and  ODD pins = 0"
+   iNote "    Setting  TA_CCI2B  to '1'"
+   iNote "    Setting  TA_CCI2A  to '0'"
+   iNote "    Setting  TA_CCI1B  to '1'"
+   iNote "    Setting  TA_CCI1A  to '0'"
+   iNote "    Setting  TA_CCI0B  to '1'"
+   iNote "    Setting  TA_CCI0A  to '0'"
+   iNote "    Setting  TACLK  to '1'"
+   iNote "    Setting  SIGN2  to '0'"
+   iNote "    Setting  SIGN1  to '1'"
+   iNote "    Setting  RESET_N  to '0'"
+   iNote "    Setting  REF_CLK  to '1'"
+   iNote "    Setting  MAG2  to '0'"
+   iNote "    Setting  MAG1  to '1'"
+   iNote "    Setting  LFXT_CLK  to '0'"
+   iNote "    Setting  INCLK  to '1'"
+   iNote "    Setting  GPIO4_7  to '0'"
+   iNote "    Setting  GPIO4_6  to '1'"
+   iNote "    Setting  GPIO4_5  to '0'"
+   iNote "    Setting  GPIO4_4  to '1'"
+   iNote "    Setting  GPIO4_3  to '0'"
+   iNote "    Setting  GPIO4_2  to '1'"
+   iNote "    Setting  GPIO4_1  to '0'"
+   iNote "    Setting  GPIO4_0  to '1'"
+   iNote "    Setting  GPIO3_7  to '0'"
+   iNote "    Setting  GPIO3_6  to '1'"
+   iNote "    Setting  GPIO3_5  to '0'"
+   iNote "    Setting  GPIO3_4  to '1'"
+   iNote "    Setting  GPIO3_3  to '0'"
+   iNote "    Setting  GPIO3_2  to '1'"
+   iNote "    Setting  GPIO3_1  to '0'"
+   iNote "    Setting  GPIO3_0  to '1'"
+   iNote "    Setting  GPIO2_7  to '0'"
+   iNote "    Setting  GPIO2_6  to '1'"
+   iNote "    Setting  GPIO2_5  to '0'"
+   iNote "    Setting  GPIO2_4  to '1'"
+   iNote "    Setting  GPIO2_3  to '0'"
+   iNote "    Setting  GPIO2_2  to '1'"
+   iNote "    Setting  GPIO2_1  to '0'"
+   iNote "    Setting  GPIO2_0  to '1'"
+   iNote "    Setting  GPIO1_7  to '0'"
+   iNote "    Setting  GPIO1_6  to '1'"
+   iNote "    Setting  GPIO1_5  to '0'"
+   iNote "    Setting  GPIO1_4  to '1'"
+   iNote "    Setting  GPIO1_3  to '0'"
+   iNote "    Setting  GPIO1_2  to '1'"
+   iNote "    Setting  GPIO1_1  to '0'"
+   iNote "    Setting  GPIO1_0  to '1'"
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b10101010101010101010101010101010101010101010101
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Checking bscan  captured  values and loading bscan with a"
+   iNote "    safe value."
+   iNote " "
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -so 0b001010001000100010001000100010001000100010001000100010001000100010010101001101010101010001 -skip_model_state_simulation
+   iApply
+
+   iNote "    Setting  TA_CCI2B  to '0'"
+   iNote "    Setting  TA_CCI1B  to '0'"
+   iNote "    Setting  TA_CCI0B  to '0'"
+   iNote "    Setting  TACLK  to '0'"
+   iNote "    Setting  SIGN1  to '0'"
+   iNote "    Setting  REF_CLK  to '0'"
+   iNote "    Setting  MAG1  to '0'"
+   iNote "    Setting  INCLK  to '0'"
+   iNote "    Setting  GPIO4_7  to 'Z'"
+   iNote "    Setting  GPIO4_6  to 'Z'"
+   iNote "    Setting  GPIO4_5  to 'Z'"
+   iNote "    Setting  GPIO4_4  to 'Z'"
+   iNote "    Setting  GPIO4_3  to 'Z'"
+   iNote "    Setting  GPIO4_2  to 'Z'"
+   iNote "    Setting  GPIO4_1  to 'Z'"
+   iNote "    Setting  GPIO4_0  to 'Z'"
+   iNote "    Setting  GPIO3_7  to 'Z'"
+   iNote "    Setting  GPIO3_6  to 'Z'"
+   iNote "    Setting  GPIO3_5  to 'Z'"
+   iNote "    Setting  GPIO3_4  to 'Z'"
+   iNote "    Setting  GPIO3_3  to 'Z'"
+   iNote "    Setting  GPIO3_2  to 'Z'"
+   iNote "    Setting  GPIO3_1  to 'Z'"
+   iNote "    Setting  GPIO3_0  to 'Z'"
+   iNote "    Setting  GPIO2_7  to 'Z'"
+   iNote "    Setting  GPIO2_6  to 'Z'"
+   iNote "    Setting  GPIO2_5  to 'Z'"
+   iNote "    Setting  GPIO2_4  to 'Z'"
+   iNote "    Setting  GPIO2_3  to 'Z'"
+   iNote "    Setting  GPIO2_2  to 'Z'"
+   iNote "    Setting  GPIO2_1  to 'Z'"
+   iNote "    Setting  GPIO2_0  to 'Z'"
+   iNote "    Setting  GPIO1_7  to 'Z'"
+   iNote "    Setting  GPIO1_6  to 'Z'"
+   iNote "    Setting  GPIO1_5  to 'Z'"
+   iNote "    Setting  GPIO1_4  to 'Z'"
+   iNote "    Setting  GPIO1_3  to 'Z'"
+   iNote "    Setting  GPIO1_2  to 'Z'"
+   iNote "    Setting  GPIO1_1  to 'Z'"
+   iNote "    Setting  GPIO1_0  to 'Z'"
+   iForcePort [list "LFXT_CLK" "MAG2" "RESET_N" "SIGN2" "TA_CCI0A" "TA_CCI1A" "TA_CCI2A"] -release
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "INCLK" "MAG1" "REF_CLK" "SIGN1" "TACLK" "TA_CCI0B" "TA_CCI1B" "TA_CCI2B"] 0bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz00000000 -not_persistent
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "End of the input test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__sample {} {
+
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz000000000000000 -not_persistent
+   iApply
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  sample test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "  * Loading bscan chain with an EVEN pattern:"
+   iNote "        EVEN pins = 1  and  ODD pins = 0"
+   iNote "    All pad driver are controlled by the functional logic"
+   iScan tap -chain default 90 -si 0b010010001000100010001000100010001000100010001000100010001000100010010101010101010101000100 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with SAMPLE instruction."
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote "  * Setting input Pins with an ODD pattern:"
+   iNote "        EVEN pins = 0  and  ODD pins = 1"
+   iNote "    Setting  TA_CCI2B  to '0'"
+   iNote "    Setting  TA_CCI2A  to '1'"
+   iNote "    Setting  TA_CCI1B  to '0'"
+   iNote "    Setting  TA_CCI1A  to '1'"
+   iNote "    Setting  TA_CCI0B  to '0'"
+   iNote "    Setting  TA_CCI0A  to '1'"
+   iNote "    Setting  TACLK  to '0'"
+   iNote "    Setting  SIGN2  to '1'"
+   iNote "    Setting  SIGN1  to '0'"
+   iNote "    Setting  RESET_N  to '1'"
+   iNote "    Setting  REF_CLK  to '0'"
+   iNote "    Setting  MAG2  to '1'"
+   iNote "    Setting  MAG1  to '0'"
+   iNote "    Setting  LFXT_CLK  to '1'"
+   iNote "    Setting  INCLK  to '0'"
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b010101010101010
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Checking bscan captured values from previous pattern and"
+   iNote "    loading bscan chain with an ODD pattern:"
+   iNote "        EVEN pins = 0  and  ODD pins = 1"
+   iNote "    All pad driver are controlled by the functional logic"
+   iScan tap -chain default 90 -si 0b001000100010001000100010001000100010001000100010001000100010001000101010101010101010010001 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX010101XX010101010XXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote "  * Setting input Pins with an EVEN pattern:"
+   iNote "        EVEN pins = 1  and  ODD pins = 0"
+   iNote "    Setting  TA_CCI2B  to '1'"
+   iNote "    Setting  TA_CCI2A  to '0'"
+   iNote "    Setting  TA_CCI1B  to '1'"
+   iNote "    Setting  TA_CCI1A  to '0'"
+   iNote "    Setting  TA_CCI0B  to '1'"
+   iNote "    Setting  TA_CCI0A  to '0'"
+   iNote "    Setting  TACLK  to '1'"
+   iNote "    Setting  SIGN2  to '0'"
+   iNote "    Setting  SIGN1  to '1'"
+   iNote "    Setting  RESET_N  to '0'"
+   iNote "    Setting  REF_CLK  to '1'"
+   iNote "    Setting  MAG2  to '0'"
+   iNote "    Setting  MAG1  to '1'"
+   iNote "    Setting  LFXT_CLK  to '0'"
+   iNote "    Setting  INCLK  to '1'"
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b101010101010101
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Checking bscan  captured  values and loading bscan with a"
+   iNote "    safe value."
+   iNote " "
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX101010XX101010101XXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote "    Setting  TA_CCI2B  to '0'"
+   iNote "    Setting  TA_CCI1B  to '0'"
+   iNote "    Setting  TA_CCI0B  to '0'"
+   iNote "    Setting  TACLK  to '0'"
+   iNote "    Setting  SIGN1  to '0'"
+   iNote "    Setting  REF_CLK  to '0'"
+   iNote "    Setting  MAG1  to '0'"
+   iNote "    Setting  INCLK  to '0'"
+   iForcePort [list "LFXT_CLK" "MAG2" "RESET_N" "SIGN2" "TA_CCI0A" "TA_CCI1A" "TA_CCI2A"] -release
+   iForcePort [list "INCLK" "MAG1" "REF_CLK" "SIGN1" "TACLK" "TA_CCI0B" "TA_CCI1B" "TA_CCI2B"] 0b00000000 -not_persistent
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "End of the sample test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__disabled_outputs {} {
+
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz000000000000000 -not_persistent
+   iApply
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  disabled_outputs test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote "  * Loading all control and assym.drivers cells with a disabling value"
+   iNote "    Data registers are all zero"
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with EXTEST instruction."
+   iScan -ir tap -chain default 4 -si 0b0010 -so 0b0001
+   iApply
+
+   iRunLoop 1 -tck
+   iNote "  * Comparing all disabled output pins to 'Z'"
+   iNote "    Checking  TA_OUT2  with 'Z'"
+   iNote "    Checking  TA_OUT1  with 'Z'"
+   iNote "    Checking  TA_OUT0  with 'Z'"
+   iNote "    Checking  SAMPLE_CLK2  with 'Z'"
+   iNote "    Checking  SAMPLE_CLK1  with 'Z'"
+   iNote "    Checking  GPIO4_7  with 'Z'"
+   iNote "    Checking  GPIO4_6  with 'Z'"
+   iNote "    Checking  GPIO4_5  with 'Z'"
+   iNote "    Checking  GPIO4_4  with 'Z'"
+   iNote "    Checking  GPIO4_3  with 'Z'"
+   iNote "    Checking  GPIO4_2  with 'Z'"
+   iNote "    Checking  GPIO4_1  with 'Z'"
+   iNote "    Checking  GPIO4_0  with 'Z'"
+   iNote "    Checking  GPIO3_7  with 'Z'"
+   iNote "    Checking  GPIO3_6  with 'Z'"
+   iNote "    Checking  GPIO3_5  with 'Z'"
+   iNote "    Checking  GPIO3_4  with 'Z'"
+   iNote "    Checking  GPIO3_3  with 'Z'"
+   iNote "    Checking  GPIO3_2  with 'Z'"
+   iNote "    Checking  GPIO3_1  with 'Z'"
+   iNote "    Checking  GPIO3_0  with 'Z'"
+   iNote "    Checking  GPIO2_7  with 'Z'"
+   iNote "    Checking  GPIO2_6  with 'Z'"
+   iNote "    Checking  GPIO2_5  with 'Z'"
+   iNote "    Checking  GPIO2_4  with 'Z'"
+   iNote "    Checking  GPIO2_3  with 'Z'"
+   iNote "    Checking  GPIO2_2  with 'Z'"
+   iNote "    Checking  GPIO2_1  with 'Z'"
+   iNote "    Checking  GPIO2_0  with 'Z'"
+   iNote "    Checking  GPIO1_7  with 'Z'"
+   iNote "    Checking  GPIO1_6  with 'Z'"
+   iNote "    Checking  GPIO1_5  with 'Z'"
+   iNote "    Checking  GPIO1_4  with 'Z'"
+   iNote "    Checking  GPIO1_3  with 'Z'"
+   iNote "    Checking  GPIO1_2  with 'Z'"
+   iNote "    Checking  GPIO1_1  with 'Z'"
+   iNote "    Checking  GPIO1_0  with 'Z'"
+   iNote "    Checking  ACCUM2  with 'Z'"
+   iNote "    Checking  ACCUM1  with 'Z'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "End of the disabled_outputs test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__highz_mode {} {
+
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b000000000000000 -not_persistent
+   iApply
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  highz_mode test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote "  1- Load all CONTROL and assym drivers cells with their ENABLING value"
+   iNote "  2- Use the HIGHZ TAP instruction to disable all pins"
+   iNote "  3- Compare all disabled output pins with 'Z'"
+   iNote " "
+   iNote "  * Loading all control bscan cells with enabling values"
+   iNote "    Data registers are all zero"
+   iNote " "
+   iScan tap -chain default 90 -si 0b100101010101010101010101010101010101010101010101010101010101010101000000000000000000101010 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with HIGHZ instruction."
+   iScan -ir tap -chain default 4 -si 0b0111 -so 0b0001
+   iApply
+
+   iRunLoop 1 -tck
+   iNote "  * Comparing all JTAG output pins to 'Z'"
+   iNote " "
+   iNote "    Checking  TA_OUT2  with 'Z'"
+   iNote "    Checking  TA_OUT1  with 'Z'"
+   iNote "    Checking  TA_OUT0  with 'Z'"
+   iNote "    Checking  SAMPLE_CLK2  with 'Z'"
+   iNote "    Checking  SAMPLE_CLK1  with 'Z'"
+   iNote "    Checking  GPIO4_7  with 'Z'"
+   iNote "    Checking  GPIO4_6  with 'Z'"
+   iNote "    Checking  GPIO4_5  with 'Z'"
+   iNote "    Checking  GPIO4_4  with 'Z'"
+   iNote "    Checking  GPIO4_3  with 'Z'"
+   iNote "    Checking  GPIO4_2  with 'Z'"
+   iNote "    Checking  GPIO4_1  with 'Z'"
+   iNote "    Checking  GPIO4_0  with 'Z'"
+   iNote "    Checking  GPIO3_7  with 'Z'"
+   iNote "    Checking  GPIO3_6  with 'Z'"
+   iNote "    Checking  GPIO3_5  with 'Z'"
+   iNote "    Checking  GPIO3_4  with 'Z'"
+   iNote "    Checking  GPIO3_3  with 'Z'"
+   iNote "    Checking  GPIO3_2  with 'Z'"
+   iNote "    Checking  GPIO3_1  with 'Z'"
+   iNote "    Checking  GPIO3_0  with 'Z'"
+   iNote "    Checking  GPIO2_7  with 'Z'"
+   iNote "    Checking  GPIO2_6  with 'Z'"
+   iNote "    Checking  GPIO2_5  with 'Z'"
+   iNote "    Checking  GPIO2_4  with 'Z'"
+   iNote "    Checking  GPIO2_3  with 'Z'"
+   iNote "    Checking  GPIO2_2  with 'Z'"
+   iNote "    Checking  GPIO2_1  with 'Z'"
+   iNote "    Checking  GPIO2_0  with 'Z'"
+   iNote "    Checking  GPIO1_7  with 'Z'"
+   iNote "    Checking  GPIO1_6  with 'Z'"
+   iNote "    Checking  GPIO1_5  with 'Z'"
+   iNote "    Checking  GPIO1_4  with 'Z'"
+   iNote "    Checking  GPIO1_3  with 'Z'"
+   iNote "    Checking  GPIO1_2  with 'Z'"
+   iNote "    Checking  GPIO1_1  with 'Z'"
+   iNote "    Checking  GPIO1_0  with 'Z'"
+   iNote "    Checking  ACCUM2  with 'Z'"
+   iNote "    Checking  ACCUM1  with 'Z'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Comparing TDO output pin to 'Z' in RTI state"
+   iComparePort [list "TDO"] 0bz
+   iRunLoop 1 -tck
+   iComparePort [list "TDO"] 0bx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "End of the highz_mode test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__clamp {} {
+
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b000000000000000 -not_persistent
+   iApply
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  clamp test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote "  * clamp test for enable group Engroup0,"
+   iNote "    which includes the following control cells:"
+   iNote "          cell: 89"
+   iNote "          cell: 86"
+   iNote "          cell: 84"
+   iNote "          cell: 82"
+   iNote "          cell: 80"
+   iNote "          cell: 78"
+   iNote "          cell: 76"
+   iNote "          cell: 74"
+   iNote "          cell: 72"
+   iNote "          cell: 70"
+   iNote "          cell: 68"
+   iNote "          cell: 66"
+   iNote "          cell: 64"
+   iNote "          cell: 62"
+   iNote "          cell: 60"
+   iNote "          cell: 58"
+   iNote "          cell: 56"
+   iNote "          cell: 54"
+   iNote "          cell: 52"
+   iNote "          cell: 50"
+   iNote "          cell: 48"
+   iNote "          cell: 46"
+   iNote "          cell: 44"
+   iNote "          cell: 42"
+   iNote "          cell: 40"
+   iNote "          cell: 38"
+   iNote "          cell: 36"
+   iNote "          cell: 34"
+   iNote "          cell: 32"
+   iNote "          cell: 30"
+   iNote "          cell: 28"
+   iNote "          cell: 26"
+   iNote "          cell: 24"
+   iNote "          cell: 5"
+   iNote "          cell: 3"
+   iNote "          cell: 1"
+   iNote " "
+   iNote "  * Setting input Pins with an EVEN pattern:"
+   iNote "    Setting  TA_CCI2B  to '1'"
+   iNote "    Setting  TA_CCI2A  to '0'"
+   iNote "    Setting  TA_CCI1B  to '1'"
+   iNote "    Setting  TA_CCI1A  to '0'"
+   iNote "    Setting  TA_CCI0B  to '1'"
+   iNote "    Setting  TA_CCI0A  to '0'"
+   iNote "    Setting  TACLK  to '1'"
+   iNote "    Setting  SIGN2  to '0'"
+   iNote "    Setting  SIGN1  to '1'"
+   iNote "    Setting  RESET_N  to '0'"
+   iNote "    Setting  REF_CLK  to '1'"
+   iNote "    Setting  MAG2  to '0'"
+   iNote "    Setting  MAG1  to '1'"
+   iNote "    Setting  LFXT_CLK  to '0'"
+   iNote "    Setting  INCLK  to '1'"
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iForcePort [list "INCLK" "MAG1" "REF_CLK" "SIGN1" "TACLK" "TA_CCI0B" "TA_CCI1B" "TA_CCI2B"] 0b11111111 -not_persistent
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "  * Loading bscan chain with an EVEN pattern:"
+   iNote "        EVEN pins = 1  and  ODD pins = 0"
+   iScan tap -chain default 90 -si 0b110111011101110111011101110111011101110111011101110111011101110111010101010101010101101110 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with EXTEST instruction."
+   iScan -ir tap -chain default 4 -si 0b0010 -so 0b0001
+   iApply
+
+   iNote "  * Comparing enabled Output Pins with an EVEN pattern:"
+   iNote "    Open-drain/source pins are compared only if enabled"
+   iRunLoop 1 -tck
+   iNote "    Checking  TA_OUT2  with '0'"
+   iNote "    Checking  TA_OUT1  with '1'"
+   iNote "    Checking  TA_OUT0  with '0'"
+   iNote "    Checking  SAMPLE_CLK2  with '0'"
+   iNote "    Checking  SAMPLE_CLK1  with '1'"
+   iNote "    Checking  GPIO4_7  with '0'"
+   iNote "    Checking  GPIO4_6  with '1'"
+   iNote "    Checking  GPIO4_5  with '0'"
+   iNote "    Checking  GPIO4_4  with '1'"
+   iNote "    Checking  GPIO4_3  with '0'"
+   iNote "    Checking  GPIO4_2  with '1'"
+   iNote "    Checking  GPIO4_1  with '0'"
+   iNote "    Checking  GPIO4_0  with '1'"
+   iNote "    Checking  GPIO3_7  with '0'"
+   iNote "    Checking  GPIO3_6  with '1'"
+   iNote "    Checking  GPIO3_5  with '0'"
+   iNote "    Checking  GPIO3_4  with '1'"
+   iNote "    Checking  GPIO3_3  with '0'"
+   iNote "    Checking  GPIO3_2  with '1'"
+   iNote "    Checking  GPIO3_1  with '0'"
+   iNote "    Checking  GPIO3_0  with '1'"
+   iNote "    Checking  GPIO2_7  with '0'"
+   iNote "    Checking  GPIO2_6  with '1'"
+   iNote "    Checking  GPIO2_5  with '0'"
+   iNote "    Checking  GPIO2_4  with '1'"
+   iNote "    Checking  GPIO2_3  with '0'"
+   iNote "    Checking  GPIO2_2  with '1'"
+   iNote "    Checking  GPIO2_1  with '0'"
+   iNote "    Checking  GPIO2_0  with '1'"
+   iNote "    Checking  GPIO1_7  with '0'"
+   iNote "    Checking  GPIO1_6  with '1'"
+   iNote "    Checking  GPIO1_5  with '0'"
+   iNote "    Checking  GPIO1_4  with '1'"
+   iNote "    Checking  GPIO1_3  with '0'"
+   iNote "    Checking  GPIO1_2  with '1'"
+   iNote "    Checking  GPIO1_1  with '0'"
+   iNote "    Checking  GPIO1_0  with '1'"
+   iNote "    Checking  ACCUM2  with '0'"
+   iNote "    Checking  ACCUM1  with '1'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b101010101010101010101010101010101010010
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with CLAMP instruction."
+   iScan -ir tap -chain default 4 -si 0b0001 -so 0b0001
+   iApply
+
+   iNote "  * Shifting a logic 1 into  the  BYPASS register,"
+   iNote "    while expecting a logic 0 over the TDO port."
+   iNote " "
+   iScan tap -chain default 1 -si 0b1 -so 0b0
+   iApply
+
+   iNote "  * Re-Comparing enabled Output Pins"
+   iNote "    Checking  TA_OUT2  with '0'"
+   iNote "    Checking  TA_OUT1  with '1'"
+   iNote "    Checking  TA_OUT0  with '0'"
+   iNote "    Checking  SAMPLE_CLK2  with '0'"
+   iNote "    Checking  SAMPLE_CLK1  with '1'"
+   iNote "    Checking  GPIO4_7  with '0'"
+   iNote "    Checking  GPIO4_6  with '1'"
+   iNote "    Checking  GPIO4_5  with '0'"
+   iNote "    Checking  GPIO4_4  with '1'"
+   iNote "    Checking  GPIO4_3  with '0'"
+   iNote "    Checking  GPIO4_2  with '1'"
+   iNote "    Checking  GPIO4_1  with '0'"
+   iNote "    Checking  GPIO4_0  with '1'"
+   iNote "    Checking  GPIO3_7  with '0'"
+   iNote "    Checking  GPIO3_6  with '1'"
+   iNote "    Checking  GPIO3_5  with '0'"
+   iNote "    Checking  GPIO3_4  with '1'"
+   iNote "    Checking  GPIO3_3  with '0'"
+   iNote "    Checking  GPIO3_2  with '1'"
+   iNote "    Checking  GPIO3_1  with '0'"
+   iNote "    Checking  GPIO3_0  with '1'"
+   iNote "    Checking  GPIO2_7  with '0'"
+   iNote "    Checking  GPIO2_6  with '1'"
+   iNote "    Checking  GPIO2_5  with '0'"
+   iNote "    Checking  GPIO2_4  with '1'"
+   iNote "    Checking  GPIO2_3  with '0'"
+   iNote "    Checking  GPIO2_2  with '1'"
+   iNote "    Checking  GPIO2_1  with '0'"
+   iNote "    Checking  GPIO2_0  with '1'"
+   iNote "    Checking  GPIO1_7  with '0'"
+   iNote "    Checking  GPIO1_6  with '1'"
+   iNote "    Checking  GPIO1_5  with '0'"
+   iNote "    Checking  GPIO1_4  with '1'"
+   iNote "    Checking  GPIO1_3  with '0'"
+   iNote "    Checking  GPIO1_2  with '1'"
+   iNote "    Checking  GPIO1_1  with '0'"
+   iNote "    Checking  GPIO1_0  with '1'"
+   iNote "    Checking  ACCUM2  with '0'"
+   iNote "    Checking  ACCUM1  with '1'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b101010101010101010101010101010101010010
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with EXTEST instruction."
+   iScan -ir tap -chain default 4 -si 0b0010 -so 0b0001
+   iApply
+
+   iNote "  * Setting input Pins with an ODD pattern:"
+   iNote "    Setting  TA_CCI2B  to '0'"
+   iNote "    Setting  TA_CCI2A  to '1'"
+   iNote "    Setting  TA_CCI1B  to '0'"
+   iNote "    Setting  TA_CCI1A  to '1'"
+   iNote "    Setting  TA_CCI0B  to '0'"
+   iNote "    Setting  TA_CCI0A  to '1'"
+   iNote "    Setting  TACLK  to '0'"
+   iNote "    Setting  SIGN2  to '1'"
+   iNote "    Setting  SIGN1  to '0'"
+   iNote "    Setting  RESET_N  to '1'"
+   iNote "    Setting  REF_CLK  to '0'"
+   iNote "    Setting  MAG2  to '1'"
+   iNote "    Setting  MAG1  to '0'"
+   iNote "    Setting  LFXT_CLK  to '1'"
+   iNote "    Setting  INCLK  to '0'"
+   iNote " "
+   iNote "  * Loading bscan chain with an ODD pattern:"
+   iNote "        EVEN pins = 0  and  ODD pins = 1"
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b010101010101010 -not_persistent
+   iScan tap -chain default 90 -si 0b101101110111011101110111011101110111011101110111011101110111011101101010101010101010111011 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote "  * Comparing enabled Output Pins with an ODD pattern:"
+   iNote "    Open-drain/source pins are compared only if enabled"
+   iRunLoop 1 -tck
+   iNote "    Checking  TA_OUT2  with '1'"
+   iNote "    Checking  TA_OUT1  with '0'"
+   iNote "    Checking  TA_OUT0  with '1'"
+   iNote "    Checking  SAMPLE_CLK2  with '1'"
+   iNote "    Checking  SAMPLE_CLK1  with '0'"
+   iNote "    Checking  GPIO4_7  with '1'"
+   iNote "    Checking  GPIO4_6  with '0'"
+   iNote "    Checking  GPIO4_5  with '1'"
+   iNote "    Checking  GPIO4_4  with '0'"
+   iNote "    Checking  GPIO4_3  with '1'"
+   iNote "    Checking  GPIO4_2  with '0'"
+   iNote "    Checking  GPIO4_1  with '1'"
+   iNote "    Checking  GPIO4_0  with '0'"
+   iNote "    Checking  GPIO3_7  with '1'"
+   iNote "    Checking  GPIO3_6  with '0'"
+   iNote "    Checking  GPIO3_5  with '1'"
+   iNote "    Checking  GPIO3_4  with '0'"
+   iNote "    Checking  GPIO3_3  with '1'"
+   iNote "    Checking  GPIO3_2  with '0'"
+   iNote "    Checking  GPIO3_1  with '1'"
+   iNote "    Checking  GPIO3_0  with '0'"
+   iNote "    Checking  GPIO2_7  with '1'"
+   iNote "    Checking  GPIO2_6  with '0'"
+   iNote "    Checking  GPIO2_5  with '1'"
+   iNote "    Checking  GPIO2_4  with '0'"
+   iNote "    Checking  GPIO2_3  with '1'"
+   iNote "    Checking  GPIO2_2  with '0'"
+   iNote "    Checking  GPIO2_1  with '1'"
+   iNote "    Checking  GPIO2_0  with '0'"
+   iNote "    Checking  GPIO1_7  with '1'"
+   iNote "    Checking  GPIO1_6  with '0'"
+   iNote "    Checking  GPIO1_5  with '1'"
+   iNote "    Checking  GPIO1_4  with '0'"
+   iNote "    Checking  GPIO1_3  with '1'"
+   iNote "    Checking  GPIO1_2  with '0'"
+   iNote "    Checking  GPIO1_1  with '1'"
+   iNote "    Checking  GPIO1_0  with '0'"
+   iNote "    Checking  ACCUM2  with '1'"
+   iNote "    Checking  ACCUM1  with '0'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b010101010101010101010101010101010101101
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with CLAMP instruction."
+   iScan -ir tap -chain default 4 -si 0b0001 -so 0b0001
+   iApply
+
+   iNote "  * Shifting a logic 1 into  the  BYPASS register,"
+   iNote "    while expecting a logic 0 over the TDO port."
+   iNote " "
+   iScan tap -chain default 1 -si 0b1 -so 0b0
+   iApply
+
+   iNote "  * Re-Comparing enabled Output Pins"
+   iNote "    Checking  TA_OUT2  with '1'"
+   iNote "    Checking  TA_OUT1  with '0'"
+   iNote "    Checking  TA_OUT0  with '1'"
+   iNote "    Checking  SAMPLE_CLK2  with '1'"
+   iNote "    Checking  SAMPLE_CLK1  with '0'"
+   iNote "    Checking  GPIO4_7  with '1'"
+   iNote "    Checking  GPIO4_6  with '0'"
+   iNote "    Checking  GPIO4_5  with '1'"
+   iNote "    Checking  GPIO4_4  with '0'"
+   iNote "    Checking  GPIO4_3  with '1'"
+   iNote "    Checking  GPIO4_2  with '0'"
+   iNote "    Checking  GPIO4_1  with '1'"
+   iNote "    Checking  GPIO4_0  with '0'"
+   iNote "    Checking  GPIO3_7  with '1'"
+   iNote "    Checking  GPIO3_6  with '0'"
+   iNote "    Checking  GPIO3_5  with '1'"
+   iNote "    Checking  GPIO3_4  with '0'"
+   iNote "    Checking  GPIO3_3  with '1'"
+   iNote "    Checking  GPIO3_2  with '0'"
+   iNote "    Checking  GPIO3_1  with '1'"
+   iNote "    Checking  GPIO3_0  with '0'"
+   iNote "    Checking  GPIO2_7  with '1'"
+   iNote "    Checking  GPIO2_6  with '0'"
+   iNote "    Checking  GPIO2_5  with '1'"
+   iNote "    Checking  GPIO2_4  with '0'"
+   iNote "    Checking  GPIO2_3  with '1'"
+   iNote "    Checking  GPIO2_2  with '0'"
+   iNote "    Checking  GPIO2_1  with '1'"
+   iNote "    Checking  GPIO2_0  with '0'"
+   iNote "    Checking  GPIO1_7  with '1'"
+   iNote "    Checking  GPIO1_6  with '0'"
+   iNote "    Checking  GPIO1_5  with '1'"
+   iNote "    Checking  GPIO1_4  with '0'"
+   iNote "    Checking  GPIO1_3  with '1'"
+   iNote "    Checking  GPIO1_2  with '0'"
+   iNote "    Checking  GPIO1_1  with '1'"
+   iNote "    Checking  GPIO1_0  with '0'"
+   iNote "    Checking  ACCUM2  with '1'"
+   iNote "    Checking  ACCUM1  with '0'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b010101010101010101010101010101010101101
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with EXTEST instruction."
+   iScan -ir tap -chain default 4 -si 0b0010 -so 0b0001
+   iApply
+
+   iNote "  * Loading boundary scan chain  with a SAFE pin pattern."
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "End of the clamp test"
+   iNote " "
+
+}
+
+
+iProcsForModule chip_top
+
+iTopProc JtagBscanTestStep__output {} {
+
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b010101010101010 -not_persistent
+   iApply
+
+   iNote " "
+   iNote "****************************************************************"
+   iNote "  output test"
+   iNote "****************************************************************"
+   iNote " "
+   iNote "    * Setting to Z"
+   iNote "      -> all inout contacted pins."
+   iNote "    Setting  GPIO4_7  to 'Z'"
+   iNote "    Setting  GPIO4_6  to 'Z'"
+   iNote "    Setting  GPIO4_5  to 'Z'"
+   iNote "    Setting  GPIO4_4  to 'Z'"
+   iNote "    Setting  GPIO4_3  to 'Z'"
+   iNote "    Setting  GPIO4_2  to 'Z'"
+   iNote "    Setting  GPIO4_1  to 'Z'"
+   iNote "    Setting  GPIO4_0  to 'Z'"
+   iNote "    Setting  GPIO3_7  to 'Z'"
+   iNote "    Setting  GPIO3_6  to 'Z'"
+   iNote "    Setting  GPIO3_5  to 'Z'"
+   iNote "    Setting  GPIO3_4  to 'Z'"
+   iNote "    Setting  GPIO3_3  to 'Z'"
+   iNote "    Setting  GPIO3_2  to 'Z'"
+   iNote "    Setting  GPIO3_1  to 'Z'"
+   iNote "    Setting  GPIO3_0  to 'Z'"
+   iNote "    Setting  GPIO2_7  to 'Z'"
+   iNote "    Setting  GPIO2_6  to 'Z'"
+   iNote "    Setting  GPIO2_5  to 'Z'"
+   iNote "    Setting  GPIO2_4  to 'Z'"
+   iNote "    Setting  GPIO2_3  to 'Z'"
+   iNote "    Setting  GPIO2_2  to 'Z'"
+   iNote "    Setting  GPIO2_1  to 'Z'"
+   iNote "    Setting  GPIO2_0  to 'Z'"
+   iNote "    Setting  GPIO1_7  to 'Z'"
+   iNote "    Setting  GPIO1_6  to 'Z'"
+   iNote "    Setting  GPIO1_5  to 'Z'"
+   iNote "    Setting  GPIO1_4  to 'Z'"
+   iNote "    Setting  GPIO1_3  to 'Z'"
+   iNote "    Setting  GPIO1_2  to 'Z'"
+   iNote "    Setting  GPIO1_1  to 'Z'"
+   iNote "    Setting  GPIO1_0  to 'Z'"
+   iNote "  * output test for enable group Engroup0,"
+   iNote "    which includes the following control cells:"
+   iNote "          cell: 89"
+   iNote "          cell: 86"
+   iNote "          cell: 84"
+   iNote "          cell: 82"
+   iNote "          cell: 80"
+   iNote "          cell: 78"
+   iNote "          cell: 76"
+   iNote "          cell: 74"
+   iNote "          cell: 72"
+   iNote "          cell: 70"
+   iNote "          cell: 68"
+   iNote "          cell: 66"
+   iNote "          cell: 64"
+   iNote "          cell: 62"
+   iNote "          cell: 60"
+   iNote "          cell: 58"
+   iNote "          cell: 56"
+   iNote "          cell: 54"
+   iNote "          cell: 52"
+   iNote "          cell: 50"
+   iNote "          cell: 48"
+   iNote "          cell: 46"
+   iNote "          cell: 44"
+   iNote "          cell: 42"
+   iNote "          cell: 40"
+   iNote "          cell: 38"
+   iNote "          cell: 36"
+   iNote "          cell: 34"
+   iNote "          cell: 32"
+   iNote "          cell: 30"
+   iNote "          cell: 28"
+   iNote "          cell: 26"
+   iNote "          cell: 24"
+   iNote "          cell: 5"
+   iNote "          cell: 3"
+   iNote "          cell: 1"
+   iNote " "
+   iNote "  * Setting input Pins with an EVEN pattern:"
+   iNote "    Setting  TA_CCI2B  to '1'"
+   iNote "    Setting  TA_CCI2A  to '0'"
+   iNote "    Setting  TA_CCI1B  to '1'"
+   iNote "    Setting  TA_CCI1A  to '0'"
+   iNote "    Setting  TA_CCI0B  to '1'"
+   iNote "    Setting  TA_CCI0A  to '0'"
+   iNote "    Setting  TACLK  to '1'"
+   iNote "    Setting  SIGN2  to '0'"
+   iNote "    Setting  SIGN1  to '1'"
+   iNote "    Setting  RESET_N  to '0'"
+   iNote "    Setting  REF_CLK  to '1'"
+   iNote "    Setting  MAG2  to '0'"
+   iNote "    Setting  MAG1  to '1'"
+   iNote "    Setting  LFXT_CLK  to '0'"
+   iNote "    Setting  INCLK  to '1'"
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with PRELOAD instruction."
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7"] 0bzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b101010101010101 -not_persistent
+   iScan -ir tap -chain default 4 -si 0b0110 -so 0b0001
+   iApply
+
+   iNote " "
+   iNote "  * Loading bscan chain with an EVEN pattern:"
+   iNote "        EVEN pins = 1  and  ODD pins = 0"
+   iScan tap -chain default 90 -si 0b110111011101110111011101110111011101110111011101110111011101110111010101010101010101101110 -so 0bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "  * Loading TAP Instruction Register with EXTEST instruction."
+   iScan -ir tap -chain default 4 -si 0b0010 -so 0b0001
+   iApply
+
+   iNote "  * Comparing enabled Output Pins with an EVEN pattern:"
+   iNote "    Open-drain/source pins are compared only if enabled"
+   iRunLoop 1 -tck
+   iNote "    Checking  TA_OUT2  with '0'"
+   iNote "    Checking  TA_OUT1  with '1'"
+   iNote "    Checking  TA_OUT0  with '0'"
+   iNote "    Checking  SAMPLE_CLK2  with '0'"
+   iNote "    Checking  SAMPLE_CLK1  with '1'"
+   iNote "    Checking  GPIO4_7  with '0'"
+   iNote "    Checking  GPIO4_6  with '1'"
+   iNote "    Checking  GPIO4_5  with '0'"
+   iNote "    Checking  GPIO4_4  with '1'"
+   iNote "    Checking  GPIO4_3  with '0'"
+   iNote "    Checking  GPIO4_2  with '1'"
+   iNote "    Checking  GPIO4_1  with '0'"
+   iNote "    Checking  GPIO4_0  with '1'"
+   iNote "    Checking  GPIO3_7  with '0'"
+   iNote "    Checking  GPIO3_6  with '1'"
+   iNote "    Checking  GPIO3_5  with '0'"
+   iNote "    Checking  GPIO3_4  with '1'"
+   iNote "    Checking  GPIO3_3  with '0'"
+   iNote "    Checking  GPIO3_2  with '1'"
+   iNote "    Checking  GPIO3_1  with '0'"
+   iNote "    Checking  GPIO3_0  with '1'"
+   iNote "    Checking  GPIO2_7  with '0'"
+   iNote "    Checking  GPIO2_6  with '1'"
+   iNote "    Checking  GPIO2_5  with '0'"
+   iNote "    Checking  GPIO2_4  with '1'"
+   iNote "    Checking  GPIO2_3  with '0'"
+   iNote "    Checking  GPIO2_2  with '1'"
+   iNote "    Checking  GPIO2_1  with '0'"
+   iNote "    Checking  GPIO2_0  with '1'"
+   iNote "    Checking  GPIO1_7  with '0'"
+   iNote "    Checking  GPIO1_6  with '1'"
+   iNote "    Checking  GPIO1_5  with '0'"
+   iNote "    Checking  GPIO1_4  with '1'"
+   iNote "    Checking  GPIO1_3  with '0'"
+   iNote "    Checking  GPIO1_2  with '1'"
+   iNote "    Checking  GPIO1_1  with '0'"
+   iNote "    Checking  GPIO1_0  with '1'"
+   iNote "    Checking  ACCUM2  with '0'"
+   iNote "    Checking  ACCUM1  with '1'"
+   iForcePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7"] -release
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b101010101010101010101010101010101010010
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote "  * Setting input Pins with an ODD pattern:"
+   iNote "    Setting  TA_CCI2B  to '0'"
+   iNote "    Setting  TA_CCI2A  to '1'"
+   iNote "    Setting  TA_CCI1B  to '0'"
+   iNote "    Setting  TA_CCI1A  to '1'"
+   iNote "    Setting  TA_CCI0B  to '0'"
+   iNote "    Setting  TA_CCI0A  to '1'"
+   iNote "    Setting  TACLK  to '0'"
+   iNote "    Setting  SIGN2  to '1'"
+   iNote "    Setting  SIGN1  to '0'"
+   iNote "    Setting  RESET_N  to '1'"
+   iNote "    Setting  REF_CLK  to '0'"
+   iNote "    Setting  MAG2  to '1'"
+   iNote "    Setting  MAG1  to '0'"
+   iNote "    Setting  LFXT_CLK  to '1'"
+   iNote "    Setting  INCLK  to '0'"
+   iNote " "
+   iNote "  * Loading bscan chain with an ODD pattern:"
+   iNote "        EVEN pins = 0  and  ODD pins = 1"
+   iNote "  * Checking bscan captured values from previous EVEN pattern"
+   iForcePort [list "INCLK" "LFXT_CLK" "MAG1" "MAG2" "REF_CLK" "RESET_N" "SIGN1" "SIGN2" "TACLK" "TA_CCI0A" "TA_CCI0B" "TA_CCI1A" "TA_CCI1B" "TA_CCI2A" "TA_CCI2B"] 0b010101010101010 -not_persistent
+   iScan tap -chain default 90 -si 0b101101110111011101110111011101110111011101110111011101110111011101101010101010101010111011 -so 0b1101110111011101110111011101110111011101110111011101110111011101110XXXXXX10XXXXXXXXX101110 -skip_model_state_simulation
+   iApply -end_in_pause
+
+   iNote "  * Comparing enabled Output Pins with an EVEN pattern just before the update-DR state"
+   iNote "    Checking  TA_OUT2  with '0'"
+   iNote "    Checking  TA_OUT1  with '1'"
+   iNote "    Checking  TA_OUT0  with '0'"
+   iNote "    Checking  SAMPLE_CLK2  with '0'"
+   iNote "    Checking  SAMPLE_CLK1  with '1'"
+   iNote "    Checking  GPIO4_7  with '0'"
+   iNote "    Checking  GPIO4_6  with '1'"
+   iNote "    Checking  GPIO4_5  with '0'"
+   iNote "    Checking  GPIO4_4  with '1'"
+   iNote "    Checking  GPIO4_3  with '0'"
+   iNote "    Checking  GPIO4_2  with '1'"
+   iNote "    Checking  GPIO4_1  with '0'"
+   iNote "    Checking  GPIO4_0  with '1'"
+   iNote "    Checking  GPIO3_7  with '0'"
+   iNote "    Checking  GPIO3_6  with '1'"
+   iNote "    Checking  GPIO3_5  with '0'"
+   iNote "    Checking  GPIO3_4  with '1'"
+   iNote "    Checking  GPIO3_3  with '0'"
+   iNote "    Checking  GPIO3_2  with '1'"
+   iNote "    Checking  GPIO3_1  with '0'"
+   iNote "    Checking  GPIO3_0  with '1'"
+   iNote "    Checking  GPIO2_7  with '0'"
+   iNote "    Checking  GPIO2_6  with '1'"
+   iNote "    Checking  GPIO2_5  with '0'"
+   iNote "    Checking  GPIO2_4  with '1'"
+   iNote "    Checking  GPIO2_3  with '0'"
+   iNote "    Checking  GPIO2_2  with '1'"
+   iNote "    Checking  GPIO2_1  with '0'"
+   iNote "    Checking  GPIO2_0  with '1'"
+   iNote "    Checking  GPIO1_7  with '0'"
+   iNote "    Checking  GPIO1_6  with '1'"
+   iNote "    Checking  GPIO1_5  with '0'"
+   iNote "    Checking  GPIO1_4  with '1'"
+   iNote "    Checking  GPIO1_3  with '0'"
+   iNote "    Checking  GPIO1_2  with '1'"
+   iNote "    Checking  GPIO1_1  with '0'"
+   iNote "    Checking  GPIO1_0  with '1'"
+   iNote "    Checking  ACCUM2  with '0'"
+   iNote "    Checking  ACCUM1  with '1'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b101010101010101010101010101010101010010
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iGoToTapState IDLE
+   iNote "  * Comparing enabled Output Pins with an ODD pattern:"
+   iNote "    Open-drain/source pins are compared only if enabled"
+   iRunLoop 1 -tck
+   iNote "    Checking  TA_OUT2  with '1'"
+   iNote "    Checking  TA_OUT1  with '0'"
+   iNote "    Checking  TA_OUT0  with '1'"
+   iNote "    Checking  SAMPLE_CLK2  with '1'"
+   iNote "    Checking  SAMPLE_CLK1  with '0'"
+   iNote "    Checking  GPIO4_7  with '1'"
+   iNote "    Checking  GPIO4_6  with '0'"
+   iNote "    Checking  GPIO4_5  with '1'"
+   iNote "    Checking  GPIO4_4  with '0'"
+   iNote "    Checking  GPIO4_3  with '1'"
+   iNote "    Checking  GPIO4_2  with '0'"
+   iNote "    Checking  GPIO4_1  with '1'"
+   iNote "    Checking  GPIO4_0  with '0'"
+   iNote "    Checking  GPIO3_7  with '1'"
+   iNote "    Checking  GPIO3_6  with '0'"
+   iNote "    Checking  GPIO3_5  with '1'"
+   iNote "    Checking  GPIO3_4  with '0'"
+   iNote "    Checking  GPIO3_3  with '1'"
+   iNote "    Checking  GPIO3_2  with '0'"
+   iNote "    Checking  GPIO3_1  with '1'"
+   iNote "    Checking  GPIO3_0  with '0'"
+   iNote "    Checking  GPIO2_7  with '1'"
+   iNote "    Checking  GPIO2_6  with '0'"
+   iNote "    Checking  GPIO2_5  with '1'"
+   iNote "    Checking  GPIO2_4  with '0'"
+   iNote "    Checking  GPIO2_3  with '1'"
+   iNote "    Checking  GPIO2_2  with '0'"
+   iNote "    Checking  GPIO2_1  with '1'"
+   iNote "    Checking  GPIO2_0  with '0'"
+   iNote "    Checking  GPIO1_7  with '1'"
+   iNote "    Checking  GPIO1_6  with '0'"
+   iNote "    Checking  GPIO1_5  with '1'"
+   iNote "    Checking  GPIO1_4  with '0'"
+   iNote "    Checking  GPIO1_3  with '1'"
+   iNote "    Checking  GPIO1_2  with '0'"
+   iNote "    Checking  GPIO1_1  with '1'"
+   iNote "    Checking  GPIO1_0  with '0'"
+   iNote "    Checking  ACCUM2  with '1'"
+   iNote "    Checking  ACCUM1  with '0'"
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0b010101010101010101010101010101010101101
+   iRunLoop 1 -tck
+   iComparePort [list "GPIO3_0" "GPIO3_1" "GPIO4_0" "GPIO4_1" "ACCUM1" "ACCUM2" "GPIO1_0" "GPIO1_1" "GPIO1_2" "GPIO1_3" "GPIO1_4" "GPIO1_5" "GPIO1_6" "GPIO1_7" "GPIO2_0" "GPIO2_1" "GPIO2_2" "GPIO2_3" "GPIO2_4" "GPIO2_5" "GPIO2_6" "GPIO2_7" "GPIO3_2" "GPIO3_3" "GPIO3_4" "GPIO3_5" "GPIO3_6" "GPIO3_7" "GPIO4_2" "GPIO4_3" "GPIO4_4" "GPIO4_5" "GPIO4_6" "GPIO4_7" "SAMPLE_CLK1" "SAMPLE_CLK2" "TA_OUT0" "TA_OUT1" "TA_OUT2"] 0bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   iRunLoop 1 -tck
+   iNote "  * Loading boundary scan chain  with a SAFE pin pattern, and"
+   iNote "    Comparing captured TDO data for an ODD pattern."
+   iScan tap -chain default 90 -si 0b000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 -so 0b1011011101110111011101110111011101110111011101110111011101110111011XXXXXX01XXXXXXXXX111011 -skip_model_state_simulation
+   iApply
+
+   iNote " "
+   iNote "End of the output test"
+   iNote " "
+
+}

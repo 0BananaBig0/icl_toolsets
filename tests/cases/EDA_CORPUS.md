@@ -1,6 +1,6 @@
 # Real EDA ICL corpus
 
-Collected read-only on 2026-10-22 from the user's three project trees under
+Initially collected read-only on 2026-10-22 from the user's three project trees under
 `/home/banana/remote_eda/lianghuaxiao/`, mapped to
 `lianghuaxiao@192.168.6.20:/data/workspaces/lianghuaxiao/`:
 
@@ -15,16 +15,49 @@ another collected file. Following links reported broken simulator `.so` links
 and two Verdi directory cycles, but no unreadable ICL. All 180 inputs parse.
 Source trees were not modified.
 
-There are 106 distinct whole-file byte sequences: 74 repeated file occurrences.
+The initial snapshot had 106 distinct whole-file byte sequences: 74 repeated file occurrences.
 The 328 module occurrences reduce to **164 distinct definitions**. The initial
 import stored 119 Tessent and 45 Synopsys SLM module fixtures. The subsequent
 [whole-corpus audit](CORPUS_DEDUPLICATION.md) consolidated 47 definitions already
-present in four original baselines. There are now 78 standalone Tessent and 39
+present in four original baselines. That audit retained 78 standalone Tessent and 39
 standalone Synopsys SLM fixtures, plus references to those baseline modules.
 All 164 definitions and all 180 source mappings remain represented.
 Fifty qualified module names have
 multiple differing definitions; all of those variants are retained. The file
 suffix identifies the definition, so a same-name variant cannot overwrite it.
+
+## Tessent refresh — 2026-10-26
+
+The following projects were collected with read-only remote `find -L` and a
+NUL-delimited tar stream, following source links without modifying their targets:
+
+| Project under `tessent_2026.2_usage_examples/` | ICL paths | PDL paths |
+|---|---:|---:|
+| `tessent_example_flat_flow_v2026.2` | 21 | 57 |
+| `tessent_example_hierarchical_flow_with_ssn_v2026.2` | 50 | 271 |
+| `tessent_example_hybrid_tk_lbist_flow_v2026.2` | 21 | 45 |
+| Total | 92 | 373 |
+
+All 92 ICL source files parse. Their 463 module occurrences contain 202 distinct
+definitions: 78 reuse existing fixtures and **124 new definitions** have been
+added. The complete maintained EDA manifest now represents **230 source paths,
+31 historical source revisions and 288 distinct modules**. It references 202
+standalone Tessent fixtures, 39 standalone Synopsys SLM fixtures, and the 47
+definitions shared with original multi-module baselines. Different definitions
+with the same name remain separate.
+
+Each source path has one current record. When its bytes changed, its earlier
+hash, module order and comment references are retained in `previous_versions`.
+The current record's `snapshot` identifies this refresh. A module's `source`
+may refer to either the current or a historical revision of that path; the
+module ID determines which definition it represents. Existing oracle source
+lookups use the current revision. No previous fixture was overwritten or
+discarded. The PDL import is described in [pdl_eda/README.md](pdl_eda/README.md).
+
+The global ICL audit still has zero duplicate-file groups and the same 25
+previously reviewed repeated-module groups; no duplicate-policy exception was
+added for this import. Every new module is registered in `conformance.json`
+and enters CLI preservation/idempotence, LSP diagnostics and editor corpus tests.
 
 ## What counts as a duplicate
 
@@ -74,5 +107,6 @@ frontend; it does not parse ICL with Python regexes. Review updated source
 fixtures and provenance before promoting them from staging into `tests/cases`;
 resolve existing canonical definitions using the global duplicate audit.
 Archives, inventory reports, helper binaries and other generated build output
-stay ignored. The two installed executables and their runtime behavior are
-unchanged by this corpus addition.
+stay ignored. Imported vendor sources are explicitly maintained regression
+inputs, not generated build artifacts. This ICL refresh changes no ICL runtime
+behavior; the accompanying PDL compatibility fix is documented separately.

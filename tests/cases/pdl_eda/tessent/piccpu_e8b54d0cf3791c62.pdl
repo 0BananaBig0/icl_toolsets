@@ -1,0 +1,2543 @@
+#--------------------------------------------------------------------------
+#
+#  Unpublished work. Copyright 2026 Siemens
+#
+#  This material contains trade secrets or otherwise confidential 
+#  information owned by Siemens Industry Software Inc. or its affiliates 
+#  (collectively, SISW), or its licensors. Access to and use of this 
+#  information is strictly limited as set forth in the Customer's 
+#  applicable agreements with SISW.
+#
+#--------------------------------------------------------------------------
+#  File created by: Tessent Shell
+#          Version: 2026.2
+#       Created on: Mon Oct 26 08:55:11 CST 2026
+#--------------------------------------------------------------------------
+
+# Consolidated PDL for piccpu, design_id gate1 
+
+iProcsForModule piccpu
+
+iProc lbist_burn_in {
+    {clock_select {shift_clock_src}}
+    {burn_in_time {1s}}
+    {mode_name {lbist}}
+    {teststep_name {}}
+    {pattern_id {}}
+} {  
+    set clock_select [string map -nocase {lbist_clock shift_clock_src edt_clock ltest_clock} $clock_select]
+  if { [string tolower $clock_select] eq "tck" } {
+      set shift_clock_select 0b10 ; # TCK
+  } elseif { [string tolower $clock_select] eq "shift_clock_src" } {
+      set shift_clock_select 0b00 ; # shift_clock_src
+  } elseif { [string tolower $clock_select] eq "ltest_clock" } {
+      set shift_clock_select 0b11 ; # edt_clock
+  }  else {
+      display_message -error "Unrecognized value ($clock_select) for clock_select. Allowed values are TCK, shift_clock_src and ltest_clock."
+      return -code error
+  }
+  
+  set tessent_pragma_suffix ""
+  if {$teststep_name ne ""} {
+      append tessent_pragma_suffix "_${teststep_name}"
+  }
+  set pattern_cnt 2
+  if {[get_icl_scope -iCall] eq ""} {
+    set iprocsModule [get_single_name [get_current_design -icl]]
+  } else {
+    set iprocsModule [get_single_name [get_icl_modules -of_instances [get_icl_scope -iCall]]]
+  }
+  array set lbist_data [get_logic_bist_pattern_data -design_name $iprocsModule -mode_name $mode_name -pattern_id $pattern_id -begin_pattern 0 -end_pattern 0]
+  
+  #########
+  # Setup #
+  #########
+  
+  dict set edt_blocks_dict 0 {
+      hw_leaf_inst            piccpu_rtl2_tessent_edt_lbist_c0_i
+      block_name              piccpu
+      edt_module_name         piccpu_rtl2_tessent_edt_lbist_c0
+      edt_sib_module_name     piccpu_rtl2_tessent_edt_c0_sib
+      ext_mode                OFF
+      misrs {
+          misr {
+              default_value     0x000000
+          }
+      }
+      reset                   off
+      registers {
+          lbist_prpg_reg         0x1e0fe5c9
+          lbist_chain_mask_reg   0x3ff
+          lbist_lp_hold_reg      0b1111
+          lbist_lp_toggle_reg    0b1011
+          lbist_lp_switching_reg  0b1011
+          lbist_lp_mask_shift_reg 0x4fbb6fb3
+      }
+  }
+  set lbist_full_inst              [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_lbist -below_instances [get_icl_scope]]]
+  set single_chain_mode_logic_inst [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_single_chain_mode_logic -below_instances [get_icl_scope]]]
+  dict for { block_num block_dict } $edt_blocks_dict {
+      set current_edt_block            [get_name_list [get_icl_instances -of_module [dict get $block_dict edt_module_name] -below_instances [get_icl_scope]]]
+      set edt_icl_inst {}
+      if {[get_icl_scope] != {}} {
+          regsub ^[get_icl_scope]\\. $current_edt_block  {} edt_icl_inst
+      } else {
+          set edt_icl_inst                 $current_edt_block
+      }
+      dict set edt_blocks_dict $block_num edt_icl_inst $edt_icl_inst
+  }
+  set lbist_inst $lbist_full_inst
+  if {[get_icl_scope] != {}} {
+      regsub ^[get_icl_scope]\\. $lbist_full_inst {} lbist_inst
+      regsub ^[get_icl_scope]\\. $single_chain_mode_logic_inst {} single_chain_mode_logic_inst
+  }
+  
+  iNote "Setting up controller $lbist_full_inst"
+  iWrite $lbist_inst.bist_clock_disable 0b1
+  iApply
+  
+  # Access LongSetup register
+  iTake $lbist_inst.bist_en
+  iWrite $lbist_inst.bist_en            0b1
+  iApply
+  iWrite $lbist_inst.bist_setup         LongSetup
+  iWrite $lbist_inst.lbist_burn_in_reg  0b1
+  iWrite $lbist_inst.shift_clock_select $shift_clock_select
+  iWrite $lbist_inst.lbist_low_power_shift_en_reg $lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)
+  iApply
+  iWrite $lbist_inst.bist_clock_disable 0b0
+  iApply
+  
+  # Load the LongSetup register
+  dict for { block_num block_dict } $edt_blocks_dict {
+      set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+      set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+      iNote "tessent_pragma iWriteVar ${edt_icl_inst}.lfsm_vec${tessent_pragma_suffix} ${edt_icl_inst}.lfsm_vec"
+      iWrite ${edt_icl_inst}.lfsm_vec       $lbist_data(${hw_leaf_inst}.lfsm_vec,seed)
+      foreach reg {lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+          if {[dict exists $block_dict registers $reg]} {
+              iWrite ${edt_icl_inst}.${reg}         $lbist_data(${hw_leaf_inst}.${reg},init_value)
+          }
+      }
+      if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} {
+          iNote "tessent_pragma iWriteVar ${edt_icl_inst}.lbist_lp_mask_shift_reg${tessent_pragma_suffix} ${edt_icl_inst}.lbist_lp_mask_shift_reg"
+          iWrite ${edt_icl_inst}.lbist_lp_mask_shift_reg $lbist_data(${hw_leaf_inst}.lbist_lp_mask_shift_reg,seed)
+      }
+      iWrite ${edt_icl_inst}.bist_chain_mask $lbist_data(${hw_leaf_inst}.chain_mask,init_value)
+      iWrite ${edt_icl_inst}.bist_chain_mask_load_en $lbist_data(${hw_leaf_inst}.chain_mask,load_en)
+      dict for {misr_name content_dict} [dict get $block_dict misrs] {
+          iNote "tessent_pragma iWriteVar ${edt_icl_inst}.${misr_name}_setup${tessent_pragma_suffix} ${edt_icl_inst}.${misr_name}"
+          iWrite ${edt_icl_inst}.${misr_name}   $lbist_data(${hw_leaf_inst}.${misr_name},seed)
+      }
+  }
+  iWrite $lbist_inst.capture_phase_size 0x[format %X $lbist_data(piccpu_rtl2_tessent_lbist_i.capture_phase_size,init_value)]
+  iNote "tessent_pragma iWriteVar ${lbist_inst}.warmup_pattern_cnt${tessent_pragma_suffix} ${lbist_inst}.warmup_pattern_cnt"
+  binary scan [binary format I [expr $pattern_cnt - 1] ] B* warmup_pattern_count_val
+  set warmup_pattern_count_val "0b[string range $warmup_pattern_count_val [expr [string length $warmup_pattern_count_val] - 10]  [expr [string length $warmup_pattern_count_val] - 1]]"
+  iWrite $lbist_inst.warmup_pattern_cnt $warmup_pattern_count_val
+  iWrite $lbist_inst.bit_cnt_max        $lbist_data(piccpu_rtl2_tessent_lbist_i.bit_cnt_max,init_value)
+  iNote "tessent_pragma iWriteVar ${lbist_inst}.vector_cnt${tessent_pragma_suffix} ${lbist_inst}.vector_cnt"
+  iWrite $lbist_inst.vector_cnt         0x[format %X $pattern_cnt]
+  iNote "tessent_pragma iWriteVar ${lbist_inst}.ncp_cnt${tessent_pragma_suffix} ${lbist_inst}.ncp_cnt"
+  iWrite $lbist_inst.ncp_cnt            [expr 0 % $lbist_data(piccpu_rtl2_tessent_lbist_i.ncp_cnt,repeat_interval)]
+  set ncp_val 0x0
+  if {[info exists lbist_data(ncp_0,init_stop_value)] && $lbist_data(ncp_0,init_stop_value) > 0} {
+      set ncp_val $lbist_data(ncp_0,init_stop_value)
+  }
+  iWrite $lbist_inst.ncp_0_limit        $ncp_val ; # ncp1
+  set ncp_val 0x0
+  if {[info exists lbist_data(ncp_1,init_stop_value)] && $lbist_data(ncp_1,init_stop_value) > 0} {
+      set ncp_val $lbist_data(ncp_1,init_stop_value)
+  }
+  iWrite $lbist_inst.ncp_1_limit        $ncp_val ; # ncp2
+  set ncp_val 0x0
+  if {[info exists lbist_data(ncp_2,init_stop_value)] && $lbist_data(ncp_2,init_stop_value) > 0} {
+      set ncp_val $lbist_data(ncp_2,init_stop_value)
+  }
+  iWrite $lbist_inst.ncp_2_limit        $ncp_val ; # ncp3
+  set ncp_val 0x0
+  if {[info exists lbist_data(ncp_3,init_stop_value)] && $lbist_data(ncp_3,init_stop_value) > 0} {
+      set ncp_val $lbist_data(ncp_3,init_stop_value)
+  }
+  iWrite $lbist_inst.ncp_3_limit        $ncp_val ; # ncp4
+  iApply
+  
+  #######
+  # Run #
+  #######
+  
+  iNote "Starting controller $lbist_full_inst in burn-in mode";
+  iWrite $lbist_inst.bist_clock_disable 0b1
+  iApply
+  
+  iNote "    Checking that the controller $lbist_full_inst DONE signal is NO at the beginning of the test";
+  iNote "tessent_pragma iReadVar $lbist_inst.bist_done_start${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+  iNote "tessent_pragma optional_iRead"
+  iRead  $lbist_inst.bist_done          No
+  iWrite $lbist_inst.bist_setup         NormalLogicBist
+  iApply
+  
+  iWrite $lbist_inst.bist_clock_disable 0b0
+  iApply
+  
+  iRunLoop -time $burn_in_time
+  
+  iRelease $lbist_inst.bist_en
+  iNote "Test Complete for controller $lbist_full_inst";
+  iWrite $lbist_inst.bist_en            0b0
+  iWrite $lbist_inst.bist_setup         Idle
+  iWrite $lbist_inst.lbist_burn_in_reg  0b0
+  iWrite $lbist_inst.lbist_low_power_shift_en_reg 0b0
+  iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+  iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+  iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+  iApply
+}
+
+iProc lbist_setup_and_clock_verification {
+    {clock_select {shift_clock_src}}
+    {mode_name {lbist}}
+    {one_pattern_per_ncp {0}}
+    {teststep_name {}}
+    {pattern_id {}}
+    {test_time_multiplier {1}}
+} {  
+    # Find how many NCPs there are
+  # Foreach NCP do 'iCall run_lbist_normal' for one pattern
+  #   add new argument to disable misr compares
+  if {[get_icl_scope -iCall] eq ""} {
+    set iprocsModule [get_single_name [get_current_design -icl]]
+  } else {
+    set iprocsModule [get_single_name [get_icl_modules -of_instances [get_icl_scope -iCall]]]
+  }
+  array set lbist_ncp_data [get_logic_bist_pattern_data -design_name $iprocsModule -mode_name $mode_name -pattern_id $pattern_id -sim_monitor off]
+  if {![info exists lbist_ncp_data(ncpsDict)]} {
+      display_message -error "NCP data could not be extracted from the patdb and TCD. Make sure that a patdb for scan patterns, not chain test, is loaded for the mode '$mode_name'."
+      return -code error
+  } elseif {![info exists lbist_ncp_data(ncpsDict)] || [llength $lbist_ncp_data(ncpsDict)] == 0} {
+      display_message -error "Cannot perform NCP test because no NCPs were found in the patdb. Make sure that a patdb for scan patterns, not chain test, is loaded for the mode '$mode_name'."
+      return -code error
+  } elseif {!$one_pattern_per_ncp} {
+      iNote "Applying 256 patterns to test the full NCP range"
+      iCall run_lbist_normal $clock_select 0 255 $mode_name 0 1 setup_and_clock_verify $teststep_name $pattern_id $test_time_multiplier setup_run_check "none"
+  } else {
+      dict for {name pat} $lbist_ncp_data(ncpsDict) {
+          set teststep_name_arg ""
+          if {$teststep_name ne ""} {
+              append teststep_name_arg "${teststep_name}_"
+          }
+          append teststep_name_arg "ncp_${name}"
+          iNote "Applying pattern to test NCP '$name'"
+          iCall run_lbist_normal $clock_select $pat $pat $mode_name 0 1 setup_and_clock_verify $teststep_name_arg $pattern_id $test_time_multiplier setup_run_check "none"
+      }
+  }
+}
+
+iProc piccpu_rtl1_tessent_mbist_c1_controller_HWDefault {
+    {controller_instance {}}
+    {bap_instance {}}
+    {config_path {}}
+    {memory_instances {}}
+    {clock_source {tck}}
+    {parallel_retention_time {0}}
+    {run_time_override {0}}
+    {run_length {100}}
+    {compare_go {Yes}}
+    {run_phases {all}}
+    {reduced_address_count {Off}}
+    {memory_reset {off}}
+    {persistent_bist_inputs {off}}
+    {disable_go_id_feedback {off}}
+    {strobe_count {}}
+    {retention_test_phase {all_phases}}
+    {check_repair_status {No}}
+    {compare_memory_go {No}}
+    {compare_go_id {No}}
+} {  
+    set short_chain_const_registers_dict [dict create]
+  if {"all" in $run_phases || "setup" in $run_phases } {
+  # [start] : Setup Phase {{{
+      if { $bap_instance ne "" } {
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr ignore
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr_bypass_sib_inst 0bx
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.ctl_group_sib 0bx
+        iWrite ${bap_instance}.BIST_ASYNC_RESET_tdr 0b1
+        iTake ${bap_instance}.BIST_ASYNC_RESET_tdr
+      }
+        iTake ${controller_instance}.MBISTPG_EN 
+        iWrite ${controller_instance}.MBISTPG_EN 0 
+        iTake ${controller_instance}.BIST_SETUP[1] 
+        iWrite ${controller_instance}.BIST_SETUP[1] 0
+      set icl_instance_path [get_icl_scope -iCall]
+      if { $icl_instance_path ne "" } {
+         append icl_instance_path "."
+      }
+      set ctl_mod_name [get_single_attribute_value [get_icl_instances [list ${icl_instance_path}$controller_instance]] -name master_module_name]
+      set tcd_path [get_config_elements -partition tcd Core($ctl_mod_name)/MemoryBistController -silent]
+      # Clock errors are caught when the 'iClock' is issued, which is done prior to invoking this iProc.
+      if { [catch_output {set clockPeriod [get_iclock_option ${icl_instance_path}${controller_instance}.BIST_CLK -period -in ns]} ] || $clockPeriod eq "" } {
+        return
+      }
+      set tcd_dict [dict create Controller [dict create] Interface [dict create]]
+      foreach_in_collection mem_collar_obj [get_config_elements MemoryCollar -in $tcd_path -silent] {
+        set mem_id [get_config_value -id memory_collar_id $mem_collar_obj]
+        dict set tcd_dict Interface $mem_id [dict create]
+        if { [sizeof_collection [get_config_elements -in $mem_collar_obj PortCounter/Comparator -silent]] > 0 } {
+          dict set tcd_dict Interface $mem_id comparator_location "interface"
+        } else {
+          dict set tcd_dict Interface $mem_id comparator_location "controller"
+        }
+      }
+        iNote "Setting up MemoryBist controller $controller_instance"
+        iNote  "Releasing asynchronous reset"
+        iWrite ${controller_instance}.MBISTPG_ASYNC_RESETN 1
+        iTake ${controller_instance}.MBISTPG_ASYNC_RESETN 
+        iApply
+        iWrite ${controller_instance}.BIST_SETUP[0] 0
+        iWrite ${controller_instance}.LV_TM 0
+      if { $reduced_address_count } {
+        iNote "Enabling reduced address simulation"
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN Off
+      }
+      if { $memory_reset } {
+        iNote "Enabling memory reset mode (writing zeros to all memory locations)"
+        iWrite ${controller_instance}.MBISTPG_MEM_RST On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_MEM_RST Off 
+      }
+      if { $persistent_bist_inputs } {
+        iNote "Maintaining BIST inputs to the memory"
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT Off 
+      }
+      if { $disable_go_id_feedback } {
+        iNote "Enabling diagnosis mode (GO_ID signals converted into compare status signals)"
+        iWrite ${controller_instance}.MBISTPG_DIAG_EN 0b1
+      } else {
+        iWrite ${controller_instance}.MBISTPG_DIAG_EN 0b0
+      }
+      if { [regexp -nocase {start_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Start to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b01
+      } elseif { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b10
+      } elseif { [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to End"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b11
+      } else { 
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b00
+      }
+      iRelease ${controller_instance}.BIST_SETUP[1]
+      iApply
+  # [end]   : Setup Phase }}}
+  }
+      set apply_run_phase yes
+    if { $apply_run_phase } {
+  # [start] : Init Phase {{{
+  if {"all" in $run_phases || "init" in $run_phases } {
+      iTake ${controller_instance}.BIST_SETUP[1]
+      iWrite ${controller_instance}.BIST_SETUP[1] 1
+      iWrite ${controller_instance}.RUN_MODE HWDefault
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Init Phase }}}
+  # [start] : Start Phase {{{
+  if {"all" in $run_phases || "start" in $run_phases } {
+      set check_go_pre_exec 1
+      set check_done_pre_exec 1
+      if { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] || [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        set check_go_pre_exec 0
+        set check_done_pre_exec 0
+      }
+      if { $check_go_pre_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is FAIL before execution"
+          iNote "tessent_pragma optional_iRead"
+          iRead ${controller_instance}.MBISTPG_GO Fail
+        }
+      }
+      if { $check_done_pre_exec } {
+        iNote "Checking DONE is FAIL before execution"
+        iNote "tessent_pragma optional_iRead"
+        iRead ${controller_instance}.MBISTPG_DONE Fail
+      }
+      iTake ${controller_instance}.MBISTPG_EN -persistent
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iNote "Starting MemoryBist controller execution : ${controller_instance}"
+      if { $bap_instance ne "" } {
+        iWrite ${bap_instance}.ChainBypassMode 1
+        iTake ${bap_instance}.ChainBypassMode
+      }
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Start Phase }}}
+  # [start] : Release Phase {{{
+  if {"release" in $run_phases} {
+    iRelease ${controller_instance}.MBISTPG_EN
+  }
+  # [end]   : Release Phase }}}
+  # [start] : Execute Phase {{{
+  if {"all" in $run_phases || "execute" in $run_phases } {
+      iEvent piccpu_rtl1_tessent_mbist_c1_controller_start_execution
+      if { "execute" in $run_phases } {
+        iTake ${controller_instance}.MBISTPG_EN
+        iWrite ${controller_instance}.MBISTPG_EN 1 -ignore_when_value_already_present "on"
+        iTake ${controller_instance}.BIST_SETUP[1]
+        iWrite ${controller_instance}.BIST_SETUP[1] 1 -ignore_when_value_already_present "on"
+        if { $bap_instance ne "" } {
+          iWrite ${bap_instance}.ChainBypassMode 1 -ignore_when_value_already_present "on"
+          iTake ${bap_instance}.ChainBypassMode
+        }
+        iApply
+      }
+      if {$clock_source eq "tck"} {
+        iRunLoop [expr $run_length+5] -tck
+      } else {
+        iRunLoop [expr $run_length+5] -sck ${controller_instance}.BIST_CLK
+      }
+  }
+  # [end]   : Execute Phase }}}
+  # [start] : Stop Phase {{{
+  if {"all" in $run_phases || "stop" in $run_phases } {
+      set check_go_post_exec 1
+      set check_done_post_exec 1
+      if { $check_go_post_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is PASS after execution completion"
+          iRead ${controller_instance}.MBISTPG_GO Pass
+        }
+      }
+      if { $check_done_post_exec } {
+        iNote "Checking DONE is PASS after execution completion"
+        iRead ${controller_instance}.MBISTPG_DONE Pass
+      }
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iEvent piccpu_rtl1_tessent_mbist_c1_controller_stop_execution
+      iApply
+      if { $bap_instance ne "" } {
+        iRelease ${bap_instance}.ChainBypassMode
+      }
+      iRelease ${controller_instance}.MBISTPG_EN
+      iRelease ${controller_instance}.BIST_SETUP[1]
+  }
+  # [end]   : Stop Phase }}}
+    }
+  # [start] : Compare Phase {{{
+  if {"all" in $run_phases || "compare" in $run_phases } {
+    set do_compare_phase [getenv TESSENT_MEMORY_BIST_FORCE_COMPARE_PHASE -boolean_default no]
+    if { $compare_go_id } {
+      set do_compare_phase yes
+    }
+    if { [string match -nocase {non_repairable} $check_repair_status] || $check_repair_status} {
+      set do_compare_phase yes
+    }
+    if { $compare_memory_go } {
+      set do_compare_phase yes
+    }
+    if {$strobe_count ne ""} {
+      set do_compare_phase yes
+    }
+    iWrite ${controller_instance}.RUN_MODE Idle
+    iRelease ${controller_instance}.FL_CNT_MODE
+    if { $do_compare_phase } {
+      iRead ${controller_instance}.MBISTPG_GO Ignore
+      iRead ${controller_instance}.MBISTPG_DONE Ignore
+      iApply
+      iTake ${controller_instance}.MBISTPG_EN
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iApply
+      if { [regexp -nocase {non.*repairable} $check_repair_status] } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+      } elseif { $check_repair_status } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+      }
+      if { $compare_memory_go} {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+      }
+      if { $compare_go_id } {
+        dict for {reg_name reg_value} $short_chain_const_registers_dict {
+          iRead $reg_name $reg_value
+        }
+  
+        iNote "Checking GO_ID bits are PASS"
+        if { [dict exists $memory_instances m1] } {
+          iNote "tessent_pragma iReadVar [dict get $memory_instances m1].GO_ID_REG [dict get $memory_instances m1].GO_ID_REG"
+          iRead [dict get $memory_instances m1].GO_ID_REG 0b0
+        }
+      }
+          if {$strobe_count ne ""} {
+            iNote "Comparing strobe count"
+            iRead ${controller_instance}.STOP_ERROR_CNT_REG $strobe_count
+          } 
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iApply
+    }
+  }
+  # [end]   : Compare Phase }}}
+  # [start] : Shutdown Phase {{{
+  if {"all" in $run_phases || "shutdown" in $run_phases } {
+    iRelease ${controller_instance}.MBISTPG_EN
+    iRunLoop 1 -tck
+    iApply
+  }
+  # [end]   : Shutdown Phase }}}
+}
+
+iProc piccpu_rtl1_tessent_mbist_c1_controller_IncFailureLimit {
+    {controller_instance {}}
+    {bap_instance {}}
+    {config_path {}}
+    {memory_instances {}}
+    {clock_source {tck}}
+    {increment_failure_limit {off}}
+} {  
+    if { $bap_instance ne "" } {
+    iNote "tessent_pragma optional_iRead"
+    iRead ${bap_instance}.tdr ignore
+    iNote "tessent_pragma optional_iRead"
+    iRead ${bap_instance}.tdr_bypass_sib_inst 0bx
+    iNote "tessent_pragma optional_iRead"
+    iRead ${bap_instance}.ctl_group_sib 0bx
+    iWrite ${bap_instance}.BIST_ASYNC_RESET_tdr 0b1
+    iTake ${bap_instance}.BIST_ASYNC_RESET_tdr
+  }
+    iTake ${controller_instance}.MBISTPG_EN 
+    iWrite ${controller_instance}.MBISTPG_EN 0 
+    iTake ${controller_instance}.BIST_SETUP[1] 
+    iWrite ${controller_instance}.BIST_SETUP[1] 0
+    iApply
+  set icl_instance_path [get_icl_scope -iCall]
+  if { $icl_instance_path ne "" } {
+     append icl_instance_path "."
+  }
+  set ctl_mod_name [get_single_attribute_value [get_icl_instances [list ${icl_instance_path}$controller_instance]] -name master_module_name]
+  set tcd_path [get_config_elements -partition tcd Core($ctl_mod_name)/MemoryBistController -silent]
+  # Clock errors are caught when the 'iClock' is issued, which is done prior to invoking this iProc.
+  if { [catch_output {set clockPeriod [get_iclock_option ${icl_instance_path}${controller_instance}.BIST_CLK -period -in ns]} ] || $clockPeriod eq "" } {
+    return
+  }
+    if { $increment_failure_limit } {
+      iNote "Incrementing failure limit counter"
+      iWrite ${controller_instance}.MBISTPG_EN  1
+      iWrite ${controller_instance}.FL_CNT_MODE 0b10
+      iApply
+    }
+    iWrite ${controller_instance}.MBISTPG_EN  0
+    iWrite ${controller_instance}.FL_CNT_MODE 0b00 
+    iApply
+}
+
+iProc piccpu_rtl1_tessent_mbist_c1_controller_RunTimeProg {
+    {controller_instance {}}
+    {bap_instance {}}
+    {config_path {}}
+    {memory_instances {}}
+    {clock_source {tck}}
+    {parallel_retention_time {0}}
+    {run_time_override {0}}
+    {run_length {100}}
+    {compare_go {Yes}}
+    {run_phases {all}}
+    {reduced_address_count {Off}}
+    algo_reg_val
+    algorithm
+    address_generator
+    data_generator
+    {memory_reset {off}}
+    {persistent_bist_inputs {off}}
+    operation_set
+    {disable_go_id_feedback {off}}
+    {failure_limit {0}}
+    {strobe_count {}}
+    enable_memory_list
+    {data_compare_time_slots {all}}
+    {retention_test_phase {all_phases}}
+    {extract_diagnosis_data {auto}}
+    {check_repair_status {No}}
+    {compare_memory_go {No}}
+    {compare_cmp_stat {off}}
+    {compare_go_id {No}}
+} {  
+    set short_chain_const_registers_dict [dict create]
+  # [start] : Setup Phase {{{
+  if {"all" in $run_phases || "setup" in $run_phases } {
+      if { $bap_instance ne "" } {
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr ignore
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.tdr_bypass_sib_inst 0bx
+        iNote "tessent_pragma optional_iRead"
+        iRead ${bap_instance}.ctl_group_sib 0bx
+        iWrite ${bap_instance}.BIST_ASYNC_RESET_tdr 0b1
+        iTake ${bap_instance}.BIST_ASYNC_RESET_tdr
+      }
+        iTake ${controller_instance}.MBISTPG_EN 
+        iWrite ${controller_instance}.MBISTPG_EN 0 
+        iTake ${controller_instance}.BIST_SETUP[1] 
+        iWrite ${controller_instance}.BIST_SETUP[1] 0
+      set icl_instance_path [get_icl_scope -iCall]
+      if { $icl_instance_path ne "" } {
+         append icl_instance_path "."
+      }
+      set ctl_mod_name [get_single_attribute_value [get_icl_instances [list ${icl_instance_path}$controller_instance]] -name master_module_name]
+      set tcd_path [get_config_elements -partition tcd Core($ctl_mod_name)/MemoryBistController -silent]
+      # Clock errors are caught when the 'iClock' is issued, which is done prior to invoking this iProc.
+      if { [catch_output {set clockPeriod [get_iclock_option ${icl_instance_path}${controller_instance}.BIST_CLK -period -in ns]} ] || $clockPeriod eq "" } {
+        return
+      }
+      set tcd_dict [dict create Controller [dict create] Interface [dict create]]
+      foreach_in_collection mem_collar_obj [get_config_elements MemoryCollar -in $tcd_path -silent] {
+        set mem_id [get_config_value -id memory_collar_id $mem_collar_obj]
+        dict set tcd_dict Interface $mem_id [dict create]
+        if { [sizeof_collection [get_config_elements -in $mem_collar_obj PortCounter/Comparator -silent]] > 0 } {
+          dict set tcd_dict Interface $mem_id comparator_location "interface"
+        } else {
+          dict set tcd_dict Interface $mem_id comparator_location "controller"
+        }
+      }
+        iNote "Setting up MemoryBist controller $controller_instance"
+        iNote  "Releasing asynchronous reset"
+        iWrite ${controller_instance}.MBISTPG_ASYNC_RESETN 1
+        iTake ${controller_instance}.MBISTPG_ASYNC_RESETN 
+        iApply
+        iWrite ${controller_instance}.BIST_SETUP[0] 0
+        iWrite ${controller_instance}.LV_TM 0
+        iWrite ${controller_instance}.MBISTPG_EN 1
+        iApply
+        if { $clock_source eq "tck" } {
+        iRunLoop 2 -tck
+        } 
+      if { $reduced_address_count } {
+        iNote "Enabling reduced address simulation"
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_REDUCED_ADDR_CNT_EN Off
+      }
+      set common_algo Off
+      set algo_code 0b0
+      set microcode_en 0b0 
+      if { $algorithm ne "" } {
+        dict set DefaultAlgo smarchchkb {0b0}
+        set algorithm_l [string tolower ${algorithm}]
+        if { [dict exists $DefaultAlgo ${algorithm_l}] } {
+          iNote "Selecting algorithm ${algorithm}"
+          set algo_code [dict get $DefaultAlgo ${algorithm_l}]
+        } else {
+          add_config_message -error -display -config_object $config_path "Invalid algorithm specified : ${algorithm}. The allowed algorithms are [dict keys ${DefaultAlgo}]"
+          return -code error
+        }
+        set common_algo On
+      } else {
+        dict set StepAlgo 0 {0b0}
+      }
+      iWrite ${controller_instance}.ALGO_SEL_CNT_REG $common_algo
+      dict set short_chain_const_registers_dict ${controller_instance}.ALGO_SEL_CNT_REG $common_algo
+      if { [dict exists $address_generator load_row_address_a] } {
+         iWrite ${controller_instance}.A_ADD_REG_X 0b[dict get $address_generator load_row_address_a]
+      } else {
+         iWrite ${controller_instance}.A_ADD_REG_X 0b0
+      }
+      if { [dict exists $address_generator load_row_address_b] } {
+         iWrite ${controller_instance}.B_ADD_REG_X 0b[dict get $address_generator load_row_address_b]
+      } else {
+         iWrite ${controller_instance}.B_ADD_REG_X 0b0
+      }
+      if { [dict exists $data_generator load_expect_data] } {
+         iWrite ${controller_instance}.EDATA_REG 0b[dict get $data_generator load_expect_data]
+         if {[regexp {ADDR_BIT_SEL} EDATA_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.EDATA_REG 0b[dict get $data_generator load_expect_data] 
+         }
+      } else {
+         iWrite ${controller_instance}.EDATA_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} EDATA_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.EDATA_REG 0b0 
+           }
+         } 
+      }
+      if { [dict exists $data_generator load_write_data] } {
+         iWrite ${controller_instance}.WDATA_REG 0b[dict get $data_generator load_write_data]
+         if {[regexp {ADDR_BIT_SEL} WDATA_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.WDATA_REG 0b[dict get $data_generator load_write_data] 
+         }
+      } else {
+         iWrite ${controller_instance}.WDATA_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} WDATA_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.WDATA_REG 0b0 
+           }
+         } 
+      }
+      if { [dict exists $data_generator invert_data_with_row_bit] } {
+         iWrite ${controller_instance}.X_ADDR_BIT_SEL_REG 0b[dict get $data_generator invert_data_with_row_bit]
+         if {[regexp {ADDR_BIT_SEL} X_ADDR_BIT_SEL_REG]} {
+           dict set short_chain_const_registers_dict ${controller_instance}.X_ADDR_BIT_SEL_REG 0b[dict get $data_generator invert_data_with_row_bit] 
+         }
+      } else {
+         iWrite ${controller_instance}.X_ADDR_BIT_SEL_REG 0b0
+         if {$data_generator ne ""} {  
+           if {[regexp {ADDR_BIT_SEL} X_ADDR_BIT_SEL_REG]} {
+             dict set short_chain_const_registers_dict ${controller_instance}.X_ADDR_BIT_SEL_REG 0b0 
+           }
+         } 
+      }
+      if {$data_generator ne ""} {
+         iWrite ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b1
+         dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b1
+      } else { 
+         iWrite ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b0
+         dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_DATA_PAT_REG 0b0
+      }
+      if { $memory_reset } {
+        iNote "Enabling memory reset mode (writing zeros to all memory locations)"
+        iWrite ${controller_instance}.MBISTPG_MEM_RST On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_MEM_RST Off 
+      }
+      if { $persistent_bist_inputs } {
+        iNote "Maintaining BIST inputs to the memory"
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT On
+      } else {
+        iWrite ${controller_instance}.MBISTPG_TESTDATA_SELECT Off 
+      }
+      if { $operation_set ne "" } {
+        dict set opsetList sync {0b0}
+        set operationSet [string tolower ${operation_set}]
+        if { [dict exists $opsetList ${operationSet}] } {
+          iNote "Selecting operation set ${operation_set}"
+          iWrite ${controller_instance}.OPSET_SELECT_REG [dict get $opsetList ${operationSet}]
+          iWrite ${controller_instance}.SELECT_COMMON_OPSET_REG 0b1
+          dict set short_chain_const_registers_dict ${controller_instance}.OPSET_SELECT_REG [dict get $opsetList ${operationSet}]
+          dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_OPSET_REG 0b1 
+        } else {
+            add_config_message -display -error -config_object $config_path "Invalid operation_set specified : ${operationSet}. The available operation_sets are [dict keys ${opsetList}]"
+            return -code error
+        }
+      } else {
+        dict set opsetList 0 {0b0}
+        iWrite ${controller_instance}.OPSET_SELECT_REG [dict get $opsetList 0]
+        iWrite ${controller_instance}.SELECT_COMMON_OPSET_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.SELECT_COMMON_OPSET_REG 0b0 
+      }
+      if { $disable_go_id_feedback } {
+        iNote "Enabling diagnosis mode (GO_ID signals converted into compare status signals)"
+        iWrite ${controller_instance}.DIAG_EN_REG 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.DIAG_EN_REG 0b1 
+      } else {
+        iWrite ${controller_instance}.DIAG_EN_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.DIAG_EN_REG 0b0 
+      }
+      if { [string match -nocase "auto*" $failure_limit] } {
+        iTake ${controller_instance}.FL_CNT_MODE
+        iWrite ${controller_instance}.FL_CNT_MODE 0b00
+        iWrite ${controller_instance}.STOP_ON_ERROR_REG 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.STOP_ON_ERROR_REG 0b1 
+      } elseif { $failure_limit > 0 } {
+        iNote "Enabling stop-on-nth-error diagnosis"
+        set failureLimit [expr $failure_limit-1]
+        iNote "Loading error counter with value $failureLimit"
+        iWrite ${controller_instance}.STOP_ON_ERROR_REG 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.STOP_ON_ERROR_REG 0b1 
+        iWrite ${controller_instance}.STOP_ERROR_CNT_REG $failureLimit
+        iTake ${controller_instance}.FL_CNT_MODE
+        iWrite ${controller_instance}.FL_CNT_MODE 0b00
+      } else {
+        iWrite ${controller_instance}.STOP_ON_ERROR_REG 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.STOP_ON_ERROR_REG 0b0 
+      }
+      iWrite ${controller_instance}.FREEZE_STOP_ERROR_REG 0b0
+      dict set memoryIndexList m1 ${controller_instance}.MEM_SELECT_REG0 
+      if { [llength $enable_memory_list] > 0 } {
+        dict set regSelDisableList ${controller_instance}.MEM_SELECT_REG0 0
+      } else {
+        dict set regSelDisableList ${controller_instance}.MEM_SELECT_REG0 1 
+      }  
+      foreach memInst $enable_memory_list  {
+        set memInstL [string tolower $memInst]
+        if { [dict exists $memoryIndexList $memInstL] } {
+          dict set regSelDisableList [dict get ${memoryIndexList} $memInstL] 1
+          iNote "Enabling memory instance $memInstL from memory test"
+        }
+      }
+      foreach {regi valuei} $regSelDisableList {
+         iWrite $regi 0b$valuei
+         dict set short_chain_const_registers_dict $regi 0b$valuei 
+      }
+      if { [string match -nocase $data_compare_time_slots "ALL"] } {
+        iWrite ${controller_instance}.CMP_EN_MASK_EN 0b0
+        dict set short_chain_const_registers_dict ${controller_instance}.CMP_EN_MASK_EN 0b0 
+      } else {
+        iWrite ${controller_instance}.CMP_EN_MASK_EN 0b1
+        dict set short_chain_const_registers_dict ${controller_instance}.CMP_EN_MASK_EN 0b1 
+        if { [string match -nocase $data_compare_time_slots "EVEN"] } {
+           iNote "Enabling even StrobeDataOut compares"
+           iWrite ${controller_instance}.CMP_EN_PARITY 0b1
+        } else {
+           iNote "Enabling odd StrobeDataOut compares"
+           iWrite ${controller_instance}.CMP_EN_PARITY 0b0
+        }
+      }
+      if { [regexp -nocase {start_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Start to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b01
+      } elseif { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to Pause"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b10
+      } elseif { [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        iNote "Enabling parallel retention test : Pause to End"
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b11
+      } else { 
+        iWrite ${controller_instance}.MBISTPG_ALGO_MODE 0b00
+      }
+      iWrite ${controller_instance}.BIST_SETUP[0] 1
+      iWrite ${controller_instance}.MBISTPG_EN 0 
+        iApply
+        iRunLoop 1 -tck
+      iRelease ${controller_instance}.MBISTPG_EN
+  }
+  # [end]   : Setup Phase }}}
+  # [start] : Init Phase {{{
+  if {"all" in $run_phases || "init" in $run_phases } {
+      iTake ${controller_instance}.BIST_SETUP[1]
+      iWrite ${controller_instance}.BIST_SETUP[1] 1
+      if { [string match -nocase "auto*" $failure_limit] } {
+        iNote "Loading error counter from failure limit counter"
+        iWrite ${controller_instance}.FL_CNT_MODE 0b01
+      }
+      iWrite ${controller_instance}.RUN_MODE RunTimeProg
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Init Phase }}}
+  # [start] : Start Phase {{{
+  if {"all" in $run_phases || "start" in $run_phases } {
+      set check_go_pre_exec 1
+      set check_done_pre_exec 1
+      if { [regexp -nocase {pause_?to_?pause} $retention_test_phase ] || [regexp -nocase {pause_?to_?end} $retention_test_phase ] } {
+        set check_go_pre_exec 0
+        set check_done_pre_exec 0
+      }
+      if { $check_go_pre_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is FAIL before execution"
+          iNote "tessent_pragma optional_iRead"
+          iRead ${controller_instance}.MBISTPG_GO Fail
+        }
+      }
+      if { $check_done_pre_exec } {
+        iNote "Checking DONE is FAIL before execution"
+        iNote "tessent_pragma optional_iRead"
+        iRead ${controller_instance}.MBISTPG_DONE Fail
+      }
+      iTake ${controller_instance}.MBISTPG_EN -persistent
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iNote "Starting MemoryBist controller execution : ${controller_instance}"
+      if { $bap_instance ne "" } {
+        iWrite ${bap_instance}.ChainBypassMode 1
+        iTake ${bap_instance}.ChainBypassMode
+      }
+      iApply
+      iRunLoop 1 -tck
+  }
+  # [end]   : Start Phase }}}
+  # [start] : Release Phase {{{
+  if {"release" in $run_phases} {
+    iRelease ${controller_instance}.MBISTPG_EN
+  }
+  # [end]   : Release Phase }}}
+  # [start] : Execute Phase {{{
+  if {"all" in $run_phases || "execute" in $run_phases } {
+      iEvent piccpu_rtl1_tessent_mbist_c1_controller_start_execution
+      if { "execute" in $run_phases } {
+        iTake ${controller_instance}.MBISTPG_EN
+        iWrite ${controller_instance}.MBISTPG_EN 1 -ignore_when_value_already_present "on"
+        iTake ${controller_instance}.BIST_SETUP[1]
+        iWrite ${controller_instance}.BIST_SETUP[1] 1 -ignore_when_value_already_present "on"
+        if { $bap_instance ne "" } {
+          iWrite ${bap_instance}.ChainBypassMode 1 -ignore_when_value_already_present "on"
+          iTake ${bap_instance}.ChainBypassMode
+        }
+        iApply
+      }
+      if {$clock_source eq "tck"} {
+        iRunLoop [expr $run_length+5] -tck
+      } else {
+        iRunLoop [expr $run_length+5] -sck ${controller_instance}.BIST_CLK
+      }
+  }
+  # [end]   : Execute Phase }}}
+  # [start] : Stop Phase {{{
+  if {"all" in $run_phases || "stop" in $run_phases } {
+      set check_go_post_exec 1
+      set check_done_post_exec 1
+      if { $check_go_post_exec } {
+        if { $compare_go } {
+          iNote "Checking GO is PASS after execution completion"
+          iRead ${controller_instance}.MBISTPG_GO Pass
+        }
+      }
+      if { $check_done_post_exec } {
+        iNote "Checking DONE is PASS after execution completion"
+        iRead ${controller_instance}.MBISTPG_DONE Pass
+      }
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iEvent piccpu_rtl1_tessent_mbist_c1_controller_stop_execution
+      iApply
+      if { $bap_instance ne "" } {
+        iRelease ${bap_instance}.ChainBypassMode
+      }
+      iRelease ${controller_instance}.MBISTPG_EN
+      iRelease ${controller_instance}.BIST_SETUP[1]
+  }
+  # [end]   : Stop Phase }}}
+  # [start] : Compare Phase {{{
+  if {"all" in $run_phases || "compare" in $run_phases } {
+    set do_compare_phase [getenv TESSENT_MEMORY_BIST_FORCE_COMPARE_PHASE -boolean_default no]
+    if { $compare_go_id } {
+      set do_compare_phase yes
+    }
+    if { [string match -nocase {non_repairable} $check_repair_status] || $check_repair_status} {
+      set do_compare_phase yes
+    }
+    if { $compare_memory_go } {
+      set do_compare_phase yes
+    }
+    if {$strobe_count ne ""} {
+      set do_compare_phase yes
+    }
+    iWrite ${controller_instance}.RUN_MODE Idle
+    iRelease ${controller_instance}.FL_CNT_MODE
+    if { [string match -nocase "auto*" $failure_limit] } {
+      iWrite ${controller_instance}.FL_CNT_MODE 0b00
+    }
+    if { $do_compare_phase } {
+      iRead ${controller_instance}.MBISTPG_GO Ignore
+      iRead ${controller_instance}.MBISTPG_DONE Ignore
+      iApply
+      iTake ${controller_instance}.MBISTPG_EN
+      iWrite ${controller_instance}.MBISTPG_EN 1
+      iApply
+      if { $extract_diagnosis_data } {
+         iNote "Sampling registers containing diagnosis data"
+         iNote "Sampling 3-bit Operation Cycle Counter"
+         iRead ${controller_instance}.JCNT 0b0
+         iNote "Sampling 5-bit Instruction Pointer"
+         iRead ${controller_instance}.INST_POINTER_REG 0b0
+         iNote "Sampling 2-bit RepeatLoop A Counter"
+         iRead ${controller_instance}.REPEATLOOP_A_CNTR_REG 0b0
+         iNote "Sampling 2-bit RepeatLoop B Counter"
+         iRead ${controller_instance}.REPEATLOOP_B_CNTR_REG 0b0
+         iNote "Sampling 7-bit X-Segment of Address Register A"
+         iRead ${controller_instance}.A_ADD_REG_X 0b0
+         iNote "Sampling 7-bit X-Segment of Address Register B"
+         iRead ${controller_instance}.B_ADD_REG_X 0b0
+         iNote "Sampling 12-bit Error Counter"
+         iRead ${controller_instance}.STOP_ERROR_CNT_REG 0b0
+      }
+      if { [regexp -nocase {non.*repairable} $check_repair_status] } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+      } elseif { $check_repair_status } {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+      }
+      if { $compare_memory_go} {
+         iRead [dict get $memory_instances m1].RA_STATUS_REG 0b0
+      }
+      if { $compare_go_id } {
+        dict for {reg_name reg_value} $short_chain_const_registers_dict {
+          iRead $reg_name $reg_value
+        }
+  
+        iNote "Checking GO_ID bits are PASS"
+        if { [dict exists $memory_instances m1] } {
+          iNote "tessent_pragma iReadVar [dict get $memory_instances m1].GO_ID_REG [dict get $memory_instances m1].GO_ID_REG"
+          iRead [dict get $memory_instances m1].GO_ID_REG 0b0
+        }
+      }
+          if {$strobe_count ne ""} {
+            iNote "Comparing strobe count"
+            iRead ${controller_instance}.STOP_ERROR_CNT_REG $strobe_count
+          } 
+      iWrite ${controller_instance}.MBISTPG_EN 0
+      iApply
+    }
+  }
+  # [end]   : Compare Phase }}}
+  # [start] : Shutdown Phase {{{
+  if {"all" in $run_phases || "shutdown" in $run_phases } {
+    iRelease ${controller_instance}.MBISTPG_EN
+    iRunLoop 1 -tck
+    iApply
+  }
+  # [end]   : Shutdown Phase }}}
+}
+
+iProc run_lbist_hw_default {
+    {mode_name {lbist}}
+    {sim_monitor {off}}
+    {teststep_name {}}
+    {pattern_id {}}
+    {test_time_multiplier {1}}
+} {  
+    switch -nocase $sim_monitor {
+      0           { set sim_monitor off }
+      setup_and_clock_verify          -
+      bist_registers_and_clock_verify -
+      monitor_scan_cells              -
+      off                             { }
+      default {
+          set msg    "Unrecognized value '$sim_monitor' for 'sim_monitor'\n"
+          append msg "argument for the iProc 'run_lbist_hw_default'. Legal values are:\n"
+          append msg "  (off) | bist_registers_and_clock_verify | setup_and_clock_verify | monitor_scan_cells."
+          display_message -error $msg
+          return -code error
+      }
+  }
+  
+  set tessent_pragma_suffix ""
+  if {$teststep_name ne ""} {
+      append tessent_pragma_suffix "_${teststep_name}"
+  }
+  
+  if {[get_icl_scope -iCall] eq ""} {
+    set iprocsModule [get_single_name [get_current_design -icl]]
+  } else {
+    set iprocsModule [get_single_name [get_icl_modules -of_instances [get_icl_scope -iCall]]]
+  }
+  array set lbist_data [get_logic_bist_pattern_data -design_name $iprocsModule -mode_name $mode_name -pattern_id $pattern_id -begin_pattern 0 -end_pattern 1023 -sim_monitor $sim_monitor]
+  
+  dict set edt_blocks_dict 0 {
+      hw_leaf_inst            piccpu_rtl2_tessent_edt_lbist_c0_i
+      block_name              piccpu
+      edt_module_name         piccpu_rtl2_tessent_edt_lbist_c0
+      edt_sib_module_name     piccpu_rtl2_tessent_edt_c0_sib
+      ext_mode                OFF
+      misrs {
+          misr {
+              default_value     0x000000
+          }
+      }
+      reset                   off
+      registers {
+          lbist_prpg_reg         0x1e0fe5c9
+          lbist_chain_mask_reg   0x3ff
+          lbist_lp_hold_reg      0b1111
+          lbist_lp_toggle_reg    0b1011
+          lbist_lp_switching_reg  0b1011
+          lbist_lp_mask_shift_reg 0x4fbb6fb3
+      }
+  }
+  # Validate that the TCD registers are in sync with the iProc
+  set registers_to_check {
+                             {piccpu_rtl2_tessent_lbist_i.capture_phase_size}
+                             {piccpu_rtl2_tessent_lbist_i.bit_cnt_max}
+                             {ncp_0}
+                             {ncp_1}
+                             {ncp_2}
+                             {ncp_3}
+                             {piccpu_rtl2_tessent_lbist_i.ncp_cnt}
+                             {piccpu_rtl2_tessent_lbist_i.warmup_pattern_cnt}
+                         }
+  dict for { block_num block_dict } $edt_blocks_dict {
+      if {[dict exists $block_dict lbist_low_power_shift_en]} {
+          lappend registers_to_check piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg
+          break
+      }
+  }
+  if {![info exists lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)]} {
+      set lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value) 0b0
+  }
+  dict for { block_num block_dict } $edt_blocks_dict {
+      set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+      lappend registers_to_check $hw_leaf_inst.chain_mask
+      lappend registers_to_check $hw_leaf_inst.lfsm_vec
+      dict for {misr_name content_dict} [dict get $block_dict misrs] {
+          lappend registers_to_check $hw_leaf_inst.${misr_name}
+      }
+      foreach reg {lbist_lp_mask_shift_reg lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+          if {[dict exists $block_dict registers $reg]} {
+              lappend registers_to_check $hw_leaf_inst.${reg}
+          }
+      }
+  }
+  array set tcd_registers {}
+  foreach r [array names lbist_data] {
+      set tcd_registers([regsub {,.*} $r {}]) 1
+  }
+  array set missing_registers {}
+  foreach k $registers_to_check {
+      if {![info exists tcd_registers($k)]} {
+          set missing_registers([regsub {,.*} $k {}]) 1
+      }
+  }
+  if {[array size missing_registers] > 0} {
+      set regWrapper "Core($lbist_data(designName))/LbistMode($mode_name)/Registers"
+      set regWrapperObj [get_config_elements -silent $regWrapper -partition tcd]
+      if {[sizeof_collection $regWrapperObj] == 0} {
+          set regWrapperObj [get_config_elements -silent $regWrapper]
+      }
+      set tcdFileName [get_config_value $regWrapperObj -file_name]
+      set    msg "The TCD file '$tcdFileName'\n"
+      append msg "and the iProc are out of sync. The following registers\n"
+      append msg "are missing from the TCD file.\n"
+      foreach k [lsort [array names missing_registers]] {
+          append msg "  $k\n"
+      }
+      append msg "Possible solution: Rerun fault simulation to regenerate the TCD file.\n"
+      display_message -error $msg
+      return -code error
+  }
+  
+  #
+  # Check that the fault simulation data is consistent with the hardware default mode
+  #
+  set errorPresent 0
+  # PRPG for piccpu
+  if {[info exists lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lfsm_vec,decompressor_seed)]} {
+      set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lfsm_vec,warmup_init_value)
+      set hw_default_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lfsm_vec,decompressor_seed)
+      if { $fault_sim_data_val != $hw_default_data_val } {
+          display_message -error "In block 'piccpu', the PRPG decompressor seed specified for fault simulation ($fault_sim_data_val) does not equal the hardware default mode decompressor seed ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+          set errorPresent 1
+      }
+  } else {
+      set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lfsm_vec,seed)
+      set hw_default_data_val "0x1e0fe5c9"
+      if { $fault_sim_data_val != $hw_default_data_val } {
+          display_message -error "In block 'piccpu', the fault simulation data for the PRPG ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+          set errorPresent 1
+      }
+  }
+  # Low Power Hold Register for piccpu
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lbist_lp_hold_reg,init_value.bin)
+  set hw_default_data_val "0b1111"
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "In block 'piccpu', the fault simulation data for the Low Power Hold Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # Low Power Toggle Register for piccpu
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lbist_lp_toggle_reg,init_value.bin)
+  set hw_default_data_val "0b1011"
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "In block 'piccpu', the fault simulation data for the Low Power Toggle Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # Low Power Switching Register for piccpu
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lbist_lp_switching_reg,init_value.bin)
+  set hw_default_data_val "0b1011"
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "In block 'piccpu', the fault simulation data for the Low Power Switching Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # Low Power Mask Shift Register for piccpu
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.lbist_lp_mask_shift_reg,seed)
+  set hw_default_data_val "0x4fbb6fb3"
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "In block 'piccpu', the fault simulation data for the Low Power Mask Shift Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # Chain Mask Register for piccpu
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_edt_lbist_c0_i.chain_mask,init_value.hex)
+  set hw_default_data_val "0x3ff"
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "In block 'piccpu', the fault simulation data for the Chain Mask Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # Capture Width
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_lbist_i.capture_phase_size,init_value.dec)
+  set hw_default_data_val 4
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "The fault simulation data for the Capture Width Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # Bit Counter
+  set fault_sim_data_val $lbist_data(piccpu_rtl2_tessent_lbist_i.bit_cnt_max,init_value.dec)
+  set hw_default_data_val 33
+  if { $fault_sim_data_val != $hw_default_data_val } {
+      display_message -error "The fault simulation data for the Bit Counter Register ($fault_sim_data_val) does not equal the hardware default mode value ($hw_default_data_val), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # NCP registers
+  # NCP 'ncp1' 0:63
+  set fault_sim_data_val_start 0
+  set fault_sim_data_val_stop 0
+  if {[info exists lbist_data(ncp_ncp1,init_stop_value.dec)] && $lbist_data(ncp_ncp1,init_stop_value.dec) > 0} {
+      set fault_sim_data_val_start $lbist_data(ncp_ncp1,init_start_value.dec)
+      set fault_sim_data_val_stop  $lbist_data(ncp_ncp1,init_stop_value.dec)
+  }
+  set hw_default_data_val_start 0
+  set hw_default_data_val_stop 63
+  if { $fault_sim_data_val_start != $hw_default_data_val_start || $fault_sim_data_val_stop != $hw_default_data_val_stop} {
+      display_message -error "The fault simulation data for the NCP ncp1 ($fault_sim_data_val_start:$fault_sim_data_val_stop) does not equal the hardware default mode value ($hw_default_data_val_start:$hw_default_data_val_stop), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # NCP 'ncp2' 64:127
+  set fault_sim_data_val_start 0
+  set fault_sim_data_val_stop 0
+  if {[info exists lbist_data(ncp_ncp2,init_stop_value.dec)] && $lbist_data(ncp_ncp2,init_stop_value.dec) > 0} {
+      set fault_sim_data_val_start $lbist_data(ncp_ncp2,init_start_value.dec)
+      set fault_sim_data_val_stop  $lbist_data(ncp_ncp2,init_stop_value.dec)
+  }
+  set hw_default_data_val_start 64
+  set hw_default_data_val_stop 127
+  if { $fault_sim_data_val_start != $hw_default_data_val_start || $fault_sim_data_val_stop != $hw_default_data_val_stop} {
+      display_message -error "The fault simulation data for the NCP ncp2 ($fault_sim_data_val_start:$fault_sim_data_val_stop) does not equal the hardware default mode value ($hw_default_data_val_start:$hw_default_data_val_stop), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # NCP 'ncp3' 128:191
+  set fault_sim_data_val_start 0
+  set fault_sim_data_val_stop 0
+  if {[info exists lbist_data(ncp_ncp3,init_stop_value.dec)] && $lbist_data(ncp_ncp3,init_stop_value.dec) > 0} {
+      set fault_sim_data_val_start $lbist_data(ncp_ncp3,init_start_value.dec)
+      set fault_sim_data_val_stop  $lbist_data(ncp_ncp3,init_stop_value.dec)
+  }
+  set hw_default_data_val_start 128
+  set hw_default_data_val_stop 191
+  if { $fault_sim_data_val_start != $hw_default_data_val_start || $fault_sim_data_val_stop != $hw_default_data_val_stop} {
+      display_message -error "The fault simulation data for the NCP ncp3 ($fault_sim_data_val_start:$fault_sim_data_val_stop) does not equal the hardware default mode value ($hw_default_data_val_start:$hw_default_data_val_stop), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  # NCP 'ncp4' 192:255
+  set fault_sim_data_val_start 0
+  set fault_sim_data_val_stop 0
+  if {[info exists lbist_data(ncp_ncp4,init_stop_value.dec)] && $lbist_data(ncp_ncp4,init_stop_value.dec) > 0} {
+      set fault_sim_data_val_start $lbist_data(ncp_ncp4,init_start_value.dec)
+      set fault_sim_data_val_stop  $lbist_data(ncp_ncp4,init_stop_value.dec)
+  }
+  set hw_default_data_val_start 192
+  set hw_default_data_val_stop 255
+  if { $fault_sim_data_val_start != $hw_default_data_val_start || $fault_sim_data_val_stop != $hw_default_data_val_stop} {
+      display_message -error "The fault simulation data for the NCP ncp4 ($fault_sim_data_val_start:$fault_sim_data_val_stop) does not equal the hardware default mode value ($hw_default_data_val_start:$hw_default_data_val_stop), cannot save patterns. Make sure that you have run fault simulation using the hardware default mode parameter values and use the new pattern database to generate the hardware default mode patterns."
+      set errorPresent 1
+  }
+  if {$errorPresent > 0} {
+      return -code error
+  }
+  
+  # Define some TCL variables for the values we want to load on the setup chain
+  set end_pattern        1023
+  set capture_phase_size 4
+  set bit_cnt_max        33
+  set pattern_length     [format %d $bit_cnt_max]
+  incr bit_cnt_max -1
+  set warmup_pattern_count 0
+  set pattern_cnt       [expr $end_pattern + 2]
+  
+  # When calculating the # of run cycles a capture_phase_size of 0 still results in a transition through the CAPTURE state but capture_en does not toggle
+  set capture_phase_size_eq $capture_phase_size
+  if { $capture_phase_size == 0 } {
+      set capture_phase_size_eq 1
+  }
+  
+  dict for { block_num block_dict } $edt_blocks_dict {
+      set block_name [dict get $block_dict block_name]
+      set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+      dict for {misr_name content_dict} [dict get $block_dict misrs] {
+          set misr_sig(${block_name}_${misr_name}) $lbist_data(${hw_leaf_inst}.${misr_name},expected)
+      }
+  }
+  
+  set init_cycles 20
+  set shift_cycles [expr {$pattern_length * $pattern_cnt}]
+  set shift_and_capture_pause_cycles [expr {2 * 8 * $pattern_cnt}]
+  set capture_cycles [expr {($capture_phase_size_eq * ($pattern_cnt - $warmup_pattern_count)) + $warmup_pattern_count}]
+  set last_pattern 11
+  set run_cycles [expr {$init_cycles + $shift_cycles + $shift_and_capture_pause_cycles + $capture_cycles + $last_pattern}]
+  
+  #########
+  # Setup #
+  #########
+  
+  set lbist_full_inst              [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_lbist -below_instances [get_icl_scope]]]
+  dict for { block_num block_dict } $edt_blocks_dict {
+      set current_edt_block            [get_name_list [get_icl_instances -of_module [dict get $block_dict edt_module_name] -below_instances [get_icl_scope]]]
+      set edt_icl_inst {}
+      if {[get_icl_scope] != {}} {
+          regsub ^[get_icl_scope]\\. $current_edt_block  {} edt_icl_inst
+      } else {
+          set edt_icl_inst                 $current_edt_block
+      }
+      dict set edt_blocks_dict $block_num edt_icl_inst $edt_icl_inst
+  }
+  set lbist_inst $lbist_full_inst
+  if {[get_icl_scope] != {}} {
+      regsub ^[get_icl_scope]\\. $lbist_full_inst {} lbist_inst
+  }
+  
+  set inSystemTestInstrument [get_icl_instances [regsub {\.host$} [get_pattern_set_option -active_scan_interfaces] {}]  -filter {tessent_instrument_type==mentor::in_system_test} -silent]
+  set inSystemTestPattern [expr {[sizeof_collection $inSystemTestInstrument] > 0}]
+  iNote "Setting up controller $lbist_full_inst";
+  iTake $lbist_inst.bist_en
+  iWrite $lbist_inst.bist_en            0b1
+  iWrite $lbist_inst.shift_clock_select 0b00
+  iWrite $lbist_inst.lbist_low_power_shift_en_reg $lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)
+  
+  #######
+  # Run #
+  #######
+  
+  iNote "Starting controller $lbist_full_inst in HWDefault mode, patterns 0 to $end_pattern";
+  if {!$inSystemTestPattern} {
+      iNote "    Checking that the controller $lbist_full_inst DONE signal is NO at the beginning of the test";
+      iNote "tessent_pragma iReadVar $lbist_inst.bist_done_start${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+      iNote "tessent_pragma optional_iRead"
+      iRead  $lbist_inst.bist_done          No
+  }
+  iWrite $lbist_inst.bist_setup         DefaultLogicBist
+  
+  if {[info exists lbist_data(monitorInst)] && $sim_monitor ne "off"} {
+      iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.$lbist_data(monitorInst).start_monitor;";
+  }
+  iApply
+  
+  iClock $lbist_inst.shift_clock_src
+  iRunLoop [expr {$run_cycles * $test_time_multiplier}] -sck $lbist_inst.shift_clock_src
+  if {[info exists lbist_data(monitorInst)] && $sim_monitor ne "off"} {
+      iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.$lbist_data(monitorInst).stop_monitor;";
+  }
+  
+  #################
+  # Check Results #
+  #################
+  
+  iRelease $lbist_inst.bist_en
+  iNote "Test Complete for controller $lbist_full_inst";
+  iNote "    Checking that signal DONE is YES for controller $lbist_full_inst";
+  iNote "tessent_pragma iReadVar $lbist_inst.bist_done_end${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+  iRead  $lbist_inst.bist_done          Yes
+  iWrite $lbist_inst.bist_clock_disable 0b1
+  iApply
+  
+  iNote "Checking results of controller $lbist_full_inst";
+  iWrite $lbist_inst.bist_setup         LongSetup
+  iApply
+  
+  iWrite $lbist_inst.bist_clock_disable 0b0
+  iApply
+  
+  set block_cnt [llength [dict keys $edt_blocks_dict]]
+  dict for {block_num block_dict} $edt_blocks_dict {
+      set block_name [dict get $block_dict block_name]
+      set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+      set misrs_dict [dict get $block_dict misrs]
+      set misr_cnt [llength [dict keys $misrs_dict]]
+      if {$block_cnt > 1} {
+          set exp_sign_msg "Expected Signature for $block_name"
+      } else {
+          set exp_sign_msg "Expected Signature for"
+      }
+      dict for {misr_name content_dict} $misrs_dict {
+          if {$misr_cnt == 1} {
+              if {$block_cnt > 1} {
+                  set misr_msg " of"
+              } else {
+                  set misr_msg ""
+              }
+          } else {
+              set misr_msg " $misr_name of"
+          }
+          iNote "    ${exp_sign_msg}${misr_msg} controller $lbist_full_inst : $misr_sig(${block_name}_${misr_name})";
+          iNote "tessent_pragma iReadVar ${edt_icl_inst}.${misr_name}${tessent_pragma_suffix} ${edt_icl_inst}.${misr_name}"
+          iRead  ${edt_icl_inst}.${misr_name}   $misr_sig(${block_name}_${misr_name})
+      }
+  }
+  dict for { block_num block_dict } $edt_blocks_dict {
+      set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+      set edt_sib_module_name [dict get $block_dict edt_sib_module_name]
+      iWrite ${edt_icl_inst}.${edt_sib_module_name}_misr_i.sib 0b0
+  }
+  if {$inSystemTestPattern} {
+    iRead  $lbist_inst.bist_done          No
+  }
+  iWrite $lbist_inst.bist_en            0b0
+  iWrite $lbist_inst.bist_setup         Idle
+  iWrite $lbist_inst.lbist_burn_in_reg  0b0
+  iWrite $lbist_inst.lbist_low_power_shift_en_reg 0b0
+  iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+  iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+  iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+  iApply
+}
+
+iProc run_lbist_normal {
+    {clock_select {shift_clock_src}}
+    {begin_pattern {0}}
+    {end_pattern {31}}
+    {mode_name {lbist}}
+    {warmup_pattern_count {0}}
+    {misr_compares {1}}
+    {sim_monitor {off}}
+    {teststep_name {}}
+    {pattern_id {}}
+    {test_time_multiplier {1}}
+    {execution_phase {setup_run_check}}
+    {required_setup_registers {none}}
+} {  
+    set clock_select [string map -nocase {lbist_clock shift_clock_src edt_clock ltest_clock} $clock_select]
+  if { [string tolower $clock_select] eq "tck" } {
+      set shift_clock_select 0b10 ; # TCK
+  } elseif { [string tolower $clock_select] eq "shift_clock_src" } {
+      set shift_clock_select 0b00 ; # shift_clock_src
+  } elseif { [string tolower $clock_select] eq "ltest_clock" } {
+      set shift_clock_select 0b11 ; # edt_clock
+  }  else {
+      display_message -error "Unrecognized value ($clock_select) for clock_select. Allowed values are TCK, shift_clock_src and ltest_clock."
+      return -code error
+  }
+  
+  if {$misr_compares == 0} {
+      display_message -error "misr_compares must be greater than 0."
+      return -code error
+  } elseif {($misr_compares > [expr $end_pattern - $begin_pattern + 1]) && ([expr $end_pattern - $begin_pattern + 1] > 0) } {
+      display_message -error "misr_compares, $misr_compares, is greater than the number of patterns being applied, [expr $end_pattern - $begin_pattern + 1]. Reduce the number of misr_compares to [expr $end_pattern - $begin_pattern + 1] or less, or change the begin_pattern and end_pattern ranges."
+      return -code error
+  }
+  if {[get_icl_scope -iCall] eq ""} {
+    set iprocsModule [get_single_name [get_current_design -icl]]
+  } else {
+    set iprocsModule [get_single_name [get_icl_modules -of_instances [get_icl_scope -iCall]]]
+  }
+  switch -nocase $sim_monitor {
+      0           { set sim_monitor off }
+      setup_and_clock_verify          -
+      bist_registers_and_clock_verify -
+      monitor_scan_cells              -
+      off                             { }
+      default {
+          set msg    "Unrecognized value '$sim_monitor' for 'sim_monitor'\n"
+          append msg "argument for the iProc 'run_lbist_normal'. Legal values are:\n"
+          append msg "  (off) | bist_registers_and_clock_verify | setup_and_clock_verify | monitor_scan_cells."
+          display_message -error $msg
+          return -code error
+      }
+  }
+  
+  set execution_phase [string tolower $execution_phase]
+  if {$execution_phase ni {setup_run_check setup_run check setup run run_check}} {
+      set msg    "Unrecognized value '$execution_phase' for 'execution_phase'\n"
+      append msg "argument for the iProc 'run_lbist_normal'. Legal values are:\n"  "  (setup_run_check) | setup_run | setup | run | run_check | check"
+      display_message -error $msg
+      return -code error
+  }
+  
+  set patterns_per_compare [expr ($end_pattern - $begin_pattern + 1) / $misr_compares]
+  set next_begin_pattern $begin_pattern
+  for {set compare_index 0} {$compare_index < $misr_compares} {incr compare_index} {
+      set last_compare [expr {$compare_index == ($misr_compares - 1)}]
+      set num_of_patterns $patterns_per_compare
+      if {$compare_index == [expr $misr_compares - 1]} {
+          incr num_of_patterns [expr ($end_pattern - $begin_pattern + 1) % $misr_compares]
+      }
+      if {$misr_compares > 1} {
+          set tessent_pragma_suffix "_$compare_index"
+      } else {
+          set tessent_pragma_suffix ""
+      }
+      if {$teststep_name ne ""} {
+          append tessent_pragma_suffix "_${teststep_name}"
+      }
+      set next_end_pattern [expr $next_begin_pattern + $num_of_patterns - 1]
+  
+      array set lbist_data [get_logic_bist_pattern_data -design_name $iprocsModule -mode_name $mode_name -pattern_id $pattern_id -begin_pattern $next_begin_pattern -end_pattern $next_end_pattern -warmup_pattern_cnt $warmup_pattern_count -sim_monitor $sim_monitor]
+      dict set edt_blocks_dict 0 {
+          hw_leaf_inst            piccpu_rtl2_tessent_edt_lbist_c0_i
+          block_name              piccpu
+          edt_module_name         piccpu_rtl2_tessent_edt_lbist_c0
+          edt_sib_module_name     piccpu_rtl2_tessent_edt_c0_sib
+          ext_mode                OFF
+          misrs {
+              misr {
+                  default_value     0x000000
+              }
+          }
+          reset                   off
+          registers {
+              lbist_prpg_reg         0x1e0fe5c9
+              lbist_chain_mask_reg   0x3ff
+              lbist_lp_hold_reg      0b1111
+              lbist_lp_toggle_reg    0b1011
+              lbist_lp_switching_reg  0b1011
+              lbist_lp_mask_shift_reg 0x4fbb6fb3
+          }
+      }
+  
+      # Validate that the TCD registers are in sync with the iProc
+      set registers_to_check {
+                                 {piccpu_rtl2_tessent_lbist_i.capture_phase_size}
+                                 {piccpu_rtl2_tessent_lbist_i.bit_cnt_max}
+                                 {ncp_0}
+                                 {ncp_1}
+                                 {ncp_2}
+                                 {ncp_3}
+                                 {piccpu_rtl2_tessent_lbist_i.ncp_cnt}
+                             }
+      dict for { block_num block_dict } $edt_blocks_dict {
+          if {[dict exists $block_dict lbist_low_power_shift_en]} {
+              lappend registers_to_check piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg
+              break
+          }
+      }
+      if {![info exists lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)]} {
+          set lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value) 0b0
+      }
+      dict for { block_num block_dict } $edt_blocks_dict {
+          set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+          lappend registers_to_check $hw_leaf_inst.chain_mask
+          lappend registers_to_check $hw_leaf_inst.lfsm_vec
+          dict for {misr_name content_dict} [dict get $block_dict misrs] {
+              lappend registers_to_check $hw_leaf_inst.${misr_name}
+          }
+          foreach reg {lbist_lp_mask_shift_reg lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+              if {[dict exists $block_dict registers $reg]} {
+                  lappend registers_to_check $hw_leaf_inst.${reg}
+              }
+          }
+      }
+      array set tcd_registers {}
+      foreach r [array names lbist_data] {
+          set tcd_registers([regsub {,.*} $r {}]) 1
+      }
+      array set missing_registers {}
+      foreach k $registers_to_check {
+          if {![info exists tcd_registers($k)]} {
+              set missing_registers([regsub {,.*} $k {}]) 1
+          }
+      }
+      if {[array size missing_registers] > 0} {
+          set regWrapper "Core($lbist_data(designName))/LbistMode($mode_name)/Registers"
+          set regWrapperObj [get_config_elements -silent $regWrapper -partition tcd]
+          if {[sizeof_collection $regWrapperObj] == 0} {
+              set regWrapperObj [get_config_elements -silent $regWrapper]
+          }
+          set tcdFileName [get_config_value $regWrapperObj -file_name]
+          set    msg "The TCD file '$tcdFileName'\n"
+          append msg "and the iProc are out of sync. The following registers\n"
+          append msg "are missing from the TCD file.\n"
+          foreach k [lsort [array names missing_registers]] {
+              append msg "  $k\n"
+          }
+          append msg "Possible solution: Rerun fault simulation to regenerate the TCD file.\n"
+          display_message -error $msg
+          return -code error
+      }
+  
+      # Define some TCL variables for the values we want to load on the setup chain
+      dict for { block_num block_dict } $edt_blocks_dict {
+         set block_name [dict get $block_dict block_name]
+         set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+         set chain_mask($block_name)        $lbist_data(${hw_leaf_inst}.chain_mask,init_value)
+         set chain_mask_load_en($block_name) $lbist_data(${hw_leaf_inst}.chain_mask,load_en)
+         set prpg_seed($block_name)         $lbist_data(${hw_leaf_inst}.lfsm_vec,seed)
+         dict for {misr_name content_dict} [dict get $block_dict misrs] {
+             set misr_seed(${block_name}_${misr_name}) $lbist_data(${hw_leaf_inst}.${misr_name},seed)
+         }
+         if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} { 
+             set mask_shift_reg_value(${block_name}) $lbist_data(${hw_leaf_inst}.lbist_lp_mask_shift_reg,seed)
+         }
+         dict for {misr_name content_dict} [dict get $block_dict misrs] {
+             set misr_sig(${block_name}_${misr_name}) $lbist_data(${hw_leaf_inst}.${misr_name},expected)
+         }
+      }
+  
+      set capture_phase_size $lbist_data(piccpu_rtl2_tessent_lbist_i.capture_phase_size,init_value)
+      set bit_cnt_max        [expr [string match -nocase "setup_and_clock_verify" $sim_monitor] ? 0b10 : $lbist_data(piccpu_rtl2_tessent_lbist_i.bit_cnt_max,init_value)]
+      set pattern_length     [format %d $bit_cnt_max]
+      incr bit_cnt_max -1
+      set pattern_cnt        [expr $next_end_pattern - $next_begin_pattern + $warmup_pattern_count + 1 + 1] ; # +1->for pattern range +1-> for the flush pattern
+      incr pattern_cnt [expr {[string equal -nocase setup_and_clock_verify $sim_monitor] ? -1 : 0}]
+  
+      binary scan [binary format I [expr $pattern_cnt - 1 - $warmup_pattern_count] ] B* warmup_pattern_count_val
+      set warmup_pattern_count_val "0b[string range $warmup_pattern_count_val [expr [string length $warmup_pattern_count_val] - 10]  [expr [string length $warmup_pattern_count_val] - 1]]"
+  
+      # When calculating the # of run cycles a capture_phase_size of 0 still results in a transition through the CAPTURE state but capture_en does not toggle
+      set capture_phase_size_eq [scan [regsub {^0x} $capture_phase_size {}] %x]
+      if { $capture_phase_size == 0 } {
+          set capture_phase_size_eq 1
+      }
+  
+      set init_cycles 20
+      set shift_cycles [expr {$pattern_length * $pattern_cnt}]
+      set shift_and_capture_pause_cycles [expr {2 * 8 * $pattern_cnt}]
+      set capture_cycles [expr {($capture_phase_size_eq * ($pattern_cnt - $warmup_pattern_count)) + $warmup_pattern_count}]
+      set last_pattern 11
+      set run_cycles [expr {$init_cycles + $shift_cycles + $shift_and_capture_pause_cycles + $capture_cycles + $last_pattern}]
+  
+      set capture_phase_size [format %X $capture_phase_size]
+      set pattern_cnt_hex    [format %X $pattern_cnt]
+  
+      set capture_phase_size "0x$capture_phase_size"
+      set pattern_cnt_hex    "0x$pattern_cnt_hex"
+  
+      #########
+      # Setup #
+      #########
+  
+      set lbist_full_inst              [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_lbist -below_instances [get_icl_scope]]]
+      set single_chain_mode_logic_inst [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_single_chain_mode_logic -below_instances [get_icl_scope]]]
+      dict for { block_num block_dict } $edt_blocks_dict {
+          set current_edt_block            [get_name_list [get_icl_instances -of_module [dict get $block_dict edt_module_name] -below_instances [get_icl_scope]]]
+          set edt_icl_inst {}
+          if {[get_icl_scope] != {}} {
+              regsub ^[get_icl_scope]\\. $current_edt_block  {} edt_icl_inst
+          } else {
+              set edt_icl_inst                 $current_edt_block
+          }
+          dict set edt_blocks_dict $block_num edt_icl_inst $edt_icl_inst
+      }
+      set lbist_inst $lbist_full_inst
+      if {[get_icl_scope] != {}} {
+          regsub ^[get_icl_scope]\\. $lbist_full_inst {} lbist_inst
+          regsub ^[get_icl_scope]\\. $single_chain_mode_logic_inst {} single_chain_mode_logic_inst
+      }
+  
+      # If none of the flops behind a given SIB need an iWrite, because the
+      # iWrite value is the same as the HW default value, then a sync reset is needed
+      set inSystemTestInstrument [get_icl_instances [regsub {\.host$} [get_pattern_set_option -active_scan_interfaces] {}]  -filter {tessent_instrument_type==mentor::in_system_test} -silent]
+      set inSystemTestPattern [expr {[sizeof_collection $inSystemTestInstrument] > 0}]
+      set required_setup_registers [string tolower $required_setup_registers]
+      if {!$inSystemTestPattern} {
+        set required_setup_registers "all"
+      }
+      if {$required_setup_registers eq "all"} {
+        set required_setup_registers [list chain_mask prpg low_power_static low_power_mask]
+      } elseif {$required_setup_registers eq "none"} {
+        set required_setup_registers [list]
+      }
+      set iwrites_needed [dict create]
+      dict for { block_num block_dict } $edt_blocks_dict {
+         set block_name [dict get $block_dict block_name]
+         set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+         set prpg_need_iwrite [expr {"prpg" in $required_setup_registers ? 1 : $prpg_seed(${block_name}) != [dict get $block_dict registers lbist_prpg_reg]}]
+         set always_iwrite_lp_static [expr {"low_power_static" in $required_setup_registers}]
+         set always_iwrite_lp_mask [expr {"low_power_mask" in $required_setup_registers}]
+         set always_iwrite_mask [expr {"chain_mask" in $required_setup_registers}]
+         set lp_static_need_iwrite $always_iwrite_lp_static
+         if {[info exists lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)]} {
+             set lp_static_need_iwrite [expr {$lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value) != 0}]
+         }
+         set lp_static_regs_need_iwrite $always_iwrite_lp_static
+         set lp_mask_shift_need_iwrite $always_iwrite_lp_mask
+         if {$lp_static_need_iwrite} {
+             foreach reg {lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+                 if {[dict exists $block_dict registers $reg]} {
+                     if {$lbist_data(${hw_leaf_inst}.${reg},init_value) != [dict get $block_dict registers $reg]} {
+                         set lp_static_regs_need_iwrite 1
+                         break
+                     }
+                 }
+             }
+             if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} {
+                set lp_mask_shift_need_iwrite [expr {$lp_mask_shift_need_iwrite || $mask_shift_reg_value(${block_name}) != [dict get $block_dict registers lbist_lp_mask_shift_reg]}]
+             }
+         }
+         dict set iwrites_needed edt_inst${block_num}_prpg [expr {$prpg_need_iwrite}]
+         dict set iwrites_needed edt_inst${block_num}_lp_static_control [expr {$lp_static_regs_need_iwrite}]
+         dict set iwrites_needed edt_inst${block_num}_lp_mask_shift_reg [expr {$lp_mask_shift_need_iwrite}]
+         dict set iwrites_needed edt_inst${block_num}_mask [expr {$always_iwrite_mask || $chain_mask(${block_name}) != [dict get $block_dict registers lbist_chain_mask_reg]}]
+         set misr_need_iwrite 0
+         dict for {misr_name content_dict} [dict get $block_dict misrs] {
+             if {$misr_seed(${block_name}_${misr_name}) != [dict get $content_dict default_value]} {
+                 set misr_need_iwrite 1
+                 break
+             }
+         }
+         dict set iwrites_needed edt_inst${block_num}_misr [expr {$misr_need_iwrite || !$inSystemTestPattern}]
+      }
+      dict set iwrites_needed ncp_limits [expr {(![info exists lbist_data(ncp_ncp1,init_stop_value.dec)] || ($lbist_data(ncp_ncp1,init_stop_value.dec) != 63)) ||
+                                                (![info exists lbist_data(ncp_ncp2,init_stop_value.dec)] || ($lbist_data(ncp_ncp2,init_stop_value.dec) != 127)) ||
+                                                (![info exists lbist_data(ncp_ncp3,init_stop_value.dec)] || ($lbist_data(ncp_ncp3,init_stop_value.dec) != 191)) ||
+                                                (![info exists lbist_data(ncp_ncp4,init_stop_value.dec)] || ($lbist_data(ncp_ncp4,init_stop_value.dec) != 255)) ||
+                                                 !$inSystemTestPattern}]
+      dict set iwrites_needed lbist [expr {$capture_phase_size != 4 ||
+                                           $warmup_pattern_count_val != 0b0000000000 ||
+                                           $bit_cnt_max != 0b100000 ||
+                                           [expr {( $next_begin_pattern - $warmup_pattern_count ) % $lbist_data(piccpu_rtl2_tessent_lbist_i.ncp_cnt,repeat_interval)}] != 0b0 ||
+                                           $pattern_cnt != 1025 ||
+                                           !$inSystemTestPattern}]
+      set bist_setup_val [expr {([llength [dict values $iwrites_needed 1]] == 0) ? "DefaultLogicBist" : "NormalLogicBist"}]
+  
+      if {$execution_phase in {setup_run_check setup_run setup}} {
+          set msg "Setting up controller $lbist_full_inst"
+          if {$misr_compares > 1} {
+              append msg " (run [expr $compare_index + 1] of $misr_compares)"
+          }
+          iNote $msg
+          iNote "    Number of patterns  : [expr $pattern_cnt - ![string equal -nocase setup_and_clock_verify $sim_monitor]] ([expr $pattern_cnt - ![string equal -nocase setup_and_clock_verify $sim_monitor] - $warmup_pattern_count] + $warmup_pattern_count warm-up patterns)";
+          iNote "    Pattern Length      : $pattern_length";
+          iNote "    Shift Clk Select    : $shift_clock_select";
+          iNote "    Capture Phase Width : $capture_phase_size Shift Clock Cycles";
+          dict for { block_num block_dict } $edt_blocks_dict {
+              set block_name [dict get $block_dict block_name]
+              set iNote_blkName ""
+              if {[llength [dict keys $edt_blocks_dict]] > 1} {
+                  set iNote_blkName "${block_name} "
+              }
+              iNote "    ${iNote_blkName}PRPG Seed : $prpg_seed(${block_name})";
+              set misr_display_name "MISR"
+              set misr_cnt [llength [dict keys [dict get $block_dict misrs]]]
+              dict for {misr_name content_dict} [dict get $block_dict misrs] {
+                  if {$misr_cnt > 1} {
+                      set misr_display_name $misr_name
+                  }
+                  iNote "    ${iNote_blkName}${misr_display_name} Seed : $misr_seed(${block_name}_${misr_name})";
+              }
+          }
+  
+          # Access LongSetup register
+          iTake $lbist_inst.bist_en
+          iWrite $lbist_inst.bist_en            0b1
+          if {$bist_setup_val ne "DefaultLogicBist"} {
+              iWrite $lbist_inst.bist_setup         LongSetup
+          }
+          iWrite $lbist_inst.shift_clock_select $shift_clock_select
+          iWrite $lbist_inst.lbist_low_power_shift_en_reg $lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)
+          if {$bist_setup_val eq "NormalLogicBist"} {
+              if {$inSystemTestPattern} {
+                  iWrite $lbist_inst.bist_sync_reset    0b1
+              }
+              iApply
+  
+              # Load the LongSetup register
+              if {$inSystemTestPattern} {
+                  iWrite $lbist_inst.bist_sync_reset    0b0
+              }
+              dict for { block_num block_dict } $edt_blocks_dict {
+                  set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+                  set block_name [dict get $block_dict block_name]
+                  set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+                  if {[dict get $iwrites_needed edt_inst${block_num}_prpg]} {
+                      iNote "tessent_pragma iWriteVar ${edt_icl_inst}.lfsm_vec${tessent_pragma_suffix} ${edt_icl_inst}.lfsm_vec"
+                      iWrite ${edt_icl_inst}.lfsm_vec       $prpg_seed(${block_name})
+                  }
+                  if {[dict get $iwrites_needed edt_inst${block_num}_lp_static_control]} {
+                      foreach reg {lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+                          if {[dict exists $block_dict registers $reg]} {
+                              iWrite ${edt_icl_inst}.${reg}         $lbist_data(${hw_leaf_inst}.${reg},init_value)
+                          }
+                      }
+                  }
+                  if {[dict get $iwrites_needed edt_inst${block_num}_lp_mask_shift_reg]} {
+                      if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} {
+                          iNote "tessent_pragma iWriteVar ${edt_icl_inst}.lbist_lp_mask_shift_reg${tessent_pragma_suffix} ${edt_icl_inst}.lbist_lp_mask_shift_reg"
+                          iWrite ${edt_icl_inst}.lbist_lp_mask_shift_reg $mask_shift_reg_value(${block_name})
+                      }
+                  }
+                  if {[dict get $iwrites_needed edt_inst${block_num}_mask]} {
+                      iWrite ${edt_icl_inst}.bist_chain_mask $chain_mask(${block_name})
+                      iWrite ${edt_icl_inst}.bist_chain_mask_load_en $chain_mask_load_en(${block_name})
+                  }
+                  if {[dict get $iwrites_needed edt_inst${block_num}_misr]} {
+                      dict for {misr_name content_dict} [dict get $block_dict misrs] {
+                          iNote "tessent_pragma iWriteVar ${edt_icl_inst}.${misr_name}_setup${tessent_pragma_suffix} ${edt_icl_inst}.${misr_name}"
+                          iWrite ${edt_icl_inst}.${misr_name}   $misr_seed(${block_name}_${misr_name})
+                      }
+                  }
+              }
+              if {[dict get $iwrites_needed ncp_limits]} {
+                  set ncp_val [expr {[info exists lbist_data(ncp_0,init_stop_value)] && $lbist_data(ncp_0,init_stop_value) > 0 ? $lbist_data(ncp_0,init_stop_value) : 0x0}]
+                  iWrite $lbist_inst.ncp_0_limit        $ncp_val ; # ncp1
+                  set ncp_val [expr {[info exists lbist_data(ncp_1,init_stop_value)] && $lbist_data(ncp_1,init_stop_value) > 0 ? $lbist_data(ncp_1,init_stop_value) : 0x0}]
+                  iWrite $lbist_inst.ncp_1_limit        $ncp_val ; # ncp2
+                  set ncp_val [expr {[info exists lbist_data(ncp_2,init_stop_value)] && $lbist_data(ncp_2,init_stop_value) > 0 ? $lbist_data(ncp_2,init_stop_value) : 0x0}]
+                  iWrite $lbist_inst.ncp_2_limit        $ncp_val ; # ncp3
+                  set ncp_val [expr {[info exists lbist_data(ncp_3,init_stop_value)] && $lbist_data(ncp_3,init_stop_value) > 0 ? $lbist_data(ncp_3,init_stop_value) : 0x0}]
+                  iWrite $lbist_inst.ncp_3_limit        $ncp_val ; # ncp4
+              }
+              if {[dict get $iwrites_needed lbist]} {
+                  iWrite $lbist_inst.capture_phase_size $capture_phase_size
+                  iNote "tessent_pragma iWriteVar ${lbist_inst}.warmup_pattern_cnt${tessent_pragma_suffix} ${lbist_inst}.warmup_pattern_cnt"
+                  iWrite $lbist_inst.warmup_pattern_cnt $warmup_pattern_count_val
+                  iWrite $lbist_inst.bit_cnt_max        $bit_cnt_max
+                  iNote "tessent_pragma iWriteVar ${lbist_inst}.vector_cnt${tessent_pragma_suffix} ${lbist_inst}.vector_cnt"
+                  iWrite $lbist_inst.vector_cnt         $pattern_cnt_hex
+                  iNote "tessent_pragma iWriteVar ${lbist_inst}.ncp_cnt${tessent_pragma_suffix} ${lbist_inst}.ncp_cnt"
+                  iWrite $lbist_inst.ncp_cnt            [expr ( $next_begin_pattern - $warmup_pattern_count ) % $lbist_data(piccpu_rtl2_tessent_lbist_i.ncp_cnt,repeat_interval)]
+              }
+              if {[llength [dict values $iwrites_needed 1]] > 0} {
+                  if {$last_compare} {
+                      dict for { block_num block_dict } $edt_blocks_dict {
+                          set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+                          set edt_sib_module_name [dict get $block_dict edt_sib_module_name]
+                          if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} {
+                              iWrite ${edt_icl_inst}.${edt_sib_module_name}_decompressor_i.sib 0b0
+                              if {[sizeof_collection [get_icl_instances ${edt_icl_inst}.${edt_sib_module_name}_lbist_lp_static_control_i -below_instances [get_icl_scope] -silent]] > 0} {
+                                  iWrite ${edt_icl_inst}.${edt_sib_module_name}_lbist_lp_static_control_i.sib 0b0
+                                  iWrite ${edt_icl_inst}.${edt_sib_module_name}_lbist_lp_mask_shift_reg_i.sib 0b0
+                              }
+                          } else {
+                              iWrite ${edt_icl_inst}.${edt_sib_module_name}_decompressor_i.sib 0b0
+                          }
+                          iWrite ${edt_icl_inst}.${edt_sib_module_name}_chain_mask_i.sib 0b0
+                      }
+                  }
+                  iApply
+              }
+          }
+          if {$execution_phase in {setup}} {
+              iNote "Preparing to start controller $lbist_full_inst in Normal mode";
+              iWrite $lbist_inst.bist_clock_disable 0b1
+              iApply
+              if {!$inSystemTestPattern} {
+                  iNote "    Checking that the controller $lbist_full_inst DONE signal is NO at the beginning of the test";
+                  iNote "tessent_pragma iReadVar $lbist_inst.bist_done_start${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+                  iNote "tessent_pragma optional_iRead"
+                  iRead  $lbist_inst.bist_done          No
+              }
+              iWrite $lbist_inst.bist_setup         $bist_setup_val
+              iApply
+          }
+      }
+  
+      #######
+      # Run #
+      #######
+  
+      if {$execution_phase in {setup_run_check setup_run run run_check}} {
+          iNote "Starting controller $lbist_full_inst in [string map {NormalLogicBist Normal DefaultLogicBist HWDefault} $bist_setup_val] mode, patterns $next_begin_pattern to $next_end_pattern";
+          if {$execution_phase in {setup_run_check setup_run}} {
+              if {$bist_setup_val eq "NormalLogicBist"} {
+                  iWrite $lbist_inst.bist_clock_disable 0b1
+                  iApply
+              }
+  
+              if {!$inSystemTestPattern} {
+                  iNote "    Checking that the controller $lbist_full_inst DONE signal is NO at the beginning of the test";
+                  iNote "tessent_pragma iReadVar $lbist_inst.bist_done_start${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+                  iNote "tessent_pragma optional_iRead"
+                  iRead  $lbist_inst.bist_done          No
+              }
+              iWrite $lbist_inst.bist_setup         $bist_setup_val
+              if {$bist_setup_val eq "NormalLogicBist"} {
+                  iApply
+              }
+          }
+  
+          if {[info exists lbist_data(monitorInst)] && $sim_monitor ne "off"} {
+              iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.$lbist_data(monitorInst).start_monitor;";
+          }
+          if {$bist_setup_val eq "NormalLogicBist" || $execution_phase in {run run_check}} {
+              iWrite $lbist_inst.bist_clock_disable 0b0
+          }
+          iApply
+  
+          if { [string tolower $clock_select] eq "tck" } {
+              iRunLoop [expr {$run_cycles * $test_time_multiplier}] -tck
+          } elseif { [string tolower $clock_select] eq "shift_clock_src" } {
+              iClock $lbist_inst.shift_clock_src
+              iRunLoop [expr {$run_cycles * $test_time_multiplier}] -sck $lbist_inst.shift_clock_src
+          } else {
+              iClock $lbist_inst.test_clock
+              iRunLoop [expr {$run_cycles * $test_time_multiplier}] -sck $lbist_inst.test_clock
+          }
+          if {[info exists lbist_data(monitorInst)] && $sim_monitor ne "off"} {
+              iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.$lbist_data(monitorInst).stop_monitor;";
+          }
+          iNote "Test Complete for controller $lbist_full_inst";
+          iRelease $lbist_inst.bist_en
+      }
+  
+      #################
+      # Check Results #
+      #################
+  
+      if {$execution_phase in {setup_run_check run_check check}} {
+          iNote "    Checking that signal DONE is YES for controller $lbist_full_inst";
+          iNote "tessent_pragma iReadVar $lbist_inst.bist_done_end${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+          iRead  $lbist_inst.bist_done          Yes
+          if {![string match -nocase "setup_and_clock_verify" $sim_monitor]} {
+              iWrite $lbist_inst.bist_clock_disable 0b1
+              iApply
+  
+              iNote "Checking results of controller $lbist_full_inst";
+              iWrite $lbist_inst.bist_setup         LongSetup
+              iApply
+  
+              iWrite $lbist_inst.bist_clock_disable 0b0
+              iApply
+              set block_cnt [llength [dict keys $edt_blocks_dict]]
+              dict for {block_num block_dict} $edt_blocks_dict {
+                  set block_name [dict get $block_dict block_name]
+                  set misrs_dict [dict get $block_dict misrs]
+                  set misr_cnt [llength [dict keys $misrs_dict]]
+                  set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+                  if {$block_cnt > 1} {
+                      set exp_sign_msg "Expected Signature for $block_name"
+                  } else {
+                      set exp_sign_msg "Expected Signature for"
+                  }
+                  dict for {misr_name content_dict} $misrs_dict {
+                      if {$misr_cnt == 1} {
+                          if {$block_cnt > 1} {
+                              set misr_msg " of"
+                          } else {
+                              set misr_msg ""
+                          }
+                      } else {
+                          set misr_msg " $misr_name of"
+                      }
+                      iNote "    ${exp_sign_msg}${misr_msg} controller $lbist_full_inst : $misr_sig(${block_name}_${misr_name})";
+                      iNote "tessent_pragma iReadVar ${edt_icl_inst}.${misr_name}${tessent_pragma_suffix} ${edt_icl_inst}.${misr_name}"
+                      iRead  ${edt_icl_inst}.${misr_name}   $misr_sig(${block_name}_${misr_name})
+                  }
+              }
+              if {$last_compare} {
+                  dict for {block_num block_dict} $edt_blocks_dict {
+                      set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+                      set edt_sib_module_name [dict get $block_dict edt_sib_module_name]
+                      iWrite ${edt_icl_inst}.${edt_sib_module_name}_misr_i.sib 0b0
+                  }
+              }
+          }
+          if {$last_compare} {
+              if {$inSystemTestPattern} {
+                iRead  $lbist_inst.bist_done          No
+              }
+              iWrite $lbist_inst.bist_en            0b0
+              iWrite $lbist_inst.bist_setup         Idle
+              iWrite $lbist_inst.lbist_burn_in_reg  0b0
+              iWrite $lbist_inst.lbist_low_power_shift_en_reg 0b0
+              iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+              iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+              iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+          }
+          iApply
+          incr next_begin_pattern $patterns_per_compare
+      }
+  }
+}
+
+iProc scan_unload_register {
+    {clock_select {shift_clock_src}}
+    {begin_pattern {0}}
+    {end_pattern {31}}
+    {mode_name {lbist}}
+    {warmup_pattern_count {0}}
+    {misr_compares {1}}
+    {sim_monitor {off}}
+    {teststep_name {}}
+    {diagnostic_run_mode {}}
+    {pattern_id {}}
+    {test_time_multiplier {1}}
+} {  
+    set clock_select [string map -nocase {lbist_clock shift_clock_src edt_clock ltest_clock} $clock_select]
+  if { [string tolower $clock_select] eq "tck" } {
+      set shift_clock_select 0b10 ; # TCK
+  } elseif { [string tolower $clock_select] eq "shift_clock_src" } {
+      set shift_clock_select 0b00 ; # shift_clock_src
+  } elseif { [string tolower $clock_select] eq "ltest_clock" } {
+      set shift_clock_select 0b11 ; # edt_clock
+  }  else {
+      display_message -error "Unrecognized value ($clock_select) for clock_select. Allowed values are TCK, shift_clock_src and ltest_clock."
+      return -code error
+  }
+  
+  if {$misr_compares == 0} {
+      display_message -error "misr_compares must be greater than 0."
+      return -code error
+  } elseif {($misr_compares > [expr $end_pattern - $begin_pattern + 1]) && ([expr $end_pattern - $begin_pattern + 1] > 0) } {
+      display_message -error "misr_compares, $misr_compares, is greater than the number of patterns being applied, [expr $end_pattern - $begin_pattern + 1]. Reduce the number of misr_compares to [expr $end_pattern - $begin_pattern + 1] or less, or change the begin_pattern and end_pattern ranges."
+      return -code error
+  }
+  if {[get_icl_scope -iCall] eq ""} {
+    set iprocsModule [get_single_name [get_current_design -icl]]
+  } else {
+    set iprocsModule [get_single_name [get_icl_modules -of_instances [get_icl_scope -iCall]]]
+  }
+  switch -nocase $sim_monitor {
+      0           { set sim_monitor off }
+      setup_and_clock_verify          -
+      bist_registers_and_clock_verify -
+      monitor_scan_cells              -
+      off                             { }
+      default {
+          set msg    "Unrecognized value '$sim_monitor' for 'sim_monitor'\n"
+          append msg "argument for the iProc 'scan_unload_register'. Legal values are:\n"
+          append msg "  (off) | bist_registers_and_clock_verify | setup_and_clock_verify | monitor_scan_cells."
+          display_message -error $msg
+          return -code error
+      }
+  }
+  
+  set patterns_per_compare [expr ($end_pattern - $begin_pattern + 1) / $misr_compares]
+  set next_begin_pattern $begin_pattern
+  for {set compare_index 0} {$compare_index < $misr_compares} {incr compare_index} {
+      set last_compare [expr {$compare_index == ($misr_compares - 1)}]
+      set num_of_patterns $patterns_per_compare
+      if {$compare_index == [expr $misr_compares - 1]} {
+          incr num_of_patterns [expr ($end_pattern - $begin_pattern + 1) % $misr_compares]
+      }
+      if {$misr_compares > 1} {
+          set tessent_pragma_suffix "_$compare_index"
+      } else {
+          set tessent_pragma_suffix ""
+      }
+      if {$teststep_name ne ""} {
+          append tessent_pragma_suffix "_${teststep_name}"
+      }
+      set next_end_pattern [expr $next_begin_pattern + $num_of_patterns - 1]
+  
+      if { $diagnostic_run_mode ne "" } {
+          array set lbist_data [get_logic_bist_pattern_data -design_name $iprocsModule -mode_name $mode_name -pattern_id $pattern_id -begin_pattern $next_begin_pattern -end_pattern $next_end_pattern -scan_unload_values -diag_mode -warmup_pattern_cnt $warmup_pattern_count -sim_monitor $sim_monitor]
+      } else {
+          array set lbist_data [get_logic_bist_pattern_data -design_name $iprocsModule -mode_name $mode_name -pattern_id $pattern_id -begin_pattern $next_begin_pattern -end_pattern $next_end_pattern -scan_unload_values -warmup_pattern_cnt $warmup_pattern_count -sim_monitor $sim_monitor]
+      }
+      dict set edt_blocks_dict 0 {
+          hw_leaf_inst            piccpu_rtl2_tessent_edt_lbist_c0_i
+          block_name              piccpu
+          edt_module_name         piccpu_rtl2_tessent_edt_lbist_c0
+          edt_sib_module_name     piccpu_rtl2_tessent_edt_c0_sib
+          ext_mode                OFF
+          internal_chains {
+              edt_lbist_chain1
+              edt_lbist_chain2
+              edt_lbist_chain3
+              edt_lbist_chain4
+              edt_lbist_chain5
+              edt_lbist_chain6
+              edt_lbist_chain7
+              edt_lbist_chain8
+              edt_lbist_chain9
+              edt_lbist_chain10
+          }
+          misrs {
+              misr {
+                  default_value     0x000000
+              }
+          }
+          reset                   off
+          registers {
+              lbist_prpg_reg         0x1e0fe5c9
+              lbist_chain_mask_reg   0x3ff
+              lbist_lp_hold_reg      0b1111
+              lbist_lp_toggle_reg    0b1011
+              lbist_lp_switching_reg  0b1011
+              lbist_lp_mask_shift_reg 0x4fbb6fb3
+          }
+      }
+  
+      # Validate that the TCD registers are in sync with the iProc
+      set registers_to_check {
+                                 {piccpu_rtl2_tessent_lbist_i.capture_phase_size}
+                                 {piccpu_rtl2_tessent_lbist_i.bit_cnt_max}
+                                 {ncp_0}
+                                 {ncp_1}
+                                 {ncp_2}
+                                 {ncp_3}
+                                 {piccpu_rtl2_tessent_lbist_i.ncp_cnt}
+                             }
+      dict for { block_num block_dict } $edt_blocks_dict {
+          if {[dict exists $block_dict lbist_low_power_shift_en]} {
+              lappend registers_to_check piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg
+              break
+          }
+      }
+      if {![info exists lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)]} {
+          set lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value) 0b0
+      }
+      dict for { block_num block_dict } $edt_blocks_dict {
+          set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+          lappend registers_to_check $hw_leaf_inst.chain_mask
+          lappend registers_to_check $hw_leaf_inst.lfsm_vec
+          dict for {misr_name content_dict} [dict get $block_dict misrs] {
+              lappend registers_to_check $hw_leaf_inst.${misr_name}
+          }
+          foreach reg {lbist_lp_mask_shift_reg lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+              if {[dict exists $block_dict registers $reg]} {
+                  lappend registers_to_check $hw_leaf_inst.${reg}
+              }
+          }
+      }
+      array set tcd_registers {}
+      foreach r [array names lbist_data] {
+          set tcd_registers([regsub {,.*} $r {}]) 1
+      }
+      array set missing_registers {}
+      foreach k $registers_to_check {
+          if {![info exists tcd_registers($k)]} {
+              set missing_registers([regsub {,.*} $k {}]) 1
+          }
+      }
+      if {[array size missing_registers] > 0} {
+          set regWrapper "Core($lbist_data(designName))/LbistMode($mode_name)/Registers"
+          set regWrapperObj [get_config_elements -silent $regWrapper -partition tcd]
+          if {[sizeof_collection $regWrapperObj] == 0} {
+              set regWrapperObj [get_config_elements -silent $regWrapper]
+          }
+          set tcdFileName [get_config_value $regWrapperObj -file_name]
+          set    msg "The TCD file '$tcdFileName'\n"
+          append msg "and the iProc are out of sync. The following registers\n"
+          append msg "are missing from the TCD file.\n"
+          foreach k [lsort [array names missing_registers]] {
+              append msg "  $k\n"
+          }
+          append msg "Possible solution: Rerun fault simulation to regenerate the TCD file.\n"
+          display_message -error $msg
+          return -code error
+      }
+  
+      # Define some TCL variables for the values we want to load on the setup chain
+      set all_chains_masked 1
+      dict for { block_num block_dict } $edt_blocks_dict {
+         set block_name [dict get $block_dict block_name]
+         set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+         set chain_mask($block_name)        $lbist_data(${hw_leaf_inst}.chain_mask,init_value)
+         set chain_mask_binary($block_name) $lbist_data(${hw_leaf_inst}.chain_mask,init_value.bin)
+         set chain_mask_load_en($block_name) $lbist_data(${hw_leaf_inst}.chain_mask,load_en)
+         set prpg_seed($block_name)         $lbist_data(${hw_leaf_inst}.lfsm_vec,seed)
+         dict for {misr_name content_dict} [dict get $block_dict misrs] {
+             set misr_seed(${block_name}_${misr_name}) $lbist_data(${hw_leaf_inst}.${misr_name},seed)
+         }
+         if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} { 
+             set mask_shift_reg_value(${block_name}) $lbist_data(${hw_leaf_inst}.lbist_lp_mask_shift_reg,seed)
+         }
+         dict for {misr_name content_dict} [dict get $block_dict misrs] {
+             set misr_sig(${block_name}_${misr_name}) $lbist_data(${hw_leaf_inst}.${misr_name},expected)
+         }
+         set chain_mask_reg_val [dict get $block_dict registers lbist_chain_mask_reg]
+         if {($chain_mask(${block_name}) == "$chain_mask_reg_val") ||
+             ((!$chain_mask_load_en(${block_name})) && [regexp {0b.*1} $chain_mask_binary(${block_name})])} {
+             set all_chains_masked 0
+         }
+      }
+  
+      if {$all_chains_masked} {
+          if {[llength [dict keys $edt_blocks_dict]] == 1} {
+              display_message -error "EDT block has masked scan chains, iProc 'scan_unload_register' cannot be used."
+          } else {
+              display_message -error "All EDT blocks have masked scan chains, iProc 'scan_unload_register' cannot be used."
+          }
+          return -code error
+      }
+  
+      set capture_phase_size $lbist_data(piccpu_rtl2_tessent_lbist_i.capture_phase_size,init_value)
+      set bit_cnt_max        [expr [string match -nocase "setup_and_clock_verify" $sim_monitor] ? 0b10 : $lbist_data(piccpu_rtl2_tessent_lbist_i.bit_cnt_max,init_value)]
+      set pattern_length     [format %d $bit_cnt_max]
+      incr bit_cnt_max -1
+      set pattern_cnt        [expr $next_end_pattern - $next_begin_pattern + $warmup_pattern_count + 1] ; # +1->for pattern range
+  
+      binary scan [binary format I [expr $pattern_cnt - 1 - $warmup_pattern_count] ] B* warmup_pattern_count_val
+      set warmup_pattern_count_val "0b[string range $warmup_pattern_count_val [expr [string length $warmup_pattern_count_val] - 10]  [expr [string length $warmup_pattern_count_val] - 1]]"
+  
+      # When calculating the # of run cycles a capture_phase_size of 0 still results in a transition through the CAPTURE state but capture_en does not toggle
+      set capture_phase_size_eq [scan [regsub {^0x} $capture_phase_size {}] %x]
+      if { $capture_phase_size == 0 } {
+          set capture_phase_size_eq 1
+      }
+  
+      set init_cycles 20
+      set shift_cycles [expr {$pattern_length * $pattern_cnt}]
+      set shift_and_capture_pause_cycles [expr {2 * 8 * $pattern_cnt}]
+      set capture_cycles [expr {($capture_phase_size_eq * ($pattern_cnt - $warmup_pattern_count)) + $warmup_pattern_count}]
+      set last_pattern 11
+      set run_cycles [expr {$init_cycles + $shift_cycles + $shift_and_capture_pause_cycles + $capture_cycles + $last_pattern}]
+  
+      set capture_phase_size [format %X $capture_phase_size]
+      set pattern_cnt_hex    [format %X $pattern_cnt]
+  
+      set capture_phase_size "0x$capture_phase_size"
+      set pattern_cnt_hex    "0x$pattern_cnt_hex"
+  
+      #########
+      # Setup #
+      #########
+  
+      set lbist_full_inst              [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_lbist -below_instances [get_icl_scope]]]
+      set single_chain_mode_logic_inst [get_name_list [get_icl_instances -of_module piccpu_rtl2_tessent_single_chain_mode_logic -below_instances [get_icl_scope]]]
+      dict for { block_num block_dict } $edt_blocks_dict {
+          set current_edt_block            [get_name_list [get_icl_instances -of_module [dict get $block_dict edt_module_name] -below_instances [get_icl_scope]]]
+          set edt_icl_inst {}
+          if {[get_icl_scope] != {}} {
+              regsub ^[get_icl_scope]\\. $current_edt_block  {} edt_icl_inst
+          } else {
+              set edt_icl_inst                 $current_edt_block
+          }
+          dict set edt_blocks_dict $block_num edt_icl_inst $edt_icl_inst
+      }
+      set lbist_inst $lbist_full_inst
+      if {[get_icl_scope] != {}} {
+          regsub ^[get_icl_scope]\\. $lbist_full_inst {} lbist_inst
+          regsub ^[get_icl_scope]\\. $single_chain_mode_logic_inst {} single_chain_mode_logic_inst
+      }
+  
+      if { [string tolower $diagnostic_run_mode ] eq "setup_and_run_only" || $diagnostic_run_mode eq "" } {
+          set msg "Setting up controller $lbist_full_inst"
+          if {$misr_compares > 1} {
+              append msg " (run [expr $compare_index + 1] of $misr_compares)"
+          }
+          iNote $msg
+          iNote "    Number of patterns  : $pattern_cnt ([expr $pattern_cnt - $warmup_pattern_count] + $warmup_pattern_count warm-up patterns)";
+          iNote "    Pattern Length      : $pattern_length";
+          iNote "    Shift Clk Select    : $shift_clock_select";
+          iNote "    Capture Phase Width : $capture_phase_size Shift Clock Cycles";
+          dict for { block_num block_dict } $edt_blocks_dict {
+              set block_name [dict get $block_dict block_name]
+              set iNote_blkName ""
+              if {[llength [dict keys $edt_blocks_dict]] > 1} {
+                  set iNote_blkName "${block_name} "
+              }
+              iNote "    ${iNote_blkName}PRPG Seed : $prpg_seed(${block_name})";
+              set misr_display_name "MISR"
+              set misr_cnt [llength [dict keys [dict get $block_dict misrs]]]
+              dict for {misr_name content_dict} [dict get $block_dict misrs] {
+                  if {$misr_cnt > 1} {
+                      set misr_display_name $misr_name
+                  }
+                  iNote "    ${iNote_blkName}${misr_display_name} Seed : $misr_seed(${block_name}_${misr_name})";
+              }
+          }
+  
+          # Access LongSetup register
+          iTake $lbist_inst.bist_en
+          iWrite $lbist_inst.bist_en            0b1
+          iWrite $lbist_inst.bist_setup         LongSetup
+          iWrite $lbist_inst.shift_clock_select $shift_clock_select
+          iWrite $lbist_inst.lbist_low_power_shift_en_reg $lbist_data(piccpu_rtl2_tessent_lbist_i.lbist_low_power_shift_en_reg,init_value)
+  
+          # Load the LongSetup register
+          dict for { block_num block_dict } $edt_blocks_dict {
+              set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+              set block_name [dict get $block_dict block_name]
+              set hw_leaf_inst [dict get $block_dict hw_leaf_inst]
+              iNote "tessent_pragma iWriteVar ${edt_icl_inst}.lfsm_vec${tessent_pragma_suffix} ${edt_icl_inst}.lfsm_vec"
+              iWrite ${edt_icl_inst}.lfsm_vec       $prpg_seed(${block_name})
+              foreach reg {lbist_lp_hold_reg lbist_lp_toggle_reg lbist_lp_switching_reg} {
+                  if {[dict exists $block_dict registers $reg]} {
+                      iWrite ${edt_icl_inst}.${reg}         $lbist_data(${hw_leaf_inst}.${reg},init_value)
+                  }
+              }
+              if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} {
+                  iNote "tessent_pragma iWriteVar ${edt_icl_inst}.lbist_lp_mask_shift_reg${tessent_pragma_suffix} ${edt_icl_inst}.lbist_lp_mask_shift_reg"
+                  iWrite ${edt_icl_inst}.lbist_lp_mask_shift_reg $mask_shift_reg_value(${block_name})
+              }
+              iWrite ${edt_icl_inst}.bist_chain_mask $chain_mask(${block_name})
+              iWrite ${edt_icl_inst}.bist_chain_mask_load_en $chain_mask_load_en(${block_name})
+              dict for {misr_name content_dict} [dict get $block_dict misrs] {
+                  iNote "tessent_pragma iWriteVar ${edt_icl_inst}.${misr_name}_setup${tessent_pragma_suffix} ${edt_icl_inst}.${misr_name}"
+                  iWrite ${edt_icl_inst}.${misr_name}   $misr_seed(${block_name}_${misr_name})
+              }
+          }
+          set ncp_val [expr {[info exists lbist_data(ncp_0,init_stop_value)] && $lbist_data(ncp_0,init_stop_value) > 0 ? $lbist_data(ncp_0,init_stop_value) : 0x0}]
+          iWrite $lbist_inst.ncp_0_limit        $ncp_val ; # ncp1
+          set ncp_val [expr {[info exists lbist_data(ncp_1,init_stop_value)] && $lbist_data(ncp_1,init_stop_value) > 0 ? $lbist_data(ncp_1,init_stop_value) : 0x0}]
+          iWrite $lbist_inst.ncp_1_limit        $ncp_val ; # ncp2
+          set ncp_val [expr {[info exists lbist_data(ncp_2,init_stop_value)] && $lbist_data(ncp_2,init_stop_value) > 0 ? $lbist_data(ncp_2,init_stop_value) : 0x0}]
+          iWrite $lbist_inst.ncp_2_limit        $ncp_val ; # ncp3
+          set ncp_val [expr {[info exists lbist_data(ncp_3,init_stop_value)] && $lbist_data(ncp_3,init_stop_value) > 0 ? $lbist_data(ncp_3,init_stop_value) : 0x0}]
+          iWrite $lbist_inst.ncp_3_limit        $ncp_val ; # ncp4
+          iWrite $lbist_inst.capture_phase_size $capture_phase_size
+          iNote "tessent_pragma iWriteVar ${lbist_inst}.warmup_pattern_cnt${tessent_pragma_suffix} ${lbist_inst}.warmup_pattern_cnt"
+          iWrite $lbist_inst.warmup_pattern_cnt $warmup_pattern_count_val
+          iWrite $lbist_inst.bit_cnt_max        $bit_cnt_max
+          iNote "tessent_pragma iWriteVar ${lbist_inst}.vector_cnt${tessent_pragma_suffix} ${lbist_inst}.vector_cnt"
+          iWrite $lbist_inst.vector_cnt         $pattern_cnt_hex
+          iNote "tessent_pragma iWriteVar ${lbist_inst}.ncp_cnt${tessent_pragma_suffix} ${lbist_inst}.ncp_cnt"
+          iWrite $lbist_inst.ncp_cnt            [expr ( $next_begin_pattern - $warmup_pattern_count ) % $lbist_data(piccpu_rtl2_tessent_lbist_i.ncp_cnt,repeat_interval)]
+          if {$last_compare} {
+              dict for { block_num block_dict } $edt_blocks_dict {
+                  set edt_icl_inst [dict get $edt_blocks_dict $block_num edt_icl_inst]
+                  set edt_sib_module_name [dict get $block_dict edt_sib_module_name]
+                  if {[dict exists $block_dict registers lbist_lp_mask_shift_reg]} {
+                      iWrite ${edt_icl_inst}.${edt_sib_module_name}_decompressor_i.sib 0b0
+                      if {[sizeof_collection [get_icl_instances ${edt_icl_inst}.${edt_sib_module_name}_lbist_lp_static_control_i -below_instances [get_icl_scope] -silent]] > 0} {
+                          iWrite ${edt_icl_inst}.${edt_sib_module_name}_lbist_lp_static_control_i.sib 0b0
+                          iWrite ${edt_icl_inst}.${edt_sib_module_name}_lbist_lp_mask_shift_reg_i.sib 0b0
+                      }
+                  } else {
+                      iWrite ${edt_icl_inst}.${edt_sib_module_name}_decompressor_i.sib 0b0
+                  }
+                  iWrite ${edt_icl_inst}.${edt_sib_module_name}_chain_mask_i.sib 0b0
+                  iWrite ${edt_icl_inst}.${edt_sib_module_name}_misr_i.sib 0b0
+              }
+          }
+          iApply
+  
+          #######
+          # Run #
+          #######
+  
+          iNote "Starting controller $lbist_full_inst in Normal mode, patterns $next_begin_pattern to $next_end_pattern";
+          iWrite $lbist_inst.bist_clock_disable 0b1
+          iApply
+  
+          iNote "    Checking that the controller $lbist_full_inst DONE signal is NO at the beginning of the test";
+          iNote "tessent_pragma iReadVar $lbist_inst.bist_done_start${tessent_pragma_suffix} ${lbist_inst}.bist_done"
+          iNote "tessent_pragma optional_iRead"
+          iRead  $lbist_inst.bist_done          No
+          iWrite $lbist_inst.bist_setup         NormalLogicBist
+          iApply
+  
+          if {[info exists lbist_data(monitorInst)] && $sim_monitor ne "off"} {
+              iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.$lbist_data(monitorInst).start_monitor;";
+          }
+          iWrite $lbist_inst.bist_clock_disable 0b0
+          iApply
+  
+          if { [string tolower $clock_select] eq "tck" } {
+              iRunLoop [expr {$run_cycles * $test_time_multiplier}] -tck
+          } elseif { [string tolower $clock_select] eq "shift_clock_src" } {
+              iClock $lbist_inst.shift_clock_src
+              iRunLoop [expr {$run_cycles * $test_time_multiplier}] -sck $lbist_inst.shift_clock_src
+          } else {
+              iClock $lbist_inst.test_clock
+              iRunLoop [expr {$run_cycles * $test_time_multiplier}] -sck $lbist_inst.test_clock
+          }
+          if {[info exists lbist_data(monitorInst)] && $sim_monitor ne "off"} {
+              iNote "tessent_pragma verilog_insert -> `LBIST_SIM_MONITOR_INST.$lbist_data(monitorInst).stop_monitor;";
+          }
+      }
+  
+      #################
+      # Check Results #
+      #################
+  
+      if { [string tolower $diagnostic_run_mode ] eq "scan_unload_only" || $diagnostic_run_mode eq "" } {
+          iRelease $lbist_inst.bist_en
+          iNote "Test Complete for controller $lbist_full_inst";
+          iWrite $lbist_inst.bist_clock_disable 0b1
+          iApply
+          iWrite $lbist_inst.bist_setup         SingleChainMode
+          iApply
+          iWrite $single_chain_mode_logic_inst.tdr_single_bypass 0b1
+          dict for {block_num block_dict} $edt_blocks_dict {
+              set block_name [dict get $block_dict block_name]
+              if {(!$chain_mask_load_en(${block_name})) || ($chain_mask(${block_name}) == [dict get $block_dict registers lbist_chain_mask_reg])} {
+                  set b [expr {$block_num + 1}]
+                  iWrite $single_chain_mode_logic_inst.piccpu_rtl2_tessent_edt_internal_scan_registers_i.blk${b}_sib_i.sib 0b1
+              } else {
+                  iNote "Scan chains of EDT block $block_name are skipped due to masked scan chains."
+              }
+          }
+          iApply
+  
+          iWrite $lbist_inst.bist_clock_disable 0b0
+          iApply
+          iNote "Scanning out capture results of vector $next_end_pattern for controller $lbist_full_inst";
+          dict for {block_num block_dict} $edt_blocks_dict {
+              set block_name [dict get $block_dict block_name]
+              if {(!$chain_mask_load_en(${block_name})) || ($chain_mask(${block_name}) == [dict get $block_dict registers lbist_chain_mask_reg])} {
+                  foreach scan_chain [dict get $block_dict internal_chains] {
+                      if {![regexp {0x+$} $lbist_data(${scan_chain},scan_unload)]} {
+                          iNote "tessent_pragma iReadVar ${scan_chain}${tessent_pragma_suffix} $single_chain_mode_logic_inst.piccpu_rtl2_tessent_edt_internal_scan_registers_i.${scan_chain}"
+                          iRead $single_chain_mode_logic_inst.piccpu_rtl2_tessent_edt_internal_scan_registers_i.${scan_chain} $lbist_data(${scan_chain},scan_unload)
+                      }
+                  }
+              }
+          }
+          iApply
+          if {$compare_index < [expr $misr_compares - 1]} {
+              iWrite $single_chain_mode_logic_inst.tdr_single_bypass 0b0
+              iApply
+          }
+      }
+      incr next_begin_pattern $patterns_per_compare
+  }
+  if { [string tolower $diagnostic_run_mode ] eq "scan_unload_only" || $diagnostic_run_mode eq "" } {
+      iWrite $lbist_inst.bist_en            0b0
+      iWrite $lbist_inst.bist_setup         Idle
+      iWrite $lbist_inst.lbist_burn_in_reg  0b0
+      iWrite $lbist_inst.lbist_low_power_shift_en_reg 0b0
+      iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_control_registers_i.sib 0b0
+      dict for { block_num block_dict } $edt_blocks_dict {
+          set block_name [dict get $block_dict block_name]
+          if {!$chain_mask_load_en(${block_name}) || ($chain_mask(${block_name}) == [dict get $block_dict registers lbist_chain_mask_reg])} {
+              set b [expr {$block_num + 1}]
+              iWrite $single_chain_mode_logic_inst.piccpu_rtl2_tessent_edt_internal_scan_registers_i.blk${b}_sib_i.sib 0b0
+          }
+      }
+      iWrite $single_chain_mode_logic_inst.tdr_single_bypass 0b0
+      iWrite $single_chain_mode_logic_inst.tdr_sib_i.sib 0b0
+      iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_sib_ncp_limits_sib_i.sib 0b0
+      iWrite $lbist_inst.piccpu_rtl2_tessent_lbist_edt_sib_i.sib 0b0
+      iApply
+  }
+} 
+
+iProcsForModule piccpu_rtl1_tessent_sib_1
+
+iProc setup {args} {  
+    if {[expr [llength $args]%2 != 0]} {
+    display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+    return -code error
+  }
+  array set ARGS {static_clock_control off}
+  array set ARGS $args
+  set static_clock_control $ARGS(static_clock_control)
+  
+  if {$static_clock_control ni {off external}} {
+    display_message -error "Invalid 'static_clock_control' value '$static_clock_control'. Valid values are 'off' and 'external'."
+    return -code error
+  }
+  iWrite ltest_occ_en 0b1
+  if {$static_clock_control eq "external"} {
+    iWrite ltest_static_clock_control_mode 0b1
+  } else {
+    iWrite ltest_static_clock_control_mode 0b0
+  }
+  iApply
+} 
+
+iProcsForModule piccpu_rtl2_tessent_edt_lbist_c0
+
+iProc setup {args} {  
+    if {[expr [llength $args]%2 != 0]} {
+     display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+     return -code error
+  }
+  
+  set edt_low_power_shift_en 0
+  set edt_bypass 0
+  set edt_single_bypass_chain 0
+  set edt_chain_mask 1111111111
+  foreach {param value} $args {
+     set param [string tolower $param]
+     if {$param eq "edt_low_power_shift_en"} {
+        set edt_low_power_shift_en $value
+     } elseif {$param eq "edt_bypass"} {
+        set edt_bypass $value
+     } elseif {$param eq "edt_single_bypass_chain"} {
+        set edt_single_bypass_chain $value
+     } elseif {$param eq "internally_masked_chains"} {
+        foreach chain $value {
+           if {$chain < 1 || $chain > 10} {
+              display_message -error "Invalid chain index '$chain'. Must be 1 to 10."
+              return -code error
+           }
+           set pos [expr {[string length $edt_chain_mask]-$chain}]
+           set edt_chain_mask [string replace $edt_chain_mask $pos $pos 0]
+        }
+        continue
+     } else {
+        display_message -error "Invalid parameter '$param'. Valid parameters are 'edt_low_power_shift_en', 'edt_bypass', 'edt_single_bypass_chain' and 'internally_masked_chains'."
+        return -code error
+     }
+     if {![string is boolean -strict $value]} {
+        display_message -error "Invalid non-boolean value '$value' for parameter '$param'."
+        return -code error
+     }
+  }
+  
+  if {$edt_low_power_shift_en} {
+     iWrite edt_low_power_shift_en on
+  } else {
+     iWrite edt_low_power_shift_en off
+  }
+  if {$edt_bypass} {
+     iWrite edt_bypass on
+  } else {
+     iWrite edt_bypass off
+  }
+  if {$edt_single_bypass_chain} {
+     iWrite edt_single_bypass_chain on
+  } else {
+     iWrite edt_single_bypass_chain off
+  }
+  iWrite bist_chain_mask 0b$edt_chain_mask
+  iWrite bist_chain_mask_load_en 0b0
+  iApply
+} 
+
+iProcsForModule piccpu_rtl2_tessent_occ
+
+iProc setup {args} {  
+    if {[expr [llength $args]%2 != 0]} {
+     display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+     return -code error
+  }
+  set fast_capture_mode 0
+  set parent_mode 0
+  set capture_window_size 3
+  set inject_tck 0
+  set active_upstream_parent_occ 0
+  set static_clock_control off
+  set clock_sequence 0
+  foreach {param value} $args {
+     set param [string tolower $param]
+     if {$param eq "capture_window_size"} {
+        set capture_window_size $value
+     } elseif {$param eq "fast_capture_mode"} {
+        set fast_capture_mode $value
+     } elseif {$param eq "active_upstream_parent_occ"} {
+        set active_upstream_parent_occ $value
+     } elseif {$param eq "static_clock_control"} {
+        set static_clock_control $value
+     } elseif {$param eq "clock_sequence"} {
+        set clock_sequence $value
+     } elseif {$param eq "inject_tck"} {
+        set inject_tck $value
+     } else {
+        display_message -error "Invalid parameter '$param'. Valid parameters are 'fast_capture_mode', 'capture_window_size', 'static_clock_control', 'clock_sequence', 'active_upstream_parent_occ' and 'inject_tck'."
+        return -code error
+     }
+  }
+  
+  if {![string is boolean -strict $fast_capture_mode]} {
+     display_message -error "Invalid non-boolean value '$fast_capture_mode' for parameter 'fast_capture_mode'."
+     return -code error
+  }
+  if {![string is boolean -strict $active_upstream_parent_occ]} {
+     display_message -error "Invalid non-boolean value '$active_upstream_parent_occ' for parameter 'active_upstream_parent_occ'."
+     return -code error
+  }
+  if {![string is boolean -strict $parent_mode]} {
+     display_message -error "Invalid non-boolean value '$parent_mode' for parameter 'parent_mode'."
+     return -code error
+  } elseif {$parent_mode} {
+     display_message -error "Parameter 'parent_mode' cannot be set to 1 as the controller type is not 'parent'."
+     return -code error
+  }
+  if {![string is integer -strict $capture_window_size]} {
+     display_message -error "Invalid non-integer value '$capture_window_size' for parameter 'capture_window_size'."
+     return -code error
+  }
+  if {$capture_window_size < 1 || $capture_window_size > 3} {
+     display_message -error "Invalid value '$capture_window_size' for parameter 'capture_window_size'. Must be 1 to 3."
+     return -code error
+  }
+  if {$static_clock_control != "off" && $static_clock_control != "internal" && $static_clock_control != "external"} {
+     display_message -error "Invalid value '$static_clock_control'. Valid values are 'off', 'internal' and 'external'."
+     return -code error
+  }
+  if {![string is integer -strict $clock_sequence]} {
+     display_message -error "Invalid non-integer value '$clock_sequence' for parameter 'clock_sequence."
+     return -code error
+  }
+  if {$clock_sequence < 0 || $clock_sequence > 7} {
+     display_message -error "Invalid value '$clock_sequence' for parameter 'clock_sequence'. Must be 0 to 7."
+     return -code error
+  }
+  if {![string is boolean -strict $inject_tck]} {
+     display_message -error "Invalid non-boolean value '$inject_tck' for parameter 'inject_tck'."
+     return -code error
+  }
+  if {$static_clock_control eq "off"} {
+     if {$clock_sequence > 0} {
+        display_message -error "Specifying 'clock_sequence' parameter has no effect when 'static_clock_control' parameter is 'off'."
+        return -code error
+     }
+  }
+  
+  iWrite test_mode 1;
+  iWrite fast_capture_mode [string is true $fast_capture_mode];
+  iWrite capture_cycle_width [expr {$capture_window_size - 1}];
+  iWrite active_upstream_parent_occ  [string is true $active_upstream_parent_occ]
+  iWrite inject_tck [string is true $inject_tck];
+  if {$static_clock_control eq "internal"} {
+     iWrite ijtag_static_clock_control_mode 1
+  } elseif {$static_clock_control eq "external"} {
+     iWrite static_clock_control_mode 1
+  } else {
+     iWrite ijtag_static_clock_control_mode 0
+     iWrite static_clock_control_mode 0
+  }
+  iWrite ijtag_clock_sequence $clock_sequence;
+  
+  iApply;
+} 

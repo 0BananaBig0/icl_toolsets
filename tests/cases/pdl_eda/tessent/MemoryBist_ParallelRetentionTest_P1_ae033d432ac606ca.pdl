@@ -1,0 +1,1602 @@
+iProcsForModule cpu_top
+
+iTopProc ParallelRetentionTest__1_StartToPause_initial_settings {} {
+
+   iForcePort [list "pdata_p\[1\]"] 0b0 -not_persistent
+   iApply
+
+   iReset
+   iNote "Setting cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.all_test to 1"
+   iWrite cpu_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0000
+   iRead  cpu_top_rtl1_tessent_tap_main_inst.instruction[3:0] 0b0001
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0001000000
+   iRead  cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0000000000
+   iWrite cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+
+}
+
+
+iProcsForModule cpu_top
+
+iTopProc ParallelRetentionTest__1_StartToPause {} {
+
+   iForcePort [list "pdata_p\[1\]"] 0b0 -not_persistent
+   iApply
+
+   iNote "Setting up MemoryBist controller cpu_top_rtl1_tessent_mbist_c1_controller_inst"
+   iNote "Releasing asynchronous reset"
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0001000000
+   iRead  cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0000000000
+   iWrite cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0]
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iNote "Enabling reduced address simulation"
+   iNote "Maintaining BIST inputs to the memory"
+   iNote "Enabling parallel retention test : Start to Pause"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX00
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0001000000
+   iRead  cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0000000000
+   iWrite cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX00
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP[1] 0b1
+
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iNote "Checking GO is FAIL before execution"
+   iNote "Checking DONE is FAIL before execution"
+   iNote "Starting MemoryBist controller execution : cpu_top_rtl1_tessent_mbist_c1_controller_inst"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iRunLoop -time 500ns
+   iNote "Checking GO is PASS after execution completion"
+   iNote "Checking DONE is PASS after execution completion"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX10
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP[1] 0b0
+
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iNote "Checking GO_ID bits are PASS"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.BIST_SI_Pipeline 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.DIAG_EN_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.CMP_EN_MASK_EN[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.CMP_EN_PARITY[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG0[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG1[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG2[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG3[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG4[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG5[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG6[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG7[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG8[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG9[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG10[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG11[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG12[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG13[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG14[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG15[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG16[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG17[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG18[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG19[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG20[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG21[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG22[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG23[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG24[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.ALGO_SEL_CNT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.SELECT_COMMON_OPSET_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.SELECT_COMMON_DATA_PAT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MICROCODE_EN_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.INST_POINTER_REG_HW[0:4] 0b00000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.A_ADD_REG_X_HW[0:6] 0b0000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.B_ADD_REG_X_HW[0:6] 0b0000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.JCNT_HW[0:2] 0b000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.OPSET_SELECT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.WDATA_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.EDATA_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.X_ADDR_BIT_SEL_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.REPEATLOOP_A_CNTR_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.REPEATLOOP_B_CNTR_REG_HW[0:1] 0b00
+   iWrite p9_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p9_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p8_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p8_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p7_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p7_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p6_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p6_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p5_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p5_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p4_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p4_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p3_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p3_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p2_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p2_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p14_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p14_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p14_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p14_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p13_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p13_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p13_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p13_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p12_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p12_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p12_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p12_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p11_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p11_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p11_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p11_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p10_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p10_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p10_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p10_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p1_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p1_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STOP_ON_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STOP_ERROR_CNT_REG_HW[0:11] 0b000000000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STEP_COUNTER_FREEZE_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STEP_COUNTER_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.BIST_SO_Pipeline 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+
+}
+
+
+iProcsForModule cpu_top
+
+iTopProc ParallelRetentionTest__1_PauseToPause {} {
+
+   iForcePort [list "pdata_p\[1\]"] 0b0 -not_persistent
+   iApply
+
+   iNote "Setting up MemoryBist controller cpu_top_rtl1_tessent_mbist_c1_controller_inst"
+   iNote "Releasing asynchronous reset"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0]
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iNote "Enabling reduced address simulation"
+   iNote "Maintaining BIST inputs to the memory"
+   iNote "Enabling parallel retention test : Pause to Pause"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX00
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0001000000
+   iRead  cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0000000000
+   iWrite cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX00
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP[1] 0b1
+
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iNote "Starting MemoryBist controller execution : cpu_top_rtl1_tessent_mbist_c1_controller_inst"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iRunLoop -time 400ns
+   iNote "Checking GO is PASS after execution completion"
+   iNote "Checking DONE is PASS after execution completion"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX10
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP[1] 0b0
+
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iNote "Checking GO_ID bits are PASS"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.BIST_SI_Pipeline 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.DIAG_EN_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.CMP_EN_MASK_EN[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.CMP_EN_PARITY[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG0[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG1[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG2[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG3[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG4[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG5[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG6[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG7[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG8[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG9[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG10[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG11[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG12[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG13[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG14[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG15[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG16[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG17[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG18[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG19[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG20[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG21[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG22[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG23[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG24[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.ALGO_SEL_CNT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.SELECT_COMMON_OPSET_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.SELECT_COMMON_DATA_PAT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MICROCODE_EN_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.INST_POINTER_REG_HW[0:4] 0b00000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.A_ADD_REG_X_HW[0:6] 0b0000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.B_ADD_REG_X_HW[0:6] 0b0000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.JCNT_HW[0:2] 0b000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.OPSET_SELECT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.WDATA_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.EDATA_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.X_ADDR_BIT_SEL_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.REPEATLOOP_A_CNTR_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.REPEATLOOP_B_CNTR_REG_HW[0:1] 0b00
+   iWrite p9_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p9_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p8_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p8_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p7_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p7_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p6_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p6_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p5_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p5_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p4_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p4_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p3_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p3_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p2_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p2_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p14_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p14_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p14_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p14_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p13_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p13_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p13_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p13_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p12_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p12_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p12_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p12_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p11_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p11_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p11_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p11_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p10_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p10_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p10_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p10_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p1_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p1_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STOP_ON_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STOP_ERROR_CNT_REG_HW[0:11] 0b000000000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STEP_COUNTER_FREEZE_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STEP_COUNTER_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.BIST_SO_Pipeline 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+
+}
+
+
+iProcsForModule cpu_top
+
+iTopProc ParallelRetentionTest__1_PauseToEnd {} {
+
+   iForcePort [list "pdata_p\[1\]"] 0b0 -not_persistent
+   iApply
+
+   iNote "Setting up MemoryBist controller cpu_top_rtl1_tessent_mbist_c1_controller_inst"
+   iNote "Releasing asynchronous reset"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0]
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iNote "tessent_pragma optional_iRead"
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iNote "Enabling reduced address simulation"
+   iNote "Maintaining BIST inputs to the memory"
+   iNote "Enabling parallel retention test : Pause to End"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX00
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_lbist_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_edt_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_occ_inst.sib 0b0
+   iWrite cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0001000000
+   iRead  cpu_top_rtl2_tessent_tdr_sri_ctrl_inst.tdr[9:0] 0b0000000000
+   iWrite cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iRead  cpu_top_rtl2_tessent_sib_sri_ctrl_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b1
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX00
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP[1] 0b1
+
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iNote "Starting MemoryBist controller execution : cpu_top_rtl1_tessent_mbist_c1_controller_inst"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b010
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   iRunLoop -time 400ns
+   iNote "Checking GO is PASS after execution completion"
+   iNote "Checking DONE is PASS after execution completion"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0b000
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP_tdr[2:0] 0bX10
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.CHAIN_BYPASS_EN_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.INCLUDE_MEM_RESULTS_REG_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE1_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.FL_CNT_MODE0_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ASYNC_RESET_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_DIAG_EN_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE1_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_ALGO_MODE0_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SELECT_TEST_DATA_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.REDUCED_ADDRESS_COUNT_tdr 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ENABLE_MEM_RESET_tdr 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   #  Unlock iWrite targets with explicit_iwrite_only attribute:
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.BIST_SETUP[1] 0b0
+
+   iApply
+
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   iNote "Checking GO_ID bits are PASS"
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.tdr_bypass_sib_inst 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.BIST_SI_Pipeline 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.DIAG_EN_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.CMP_EN_MASK_EN[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.CMP_EN_PARITY[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG0[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG1[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG2[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG3[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG4[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG5[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG6[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG7[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG8[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG9[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG10[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG11[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG12[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG13[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG14[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG15[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG16[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG17[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG18[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG19[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG20[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG21[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG22[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG23[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MEM_SELECT_REG24[0] 0b1
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.ALGO_SEL_CNT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.SELECT_COMMON_OPSET_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.SELECT_COMMON_DATA_PAT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.MICROCODE_EN_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.INST_POINTER_REG_HW[0:4] 0b00000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.A_ADD_REG_X_HW[0:6] 0b0000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.B_ADD_REG_X_HW[0:6] 0b0000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.JCNT_HW[0:2] 0b000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.OPSET_SELECT_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.WDATA_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.EDATA_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.X_ADDR_BIT_SEL_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.REPEATLOOP_A_CNTR_REG_HW[0:1] 0b00
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.REPEATLOOP_B_CNTR_REG_HW[0:1] 0b00
+   iWrite p9_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p9_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p9_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p8_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p8_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p8_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p7_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p7_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p7_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p6_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p6_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p6_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p5_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p5_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p5_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p4_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p4_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p4_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p3_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p3_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p3_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p2_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p2_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p2_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p18_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p18_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p18_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p17_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p17_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p17_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p16_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p16_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p16_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic3_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic3_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic3_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p15_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p15_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p15_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p14_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p14_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p14_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p14_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p14_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p14_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p13_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p13_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p13_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p13_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p13_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p13_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p12_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p12_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p12_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p12_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p12_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p12_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p11_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p11_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p11_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p11_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p11_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p11_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p10_pic2_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p10_pic2_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p10_pic2_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p10_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p10_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p10_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite p1_pic1_regs_picdram_interface_inst.RA_STATUS_REG[0] 0b0
+   iNote "tessent_pragma iReadVar p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0]"
+   iWrite p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iRead  p1_pic1_regs_picdram_interface_inst.GO_ID_REG[7:0] 0b00000000
+   iWrite p1_pic1_regs_picdram_interface_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STOP_ON_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.FREEZE_STOP_ERROR_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STOP_ERROR_CNT_REG_HW[0:11] 0b000000000000
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STEP_COUNTER_FREEZE_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.STEP_COUNTER_REG[0] 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_c1_controller_inst.BIST_SO_Pipeline 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_done_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.mbist_go_0 0b0
+   iWrite cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b1
+   iRead  cpu_top_rtl1_tessent_mbist_bap_inst.ctl_group_sib 0b0
+   iWrite cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_mbist_inst.sib 0b1
+   iWrite cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iRead  cpu_top_rtl1_tessent_sib_sti_inst.sib 0b1
+   iWrite cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iRead  cpu_top_rtl2_tessent_sib_sri_inst.sib 0b0
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+   #  Additional iApply to adjust iApplyEndState values
+   iApply
+
+
+}

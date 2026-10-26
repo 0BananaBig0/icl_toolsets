@@ -1,0 +1,68 @@
+#--------------------------------------------------------------------------------
+#
+#  Unpublished work. Copyright 2026 Siemens
+#
+#  This material contains trade secrets or otherwise confidential 
+#  information owned by Siemens Industry Software Inc. or its affiliates 
+#  (collectively, SISW), or its licensors. Access to and use of this 
+#  information is strictly limited as set forth in the Customer's 
+#  applicable agreements with SISW.
+#
+#--------------------------------------------------------------------------------
+#  File created by: Tessent Shell
+#          Version: 2026.2
+#       Created on: Mon Oct 26 08:56:39 CST 2026
+#--------------------------------------------------------------------------------
+
+iProcsForModule cpu_top_rtl2_tessent_edt_lbist_c1
+iProc setup {args} {
+   if {[expr [llength $args]%2 != 0]} {
+      display_message -error "Odd number of arguments. Expecting parameter and value pairs."
+      return -code error
+   }
+
+   set edt_bypass 0
+   set edt_single_bypass_chain 0
+   set edt_chain_mask 111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+   foreach {param value} $args {
+      set param [string tolower $param]
+      if {$param eq "edt_bypass"} {
+         set edt_bypass $value
+      } elseif {$param eq "edt_single_bypass_chain"} {
+         set edt_single_bypass_chain $value
+      } elseif {$param eq "internally_masked_chains"} {
+         foreach chain $value {
+            if {$chain < 1 || $chain > 87} {
+               display_message -error "Invalid chain index '$chain'. Must be 1 to 87."
+               return -code error
+            }
+            set pos [expr {[string length $edt_chain_mask]-$chain}]
+            set edt_chain_mask [string replace $edt_chain_mask $pos $pos 0]
+         }
+         continue
+      } else {
+         display_message -error "Invalid parameter '$param'. Valid parameters are 'edt_bypass', 'edt_single_bypass_chain' and 'internally_masked_chains'."
+         return -code error
+      }
+      if {![string is boolean -strict $value]} {
+         display_message -error "Invalid non-boolean value '$value' for parameter '$param'."
+         return -code error
+      }
+   }
+
+   if {$edt_bypass} {
+      iWrite edt_bypass on
+   } else {
+      iWrite edt_bypass off
+   }
+   if {$edt_single_bypass_chain} {
+      iWrite edt_single_bypass_chain on
+   } else {
+      iWrite edt_single_bypass_chain off
+   }
+   iWrite bist_chain_mask 0b$edt_chain_mask
+   iWrite bist_chain_mask_load_en 0b0
+   iApply
+}
+
+

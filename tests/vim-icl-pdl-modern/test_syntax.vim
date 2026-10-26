@@ -193,6 +193,12 @@ call CheckGroup(17, '-comment', 'pdlOption')
 call CheckGroup(18, '-status', 'pdlOption')
 call CheckGroup(19, '-status', 'pdlOption')
 call CheckGroup(20, '-status', 'tclString')
+call setline(21, ['iScan tap 8 -skip_model_state_simulation',
+      \ 'iNote "-skip_model_state_simulation"',
+      \ '# -skip_model_state_simulation'])
+call CheckGroup(21, '-skip_model_state_simulation', 'pdlOption')
+call CheckGroup(22, '-skip_model_state_simulation', 'tclString')
+call CheckGroup(23, '-skip_model_state_simulation', 'tclComment')
 call assert_equal('# %s', &commentstring)
 call assert_equal([3, 6, 0], [&shiftwidth, &tabstop, &expandtab])
 

@@ -19,8 +19,16 @@ def check(formatter, server, root):
     fixtures = {entry['path']: entry for entry in manifest['fixtures']}
     assert set(fixtures) == {p.relative_to(root).as_posix() for p in root.rglob('*.pdl')}
     assert len({entry['sha256'] for entry in fixtures.values()}) == len(fixtures)
+    origins, referenced = set(), set()
     for origin in manifest['sources']:
-        assert fixtures[origin['fixture']]['sha256'] == origin['sha256'], origin
+        assert origin['path'] not in origins, origin
+        origins.add(origin['path'])
+        versions = [origin, *origin.get('previous_versions', [])]
+        assert len(versions) == len({v['sha256'] for v in versions}), origin
+        for version in versions:
+            assert fixtures[version['fixture']]['sha256'] == version['sha256'], origin
+            referenced.add(version['fixture'])
+    assert referenced == set(fixtures), 'unreferenced vendor fixtures'
     expected = json.loads((root / 'expected_diagnostics.json').read_text())
     assert set(expected) <= set(fixtures), 'expectation names missing fixtures'
     failures = []

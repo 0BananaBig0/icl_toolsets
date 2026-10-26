@@ -12334,5 +12334,749 @@
     "block": "module",
     "accept": true,
     "source": "ranaumarnadeem/warptap 7853bfe199ea66de1583173c147a8ddf758635bc tests/fixtures/golden_icl/wsp1500_chain.icl; Apache-2.0; byte-identical"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_ac5e7534ff83ae00.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_bscan_interface_a415f3102d27c4e6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_bap_df2b878a88c4b2e7.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_c1_controller_49d734f80d97f596.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_sib_2_9e07248cd45540d8.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_sib_1_0cf80de92dfb8ff2.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_tap_main_b7af6fb4632f65f4.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_tap_main_fsm_d07eb7cc9449614a.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_lbist_c1_68174c84bb5cb98e.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_c1_sib_8473a874b41d7783.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_lbist_c1_tdr_5be11a2411221f64.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_lbist_016117bc1339ed2b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_lbist_sib_152895018daa0136.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_lbist_ncp_index_decoder_1cd06742eae34c2b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_occ_5e7a8171e5e8bc39.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_occ_sib_int_65e61b2e6b318126.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_sib_2_19ee045c5f45b874.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_sib_1_a4272a3354949ad0.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_single_chain_mode_logic_fd47dac2bc5b09f4.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_single_chain_mode_logic_sib_58f0e1e3a8a1441a.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_internal_scan_registers_da13544095ac6066.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_tdr_sri_ctrl_1ea605ccf0a2562b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_c1_interface_m1_b0029ce074c05301.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_7275712999f68299.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_a5f4ea5e0479339a.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_bscan_interface_50dadd4467d25656.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_sib_1_ae7b5f40a77c299e.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_sib_2_782322ed0236a4ec.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_tap_main_0623ec24cef0af3c.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_bap_ca2087c2f734b278.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_c1_controller_f245341b29327d0e.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_c1_controller_assembly_1c377c60ced4fbbc.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl1_tessent_mbist_c1_interface_m1_25fda6300a163bcc.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_lbist_c1_d6c9455a485224a2.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_c1_sib_8ff3d498c1237039.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_lbist_c1_tdr_a181b9048d663462.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_sib_1_5a62dc6728c7d90b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_sib_2_5089fb7ec070aac9.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_tdr_sri_ctrl_de53600c2f06724d.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_lbist_79a2fea59806f461.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_lbist_sib_1beb7efef948b257.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_single_chain_mode_logic_c8d8fd0ba4f600b9.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_single_chain_mode_logic_sib_02c56b75b09aad28.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_edt_internal_scan_registers_aa520b62fe0f2912.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_occ_1138d68a99ae9755.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/cpu_top_rtl2_tessent_occ_sib_int_26220d61a79cd37d.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_b2475937ea2d2bdb.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_add_clock_0_64cd4c64c743741c.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_bscan_interface_18ad3dd7c90ab4da.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_sib_2_39604f949e87f540.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_sib_1_40ac29407ffa0189.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_tap_main_fb33604de4d0ce75.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_tap_main_fsm_bf20eb113a8d5606.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_tdr_sri_ctrl_25753f67a0a5dc94.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_edt_c1_edf353e804cf838f.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_edt_c1_tdr_158afdf4334a79c6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_occ_e2eeeaab04c1291b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_occ_sib_int_424b8bb3617ac0ed.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_sib_1_481b839e57430dd9.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_mux_gps_byp_de9c62250f15a925.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_mux_gps_byp_data_reg_6f016853099df55b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_out_pipe_w2_1_3a0069ed75e73998.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_receiver_1x_pipe_w2_1_5801b1aa7f1d3d82.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_scan_host_1_0ba9902adc2936e2.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_scan_host_1_inner_f503fbaa21b28b3e.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_tdr_sri_ctrl_775702be317f8a57.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/gps_baseband_0bcd3acd5d4272d6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/gps_baseband_rtl1_tessent_ssn_scan_host_1_inner_ed4889720fd84615.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/processor_core_d5d5ce2c35942d4f.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_f2151a3c4816cb3f.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_6759df8ffcceeaf6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_scan_host_1_inner_e0f0f1cb837b78af.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_bscan_interface_12cbcedf9146bb0d.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_sib_1_007b82358d9af71e.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_sib_2_ab4cc23ed9bf0c36.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_tap_main_6bcbdb8ac602b372.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl1_tessent_tdr_sri_ctrl_f437acdc6a9083cf.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_edt_c1_9d3f44447f649f5c.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_edt_c1_tdr_5f0ed03702bb481b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_sib_1_eb3fa14e1626a71c.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_tdr_sri_ctrl_e04450304cc00bbc.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_occ_88c7028635ab86d5.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_occ_sib_int_7029ebc32ca3eb79.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_mux_gps_byp_d236df6ff2c07157.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_mux_gps_byp_data_reg_9677a6013d10a4b5.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_out_pipe_w2_1_e01cbdd09baa669b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_receiver_1x_pipe_w2_1_0d3392fd71498e2f.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_scan_host_1_193320de28ed3469.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/chip_top_rtl2_tessent_ssn_scan_host_1_inner_f29d3a46293c4d18.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/processor_core_0ef13868ae62e143.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/processor_core_a38a6ec7e3f8a047.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/processor_core_rtl1_tessent_mbist_c1_controller_assembly_0e03cb8e7c778ff9.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_9208ced88e69b7b3.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_lbist_c0_fd8ff3313053e3d7.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_c0_sib_7353c3e9c4fd2210.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_lbist_c0_tdr_ef112a4e0f00dd2b.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_lbist_efa89985cb8c6098.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_lbist_sib_f2cd4f6417429924.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_lbist_ncp_index_decoder_aab00567f0e490f5.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_occ_a17926568efb39c4.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_occ_sib_int_ebf9e0f6168968aa.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_sib_1_a1a467daec2be647.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_single_chain_mode_logic_dfa3fc3ee92a6488.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_single_chain_mode_logic_sib_6aa0a60e207d1c01.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_internal_scan_registers_ef7253ee5be439f5.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_tdr_sri_ctrl_fd717799f94438b6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl1_tessent_mbist_c1_controller_0422933936388cff.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl1_tessent_mbist_c1_interface_m1_9cbab78885147129.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_ccdc1ff0a8b51ead.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_7b8dd3180f47f57c.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_d13563b8ca372af9.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl1_tessent_mbist_c1_controller_assembly_06e3e046cc3b6b22.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_lbist_c0_e980ea521ff7bb4e.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_c0_sib_449a1b79c833671a.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_lbist_c0_tdr_5599788458d917d6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_sib_1_9d64779ff470679d.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_tdr_sri_ctrl_737865c4c2d57e8f.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_lbist_a8a14b809bd37df6.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_lbist_sib_d4f857e4398e5192.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_single_chain_mode_logic_8b1cab1b8a4f2129.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_single_chain_mode_logic_sib_b9194978f150e183.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_edt_internal_scan_registers_9fa644b9cda32746.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_occ_2e126fbda091f259.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
+  },
+  {
+    "path": "cases/pass/tessent/eda/piccpu_rtl2_tessent_occ_sib_int_13edb375f4ed4b73.icl",
+    "block": "eda-corpus",
+    "accept": true,
+    "source": "Tessent 2026.2 projects, 2026-10-26 snapshot; cases/eda_sources.json"
   }
 ]

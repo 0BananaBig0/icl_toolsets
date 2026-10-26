@@ -1,0 +1,44 @@
+#--------------------------------------------------------------------------
+#
+#  Unpublished work. Copyright 2026 Siemens
+#
+#  This material contains trade secrets or otherwise confidential 
+#  information owned by Siemens Industry Software Inc. or its affiliates 
+#  (collectively, SISW), or its licensors. Access to and use of this 
+#  information is strictly limited as set forth in the Customer's 
+#  applicable agreements with SISW.
+#
+#--------------------------------------------------------------------------
+#  File created by: Tessent Shell
+#          Version: 2026.2
+#       Created on: Mon Oct 26 09:10:54 CST 2026
+#--------------------------------------------------------------------------
+
+iProcsForModule chip_top_rtl2_tessent_ssn_mux_gps_byp
+iProc setup {args} {
+  set param_list {
+    select_secondary_bus
+  }
+  array set PARAM {
+    select_secondary_bus            0
+  }
+  array set PARAM $args
+  foreach {param value} $args {
+    if {$param ni $param_list} {
+      display_message -warning "Unknown argument '$param' passed to the setup iProc of module chip_top_rtl2_tessent_ssn_mux_gps_byp. It is ignored."
+    }
+  }
+  set missing_param 0
+  foreach param $param_list {
+    if {![info exists PARAM($param)]} {
+      display_message "Mandatory argument '$param' passed to the setup iProc of module chip_top_rtl2_tessent_ssn_mux_gps_byp is missing."
+      set missing_param 1
+    } else {
+      iWrite $param $PARAM($param)
+    }
+  }
+  if {$missing_param} {
+    return -code error
+  }
+  iApply
+}

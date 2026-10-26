@@ -45,6 +45,33 @@ GNU Make, Python unittest regression.
 
 ## Review focus
 
+### Tessent corpus refresh (user-authorized 2026-10-26)
+
+- [x] Commit and push the verified TAP datapath checkpoint (`ab5f0a8`).
+- [x] Collect all ICL/PDL from the flat, hierarchical-with-SSN and hybrid-TK/LBIST
+  2026.2 projects read-only, preserving all 465 source paths in the snapshot.
+- [x] Reuse existing parser-backed module and complete-stream importers; compare
+  against the maintained corpus and retain historical source revisions.
+- [x] Add 124 distinct ICL module fixtures and 58 byte-unique PDL streams, with
+  provenance and regression registration. No duplicate-policy exceptions added.
+- [x] Reproduce and fix the documented `iScan -skip_model_state_simulation`
+  syntax/highlighting gap; retain five focused positive/negative cases.
+- [x] Independently review source preservation, deduplication, test wiring and
+  parser/editor changes; no actionable findings.
+- [x] Complete the final full regression and record its outcome: `make check`
+  exited 0 (`build/tessent-refresh-regression.log`), including 2,180 ICL
+  conformance cases, 212 PDL block cases, all 137 vendor PDL streams and both
+  editor corpus passes. Focused static PDL corpus/block and Google style checks
+  also passed. Grammar/scanner reachability remains 334/334 and 119/119.
+
+See [ICL corpus provenance](../../../tests/cases/EDA_CORPUS.md) and
+[PDL corpus provenance](../../../tests/cases/pdl_eda/README.md). These are syntax,
+formatting and editor fixtures; importing them does not establish retargeting
+equivalence or complete the generator tasks below.
+Strict authored coverage was not rerun for this refresh; its last unchanged
+100% line / 90% raw-branch gate remains unmet (96.0% / 61.2%). The user requested
+committing and pushing this verified continuation after `ab5f0a8`.
+
 ### Tessent oracle extension (user-authorized 2026-10-25)
 
 - [ ] Run isolated remote narrow/equal-width and direction-control probes with

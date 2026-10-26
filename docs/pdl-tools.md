@@ -245,17 +245,23 @@ in its own prefix. Personal coc.nvim settings were not modified.
 
 ## Vendor PDL corpus
 
-The maintained [EDA PDL corpus](../tests/cases/pdl_eda/README.md) adds 79 byte-unique
-complete files (114 source paths) to `make pdlcheck` and coverage runs. Hashes,
+The maintained [EDA PDL corpus](../tests/cases/pdl_eda/README.md) contains 137 byte-unique
+complete files (453 source paths and 12 historical revisions, refreshed 2026-10-26) to `make pdlcheck` and coverage runs. Hashes,
 source attribution, whole-stream retention and exact duplicate elimination are
-checked. The suite expects 73 positive files and six IEEE argument-order errors;
+checked. The suite expects 115 positive files and 22 IEEE argument-order errors;
 negative cases remain unchanged. The corpus README distinguishes documented
 Tessent options from observed SLM compatibility forms and records static-analysis
 limits. Dynamic module bindings, procedure namespaces and prefixes are accepted without
 inventing definition targets. Explicit `iPrefix -` / `iUseProcNameSpace -` restore
 known default context.
 
-Corpus extension verification (2026-10-23): `make check-dynamic formatcheck
+The new boundary-scan inputs also cover the documented Tessent
+`iScan -skip_model_state_simulation` flag. Shared parsing accepts it as a
+zero-argument option while retaining duplicate-option and numeric validation.
+Vim/Neovim highlighting and five positive/negative block cases accompany it.
+This does not add retargeting or pattern execution to the language tools.
+
+Historical corpus extension verification (2026-10-23): `make check-dynamic formatcheck
 namingcheck BISON=/usr/bin/bison -j4` passed; five optional ANTLR integration tests
 remain skipped (`ICL_REF_DIR` unset). Importer tests passed 3/3, PDL functional
 methods 26/26, and dynamic/static corpus runs each passed 73 positive and six

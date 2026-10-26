@@ -35,7 +35,7 @@ const std::map<std::string, CommandSpec>& Specs() {
       {"iReset", {0, 1, 0}},
       {"iRead", {1, 2, 0}},
       {"iWrite", {2, 4, 0}},
-      {"iScan", {2, 10, 0}},
+      {"iScan", {2, 11, 0}},
       {"iOverrideScanInterface", {1, INT_MAX, 0}},
       {"iApply", {0, 1, 0}},
       {"iClock", {1, 1, 0}},
@@ -1286,7 +1286,10 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
         Error(words[0].range, "iScan requires a scan length");
       } else if (words[i].literal || context.level == 0) {
         check_number(i, false, false);
-        check_options(i + 1, {{"-si", 1}, {"-so", 1}, {"-stable", 0}});
+        check_options(i + 1, {{"-si", 1},
+                              {"-so", 1},
+                              {"-stable", 0},
+                              {"-skip_model_state_simulation", 0}});
         for (size_t j = i + 1; j + 1 < words.size(); ++j) {
           if (literal(j) == "-si" || literal(j) == "-so") {
             check_number(++j, false, true);
