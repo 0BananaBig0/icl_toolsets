@@ -9,6 +9,19 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 class BuildGraph(unittest.TestCase):
+    def test_coverage_includes_inline_code_emitted_by_pattern_tests(self):
+        run = subprocess.run(['make', '-n', 'coverage', 'BISON=/usr/bin/bison'],
+                             cwd=ROOT, capture_output=True, text=True, check=True)
+        gcov = next(shlex.split(line) for line in run.stdout.splitlines()
+                    if line.startswith('gcov '))
+        for test in ('pattern_tap_test', 'pattern_netlist_test',
+                     'pattern_design_test', 'pattern_expression_test',
+                     'pattern_bsdl_test', 'pattern_access_link_test',
+                     'pattern_address_test', 'pattern_logic_test',
+                     'pattern_runtime_test', 'pattern_flatten_test'):
+            with self.subTest(test=test):
+                self.assertIn(f'build/cov/{test}-{test}.gcno', gcov)
+
     def test_regression_entrypoints_share_the_suite(self):
         for target in ('check', 'check-dynamic'):
             with self.subTest(target=target):

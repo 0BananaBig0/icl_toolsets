@@ -317,9 +317,55 @@ completion follows from these component checks.
   overlap work. Verify named-bit routing, known captures and flat replay.
 - [x] Exercise 10,000 additional literal opcodes, masked-budget exhaustion,
   missing/inconsistent associations, generated-name collisions and shared paths.
-- [ ] Complete implicit BSDL mappings and unspecified opcode handling from the
-  governing standards/manuals; connect the datapath boundaries to the controller
-  and elaborated child interfaces with their controls, clocks and resets.
+- [x] Complete mandatory BSDL register mappings and unassigned binary-opcode
+  BYPASS handling from IEEE 1149.1-2001 B.8.13.3(a) and 8.1.1(d). Keep private
+  instructions and unsupported BSDL capture forms explicit remaining gaps.
+- [x] Distinguish IDCODE/USERCODE capture values in the shared register, preserve
+  unspecified custom capture state, and reject incompatible capture aliases.
+- [x] Reproduce and fix the independent-review finding that AccessLink chains
+  bypassed explicit standard register-name/width validation.
+- [ ] Connect the datapath boundaries to the controller and elaborated child
+  interfaces with their controls, clocks and resets.
 
 The component is still not a complete TAP or a generator executable. Resource
 limits and unsupported routes must not be converted into unreachability claims.
+
+Final defaults/capture verification: complete `make check`, focused dynamic/static
+tests, ASan/UBSan (leak detection disabled), formatting/naming, and independent
+review passed. Logs: `build/tap-defaults-delivery-regression.log`,
+`build/tap-defaults-delivery-sanitize.log`, `build/tap-defaults-style.log`.
+The strict coverage run completed its suites but failed the unchanged gate at
+8,016/8,345 lines (96.1%) and 13,167/21,502 raw branches (61.2%); see
+`build/tap-defaults-delivery-coverage.log`. The corpus checkpoint `6dc6ff9` is
+pushed; this subsequent model continuation remains uncommitted.
+
+### Task 2 continuation: native TAP controller
+
+- [x] Implement all 16 IEEE 1149.1 states with unknown initial state and
+  conservative unknown TMS/TRST handling; retain the explicit no-initial-reset
+  requirement.
+- [x] Separate rising-edge capture/shift actions from falling-edge update,
+  instruction-reset and TDO controls. Model asynchronous active-low TRST.
+- [x] Test every transition and per-state action against explicit standard
+  tables, five-clock reset convergence, reset hold/release, unknown inputs and
+  invalid-input atomicity. Request independent controller review.
+- [ ] Consume controller actions in separate instruction shift/latch state and
+  child scan interfaces. `TapController` alone does not execute register changes
+  or connect `TapDatapathModel` boundary nodes.
+
+The temporal controller stays separate from the shared structural netlist; a
+runtime must consume its returned actions and falling-edge output controls.
+There is no new parser, AST or duplicate netlist. See the controller verification
+entry in [model coverage](../../pattern-model-coverage.md).
+
+Controller checkpoint verification: final complete `make check`, focused
+dynamic/static tests, ASan/UBSan (leak detection disabled), Google style/naming
+and independent review passed. Corrected gcov input collection includes inline
+header code emitted by pattern-test translation units while excluding test
+sources from totals. The unchanged strict coverage gate still fails at
+8,066/8,395 lines (96.1%) and 13,204/21,546 raw branches (61.3%). Logs:
+`build/tap-controller-delivery-regression.log`,
+`build/tap-controller-final-sanitize.log`,
+`build/tap-controller-delivery-style.log`,
+`build/tap-controller-delivery-coverage.log`. No commit/push was requested for
+this continuation; full runtime and child wiring remain open.

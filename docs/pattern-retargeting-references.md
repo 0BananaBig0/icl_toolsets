@@ -125,3 +125,22 @@ uses a separate `--bsdl` input, but the executable and its options remain
 unfinished. TAP construction and native AccessLink retargeting are still needed
 for fully expanded debug ICL. No opcode, TAP width, missing default connection
 or generic controller behavior should be invented to hide this gap.
+
+The local **IEEE Std 1149.1-2001 (R2008)** PDF is
+`~/win11/Zotero/storage/RLZEUHNS/IEEE Standard Test Access Port and Boundary-Scan Architecture.pdf`.
+Annex B.8.13.3(a), printed157/PDF165, specifies the nine mandatory register
+associations and requires validation when they are explicitly repeated in BSDL.
+Section8.14.1(b–c), printed58/PDF66, selects DEVICE_ID for USERCODE with its own
+capture data. Section8.1.1(d), printed36/PDF44, requires otherwise unused binary
+codes to act as BYPASS. These rules now inform the native datapath; see
+[model coverage and remaining limitations](pattern-model-coverage.md).
+
+### Native TAP controller timing
+
+IEEE Std 1149.1-2001 (R2008), local Zotero `RLZEUHNS`: Figure 6-1 and
+§6.1.2 (printed 18–23 / PDF 26–31) define the state machine and five-TMS reset.
+§6.2.1/Table 6-2 (printed 24–27 / PDF 32–35) specify falling-edge TDO controls;
+§6.3.1 (printed 31 / PDF 39) specifies asynchronous active-low TRST;
+§7.2.1/Table 7-1 (printed 34–35 / PDF 42–43) separates rising capture/shift,
+falling instruction update/reset, and asynchronous instruction reset. These
+govern `TapController`; a runtime consuming its actions is still required.

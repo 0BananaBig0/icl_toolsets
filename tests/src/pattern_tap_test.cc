@@ -26,6 +26,204 @@ std::string Read(const std::string& path) {
 }
 const std::string kDirectory =
     "tests/cases/ours/pattern_generation/access_link/";
+std::string Actions(const pattern::TapActions& actions) {
+  // Capture/shift/update IR, capture/shift/update DR, reset IR.
+  return {actions.capture_ir, actions.shift_ir, actions.update_ir,
+          actions.capture_dr, actions.shift_dr, actions.update_dr,
+          actions.reset_ir};
+}
+void TestControllerTransitions() {
+  using S = pattern::TapState;
+  struct Transition {
+    S state;
+    const char* path;
+    S low, high;
+    const char* rising;
+    const char* falling;
+    const char* tdo;
+  };
+  // IEEE 1149.1-2001 Figure 6-1; paths start in Test-Logic-Reset.
+  const Transition cases[] = {
+      {S::kTestLogicReset, "", S::kRunTestIdle, S::kTestLogicReset, "0000000",
+       "0000001", "0x"},
+      {S::kRunTestIdle, "0", S::kRunTestIdle, S::kSelectDr, "0000000",
+       "0000000", "0x"},
+      {S::kSelectDr, "01", S::kCaptureDr, S::kSelectIr, "0000000", "0000000",
+       "0x"},
+      {S::kCaptureDr, "010", S::kShiftDr, S::kExit1Dr, "0001000", "0000000",
+       "0x"},
+      {S::kShiftDr, "0100", S::kShiftDr, S::kExit1Dr, "0000100", "0000000",
+       "10"},
+      {S::kExit1Dr, "0101", S::kPauseDr, S::kUpdateDr, "0000000", "0000000",
+       "0x"},
+      {S::kPauseDr, "01010", S::kPauseDr, S::kExit2Dr, "0000000", "0000000",
+       "0x"},
+      {S::kExit2Dr, "010101", S::kShiftDr, S::kUpdateDr, "0000000", "0000000",
+       "0x"},
+      {S::kUpdateDr, "01011", S::kRunTestIdle, S::kSelectDr, "0000000",
+       "0000010", "0x"},
+      {S::kSelectIr, "011", S::kCaptureIr, S::kTestLogicReset, "0000000",
+       "0000000", "0x"},
+      {S::kCaptureIr, "0110", S::kShiftIr, S::kExit1Ir, "1000000", "0000000",
+       "0x"},
+      {S::kShiftIr, "01100", S::kShiftIr, S::kExit1Ir, "0100000", "0000000",
+       "11"},
+      {S::kExit1Ir, "01101", S::kPauseIr, S::kUpdateIr, "0000000", "0000000",
+       "0x"},
+      {S::kPauseIr, "011010", S::kPauseIr, S::kExit2Ir, "0000000", "0000000",
+       "0x"},
+      {S::kExit2Ir, "0110101", S::kShiftIr, S::kUpdateIr, "0000000", "0000000",
+       "0x"},
+      {S::kUpdateIr, "011011", S::kRunTestIdle, S::kSelectDr, "0000000",
+       "0010000", "0x"},
+  };
+  for (const auto& test : cases) {
+    for (char tms : {'0', '1', 'x'}) {
+      pattern::TapController controller;
+      controller.SetTrst('0');
+      controller.SetTrst('1');
+      for (char bit : std::string(test.path)) controller.RisingEdge(bit);
+      Require(controller.PossibleStates() == pattern::TapStateBit(test.state),
+              "reach the independently specified starting state");
+      Require(Actions(controller.FallingEdge()) == test.falling &&
+                  std::string{controller.TdoEnabled(), controller.IrSelect()} ==
+                      test.tdo,
+              "falling actions and TDO match IEEE 1149.1 Tables 6-2 and 7-1");
+      Require(
+          Actions(controller.RisingEdge(tms)) == test.rising,
+          "rising actions use pre-transition state even when TMS is unknown");
+      const auto expected = tms == '0'   ? pattern::TapStateBit(test.low)
+                            : tms == '1' ? pattern::TapStateBit(test.high)
+                                         : pattern::TapStateBit(test.low) |
+                                               pattern::TapStateBit(test.high);
+      Require(controller.PossibleStates() == expected,
+              "every known/unknown TMS transition matches Figure 6-1");
+    }
+  }
+}
+void TestControllerEdgesAndReset() {
+  using S = pattern::TapState;
+  pattern::TapController controller;
+  Require(controller.PossibleStates() == 0xffff &&
+              controller.TdoEnabled() == 'x' && controller.IrSelect() == 'x',
+          "construction does not assume an observed hardware reset");
+  controller.SetTrst('1');
+  for (int i = 0; i < 4; ++i) controller.RisingEdge('1');
+  Require(
+      controller.PossibleStates() != pattern::TapStateBit(S::kTestLogicReset),
+      "four high TMS clocks do not reset every possible starting state");
+  controller.RisingEdge('1');
+  Require(
+      controller.PossibleStates() == pattern::TapStateBit(S::kTestLogicReset),
+      "five high TMS clocks synchronize unknown state");
+  Require(controller.FallingEdge().reset_ir == '1',
+          "synchronous instruction reset occurs on falling TCK in reset");
+  Require(controller.TdoEnabled() == '0', "reset disables TDO at falling TCK");
+
+  for (bool ir : {false, true}) {
+    controller.SetTrst('0');
+    controller.SetTrst('1');
+    const std::string prefix = ir ? "0110" : "010";
+    for (char bit : prefix) {
+      const auto actions = controller.RisingEdge(bit);
+      Require(actions.capture_ir == '0' && actions.capture_dr == '0' &&
+                  actions.shift_ir == '0' && actions.shift_dr == '0' &&
+                  actions.update_ir == '0' && actions.update_dr == '0' &&
+                  actions.reset_ir == '0',
+              "entering capture does not capture prematurely");
+      controller.FallingEdge();
+    }
+    auto actions = controller.RisingEdge('0');
+    Require(actions.capture_ir == (ir ? '1' : '0') &&
+                actions.capture_dr == (ir ? '0' : '1') &&
+                actions.shift_ir == '0' && actions.shift_dr == '0',
+            "capture occurs on the rising edge leaving Capture");
+    Require(controller.TdoEnabled() == '0',
+            "entry into Shift does not enable TDO until falling edge");
+    controller.FallingEdge();
+    Require(controller.TdoEnabled() == '1' &&
+                controller.IrSelect() == (ir ? '1' : '0'),
+            "falling TCK selects IR or DR and enables TDO in Shift");
+    actions = controller.RisingEdge('1');
+    Require(
+        actions.shift_ir == (ir ? '1' : '0') &&
+            actions.shift_dr == (ir ? '0' : '1') &&
+            controller.TdoEnabled() == '1',
+        "the exit edge still shifts; TDO remains enabled until falling TCK");
+    controller.FallingEdge();
+    Require(controller.TdoEnabled() == '0',
+            "Exit1 disables TDO on falling edge");
+    actions = controller.RisingEdge('1');
+    Require(actions.update_ir == '0' && actions.update_dr == '0',
+            "entering Update does not latch on rising TCK");
+    actions = controller.FallingEdge();
+    Require(actions.update_ir == (ir ? '1' : '0') &&
+                actions.update_dr == (ir ? '0' : '1') &&
+                actions.capture_ir == '0' && actions.capture_dr == '0' &&
+                actions.shift_ir == '0' && actions.shift_dr == '0',
+            "only the selected update action fires on falling TCK");
+  }
+  Require(controller.SetTrst('0').reset_ir == '1' &&
+              controller.PossibleStates() ==
+                  pattern::TapStateBit(S::kTestLogicReset),
+          "TRST asserts instruction reset asynchronously");
+  Require(controller.RisingEdge('0').reset_ir == '1' &&
+              controller.PossibleStates() ==
+                  pattern::TapStateBit(S::kTestLogicReset),
+          "held TRST prevents state advance");
+  Require(controller.SetTrst('1').reset_ir == '0',
+          "TRST release does not itself perform a synchronous reset");
+  controller.RisingEdge('0');
+  Require(controller.SetTrst('x').reset_ir == 'x' &&
+              controller.PossibleStates() ==
+                  (pattern::TapStateBit(S::kRunTestIdle) |
+                   pattern::TapStateBit(S::kTestLogicReset)),
+          "unknown reset retains both reset and non-reset possibilities");
+  Require(controller.FallingEdge().reset_ir == 'x', "ambiguous reset action");
+  controller.SetTrst('1');
+  controller.RisingEdge('0');
+  Require(controller.PossibleStates() == pattern::TapStateBit(S::kRunTestIdle),
+          "uncertainty may converge after reset release");
+  controller.RisingEdge('1');
+  controller.RisingEdge('x');
+  Require(controller.RisingEdge('0').capture_dr == 'x',
+          "unknown TMS yields a conditional capture action");
+  controller.FallingEdge();
+  Require(controller.TdoEnabled() == 'x' && controller.IrSelect() == 'x',
+          "TDO controls conservatively retain uncertainty");
+  const auto states = controller.PossibleStates();
+  for (char invalid : {'X', 'z', '2', '\0'}) {
+    for (bool reset : {false, true}) {
+      bool rejected = false;
+      try {
+        if (reset)
+          controller.SetTrst(invalid);
+        else
+          controller.RisingEdge(invalid);
+      } catch (const std::invalid_argument&) {
+        rejected = true;
+      }
+      Require(rejected && controller.PossibleStates() == states &&
+                  controller.TdoEnabled() == 'x' &&
+                  controller.IrSelect() == 'x',
+              "invalid input is rejected without state or output mutation");
+    }
+  }
+  controller.SetTrst('0');
+  controller.SetTrst('1');
+  for (char bit : std::string("01100")) controller.RisingEdge(bit);
+  controller.FallingEdge();
+  controller.SetTrst('x');
+  Require(Actions(controller.RisingEdge('0')) == "0x0000x",
+          "unknown TRST may suppress an IR shift and asynchronously reset IR");
+  controller.SetTrst('0');
+  Require(controller.TdoEnabled() == '1' && controller.IrSelect() == '1',
+          "asynchronous reset does not change falling-edge TDO controls early");
+  Require(Actions(controller.FallingEdge()) == "0000001" &&
+              controller.TdoEnabled() == '0',
+          "held asynchronous reset prevents updates and disables TDO on "
+          "falling TCK");
+}
 std::string Replace(std::string text, const std::string& from,
                     const std::string& to) {
   const auto at = text.find(from);
@@ -41,6 +239,12 @@ pattern::TapDatapathModel Build(const std::string& icl,
   const auto links =
       pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
   return pattern::BuildTapDatapathModel(links[0]);
+}
+std::string UserRegisterBsdl() {
+  return Replace(
+      Replace(Read(kDirectory + "simple.bsdl"), "EXTEST (0000), SAMPLE (0001)",
+              "USER_ONE (0000), USER_TWO (0001)"),
+      "BOUNDARY (EXTEST, SAMPLE)", "USER[9] (USER_ONE, USER_TWO)");
 }
 char ReadBit(const pattern::TapDatapathModel& model,
              const pattern::BitReference& bit, const std::string& instruction) {
@@ -356,7 +560,8 @@ void TestDataRegisterRoutes() {
               nodes.at(model.ir_select).kind == "DataInPort" &&
               MuxSource(ir_mux, "1").node == model.instruction_register,
           "IR select chooses instruction register scan output");
-  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& fallback = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& dr_mux = nodes.at(MuxSource(fallback, "1").node);
   for (const auto& probe :
        std::vector<std::pair<std::string, std::string>>{{"0000", "BOUNDARY"},
                                                         {"0001", "BOUNDARY"},
@@ -396,6 +601,165 @@ void TestDataRegisterRoutes() {
             "data paths share TDI without silently assuming reset");
   }
 }
+void TestImplicitStandardRegisters() {
+  auto bsdl = Replace(Read(kDirectory + "simple.bsdl"),
+                      "  attribute REGISTER_ACCESS of AccessProbe : entity is\n"
+                      "    \"BOUNDARY (EXTEST, SAMPLE), BYPASS (BYPASS), "
+                      "DEVICE_ID (IDCODE)\";\n",
+                      "");
+  bsdl = Replace(bsdl, "SAMPLE (0001)",
+                 "SAMPLE (0001), PRELOAD (0101), INTEST (0110), "
+                 "CLAMP (0111), HIGHZ (1000)");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto& nodes = model.netlist.nodes;
+  const auto& ir_mux =
+      nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
+  const auto& fallback = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& dr_mux = nodes.at(MuxSource(fallback, "1").node);
+  for (const auto& probe :
+       std::vector<std::pair<std::string, std::string>>{{"0000", "BOUNDARY"},
+                                                        {"0001", "BOUNDARY"},
+                                                        {"0101", "BOUNDARY"},
+                                                        {"0110", "BOUNDARY"},
+                                                        {"0010", "DEVICE_ID"},
+                                                        {"0111", "BYPASS"},
+                                                        {"1000", "BYPASS"},
+                                                        {"1111", "BYPASS"}}) {
+    Require(MuxSource(dr_mux, probe.first).node ==
+                model.data_registers.at(probe.second),
+            "standard instruction has its mandated implicit register");
+  }
+  const auto flat = pattern::SerializeIcl(model.netlist);
+  pattern::Design replay;
+  replay.AddIcl("implicit-flat.icl", flat);
+  Require(pattern::SerializeIcl(
+              pattern::Elaborate(replay, model.netlist.top_module)) == flat,
+          "implicit register mappings survive flat replay");
+}
+void TestUnassignedOpcodes() {
+  auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "IJTAG_ON (0011)",
+                      "IJTAG_ON (0011, 10XX)");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto& nodes = model.netlist.nodes;
+  const auto& ir_mux =
+      nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
+  const auto& fallback = nodes.at(MuxSource(ir_mux, "0").node);
+  Require(fallback.inputs.at("SelectedBy").size() == 1,
+          "DR selection distinguishes assigned and unassigned opcodes");
+  const auto bypass = MuxSource(fallback, "0");
+  Require(bypass.node == model.data_registers.at("BYPASS"),
+          "unassigned binary opcodes select the shared BYPASS register");
+  const auto& assigned = nodes.at(MuxSource(fallback, "1").node);
+  for (int value = 0; value < 16; ++value) {
+    std::string code(4, '0');
+    for (int bit = 0; bit < 4; ++bit) code[3 - bit] += (value >> bit) & 1;
+    const char known =
+        ReadBit(model, fallback.inputs.at("SelectedBy")[0], code);
+    Require(known == ((value <= 4 || (value >= 8 && value <= 11) || value == 15)
+                          ? '1'
+                          : '0'),
+            "literal and masked instruction coverage is exact");
+    if (known == '1') MuxSource(assigned, code);
+  }
+  Require(ReadBit(model, fallback.inputs.at("SelectedBy")[0], "xxxx") == 'x',
+          "unknown instruction bits do not imply a known BYPASS state");
+}
+void TestUsercodeCapture() {
+  auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "IDCODE (0010)",
+                      "IDCODE (0010), USERCODE (0101), CUSTOM_ID (0110)");
+  bsdl = Replace(bsdl, "DEVICE_ID (IDCODE)", "DEVICE_ID (IDCODE, CUSTOM_ID)");
+  bsdl = Replace(bsdl, "end AccessProbe;",
+                 "attribute USERCODE_REGISTER of AccessProbe : entity is\n"
+                 "\"10101010101010101010101010101010\";\nend AccessProbe;");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto& nodes = model.netlist.nodes;
+  const auto& capture =
+      nodes.at(model.data_registers.at("DEVICE_ID")).inputs.at("CaptureSource");
+  Require(capture.size() == 32 &&
+              capture[0].node != std::numeric_limits<size_t>::max(),
+          "USERCODE must not inherit constant IDCODE capture data");
+  const auto& mux = nodes.at(capture[0].node);
+  Require(mux.kind == "DataMux",
+          "identification capture depends on instruction");
+  for (const auto& probe : std::vector<std::pair<std::string, std::string>>{
+           {"0010", "00010000000000000000000000000011"},
+           {"0101", "10101010101010101010101010101010"},
+           {"0110", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}}) {
+    std::string value;
+    for (const auto& choice : mux.choices) {
+      for (const auto& code : choice.codes) {
+        if (code.data == probe.first)
+          for (const auto& bit : choice.source) value += bit.constant;
+      }
+    }
+    Require(value == probe.second,
+            "instruction-specific identification capture");
+  }
+  bool rejected = false;
+  try {
+    Build(Read(kDirectory + "simple.icl"),
+          Replace(bsdl, "USERCODE_REGISTER", "UNKNOWN_REGISTER"));
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("USERCODE_REGISTER") !=
+               std::string::npos;
+  }
+  Require(rejected, "missing usercode value must not silently use IDCODE");
+  rejected = false;
+  const auto aliases = Replace(bsdl, "USERCODE (0101)", "USERCODE (0010)");
+  try {
+    Build(Read(kDirectory + "simple.icl"), aliases);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("conflicting identification") !=
+               std::string::npos;
+  }
+  Require(rejected, "same register route cannot hide conflicting captures");
+  Build(Read(kDirectory + "simple.icl"),
+        Replace(aliases, "10101010101010101010101010101010",
+                "00010000000000000000000000000011"));
+  const auto flat = pattern::SerializeIcl(model.netlist);
+  pattern::Design replay;
+  replay.AddIcl("capture-flat.icl", flat);
+  Require(pattern::SerializeIcl(
+              pattern::Elaborate(replay, model.netlist.top_module)) == flat,
+          "instruction-dependent capture survives flat replay");
+}
+void TestInvalidStandardAssociations() {
+  const auto original = Read(kDirectory + "simple.bsdl");
+  for (const auto& changed :
+       {Replace(original, "BYPASS (BYPASS)", "BOUNDARY (BYPASS)"),
+        Replace(original, "DEVICE_ID (IDCODE)", "OTHER[32] (IDCODE)"),
+        Replace(original, "BOUNDARY (EXTEST, SAMPLE)",
+                "BYPASS (EXTEST, SAMPLE)")}) {
+    bool rejected = false;
+    try {
+      Build(Read(kDirectory + "simple.icl"), changed);
+    } catch (const std::runtime_error& error) {
+      const std::string message = error.what();
+      rejected = message.find("mandated register") != std::string::npos &&
+                 message.find("probe.bsdl:") != std::string::npos;
+    }
+    Require(rejected, "contradictory standard association must be rejected");
+  }
+  bool rejected = false;
+  try {
+    Build(Replace(Read(kDirectory + "simple.icl"), "IJTAG_ON {", "EXTEST {"),
+          Replace(original, "BOUNDARY (EXTEST, SAMPLE)",
+                  "BOUNDARY (SAMPLE), BYPASS (EXTEST)"));
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("mandated register") !=
+               std::string::npos;
+  }
+  Require(rejected, "AccessLink route must not hide invalid BSDL association");
+  rejected = false;
+  try {
+    Build(Replace(Read(kDirectory + "simple.icl"), "IJTAG_ON {", "IDCODE {"),
+          Replace(original, "DEVICE_ID (IDCODE)", "DEVICE_ID[16] (IDCODE)"));
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("inconsistent width") !=
+               std::string::npos;
+  }
+  Require(rejected, "AccessLink route must not hide invalid standard width");
+}
 void TestInvalidDataRoutes() {
   auto icl = Replace(Read(kDirectory + "simple.icl"), "Module AccessTop {",
                      "Module AccessTop { Instance other Of AccessInstrument;");
@@ -407,17 +771,23 @@ void TestInvalidDataRoutes() {
             "conflicting"},
            {Replace(bsdl, "IJTAG_ON (0011)", "IJTAG_ON (0XXX)"), "conflicting"},
            {Replace(bsdl, "BYPASS (1111)", "BYPASS (XXXX)"), "conflicting"},
-           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN (BYPASS)"), "width"},
-           {Replace(bsdl, "BOUNDARY (EXTEST, SAMPLE)",
-                    "USER[1048576] (EXTEST, SAMPLE)"),
+           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN (BYPASS)"),
+            "mandated register"},
+           {Replace(UserRegisterBsdl(), "USER[9]", "USER[1048576]"),
             "width limit"},
+           {Replace(UserRegisterBsdl(), "USER[9]", "USER"), "width"},
            {Replace(bsdl, "DEVICE_ID (IDCODE)", "DEVICE_ID[16] (IDCODE)"),
             "width"},
+           {Replace(bsdl, "IDCODE_REGISTER", "MISSING_IDCODE_REGISTER"),
+            "missing IDCODE_REGISTER"},
+           {Replace(Replace(bsdl, "BYPASS (1111)", "CUSTOM (1111)"),
+                    "BYPASS (BYPASS)", "USER[1] (CUSTOM)"),
+            "missing BYPASS"},
            {Replace(bsdl, "BYPASS (BYPASS)", "BYPASS[2] (BYPASS)"), "width"},
-           {Replace(bsdl, "BOUNDARY (EXTEST, SAMPLE)", "BOUNDARY (EXTEST)"),
+           {Replace(bsdl, "SAMPLE (0001)", "SAMPLE (0001), UNMAPPED (1000)"),
             "association"},
-           {Replace(bsdl, "BOUNDARY (EXTEST, SAMPLE)",
-                    "USER[2] (EXTEST), USER[3] (SAMPLE)"),
+           {Replace(UserRegisterBsdl(), "USER[9] (USER_ONE, USER_TWO)",
+                    "USER[2] (USER_ONE), USER[3] (USER_TWO)"),
             "inconsistent"}}) {
     bool rejected = false;
     try {
@@ -450,13 +820,12 @@ void TestSharedRegisterRoutesAndNames() {
           "datapath boundary names avoid ActiveSignals");
   const auto& ir_mux =
       nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
-  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& fallback = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& dr_mux = nodes.at(MuxSource(fallback, "1").node);
   Require(MuxSource(dr_mux, "0000").node == model.data_registers.at("BOUNDARY"),
           "multiple instruction aliases can select the same register");
   const auto custom =
-      Build(Read(kDirectory + "simple.icl"),
-            Replace(Read(kDirectory + "simple.bsdl"),
-                    "BOUNDARY (EXTEST, SAMPLE)", "USER[9] (EXTEST, SAMPLE)"));
+      Build(Read(kDirectory + "simple.icl"), UserRegisterBsdl());
   Require(
       custom.netlist.nodes.at(custom.data_registers.at("USER")).Width() == 9 &&
           !custom.netlist.nodes.at(custom.data_registers.at("USER"))
@@ -522,7 +891,8 @@ void TestManyExactRoutes() {
   const auto& nodes = model.netlist.nodes;
   const auto& ir_mux =
       nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
-  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& fallback = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& dr_mux = nodes.at(MuxSource(fallback, "1").node);
   Require(MuxSource(dr_mux, "0000000100000000").node ==
                   model.data_registers.at("BYPASS") &&
               MuxSource(dr_mux, "0010100000001111").node ==
@@ -550,7 +920,8 @@ void TestActiveOnlyInstructions() {
   const auto& nodes = model.netlist.nodes;
   const auto& ir_mux =
       nodes.at(nodes.at(model.scan_output).inputs.at("Source")[0].node);
-  const auto& dr_mux = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& fallback = nodes.at(MuxSource(ir_mux, "0").node);
+  const auto& dr_mux = nodes.at(MuxSource(fallback, "1").node);
   Require(MuxSource(dr_mux, "0011").node == model.data_registers.at("USER") &&
               MuxSource(dr_mux, "0100").node == model.data_registers.at("USER"),
           "ActiveSignal-only alias instructions share declared register path");
@@ -603,6 +974,12 @@ void TestInstructionModel() {
 }  // namespace
 int main() {
   try {
+    TestControllerTransitions();
+    TestControllerEdgesAndReset();
+    TestUnassignedOpcodes();
+    TestUsercodeCapture();
+    TestImplicitStandardRegisters();
+    TestInvalidStandardAssociations();
     TestActiveOnlyInstructions();
     TestMaskedRouteBudget();
     TestManyExactRoutes();

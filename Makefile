@@ -401,6 +401,9 @@ COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
 COV_REPORT_OBJECTS += $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o \
     $(COV_DIR)/pdl_lsp_main.o
 COV_REPORT_OBJECTS += $(COV_PATTERN)
+# Inline authored headers can be emitted only in a test translation unit.
+COV_REPORT_OBJECTS += $(foreach test,$(filter %_test,$(COV_BINARIES)),\
+    $(test)-$(notdir $(test)).gcno)
 
 $(COV_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
 $(COV_DIR)/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)

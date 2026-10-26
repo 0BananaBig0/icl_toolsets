@@ -27,6 +27,7 @@ struct BsdlTap {
   std::map<std::string, std::vector<std::string>> opcodes;
   std::string capture;
   std::optional<std::string> idcode;
+  std::optional<std::string> usercode;
   std::optional<size_t> boundary_width;
   std::map<std::string, BsdlRegister> registers;
   // Keys are case-folded VHDL attribute and target identifiers. Retain the

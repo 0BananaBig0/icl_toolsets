@@ -497,6 +497,9 @@ class Reader {
     if (Has("idcode_register")) {
       tap_.idcode = Bits(EntityAttribute("idcode_register"), 32);
     }
+    if (Has("usercode_register")) {
+      tap_.usercode = Bits(EntityAttribute("usercode_register"), 32);
+    }
     if (Has("boundary_length")) {
       tap_.boundary_width = Integer(EntityAttribute("boundary_length").value);
     }

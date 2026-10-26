@@ -754,8 +754,8 @@ The focused dynamic/static runs measured approximately 15–19 ms for the
 
 The earlier component flat-replay tests now include the data registers and muxes.
 Tests also check literal register-selection expectations and capture constants;
-idempotency alone is not treated as proof of correct wiring. Remaining gaps
-include implicit BSDL register associations, unlisted instruction bit patterns,
+idempotency alone is not treated as proof of correct wiring. At that checkpoint,
+remaining gaps included implicit BSDL register associations, unlisted instruction bit patterns,
 full TAP FSM/reset/clock behavior, child-port wiring and semantic equivalence of
 differently named interfaces. A later scheduler must not mistake an unmodeled
 route for proven disconnection. End-to-end generation remains unfinished.
@@ -770,3 +770,135 @@ passed. Strict coverage still fails at **7,934/8,262 lines (96.0%)** and
 (98.6%)**, **476/778 branches (61.2%)**
 (`build/tap-datapath-coverage.log`). Thresholds remain unchanged; no generator,
 full TAP, or vendor-equivalence completion is implied.
+
+## BSDL implied associations and unassigned opcodes (2026-10-26)
+
+The continuation after corpus checkpoint `6dc6ff9` adds the mandatory register
+associations for BYPASS, CLAMP and HIGHZ (BYPASS); EXTEST, INTEST, PRELOAD and
+SAMPLE (BOUNDARY); and IDCODE and USERCODE (DEVICE_ID). They may be omitted from
+`REGISTER_ACCESS`. Explicit standard register names and widths are checked even
+when an AccessLink instruction supplies a child scan-chain route. Nonstandard
+instructions without a chain still require an explicit register association.
+
+`USERCODE_REGISTER` is read through the existing bounded BSDL bit-pattern reader.
+IDCODE and USERCODE share one DEVICE_ID register but use an instruction-selected
+32-bit `DataMux` for their different captures. An unspecified custom instruction's
+capture remains unknown; it does not inherit IDCODE's value. Overlapping opcodes
+with different capture descriptions are rejected; merging partly unknown
+capture descriptions is not implemented. The current reader supports one
+32-bit pattern per IDCODE/USERCODE attribute; alternative pattern lists and
+per-instruction BSDL `CAPTURES` clauses remain explicitly unsupported.
+
+Unassigned binary opcodes select the shared one-bit BYPASS register. A balanced
+OR of distinct opcode comparisons recognizes literal and masked assignments;
+an outer `ScanMux` selects the declared route or BYPASS. This avoids enumerating
+an exponential complement of the instruction space. Unknown instruction bits
+remain unknown when the selected route cannot be determined. No reset or known
+initial register state is introduced. A missing BYPASS register is an explicit
+model error, not an invented route.
+
+The governing source is **IEEE Std 1149.1-2001 (R2008)**, *Test Access Port and
+Boundary-Scan Architecture*, local Zotero storage `RLZEUHNS`:
+
+- Annex B.8.13.3(a), printed157/PDF165: mandatory associations and validation
+  of redundant explicit descriptions.
+- §8.14.1(b–c), printed58/PDF66: USERCODE selects DEVICE_ID with its own capture.
+- §8.1.1(d), printed36/PDF44: otherwise unused binary codes behave as BYPASS.
+
+Tests cover omitted associations, contradictory names/widths, AccessLink paths
+that previously bypassed validation, all 16 values of a four-bit instruction,
+masked and unknown bits, equal/conflicting capture aliases, unspecified custom
+captures, missing metadata, and flat replay of the capture mux. Earlier width
+tests now use custom instruction names instead of assigning EXTEST/SAMPLE to
+nonstandard registers. Existing 10,000-opcode and mask-budget tests remain.
+
+Resource limits are unchanged: generated ICL is bounded at 16 MiB, capture/route
+overlap checks each have a 16,777,216-work-unit budget, and decoded BSDL values
+remain bounded. Coverage decoding is proportional to retained opcode text and
+uses a set to remove duplicates; it does not scan all possible instruction values.
+The added decoder costs extra AST/elaboration work; no speedup is claimed.
+On WSL2 with g++ `-O2`, a native focused-suite run measured 0.31 s wall and
+61,052 KiB peak RSS; the 10,000-additional-opcode case took 0.085 s. Command:
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' build/pattern_tap_test`.
+Evidence: `build/tap-defaults-measurement.log`. This run overlapped the editor
+regression and is a scale observation, not an isolated performance comparison.
+
+This remains a datapath component. Full controller state/timing/reset behavior,
+child interface wiring, private-instruction modeling, pattern scheduling and
+end-to-end generator/vendor equivalence remain unfinished.
+
+The final complete `make check` passed after the last test change
+(`build/tap-defaults-delivery-regression.log`). It includes static/dynamic
+component checks, 2,180 ICL conformance cases, 212 PDL block cases, 137 vendor PDL
+streams and both editor corpus runs (38,627 ICL / 802 PDL files per editor).
+Grammar/scanner reachability remains 334/334 and 119/119. ASan/UBSan passed with
+leak detection disabled (`build/tap-defaults-delivery-sanitize.log`); Google
+formatting/naming checks passed (`build/tap-defaults-style.log`). Independent
+review confirmed the explicit-association validation fix and reported no
+remaining findings.
+
+The final instrumented suites also passed, but `make coverage` exited 2 at the
+unchanged strict 100% line / 90% raw-branch gate: **8,016/8,345 lines (96.1%)**,
+**13,167/21,502 branches (61.2%)**. `pattern_tap.cc` reaches **420/425 lines
+(98.8%)**, **632/1,032 branches (61.2%)**; defensive text/range-validation paths
+remain uncovered. Evidence: `build/tap-defaults-delivery-coverage.log`. No
+thresholds were relaxed. The continuation remains uncommitted after the pushed
+corpus checkpoint; the full generator remains unfinished.
+
+## Native TAP controller (2026-10-26)
+
+`TapController` in `src/pattern_tap.h/.cc` now models all 16 controller states.
+Its 16-bit set starts with every state possible; explicit TRST assertion or five
+high TMS rising edges establishes Test-Logic-Reset. Inputs accept normalized
+`0`, `1`, and `x`; invalid characters throw before state mutation. Unknown TMS
+unions possible transitions; unknown TRST also retains the reset possibility.
+This is conservative digital modeling, not analog or metastability simulation.
+
+Rising edges return capture/shift actions using the state before transition.
+Falling edges return update actions, reset the instruction in Test-Logic-Reset,
+and change TDO enable/register selection. TRST assertion returns an asynchronous
+instruction-reset action and holds the controller in reset, without inventing
+an observed power-up reset. Actions are `0`, `1`, or `x` and apply only to the
+reported event; callers must issue one event per actual clock edge. TDO selection
+is undefined (`x`) outside Shift-IR/Shift-DR, where the driver is disabled after
+the falling edge. Assertion of TRST does not change those TDO controls early.
+
+The reference is IEEE Std 1149.1-2001 (R2008), Figure 6-1 and §§6.1.2, 6.2.1,
+6.3.1, 7.2.1: rising-edge state changes/capture/shift, Table 6-2 TDO timing,
+asynchronous TRST, and falling-edge instruction update/reset. Tests contain an
+independently stated transition/action table for every state, all `0/1/x` TMS
+transitions, edge timing through both IR/DR scans, five-clock convergence,
+unknown reset, asynchronous reset with enabled TDO, and malformed-input atomicity.
+Transition work and memory are bounded by 16 states, independent of netlist size.
+
+The coverage manifest includes `pattern_tap.h` now that it contains executable
+state-mask/accessor functions. Generated parser/scanner code remains excluded;
+the authored-code thresholds stay at 100% lines and 90% raw branches.
+The gcov input list now also includes the pattern-test translation units:
+inline header definitions can be linked from those units instead of a library
+object. Before this correction, the report showed zero hits for `TapStateBit`
+despite 2,063 calls recorded in the test unit. A Makefile regression check covers
+the report inputs. Test source files themselves remain excluded from the totals.
+
+The controller is a separate temporal component. Instruction shift/latch data,
+reset opcode selection, register execution, and child interface wiring are still
+unfinished; controller tests do not establish generated-pattern or Tessent
+equivalence. It does not yet drive the datapath's `ir_select` boundary. Keeping
+temporal state separate avoids mutating the shared structural AST/netlist.
+
+The final complete `make check` passed after all source/test changes
+(`build/tap-controller-delivery-regression.log`): dynamic/static components,
+2,180 ICL conformance cases, 212 PDL blocks, 137 vendor PDL streams, all 334/334
+grammar and 119/119 scanner rules, and both Vim/Neovim runs with 38,627 ICL and
+802 PDL files each. Focused ASan/UBSan passed with leak detection disabled
+(`build/tap-controller-final-sanitize.log`). Google formatting/naming checks
+passed (`build/tap-controller-delivery-style.log`). Independent reviews found
+no remaining controller or coverage-reporting issues.
+
+The corrected instrumented suites passed, but the unchanged strict coverage
+gate failed: **8,066/8,395 lines (96.1%)**, **13,204/21,546 raw branches (61.3%)**.
+`pattern_tap.cc` reaches **464/469 lines (98.9%)**, **674/1,076 branches (62.6%)**;
+its five missed lines are existing defensive datapath validation paths.
+`pattern_tap.h` reaches **5/5 lines (100%)**. Evidence:
+`build/tap-controller-delivery-coverage.log`. This is a verified component
+checkpoint, not completion of the generator or its coverage acceptance gate.

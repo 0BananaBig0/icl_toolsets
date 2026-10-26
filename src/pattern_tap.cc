@@ -11,6 +11,23 @@
 
 namespace pattern {
 namespace {
+void ValidateTapInput(char value) {
+  if (value != '0' && value != '1' && value != 'x') {
+    throw std::invalid_argument("TAP input must be 0, 1 or x");
+  }
+}
+
+char StateActive(uint16_t states, uint16_t mask) {
+  if (!(states & mask)) return '0';
+  return (states & mask) == states ? '1' : 'x';
+}
+
+char ClockAction(uint16_t states, TapState state, char trst) {
+  const char active = StateActive(states, TapStateBit(state));
+  if (trst == '0' || active == '0') return '0';
+  return trst == 'x' ? 'x' : active;
+}
+
 constexpr size_t kMaxModelBytes = 16 * 1024 * 1024;
 constexpr size_t kMaxActiveBits = 1024 * 1024;
 struct SignalRange {
@@ -145,7 +162,8 @@ class Builder {
   }
 
  private:
-  void ValidateRoutes(const std::map<std::string, std::string>& routes) const {
+  void ValidateRoutes(const std::map<std::string, std::string>& routes,
+                      const std::string& kind = "data-register routes") const {
     struct Route {
       std::string source, instruction;
     };
@@ -160,11 +178,13 @@ class Builder {
       --work;
     };
     for (const auto& opcode : link_.bsdl->opcodes) {
-      const auto& source = routes.at(opcode.first);
+      const auto route = routes.find(opcode.first);
+      if (route == routes.end()) continue;
+      const auto& source = route->second;
       const auto conflict = [&](const Route& prior) {
-        throw std::runtime_error(link_.bsdl->origin +
-                                 ": conflicting data-register routes for " +
-                                 prior.instruction + " and " + opcode.first);
+        throw std::runtime_error(link_.bsdl->origin + ": conflicting " + kind +
+                                 " for " + prior.instruction + " and " +
+                                 opcode.first);
       };
       for (const auto& code : opcode.second) {
         const auto duplicate = seen.find(code);
@@ -196,6 +216,52 @@ class Builder {
       }
     }
   }
+  std::string DeviceCapture(const std::string& instruction_reg,
+                            const std::string& instruction_width,
+                            const std::map<std::string, std::string>& returns) {
+    std::map<std::string, std::string> captures;
+    for (const auto& opcode : link_.bsdl->opcodes) {
+      if (returns.count(opcode.first)) continue;
+      const auto association = link_.bsdl->registers.find(opcode.first);
+      const bool idcode = opcode.first == "IDCODE";
+      const bool usercode = opcode.first == "USERCODE";
+      if (!idcode && !usercode &&
+          (association == link_.bsdl->registers.end() ||
+           association->second.name != "DEVICE_ID")) {
+        continue;
+      }
+      std::string capture(32, 'x');
+      if (idcode || usercode) {
+        const auto& value =
+            usercode ? link_.bsdl->usercode : link_.bsdl->idcode;
+        if (!value) {
+          throw std::runtime_error(
+              link_.bsdl->origin + ": missing " +
+              (usercode ? "USERCODE_REGISTER" : "IDCODE_REGISTER"));
+        }
+        capture = *value;
+      }
+      captures.emplace(opcode.first, std::move(capture));
+    }
+    ValidateRoutes(captures, "identification capture values");
+    const auto& first = captures.begin()->second;
+    if (std::all_of(captures.begin(), captures.end(),
+                    [&](const auto& entry) { return entry.second == first; })) {
+      return "32'b" + first;
+    }
+    const auto name = Fresh("device_capture");
+    Append("DataMux " + name + "[31:0] SelectedBy " + instruction_reg + " {\n");
+    for (const auto& entry : captures) {
+      bool first = true;
+      for (const auto& code : link_.bsdl->opcodes.at(entry.first)) {
+        Append((first ? "" : " | ") + instruction_width + "'b" + code);
+        first = false;
+      }
+      Append(" : 32'b" + entry.second + ";\n");
+    }
+    Append("}\n");
+    return name;
+  }
   void BuildDataPath(const std::string& input,
                      const std::string& instruction_reg,
                      const std::string& instruction_width,
@@ -222,28 +288,57 @@ class Builder {
     std::map<std::string, std::string> routes;
     size_t remaining_bits = kMaxActiveBits;
     for (const auto& opcode : link_.bsdl->opcodes) {
+      // IEEE 1149.1-2001 B.8.13.3(a): these associations may be omitted,
+      // but explicit ones must agree with the standard instruction.
+      static const std::map<std::string, std::string> kStandardRegisters = {
+          {"BYPASS", "BYPASS"},     {"CLAMP", "BYPASS"},
+          {"HIGHZ", "BYPASS"},      {"EXTEST", "BOUNDARY"},
+          {"INTEST", "BOUNDARY"},   {"PRELOAD", "BOUNDARY"},
+          {"SAMPLE", "BOUNDARY"},   {"IDCODE", "DEVICE_ID"},
+          {"USERCODE", "DEVICE_ID"}};
+      const auto standard = kStandardRegisters.find(opcode.first);
+      const auto association = link_.bsdl->registers.find(opcode.first);
+      if (standard != kStandardRegisters.end() &&
+          association != link_.bsdl->registers.end()) {
+        if (association->second.name != standard->second) {
+          throw std::runtime_error(
+              link_.bsdl->origin + ": instruction " + opcode.first +
+              " requires mandated register " + standard->second);
+        }
+        const auto expected_width =
+            standard->second == "BOUNDARY"
+                ? link_.bsdl->boundary_width
+                : std::optional<size_t>(standard->second == "BYPASS" ? 1 : 32);
+        if (association->second.width &&
+            association->second.width != expected_width) {
+          throw std::runtime_error(link_.bsdl->origin +
+                                   ": inconsistent width for BSDL register " +
+                                   standard->second);
+        }
+      }
       const auto returned = returns->find(opcode.first);
       if (returned != returns->end()) {
         routes.emplace(opcode.first, returned->second);
         continue;
       }
-      const auto association = link_.bsdl->registers.find(opcode.first);
-      if (association == link_.bsdl->registers.end()) {
+      if (association == link_.bsdl->registers.end() &&
+          standard == kStandardRegisters.end()) {
         throw std::runtime_error(
             link_.bsdl->origin +
             ": no data-register association for instruction " + opcode.first);
       }
-      const auto& reg = association->second;
+      const auto reg = association == link_.bsdl->registers.end()
+                           ? BsdlRegister{standard->second, std::nullopt}
+                           : association->second;
       auto width = reg.width;
       std::string capture;
       if (reg.name == "BYPASS") {
         width = 1;
-        capture = "0";
+        capture = "1'b0";
       } else if (reg.name == "BOUNDARY") {
         width = link_.bsdl->boundary_width;
       } else if (reg.name == "DEVICE_ID") {
-        width = link_.bsdl->idcode ? std::optional<size_t>(32) : std::nullopt;
-        if (width) capture = *link_.bsdl->idcode;
+        width = 32;
       }
       if (!width || !*width || (reg.width && reg.width != width)) {
         throw std::runtime_error(
@@ -258,12 +353,14 @@ class Builder {
               ": TAP data-register width limit exceeded: " + reg.name);
         }
         remaining_bits -= *width;
+        if (reg.name == "DEVICE_ID") {
+          capture = DeviceCapture(instruction_reg, instruction_width, *returns);
+        }
         const auto name = Fresh(reg.name);
         Append("ScanRegister " + name + "[" + std::to_string(*width - 1) +
                ":0] { ScanInSource " + input + ";");
         if (!capture.empty()) {
-          Append(" CaptureSource " + std::to_string(*width) + "'b" + capture +
-                 ";");
+          Append(" CaptureSource " + capture + ";");
         }
         Append(" }\n");
         found = registers->emplace(reg.name, name).first;
@@ -276,7 +373,26 @@ class Builder {
       routes.emplace(opcode.first, found->second + "[0]");
     }
     ValidateRoutes(routes);
+    const auto bypass = registers->find("BYPASS");
+    if (bypass == registers->end()) {
+      throw std::runtime_error(
+          link_.bsdl->origin +
+          ": missing BYPASS register for unassigned opcodes");
+    }
+    std::set<std::string> known_codes;
+    for (const auto& opcode : link_.bsdl->opcodes) {
+      known_codes.insert(opcode.second.begin(), opcode.second.end());
+    }
+    std::vector<std::string> known_terms;
+    for (const auto& code : known_codes) {
+      known_terms.push_back(instruction_reg + " == " + instruction_width +
+                            "'b" + code);
+    }
+    const auto known = Fresh("known_instruction");
+    Append("LogicSignal " + known + " { " + Or(std::move(known_terms)) +
+           "; }\n");
     const auto data_mux = Fresh("data_mux");
+    const auto fallback = Fresh("unassigned_mux");
     const auto ir_mux = Fresh("ir_mux");
     Append("ScanMux " + data_mux + " SelectedBy " + instruction_reg + " {\n");
     for (const auto& opcode : link_.bsdl->opcodes) {
@@ -287,10 +403,13 @@ class Builder {
       }
       Append(" : " + routes.at(opcode.first) + ";\n");
     }
-    Append("}\nDataInPort " + ir_select + ";\nScanMux " + ir_mux +
-           " SelectedBy " + ir_select + " { 1'b1 : " + instruction_reg +
-           "[0]; 1'b0 : " + data_mux + "; }\nScanOutPort " + output +
-           " { Source " + ir_mux + "; }\n");
+    // IEEE 1149.1-2001 8.1.1(d). Decode coverage instead of enumerating the
+    // exponentially large complement of literal/masked opcode patterns.
+    Append("}\nScanMux " + fallback + " SelectedBy " + known + " { 1'b0 : " +
+           bypass->second + "[0]; 1'b1 : " + data_mux + "; }\nDataInPort " +
+           ir_select + ";\nScanMux " + ir_mux + " SelectedBy " + ir_select +
+           " { 1'b1 : " + instruction_reg + "[0]; 1'b0 : " + fallback +
+           "; }\nScanOutPort " + output + " { Source " + ir_mux + "; }\n");
   }
   static std::string BaseName(const std::string& text) {
     return text.substr(0, text.find('['));
@@ -436,6 +555,68 @@ class Builder {
   size_t next_name_ = 0;
 };
 }  // namespace
+TapActions TapController::SetTrst(char value) {
+  ValidateTapInput(value);
+  trst_ = value;
+  if (value == '0') states_ = TapStateBit(TapState::kTestLogicReset);
+  if (value == 'x') states_ |= TapStateBit(TapState::kTestLogicReset);
+  TapActions actions;
+  actions.reset_ir = value == '0' ? '1' : value == '1' ? '0' : 'x';
+  return actions;
+}
+
+TapActions TapController::RisingEdge(char tms) {
+  ValidateTapInput(tms);
+  using S = TapState;
+  TapActions actions;
+  actions.capture_ir = ClockAction(states_, S::kCaptureIr, trst_);
+  actions.shift_ir = ClockAction(states_, S::kShiftIr, trst_);
+  actions.capture_dr = ClockAction(states_, S::kCaptureDr, trst_);
+  actions.shift_dr = ClockAction(states_, S::kShiftDr, trst_);
+  // IEEE 1149.1-2001 Figure 6-1, indexed in TapState declaration order.
+  static constexpr S kNext[][2] = {
+      {S::kRunTestIdle, S::kTestLogicReset},
+      {S::kRunTestIdle, S::kSelectDr},
+      {S::kCaptureDr, S::kSelectIr},
+      {S::kShiftDr, S::kExit1Dr},
+      {S::kShiftDr, S::kExit1Dr},
+      {S::kPauseDr, S::kUpdateDr},
+      {S::kPauseDr, S::kExit2Dr},
+      {S::kShiftDr, S::kUpdateDr},
+      {S::kRunTestIdle, S::kSelectDr},
+      {S::kCaptureIr, S::kTestLogicReset},
+      {S::kShiftIr, S::kExit1Ir},
+      {S::kShiftIr, S::kExit1Ir},
+      {S::kPauseIr, S::kUpdateIr},
+      {S::kPauseIr, S::kExit2Ir},
+      {S::kShiftIr, S::kUpdateIr},
+      {S::kRunTestIdle, S::kSelectDr},
+  };
+  uint16_t next = 0;
+  for (unsigned state = 0; state < 16; ++state) {
+    if (!(states_ & (uint16_t{1} << state))) continue;
+    if (tms != '1') next |= TapStateBit(kNext[state][0]);
+    if (tms != '0') next |= TapStateBit(kNext[state][1]);
+  }
+  states_ = next;
+  actions.reset_ir = SetTrst(trst_).reset_ir;
+  return actions;
+}
+
+TapActions TapController::FallingEdge() {
+  using S = TapState;
+  TapActions actions;
+  actions.update_ir = ClockAction(states_, S::kUpdateIr, trst_);
+  actions.update_dr = ClockAction(states_, S::kUpdateDr, trst_);
+  actions.reset_ir = StateActive(states_, TapStateBit(S::kTestLogicReset));
+  tdo_enabled_ =
+      StateActive(states_, TapStateBit(S::kShiftIr) | TapStateBit(S::kShiftDr));
+  ir_select_ = states_ == TapStateBit(S::kShiftIr)   ? '1'
+               : states_ == TapStateBit(S::kShiftDr) ? '0'
+                                                     : 'x';
+  return actions;
+}
+
 TapDatapathModel BuildTapDatapathModel(const AccessLink& link) {
   try {
     return Builder(link).Run();
