@@ -139,6 +139,22 @@ cmp out/tck-example/result.pdl out/tck-example/pdl-replay.pdl
 The output retains all 100 TCK cycles. Matching files check deterministic replay;
 they do not establish a live hardware readback or Tessent-equivalence result.
 
+## Command support
+
+| Command | Current generator behavior |
+|---|---|
+| `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
+| `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
+| `iState` | Numeric scan-register/alias assumptions with default or `-LastWrittenValue`; no device transaction. |
+| `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
+| `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
+| `iNote` | Retain literal notes in generated PDL. |
+| `iMerge`, resource and system-clock commands | Execution/scheduling remains unfinished and reports an error. |
+| Hardware readback commands | Static generation cannot supply live device observations. |
+
+This table describes generator execution. The formatter and LSP have separate,
+broader syntax support and never execute PDL.
+
 ## Current transaction support
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric

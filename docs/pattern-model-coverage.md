@@ -65,7 +65,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
 | Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
 | Tessent oracle | Isolated vendor probes, manifests and comparison harness | Complete reviewed pair execution, reset-rewrite routing and semantic equivalence |
-| Acceptance checks | Full regression, sanitizers/style and independent review passed for single-TAP and shared-update integration | Strict coverage remains below 100% lines/90% raw branches: 95.1%/60.3% |
+| Acceptance checks | Full regression, sanitizers/style and independent review passed through TCK idle replay and enum operands (`7f43156`) | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.4%; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values

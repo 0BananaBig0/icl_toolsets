@@ -343,6 +343,9 @@ together.
 `iRead` and `iWrite` accept numeric values or names from the target's `RefEnum`.
 An alias uses its own `RefEnum`; generated PDL spells the resolved values as
 binary numbers, including X masks.
+See the [command support table](docs/pattern-generation.md#command-support)
+before choosing a PDL sequence; parsing a command does not imply that the
+experimental generator can execute it.
 
 For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
