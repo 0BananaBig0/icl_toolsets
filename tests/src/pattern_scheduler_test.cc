@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <stdexcept>
 #include <tuple>
@@ -58,6 +59,9 @@ void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
           "hand-derived IJTAG_ON opcode and DR serial data");
   Require(scheduler.Value("core.r") == "01011001",
           "native TAP replay writes target");
+  scheduler.Idle(std::numeric_limits<uint64_t>::max());
+  Require(scheduler.Value("core.r") == "01011001",
+          "idle keeps stable instrument state");
   Require(scheduler.Apply({{"iWrite", {"core.r", "0xa6"}, "tap-test:2", {}}})
                   .size() == 1,
           "reuse active instruction without redundant IR scan");
@@ -77,6 +81,69 @@ void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
   }
   Require(rejected && scheduler.Value("core.r") == previous,
           "failed scheduling preserves committed hardware state");
+}
+void TestChangingIdleState() {
+  const std::string directory =
+      "tests/cases/ours/pattern_generation/access_link/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(directory + name);
+    return std::string(std::istreambuf_iterator<char>(file), {});
+  };
+  for (bool periodic : {false, true}) {
+    auto source = read("simple.icl");
+    source.replace(source.find("r[7:0]"), 6, "r[2:0]");
+    source.insert(
+        source.find("ScanInSource si;") +
+            std::string("ScanInSource si;").size(),
+        periodic ? " CaptureSource r[1:0], r[2];" : " CaptureSource 3'b000;");
+    source.insert(source.find("InputPort mode"),
+                  "InputPort select = 1'b1; InputPort capture = 1'b1; "
+                  "InputPort shift = 1'b0; InputPort update = 1'b1; ");
+    pattern::Design design;
+    design.AddIcl("idle.icl", source);
+    design.AddBsdl("simple.bsdl", read("simple.bsdl"), "AccessProbe");
+    const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+    pattern::ScanScheduler scheduler(network.netlist);
+    scheduler.Idle(0);
+    Require(scheduler.Value("core.r") == "xxx",
+            "zero cycles must not initialize hardware");
+    bool rejected = false;
+    try {
+      scheduler.Idle(1);
+    } catch (const std::exception& error) {
+      rejected = std::string(error.what()).find("explicit iReset") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "nonzero idle cycles require established controller state");
+    scheduler.Reset();
+    scheduler.Assume("core.r", "100");
+    if (periodic) {
+      scheduler.Idle(1);
+      Require(scheduler.Value("core.r") == "001",
+              "idle capture/update follows actual pin controls");
+      scheduler.Idle(2);
+      Require(scheduler.Value("core.r") == "100",
+              "changing idle state is not skipped as stable");
+      rejected = false;
+      try {
+        scheduler.Idle(std::numeric_limits<uint64_t>::max());
+      } catch (const std::exception& error) {
+        rejected = std::string(error.what()).find("resource limit") !=
+                   std::string::npos;
+      }
+      Require(rejected && scheduler.Value("core.r") == "100",
+              "bounded nonconverging replay must fail without partial state "
+              "changes");
+      scheduler.Idle(1);
+      Require(scheduler.Value("core.r") == "001",
+              "failed idle replay also preserves executor state");
+    } else {
+      scheduler.Idle(std::numeric_limits<uint64_t>::max());
+      Require(scheduler.Value("core.r") == "000",
+              "idle must replay changes before skipping a fixed point");
+    }
+  }
 }
 void TestTapExternalReset() {
   const std::string directory =
@@ -402,6 +469,7 @@ int main() {
     TestTapScheduling(false, false, false);
     TestTapScheduling(true, false, false);
     TestTapScheduling(false, true, true);
+    TestChangingIdleState();
     TestTapExternalReset();
     TestTapControlRejection();
     TestApplyTogether();

@@ -47,10 +47,15 @@ Module Events {
           "falling-edge update is select qualified");
   state.Drive(netlist.node_ids.at("reset"), "1");
   state.Reset();
+  Require(state.TakeResetEvents() == std::set<size_t>{a, b} &&
+              state.TakeResetEvents().empty(),
+          "reset events are retained until consumed");
   Require(state.Value(a) == "0011" && state.Value(b) == "0101" &&
               state.Value(a, true) == "1101",
           "reset affects update state regardless of select, not shift state");
   state.Clock({{a, {'0', '1', '0', '1'}}}, true);
+  Require(state.TakeResetEvents() == std::set<size_t>{a, b},
+          "held reset is observed even when values already match reset");
   Require(state.Value(a, true) == "1110" && state.Value(a) == "0011",
           "held reset does not block shifting");
   state.Clock({{a, {'0', '0', '1', '1'}}}, false);
@@ -129,14 +134,18 @@ Module Top {
   state.Clock({{control, {'0', '0', '1', '1'}}}, false);
   Require(state.Value(target) == "0",
           "asserted local reset initializes target");
+  state.TakeResetEvents();
   state.Drive(netlist.node_ids.at("value"), "0");
   state.Clock({{control, {'1', '0', '0', '1'}}, {target, {'1', '0', '0', '1'}}},
               true);
+  state.TakeResetEvents();
   state.Clock({{control, {'0', '0', '1', '1'}}, {target, {'0', '0', '1', '1'}}},
               false);
   Require(
       state.Value(control) == "0" && state.Value(target) == "0",
       "same-edge reset release cannot enable protected update retroactively");
+  Require(state.TakeResetEvents() == std::set<size_t>{target},
+          "reset on the update edge survives deassertion during that edge");
   state.Clock({{target, {'0', '0', '1', '1'}}}, false);
   Require(state.Value(target) == "1",
           "released target updates on subsequent event");

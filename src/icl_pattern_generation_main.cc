@@ -142,6 +142,35 @@ std::string Generate(const pattern::Netlist& netlist,
         const bool synchronous = !operation.arguments.empty();
         scheduler.Reset(synchronous);
         result += synchronous ? "iReset -sync\n" : "iReset\n";
+      } else if (operation.command == "iRunLoop") {
+        if (!pending.empty()) {
+          throw std::runtime_error("iRunLoop has unapplied operations");
+        }
+        const auto& args = operation.arguments;
+        std::string literal;
+        if (args.size() == 1) {
+          literal = args[0];
+        } else if (args.size() == 2 && args[1] == "-tck") {
+          literal = args[0];
+        } else if (args.size() == 2 && args[0] == "-tck") {
+          literal = args[1];
+        } else {
+          throw std::runtime_error(
+              "iRunLoop -sck/-time requires system-clock and period models");
+        }
+        if (literal.find_first_of("xX", 2) != std::string::npos) {
+          throw std::runtime_error("iRunLoop cycle count must be known");
+        }
+        const auto bits = pattern::PdlNumber(context, literal, 64);
+        uint64_t cycles = 0;
+        for (char bit : bits) {
+          if (bit == 'x') {
+            throw std::runtime_error("iRunLoop cycle count must be known");
+          }
+          cycles = (cycles << 1) | (bit == '1');
+        }
+        scheduler.Idle(cycles);
+        result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
       } else if (operation.command == "iState") {
         if (!pending.empty()) {
           throw std::runtime_error(
@@ -232,7 +261,8 @@ int main(int argc, char** argv) {
            "iWrite/iApply/iState.\n"
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"
-           "Single-TAP IR/DR scans require explicit iReset. Multi-TAP, shadow\n"
+           "Single-TAP IR/DR scans and nonzero iRunLoop TCK counts require\n"
+           "explicit iReset. iRunLoop -sck/-time, multi-TAP, shadow\n"
            "register transactions, merges and free-running clocks remain "
            "unsupported.\n";
     return 0;

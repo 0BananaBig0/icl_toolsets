@@ -340,6 +340,11 @@ transactions and checks each result through concrete controller/event replay.
 prerequisite scans may precede that cycle. It does not require reads to occur
 together.
 
+For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
+adds idle TCK cycles and retains the full count in generated PDL. Counts must
+be known unsigned 64-bit integers, with no unapplied reads or writes.
+System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
+
 | Option | Behavior |
 |---|---|
 | `--icl FILE...` | Load ICL in order; later module definitions override earlier ones with warnings. |
@@ -352,8 +357,9 @@ together.
 | `--local_reset PATH` | Reserved; the separate procedure-preserving rewrite is not implemented. |
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, addressed/one-hot execution, merges/timing/resources, the separate
-local-reset artifact, and full Tessent pattern equivalence remain unfinished.
+scheduling, addressed/one-hot execution, merges, system clocks, resources, the
+separate local-reset artifact, and full Tessent pattern equivalence remain
+unfinished.
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

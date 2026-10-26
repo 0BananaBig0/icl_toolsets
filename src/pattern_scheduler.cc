@@ -215,6 +215,47 @@ class ScanScheduler::Impl {
     global_resets_ = "00";
     state_.Reset();
   }
+  void Idle(uint64_t cycles) {
+    if (cycles == 0) return;
+    if (!tap_ || !tap_ready_) {
+      throw std::runtime_error(
+          "TCK idle replay requires a single TAP and explicit iReset");
+    }
+    auto run = std::make_unique<TapExecution>(*execution_);
+    run->TakeResetEvents();
+    auto fill = fill_;
+    size_t work = netlist_.nodes.size();
+    for (const auto& node : netlist_.nodes) work += node.Width();
+    const size_t limit = std::min<size_t>(
+        4096,
+        std::max<size_t>(2, 16 * 1024 * 1024 / std::max<size_t>(1, work)));
+    const auto start = std::chrono::steady_clock::now();
+    for (size_t step = 0; cycles != 0; ++step, --cycles) {
+      if (step == limit ||
+          std::chrono::steady_clock::now() - start > std::chrono::seconds(15)) {
+        throw std::runtime_error(
+            "TCK idle replay resource limit before a stable state");
+      }
+      const NetworkState previous(run->State());
+      Cycle(run.get(), '0');
+      for (size_t id : run->TakeResetEvents()) {
+        const auto& node = netlist_.nodes[id];
+        if (node.kind == "ScanRegister") {
+          fill[id] = initial_fill_.at(id);
+          const auto& bits = node.constants.at("ResetValue").data;
+          for (size_t i = 0; i < bits.size(); ++i) {
+            if (bits[i] != 'x') fill[id][i] = bits[i];
+          }
+        }
+      }
+      // Every cycle starts/ends in known Run-Test/Idle with the same inputs.
+      // An identical complete state is a fixed point for all remaining cycles.
+      if (run->State().SameState(previous)) break;
+    }
+    state_.Restore(run->State());
+    execution_ = std::move(run);
+    fill_ = std::move(fill);
+  }
   void Assume(const std::string& target, const std::string& bits) {
     const auto resolved = ResolvePdlTarget(netlist_, target);
     if (bits.size() != resolved.bits.size() ||
@@ -1039,6 +1080,7 @@ ScanScheduler::ScanScheduler(const Netlist& netlist)
     : impl_(std::make_unique<Impl>(netlist)) {}
 ScanScheduler::~ScanScheduler() = default;
 void ScanScheduler::Reset(bool synchronous) { impl_->Reset(synchronous); }
+void ScanScheduler::Idle(uint64_t cycles) { impl_->Idle(cycles); }
 void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
   impl_->Assume(target, bits);
 }

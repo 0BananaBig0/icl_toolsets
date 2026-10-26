@@ -226,6 +226,18 @@ NetworkState::NetworkState(const Netlist& netlist)
     }
   }
 }
+bool NetworkState::SameState(const NetworkState& state) const {
+  return &netlist_ == &state.netlist_ && update_ == state.update_ &&
+         shift_ == state.shift_ && driven_ == state.driven_ &&
+         updated_ == state.updated_ && global_reset_ == state.global_reset_ &&
+         async_reset_ == state.async_reset_ &&
+         reset_events_ == state.reset_events_;
+}
+std::set<size_t> NetworkState::TakeResetEvents() {
+  std::set<size_t> events;
+  events.swap(reset_events_);
+  return events;
+}
 void NetworkState::Restore(const NetworkState& state) {
   if (&netlist_ != &state.netlist_) {
     throw std::runtime_error("cannot restore state from a different netlist");
@@ -234,6 +246,7 @@ void NetworkState::Restore(const NetworkState& state) {
   shift_ = state.shift_;
   driven_ = state.driven_;
   updated_ = state.updated_;
+  reset_events_ = state.reset_events_;
   global_reset_ = state.global_reset_;
   async_reset_ = state.async_reset_;
 }
@@ -316,8 +329,9 @@ void NetworkState::Clock(const std::map<size_t, ScanControl>& controls,
       auto next =
           Choose(And(control.select, control.update), shift_[id], update_[id]);
       if (node.reset) {
-        next = Choose(values.Read(*node.reset),
-                      node.constants.at("ResetValue").data, next);
+        const char reset = values.Read(*node.reset);
+        if (reset == '1') reset_events_.insert(id);
+        next = Choose(reset, node.constants.at("ResetValue").data, next);
       }
       next_update.emplace(id, std::move(next));
     }
@@ -354,9 +368,10 @@ void NetworkState::Reset() {
       if (!node.reset) {
         continue;
       }
+      const char reset = values.Read(*node.reset);
+      if (reset == '1') reset_events_.insert(id);
       const auto value =
-          Choose(values.Read(*node.reset), node.constants.at("ResetValue").data,
-                 update_[id]);
+          Choose(reset, node.constants.at("ResetValue").data, update_[id]);
       if (value != update_[id]) {
         next.emplace(id, value);
       }

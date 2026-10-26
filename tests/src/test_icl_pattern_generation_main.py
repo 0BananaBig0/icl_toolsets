@@ -64,12 +64,16 @@ class Generator(unittest.TestCase):
             (self.root / name).write_bytes((fixture / name).read_bytes())
         (self.root / "source.pdl").write_text(
             "iProcsForModule AccessTop\niReset -sync\niWrite core.r 0x59\niApply -together\n"
+            "iRunLoop 0x100000000 -tck\niRunLoop -tck 0b11\niRunLoop 0\n"
             "iRead core.r 0x59\niWrite core.r 0xa6\niApply\n")
         inputs = ("--icl", "simple.icl", "--bsdl", "AccessProbe", "simple.bsdl")
         self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
         original = (self.root / "out/AccessTop.pdl").read_text()
         self.assertIn("iReset -sync\n", original)
         self.assertEqual(original.count("iApply -together"), 1)
+        self.assertIn("iRunLoop 4294967296 -tck\n", original)
+        self.assertIn("iRunLoop 3 -tck\n", original)
+        self.assertIn("iRunLoop 0 -tck\n", original)
         self.assertIn("iWrite core.r 0b01011001", original)
         self.assertNotIn("__", original)
         flat = self.root / "out/debug/AccessTop.icl"
@@ -122,6 +126,40 @@ class Generator(unittest.TestCase):
         self.assertEqual(original, (self.root / "flat.pdl").read_text())
         self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "again.pdl")
         self.assertEqual(original, (self.root / "again.pdl").read_text())
+
+    def test_idle_transient_reset_fill(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
+        (self.root / "source.pdl").write_text(
+            "iReset\niState trigger.r 2\niState gate.r 0\niState core.r 0xff\n"
+            "iRunLoop 1\niWrite core.r 0bXXXXXXXX\niApply\n")
+        inputs = ("--icl", fixture / "idle_reset.icl", "--bsdl", "AccessProbe", fixture / "simple.bsdl")
+        self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
+        output = (self.root / "out/AccessTop.pdl").read_text()
+        self.assertIn("iWrite core.r 0b00000000\n", output)
+        self.assertNotIn("iWrite core.r 0b11111111\n", output)
+        self.run_tool(*inputs, "--pdl", "out/AccessTop.pdl", "--output", "again.pdl")
+        self.assertEqual(output, (self.root / "again.pdl").read_text())
+        self.run_tool("--icl", "out/debug/AccessTop.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
+        self.assertEqual(output, (self.root / "flat.pdl").read_text())
+
+    def test_idle_rejections(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
+        inputs = ("--icl", fixture / "simple.icl", "--bsdl", "AccessProbe", fixture / "simple.bsdl")
+        for source, message in (
+                ("iRunLoop 1", "explicit iReset"),
+                ("iReset; iWrite core.r 1; iRunLoop 1", "unapplied"),
+                ("iReset; iRunLoop -time 10ns", "system-clock and period models"),
+                ("iReset; iRunLoop 1 -sck clock", "system-clock and period models"),
+                ("iReset; iRunLoop 0xX00000000000000000", "must be known"),
+                ("iReset; iRunLoop 18446744073709551616", "truncates significant bits")):
+            with self.subTest(source=source):
+                (self.root / "source.pdl").write_text(source + "\n")
+                result = self.run_tool(*inputs, "--pdl", "source.pdl", "--output", "failed.pdl", ok=False)
+                self.assertIn(message, result.stdout)
+                self.assertFalse((self.root / "failed.pdl").exists())
+        (self.root / "source.pdl").write_text("iRunLoop 1\n")
+        result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", ok=False)
+        self.assertIn("single TAP", result.stdout)
 
     def test_input_aliases_and_failure_publication(self):
         source = (self.root / "source.pdl").read_bytes()

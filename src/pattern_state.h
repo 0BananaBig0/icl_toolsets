@@ -4,6 +4,7 @@
 #define ICL_TOOLSETS_SRC_PATTERN_STATE_H_
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,9 @@ class NetworkState {
   void Clock(const std::map<size_t, ScanControl>& controls, bool rising);
   void Reset();
   void Restore(const NetworkState& state);
+  bool SameState(const NetworkState& state) const;
+  // Drain known reset assertions, including pulses during reset propagation.
+  std::set<size_t> TakeResetEvents();
   bool IsDriven(size_t node) const;
   void SetGlobalReset(char synchronous, char asynchronous);
   // Controller-owned state, not a user write or an implicit initialization.
@@ -36,6 +40,7 @@ class NetworkState {
   const Netlist& netlist_;
   std::vector<std::string> update_, shift_, driven_;
   std::set<size_t> updated_;
+  std::set<size_t> reset_events_;
   char global_reset_ = 'x', async_reset_ = 'x';
 };
 }  // namespace pattern

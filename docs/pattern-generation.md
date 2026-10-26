@@ -130,14 +130,22 @@ substitute for hardware-state replay or a vendor comparison.
   never synthetic instruction registers.
 - Source-attributed failures and invocation stacks. Structural disconnection,
   unsupported behavior and bounded solver exhaustion are distinct errors.
+- Literal TCK `iRunLoop` counts (IEEE 1687-2014 §7.9.17, printed pp. 175–176)
+  on a single TAP after explicit reset. `iRunLoop COUNT` defaults to TCK;
+  `COUNT -tck` and `-tck COUNT` are accepted and emitted as decimal
+  `COUNT -tck`. Counts must fit an unsigned 64-bit integer and contain no X.
+  Queued reads/writes must first be applied. Zero cycles need no TAP or reset.
+  Native idle replay includes any explicitly enabled storage events; it does
+  not infer BIST completion or live hardware readback.
 
 The backend accepts one SI/SO boundary and at most one TAP. It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
 one-hot/addressed transactions, feedback reset scheduling, iMerge,
-timing/resource commands and other unsupported operations. Transactions needing
-shadow-register effects or independently gated interface events are outside the
-current complete-scan model; inability to schedule them is not proof of hardware
-unreachability. `--local_reset` remains reserved and reports that its separate
+system-clock/absolute-time waits, resource commands and other unsupported
+operations. Transactions needing shadow-register effects or independently gated
+interface events are outside the current complete-scan model; inability to
+schedule them is not proof of hardware unreachability. `--local_reset` remains
+reserved and reports that its separate
 rewrite artifact is not implemented.
 These restrictions are outstanding requirements, not a reduced final scope.
 
@@ -167,6 +175,15 @@ Developer obligations remain in the [design](superpowers/specs/2026-10-25-icl-pa
 [plan](superpowers/plans/2026-10-25-icl-pattern-generation.md), and
 [model coverage ledger](pattern-model-coverage.md). No complete generator/Tessent
 pattern-equivalence result has been established.
+
+TCK idle replay stops simulating once the complete network state repeats on
+consecutive Run-Test/Idle cycles with identical inputs; generated PDL still
+contains the full requested count. Changing states are replayed up to a bound
+of 4,096 cycles, reduced for large networks, and a 15-second deadline checked
+between cycles.
+Exceeding either bound reports an error without committing partial state.
+This acceleration is limited to the current behavioral models; external clocks,
+time-dependent instruments and live readback require additional modeling.
 
 ### Serial-backend checkpoint (`26cee4a`, 2026-10-26)
 
@@ -244,3 +261,31 @@ Evidence: `build/apply-together-regression.log`, `-coverage.log`, `-style.log`,
 `-sanitize.log`, `-measurement.log`, and `-install.log` (all share the
 `build/apply-together` prefix). Merge/resource/timing semantics remain unfinished;
 this change does not establish full retargeting or Tessent equivalence.
+
+### TCK idle replay verification (2026-10-26)
+
+- Final `make check BISON=/usr/bin/bison -j4` passed after all source/test
+  changes: dynamic/static tests, 334/334 grammar and 119/119 scanner rules,
+  and Vim/Neovim corpus checks over 38,628 ICL and 802 PDL files each.
+- Eleven CLI tests and native scheduler/state tests cover huge stable counts,
+  changing/periodic state, rollback at replay limits, invalid counts, pending
+  operations, unsupported clock modes and source/flat/generated replay.
+- Independent review found a transient local-reset pulse that cleared hardware
+  but left stale fill. The new `access_link/idle_reset.icl` fixture reproduced
+  an incorrect `0xff` write; reset-event tracking now produces `0x00` and passes
+  both replay paths. Re-review found no further issues.
+- Google format/naming checks and focused Clang ASan/UBSan passed; leak checks
+  were disabled and the external Z3 library was not instrumented.
+- Strict coverage completed its functional suites but failed the unchanged
+  100% line / 90% raw-branch gate: **10,546/11,083 lines (95.2%)** and
+  **17,198/28,510 raw branches (60.3%)**.
+- Dynamic installation and all eleven installed-generator CLI tests passed.
+  On this host, g++ `-O2` ran the focused scheduler suite in 3.10 s with
+  77,944 KiB peak RSS during regression; this is not a large-network benchmark
+  or a speedup claim.
+
+Evidence: `build/tck-idle-final-regression.log`, `-coverage.log`, `-focused.log`,
+`-sanitize.log`, `-timing.log` (same `build/tck-idle-final` prefix), plus
+`build/tck-idle-install.log`, `build/tck-idle-installed-tests.log`, and the
+reset reproduction in `build/tck-idle-reset-red.log`. No new Tessent-equivalence
+run was performed; the remaining generator requirements above still apply.

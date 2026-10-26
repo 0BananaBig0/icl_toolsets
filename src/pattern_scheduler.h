@@ -3,6 +3,7 @@
 #ifndef ICL_TOOLSETS_SRC_PATTERN_SCHEDULER_H_
 #define ICL_TOOLSETS_SRC_PATTERN_SCHEDULER_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
@@ -27,6 +28,7 @@ class ScanScheduler {
   explicit ScanScheduler(const Netlist& netlist);
   ~ScanScheduler();
   void Reset(bool synchronous = false);
+  void Idle(uint64_t cycles);
   void Assume(const std::string& target, const std::string& bits);
   std::vector<ScanStep> Apply(const std::vector<Operation>& operations,
                               bool together = false);

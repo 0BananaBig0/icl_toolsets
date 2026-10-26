@@ -82,7 +82,13 @@ runtime interface membership and must replay candidate scans before committing
 state. `iApply -together` adds a shared update-cycle constraint; replay must
 confirm actual updates, not merely matching final values (a held reset may
 already provide those values). Prerequisite scans and read observations retain
-their own ordering. See [current support](pattern-generation.md) and the
+their own ordering. TCK idle replay uses the same native event engine and
+commits state only after successful completion. Fixed-point detection compares
+all network storage, driven inputs and reset state at complete cycles in known
+Run-Test/Idle; the output count is never shortened.
+Native state records known reset assertions through each propagation pass, so
+idle replay clears fill even when a reset pulse ends within the same cycle.
+See [current support](pattern-generation.md) and the
 [model ledger](pattern-model-coverage.md) before extending an unsupported path.
 
 ## Build and test

@@ -238,3 +238,14 @@ library; static checks also require `Z3_STATIC_LIB`. Formatter/LSP builds do not
 link this backend. `make check` includes its native/static tests. The upstream
 sources, generated headers and compiled libraries are never Git inputs.
 See [Z3 license](licenses/Z3.txt) for redistribution of solver-linked binaries.
+
+### TCK idle-cycle scheduling
+
+IEEE 1687-2014 §7.9.17, printed pp. 175–176, specifies `iRunLoop`: TCK is
+the default counting clock, subsequent commands wait for at least the requested
+count, and unapplied reads/writes are errors. System-clock use requires prior
+`iClock` handling and transitive frequency adjustment; absolute-time use requires
+period information. The current generator implements literal TCK counts through
+native single-TAP Run-Test/Idle replay after explicit reset and rejects the
+other clock/time modes. Fixed-point acceleration changes only simulation work,
+not the emitted cycle count. It does not stand in for BIST status observation.

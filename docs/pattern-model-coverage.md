@@ -59,6 +59,7 @@ full model coverage or Tessent equivalence.
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL | Multi-TAP scheduling and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP complete-event constraints and concrete replay | Shared-chain, shadow-register and independently gated event scheduling |
 | Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations and partial/X writes | Multiple roots, overlapping intermediate taps, broader access models |
+| Idle cycles | Literal TCK counts on a reset single TAP; native state replay, fixed-point acceleration, retained output count | System clocks, absolute-time waits, external time-dependent instrument behavior |
 | Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle; `iApply -together` verified on a common update cycle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
