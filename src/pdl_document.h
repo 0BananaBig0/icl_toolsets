@@ -185,6 +185,8 @@ FormatOutcome FormatDocument(const std::string& source,
                              const FormatRequest& request);
 const std::vector<std::string>& Keywords();
 int ClampIndentWidth(int requested);
+// Literal PDL numeric syntax; excludes argument/variable references.
+bool IsNumberLiteral(const std::string& text);
 
 }  // namespace pdl
 #endif  // ICL_TOOLSETS_SRC_PDL_DOCUMENT_H_

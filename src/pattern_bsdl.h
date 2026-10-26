@@ -22,6 +22,8 @@ struct BsdlRegister {
 };
 struct BsdlTap {
   std::string entity, origin;
+  // Retain the bounded input so flat runtime metadata can reuse this reader.
+  std::string source_path, source;
   size_t instruction_width = 0;
   std::map<std::string, std::string> ports;
   std::map<std::string, std::vector<std::string>> opcodes;

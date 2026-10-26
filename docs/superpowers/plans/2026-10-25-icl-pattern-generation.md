@@ -248,9 +248,11 @@ guide and verification report.
 
 ## Execution record
 
-Implementation is in progress. Ordered ICL loading and PDL runtime foundations
-are tested; typed elaboration, scheduling, CLI delivery and end-to-end round trips
-remain unfinished. Actual commands and results are recorded in the ignored
+Implementation is in progress. A limited ordinary serial backend now connects
+ordered loading, runtime expansion, scheduling, CLI delivery and end-to-end round
+trips. Native TAP event execution is tested separately. Full TAP/interface,
+address/one-hot, local-reset artifact and remaining PDL transaction integration
+remain unfinished; the core executable does not complete the original scope. Actual commands and results are recorded in the ignored
 progress ledger; passing foundation checks does not complete later tasks.
 
 ### Task 2 continuation: BSDL metadata dependency

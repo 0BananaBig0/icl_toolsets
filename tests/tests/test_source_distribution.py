@@ -19,6 +19,7 @@ class SourceDistribution(unittest.TestCase):
 
     def test_archive_build_and_installed_pdl_tools(self):
         bison = os.environ.get('BISON', '/usr/bin/bison')
+        z3_prefix = str(Path(os.environ.get('Z3_PREFIX', ROOT / 'build/deps/z3-4.13.3')).resolve())
         self.run_command(['make', 'dist', f'BISON={bison}'], ROOT)
         version = self.run_command(['make', '-s', 'version'], ROOT).stdout.strip()
         archive = ROOT / 'build/dist' / f'icl-format-{version}.tar.gz'
@@ -27,11 +28,11 @@ class SourceDistribution(unittest.TestCase):
             self.run_command(['tar', 'xzf', str(archive), '-C', directory], ROOT)
             extracted = temporary / f'icl-format-{version}'
             self.run_command(['make', 'dynamic', '-j4', 'BISON=false', 'FLEX=false',
-                              'TCL_STATIC_LIB=/does/not/exist'], extracted)
+                              'TCL_STATIC_LIB=/does/not/exist', f'Z3_PREFIX={z3_prefix}'], extracted)
             prefix = temporary / 'installed'
             self.run_command(['make', 'install-dynamic', f'prefix={prefix}',
-                              'BISON=false', 'FLEX=false'], extracted)
-            for name in ('icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp'):
+                              'BISON=false', 'FLEX=false', f'Z3_PREFIX={z3_prefix}'], extracted)
+            for name in ('icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp', 'icl-pattern-generation'):
                 run = self.run_command([str(prefix / 'bin' / name), '--version'], temporary)
                 self.assertTrue(run.stdout.startswith(name + ' '))
             self.run_command(
@@ -41,7 +42,7 @@ class SourceDistribution(unittest.TestCase):
             sentinel = prefix / 'bin/unrelated'
             sentinel.write_text('preserve\n')
             self.run_command(['make', 'uninstall', f'prefix={prefix}',
-                              'BISON=false', 'FLEX=false'], extracted)
+                              'BISON=false', 'FLEX=false', f'Z3_PREFIX={z3_prefix}'], extracted)
             self.assertEqual({path.name for path in (prefix / 'bin').iterdir()},
                              {'unrelated'})
             self.assertEqual(sentinel.read_text(), 'preserve\n')

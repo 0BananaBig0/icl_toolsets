@@ -322,6 +322,24 @@ void TestParameterNamedArgs() {
           "parameter args is an ordinary value, not a variadic Tcl formal");
   Fails([&] { runtime.Execute("excess.pdl", "iCall p 1\n"); }, "wrong # args");
 }
+void TestResetScope() {
+  const auto design = MakeDesign();
+  pattern::Runtime child(design, "Top");
+  Fails(
+      [&] {
+        child.Execute("child-reset.pdl",
+                      "iProcsForModule vendor::Child\niProc reset {} {iReset}\n"
+                      "iCall a.reset\n");
+      },
+      "cannot retarget iReset");
+  pattern::Runtime top(design, "Top");
+  top.Execute("top-reset.pdl",
+              "iProcsForModule Top\niProc reset {} {iPrefix a; iReset}\n"
+              "iCall reset\n");
+  Require(
+      top.operations().size() == 1 && top.operations()[0].command == "iReset",
+      "top-module reset is independent of the current target prefix");
+}
 }  // namespace
 int main() {
   int failures = 0;
@@ -331,7 +349,8 @@ int main() {
         TestRuntimeValidationAndNamespaceScope, TestReturnValueAndInputStream,
         TestGeneratedBodies, TestDynamicBinding, TestDynamicOptions,
         TestDynamicLevel, TestMergeScope, TestAllTargetArguments,
-        TestEndOfStream, TestInstanceParameters, TestParameterNamedArgs}) {
+        TestEndOfStream, TestInstanceParameters, TestParameterNamedArgs,
+        TestResetScope}) {
     try {
       test();
     } catch (const std::exception& error) {

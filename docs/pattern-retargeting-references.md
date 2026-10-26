@@ -211,3 +211,30 @@ retained probe's order; shared instruction routes deduplicate identical codes.
 Explicit control bindings remain intact. No new Tessent process or pattern
 comparison was run for this native implementation. Controller event wiring and
 runtime association replay remain separate unfinished obligations.
+
+## Scheduling solver and PDL operand interpretation
+
+The continuation uses Z3 4.13.3 for a native constraint backend, following the
+useful known/value bit-vector representation in Honza255's `icl_retargeting.py`.
+The input remains this repository's shared elaborated netlist and compiled logic;
+there is no second ICL parser. Unknown hardware terminals remain unknown, not
+free solver choices. A bounded proof failure must remain distinguishable from
+an unsatisfiable configuration.
+
+`pattern_symbolic` currently has concrete-versus-symbolic checks over all 81
+pairs of two-bit three-valued inputs, plus control justification and unknown-state
+checks. These validate combinational constraints, not a completed scheduler.
+`pattern_values` reuses the PDL frontend's numeric syntax and Z3's arbitrary-size
+integer conversion. IEEE 1687-2014 7.8(b,c), printed p.156, explicitly specifies
+zero/X left extension and truncation only of extra leading zero/X bits; these
+rules must not be confused with ICL numeric tokens or with signal-width padding.
+
+For development, install Z3 headers/library or run `make z3-deps`. The explicit
+bootstrap downloads the official `z3-4.13.3` source archive, checks SHA-256
+`f59c9cf600ea57fb64ffeffbffd0f2d2b896854f339e846f48f069d23bc14ba0`, then builds a
+static archive under ignored `build/deps/`. It needs CMake, a C++ compiler,
+Python, curl and tar. Override `Z3_PREFIX` or `Z3_CFLAGS`/`Z3_LIBS` for an installed
+library; static checks also require `Z3_STATIC_LIB`. Formatter/LSP builds do not
+link this backend. `make check` includes its native/static tests. The upstream
+sources, generated headers and compiled libraries are never Git inputs.
+See [Z3 license](licenses/Z3.txt) for redistribution of solver-linked binaries.

@@ -83,13 +83,26 @@ void Connect(Netlist* netlist, Endpoint destination, Endpoint source,
 class SerialAssembler {
  public:
   explicit SerialAssembler(Netlist* netlist) : netlist_(*netlist) {
-    for (const auto& item : netlist_.node_ids) names_.insert(item.first);
-    for (const auto& scope : netlist_.scopes) names_.insert(scope.path);
+    for (const auto& item : netlist_.node_ids) {
+      names_.insert(item.first);
+    }
+    for (const auto& scope : netlist_.scopes) {
+      names_.insert(scope.path);
+    }
     const auto& parameters = netlist_.module_parameters.at(netlist_.top_module);
     names_.insert(parameters.begin(), parameters.end());
   }
 
-  void Add(const AccessLink& link, const TapDatapathNodes& tap) {
+  void Add(const AccessLink& link, TapRuntimeModel* runtime) {
+    const auto tap = static_cast<const TapDatapathNodes&>(*runtime);
+    const size_t scope = netlist_.nodes.at(tap.instruction_register).scope;
+    for (const auto* role : {"capture", "shift", "update"}) {
+      NetlistNode port;
+      port.kind = "DataInPort";
+      port.scope = scope;
+      port.origin = link.origin;
+      runtime->controls.emplace(role, AddNode(std::move(port), role));
+    }
     const auto endpoint = [&](size_t id) {
       return Endpoint{id, netlist_.nodes.at(id).left};
     };
@@ -124,6 +137,76 @@ class SerialAssembler {
                 previous, &remaining_);
       }
     }
+    std::map<Endpoint, std::set<size_t>> selects;
+    std::map<Endpoint, size_t> controls;
+    const std::map<std::string, std::string> roles = {
+        {"CaptureEnPort", "capture"},
+        {"ShiftEnPort", "shift"},
+        {"UpdateEnPort", "update"}};
+    for (const auto& instruction : link.instructions) {
+      for (const auto& selected : instruction.interfaces) {
+        const auto& interface =
+            *netlist_.NodeAt(selected.instance + "." + selected.name)
+                 .scan_interface;
+        auto ports = interface.ports;
+        if (!interface.chains.empty()) {
+          ports.insert(ports.end(), interface.chains[0].ports.begin(),
+                       interface.chains[0].ports.end());
+        }
+        for (const auto& ref : ports) {
+          const auto& port = netlist_.nodes.at(ref.node);
+          const Endpoint destination{ref.node, ref.index};
+          const auto source = port.inputs.find("Source");
+          const size_t offset = port.left >= port.right ? port.left - ref.index
+                                                        : ref.index - port.left;
+          if (source != port.inputs.end() &&
+              source->second.at(offset).constant != '?') {
+            continue;
+          }
+          if (port.kind == "SelectPort") {
+            selects[destination].insert(
+                tap.instruction_selects.at(instruction.name));
+          } else if (roles.count(port.kind)) {
+            controls[destination] = runtime->controls.at(roles.at(port.kind));
+          } else if (port.kind == "TCKPort") {
+            controls[destination] =
+                netlist_.node_ids.at(link.bsdl->ports.at("tap_scan_clock"));
+          }
+        }
+      }
+    }
+    for (const auto& [destination, source] : controls) {
+      Connect(&netlist_, destination, endpoint(source), &remaining_);
+    }
+    for (const auto& [destination, sources] : selects) {
+      NetlistNode selected;
+      selected.kind = "LogicSignal";
+      selected.model = ModelKind::kLogic;
+      selected.scope = scope;
+      selected.origin = link.origin;
+      std::vector<size_t> terms;
+      for (size_t id : sources) {
+        terms.push_back(selected.logic.size());
+        selected.logic.push_back(
+            {LogicOperation::kSignal, 0, 0, 1, {}, {{id, 0}}});
+        selected.inputs["LogicDependencies"].push_back({id, 0});
+      }
+      while (terms.size() > 1) {
+        std::vector<size_t> next;
+        for (size_t i = 0; i < terms.size(); i += 2) {
+          if (i + 1 == terms.size()) {
+            next.push_back(terms[i]);
+          } else {
+            next.push_back(selected.logic.size());
+            selected.logic.push_back(
+                {LogicOperation::kOr, terms[i], terms[i + 1], 1, {}, {}});
+          }
+        }
+        terms = std::move(next);
+      }
+      const auto id = AddNode(std::move(selected), "select");
+      Connect(&netlist_, destination, endpoint(id), &remaining_);
+    }
     const auto& ir = netlist_.nodes.at(tap.instruction_register);
     const auto ir_left = ir.left, ir_right = ir.right;
     const size_t ir_width = ir.Width();
@@ -142,7 +225,9 @@ class SerialAssembler {
       mux.origin = link.origin;
       for (int64_t bit = ir_left;; bit += ir_left <= ir_right ? 1 : -1) {
         mux.inputs["SelectedBy"].push_back({tap.instruction_register, bit});
-        if (bit == ir_right) break;
+        if (bit == ir_right) {
+          break;
+        }
       }
       for (const auto& [source, codes] : choices) {
         MuxChoice choice;
@@ -164,6 +249,22 @@ class SerialAssembler {
   }
 
  private:
+  size_t AddNode(NetlistNode node, const std::string& suffix) {
+    const auto& path = netlist_.scopes.at(node.scope).path;
+    std::string member;
+    do {
+      member = "IclPatternControl" + suffix + std::to_string(next_name_++);
+      node.name = path.empty() ? member : path + "." + member;
+    } while (!names_.insert(node.name).second);
+    const size_t id = netlist_.nodes.size();
+    if (id >= kMaxObjects) {
+      throw std::runtime_error("ICL object expansion limit exceeded");
+    }
+    netlist_.scopes.at(node.scope).members.emplace(member, id);
+    netlist_.node_ids.emplace(node.name, id);
+    netlist_.nodes.push_back(std::move(node));
+    return id;
+  }
   Netlist& netlist_;
   std::set<std::string> names_;
   std::set<Endpoint> driven_;
@@ -210,16 +311,28 @@ TapNetwork ElaborateTapNetwork(Design& design, const std::string& top) {
   }
   TapNetwork result;
   result.netlist = Elaborate(design, module.name(), definitions, ports);
-  if (links.empty()) return result;
+  if (links.empty()) {
+    for (const auto& [name, model] : result.netlist.taps) {
+      result.taps.emplace(name, model);
+    }
+    return result;
+  }
   SerialAssembler assembler(&result.netlist);
   for (const auto& link : links) {
     auto nodes = Remap(result.netlist, link.name, models.at(link.name));
+    TapRuntimeModel model;
+    static_cast<TapDatapathNodes&>(model) = nodes;
     try {
-      assembler.Add(link, nodes);
+      assembler.Add(link, &model);
     } catch (const std::exception& error) {
       throw std::runtime_error(link.origin + ": AccessLink " + link.name +
                                ": " + error.what());
     }
+    model.bsdl = *link.bsdl;
+    for (const auto& [role, name] : link.bsdl->ports) {
+      model.pins.emplace(role, result.netlist.node_ids.at(name));
+    }
+    result.netlist.taps.emplace(link.name, std::move(model));
     result.taps.emplace(link.name, std::move(nodes));
   }
   CheckCombinationalConnections(result.netlist);

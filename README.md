@@ -9,6 +9,7 @@ Vim, or Neovim.
 | `icl-lsp` | ICL diagnostics, completion, navigation, symbols, and editor formatting. |
 | `pdl-format` | Format PDL while respecting Tcl scripts, data, and substitutions. |
 | `pdl-lsp` | PDL diagnostics, completion, navigation, symbols, and editor formatting. |
+| `icl-pattern-generation` | Experimental PDL expansion and prerequisite scheduling for ordinary serial scan networks; see limitations below. |
 | `vim-icl-pdl-modern` | Standalone ICL/PDL highlighting and filetype detection. |
 
 ICL (**Instrument Connectivity Language**) and PDL (**Procedural Description
@@ -18,7 +19,7 @@ executing PDL/Tcl or generating patterns.
 
 Install the executables for formatting and language services. For highlighting
 alone, [install the Vim plugin](#highlighting-only) without building anything.
-The proposed `icl-pattern-generation` executable is [still under development](#pattern-generation-status).
+The generator is available with a [limited serial backend](#pattern-generation-status); full retargeting remains under development.
 
 ## Build and install
 
@@ -28,6 +29,8 @@ On Linux, the build requires:
 - GNU Make 4.3+, Bison 3.8+, and Flex 2.6+.
 - For PDL: `pkg-config` and Tcl development headers/libraries, version 8.6 or
   newer. A Tcl stub library alone is insufficient.
+- For pattern generation: Z3 development headers/libraries. Install the system
+  package or run the explicit `make z3-deps` bootstrap before `make dynamic`.
 
 ```sh
 git clone https://gitee.com/banana33/icl_toolsets.git
@@ -40,11 +43,12 @@ icl-format --version
 icl-lsp --version
 pdl-format --version
 pdl-lsp --version
+icl-pattern-generation --version
 ```
 
-`make dynamic` builds all four commands in `build/`. Installation puts them in
+`make dynamic` builds all five commands in `build/`. Installation puts them in
 `~/.local/bin` and prints coc.nvim configuration instructions; it does not modify
-editor settings or install the highlighting plugin. All four commands support
+editor settings or install the highlighting plugin. All five commands support
 `--help`, `-h`, and `--version`, which print information and exit.
 
 Keep the installation directory on your editor's `PATH`, or use absolute server
@@ -62,11 +66,11 @@ the matching Tcl shared library on the target machine. Use
 
 | Command | Result |
 |---|---|
-| `make dynamic` | All four dynamic binaries. |
-| `make static` | All four static binaries, named with a `-static` suffix. |
+| `make dynamic` | All five dynamic binaries. |
+| `make static` | All five static binaries, named with a `-static` suffix. |
 | `make icl-dynamic` / `make icl-static` | Only the ICL pair; no Tcl dependency. |
 | `make pdl-dynamic` / `make pdl-static` | Only the PDL pair. |
-| `make` | Both variants of all four tools. |
+| `make` | Both variants of all five tools. |
 
 Static builds also need static C/C++ runtime libraries and a real Tcl archive
 compatible with the selected Tcl headers:
@@ -76,7 +80,7 @@ make static TCL_STATIC_LIB=/path/to/libtcl9.0.a
 make install-static TCL_STATIC_LIB=/path/to/libtcl9.0.a
 ```
 
-Both install variants use the normal four command names. Installing a different
+Both install variants use the normal five command names. Installing a different
 variant into the same prefix replaces the previous installation. `make install`
 selects the dynamic variant. See the [PDL build guide](docs/pdl-tools.md) for Tcl
 build instructions and static Tcl/glibc portability limits; verify binaries on
@@ -101,7 +105,7 @@ make dynamic
 make install-dynamic
 ```
 
-Compiler, Make, and Tcl requirements apply to both archive types.
+Compiler, Make, Tcl and Z3 requirements apply to both archive types.
 
 ## Format files
 
@@ -305,19 +309,25 @@ verification results and development requirements belong in [docs/](docs/README.
 
 ## Pattern-generation status
 
-`icl-pattern-generation` is under development and is **not yet an available
-build or install target**. The four editor executables above do not generate or
-retarget patterns.
+`icl-pattern-generation` is now buildable and installable. Its current backend
+expands procedures and schedules writes/reads through ordinary single-SI/SO
+ScanRegister, mux and logic networks, making SIB and local-reset prerequisites
+explicit. It checks every candidate with concrete event replay and supports
+original/flattened ICL and generated-PDL round trips.
 
-The repository contains tested internal components for ordered source loading,
-netlist elaboration and flattening, PDL execution, BSDL metadata, AccessLink
-binding, and instruction-register/ActiveSignal modeling. These components are
-not a complete generator. Full TAP integration, scheduling, local-reset output,
-the CLI, and end-to-end generated-pattern comparisons remain unfinished.
+```sh
+icl-pattern-generation --icl design.icl --pdl setup.pdl test.pdl \
+  --top_module Top --output result/Top.pdl --debug --log result/run.log
+```
 
-See the [requirements and design](docs/superpowers/specs/2026-10-25-icl-pattern-generation-design.md),
-[implementation plan](docs/superpowers/plans/2026-10-25-icl-pattern-generation.md),
-and [model coverage](docs/pattern-model-coverage.md) for current progress and limits.
+Full TAP/interface scheduling, addressed/one-hot models, merges and timing,
+the separate `--local_reset` artifact, and complete Tessent pattern comparison
+remain unfinished. Unsupported cases produce errors. This executable does not
+yet fulfill all pattern-generation requirements.
+
+See the [generator guide](docs/pattern-generation.md) for supported commands,
+Z3 setup, limits and validation. The four editor tools remain independent of
+PDL execution and pattern generation.
 
 ## Documentation and license
 

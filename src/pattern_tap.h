@@ -92,16 +92,6 @@ class TapInstructionRegister {
   bool has_trst_ = false;
 };
 
-struct TapDatapathNodes {
-  size_t instruction_register = 0;
-  size_t scan_input = 0;
-  size_t scan_output = 0;
-  size_t ir_select = 0;
-  std::map<std::string, size_t> instruction_selects;
-  std::map<std::string, size_t> data_registers;
-  std::map<std::string, size_t> scan_returns;
-};
-
 struct TapDatapathModel : TapDatapathNodes {
   Netlist netlist;
 };
@@ -121,10 +111,9 @@ struct TapNetwork {
 TapDatapathModel BuildTapDatapathModel(
     const AccessLink& link,
     const std::string& module_name = "IclPatternTapDatapath");
-// Assemble TAP pins and instruction-selected serial routes only. Controller
-// event/control wiring, state execution and retargeting are separate steps.
-// Flat ICL replay preserves topology, but does not yet restore the taps node
-// map.
+// Assemble TAP pins, instruction-selected serial routes and client controls.
+// Flat ICL restores validated controller associations for hardware replay.
+// Scheduling is separate from assembly and observed pin-event execution.
 TapNetwork ElaborateTapNetwork(Design& design, const std::string& top);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_TAP_H_

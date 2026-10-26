@@ -1799,4 +1799,8 @@ FormatOutcome FormatDocument(const std::string& source,
   return FormatParsedDocument(Document(source), request);
 }
 
+bool IsNumberLiteral(const std::string& text) {
+  return IsNumber(text) && text[0] != '$';
+}
+
 }  // namespace pdl

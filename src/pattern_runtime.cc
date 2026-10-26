@@ -369,6 +369,9 @@ class Runtime::Impl {
       throw std::runtime_error("empty target for " + name);
     }
     Validate(words, site);
+    if (name == "iReset" && !frames_.back().instance.empty()) {
+      throw std::runtime_error("cannot retarget iReset from a child module");
+    }
     ++frames_.back().command;
     const auto prefix = [&] {
       return JoinPath(frames_.back().instance, frames_.back().prefix);

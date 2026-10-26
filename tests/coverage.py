@@ -34,9 +34,10 @@ SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'utf8.h', 'text_position.h',
            'pattern_design.cc', 'pattern_design.h', 'pattern_expression.cc',
            'pattern_bsdl.cc', 'pattern_access_link.cc', 'pattern_tap.cc',
-           'pattern_tap.h', 'pattern_tap_network.cc',
+           'pattern_tap.h', 'pattern_tap_network.cc', 'pattern_state.cc', 'pattern_tap_execution.cc',
            'pattern_address.cc', 'pattern_netlist.cc', 'pattern_netlist.h',
-           'pattern_logic.cc',
+           'pattern_logic.cc', 'pattern_symbolic.cc', 'pattern_values.cc',
+           'pattern_scheduler.cc', 'icl_pattern_generation_main.cc', 'file_output.h',
            'pattern_runtime.cc', 'pattern_flatten.cc']
 
 

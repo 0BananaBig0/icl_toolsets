@@ -551,6 +551,9 @@ class Reader {
 }  // namespace
 BsdlTap ReadBsdlTap(const std::string& path, const std::string& text,
                     const std::string& entity) {
-  return Reader(path, text).Read(entity);
+  auto tap = Reader(path, text).Read(entity);
+  tap.source_path = path;
+  tap.source = text;
+  return tap;
 }
 }  // namespace pattern

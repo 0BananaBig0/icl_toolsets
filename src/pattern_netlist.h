@@ -138,12 +138,29 @@ struct InstanceScope {
   std::optional<Constant> address_value;
 };
 
+struct TapDatapathNodes {
+  size_t instruction_register = 0;
+  size_t scan_input = 0;
+  size_t scan_output = 0;
+  size_t ir_select = 0;
+  std::map<std::string, size_t> instruction_selects;
+  std::map<std::string, size_t> data_registers;
+  std::map<std::string, size_t> scan_returns;
+};
+
+struct TapRuntimeModel : TapDatapathNodes {
+  BsdlTap bsdl;
+  std::map<std::string, size_t> pins;
+  std::map<std::string, size_t> controls;
+};
+
 struct Netlist {
   std::string top_module;
   std::map<std::string, std::set<std::string>> module_parameters;
   std::vector<InstanceScope> scopes;
   std::vector<NetlistNode> nodes;
   std::map<std::string, size_t> node_ids;
+  std::map<std::string, TapRuntimeModel> taps;
   const NetlistNode& NodeAt(const std::string& path) const;
   int64_t Integer(const Expression& expression) const;
   Constant Value(const Expression& expression, size_t width = 0) const;
@@ -153,6 +170,15 @@ struct Netlist {
                                     size_t max_bits = 1024 * 1024) const;
 };
 
+bool IsInputPort(const std::string& kind);
+struct ScanInterfaceBinding {
+  size_t scope;
+  ScanInterface interface;
+  std::string origin;
+};
+// Includes omitted single-client declarations (IEEE 6.4.6.11/6.4.16).
+std::vector<ScanInterfaceBinding> EffectiveScanInterfaces(
+    const Netlist& netlist);
 Netlist Elaborate(Design& design, const std::string& top);
 // Substitute parsed leaf behavioral modules for top-level standard AccessLinks
 // before resolving connections. Does not rewrite source/module definitions or

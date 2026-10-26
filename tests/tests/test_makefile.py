@@ -18,7 +18,8 @@ class BuildGraph(unittest.TestCase):
                      'pattern_design_test', 'pattern_expression_test',
                      'pattern_bsdl_test', 'pattern_access_link_test',
                      'pattern_address_test', 'pattern_logic_test',
-                     'pattern_runtime_test', 'pattern_flatten_test'):
+                     'pattern_runtime_test', 'pattern_flatten_test', 'pattern_state_test',
+                     'pattern_symbolic_test', 'pattern_scheduler_test'):
             with self.subTest(test=test):
                 self.assertIn(f'build/cov/{test}-{test}.gcno', gcov)
 
@@ -31,7 +32,8 @@ class BuildGraph(unittest.TestCase):
                 for required in ('tests/regression.py', 'tests/lsp_test.py',
                                  'tests/fuzz.py', 'tests/grammar_coverage.py',
                                  'tests/vim-icl-pdl-modern/test_plugin.py',
-                                 'build/pattern_flatten_test'):
+                                 'build/pattern_flatten_test', 'build/pattern_scheduler_test',
+                                 'tests/src/test_icl_pattern_generation_main.py'):
                     self.assertIn(required, run.stdout)
                 if target == 'check-dynamic':
                     self.assertNotIn(' -static ', run.stdout)
@@ -79,8 +81,8 @@ class BuildGraph(unittest.TestCase):
                 cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
             self.assertEqual({p.name for p in (prefix / 'bin').iterdir()},
-                             {'icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp'})
-            for name in ('icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp'):
+                             {'icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp', 'icl-pattern-generation'})
+            for name in ('icl-format', 'icl-lsp', 'pdl-format', 'pdl-lsp', 'icl-pattern-generation'):
                 installed = subprocess.run([str(prefix / 'bin' / name), '--version'],
                                            capture_output=True, text=True, timeout=5)
                 self.assertEqual(installed.returncode, 0, installed.stderr)
@@ -93,8 +95,12 @@ class BuildGraph(unittest.TestCase):
             self.assertEqual({header.name for header in headers},
                              {header.name for header in (ROOT / 'src').glob('*.h')})
             source = ''.join(f'#include "{header.name}"\n' for header in headers)
+            flags = subprocess.run(
+                ['make', '-s', '--no-print-directory',
+                 '--eval=print-z3-cflags:;@echo $(Z3_CFLAGS)', 'print-z3-cflags'],
+                cwd=ROOT, capture_output=True, text=True, check=True).stdout
             run = subprocess.run(
-                shlex.split(os.environ.get('CXX', 'g++')) +
+                shlex.split(os.environ.get('CXX', 'g++')) + shlex.split(flags) +
                 ['-std=c++17', '-fsyntax-only', '-x', 'c++',
                  f'-I{prefix}/include/icl-format', '-'],
                 cwd=prefix, input=source, capture_output=True, text=True)

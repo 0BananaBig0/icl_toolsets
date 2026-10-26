@@ -1,6 +1,8 @@
 # Pattern generator model and connection audit
 
-This is an implementation ledger, not a claim that the executable is delivered.
+This is an implementation ledger, not a claim of complete generator coverage.
+The executable now has a limited serial backend; see the
+[current generator guide](pattern-generation.md) for its supported boundary.
 All requirements in [requirements.md](requirements.md) and the
 [approved design](superpowers/specs/2026-10-25-icl-pattern-generation-design.md)
 remain mandatory. Parsing a construct does not establish that it can be retargeted.
@@ -1156,3 +1158,81 @@ aggregate model-byte cap, final object-count guard, conflicting cross-TAP port
 roles, and compiler-emitted cleanup lines. The exercised route-expansion budget
 is distinct from those guards. Evidence: `build/tap-network-coverage.log`.
 Thresholds remain unchanged; this is not a full-generator completion claim.
+
+## Controller events and executable flat replay (continuation)
+
+`Netlist::taps` now retains the BSDL input and typed IR/DR, decoder, serial-return,
+pin and controller-boundary associations. Flat restoration reparses the retained
+BSDL with the existing bounded reader and validates node identities, widths,
+scopes, capture masks and external serial connections. Existing client-interface
+bindings take precedence over generated capture/shift/update, select and clock
+connections. Indexed control ports retain their selected bit indices.
+
+`NetworkState` owns unknown-initial register shift/update state and external
+input values. Its iterative, cached combinational evaluator uses the existing
+compiled logic and connection graph. `TapExecution` applies observed pin edges
+to the native controller and those register models. Registers are behavioral
+units, with no internal gate or flip-flop expansion.
+
+The regression checks rising-edge capture/shift, falling-edge update, simultaneous
+old-state serial sampling, reset without Select qualification, held-reset shifting,
+pre-edge reset qualification of updates, immediate propagation of decoded IR
+resets, post-update shift uncertainty, explicit clock suppression, bypassed but
+explicitly enabled registers, and alternative interfaces sharing a register.
+Select conditions are ANDed within an interface; effective events are combined
+across alternative interfaces. Original and flat networks run the same complete
+IR/DR scan sequences and compare state and TDO after every cycle.
+
+Independent review identified three ordering/interface defects; each has a
+failing-before/fixed-after regression in `tests/src/pattern_state_test.cc`.
+A separate typed-netlist test catches double application of reference inversion
+when replaying manually constructed logic through flat ICL.
+
+For 1,000 eight-bit register interfaces, stopping membership traversal at each
+interface's SI reduced observed construction time from 0.223 s to 0.0019–0.0026 s
+on the same WSL/g++ `-O2` fixture. These are construction measurements, not
+whole-pattern throughput claims. Evidence is in ignored `build/tap-runtime-scale-*`
+and `build/tap-alternative-interface-green.log`.
+
+This is observed-event replay. One-hot state execution, remaining interface
+kinds, inverted child-clock phases, complete implicit-control propagation and
+multi-TAP virtual-reset ownership still need work. Scheduling, the CLI and the
+local-reset artifact are not delivered by these tests. The initial full runtime
+regression passed (`build/tap-runtime-regression.log`); the later typed-inversion
+fix and symbolic additions require final integrated regression again.
+
+
+## Integrated serial generator checkpoint (2026-10-26)
+
+The executable now connects ordered ICL/PDL loading, procedure expansion,
+stateful scheduling, concrete scan replay, canonical PDL/ICL emission and safe
+file publication. Both dynamic and static targets exist. This is a material
+integration step, not completion of the whole retargeter.
+
+The bounded serial backend separates unknown hardware state, controlling/fill
+state and read expectations. It searches scan horizons and then minimizes shift
+length; a separate finite-state enumerator checks four nested-SIB initial
+configurations. Per-transaction serial replay verifies register updates against
+the solver model. Read expectations are emitted at the first active capture,
+including all-X reads; a requested expected value is not assumed to be actual
+hardware input data.
+
+Regression additions in `tests/src/pattern_scheduler_test.cc` and
+`tests/src/test_icl_pattern_generation_main.py` cover SIB/reset prerequisites,
+reset release edge ordering, stale post-reset fill, partial/masked writes,
+repeated writes, read/capture independence, original/flat replay and PDL
+idempotency. The CLI tests also cover ordered procedure replacements, path
+alias rejection, staging failure preservation and help/version behavior.
+
+Independent review found implicit-client controls being ignored and a
+child-bound `iReset` being converted to a global reset. Shared effective-interface
+discovery and a runtime scope check fix these, with failing-then-passing tests.
+IEEE 7.9.9(a,e) also confirms that an explicit reset resets controlling state
+while unresettable hardware retains its logic state, and that `-sync` has no
+additional effect when the target has no TMSPort.
+
+Outstanding: TAP transaction planning, nondefault interface events, shared
+multichain paths, one-hot/addressed access, feedback reset solving, full PDL
+commands/merging/timing/resource behavior, local-reset-only source rewriting,
+full-corpus generation and Tessent-generated pattern equivalence. Unsupported
+cases remain errors; none is counted as a successful generated case.

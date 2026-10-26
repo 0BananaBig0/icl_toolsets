@@ -49,14 +49,6 @@ std::string Range(const NetlistNode& node) {
                       : "";
 }
 
-bool InputPort(const std::string& kind) {
-  return kind == "ScanInPort" || kind == "DataInPort" || kind == "ResetPort" ||
-         kind == "TRSTPort" || kind == "TMSPort" || kind == "SelectPort" ||
-         kind == "ShiftEnPort" || kind == "CaptureEnPort" ||
-         kind == "UpdateEnPort" || kind == "TCKPort" || kind == "ClockPort" ||
-         kind == "AddressPort" || kind == "ReadEnPort" || kind == "WriteEnPort";
-}
-
 std::string Signals(const Netlist& netlist,
                     const std::vector<BitReference>& bits) {
   std::string result;
@@ -219,7 +211,7 @@ Json Metadata(const Netlist& netlist) {
     nodes.push_back(Json::Array(
         {Json::String(FlatName(node.name)), Json::String(node.name),
          Json::Int(node.scope), Json::String(node.kind),
-         Json::Bool(InputPort(node.kind) && node.scope != 0 &&
+         Json::Bool(IsInputPort(node.kind) && node.scope != 0 &&
                     !node.inputs.count("Source")),
          node.reset ? Reference(netlist, *node.reset) : Json::Null(),
          Json::Array(std::move(special)), Json::Bool(node.active_low)}));
@@ -231,6 +223,29 @@ Json Metadata(const Netlist& netlist) {
   if (!contributors.empty()) {
     fields.emplace_back("instance_contributors",
                         Json::Array(std::move(contributors)));
+  }
+  if (!netlist.taps.empty()) {
+    Json::Elements taps;
+    const auto name = [&](size_t id) {
+      return Json::String(netlist.nodes.at(id).name);
+    };
+    const auto mapping = [&](const std::map<std::string, size_t>& nodes) {
+      Json::Elements entries;
+      for (const auto& [key, id] : nodes) {
+        entries.push_back(Json::Array({Json::String(key), name(id)}));
+      }
+      return Json::Array(std::move(entries));
+    };
+    for (const auto& [path, tap] : netlist.taps) {
+      taps.push_back(Json::Array(
+          {Json::String(path), Json::String(tap.bsdl.source_path),
+           Json::String(tap.bsdl.entity), Json::String(tap.bsdl.source),
+           Json::Array({name(tap.instruction_register), name(tap.scan_input),
+                        name(tap.scan_output), name(tap.ir_select)}),
+           mapping(tap.instruction_selects), mapping(tap.data_registers),
+           mapping(tap.scan_returns), mapping(tap.controls)}));
+    }
+    fields.emplace_back("taps", Json::Array(std::move(taps)));
   }
   return Json::Object(std::move(fields));
 }
@@ -253,7 +268,7 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                              ": flat serialization is not implemented for " +
                              node.kind);
   }
-  const bool internal_input = InputPort(node.kind) && node.scope != 0;
+  const bool internal_input = IsInputPort(node.kind) && node.scope != 0;
   std::string result = (internal_input ? "DataOutPort" : node.kind) + " " +
                        FlatName(node.name) + Range(node);
   if (node.model == ModelKind::kAlias) {
@@ -463,6 +478,150 @@ BitReference ReadReference(const Netlist& netlist, const Json& json) {
   }
   return bit;
 }
+void RestoreTaps(Netlist* netlist, const Json& json) {
+  const auto* entries = json.Find("taps");
+  if (!entries) {
+    return;
+  }
+  static const std::map<std::string, std::string> kPinKinds = {
+      {"tap_scan_in", "ScanInPort"},
+      {"tap_scan_out", "ScanOutPort"},
+      {"tap_scan_mode", "TMSPort"},
+      {"tap_scan_clock", "TCKPort"},
+      {"tap_scan_reset", "TRSTPort"}};
+  std::set<size_t> used;
+  for (const auto& entry : Array(*entries)) {
+    const auto& fields = Array(entry, 9);
+    const auto path = String(fields[0]);
+    if (!Identifier(path) || netlist->taps.count(path)) {
+      throw std::runtime_error("invalid or duplicate flat TAP identity");
+    }
+    TapRuntimeModel tap;
+    tap.bsdl =
+        ReadBsdlTap(String(fields[1]), String(fields[3]), String(fields[2]));
+    const auto node_id = [&](const Json& value, const std::string& kind,
+                             size_t width) {
+      const auto found = netlist->node_ids.find(String(value));
+      if (found == netlist->node_ids.end()) {
+        throw std::runtime_error("missing flat TAP node");
+      }
+      const auto& node = netlist->nodes.at(found->second);
+      if (node.kind != kind || (width && node.Width() != width) ||
+          netlist->scopes.at(node.scope).path != path ||
+          !used.insert(found->second).second) {
+        throw std::runtime_error("invalid flat TAP node kind, width or scope");
+      }
+      return found->second;
+    };
+    const auto& nodes = Array(fields[4], 4);
+    tap.instruction_register =
+        node_id(nodes[0], "ScanRegister", tap.bsdl.instruction_width);
+    tap.scan_input = node_id(nodes[1], "ScanInPort", 1);
+    tap.scan_output = node_id(nodes[2], "ScanOutPort", 1);
+    tap.ir_select = node_id(nodes[3], "DataInPort", 1);
+    const auto& ir = netlist->nodes.at(tap.instruction_register);
+    const auto capture = ir.inputs.find("CaptureSource");
+    std::string capture_bits;
+    if (capture != ir.inputs.end()) {
+      for (const auto& bit : capture->second) {
+        capture_bits += bit.node == kMissing && !bit.inverted &&
+                                bit.virtual_signal == VirtualSignal::kNone
+                            ? bit.constant
+                            : '?';
+      }
+    }
+    if (capture_bits != tap.bsdl.capture) {
+      throw std::runtime_error("flat TAP capture conflicts with BSDL");
+    }
+    const auto read_map = [&](const Json& value, const std::string& kind,
+                              size_t width,
+                              std::map<std::string, size_t>* result) {
+      // Several instruction aliases may share a data register/return node.
+      std::map<std::string, size_t> seen;
+      for (const auto& item : Array(value)) {
+        const auto& pair = Array(item, 2);
+        const auto key = String(pair[0]), name = String(pair[1]);
+        if ((kind != "ScanRegister" && !tap.bsdl.opcodes.count(key)) ||
+            result->count(key)) {
+          throw std::runtime_error("invalid flat TAP instruction mapping");
+        }
+        auto found = seen.find(name);
+        const size_t id =
+            found == seen.end() ? node_id(pair[1], kind, width) : found->second;
+        seen.emplace(name, id);
+        result->emplace(key, id);
+      }
+    };
+    read_map(fields[5], "LogicSignal", 1, &tap.instruction_selects);
+    read_map(fields[6], "ScanRegister", 0, &tap.data_registers);
+    read_map(fields[7], "ScanInPort", 1, &tap.scan_returns);
+    for (const auto& [instruction, id] : tap.scan_returns) {
+      if (!tap.instruction_selects.count(instruction)) {
+        throw std::runtime_error("missing flat TAP instruction decoder");
+      }
+    }
+    for (const auto& [name, id] : tap.data_registers) {
+      std::optional<size_t> width;
+      if (name == "BYPASS") {
+        width = 1;
+      }
+      if (name == "BOUNDARY") {
+        width = tap.bsdl.boundary_width;
+      }
+      if (name == "DEVICE_ID") {
+        width = 32;
+      }
+      for (const auto& [instruction, reg] : tap.bsdl.registers) {
+        if (reg.name == name && reg.width) {
+          if (width && width != reg.width) {
+            throw std::runtime_error("conflicting flat TAP register widths");
+          }
+          width = reg.width;
+        }
+      }
+      if (!width || netlist->nodes.at(id).Width() != *width) {
+        throw std::runtime_error("invalid flat TAP data register");
+      }
+    }
+    for (const auto& entry : Array(fields[8], 3)) {
+      const auto& pair = Array(entry, 2);
+      const auto key = String(pair[0]);
+      if ((key != "capture" && key != "shift" && key != "update") ||
+          !tap.controls.emplace(key, node_id(pair[1], "DataInPort", 1))
+               .second) {
+        throw std::runtime_error("invalid flat TAP control boundary");
+      }
+    }
+    for (const auto& [role, name] : tap.bsdl.ports) {
+      const auto found = netlist->node_ids.find(name);
+      if (found == netlist->node_ids.end()) {
+        throw std::runtime_error("missing flat TAP pin");
+      }
+      const auto& node = netlist->nodes.at(found->second);
+      if (node.scope || node.kind != kPinKinds.at(role) || node.Width() != 1) {
+        throw std::runtime_error("invalid flat TAP pin kind or width");
+      }
+      tap.pins.emplace(role, found->second);
+    }
+    const auto connected = [&](size_t destination, size_t source) {
+      const auto& inputs = netlist->nodes.at(destination).inputs;
+      const auto found = inputs.find("Source");
+      if (found == inputs.end() || found->second.size() != 1) {
+        return false;
+      }
+      const auto& bit = found->second[0];
+      return bit.node == source &&
+             bit.index == netlist->nodes.at(source).left && !bit.inverted &&
+             bit.virtual_signal == VirtualSignal::kNone;
+    };
+    if (!connected(tap.scan_input, tap.pins.at("tap_scan_in")) ||
+        !connected(tap.pins.at("tap_scan_out"), tap.scan_output)) {
+      throw std::runtime_error(
+          "flat TAP pin connection conflicts with metadata");
+    }
+    netlist->taps.emplace(path, std::move(tap));
+  }
+}
 }  // namespace
 
 std::string SerializeIcl(const Netlist& netlist) {
@@ -660,7 +819,7 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     }
     const size_t id = netlist->node_ids.at(flat_name);
     auto& node = netlist->nodes[id];
-    const bool internal_input = scope != 0 && InputPort(kind);
+    const bool internal_input = scope != 0 && IsInputPort(kind);
     if (!seen.insert(id).second || !names.emplace(original_name, id).second ||
         node.kind != (internal_input ? "DataOutPort" : kind)) {
       throw std::runtime_error("invalid flat object kind or duplicate");
@@ -770,6 +929,7 @@ bool RestoreFlatOrigins(Netlist* netlist) {
       source.object = scope;
     }
   }
+  RestoreTaps(netlist, json);
   return true;
 }
 }  // namespace pattern

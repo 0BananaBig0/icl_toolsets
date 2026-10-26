@@ -3,19 +3,20 @@
 # SPDX-License-Identifier: MIT
 # See LICENSE in the project root for license information.
 #
-# Builds four programs for IEEE 1687-2014 (IJTAG) ICL and PDL:
+# Builds five programs for IEEE 1687-2014 (IJTAG) ICL and PDL:
 #   icl-format  command line formatter
 #   icl-lsp     Language Server (diagnostics + formatting) for editors
 #   pdl-format  Tcl-aware PDL command line formatter
 #   pdl-lsp     PDL language services for editors
-# Each is produced dynamically linked and fully static: eight binaries.
+#   icl-pattern-generation  experimental serial PDL retargeting
+# Each is produced dynamically linked and fully static: ten binaries.
 #
 # Pipeline:  text --(flex/bison)--> AST --(layout)--> lines --(render)--> text
 # Each language pair shares its own syntax tree, analysis and formatter.
 #
 # Targets:
-#   make            build all eight binaries
-#   make dynamic    build all four dynamic binaries
+#   make            build all ten binaries
+#   make dynamic    build all five dynamic binaries
 #   make install    install into $(prefix) (default: $HOME/.local)
 #   make uninstall  remove exactly what install put there
 #   make check      run the test suite
@@ -125,8 +126,23 @@ PATTERN_SOURCES += $(SRC_DIR)/pattern_bsdl.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_access_link.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_tap.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_tap_network.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_state.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_tap_execution.cc
 PATTERN_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PATTERN_SOURCES))
-SOURCES += $(PATTERN_SOURCES)
+
+# The constraint backend is separate from parser/editor and replay objects.
+Z3_VERSION := 4.13.3
+Z3_PREFIX ?= $(abspath $(BUILD_DIR)/deps/z3-$(Z3_VERSION))
+Z3_CFLAGS ?= $(if $(wildcard $(Z3_PREFIX)/include/z3++.h),-isystem $(Z3_PREFIX)/include,$(shell pkg-config --cflags z3 2>/dev/null))
+Z3_STATIC_LIB ?= $(firstword $(wildcard $(Z3_PREFIX)/lib/libz3.a $(Z3_PREFIX)/lib64/libz3.a /usr/lib/libz3.a /usr/lib64/libz3.a /usr/lib/x86_64-linux-gnu/libz3.a))
+Z3_LIBS ?= $(if $(Z3_STATIC_LIB),$(Z3_STATIC_LIB) -lpthread,$(shell pkg-config --libs z3 2>/dev/null))
+SOLVER_SOURCES := $(SRC_DIR)/pattern_symbolic.cc $(SRC_DIR)/pattern_values.cc $(SRC_DIR)/pattern_scheduler.cc
+SOLVER_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SOLVER_SOURCES))
+SOURCES += $(SOLVER_SOURCES)
+$(SOLVER_OBJECTS): CPPFLAGS += $(Z3_CFLAGS)
+$(SOLVER_OBJECTS): | check-z3
+
+SOURCES += $(PATTERN_SOURCES) $(SRC_DIR)/icl_pattern_generation_main.cc
 
 # bison / flex outputs. Kept in $(GEN_DIR) so that `make clean` cannot leave a
 # stale generated parser behind a hand-edited .yy file.
@@ -144,7 +160,7 @@ LSP_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(LSP_SOURCES))
 
 OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 OBJECTS += $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PDL_SOURCES))
-OBJECTS += $(PATTERN_OBJECTS)
+OBJECTS += $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(BUILD_DIR)/icl_pattern_generation_main.o
 
 # ---- statically linked binary ----
 #
@@ -163,7 +179,7 @@ formatcheck:
 	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(wildcard $(SRC_DIR)/*.h)
 
 namingcheck: $(GEN_SOURCES)
-	$(CLANG_TIDY) $(SOURCES) -- $(CXXSTD) $(CPPFLAGS) $(TCL_CFLAGS)
+	$(CLANG_TIDY) $(SOURCES) -- $(CXXSTD) $(CPPFLAGS) $(TCL_CFLAGS) $(Z3_CFLAGS)
 
 # ---- toolchain requirements ----
 #
@@ -395,13 +411,17 @@ COV_BINARIES += $(COV_DIR)/pattern_design_test $(COV_DIR)/pattern_runtime_test
 COV_BINARIES += $(COV_DIR)/pattern_expression_test $(COV_DIR)/pattern_netlist_test
 COV_BINARIES += $(COV_DIR)/pattern_address_test $(COV_DIR)/pattern_bsdl_test
 COV_BINARIES += $(COV_DIR)/pattern_access_link_test
-COV_BINARIES += $(COV_DIR)/pattern_tap_test
+COV_BINARIES += $(COV_DIR)/pattern_tap_test $(COV_DIR)/pattern_state_test
+COV_BINARIES += $(COV_DIR)/pattern_symbolic_test $(COV_DIR)/pattern_scheduler_test $(COV_DIR)/icl-pattern-generation
 COV_BINARIES += $(COV_DIR)/pattern_logic_test $(COV_DIR)/pattern_flatten_test
 COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
     $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
 COV_REPORT_OBJECTS += $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o \
     $(COV_DIR)/pdl_lsp_main.o
-COV_REPORT_OBJECTS += $(COV_PATTERN)
+COV_SOLVER := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(SOLVER_SOURCES))
+COV_REPORT_OBJECTS += $(COV_PATTERN) $(COV_SOLVER) $(COV_DIR)/icl_pattern_generation_main.o
+$(COV_SOLVER): CPPFLAGS += $(Z3_CFLAGS)
+$(COV_SOLVER): | check-z3
 # Inline authored headers can be emitted only in a test translation unit.
 COV_REPORT_OBJECTS += $(foreach test,$(filter %_test,$(COV_BINARIES)),\
     $(test)-$(notdir $(test)).gcno)
@@ -485,6 +505,10 @@ coverage: $(COV_BINARIES)
 	@$(COV_DIR)/pattern_bsdl_test
 	@$(COV_DIR)/pattern_access_link_test
 	@$(COV_DIR)/pattern_tap_test
+	@$(COV_DIR)/pattern_state_test
+	@$(COV_DIR)/pattern_symbolic_test
+	@$(COV_DIR)/pattern_scheduler_test
+	@python3 tests/src/test_icl_pattern_generation_main.py $(COV_DIR)/icl-pattern-generation
 	@$(COV_DIR)/pattern_netlist_test
 	@python3 tests/src/test_pattern_address.py $(COV_DIR)/pattern_address_test
 	@$(COV_DIR)/pattern_logic_test
@@ -581,6 +605,9 @@ define install_body
 	$(INSTALL_PROGRAM) $2 $(bindir)/icl-lsp
 	$(INSTALL_PROGRAM) $(if $(filter static,$3),$(PDL_STATIC_BIN),$(PDL_BIN)) $(bindir)/pdl-format
 	$(INSTALL_PROGRAM) $(if $(filter static,$3),$(PDL_LSP_STATIC_BIN),$(PDL_LSP_BIN)) $(bindir)/pdl-lsp
+	$(INSTALL_PROGRAM) $(if $(filter static,$3),$(PATTERN_GENERATOR_STATIC),$(PATTERN_GENERATOR)) $(bindir)/icl-pattern-generation
+	$(INSTALL) -d $(docdir)/licenses
+	$(INSTALL_DATA) docs/licenses/Z3.txt $(docdir)/licenses/Z3.txt
 	@for h in $(HEADERS); do \
 	  $(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
 	done
@@ -591,12 +618,14 @@ define install_body
 	@echo $(bindir)/icl-lsp >> $(MANIFEST)
 	@echo $(bindir)/pdl-format >> $(MANIFEST)
 	@echo $(bindir)/pdl-lsp >> $(MANIFEST)
+	@echo $(bindir)/icl-pattern-generation >> $(MANIFEST)
+	@echo $(docdir)/licenses/Z3.txt >> $(MANIFEST)
 	@echo $(docdir)/third-party-notices.md >> $(MANIFEST)
 	@for h in $(HEADERS); do \
 	  echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
 	done
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
-	@echo "installed ($3) icl-format, icl-lsp, pdl-format, pdl-lsp $(VERSION) into $(prefix)"
+	@echo "installed ($3) icl-format, icl-lsp, pdl-format, pdl-lsp, icl-pattern-generation $(VERSION) into $(prefix)"
 	@$(call coc_body,$3)
 endef
 
@@ -639,7 +668,7 @@ uninstall:
 	  echo "no manifest at $(MANIFEST); removing known targets instead" >&2; \
 	  rm -f $(bindir)/$(PACKAGE); \
 	  rm -f $(bindir)/icl-lsp; \
-	  rm -f $(bindir)/pdl-format $(bindir)/pdl-lsp; \
+	  rm -f $(bindir)/pdl-format $(bindir)/pdl-lsp $(bindir)/icl-pattern-generation $(bindir)/icl-pattern-generation-static; \
 	  rm -rf $(includedir)/$(PACKAGE); \
 	  rm -rf $(docdir); \
 	  rm -f $(man1dir)/$(PACKAGE).1; \
@@ -952,3 +981,87 @@ $(COV_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(filter-out $(COV_DI
 
 check check-dynamic: pattern-tap-check
 check check-static: pattern-tap-static-check
+
+.PHONY: pattern-state-check pattern-state-static-check
+pattern-state-check: $(BUILD_DIR)/pattern_state_test
+	@$(BUILD_DIR)/pattern_state_test
+pattern-state-static-check: $(BUILD_DIR)/pattern_state_test-static
+	@$(BUILD_DIR)/pattern_state_test-static
+$(BUILD_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(TAP_TEST_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+$(BUILD_DIR)/pattern_state_test-static: tests/src/pattern_state_test.cc $(TAP_TEST_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
+$(COV_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+check check-dynamic: pattern-state-check
+check check-static: pattern-state-static-check
+
+.PHONY: check-z3 z3-deps pattern-symbolic-check pattern-symbolic-static-check
+check-z3:
+	@if [ -z "$(Z3_LIBS)" ]; then \
+	  echo "error: install Z3 development files, set Z3_CFLAGS/Z3_LIBS, or run make z3-deps" >&2; \
+	  exit 1; \
+	fi
+
+# Explicit, pinned dependency bootstrap; downloaded/generated files stay in build.
+z3-deps:
+	mkdir -p $(BUILD_DIR)/deps
+	curl -L --fail https://github.com/Z3Prover/z3/archive/refs/tags/z3-$(Z3_VERSION).tar.gz -o $(BUILD_DIR)/deps/z3-$(Z3_VERSION).tar.gz
+	printf '%s  %s\n' f59c9cf600ea57fb64ffeffbffd0f2d2b896854f339e846f48f069d23bc14ba0 $(BUILD_DIR)/deps/z3-$(Z3_VERSION).tar.gz | sha256sum --check --status
+	tar -xzf $(BUILD_DIR)/deps/z3-$(Z3_VERSION).tar.gz -C $(BUILD_DIR)/deps
+	cmake -S $(BUILD_DIR)/deps/z3-z3-$(Z3_VERSION) -B $(BUILD_DIR)/deps/z3-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE='-O2 -DNDEBUG' -DCMAKE_INSTALL_PREFIX=$(abspath $(Z3_PREFIX)) -DCMAKE_INSTALL_LIBDIR=lib -DZ3_BUILD_LIBZ3_SHARED=OFF -DZ3_BUILD_EXECUTABLE=OFF -DZ3_BUILD_TEST_EXECUTABLES=OFF -DZ3_ENABLE_EXAMPLE_TARGETS=OFF
+	cmake --build $(BUILD_DIR)/deps/z3-build --parallel 2
+	cmake --install $(BUILD_DIR)/deps/z3-build
+
+pattern-symbolic-check: $(BUILD_DIR)/pattern_symbolic_test
+	@$(BUILD_DIR)/pattern_symbolic_test
+pattern-symbolic-static-check: $(BUILD_DIR)/pattern_symbolic_test-static
+	@$(BUILD_DIR)/pattern_symbolic_test-static
+$(BUILD_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+$(BUILD_DIR)/pattern_symbolic_test-static: tests/src/pattern_symbolic_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3 check-tcl-static
+	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
+$(COV_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+check check-dynamic: pattern-symbolic-check
+check check-static: pattern-symbolic-static-check
+
+.PHONY: pattern-scheduler-check
+pattern-scheduler-check: $(BUILD_DIR)/pattern_scheduler_test
+	@$(BUILD_DIR)/pattern_scheduler_test
+$(BUILD_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+
+PATTERN_GENERATOR := $(BUILD_DIR)/icl-pattern-generation
+PATTERN_GENERATOR_STATIC := $(PATTERN_GENERATOR)-static
+$(BUILD_DIR)/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
+$(PATTERN_GENERATOR): $(BUILD_DIR)/icl_pattern_generation_main.o $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/json.o | check-z3 check-tcl
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+$(PATTERN_GENERATOR_STATIC): $(BUILD_DIR)/icl_pattern_generation_main.o $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/json.o | check-z3 check-tcl-static
+	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
+	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
+.PHONY: pattern-generation-check pattern-generation-static-check
+pattern-generation-check: $(PATTERN_GENERATOR)
+	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR)
+pattern-generation-static-check: $(PATTERN_GENERATOR_STATIC)
+	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR_STATIC)
+
+$(BUILD_DIR)/pattern_scheduler_test-static: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3 check-tcl-static
+	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
+.PHONY: pattern-scheduler-static-check
+pattern-scheduler-static-check: $(BUILD_DIR)/pattern_scheduler_test-static
+	@$(BUILD_DIR)/pattern_scheduler_test-static
+$(COV_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+$(COV_DIR)/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
+$(COV_DIR)/icl-pattern-generation: $(COV_DIR)/icl_pattern_generation_main.o $(COV_PATTERN) $(COV_SOLVER) $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+check check-dynamic: pattern-scheduler-check pattern-generation-check
+check check-static: pattern-scheduler-static-check pattern-generation-static-check
+dynamic: $(PATTERN_GENERATOR)
+static: $(PATTERN_GENERATOR_STATIC)
+
+install-dynamic: $(PATTERN_GENERATOR)
+install-static: $(PATTERN_GENERATOR_STATIC)

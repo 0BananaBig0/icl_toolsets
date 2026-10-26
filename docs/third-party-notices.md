@@ -114,3 +114,10 @@ For more information, please refer to <http://unlicense.org/>
   (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
 */
 ```
+
+## Z3
+
+The pattern generator uses Z3 (pinned bootstrap version 4.13.3), distributed
+under the MIT license. See [Z3 license](licenses/Z3.txt). The dependency is built
+or installed separately; generated libraries and downloaded sources are not
+tracked in this repository.

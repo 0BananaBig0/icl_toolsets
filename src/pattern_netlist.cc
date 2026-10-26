@@ -1208,6 +1208,63 @@ class Elaborator {
 };
 }  // namespace
 
+std::vector<ScanInterfaceBinding> EffectiveScanInterfaces(
+    const Netlist& netlist) {
+  std::vector<ScanInterfaceBinding> result;
+  std::set<size_t> explicit_scopes;
+  std::vector<std::map<std::string, std::vector<size_t>>> ports(
+      netlist.scopes.size());
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& node = netlist.nodes[id];
+    if (node.scan_interface) {
+      result.push_back({node.scope, *node.scan_interface, node.origin});
+      explicit_scopes.insert(node.scope);
+    } else if (node.model == ModelKind::kPort) {
+      ports.at(node.scope)[node.kind].push_back(id);
+    }
+  }
+  for (size_t scope = 0; scope < ports.size(); ++scope) {
+    if (explicit_scopes.count(scope)) continue;
+    const auto scalar = [&](const std::string& kind) {
+      const auto found = ports[scope].find(kind);
+      return found != ports[scope].end() && found->second.size() == 1 &&
+             netlist.nodes[found->second[0]].Width() == 1;
+    };
+    if (!scalar("ScanInPort") || !scalar("ScanOutPort") ||
+        (!scalar("SelectPort") && !scalar("ShiftEnPort") &&
+         !scalar("TMSPort"))) {
+      continue;
+    }
+    ScanInterface interface;
+    interface.kind = scalar("TMSPort") ? ScanInterfaceKind::kClientTap
+                                       : ScanInterfaceKind::kClient;
+    const std::vector<std::string> kinds =
+        scalar("TMSPort")
+            ? std::vector<std::string>{"ScanInPort", "ScanOutPort", "TCKPort",
+                                       "TMSPort", "TRSTPort"}
+            : std::vector<std::string>{
+                  "ScanInPort",  "ScanOutPort",   "TCKPort",      "SelectPort",
+                  "ShiftEnPort", "CaptureEnPort", "UpdateEnPort", "ResetPort"};
+    for (const auto& kind : kinds) {
+      if (scalar(kind)) {
+        const size_t id = ports[scope].at(kind)[0];
+        interface.ports.push_back({id, netlist.nodes[id].left});
+      }
+    }
+    result.push_back({scope, std::move(interface),
+                      netlist.nodes[ports[scope].at("ScanInPort")[0]].origin});
+  }
+  return result;
+}
+
+bool IsInputPort(const std::string& kind) {
+  return kind == "ScanInPort" || kind == "DataInPort" || kind == "ResetPort" ||
+         kind == "TRSTPort" || kind == "TMSPort" || kind == "SelectPort" ||
+         kind == "ShiftEnPort" || kind == "CaptureEnPort" ||
+         kind == "UpdateEnPort" || kind == "TCKPort" || kind == "ClockPort" ||
+         kind == "AddressPort" || kind == "ReadEnPort" || kind == "WriteEnPort";
+}
+
 void CheckCombinationalConnections(const Netlist& netlist) {
   // Signal-level cycles may be acyclic between bits; registers cut the graph.
   constexpr size_t kMaxGraphBits = 16 * 1024 * 1024;

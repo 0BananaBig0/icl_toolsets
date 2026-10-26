@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <stdexcept>
@@ -1368,14 +1369,85 @@ void TestSerialNetwork() {
                 netlist.node_ids.at("core.so"),
             "child output returns to both instruction routes");
   }
-  Require(!netlist.NodeAt("core.capture").inputs.count("Source"),
-          "serial assembly does not invent controller event values");
+  Require(netlist.nodes
+                      .at(netlist.NodeAt("core.capture")
+                              .inputs.at("Source")[0]
+                              .node)
+                      .kind == "DataInPort" &&
+              netlist.NodeAt("core.clock").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("TCK"),
+          "client controls connect to runtime boundaries and physical clock");
   const auto flat = pattern::SerializeIcl(netlist);
   pattern::Design replay;
   replay.AddIcl("flat.icl", flat);
+  const auto replayed_network =
+      pattern::ElaborateTapNetwork(replay, "AccessTop");
+  Require(replayed_network.netlist.taps.size() == 1 &&
+              replayed_network.netlist.taps.at("tap").bsdl.capture == "0001" &&
+              replayed_network.netlist.nodes
+                      .at(replayed_network.netlist.taps.at("tap")
+                              .instruction_register)
+                      .Width() == 4,
+          "flat replay restores validated BSDL and executable TAP node "
+          "associations");
   Require(
       pattern::SerializeIcl(pattern::Elaborate(replay, "AccessTop")) == flat,
       "connected serial topology is stable through flat replay");
+}
+
+void TestRuntimeMetadataValidation() {
+  pattern::Design design;
+  design.AddIcl("network.icl", Read(kDirectory + "simple.icl"));
+  design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                 "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  const auto reject =
+      [&](const std::function<void(pattern::Netlist&)>& change) {
+        auto netlist = network.netlist;
+        change(netlist);
+        try {
+          const auto flat = pattern::SerializeIcl(netlist);
+          pattern::Design replay;
+          replay.AddIcl("tampered.icl", flat);
+          pattern::Elaborate(replay, "AccessTop");
+        } catch (const std::exception&) {
+          return;
+        }
+        throw std::runtime_error("accepted invalid TAP runtime metadata");
+      };
+  reject([](auto& n) {
+    n.taps.at("tap").instruction_register = n.node_ids.at("core.r");
+  });
+  reject(
+      [](auto& n) { n.taps.at("tap").ir_select = n.node_ids.at("core.mode"); });
+  reject([](auto& n) { n.taps.at("tap").scan_input = n.node_ids.at("TDI"); });
+  reject([](auto& n) { n.taps.at("tap").bsdl.source.clear(); });
+  reject([](auto& n) { n.taps.at("tap").instruction_selects.clear(); });
+  reject([](auto& n) {
+    n.taps.at("tap").data_registers.emplace("UNKNOWN", n.node_ids.at("core.r"));
+  });
+  reject([](auto& n) {
+    auto& ir = n.nodes.at(n.taps.at("tap").instruction_register);
+    ir.inputs.at("CaptureSource")[0].constant = '1';
+  });
+  reject([](auto& n) {
+    n.nodes.at(n.node_ids.at("TDO")).inputs.at("Source")[0].inverted = true;
+  });
+  auto flat = pattern::SerializeIcl(network.netlist);
+  pattern::Design replay;
+  replay.AddIcl("flat.icl", flat);
+  const auto restored = pattern::ElaborateTapNetwork(replay, "AccessTop");
+  pattern::TapInstructionRegister original(network.netlist.taps.at("tap").bsdl);
+  pattern::TapInstructionRegister copy(restored.netlist.taps.at("tap").bsdl);
+  for (char tms : std::string("11111011000001011010000000110")) {
+    Require(
+        Actions(original.RisingEdge(tms, '1')) ==
+                Actions(copy.RisingEdge(tms, '1')) &&
+            Actions(original.FallingEdge()) == Actions(copy.FallingEdge()) &&
+            original.InstructionCodes() == copy.InstructionCodes() &&
+            original.ShiftBits() == copy.ShiftBits(),
+        "restored metadata executes identical controller and IR events");
+  }
 }
 
 void TestSerialOrderAndPins() {
@@ -1647,6 +1719,7 @@ void TestSerialScaleAndBudget() {
 int main() {
   try {
     TestSerialNetwork();
+    TestRuntimeMetadataValidation();
     TestSerialOrderAndPins();
     TestSerialNetworkErrors();
     TestIndependentTaps();
