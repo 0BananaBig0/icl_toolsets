@@ -122,6 +122,8 @@ PATTERN_SOURCES += $(SRC_DIR)/pattern_logic.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_flatten.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_address.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_bsdl.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_access_link.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_tap.cc
 PATTERN_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PATTERN_SOURCES))
 SOURCES += $(PATTERN_SOURCES)
 
@@ -391,6 +393,8 @@ COV_PATTERN := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(PATTERN_SOURCES))
 COV_BINARIES += $(COV_DIR)/pattern_design_test $(COV_DIR)/pattern_runtime_test
 COV_BINARIES += $(COV_DIR)/pattern_expression_test $(COV_DIR)/pattern_netlist_test
 COV_BINARIES += $(COV_DIR)/pattern_address_test $(COV_DIR)/pattern_bsdl_test
+COV_BINARIES += $(COV_DIR)/pattern_access_link_test
+COV_BINARIES += $(COV_DIR)/pattern_tap_test
 COV_BINARIES += $(COV_DIR)/pattern_logic_test $(COV_DIR)/pattern_flatten_test
 COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
     $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
@@ -475,6 +479,8 @@ coverage: $(COV_BINARIES)
 	@$(COV_DIR)/pattern_runtime_test
 	@$(COV_DIR)/pattern_expression_test
 	@$(COV_DIR)/pattern_bsdl_test
+	@$(COV_DIR)/pattern_access_link_test
+	@$(COV_DIR)/pattern_tap_test
 	@$(COV_DIR)/pattern_netlist_test
 	@python3 tests/src/test_pattern_address.py $(COV_DIR)/pattern_address_test
 	@$(COV_DIR)/pattern_logic_test
@@ -901,3 +907,43 @@ $(COV_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(COV_DIR)/pattern_
 
 check check-dynamic: pattern-bsdl-check
 check check-static: pattern-bsdl-static-check
+
+.PHONY: pattern-access-link-check pattern-access-link-static-check
+pattern-access-link-check: $(BUILD_DIR)/pattern_access_link_test
+	@$(BUILD_DIR)/pattern_access_link_test
+
+pattern-access-link-static-check: $(BUILD_DIR)/pattern_access_link_test-static
+	@$(BUILD_DIR)/pattern_access_link_test-static
+
+$(BUILD_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(BUILD_DIR)/pattern_access_link.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+$(BUILD_DIR)/pattern_access_link_test-static: tests/src/pattern_access_link_test.cc $(BUILD_DIR)/pattern_access_link.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(SHARED_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
+
+$(COV_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(COV_DIR)/pattern_access_link.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_SHARED)
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+check check-dynamic: pattern-access-link-check
+check check-static: pattern-access-link-static-check
+
+.PHONY: pattern-tap-check pattern-tap-static-check
+pattern-tap-check: $(BUILD_DIR)/pattern_tap_test
+	@$(BUILD_DIR)/pattern_tap_test
+
+pattern-tap-static-check: $(BUILD_DIR)/pattern_tap_test-static
+	@$(BUILD_DIR)/pattern_tap_test-static
+
+TAP_TEST_OBJECTS := $(filter-out $(BUILD_DIR)/pattern_runtime.o,$(PATTERN_OBJECTS)) $(SHARED_OBJECTS) $(BUILD_DIR)/json.o
+
+$(BUILD_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(TAP_TEST_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
+
+$(BUILD_DIR)/pattern_tap_test-static: tests/src/pattern_tap_test.cc $(TAP_TEST_OBJECTS)
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
+
+$(COV_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+
+check check-dynamic: pattern-tap-check
+check check-static: pattern-tap-static-check

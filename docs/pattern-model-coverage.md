@@ -568,3 +568,137 @@ The final complete `make check` run after all source/test changes exited 0
 38,500 ICL / 739 PDL files each. BSDL metadata loading is verified at this
 checkpoint; TAP construction, scheduling, CLI/local-reset output and actual
 generator-versus-Tessent equivalence remain incomplete.
+
+## AccessLink source binding
+
+`BindAccessLinks` in `pattern_access_link.*` binds the selected top module's
+standard AccessLinks to the existing BSDL registry and child module ASTs.
+It preserves instruction order, each instruction's ordered scan-interface list,
+ActiveSignal selections and source locations. Named interfaces and unique
+instance-only shorthand use the existing namespace-aware instance resolver.
+Unknown instructions, missing/ambiguous interfaces, duplicate instance/interface
+names, multi-chain selections and non-top standard links produce errors.
+Generic links fail explicitly because their controller semantics are unspecified.
+This follows IEEE 1687-2014 §6.4.17(a,b,e,f), printed pp.133–135.
+
+This API is a source-binding prerequisite for the unfinished TAP builder.
+It does not wire the TAP, synthesize ActiveSignals, evaluate signal ranges, or
+replace the elaborator's ScanInterface port/type validation. It does not imply
+that AccessLink retargeting or flat serialization is implemented. Its result
+borrows Design's existing immutable AST and BSDL objects; Design must outlive
+the result without replacement or mutation.
+
+The hierarchy walk visits each reachable module type once. Interface definitions
+and chain counts are indexed once per referenced type, then looked up for each
+reference. No per-instruction copy of BSDL or module ASTs is made. The maintained
+test uses 3,000 references and 3,000 unrelated ports: binding measured 2.2 ms;
+the complete focused suite measured 0.02 s wall / 17,316 KiB peak RSS on the same
+WSL2/g++ `-O2` environment described above. Reproduce with
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' build/pattern_access_link_test`.
+This is a workload measurement, not a comparative speedup claim.
+
+`tests/src/pattern_access_link_test.cc` covers the complete oracle fixture,
+ordering/shorthand/namespaces, both standard-link spellings, comments, one named
+chain, an ordinary hierarchy without BSDL and source-attributed rejection paths.
+Independent review found a valid instruction named `BSDLEntity` was mistaken
+for the declaration keyword. The failing regression now passes because dispatch
+distinguishes AST statements from instruction blocks.
+
+Post-review dynamic/static, Google formatting/tidy and ASan/UBSan checks pass
+(leak detection disabled). `pattern_access_link.cc` reaches **142/143 lines
+(99.3%)**, **181/288 raw branches (62.8%)**. The unexecuted gcov line is the
+closing brace of the text-construction helper; the entry, loop and return are
+covered. Overall handwritten coverage is **7,589/7,914 lines (95.9%)** and
+**12,505/20,452 branches (61.1%)**. The unchanged strict gate still fails
+(`build/access-link-reviewed-coverage.log`); thresholds and exclusions were not
+relaxed.
+The complete post-review `make check` run exited 0
+(`build/access-link-reviewed-regression.log`), including dynamic/static checks,
+334/334 grammar productions, 119/119 scanner rules and both editor corpora
+(38,500 ICL / 739 PDL files each). This verifies the source-binding foundation;
+TAP construction and end-to-end generator comparison remain unfinished.
+
+## Instruction-register and ActiveSignal component
+
+`BuildTapInstructionModel` in `pattern_tap.*` constructs an owning standalone
+instruction-register component from a bound AccessLink. It generates in-memory
+ICL and passes it through the existing `Design`, `Elaborate`, shared AST and
+logic compiler. BSDL width and capture bits become a ScanRegister; each selected
+instruction has one shared decoder, including alternative/masked opcodes.
+ActiveSignals reference that decoder or an OR of the relevant decoders per bit.
+Indexed ranges, including parameter expressions, are evaluated in one batch
+through temporary port declarations using the shared ICL frontend and
+elaborator. No separate range grammar or parameter evaluator is introduced.
+Generated names avoid all user-visible output names. OR expressions are balanced
+so a large opcode list does not exhaust the shared expression-depth limit.
+
+The result owns its parsed documents and can outlive the input binding/Design.
+It records the IR, scan-input and decoder node IDs. It is **not a complete TAP**:
+FSM behavior, resets, data-register routing, clock handling, external/child
+connections and retargeting remain unimplemented. No reset value or initial
+hardware state is inferred by this component. Indexed ActiveSignals are modeled
+natively even though the isolated Tessent 2026.2 probes reject their syntax.
+Those vendor outcomes remain expected errors, not equivalence passes.
+
+IEEE 1687-2014 §6.4.17(g), printed p.135, supplies instruction-controlled
+ActiveSignal behavior. The inspected Tessent Shell Reference Manual v2023.4
+AccessLink topic describes high/low instruction decoding; the existing 2026.2
+oracle fixture supplies IR `0011` and capture `0001`. Tests independently check
+all 16 four-bit instruction states, shared outputs, multiple masked opcodes,
+unknown inputs/capture masks, internal-name collisions and canonical flat replay.
+Range tests cover ascending/descending selections, nonzero single-bit indices,
+parameter dependencies, overlapping selections, sparse inactive bits, invalid
+scalar/vector mixtures and maximum integer indices. A merged vector follows the
+first selection's direction (descending for a singleton); numeric bit identity is
+preserved, and bits absent from every instruction are inactive. Errors in range
+evaluation identify the original ActiveSignal source location.
+These checks establish component logic, not full generated-pattern equivalence.
+
+At the scalar-only checkpoint the 2,049-opcode-alternative case measured about
+10–14 ms including input parsing, binding, model construction and evaluation.
+That earlier suite measured
+0.01 s wall / 10,180 KiB peak RSS on WSL2/g++ `-O2`; reproduce with
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' build/pattern_tap_test`.
+The generated text has a 16 MiB cap. This is not a peak-memory cap: temporary
+balanced expressions, ASTs and elaborated bit references require additional
+memory and remain subject to the shared frontend's own limits.
+
+Indexed expansion additionally caps aggregate output width and range-bit visits
+at 1,048,576 each. Exact duplicate selections within one instruction are
+deduplicated before bit traversal; distinct overlapping spans still consume the
+visit budget. This prevents small input text from causing unbounded repeated
+vector scans. Shared multi-instruction OR expressions are emitted once per
+distinct decoder set. The 10,000-repeat / 65,536-bit case is maintained in
+`tests/src/pattern_tap_test.cc`. Binding canonicalizes the selected top through
+the Design registry, so a caller's temporary module copy cannot dangle.
+The optimized focused runs measured 0.095–0.119 s for this repeated-range case.
+A whole-suite measurement during concurrent regression was 0.19 s wall and
+58,224 KiB peak RSS (WSL2, g++ `-O2`); see
+`build/tap-vector-measurement.log`. This is a scale check, not an isolated
+before/after speedup benchmark.
+
+The preceding scalar-only checkpoint passed focused dynamic/static, Google style
+and ASan/UBSan checks (leak detection disabled). Its strict coverage failed at
+**7,675/8,001 handwritten lines (95.9%)**, **12,638/20,678 raw branches (61.1%)**; the new component reaches
+**85/87 lines (97.7%)**, **132/226 branches (58.4%)**. Thresholds remain unchanged
+(`build/tap-instruction-final-coverage.log`). The first complete regression found
+duplicated instrument modules in the new probe fixtures; removing those copies
+and reusing the original definition makes the corpus audit pass without an
+allowlist exception. The post-correction complete `make check` exited 0
+(`build/tap-instruction-final-regression.log`), including dynamic/static checks,
+334/334 grammar productions, 119/119 scanner rules, and Vim/Neovim corpora of
+38,503 ICL / 739 PDL files each. This does not complete the TAP or generator.
+
+The indexed-component checkpoint passes focused dynamic/static tests, Google
+formatting/naming checks, and ASan/UBSan with leak detection disabled. Independent
+review confirmed the range-work bound and ownership correction. The unchanged
+strict coverage gate still fails: **7,802/8,130 handwritten lines (96.0%)** and
+**12,790/20,924 raw branches (61.1%)**. `pattern_tap.cc` reaches **210/215 lines
+(97.7%)**, **279/468 branches (59.6%)**; defensive malformed-binding/text-limit
+paths remain uncovered. Evidence: `build/tap-vector-delivery-coverage.log`,
+`build/tap-vector-delivery-sanitize.log`, and
+`build/tap-vector-delivery-tidy.log`. The final post-edit complete `make check` exited 0
+(`build/tap-vector-delivery-regression.log`), including dynamic/static checks,
+334/334 grammar productions, 119/119 scanner rules, and Vim/Neovim tests of
+38,503 ICL and 739 PDL files each. Full TAP wiring, state/control behavior,
+scheduling and the generator executable remain unfinished.

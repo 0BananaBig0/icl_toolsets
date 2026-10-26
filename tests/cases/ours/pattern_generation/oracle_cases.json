@@ -381,6 +381,51 @@
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "AccessLink_range_down",
+      "top": "AccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/access_link/simple.icl",
+        "tests/cases/ours/pattern_generation/access_link/range_down.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/access_link/write.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "ICL1-1"
+    },
+    {
+      "id": "AccessLink_range_up",
+      "top": "AccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/access_link/simple.icl",
+        "tests/cases/ours/pattern_generation/access_link/range_up.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/access_link/write.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "ICL1-1"
+    },
+    {
+      "id": "AccessLink_single_bit",
+      "top": "AccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/access_link/simple.icl",
+        "tests/cases/ours/pattern_generation/access_link/single_bit.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/access_link/write.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "ICL1-1"
     }
   ]
 }

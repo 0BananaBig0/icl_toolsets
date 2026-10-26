@@ -234,3 +234,47 @@ budget); do not expand unknown expressions or load external VHDL packages.
 Missing package-defined values needed by the TAP must fail explicitly. New code
 belongs in `src/pattern_bsdl.*` and tests in `tests/src/pattern_bsdl_test.cc`, with
 Makefile/static/sanitizer/coverage integration before completion claims.
+
+### Task 2 continuation: AccessLink source binding
+
+- [x] Add `pattern_access_link.*` to bind standard links from the existing
+  parsed ICL AST to loaded BSDL metadata. Retain instruction/interface order,
+  ActiveSignal selections and source locations; do not introduce another parser.
+- [x] Resolve direct-child interfaces through the existing design registry,
+  including namespaces and unambiguous shorthand. Reject unknown instructions,
+  missing/ambiguous interfaces, duplicate names, multiple selected chains and
+  standard links outside the top. Generic-controller semantics remain unsupported.
+- [x] Test the complete oracle fixture, keyword instruction names, comments,
+  explicit/shorthand chains, errors, and 3,000 references to one shared module.
+  Cache interfaces and chain counts by module type, preserving the original AST.
+- [ ] Consume these bindings during TAP model construction. Binding alone does
+  not connect ActiveSignals or scan/control ports, validate expanded interface
+  widths/types, or generate a pattern; keep the corresponding acceptance gaps.
+
+The binding result borrows the immutable Design and its shared AST/BSDL objects.
+Design must outlive the result and must not be modified while bindings are used.
+
+### Task 2 continuation: instruction-register component
+
+- [x] Build an owning IR/ActiveSignal component from bound AccessLink
+  metadata. Emit bounded in-memory ICL and reuse the shared parser, elaborator,
+  logic evaluator and flat serializer instead of introducing another model tree.
+- [x] Preserve BSDL instruction width/capture masks, alternative opcodes and
+  shared ActiveSignals; avoid generated-name collisions and deep linear OR trees.
+  Do not imply an initial reset or known register state.
+- [x] Test exhaustive four-bit instruction states, unknown/masked bits, shared
+  outputs, source failures, flat replay and 2,049 opcode alternatives.
+- [x] Probe indexed ActiveSignals using isolated Tessent 2026.2 runs. Retain
+  IEEE-legal syntax in the parser; record the measured vendor rejection and
+  model indexed outputs natively through the shared range/parameter evaluator.
+- [x] Test indexed widths/directions, parameter expressions, shared and sparse
+  bit decoding, integer-boundary traversal, original diagnostic locations,
+  temporary top lifetime and bounded duplicate/overlap work.
+- [ ] Connect the component to the complete TAP FSM, reset behavior, data-register
+  routing and child scan/control interfaces. Integrate indexed ActiveSignal
+  outputs using normative semantics; vendor rejection is not a reason to remove
+  valid IEEE grammar or reduce the final requirements.
+
+`BuildTapInstructionModel` is an internal component builder, not the completed
+AccessLink elaborator or generator. No CLI, installation or pattern-equivalence
+completion follows from these component checks.

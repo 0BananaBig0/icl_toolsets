@@ -337,3 +337,26 @@ harness tests, three trace tests, 334/334 grammar productions, 119/119 scanner
 rules, and Vim/Neovim checks over 38,500 ICL / 739 PDL files each. The separate
 strict C++ coverage gate remains below its unchanged thresholds; the most recent
 measurement is documented in [model coverage](pattern-model-coverage.md).
+## Indexed ActiveSignal probes (2026-10-25)
+
+Three self-constructed variants under
+`tests/cases/ours/pattern_generation/access_link/` exercise descending `[3:1]`,
+ascending `[1:3]` and single-bit `[3]` ActiveSignals, each connecting an indexed
+bit to the instrument's mode input. The variants load `simple.icl` first and
+replace only `AccessTop`; the common instrument definition is not duplicated.
+The maintained manifest records all three as expected vendor syntax errors.
+
+Tessent **2026.2** rejected each ActiveSignals bracket with **ICL1-1**,
+`Incorrect character sequence`, before pattern generation. The initial hypothesis
+that these variants would run was false; its failed results remain in ignored
+`build/tap-signals-evidence`. A repeat with explicit vendor-error expectations
+passed all three expected outcomes and input/script hash checks in
+`build/tap-signals-confirmed-evidence`. The post-deduplication repeat also matched
+all three expected syntax errors, with all staged input/script hashes verified,
+in `build/tap-signals-dedup-evidence`. No PDL pattern comparison passed in these runs.
+
+IEEE 1687-2014 §6.4.17's grammar permits `reg_port_signal_id` for ActiveSignals.
+The repo parser therefore continues to accept these indexed forms. The native instruction component now models indexed outputs using the shared
+ICL range and parameter evaluator; full TAP integration remains unfinished.
+The observed vendor restriction does not remove the IEEE support requirement
+or establish a successful pattern-equivalence comparison.
