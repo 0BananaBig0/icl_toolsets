@@ -106,6 +106,39 @@ cmp result/Network.pdl result/second-pass.pdl
 These comparisons check deterministic output for this example. They are not a
 substitute for hardware-state replay or a vendor comparison.
 
+## Single-TAP idle example
+
+From the repository root, use the bundled self-constructed AccessLink/BSDL model:
+
+```sh
+mkdir -p out/tck-example
+cat > out/tck-example/input.pdl <<'PDL'
+iProcsForModule AccessTop
+iReset -sync
+iWrite core.r 0x59
+iApply
+iRunLoop 100 -tck
+iRead core.r 0x59
+iApply
+PDL
+
+icl-pattern-generation \
+  --icl tests/cases/ours/pattern_generation/access_link/simple.icl \
+  --bsdl AccessProbe tests/cases/ours/pattern_generation/access_link/simple.bsdl \
+  --pdl out/tck-example/input.pdl --output out/tck-example/result.pdl --debug
+
+icl-pattern-generation --icl out/tck-example/debug/AccessTop.icl \
+  --pdl out/tck-example/input.pdl --output out/tck-example/flat-replay.pdl
+cmp out/tck-example/result.pdl out/tck-example/flat-replay.pdl
+
+icl-pattern-generation --icl out/tck-example/debug/AccessTop.icl \
+  --pdl out/tck-example/result.pdl --output out/tck-example/pdl-replay.pdl
+cmp out/tck-example/result.pdl out/tck-example/pdl-replay.pdl
+```
+
+The output retains all 100 TCK cycles. Matching files check deterministic replay;
+they do not establish a live hardware readback or Tessent-equivalence result.
+
 ## Current transaction support
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric

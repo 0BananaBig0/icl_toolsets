@@ -468,3 +468,20 @@ remove any remaining requirement.
 This closes the queued-write same-cycle requirement for the currently supported
 serial/single-TAP model. It does not complete iMerge, resource reservations,
 timing, unsupported access topologies or the separate local-reset artifact.
+
+### Task 4 continuation: literal TCK idle replay
+
+- [x] Implement IEEE 1687-2014 §7.9.17 literal TCK counts using existing native
+  single-TAP events, with explicit reset and no unapplied operations.
+- [x] Retain full emitted counts while accelerating complete-state fixed points;
+  bound nonconverging replay and preserve state on failure.
+- [x] Track transient reset assertions through native propagation so idle
+  cycles cannot resurrect stale controlling fill.
+- [x] Verify stable/changing/periodic state, huge counts, error paths and both
+  replay forms; complete independent review, full regression, sanitizer/style
+  checks, installation and eleven installed CLI tests (`d274155`).
+- [ ] Complete system-clock/absolute-time waits and the other outstanding
+  scheduler, reset-rewrite and vendor-equivalence requirements above.
+
+Strict coverage remains unmet: 95.2% lines and 60.3% raw branches against the
+unchanged 100% / 90% gate. See the current generator guide for evidence.
