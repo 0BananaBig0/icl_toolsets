@@ -1297,9 +1297,49 @@ void TestInstructionModel() {
   Require(pattern::SerializeIcl(again) == flat,
           "instruction component flat replay");
 }
+void TestDatapathInsertion() {
+  pattern::Netlist netlist;
+  std::string source;
+  {
+    pattern::Design design;
+    source = Read(kDirectory + "simple.icl");
+    design.AddIcl("original.icl", source);
+    design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                   "AccessProbe");
+    const auto links =
+        pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
+    const auto model = pattern::BuildTapDatapathModel(links.front());
+    netlist = pattern::Elaborate(design, "AccessTop",
+                                 {{"tap", model.netlist.scopes[0].definition}});
+    Require(netlist.scopes[0].definition.document ==
+                design.modules().at("AccessTop").document,
+            "integrated datapath retains original shared source tree");
+    const auto& original = model.netlist.nodes[model.instruction_register];
+    const auto& integrated = netlist.NodeAt("tap." + original.name);
+    Require(integrated.ast == original.ast && integrated.Width() == 4 &&
+                integrated.inputs.at("CaptureSource")[3].constant == '1',
+            "the behavioral instruction register reuses its parsed model AST");
+  }
+  Require(netlist.scopes[0].definition.document->source() == source &&
+              netlist.NodeAt("core.mode").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("tap.long_setup"),
+          "qualified active signal binding survives source/model owner "
+          "destruction");
+  const auto flat = pattern::SerializeIcl(netlist);
+  pattern::Design replay;
+  replay.AddIcl("flat.icl", flat);
+  const auto restored = pattern::Elaborate(replay, "AccessTop");
+  Require(
+      pattern::SerializeIcl(restored) == flat &&
+          restored.NodeAt("core.mode").inputs.at("Source")[0].node ==
+              restored.node_ids.at("tap.long_setup"),
+      "inserted datapath preserves qualified connections through flat replay");
+}
+
 }  // namespace
 int main() {
   try {
+    TestDatapathInsertion();
     TestControllerTransitions();
     TestControllerEdgesAndReset();
     TestInstructionExecution();

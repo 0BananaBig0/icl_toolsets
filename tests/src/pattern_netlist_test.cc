@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern_netlist.h"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -86,6 +87,140 @@ void TestAddressedDataDefaults() {
   }
   Fails([&] { pattern::Elaborate(design, "DataBudgetTop"); },
         "implicit data connection bit limit");
+}
+
+void TestAccessLinkModelInsertion() {
+  pattern::Design design, models;
+  const std::string source =
+      "NameSpace lib; Module Child { Parameter W = 1; DataInPort mode[$W-1:0]; "
+      "}"
+      "Module Top { Parameter W = 2; Enum Names { tap = 1'b0; }"
+      "Instance core Of Child { Parameter W = $W;"
+      "InputPort mode = tap.active; } AccessLink tap Of STD_1149_1_2001 {"
+      "BSDLEntity Probe; ON { ScanInterface { core.client; } } } }";
+  design.AddIcl("original.icl", source);
+  design.AddIcl(
+      "later.icl",
+      "NameSpace lib; Module Child { Parameter W = 1;"
+      "DataInPort mode[$W-1:0]; DataOutPort newer { Source mode[0]; } }");
+  models.AddIcl(
+      "model.icl",
+      "Module BehavioralTap { DataOutPort active[1:0] { Source 2'b10; } }");
+  const auto root = design.modules().at("lib::Top").document;
+  const auto netlist = pattern::Elaborate(
+      design, "lib::Top", {{"tap", models.modules().at("BehavioralTap")}});
+  const auto& input = netlist.NodeAt("core.mode");
+  Require(input.Width() == 2 && input.inputs.at("Source")[0].node ==
+                                    netlist.node_ids.at("tap.active"),
+          "model ports resolve in original instance bindings");
+  Require(netlist.NodeAt("core.newer").origin.find("later.icl:") == 0 &&
+              netlist.NodeAt("tap.active").origin.find("model.icl:") == 0,
+          "ordered module replacements and source locations remain intact");
+  Require(
+      !netlist.node_ids.count("tap") &&
+          netlist.scopes[0].definition.document == root &&
+          root->source() == source && design.modules().size() == 2 &&
+          design.warnings().size() == 1,
+      "replace only the AccessLink node, without changing source or registry");
+  Require(netlist.module_parameters.count("BehavioralTap"),
+          "inserted module identity is available to flat replay");
+  Fails([&] { pattern::Elaborate(design, "lib::Top"); },
+        "unknown signal tap.active");
+  Fails(
+      [&] {
+        pattern::Elaborate(design, "lib::Top",
+                           {{"missing", models.modules().at("BehavioralTap")}});
+      },
+      "unknown top-level AccessLink missing");
+}
+
+void TestAccessLinkModelErrors() {
+  pattern::Design design, models;
+  design.AddIcl("top.icl",
+                "Module Top { AccessLink tap Of STD_1149_1_2001 {"
+                "BSDLEntity Probe; ON { ScanInterface { child.iface; } } } }");
+  models.AddIcl("model.icl",
+                "Module Leaf {} Module Nested { Instance child Of Leaf; }"
+                "Module Linked { AccessLink inner Of Generic { opaque; } }"
+                "Module Top { DataInPort collision; }");
+  const auto reject = [&](const pattern::ModuleDefinition& model,
+                          const std::string& message) {
+    Fails([&] { pattern::Elaborate(design, "Top", {{"tap", model}}); },
+          message);
+  };
+  reject({}, "invalid behavioral module");
+  reject(models.modules().at("Nested"), "must be a leaf module");
+  reject(models.modules().at("Linked"), "cannot contain AccessLink");
+  reject(models.modules().at("Top"), "conflicting behavioral module identity");
+  auto malformed = models.modules().at("Leaf");
+  malformed.declaration_index = 100;
+  reject(malformed, "invalid behavioral module");
+  pattern::Design duplicate;
+  duplicate.AddIcl("duplicate.icl",
+                   "Module Top { DataInPort tap; AccessLink tap Of"
+                   " STD_1149_1_2001 { BSDLEntity Probe; ON { ScanInterface { "
+                   "child.iface; } } } }");
+  Fails(
+      [&] {
+        pattern::Elaborate(duplicate, "Top",
+                           {{"tap", models.modules().at("Leaf")}});
+      },
+      "duplicate top-level declaration tap");
+
+  pattern::Design grouped;
+  grouped.AddIcl("grouped.icl",
+                 "Module Child {} Module Top { OneHotDataGroup g {"
+                 "Instance tap Of Child; } AccessLink tap Of STD_1149_1_2001 {"
+                 "BSDLEntity Probe; ON { ScanInterface { child.iface; } } } }");
+  Fails(
+      [&] {
+        pattern::Elaborate(grouped, "Top",
+                           {{"tap", models.modules().at("Leaf")}});
+      },
+      "duplicate top-level declaration tap");
+
+  pattern::Design metadata;
+  metadata.AddIcl("flat.icl",
+                  "Module Flat { Attribute icl_pattern_origins_v1 = \"{}\"; }");
+  reject(metadata.modules().at("Flat"),
+         "flat origin metadata requires a root module");
+}
+
+void TestSharedAccessLinkModels() {
+  pattern::Design design, models;
+  models.AddIcl("shared.icl",
+                "Module Shared { Parameter W = 2;"
+                "DataOutPort active[$W-1:0] { Source 2'b10; } }");
+  const auto& model = models.modules().at("Shared");
+  constexpr size_t kCount = 3000;
+  std::map<std::string, pattern::ModuleDefinition> replacements;
+  std::string source = "Module Top {";
+  for (size_t i = 0; i < kCount; ++i) {
+    const auto name = "tap" + std::to_string(i);
+    source += "AccessLink " + name +
+              " Of STD_1149_1_2001 { BSDLEntity Probe;"
+              " ON { ScanInterface { child.client; } } }";
+    replacements.emplace(name, model);
+  }
+  source += "}";
+  design.AddIcl("many.icl", source);
+  const auto start = std::chrono::steady_clock::now();
+  const auto netlist = pattern::Elaborate(design, "Top", replacements);
+  const std::chrono::duration<double> elapsed =
+      std::chrono::steady_clock::now() - start;
+  Require(netlist.scopes.size() == kCount + 1 &&
+              netlist.nodes.size() == kCount &&
+              netlist.NodeAt("tap0.active").ast ==
+                  netlist.NodeAt("tap2999.active").ast &&
+              netlist.module_parameters.at("Shared").count("W"),
+          "many inserted instances share one model AST and template");
+  std::cout << "AccessLink model insertion: " << kCount
+            << " instances, seconds=" << elapsed.count() << '\n';
+  pattern::Design other;
+  other.AddIcl("other.icl", "Module Shared { DataInPort other; }");
+  replacements.at("tap1") = other.modules().at("Shared");
+  Fails([&] { pattern::Elaborate(design, "Top", replacements); },
+        "conflicting behavioral module identity Shared");
 }
 
 void TestAddressedGroupErrors() {
@@ -744,6 +879,9 @@ void TestOneHotScanLimits() {
 int main() {
   int failures = 0;
   for (const auto test : {TestSpecialization,
+                          TestAccessLinkModelInsertion,
+                          TestAccessLinkModelErrors,
+                          TestSharedAccessLinkModels,
                           TestAddressedDataDefaults,
                           TestAddressedGroupErrors,
                           TestErrors,

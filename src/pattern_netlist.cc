@@ -97,23 +97,22 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
 
 class Elaborator {
  public:
-  explicit Elaborator(Design& design) : design_(design) {}
+  Elaborator(Design& design,
+             const std::map<std::string, ModuleDefinition>& access_link_models)
+      : design_(design), access_link_models_(access_link_models) {}
 
   Netlist Run(const std::string& top) {
     const auto& module = design_.SelectTop(top);
+    CheckModels(module);
     netlist_.top_module = module.name();
     for (const auto& entry : design_.modules()) {
-      auto& parameters = netlist_.module_parameters[entry.first];
-      for (const auto* node : entry.second.ast->body()) {
-        const auto* statement = dynamic_cast<const icl::AstStatement*>(node);
-        if (statement &&
-            (statement->named_kind() == icl::NamedKind::kParameter ||
-             statement->named_kind() == icl::NamedKind::kLocalParameter)) {
-          parameters.insert(statement->name());
-        }
-      }
+      RecordParameters(entry.second);
     }
     AddScope(module, "", std::numeric_limits<size_t>::max(), {}, 0);
+    for (const auto& [name, model] : access_link_models_) {
+      RecordParameters(model);
+      AddScope(model, name, 0, {}, 1);
+    }
     Connect();
     if (!RestoreFlatOrigins(&netlist_)) InferResets();
     ConnectAddressedRegisters();
@@ -123,6 +122,73 @@ class Elaborator {
   }
 
  private:
+  void RecordParameters(const ModuleDefinition& module) {
+    auto& parameters = netlist_.module_parameters[module.name()];
+    for (const auto* node : module.ast->body()) {
+      const auto* statement = dynamic_cast<const icl::AstStatement*>(node);
+      if (statement &&
+          (statement->named_kind() == icl::NamedKind::kParameter ||
+           statement->named_kind() == icl::NamedKind::kLocalParameter)) {
+        parameters.insert(statement->name());
+      }
+    }
+  }
+  void CheckModels(const ModuleDefinition& top) {
+    if (access_link_models_.empty()) return;
+    std::set<std::string> links;
+    std::set<std::string> names;
+    for (size_t index : Describe(top).declarations) {
+      const auto& declaration = top.document->declarations()[index];
+      if (declaration.parent != static_cast<int>(top.declaration_index) &&
+          (declaration.parent < 0 ||
+           top.document->declarations()[declaration.parent].kind !=
+               "OneHotDataGroup")) {
+        continue;
+      }
+      if (!names.insert(declaration.name).second) {
+        throw std::runtime_error(top.Location(declaration.name_range.begin) +
+                                 ": duplicate top-level declaration " +
+                                 declaration.name);
+      }
+      if (declaration.kind == "AccessLink" &&
+          dynamic_cast<const icl::AstBlock*>(
+              Describe(top).nodes.at(declaration.range.begin))) {
+        links.insert(declaration.name);
+      }
+    }
+    std::map<std::string, const ModuleDefinition*> definitions;
+    for (const auto& [name, module] : design_.modules()) {
+      definitions.emplace(name, &module);
+    }
+    for (const auto& [name, model] : access_link_models_) {
+      const auto context = top.Location(top.declaration().name_range.begin) +
+                           ": AccessLink " + name + ": ";
+      if (!links.count(name)) {
+        throw std::runtime_error(context + "unknown top-level AccessLink " +
+                                 name);
+      }
+      if (!model.document || !model.document->ok() || !model.ast ||
+          model.declaration_index >= model.document->declarations().size() ||
+          model.declaration().kind != "Module") {
+        throw std::runtime_error(context + "invalid behavioral module");
+      }
+      const auto previous = definitions.emplace(model.name(), &model);
+      if (!previous.second && previous.first->second->ast != model.ast) {
+        throw std::runtime_error(
+            context + "conflicting behavioral module identity " + model.name());
+      }
+      if (!model.instances.empty()) {
+        throw std::runtime_error(context +
+                                 "behavioral model must be a leaf module");
+      }
+      for (size_t index : Describe(model).declarations) {
+        if (model.document->declarations()[index].kind == "AccessLink") {
+          throw std::runtime_error(
+              context + "behavioral model cannot contain AccessLink");
+        }
+      }
+    }
+  }
   using Parameters = std::map<std::string, Constant>;
   struct Template {
     std::map<size_t, const icl::AstNode*> nodes;
@@ -324,6 +390,10 @@ class Elaborator {
         if (declaration.kind == "Instance" || declaration.kind == "Parameter" ||
             declaration.kind == "LocalParameter" ||
             declaration.kind == "EnumMember" || declaration.kind == "Chain") {
+          continue;
+        }
+        if (scope_id == 0 && declaration.kind == "AccessLink" &&
+            access_link_models_.count(declaration.name)) {
           continue;
         }
         const auto* ast = description.nodes.at(declaration.range.begin);
@@ -1222,6 +1292,7 @@ class Elaborator {
   }
 
   Design& design_;
+  const std::map<std::string, ModuleDefinition>& access_link_models_;
   Netlist netlist_;
   size_t logic_bits_remaining_ = 4 * 1024 * 1024;
   size_t address_bits_remaining_ = kMaxAddressBits;
@@ -1384,6 +1455,12 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
 }
 
 Netlist Elaborate(Design& design, const std::string& top) {
-  return Elaborator(design).Run(top);
+  return Elaborate(design, top, {});
+}
+
+Netlist Elaborate(
+    Design& design, const std::string& top,
+    const std::map<std::string, ModuleDefinition>& access_link_models) {
+  return Elaborator(design, access_link_models).Run(top);
 }
 }  // namespace pattern

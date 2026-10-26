@@ -1026,3 +1026,65 @@ brace of the existing `Text` helper (compiler-emitted cleanup). Raw branch
 totals include exception/cleanup edges. Evidence:
 `build/access-link-preflight-coverage.log`. This is a failed coverage gate,
 not a waiver or a claim of complete generator support.
+
+## Behavioral model insertion (2026-10-26)
+
+The shared `Elaborate` overload accepts parsed leaf modules keyed by top-level
+standard AccessLink name. It replaces those opaque declarations with instance
+scopes before resolving ordinary connections. The existing BSDL-derived TAP
+datapath can therefore provide `tap.long_setup` to the original child-instance
+binding without editing or reparsing the user's modules. ScanRegisters remain
+atomic behavioral components; their flip-flop/gate internals are not expanded.
+
+Model definitions retain shared ownership of their parsed ASTs, including after
+the source registry and temporary model objects are destroyed. The same
+parameter resolver, declaration cache, connection checker, reset inference and
+serializer handle original and inserted modules. Later source-file module
+overrides, namespaces, original diagnostic locations and parent parameter
+bindings remain intact. Source modules and replacement warnings are not
+rewritten; normal automatic-top-selection warnings still apply.
+
+Unknown replacement names, conflicting module identities, malformed descriptors,
+non-leaf models and models containing AccessLinks fail explicitly. Existing
+validation also rejects flat-origin metadata on an inserted non-root module.
+Module-level name checks include instances/registers inside OneHotDataGroup and
+exclude scoped enum/Chain names. A focused regression exposed a grouped-instance
+collision in the first implementation; it failed before the fix and passed
+afterward.
+
+Tests exercise parameterized/namespaced source and later-definition overrides,
+model lifetime, identity collisions, 3,000 instances sharing one model AST, and
+insertion of the actual BSDL-derived datapath followed by byte-stable flat
+serialization/reparse. The original ordinary `Elaborate` entry point retains its
+behavior. Independent review found no additional substantive issue.
+
+This is an insertion mechanism for already-bound behavioral models, not an
+AccessLink conformance check or complete TAP expansion. The caller must first
+bind/validate the AccessLink. Top-level TAP port synthesis, child serial/control
+connections, live DR execution and retargeting remain unfinished. Unconnected
+model boundary inputs are still unconnected, and no successful pattern or
+vendor-equivalence result is inferred from this structural test.
+
+Focused dynamic netlist and dynamic/static TAP checks passed, as did Google
+formatting/naming and ASan/UBSan (leak detection disabled). With g++ `-O2` on
+the current WSL2 host, 3,000 shared-model insertions took 0.013 s; the complete
+focused netlist test binary took 0.41 s and 117,720 KiB peak RSS. Command:
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' build/pattern_netlist_test`.
+Evidence: `build/access-link-insertion-measurement.log`. This run overlapped
+broader regression; no speedup comparison is claimed.
+
+The complete regression passed after the final collision fix and test updates
+(`build/access-link-insertion-regression.log`), including static/dynamic
+components, 2,180 ICL conformance cases, 212 PDL block cases, 137 vendor PDL
+streams, 334/334 grammar rules and 119/119 scanner rules. Both Vim and Neovim
+passed their 38,627-ICL/802-PDL corpus runs. Final focused sanitizer and style
+logs are `build/access-link-insertion-final-sanitize.log` and
+`build/access-link-insertion-final-style.log`.
+
+The instrumented suites passed, but the unchanged strict 100% line / 90%
+raw-branch gate failed: **8,321/8,652 lines (96.2%)**, **13,614/22,134 branches
+(61.5%)**. `pattern_netlist.cc` reaches **1,053/1,094 lines (96.3%)** and
+**1,572/2,440 branches (64.4%)**. Evidence:
+`build/access-link-insertion-coverage.log`; `make coverage` exited 2. No coverage
+threshold was relaxed, and this checkpoint does not complete Task 2 or the
+generator.

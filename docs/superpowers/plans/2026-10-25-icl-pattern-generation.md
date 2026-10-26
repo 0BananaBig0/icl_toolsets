@@ -136,6 +136,16 @@ returns canonical ICL with validated versioned origin attributes.
 - [ ] Add collision-free flat identifiers and original scope metadata. Verify
   `SerializeIcl(Elaborate(Parse(flat))) == flat` and original target lookup.
 
+AccessLink integration checkpoint (2026-10-26):
+
+- [x] Validate existing TAP port kinds/TDO sources and selected scan-input conflicts.
+- [x] Insert parsed leaf behavioral model scopes before ordinary connection
+  resolution, preserving source trees, parameters, ordered overrides and identity.
+- [x] Verify actual BSDL-derived datapath insertion, ownership and flat replay.
+- [ ] Synthesize external TAP ports and connect ordered child serial/control paths.
+- [ ] Connect controller/IR behavior to live DR execution and preserve runtime
+  associations through flat replay; component replay alone is insufficient.
+
 ### Task 3: Sequential PDL execution
 
 **Files:** `src/pattern_runtime.h`, `src/pattern_runtime.cc`,

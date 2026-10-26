@@ -154,5 +154,13 @@ struct Netlist {
 };
 
 Netlist Elaborate(Design& design, const std::string& top);
+// Substitute parsed leaf behavioral modules for top-level standard AccessLinks
+// before resolving connections. Does not rewrite source/module definitions or
+// wire TAP defaults. Ordinary top-selection warnings still apply.
+// Model identities must be distinct from other definitions unless sharing the
+// same AST. Retained ModuleDefinitions keep generated ASTs alive in the result.
+Netlist Elaborate(
+    Design& design, const std::string& top,
+    const std::map<std::string, ModuleDefinition>& access_link_models);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_NETLIST_H_
