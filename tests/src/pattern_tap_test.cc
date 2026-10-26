@@ -1336,9 +1336,323 @@ void TestDatapathInsertion() {
       "inserted datapath preserves qualified connections through flat replay");
 }
 
+void TestSerialNetwork() {
+  pattern::Design design;
+  design.AddIcl("network.icl", Read(kDirectory + "simple.icl"));
+  design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                 "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  const auto& netlist = network.netlist;
+  const auto& tap = network.taps.at("tap");
+  Require(netlist.NodeAt("TDI").kind == "ScanInPort" &&
+              netlist.NodeAt("TDO").kind == "ScanOutPort" &&
+              netlist.NodeAt("TMS").kind == "TMSPort" &&
+              netlist.NodeAt("TCK").kind == "TCKPort" &&
+              netlist.NodeAt("TRST").kind == "TRSTPort",
+          "BSDL TAP pins are synthesized with their ICL roles");
+  Require(
+      netlist.nodes[tap.scan_input].inputs.at("Source")[0].node ==
+              netlist.node_ids.at("TDI") &&
+          netlist.NodeAt("TDO").inputs.at("Source")[0].node == tap.scan_output,
+      "physical serial pins connect to the inserted TAP datapath");
+  const auto& input = netlist.NodeAt("core.si").inputs.at("Source")[0];
+  const auto& mux = netlist.nodes[input.node];
+  Require(mux.kind == "ScanMux" && mux.choices.size() == 1 &&
+              mux.choices[0].codes.size() == 2 &&
+              mux.choices[0].codes[0].data == "0011" &&
+              mux.choices[0].codes[1].data == "0100" &&
+              mux.choices[0].source[0].node == tap.scan_input,
+          "two instructions share the same child input route");
+  for (const auto& entry : tap.scan_returns) {
+    Require(netlist.nodes[entry.second].inputs.at("Source")[0].node ==
+                netlist.node_ids.at("core.so"),
+            "child output returns to both instruction routes");
+  }
+  Require(!netlist.NodeAt("core.capture").inputs.count("Source"),
+          "serial assembly does not invent controller event values");
+  const auto flat = pattern::SerializeIcl(netlist);
+  pattern::Design replay;
+  replay.AddIcl("flat.icl", flat);
+  Require(
+      pattern::SerializeIcl(pattern::Elaborate(replay, "AccessTop")) == flat,
+      "connected serial topology is stable through flat replay");
+}
+
+void TestSerialOrderAndPins() {
+  auto source = Read(kDirectory + "simple.icl");
+  source = Replace(
+      source, "Module AccessTop {",
+      "Module AccessTop {"
+      "ScanInPort TDI; ScanOutPort TDO; TMSPort TMS; TCKPort TCK; TRSTPort "
+      "TRST;"
+      "Parameter IclPatternScanRoute0 = 0; Instance peer Of AccessInstrument;");
+  source = Replace(source, "core.client;", "core.client; peer.client;");
+  source =
+      Replace(source, "InputPort mode = tap.long_setup;",
+              "InputPort mode = tap.long_setup; InputPort capture = 1'b0;");
+  source =
+      Replace(source, "Port si; Port so;", "Chain only { Port si; Port so; }");
+  pattern::Design design;
+  design.AddIcl("chain.icl", source + " Module IclPatternTapDatapath0 {} ");
+  design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                 "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  const auto& netlist = network.netlist;
+  const auto& tap = network.taps.at("tap");
+  const auto& route =
+      netlist.nodes.at(netlist.NodeAt("peer.si").inputs.at("Source")[0].node);
+  Require(route.choices[0].source[0].node == netlist.node_ids.at("core.so") &&
+              route.choices[0].codes[0].data == "0011" &&
+              netlist.nodes[tap.scan_returns.at("IJTAG_ON")]
+                      .inputs.at("Source")[0]
+                      .node == netlist.node_ids.at("peer.so") &&
+              netlist.nodes[tap.scan_returns.at("IJTAG_OFF")]
+                      .inputs.at("Source")[0]
+                      .node == netlist.node_ids.at("core.so"),
+          "instruction ordering connects first child to second and returns the "
+          "last child");
+  Require(
+      netlist.NodeAt("core.capture").inputs.at("Source")[0].constant == '0' &&
+          !netlist.node_ids.count("IclPatternScanRoute0") &&
+          netlist.scopes.back().definition.name() == "IclPatternTapDatapath1",
+      "explicit controls survive and generated names avoid user symbols");
+  Require(netlist.NodeAt("TDI").ast != nullptr &&
+              design.modules().at("AccessTop").document->source() ==
+                  source + " Module IclPatternTapDatapath0 {} ",
+          "existing TAP pins and original document are retained");
+  const auto flat = pattern::SerializeIcl(netlist);
+  pattern::Design replay;
+  replay.AddIcl("chain_flat.icl", flat);
+  Require(
+      pattern::SerializeIcl(pattern::Elaborate(replay, "AccessTop")) == flat,
+      "ordered routes and reused pins survive flat replay");
+}
+
+void TestSerialNetworkErrors() {
+  const auto base = Read(kDirectory + "simple.icl");
+  const auto reject = [&](const std::string& source,
+                          const std::string& expected) {
+    pattern::Design design;
+    design.AddIcl("invalid.icl", source);
+    design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                   "AccessProbe");
+    try {
+      pattern::ElaborateTapNetwork(design, "AccessTop");
+    } catch (const std::exception& error) {
+      Require(std::string(error.what()).find(expected) != std::string::npos &&
+                  std::string(error.what()).find("invalid.icl:") !=
+                      std::string::npos,
+              "expected source-located " + expected + ", got " + error.what());
+      return;
+    }
+    throw std::runtime_error("expected network failure: " + expected);
+  };
+  reject(Replace(base, "core.client;", "core.client; core.client;"),
+         "scan input repeated");
+  reject(Replace(base, "Module AccessTop {",
+                 "Module AccessTop { ScanInPort TDI[1:0];"),
+         "must be a scalar");
+  reject(Replace(base, "Module AccessTop {",
+                 "Module AccessTop { Parameter TDI = 0;"),
+         "TAP port TDI");
+  auto cyclic =
+      Replace(base, "Module AccessTop {",
+              "Module AccessTop {"
+              "Instance peer Of AccessInstrument { InputPort mode = 1'b0; }");
+  cyclic = Replace(cyclic, "InputPort mode = tap.long_setup;",
+                   "InputPort mode = peer.so;");
+  cyclic = Replace(cyclic, "core.client;", "core.client; peer.client;");
+  // The new core-to-peer serial connection closes the feedback through mode.
+  reject(cyclic, "combinational connection cycle");
+  reject(
+      Replace(
+          base, "AccessLink tap Of",
+          "AccessLink other Of STD_1149_1_2001 {"
+          "BSDLEntity AccessProbe; IJTAG_ON { ScanInterface { core.client; } }"
+          "IJTAG_OFF { ScanInterface { core.client; } } } AccessLink tap Of"),
+      "multiple TAP drivers");
+  auto host = base;
+  for (const auto* role : {"SelectPort", "ShiftEnPort", "CaptureEnPort",
+                           "UpdateEnPort", "TCKPort"}) {
+    host = Replace(host, role, "To" + std::string(role));
+  }
+  reject(host, "supports only IJTAG client ScanInterfaces");
+}
+
+void TestIndependentTaps() {
+  auto peer_bsdl = Read(kDirectory + "simple.bsdl");
+  for (const auto& names :
+       std::map<std::string, std::string>{{"AccessProbe", "PeerProbe"},
+                                          {"TDI", "PDI"},
+                                          {"TDO", "PDO"},
+                                          {"TMS", "PMS"},
+                                          {"TCK", "PCK"},
+                                          {"TRST", "PRST"}}) {
+    size_t at = 0;
+    while ((at = peer_bsdl.find(names.first, at)) != std::string::npos) {
+      peer_bsdl.replace(at, names.first.size(), names.second);
+      at += names.second.size();
+    }
+  }
+  const auto source =
+      Replace(Read(kDirectory + "simple.icl"), "Module AccessTop {",
+              "Module AccessTop { Instance peer Of AccessInstrument;"
+              "AccessLink second Of STD_1149_1_2001 { BSDLEntity PeerProbe;"
+              "IJTAG_ON { ScanInterface { peer.client; } }"
+              "IJTAG_OFF { ScanInterface { peer.client; } } }");
+  const auto build = [&](const std::string& icl, const std::string& bsdl) {
+    pattern::Design design;
+    design.AddIcl("independent.icl", icl);
+    design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                   "AccessProbe");
+    design.AddBsdl("peer.bsdl", bsdl, "PeerProbe");
+    return pattern::ElaborateTapNetwork(design, "AccessTop");
+  };
+  const auto network = build(source, peer_bsdl);
+  Require(network.taps.size() == 2 &&
+              network.netlist.nodes[network.taps.at("second").scan_input]
+                      .inputs.at("Source")[0]
+                      .node == network.netlist.node_ids.at("PDI") &&
+              network.netlist.NodeAt("PDO").inputs.at("Source")[0].node ==
+                  network.taps.at("second").scan_output,
+          "independent TAPs retain separate models and physical pins");
+  try {
+    auto shared = Replace(source, "peer.client;", "core.client;");
+    shared = Replace(shared, "peer.client;", "core.client;");
+    build(shared, peer_bsdl);
+    throw std::runtime_error("expected shared scan input failure");
+  } catch (const std::exception& error) {
+    Require(std::string(error.what())
+                    .find("scan input shared by multiple AccessLinks") !=
+                std::string::npos,
+            "different TAPs cannot silently overwrite a child scan input");
+  }
+}
+
+void TestSerialWithoutResetAndLinks() {
+  pattern::Design plain;
+  plain.AddIcl("plain.icl",
+               "Module Plain { ScanInPort si; ScanOutPort so { Source si; } }");
+  const auto ordinary = pattern::ElaborateTapNetwork(plain, "");
+  Require(ordinary.taps.empty() && plain.warnings().size() == 1 &&
+              pattern::SerializeIcl(ordinary.netlist) ==
+                  pattern::SerializeIcl(pattern::Elaborate(plain, "Plain")),
+          "no-link designs retain ordinary elaboration and one top selection "
+          "warning");
+  pattern::Design design;
+  design.AddIcl("no_reset.icl", Read(kDirectory + "simple.icl"));
+  design.AddBsdl(
+      "no_reset.bsdl",
+      Replace(Read(kDirectory + "simple.bsdl"),
+              "attribute TAP_SCAN_RESET of TRST : signal is true;", ""),
+      "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  Require(!network.netlist.node_ids.count("TRST"),
+          "optional absent TRST is not synthesized");
+}
+
+void TestIndexedSerialEndpoints() {
+  auto source = Read(kDirectory + "simple.icl");
+  source =
+      Replace(source, "Module AccessTop {",
+              "Module AccessTop { ScanInPort TDI[3:3]; ScanOutPort TDO[5];");
+  source = Replace(source, "ScanInPort si;", "ScanInPort si[2:1];");
+  source = Replace(source, "ScanInSource si;", "ScanInSource si[1];");
+  source = Replace(source, "1'b0: si;", "1'b0: si[1];");
+  source = Replace(source, "ScanOutPort so { Source mux; }",
+                   "ScanOutPort so[7:6] { Source mux, mux; }");
+  source = Replace(source, "Port si; Port so;", "Port si[1]; Port so[6];");
+  pattern::Design design;
+  design.AddIcl("indexed.icl", source);
+  design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                 "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  const auto& netlist = network.netlist;
+  const auto& tap = network.taps.at("tap");
+  Require(
+      netlist.nodes[tap.scan_input].inputs.at("Source")[0].index == 3 &&
+          netlist.nodes[tap.scan_returns.at("IJTAG_ON")]
+                  .inputs.at("Source")[0]
+                  .index == 6 &&
+          netlist.NodeAt("core.si").inputs.at("Source")[0].constant == '?' &&
+          netlist.NodeAt("core.si").inputs.at("Source")[1].node !=
+              std::numeric_limits<size_t>::max(),
+      "scalar indexed TAP pins and selected chain bits retain their exact "
+      "indices");
+  const auto flat = pattern::SerializeIcl(netlist);
+  pattern::Design replay;
+  replay.AddIcl("indexed_flat.icl", flat);
+  const auto again = pattern::Elaborate(replay, "AccessTop");
+  Require(pattern::SerializeIcl(again) == flat &&
+              again.NodeAt("core.si").inputs.at("Source")[0].constant == '?',
+          "unconnected bits remain unspecified after flat replay");
+}
+
+void TestSerialScaleAndBudget() {
+  const auto run = [&](size_t count, size_t width) {
+    std::string instances, references;
+    for (size_t i = 0; i < count; ++i) {
+      const auto name = "child" + std::to_string(i);
+      instances += "Instance " + name + " Of AccessInstrument;";
+      references += name + ".client;";
+    }
+    auto source = Replace(Read(kDirectory + "simple.icl"), "Module AccessTop {",
+                          "Module AccessTop {" + instances);
+    source = Replace(source, "core.client;", references);
+    auto bsdl = Read(kDirectory + "simple.bsdl");
+    if (width != 4) {
+      bsdl = Replace(bsdl, "entity is 4;",
+                     "entity is " + std::to_string(width) + ";");
+      bsdl = Replace(bsdl, "is \"0001\";",
+                     "is \"" + std::string(width - 4, '0') + "0001\";");
+      for (const auto* code :
+           {"1111", "0000", "0001", "0010", "0011", "0100"}) {
+        bsdl =
+            Replace(bsdl, "(" + std::string(code) + ")",
+                    "(" +
+                        std::string(width - 4,
+                                    std::string(code) == "1111" ? '1' : '0') +
+                        code + ")");
+      }
+    }
+    pattern::Design design;
+    design.AddIcl("scale.icl", source);
+    design.AddBsdl("scale.bsdl", bsdl, "AccessProbe");
+    return pattern::ElaborateTapNetwork(design, "AccessTop");
+  };
+  const auto start = std::chrono::steady_clock::now();
+  const auto network = run(3000, 4);
+  const std::chrono::duration<double> elapsed =
+      std::chrono::steady_clock::now() - start;
+  const auto& tap = network.taps.at("tap");
+  Require(network.netlist.nodes[tap.scan_returns.at("IJTAG_ON")]
+                  .inputs.at("Source")[0]
+                  .node == network.netlist.node_ids.at("child2999.so"),
+          "large ordered chain returns from the last instance");
+  std::cout << "TAP serial network: 3000 interfaces, seconds="
+            << elapsed.count() << '\n';
+  try {
+    run(600, 4096);
+  } catch (const std::exception& error) {
+    Require(std::string(error.what()).find("scale.icl:") != std::string::npos &&
+                std::string(error.what()).find("resource limit") !=
+                    std::string::npos,
+            "wide route expansion reports its resource limit and source");
+    return;
+  }
+  throw std::runtime_error("expected serial route resource limit");
+}
+
 }  // namespace
 int main() {
   try {
+    TestSerialNetwork();
+    TestSerialOrderAndPins();
+    TestSerialNetworkErrors();
+    TestIndependentTaps();
+    TestSerialWithoutResetAndLinks();
+    TestIndexedSerialEndpoints();
+    TestSerialScaleAndBudget();
     TestDatapathInsertion();
     TestControllerTransitions();
     TestControllerEdgesAndReset();

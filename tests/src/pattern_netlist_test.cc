@@ -223,6 +223,29 @@ void TestSharedAccessLinkModels() {
         "conflicting behavioral module identity Shared");
 }
 
+void TestGeneratedTapPorts() {
+  pattern::Design design;
+  design.AddIcl("pins.icl",
+                "Module Child { TMSPort mode; } Module Top {"
+                "Instance child Of Child; DataOutPort monitor { Source TDI; } "
+                "Parameter reserved = 0; }");
+  const auto netlist = pattern::Elaborate(
+      design, "Top", {}, {{"TDI", "ScanInPort"}, {"TMS", "TMSPort"}});
+  Require(
+      netlist.NodeAt("monitor").inputs.at("Source")[0].node ==
+              netlist.node_ids.at("TDI") &&
+          netlist.NodeAt("child.mode").inputs.at("Source")[0].node ==
+              netlist.node_ids.at("TMS"),
+      "synthesized pins precede explicit connections and reset/TMS inference");
+  for (const auto& port :
+       std::map<std::string, std::string>{{"reserved", "ScanInPort"},
+                                          {"child", "TCKPort"},
+                                          {"unsupported", "DataRegister"}}) {
+    Fails([&] { pattern::Elaborate(design, "Top", {}, {port}); },
+          "invalid generated TAP port " + port.first);
+  }
+}
+
 void TestAddressedGroupErrors() {
   const std::vector<std::pair<std::string, std::string>> cases = {
       {"OneHotDataGroup g[7:0] { DataRegister r[15:0] { AddressValue 1; } }",
@@ -882,6 +905,7 @@ int main() {
                           TestAccessLinkModelInsertion,
                           TestAccessLinkModelErrors,
                           TestSharedAccessLinkModels,
+                          TestGeneratedTapPorts,
                           TestAddressedDataDefaults,
                           TestAddressedGroupErrors,
                           TestErrors,

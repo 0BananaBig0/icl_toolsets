@@ -124,6 +124,7 @@ PATTERN_SOURCES += $(SRC_DIR)/pattern_address.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_bsdl.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_access_link.cc
 PATTERN_SOURCES += $(SRC_DIR)/pattern_tap.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern_tap_network.cc
 PATTERN_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PATTERN_SOURCES))
 SOURCES += $(PATTERN_SOURCES)
 

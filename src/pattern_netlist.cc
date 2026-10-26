@@ -98,8 +98,11 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
 class Elaborator {
  public:
   Elaborator(Design& design,
-             const std::map<std::string, ModuleDefinition>& access_link_models)
-      : design_(design), access_link_models_(access_link_models) {}
+             const std::map<std::string, ModuleDefinition>& access_link_models,
+             const std::map<std::string, std::string>& top_ports)
+      : design_(design),
+        access_link_models_(access_link_models),
+        top_ports_(top_ports) {}
 
   Netlist Run(const std::string& top) {
     const auto& module = design_.SelectTop(top);
@@ -113,15 +116,51 @@ class Elaborator {
       RecordParameters(model);
       AddScope(model, name, 0, {}, 1);
     }
+    AddTopPorts();
     Connect();
     if (!RestoreFlatOrigins(&netlist_)) InferResets();
     ConnectAddressedRegisters();
     ValidateInterfaces();
-    CheckCombinationalCycles();
+    CheckCombinationalConnections(netlist_);
     return std::move(netlist_);
   }
 
  private:
+  void AddTopPorts() {
+    static const std::set<std::string> kKinds = {
+        "ScanInPort", "ScanOutPort", "TMSPort", "TCKPort", "TRSTPort"};
+    for (const auto& [name, kind] : top_ports_) {
+      const auto& root = netlist_.scopes[0];
+      const auto origin = root.definition.Location(
+          root.definition.declaration().name_range.begin);
+      if (!kKinds.count(kind) || scope_ids_.count(name) ||
+          netlist_.module_parameters.at(netlist_.top_module).count(name)) {
+        throw std::runtime_error(origin + ": invalid generated TAP port " +
+                                 name);
+      }
+      const auto found = netlist_.node_ids.find(name);
+      if (found != netlist_.node_ids.end()) {
+        const auto& port = netlist_.nodes[found->second];
+        if (port.scope != 0 || port.kind != kind || port.Width() != 1) {
+          throw std::runtime_error(port.origin + ": TAP port " + name +
+                                   " must be a scalar " + kind);
+        }
+        continue;
+      }
+      const auto id = netlist_.nodes.size();
+      if (id >= kMaxObjects) {
+        throw std::runtime_error("ICL object expansion limit exceeded");
+      }
+      NetlistNode port;
+      port.name = name;
+      port.kind = kind;
+      port.origin = origin + " (generated TAP port " + name + ")";
+      netlist_.nodes.push_back(std::move(port));
+      netlist_.node_ids.emplace(name, id);
+      netlist_.scopes[0].members.emplace(name, id);
+      kinds_[{0, kind}].push_back(id);
+    }
+  }
   void RecordParameters(const ModuleDefinition& module) {
     auto& parameters = netlist_.module_parameters[module.name()];
     for (const auto* node : module.ast->body()) {
@@ -1149,150 +1188,9 @@ class Elaborator {
     }
   }
 
-  void CheckCombinationalCycles() const {
-    // Signal-level cycles may be acyclic between bits; registers cut the graph.
-    constexpr size_t kMaxGraphBits = 16 * 1024 * 1024;
-    std::vector<size_t> offsets{0};
-    for (const auto& node : netlist_.nodes) {
-      if (node.Width() > kMaxGraphBits - offsets.back()) {
-        throw std::runtime_error("ICL bit dependency graph limit exceeded");
-      }
-      offsets.push_back(offsets.back() + node.Width());
-    }
-    const auto owner = [&](size_t bit) {
-      return static_cast<size_t>(
-          std::upper_bound(offsets.begin(), offsets.end(), bit) -
-          offsets.begin() - 1);
-    };
-    const auto bit_id = [&](const BitReference& ref) {
-      const auto& source = netlist_.nodes.at(ref.node);
-      const size_t index = static_cast<size_t>(source.left >= source.right
-                                                   ? source.left - ref.index
-                                                   : ref.index - source.left);
-      return offsets[ref.node] + index;
-    };
-    const auto dependencies = [&](size_t bit) {
-      std::vector<size_t> result;
-      const size_t id = owner(bit);
-      const auto& node = netlist_.nodes[id];
-      if (node.model == ModelKind::kRegister) return result;
-      const size_t position = bit - offsets[id];
-      const auto append = [&](const BitReference& ref) {
-        if (ref.node == std::numeric_limits<size_t>::max()) return;
-        result.push_back(bit_id(ref));
-      };
-      for (const auto& input : node.inputs) {
-        if (input.first != "SelectedBy" &&
-            input.second.size() == node.Width()) {
-          append(input.second[position]);
-        } else {
-          for (const auto& ref : input.second) append(ref);
-        }
-      }
-      for (const auto& choice : node.choices) {
-        append(choice.source.at(position));
-      }
-      for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
-        if (position <
-            node.Width() - node.one_hot_sources[source].bits.size()) {
-          break;
-        }
-        append(node.OneHotSourceBit(source, position));
-      }
-      std::sort(result.begin(), result.end());
-      result.erase(std::unique(result.begin(), result.end()), result.end());
-      return result;
-    };
-    struct Visit {
-      size_t bit, next;
-      std::vector<size_t> dependencies;
-    };
-    std::vector<unsigned char> state(offsets.back());
-    const bool has_groups = std::any_of(
-        netlist_.nodes.begin(), netlist_.nodes.end(),
-        [](const NetlistNode& node) { return !node.one_hot_sources.empty(); });
-    std::vector<unsigned char> enabled_paths(has_groups ? offsets.back() : 0);
-    const auto enabled = [&](const BitReference& ref) -> unsigned char {
-      return ref.node == std::numeric_limits<size_t>::max()
-                 ? 0
-                 : enabled_paths[bit_id(ref)];
-    };
-    const auto propagate_enable = [&](size_t bit) {
-      const size_t id = owner(bit);
-      const auto& node = netlist_.nodes[id];
-      const auto position = bit - offsets[id];
-      if (node.kind == "OneHotScanGroup" ||
-          (node.kind == "ScanOutPort" && node.inputs.count("Enable"))) {
-        enabled_paths[bit] = 1;
-      } else if (node.kind == "OneHotDataGroup" ||
-                 (node.kind == "DataOutPort" &&
-                  (node.inputs.count("Enable") ||
-                   netlist_.scopes[node.scope].address_value))) {
-        enabled_paths[bit] = 2;
-      } else if (node.model == ModelKind::kAlias ||
-                 node.kind == "ScanOutPort" || node.kind == "ScanInPort" ||
-                 node.kind == "DataOutPort") {
-        const auto source = node.inputs.find("Source");
-        const unsigned char mask = node.model == ModelKind::kAlias ? 3
-                                   : node.kind == "DataOutPort"    ? 2
-                                                                   : 1;
-        enabled_paths[bit] = source == node.inputs.end()
-                                 ? 0
-                                 : enabled(source->second.at(position)) & mask;
-      } else if (node.kind == "ScanMux") {
-        enabled_paths[bit] =
-            std::any_of(node.choices.begin(), node.choices.end(),
-                        [&](const MuxChoice& choice) {
-                          return (enabled(choice.source.at(position)) & 1) != 0;
-                        });
-      }
-    };
-    std::vector<Visit> stack;
-    for (size_t root = 0; root < state.size(); ++root) {
-      if (state[root]) continue;
-      state[root] = 1;
-      stack.push_back({root, 0, dependencies(root)});
-      while (!stack.empty()) {
-        auto& frame = stack.back();
-        if (frame.next == frame.dependencies.size()) {
-          if (has_groups) propagate_enable(frame.bit);
-          state[frame.bit] = 2;
-          stack.pop_back();
-          continue;
-        }
-        const size_t next = frame.dependencies[frame.next++];
-        if (state[next] == 1) {
-          const auto& node = netlist_.nodes[owner(next)];
-          throw std::runtime_error(
-              node.origin + ": combinational connection cycle at " + node.name);
-        }
-        if (!state[next]) {
-          state[next] = 1;
-          stack.push_back({next, 0, dependencies(next)});
-        }
-      }
-    }
-    for (const auto& node : netlist_.nodes) {
-      const unsigned char mask = node.kind == "OneHotDataGroup" ? 2 : 1;
-      for (const auto& source : node.one_hot_sources) {
-        if (source.kind == OneHotSourceKind::kRegister) continue;
-        if (!std::all_of(source.bits.begin(), source.bits.end(),
-                         [&](const BitReference& bit) {
-                           return (enabled(bit) & mask) != 0;
-                         })) {
-          throw std::runtime_error(node.origin + ": " + node.name +
-                                   ": group source needs an enabled " +
-                                   (mask == 2
-                                        ? "DataOutPort or OneHotDataGroup"
-                                        : "ScanOutPort or OneHotScanGroup") +
-                                   " in its data fan-in");
-        }
-      }
-    }
-  }
-
   Design& design_;
   const std::map<std::string, ModuleDefinition>& access_link_models_;
+  const std::map<std::string, std::string>& top_ports_;
   Netlist netlist_;
   size_t logic_bits_remaining_ = 4 * 1024 * 1024;
   size_t address_bits_remaining_ = kMaxAddressBits;
@@ -1309,6 +1207,145 @@ class Elaborator {
   std::vector<Binding> bindings_;
 };
 }  // namespace
+
+void CheckCombinationalConnections(const Netlist& netlist) {
+  // Signal-level cycles may be acyclic between bits; registers cut the graph.
+  constexpr size_t kMaxGraphBits = 16 * 1024 * 1024;
+  std::vector<size_t> offsets{0};
+  for (const auto& node : netlist.nodes) {
+    if (node.Width() > kMaxGraphBits - offsets.back()) {
+      throw std::runtime_error("ICL bit dependency graph limit exceeded");
+    }
+    offsets.push_back(offsets.back() + node.Width());
+  }
+  const auto owner = [&](size_t bit) {
+    return static_cast<size_t>(
+        std::upper_bound(offsets.begin(), offsets.end(), bit) -
+        offsets.begin() - 1);
+  };
+  const auto bit_id = [&](const BitReference& ref) {
+    const auto& source = netlist.nodes.at(ref.node);
+    const size_t index = static_cast<size_t>(source.left >= source.right
+                                                 ? source.left - ref.index
+                                                 : ref.index - source.left);
+    return offsets[ref.node] + index;
+  };
+  const auto dependencies = [&](size_t bit) {
+    std::vector<size_t> result;
+    const size_t id = owner(bit);
+    const auto& node = netlist.nodes[id];
+    if (node.model == ModelKind::kRegister) return result;
+    const size_t position = bit - offsets[id];
+    const auto append = [&](const BitReference& ref) {
+      if (ref.node == std::numeric_limits<size_t>::max()) return;
+      result.push_back(bit_id(ref));
+    };
+    for (const auto& input : node.inputs) {
+      if (input.first != "SelectedBy" && input.second.size() == node.Width()) {
+        append(input.second[position]);
+      } else {
+        for (const auto& ref : input.second) append(ref);
+      }
+    }
+    for (const auto& choice : node.choices) {
+      append(choice.source.at(position));
+    }
+    for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+      if (position < node.Width() - node.one_hot_sources[source].bits.size()) {
+        break;
+      }
+      append(node.OneHotSourceBit(source, position));
+    }
+    std::sort(result.begin(), result.end());
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
+  };
+  struct Visit {
+    size_t bit, next;
+    std::vector<size_t> dependencies;
+  };
+  std::vector<unsigned char> state(offsets.back());
+  const bool has_groups = std::any_of(
+      netlist.nodes.begin(), netlist.nodes.end(),
+      [](const NetlistNode& node) { return !node.one_hot_sources.empty(); });
+  std::vector<unsigned char> enabled_paths(has_groups ? offsets.back() : 0);
+  const auto enabled = [&](const BitReference& ref) -> unsigned char {
+    return ref.node == std::numeric_limits<size_t>::max()
+               ? 0
+               : enabled_paths[bit_id(ref)];
+  };
+  const auto propagate_enable = [&](size_t bit) {
+    const size_t id = owner(bit);
+    const auto& node = netlist.nodes[id];
+    const auto position = bit - offsets[id];
+    if (node.kind == "OneHotScanGroup" ||
+        (node.kind == "ScanOutPort" && node.inputs.count("Enable"))) {
+      enabled_paths[bit] = 1;
+    } else if (node.kind == "OneHotDataGroup" ||
+               (node.kind == "DataOutPort" &&
+                (node.inputs.count("Enable") ||
+                 netlist.scopes[node.scope].address_value))) {
+      enabled_paths[bit] = 2;
+    } else if (node.model == ModelKind::kAlias || node.kind == "ScanOutPort" ||
+               node.kind == "ScanInPort" || node.kind == "DataOutPort") {
+      const auto source = node.inputs.find("Source");
+      const unsigned char mask = node.model == ModelKind::kAlias ? 3
+                                 : node.kind == "DataOutPort"    ? 2
+                                                                 : 1;
+      enabled_paths[bit] = source == node.inputs.end()
+                               ? 0
+                               : enabled(source->second.at(position)) & mask;
+    } else if (node.kind == "ScanMux") {
+      enabled_paths[bit] =
+          std::any_of(node.choices.begin(), node.choices.end(),
+                      [&](const MuxChoice& choice) {
+                        return (enabled(choice.source.at(position)) & 1) != 0;
+                      });
+    }
+  };
+  std::vector<Visit> stack;
+  for (size_t root = 0; root < state.size(); ++root) {
+    if (state[root]) continue;
+    state[root] = 1;
+    stack.push_back({root, 0, dependencies(root)});
+    while (!stack.empty()) {
+      auto& frame = stack.back();
+      if (frame.next == frame.dependencies.size()) {
+        if (has_groups) propagate_enable(frame.bit);
+        state[frame.bit] = 2;
+        stack.pop_back();
+        continue;
+      }
+      const size_t next = frame.dependencies[frame.next++];
+      if (state[next] == 1) {
+        const auto& node = netlist.nodes[owner(next)];
+        throw std::runtime_error(
+            node.origin + ": combinational connection cycle at " + node.name);
+      }
+      if (!state[next]) {
+        state[next] = 1;
+        stack.push_back({next, 0, dependencies(next)});
+      }
+    }
+  }
+  for (const auto& node : netlist.nodes) {
+    const unsigned char mask = node.kind == "OneHotDataGroup" ? 2 : 1;
+    for (const auto& source : node.one_hot_sources) {
+      if (source.kind == OneHotSourceKind::kRegister) continue;
+      if (!std::all_of(source.bits.begin(), source.bits.end(),
+                       [&](const BitReference& bit) {
+                         return (enabled(bit) & mask) != 0;
+                       })) {
+        throw std::runtime_error(node.origin + ": " + node.name +
+                                 ": group source needs an enabled " +
+                                 (mask == 2
+                                      ? "DataOutPort or OneHotDataGroup"
+                                      : "ScanOutPort or OneHotScanGroup") +
+                                 " in its data fan-in");
+      }
+    }
+  }
+}
 
 BitReference NetlistNode::OneHotSourceBit(size_t source,
                                           size_t position) const {
@@ -1460,7 +1497,8 @@ Netlist Elaborate(Design& design, const std::string& top) {
 
 Netlist Elaborate(
     Design& design, const std::string& top,
-    const std::map<std::string, ModuleDefinition>& access_link_models) {
-  return Elaborator(design, access_link_models).Run(top);
+    const std::map<std::string, ModuleDefinition>& access_link_models,
+    const std::map<std::string, std::string>& top_ports) {
+  return Elaborator(design, access_link_models, top_ports).Run(top);
 }
 }  // namespace pattern

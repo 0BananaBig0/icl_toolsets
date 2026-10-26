@@ -92,8 +92,7 @@ class TapInstructionRegister {
   bool has_trst_ = false;
 };
 
-struct TapDatapathModel {
-  Netlist netlist;
+struct TapDatapathNodes {
   size_t instruction_register = 0;
   size_t scan_input = 0;
   size_t scan_output = 0;
@@ -103,6 +102,15 @@ struct TapDatapathModel {
   std::map<std::string, size_t> scan_returns;
 };
 
+struct TapDatapathModel : TapDatapathNodes {
+  Netlist netlist;
+};
+
+struct TapNetwork {
+  Netlist netlist;
+  std::map<std::string, TapDatapathNodes> taps;
+};
+
 // Builds an owning IR/ActiveSignal/DR datapath through the shared ICL frontend.
 // ir_select and scan_returns are boundary inputs, not an implemented TAP FSM or
 // connected child chains. No reset, clock timing, or initialization is implied.
@@ -110,6 +118,13 @@ struct TapDatapathModel {
 // instructions need REGISTER_ACCESS. Unknown binary opcodes route to BYPASS.
 // Identification capture metadata currently supports one 32-bit pattern per
 // IDCODE/USERCODE.
-TapDatapathModel BuildTapDatapathModel(const AccessLink& link);
+TapDatapathModel BuildTapDatapathModel(
+    const AccessLink& link,
+    const std::string& module_name = "IclPatternTapDatapath");
+// Assemble TAP pins and instruction-selected serial routes only. Controller
+// event/control wiring, state execution and retargeting are separate steps.
+// Flat ICL replay preserves topology, but does not yet restore the taps node
+// map.
+TapNetwork ElaborateTapNetwork(Design& design, const std::string& top);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_TAP_H_

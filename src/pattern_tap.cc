@@ -72,13 +72,13 @@ bool Identifier(const std::string& name) {
 class Builder {
  public:
   explicit Builder(const AccessLink& link) : link_(link) {}
-  TapDatapathModel Run() {
+  TapDatapathModel Run(const std::string& module_name) {
     if (!link_.bsdl) throw std::runtime_error("missing bound BSDL metadata");
     ReadSignalRanges();
     const auto input = Fresh("tdi");
     const auto reg = Fresh("INSTRUCTION");
     const auto width = std::to_string(link_.bsdl->instruction_width);
-    Append("Module IclPatternTapDatapath {\nScanInPort " + input + ";\n");
+    Append("Module " + module_name + " {\nScanInPort " + input + ";\n");
     Append("ScanRegister " + reg + "[" +
            std::to_string(link_.bsdl->instruction_width - 1) +
            ":0] { ScanInSource " + input + "; CaptureSource " + width + "'b" +
@@ -163,7 +163,7 @@ class Builder {
     Design design;
     design.AddIcl(link_.origin + " (TAP datapath)", text_);
     TapDatapathModel model;
-    model.netlist = Elaborate(design, "IclPatternTapDatapath");
+    model.netlist = Elaborate(design, module_name);
     model.instruction_register = model.netlist.node_ids.at(reg);
     model.scan_input = model.netlist.node_ids.at(input);
     model.scan_output = model.netlist.node_ids.at(output);
@@ -773,9 +773,10 @@ TapActions TapInstructionRegister::FallingEdge() {
   return actions;
 }
 
-TapDatapathModel BuildTapDatapathModel(const AccessLink& link) {
+TapDatapathModel BuildTapDatapathModel(const AccessLink& link,
+                                       const std::string& module_name) {
   try {
-    return Builder(link).Run();
+    return Builder(link).Run(module_name);
   } catch (const std::exception& error) {
     throw std::runtime_error(link.origin + ": AccessLink " + link.name + ": " +
                              error.what());

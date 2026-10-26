@@ -34,7 +34,7 @@ SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'utf8.h', 'text_position.h',
            'pattern_design.cc', 'pattern_design.h', 'pattern_expression.cc',
            'pattern_bsdl.cc', 'pattern_access_link.cc', 'pattern_tap.cc',
-           'pattern_tap.h',
+           'pattern_tap.h', 'pattern_tap_network.cc',
            'pattern_address.cc', 'pattern_netlist.cc', 'pattern_netlist.h',
            'pattern_logic.cc',
            'pattern_runtime.cc', 'pattern_flatten.cc']

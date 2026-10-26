@@ -159,8 +159,13 @@ Netlist Elaborate(Design& design, const std::string& top);
 // wire TAP defaults. Ordinary top-selection warnings still apply.
 // Model identities must be distinct from other definitions unless sharing the
 // same AST. Retained ModuleDefinitions keep generated ASTs alive in the result.
+// top_ports maps valid ICL identifiers to scalar TAP port kinds; matching
+// existing declarations are reused, and conflicting kinds/widths are rejected.
 Netlist Elaborate(
     Design& design, const std::string& top,
-    const std::map<std::string, ModuleDefinition>& access_link_models);
+    const std::map<std::string, ModuleDefinition>& access_link_models,
+    const std::map<std::string, std::string>& top_ports = {});
+// Recheck bit-level cycles/group fan-in after adding typed connections.
+void CheckCombinationalConnections(const Netlist& netlist);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_NETLIST_H_

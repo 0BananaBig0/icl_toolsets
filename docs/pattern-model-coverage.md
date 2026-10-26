@@ -1088,3 +1088,71 @@ raw-branch gate failed: **8,321/8,652 lines (96.2%)**, **13,614/22,134 branches
 `build/access-link-insertion-coverage.log`; `make coverage` exited 2. No coverage
 threshold was relaxed, and this checkpoint does not complete Task 2 or the
 generator.
+
+## TAP pins and serial-network assembly (2026-10-26)
+
+`ElaborateTapNetwork` in `src/pattern_tap_network.cc` binds AccessLinks, builds
+the existing behavioral datapaths, inserts their shared ASTs, and connects the
+serial topology. Missing BSDL-named TAP pins are synthesized before ordinary
+connection resolution and reset/TMS inference. Correct existing scalar pins,
+including indexed one-bit declarations, are retained. Conflicting types,
+widths, declarations or output drivers fail explicitly; absent optional TRST is
+not synthesized.
+
+Each instruction connects its listed IJTAG client interfaces in source order.
+Typed ScanMux nodes select a child SI's predecessor by full instruction opcode;
+identical sources share deduplicated codes. The last child's SO feeds the TAP
+return for that instruction. Endpoint indices and unspecified bits of wider
+ports survive flat serialization/reparse. Generated module/mux names avoid user
+definitions, scopes, nodes and parameters. Two independent TAPs retain separate
+models and pins; multiple TAPs cannot silently overwrite one child input.
+
+The existing bit-level cycle/group-fan-in checker is shared by ordinary
+elaboration and the final connected network. A regression closes a feedback
+path only when the new serial connections are applied and checks its rejection.
+Models and original source documents retain shared ownership, and failed
+assembly does not rewrite the source registry. Model internals remain opaque
+behavioral primitives.
+
+Aggregate generated model text is limited to 16 MiB. Routing code text, selector
+bits and allocated destination bits share a 4,194,304-unit budget; generated
+objects retain the elaborator's 1,000,000-object cap. Exhaustion is reported as
+a resource limit, not as proof that a target is unreachable. A 600-interface,
+4,096-bit instruction test reaches the route limit. No-link designs use ordinary
+elaboration without a second graph check.
+
+Tests cover generated/reused pins, optional TRST, named chains, instruction
+ordering, exact opcodes, indexed SI/SO and TAP pins, explicit controls, two
+independent TAPs, conflicts, unsupported interface kinds, new feedback, model
+name collisions, flat idempotency and 3,000 interfaces. Independent review found
+no actionable issue. Focused dynamic/static, Google style/naming and ASan/UBSan
+(leak detection disabled) passed. The full focused TAP binary measured 0.67 s
+and 104,880 KiB peak RSS; the 3,000-interface assembly took 0.179 s with g++ `-O2`
+on WSL2. Command: `/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M'
+build/pattern_tap_test`; evidence: `build/tap-network-measurement.log`. This
+overlapped broader regression and is not a speedup claim.
+
+This assembles serial topology only. Other interface kinds fail with an explicit
+implementation-limit diagnostic. Capture/shift/update/reset/control event
+wiring, live DR execution and retargeting remain unfinished. Structural flat
+replay does not yet restore `TapNetwork::taps` runtime node associations. The
+retained Tessent 2026.2 elaboration probes inform the topology tests; no new
+vendor run or generated-pattern equivalence is claimed.
+
+The complete regression passed after the final source/test changes:
+`build/tap-network-regression.log`. This includes static/dynamic components,
+2,180 ICL conformance cases, 212 PDL block cases, 137 vendor PDL streams, all
+334 grammar rules and 119 scanner rules, and both Vim/Neovim runs of 38,627 ICL
+and 802 PDL files. Final focused/sanitizer/style evidence is in
+`build/tap-network-delivery-focused.log`,
+`build/tap-network-delivery-sanitize.log` (leak checks disabled), and
+`build/tap-network-final-style.log`.
+
+Instrumented suites passed, but `make coverage` exited 2 at the unchanged strict
+100% line / 90% raw-branch gate: **8,505/8,843 lines (96.2%)** and
+**13,867/22,548 branches (61.5%)**. The new serial assembler reaches **153/160
+lines (95.6%)** and **189/326 branches (58.0%)**. Uncovered paths include the
+aggregate model-byte cap, final object-count guard, conflicting cross-TAP port
+roles, and compiler-emitted cleanup lines. The exercised route-expansion budget
+is distinct from those guards. Evidence: `build/tap-network-coverage.log`.
+Thresholds remain unchanged; this is not a full-generator completion claim.

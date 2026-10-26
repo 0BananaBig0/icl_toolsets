@@ -178,8 +178,8 @@ The four accepted cases returned zero, printed the exact completion marker, and
 produced fresh expanded ICL. The four rejected cases returned one and produced
 no expanded ICL; the cause was checked in each console log. These are measured
 elaboration rules, not evidence that a network with explicit disabled controls
-can generate patterns. They are also not a native AccessLink-equivalence result:
-the native wiring implementation is still pending.
+can generate patterns. They informed the native serial assembly below; they are
+not a native/vendor pattern-equivalence result.
 
 Reproduce the inputs with
 `python3 tests/src/probe_pattern_access_link_connections.py <fresh-directory>`.
@@ -198,5 +198,16 @@ model construction: existing BSDL-named TAP ports must have the matching ICL
 port kind, an existing TAP output cannot specify `Source`, and a selected
 child scan input cannot already have an instance `InputPort` binding. Explicit
 control bindings remain accepted. These checks borrow the shared AST and
-preserve its source; they do not yet synthesize the serial/control connections.
+preserve its source. They provide preflight for the serial assembly below;
+controller event/control connections remain unfinished.
 Absent optional BSDL TAP roles do not reserve unrelated ICL identifiers.
+
+`ElaborateTapNetwork` now implements the probed serial topology for IJTAG client
+interfaces: reuse/synthesize scalar BSDL TAP pins, connect TDI to the behavioral
+datapath, select each child SI's predecessor by instruction opcode, return the
+last child SO to that instruction's datapath route, and connect the TAP output
+to TDO. The two-interface regression checks core→peer→TAP directly against the
+retained probe's order; shared instruction routes deduplicate identical codes.
+Explicit control bindings remain intact. No new Tessent process or pattern
+comparison was run for this native implementation. Controller event wiring and
+runtime association replay remain separate unfinished obligations.

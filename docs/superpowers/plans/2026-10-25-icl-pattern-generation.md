@@ -142,7 +142,10 @@ AccessLink integration checkpoint (2026-10-26):
 - [x] Insert parsed leaf behavioral model scopes before ordinary connection
   resolution, preserving source trees, parameters, ordered overrides and identity.
 - [x] Verify actual BSDL-derived datapath insertion, ownership and flat replay.
-- [ ] Synthesize external TAP ports and connect ordered child serial/control paths.
+- [x] Synthesize/reuse BSDL TAP ports and connect instruction-selected ordered
+  IJTAG client serial paths, with indexed endpoints and structural flat replay.
+- [ ] Connect child control paths to controller events; support remaining
+  interface kinds without inventing controller state or timing.
 - [ ] Connect controller/IR behavior to live DR execution and preserve runtime
   associations through flat replay; component replay alone is insufficient.
 
