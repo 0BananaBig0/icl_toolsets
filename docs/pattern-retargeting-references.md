@@ -192,3 +192,11 @@ v2023.4 *set_context*, *read_icl*, *set_current_design*, and *write_icl* topics.
 Generated evidence is ignored under
 `build/access-link-connections-evidence-20261026/`; the isolated remote directory
 is `/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl-toolsets-connections.h7xp5L`.
+
+The native AccessLink binder now applies the observed conflict rules before
+model construction: existing BSDL-named TAP ports must have the matching ICL
+port kind, an existing TAP output cannot specify `Source`, and a selected
+child scan input cannot already have an instance `InputPort` binding. Explicit
+control bindings remain accepted. These checks borrow the shared AST and
+preserve its source; they do not yet synthesize the serial/control connections.
+Absent optional BSDL TAP roles do not reserve unrelated ICL identifiers.

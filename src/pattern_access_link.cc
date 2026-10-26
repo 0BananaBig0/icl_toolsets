@@ -38,16 +38,59 @@ std::string Text(const ModuleDefinition& module, const icl::AstNode& ast) {
   }
   return result;
 }
+const icl::Declaration* Member(const ModuleDefinition& module,
+                               const std::string& name) {
+  const auto scope = module.document->members().find(module.declaration_index);
+  if (scope == module.document->members().end()) return nullptr;
+  const auto found = scope->second.find(name);
+  if (found == scope->second.end()) return nullptr;
+  const icl::Declaration* result = nullptr;
+  for (size_t index : found->second) {
+    const auto& declaration = module.document->declarations()[index];
+    if (declaration.parent != static_cast<int>(module.declaration_index) &&
+        (declaration.parent < 0 ||
+         module.document->declarations()[declaration.parent].kind !=
+             "OneHotDataGroup")) {
+      continue;
+    }
+    if (result) {
+      throw std::runtime_error(module.Location(declaration.name_range.begin) +
+                               ": duplicate declaration " + name);
+    }
+    result = &declaration;
+  }
+  return result;
+}
 
 class Binder {
  public:
   Binder(const Design& design, const ModuleDefinition& top)
       : design_(design), top_(design.modules().at(top.name())) {
+    std::vector<const icl::AstNode*> pending(top_.ast->body().begin(),
+                                             top_.ast->body().end());
+    while (!pending.empty()) {
+      const auto* node = pending.back();
+      pending.pop_back();
+      top_nodes_.emplace(top_.document->Range(node->span()).begin, node);
+      if (Kind(top_, *node) == "OneHotDataGroup") {
+        const auto& body = dynamic_cast<const icl::AstBlock&>(*node).body();
+        pending.insert(pending.end(), body.begin(), body.end());
+      }
+    }
     for (size_t index : top_.instances) {
       const auto& declaration = top_.document->declarations()[index];
       if (!instances_.emplace(declaration.name, index).second) {
         throw std::runtime_error(top_.Location(declaration.name_range.begin) +
                                  ": duplicate instance " + declaration.name);
+      }
+      const auto* block = dynamic_cast<const icl::AstBlock*>(
+          top_nodes_.at(declaration.range.begin));
+      if (!block) continue;
+      for (const auto* child : block->body()) {
+        if (Kind(top_, *child) == "InputPort") {
+          input_bindings_[index].emplace((Tokens(top_, *child).first + 1)->text,
+                                         child);
+        }
       }
     }
   }
@@ -69,6 +112,7 @@ class Binder {
               Kind(top_, *child) == "BSDLEntity") {
             link.bsdl =
                 &design_.ResolveBsdl((Tokens(top_, *child).first + 1)->text);
+            CheckTapPorts(*link.bsdl);
           } else if (const auto* instruction =
                          dynamic_cast<const icl::AstBlock*>(child)) {
             auto bound = ReadInstruction(*instruction);
@@ -89,10 +133,55 @@ class Binder {
   }
 
  private:
+  void CheckTapPorts(const BsdlTap& tap) const {
+    static const std::map<std::string, std::string> kKinds = {
+        {"tap_scan_in", "ScanInPort"},
+        {"tap_scan_out", "ScanOutPort"},
+        {"tap_scan_mode", "TMSPort"},
+        {"tap_scan_clock", "TCKPort"},
+        {"tap_scan_reset", "TRSTPort"}};
+    for (const auto& [role, name] : tap.ports) {
+      const auto* declaration = Member(top_, name);
+      if (!declaration) continue;
+      const auto origin = top_.Location(declaration->name_range.begin);
+      if (declaration->kind != kKinds.at(role)) {
+        throw std::runtime_error(origin + ": TAP port " + name +
+                                 " requires a unique " + kKinds.at(role));
+      }
+      if (role != "tap_scan_out") continue;
+      const auto* block = dynamic_cast<const icl::AstBlock*>(
+          top_nodes_.at(declaration->range.begin));
+      if (!block) continue;
+      for (const auto* child : block->body()) {
+        if (Kind(top_, *child) == "Source") {
+          throw std::runtime_error(Origin(top_, *child) + ": TAP port " + name +
+                                   " must not have a Source");
+        }
+      }
+    }
+  }
   struct InterfaceDefinition {
     const icl::AstBlock* ast;
     size_t chains;
+    std::set<std::string> scan_inputs;
   };
+  void ReadScanInputs(const ModuleDefinition& module,
+                      const icl::AstBlock& block,
+                      std::set<std::string>* inputs) const {
+    for (const auto* item : block.body()) {
+      const auto kind = Kind(module, *item);
+      if (kind == "Chain") {
+        ReadScanInputs(module, dynamic_cast<const icl::AstBlock&>(*item),
+                       inputs);
+      } else if (kind == "Port") {
+        const auto name = (Tokens(module, *item).first + 1)->text;
+        const auto* declaration = Member(module, name);
+        if (declaration && declaration->kind == "ScanInPort") {
+          inputs->insert(name);
+        }
+      }
+    }
+  }
   void CheckPlacement() const {
     std::set<const ModuleDefinition*> seen;
     std::vector<const ModuleDefinition*> pending{&top_};
@@ -159,7 +248,11 @@ class Binder {
             if (Kind(*result.module, *item) == "Chain") ++chains;
           }
           const auto name = (Tokens(*result.module, *child).first + 1)->text;
-          if (!interfaces.emplace(name, InterfaceDefinition{&block, chains})
+          std::set<std::string> inputs;
+          ReadScanInputs(*result.module, block, &inputs);
+          if (!interfaces
+                   .emplace(name, InterfaceDefinition{&block, chains,
+                                                      std::move(inputs)})
                    .second) {
             throw std::runtime_error(Origin(*result.module, *child) +
                                      ": duplicate ScanInterface " + name);
@@ -189,11 +282,25 @@ class Binder {
           result.origin +
           ": selected interface must have exactly one scan chain");
     }
+    const auto bindings = input_bindings_.find(instance->second);
+    if (bindings != input_bindings_.end()) {
+      for (const auto& input : selected->second.scan_inputs) {
+        const auto bound = bindings->second.find(input);
+        if (bound != bindings->second.end()) {
+          throw std::runtime_error(
+              Origin(top_, *bound->second) + ": " + result.instance + "." +
+              input + " already has an InputPort binding (selected at " +
+              result.origin + ")");
+        }
+      }
+    }
     return result;
   }
   const Design& design_;
   const ModuleDefinition& top_;
   std::map<std::string, size_t> instances_;
+  std::map<size_t, const icl::AstNode*> top_nodes_;
+  std::map<size_t, std::map<std::string, const icl::AstNode*>> input_bindings_;
   std::map<const ModuleDefinition*, std::map<std::string, InterfaceDefinition>>
       interfaces_;
 };

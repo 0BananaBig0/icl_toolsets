@@ -76,6 +76,53 @@ void TestInvalidBindings() {
                  "Chain b { Port si; Port so; }"),
          "one scan chain");
 }
+void TestTapPortConflicts() {
+  const auto base = Read(kDirectory + "simple.icl");
+  const std::string ports =
+      "ScanInPort TDI; TMSPort TMS; TCKPort TCK; TRSTPort TRST; ScanOutPort "
+      "TDO;";
+  const auto text =
+      Replace(base, "Module AccessTop {", "Module AccessTop { " + ports);
+  pattern::Design design;
+  design.AddIcl("existing.icl", text);
+  design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                 "AccessProbe");
+  const auto links =
+      pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
+  Require(links.size() == 1 && links[0].module->document->source() == text,
+          "correct existing TAP ports are retained without changing the AST");
+  pattern::Design unrelated;
+  unrelated.AddIcl("attributes.icl",
+                   Replace(text, "ScanOutPort TDO;",
+                           "ScanOutPort TDO { Attribute Source = \"Source "
+                           "TDI;\"; /* Source TDI; */ }"
+                           "Enum names { TDO = 1'b0; TDI = 1'b1; }"));
+  unrelated.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                    "AccessProbe");
+  Require(pattern::BindAccessLinks(unrelated, unrelated.SelectTop("AccessTop"))
+                  .size() == 1,
+          "attributes, comments and enum items do not conflict with TAP ports");
+  for (const auto* name : {"TDI", "TDO", "TMS", "TCK", "TRST"}) {
+    Reject(Replace(base, "Module AccessTop {",
+                   "Module AccessTop { DataInPort " + std::string(name) + ";"),
+           "TAP port " + std::string(name));
+  }
+  Reject(Replace(text, "ScanOutPort TDO;", "ScanOutPort TDO { Source TDI; }"),
+         "TDO must not have a Source");
+  Reject(Replace(text, "ScanInPort TDI;", "ScanInPort TDI; ScanInPort TDI;"),
+         "duplicate declaration TDI");
+  pattern::Design no_reset;
+  no_reset.AddIcl("no_reset.icl",
+                  Replace(text, "TRSTPort TRST;", "DataInPort TRST;"));
+  no_reset.AddBsdl(
+      "no_reset.bsdl",
+      Replace(Read(kDirectory + "simple.bsdl"),
+              "attribute TAP_SCAN_RESET of TRST : signal is true;", ""),
+      "AccessProbe");
+  Require(pattern::BindAccessLinks(no_reset, no_reset.SelectTop("AccessTop"))
+                  .size() == 1,
+          "a name without a BSDL TAP role is not reserved as a TAP port");
+}
 void TestOrderedAndShorthandBindings() {
   auto text = Read(kDirectory + "simple.icl");
   text = Replace(
@@ -108,6 +155,36 @@ void TestOrderedAndShorthandBindings() {
       pattern::BindAccessLinks(named, named.SelectTop("AccessTop")).size() == 1,
       "one explicit Chain may be selected");
 }
+void TestScanInputConflicts() {
+  const auto base = Read(kDirectory + "simple.icl");
+  const auto bound =
+      Replace(base, "InputPort mode = tap.long_setup;",
+              "InputPort mode = tap.long_setup; InputPort si = 1'b0;");
+  Reject(bound, "core.si already has an InputPort binding");
+  Reject(Replace(bound, "core.client;", "core;"),
+         "core.si already has an InputPort binding");
+  Reject(
+      Replace(bound, "Port si; Port so;", "Chain only { Port si; Port so; }"),
+      "core.si already has an InputPort binding");
+  Reject(Replace(bound, "InputPort si =", "InputPort si[0] ="),
+         "core.si already has an InputPort binding");
+  auto controls =
+      Replace(base, "InputPort mode = tap.long_setup;",
+              "InputPort mode = tap.long_setup; InputPort select = 1'b1;"
+              "InputPort capture = 1'b0; InputPort shift = 1'b0;"
+              "InputPort update = 1'b0;");
+  controls = Replace(controls, "Module AccessTop {",
+                     "Module AccessTop { Instance unused Of AccessInstrument {"
+                     "InputPort si = 1'b0; }");
+  pattern::Design design;
+  design.AddIcl("controls.icl", controls);
+  design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                 "AccessProbe");
+  Require(
+      pattern::BindAccessLinks(design, design.SelectTop("AccessTop")).size() ==
+          1,
+      "explicit controls and an unselected instance's SI remain valid");
+}
 void TestNoLinksAndNamespaces() {
   pattern::Design empty;
   empty.AddIcl(
@@ -115,6 +192,12 @@ void TestNoLinksAndNamespaces() {
       "Module Leaf {} Module Top { Instance a Of Leaf; Instance b Of Leaf; }");
   Require(pattern::BindAccessLinks(empty, empty.SelectTop("Top")).empty(),
           "ordinary hierarchy does not need BSDL");
+  pattern::Design grouped;
+  grouped.AddIcl("grouped.icl",
+                 "Module Leaf {} Module Top { OneHotDataGroup g {"
+                 "Instance a Of Leaf; } }");
+  Require(pattern::BindAccessLinks(grouped, grouped.SelectTop("Top")).empty(),
+          "ordinary OneHotDataGroup instances do not need BSDL");
   auto text = Read(kDirectory + "simple.icl");
   text = Replace(text, "Module AccessInstrument",
                  "NameSpace lib; Module AccessInstrument");
@@ -218,6 +301,8 @@ void TestOracleBinding() {
 int main() {
   try {
     TestOracleBinding();
+    TestTapPortConflicts();
+    TestScanInputConflicts();
     TestInvalidBindings();
     TestOrderedAndShorthandBindings();
     TestNoLinksAndNamespaces();

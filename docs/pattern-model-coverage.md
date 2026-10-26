@@ -978,3 +978,51 @@ tests, the final combined complete regression also passed:
 elaboration outcomes and their limitations are recorded in
 [the reference ledger](pattern-retargeting-references.md#accesslink-connection-precedence-probes).
 No C++ behavior changed after the coverage/sanitizer runs above.
+
+## AccessLink external connection checks (2026-10-26)
+
+`BindAccessLinks` now checks BSDL-named top-level TAP declarations and rejects
+conflicting port kinds, duplicate declarations, and an existing TAP output
+`Source`. A selected child scan input cannot have an explicit instance
+`InputPort` binding, including indexed bindings and interfaces using one named
+`Chain`. Diagnostics retain the conflicting source location and AccessLink
+context. Explicit select/capture/shift/update bindings remain accepted, as
+observed in the Tessent probes recorded in the reference ledger.
+
+The binder reuses the shared declaration index and AST, without rewriting the
+input. Enum items, comments and attributes do not become port declarations or
+connections. Optional BSDL roles reserve names only when present. Instance
+bindings are indexed once, including instances in `OneHotDataGroup`; each
+module's interface scan-input set is cached. Unselected instances of the same
+module do not acquire the selected instance's conflicts. No primitive internal
+connections or additional parser are introduced.
+
+Dynamic/static focused tests, Google formatting/naming checks and independent
+review passed. ASan/UBSan passed with leak detection disabled. A native focused
+run with `/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M'
+build/pattern_access_link_test` took 0.03 s and 17,296 KiB peak RSS; binding 3,000
+references to a shared module containing 3,000 unrelated ports took 0.0028 s.
+This overlapped broader regression and is a scale observation, not a speedup
+claim.
+
+This completes connection conflict preflight only. Synthesizing external TAP
+and child serial/control connections, integrating live DR execution, scheduling,
+local-reset rewriting, the generator CLI and vendor pattern equivalence remain
+unfinished.
+
+The final complete `make check` passed after all code and test changes:
+`build/access-link-preflight-regression.log`. It includes dynamic/static
+component checks, 2,180 ICL conformance cases, 212 PDL block cases, 137 vendor
+PDL streams, 334/334 grammar and 119/119 scanner rules, and Vim/Neovim corpus
+runs of 38,627 ICL and 802 PDL files each. Focused sanitizer and style evidence:
+`build/access-link-preflight-final-sanitize.log` and
+`build/access-link-preflight-final-style.log`.
+
+Instrumented suites passed; `make coverage` exited 2 at the unchanged strict
+100% line / 90% raw-branch gate: **8,264/8,595 lines (96.1%)** and
+**13,505/21,984 branches (61.4%)**. AccessLink binding reaches **221/222 lines
+(99.5%)** and **315/504 branches (62.5%)**; the uncovered line is the closing
+brace of the existing `Text` helper (compiler-emitted cleanup). Raw branch
+totals include exception/cleanup edges. Evidence:
+`build/access-link-preflight-coverage.log`. This is a failed coverage gate,
+not a waiver or a claim of complete generator support.
