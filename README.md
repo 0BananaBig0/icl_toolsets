@@ -340,7 +340,9 @@ transactions and checks each result through concrete controller/event replay.
 prerequisite scans may precede that cycle. It does not require reads to occur
 together. An ICL alias marked `AccessTogether` requires its register group to
 be accessed in one scan. Nested aliases and slices retain that constraint;
-unrelated queued accesses can use separate scans.
+unrelated queued accesses can use separate scans. See the
+[runnable alias example](docs/pattern-generation.md#alias-access-group-example)
+for generation and replay commands.
 
 `iRead` and `iWrite` accept numeric values or names from the target's `RefEnum`.
 An alias uses its own `RefEnum`; generated PDL spells the resolved values as

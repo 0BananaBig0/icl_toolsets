@@ -8,7 +8,7 @@ usage, editor setup, supported features and practical limitations.
 | Document | Purpose |
 |---|---|
 | [Project requirements](requirements.md) | Current product, architecture, quality, testing and delivery requirements. |
-| [Pattern-generation user guide](pattern-generation.md) | Build, command support, runnable serial/TAP examples, AccessTogether alias scheduling, replay checks, output safety and remaining requirements. |
+| [Pattern-generation user guide](pattern-generation.md) | Build, command support, runnable serial/TAP examples, runnable AccessTogether example, replay checks, output safety and remaining requirements. |
 | [Pattern-generation design](superpowers/specs/2026-10-25-icl-pattern-generation-design.md) | Complete requested scope and architecture; implementation in progress; executable has serial and single-TAP backends. |
 | [Pattern-generation model coverage](pattern-model-coverage.md) | Current model/runtime/scheduler support, remaining gaps and dated implementation evidence. |
 | [Tessent oracle verification](tessent-oracle.md) | Vendor PDL generation, width experiments, corpus accounting and local-reset input routing. |

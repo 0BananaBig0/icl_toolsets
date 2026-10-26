@@ -139,6 +139,43 @@ cmp out/tck-example/result.pdl out/tck-example/pdl-replay.pdl
 The output retains all 100 TCK cycles. Matching files check deterministic replay;
 they do not establish a live hardware readback or Tessent-equivalence result.
 
+## Alias access-group example
+
+From the repository root, this fixture places `a` and `b` behind one mux route
+and `c` on the other. `pair` aliases `a, ~b` and requires `AccessTogether`.
+The group must share an update; the independent `c` write may use another scan.
+
+```sh
+mkdir -p out/access-together-example
+cat > out/access-together-example/input.pdl <<'PDL'
+iProcsForModule Network
+iState gate 0
+iWrite pair 1
+iWrite c 0
+iApply
+PDL
+
+icl-pattern-generation \
+  --icl tests/cases/ours/pattern_generation/access_together.icl \
+  --pdl out/access-together-example/input.pdl \
+  --output out/access-together-example/result.pdl --debug
+
+icl-pattern-generation --icl out/access-together-example/debug/Network.icl \
+  --pdl out/access-together-example/input.pdl \
+  --output out/access-together-example/from-flat.pdl
+icl-pattern-generation \
+  --icl tests/cases/ours/pattern_generation/access_together.icl \
+  --pdl out/access-together-example/result.pdl \
+  --output out/access-together-example/second-pass.pdl
+cmp out/access-together-example/result.pdl out/access-together-example/from-flat.pdl
+cmp out/access-together-example/result.pdl out/access-together-example/second-pass.pdl
+```
+
+Both comparisons pass on the verified generator. The generated PDL resolves
+inversion, retains the common update as `iApply -together`, and contains no
+procedure calls. This example checks scheduling and deterministic replay; it
+is not a Tessent equivalence result.
+
 ## Command support
 
 | Command | Current generator behavior |
