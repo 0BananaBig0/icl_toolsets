@@ -57,6 +57,12 @@ be replayed without the external BSDL file.
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric
   values, last-write masks, and all-X observation requests.
+- `iApply -together` enforces a common update cycle for all queued writes
+  (IEEE 1687-2014 §7.9.14(c), printed p. 173). Prerequisite scans can precede
+  it. Read-only groups need not share a capture cycle. The common update is
+  checked in concrete replay and retained in generated PDL. Mutually exclusive
+  paths cannot satisfy it; a bounded search failure does not prove general
+  hardware unreachability.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
   Hardware starts unknown; ResetValue metadata is never treated as a power-on
   reset. A child-module iReset is rejected instead of promoted to a global reset.
@@ -156,3 +162,31 @@ Logs: `build/tap-scheduling-delivery-regression.log`,
 `build/tap-scheduling-coverage.log`, `build/tap-scheduling-sanitize.log`,
 `build/tap-scheduling-style.log`, and `build/tap-scheduling-install.log`.
 Full Tessent pattern equivalence remains unverified.
+
+### Shared-update scheduling verification (2026-10-26)
+
+`iApply -together` now reaches the existing serial/single-TAP solver. The solver
+requires a common update frame with all requested values and deasserted resets;
+concrete replay independently verifies the actual writes before the emitter
+retains `-together`. Matching a reset value without an update does not satisfy
+the request. Additional constraints scale with horizon × written-register count;
+the existing search and resource limits are unchanged.
+
+- Complete `make check BISON=/usr/bin/bison -j4` passed: dynamic/static tests,
+  334/334 grammar and 119/119 scanner rules, and both editor corpus runs.
+- Nine generator CLI tests and native scheduler tests cover prerequisites,
+  reset release, exclusive paths, read-only groups, TAP instruction changes,
+  failure atomicity, and original/flat/generated replay.
+- Independent review, Google format/naming checks and focused Clang ASan/UBSan
+  passed (leak checks disabled; Z3 uninstrumented).
+- Strict coverage still fails the unchanged gate: **10,475/11,010 lines
+  (95.1%)**, **17,093/28,350 raw branches (60.3%)**.
+- `make install-dynamic` and all nine CLI tests against the installed generator
+  passed. The focused scheduler suite measured 2.98 s
+  and 79,844 KiB peak RSS during other verification work; this is not a
+  large-network throughput measurement or a speedup comparison.
+
+Evidence: `build/apply-together-regression.log`, `-coverage.log`, `-style.log`,
+`-sanitize.log`, `-measurement.log`, and `-install.log` (all share the
+`build/apply-together` prefix). Merge/resource/timing semantics remain unfinished;
+this change does not establish full retargeting or Tessent equivalence.

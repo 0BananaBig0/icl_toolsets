@@ -13,7 +13,7 @@
 
 namespace pattern {
 struct ScanStep {
-  bool instruction = false;
+  bool instruction = false, together = false;
   std::string input, output, serial, serial_expected;
   std::map<std::string, std::string> loads;
   std::map<std::string, std::string> writes, expected;
@@ -28,7 +28,8 @@ class ScanScheduler {
   ~ScanScheduler();
   void Reset(bool synchronous = false);
   void Assume(const std::string& target, const std::string& bits);
-  std::vector<ScanStep> Apply(const std::vector<Operation>& operations);
+  std::vector<ScanStep> Apply(const std::vector<Operation>& operations,
+                              bool together = false);
   std::string Value(const std::string& target) const;
 
  private:

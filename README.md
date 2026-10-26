@@ -336,6 +336,9 @@ icl-pattern-generation --icl design.icl --bsdl DEVICE device.bsdl \
 The PDL must contain `iReset` before the first TAP transaction. `iReset -sync`
 uses five TMS-high cycles even when TRST exists. The scheduler selects IR/DR
 transactions and checks each result through concrete controller/event replay.
+`iApply -together` requires all queued writes to update on one TCK cycle;
+prerequisite scans may precede that cycle. It does not require reads to occur
+together.
 
 | Option | Behavior |
 |---|---|

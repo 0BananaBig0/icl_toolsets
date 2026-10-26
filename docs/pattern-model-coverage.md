@@ -45,7 +45,7 @@ capabilities reuse the existing shared AST and declaration index.
 
 ## Current evidence and remaining work
 
-This table describes the implementation at `556f14e`. The dated sections below
+This table describes the current implementation. The dated sections below
 are historical checkpoints; statements such as “not implemented” there describe
 that checkpoint, not the current CLI. Passing native tests does not establish
 full model coverage or Tessent equivalence.
@@ -59,12 +59,12 @@ full model coverage or Tessent equivalence.
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL | Multi-TAP scheduling and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP complete-event constraints and concrete replay | Shared-chain, shadow-register and independently gated event scheduling |
 | Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations and partial/X writes | Multiple roots, overlapping intermediate taps, broader access models |
-| Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
+| Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle; `iApply -together` verified on a common update cycle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
 | Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
 | Tessent oracle | Isolated vendor probes, manifests and comparison harness | Complete reviewed pair execution, reset-rewrite routing and semantic equivalence |
-| Acceptance checks | Full regression, sanitizers/style and independent review passed for `556f14e` | Strict coverage remains below 100% lines/90% raw branches: 95.1%/60.3% |
+| Acceptance checks | Full regression, sanitizers/style and independent review passed for single-TAP and shared-update integration | Strict coverage remains below 100% lines/90% raw branches: 95.1%/60.3% |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values

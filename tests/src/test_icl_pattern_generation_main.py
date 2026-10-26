@@ -63,12 +63,13 @@ class Generator(unittest.TestCase):
         for name in ("simple.icl", "simple.bsdl"):
             (self.root / name).write_bytes((fixture / name).read_bytes())
         (self.root / "source.pdl").write_text(
-            "iProcsForModule AccessTop\niReset -sync\niWrite core.r 0x59\niApply\n"
+            "iProcsForModule AccessTop\niReset -sync\niWrite core.r 0x59\niApply -together\n"
             "iRead core.r 0x59\niWrite core.r 0xa6\niApply\n")
         inputs = ("--icl", "simple.icl", "--bsdl", "AccessProbe", "simple.bsdl")
         self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
         original = (self.root / "out/AccessTop.pdl").read_text()
         self.assertIn("iReset -sync\n", original)
+        self.assertEqual(original.count("iApply -together"), 1)
         self.assertIn("iWrite core.r 0b01011001", original)
         self.assertNotIn("__", original)
         flat = self.root / "out/debug/AccessTop.icl"
@@ -98,11 +99,29 @@ class Generator(unittest.TestCase):
         self.assertIn("iWrite other.r 0b00001001", original)
         self.run_tool(*inputs, "--pdl", "out/AccessTop.pdl", "--output", "replay.pdl")
         self.assertEqual(original, (self.root / "replay.pdl").read_text())
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule AccessTop\niReset\niWrite core.r 3\niWrite other.r 9\niApply -together\n")
+        result = self.run_tool(*inputs, "--pdl", "source.pdl", "--output", "impossible.pdl", ok=False)
+        self.assertIn("iApply -together", result.stdout)
+        self.assertFalse((self.root / "impossible.pdl").exists())
 
     def test_bsdl_arguments(self):
         for args in (("--bsdl",), ("--bsdl", "AccessProbe"),
                      ("--bsdl", "AccessProbe", "--debug"), ("--bsdl", "", "file")):
             self.assertIn("requires ENTITY FILE", self.run_tool(*args, ok=False).stdout)
+
+    def test_apply_together_round_trips(self):
+        (self.root / "source.pdl").write_text(
+            "iState gate 0\niWrite gate 1\niWrite target 10\niApply -together\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug")
+        original = (self.root / "out/Network.pdl").read_text()
+        self.assertEqual(original.count("iApply"), 2)
+        self.assertEqual(original.count("iApply -together"), 1)
+        self.assertIn("iWrite target 0b1010", original)
+        self.run_tool("--icl", "out/debug/Network.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
+        self.assertEqual(original, (self.root / "flat.pdl").read_text())
+        self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "again.pdl")
+        self.assertEqual(original, (self.root / "again.pdl").read_text())
 
     def test_input_aliases_and_failure_publication(self):
         source = (self.root / "source.pdl").read_bytes()

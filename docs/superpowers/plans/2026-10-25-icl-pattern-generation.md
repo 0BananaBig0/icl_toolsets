@@ -452,3 +452,19 @@ The current support boundary and verification evidence are in
 [pattern-generation.md](../../pattern-generation.md). Earlier checkpoint notes
 record historical limitations; they do not override this integration record or
 remove any remaining requirement.
+
+### Task 4 continuation: `iApply -together`
+
+- [x] Enforce IEEE 1687-2014 §7.9.14(c): all queued writes share an update
+  cycle, while prerequisite scans and separately scheduled reads remain legal.
+- [x] Verify the common update in concrete replay and preserve its marker in
+  generated PDL; retain source/call context on bounded failure.
+- [x] Cover reset-held matching values, mutually exclusive paths, read-only
+  groups, TAP selection, atomic failure and original/flat/generated replay.
+- [x] Complete independent review, focused sanitizer/style checks and full
+  dynamic/static/editor regression. Strict coverage remains unmet at 95.1%
+  lines and 60.3% raw branches; no threshold changed.
+
+This closes the queued-write same-cycle requirement for the currently supported
+serial/single-TAP model. It does not complete iMerge, resource reservations,
+timing, unsupported access topologies or the separate local-reset artifact.

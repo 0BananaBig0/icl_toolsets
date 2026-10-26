@@ -249,11 +249,13 @@ class ScanScheduler::Impl {
     }
     return value;
   }
-  std::vector<ScanStep> Apply(const std::vector<Operation>& operations) {
+  std::vector<ScanStep> Apply(const std::vector<Operation>& operations,
+                              bool together) {
     try {
-      return Solve(operations);
+      return Solve(operations, together);
     } catch (const std::exception& error) {
-      std::string message = error.what();
+      std::string message = together ? "iApply -together: " : "";
+      message += error.what();
       for (const auto& operation : operations) {
         message += "\n  " + operation.origin + ": " + operation.command;
         for (const auto& arg : operation.arguments) message += " " + arg;
@@ -522,7 +524,8 @@ class ScanScheduler::Impl {
       }
     }
   }
-  std::vector<ScanStep> Solve(const std::vector<Operation>& operations) {
+  std::vector<ScanStep> Solve(const std::vector<Operation>& operations,
+                              bool together) {
     if (operations.empty()) return {};
     if (tap_ && !tap_ready_) {
       throw std::runtime_error(
@@ -624,6 +627,7 @@ class ScanScheduler::Impl {
         read.emplace(id, context_.bool_val(false));
       }
       std::vector<Frame> frames;
+      auto simultaneous = context_.bool_val(goals.empty());
       auto cycles = context_.int_val(0), changes = context_.int_val(0);
       for (size_t time = 0; time < horizon; ++time) {
         Frame frame;
@@ -760,6 +764,25 @@ class ScanScheduler::Impl {
                          next.at(id));
         }
         SymbolicNetwork after(netlist_, context_, next, global_resets_);
+        if (together && !goals.empty()) {
+          auto complete = context_.bool_val(true);
+          for (const auto& [id, goal] : goals) {
+            const auto active = frame.active.count(id)
+                                    ? frame.active.at(id)
+                                    : context_.bool_val(false);
+            const auto requested = SymbolicValue::Literal(context_, goal);
+            complete = complete && active &&
+                       frame.loads.at(id).bits == requested.bits &&
+                       next.at(id).known == requested.known &&
+                       next.at(id).bits == requested.bits;
+            const auto& node = netlist_.nodes[id];
+            if (node.reset) {
+              complete = complete && Known(values.Read(*node.reset), false) &&
+                         Known(after.Read(*node.reset), false);
+            }
+          }
+          simultaneous = simultaneous || complete;
+        }
         for (size_t id : registers_) {
           const auto active = frame.active.count(id) ? frame.active.at(id)
                                                      : context_.bool_val(false);
@@ -788,6 +811,7 @@ class ScanScheduler::Impl {
                    state.at(id).bits == expected.bits);
       }
       for (const auto& [id, observed] : read) solver.add(observed);
+      if (together) solver.add(simultaneous);
       solver.minimize(cycles);
       solver.minimize(changes);
       // Deterministic tie-breaking, independent of source/flat node numbering.
@@ -812,6 +836,7 @@ class ScanScheduler::Impl {
           execution_ ? std::make_unique<TapExecution>(*execution_) : nullptr;
       auto fill = fill_;
       std::vector<ScanStep> steps;
+      bool simultaneous_replayed = goals.empty();
       for (const auto& frame : frames) {
         std::set<size_t> reset;
         for (size_t id : registers_) {
@@ -821,6 +846,17 @@ class ScanScheduler::Impl {
           }
         }
         auto step = Replay(frame, model, expected, &replay, tap_replay.get());
+        if (together && !simultaneous_replayed && !step.instruction) {
+          bool complete = true;
+          for (const auto& [id, goal] : goals) {
+            const auto found = step.writes.find(netlist_.nodes[id].name);
+            if (found == step.writes.end() || found->second != goal) {
+              complete = false;
+            }
+          }
+          step.together = complete;
+          simultaneous_replayed = complete;
+        }
         for (const auto& [name, bits] : step.loads) {
           fill[netlist_.node_ids.at(name)] = bits;
         }
@@ -840,6 +876,10 @@ class ScanScheduler::Impl {
           }
         }
         steps.push_back(std::move(step));
+      }
+      if (together && !simultaneous_replayed) {
+        throw std::runtime_error(
+            "concrete replay has no simultaneous update cycle");
       }
       state_.Restore(replay);
       execution_ = std::move(tap_replay);
@@ -1003,8 +1043,8 @@ void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
   impl_->Assume(target, bits);
 }
 std::vector<ScanStep> ScanScheduler::Apply(
-    const std::vector<Operation>& operations) {
-  return impl_->Apply(operations);
+    const std::vector<Operation>& operations, bool together) {
+  return impl_->Apply(operations, together);
 }
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);

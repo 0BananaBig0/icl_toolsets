@@ -135,6 +135,73 @@ void TestTapControlRejection() {
         "disabled interface cannot produce a successful scan or change state");
   }
 }
+void TestApplyTogether() {
+  pattern::Design design;
+  design.AddIcl("exclusive.icl", R"(
+Module Network {
+ ScanInPort si;
+ ScanRegister gate { ScanInSource si; }
+ ScanRegister a[3:0] { ScanInSource gate; }
+ ScanRegister b[3:0] { ScanInSource gate; }
+ ScanMux route SelectedBy gate { 1'b0: a[0]; 1'b1: b[0]; }
+ ScanOutPort so { Source route; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Network");
+  const std::vector<pattern::Operation> writes{
+      {"iWrite", {"a", "3"}, "exclusive:1", {}},
+      {"iWrite", {"b", "5"}, "exclusive:2", {}}};
+  pattern::ScanScheduler serial(netlist);
+  serial.Assume("gate", "0");
+  Require(serial.Apply(writes).size() == 2,
+          "mutually exclusive paths remain legal without -together");
+  pattern::ScanScheduler together(netlist);
+  together.Assume("gate", "0");
+  together.Assume("a", "0000");
+  together.Assume("b", "0000");
+  bool rejected = false;
+  try {
+    together.Apply(writes, true);
+  } catch (const std::exception& error) {
+    const std::string message = error.what();
+    rejected = message.find("iApply -together") != std::string::npos &&
+               message.find("exclusive:2") != std::string::npos;
+  }
+  Require(
+      rejected && together.Value("a") == "0000" &&
+          together.Value("b") == "0000" && together.Value("gate") == "0",
+      "different update cycles cannot satisfy -together; failure is atomic");
+  const auto reads = together.Apply({{"iRead", {"a", "0"}, "read:1", {}},
+                                     {"iRead", {"b", "0"}, "read:2", {}}},
+                                    true);
+  Require(reads.size() == 2,
+          "IEEE 7.9.14(c) constrains writes, not simultaneous reads");
+
+  pattern::Design reset_design;
+  reset_design.AddIcl("reset.icl", R"(
+Module Child {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r { ScanInSource si; ResetValue 1'b0; }
+ ScanOutPort so { Source r; }
+}
+Module Network {
+ ScanInPort si;
+ ScanRegister release { ScanInSource si; }
+ Instance child Of Child { InputPort si = release; InputPort rst = ~release; }
+ ScanOutPort so { Source child.so; }
+})");
+  const auto reset_netlist = pattern::Elaborate(reset_design, "Network");
+  pattern::ScanScheduler reset(reset_netlist);
+  reset.Assume("release", "0");
+  const auto scans = reset.Apply({{"iWrite", {"release", "1"}, "reset:1", {}},
+                                  {"iWrite", {"child.r", "0"}, "reset:2", {}}},
+                                 true);
+  Require(scans.size() == 2 && !scans[0].together && scans[1].together,
+          "matching reset data is not an update; release must precede shared "
+          "update");
+  Require(scans[1].writes.at("release") == "1" &&
+              scans[1].writes.at("child.r") == "0",
+          "both requested writes appear on the verified common update edge");
+}
 void TestPrerequisites() {
   pattern::Design design;
   design.AddIcl("scheduler.icl", R"(
@@ -337,6 +404,7 @@ int main() {
     TestTapScheduling(false, true, true);
     TestTapExternalReset();
     TestTapControlRejection();
+    TestApplyTogether();
     TestPrerequisites();
     TestUnknownAndDisconnected();
     TestImplicitControl();

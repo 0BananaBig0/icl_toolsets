@@ -110,11 +110,12 @@ std::string Generate(const pattern::Netlist& netlist,
       if (operation.command == "iWrite" || operation.command == "iRead") {
         pending.push_back(operation);
       } else if (operation.command == "iApply") {
-        if (!operation.arguments.empty()) {
-          throw std::runtime_error(
-              "iApply options require simultaneous transaction scheduling");
+        const bool together =
+            operation.arguments == std::vector<std::string>{"-together"};
+        if (!operation.arguments.empty() && !together) {
+          throw std::runtime_error("unsupported iApply option");
         }
-        const auto steps = scheduler.Apply(pending);
+        const auto steps = scheduler.Apply(pending, together);
         for (const auto& step : steps) {
           // IR selection is internal to retargeting; synthetic registers are
           // not user-facing PDL targets. Re-ingestion selects the same route.
@@ -129,7 +130,7 @@ std::string Generate(const pattern::Netlist& netlist,
           for (const auto& [name, bits] : step.expected) {
             result += Command({"iRead", name, "0b" + bits});
           }
-          result += "iApply\n";
+          result += step.together ? "iApply -together\n" : "iApply\n";
         }
         if (steps.empty()) result += "iApply\n";
         pending.clear();
@@ -229,6 +230,8 @@ int main(int argc, char** argv) {
            "Current scheduling: ordinary single SI/SO, scan registers, muxes,\n"
            "logic-controlled paths and local resets; literal "
            "iWrite/iApply/iState.\n"
+           "iApply -together requires a shared update cycle for queued "
+           "writes.\n"
            "Single-TAP IR/DR scans require explicit iReset. Multi-TAP, shadow\n"
            "register transactions, merges and free-running clocks remain "
            "unsupported.\n";
