@@ -145,7 +145,7 @@ they do not establish a live hardware readback or Tessent-equivalence result.
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
-| `iState` | Numeric scan-register/alias assumptions with default or `-LastWrittenValue`; no device transaction. |
+| `iState` | Numeric assumptions for scan registers and top-level DataInPort/SelectPort pins, including aliases and slices; default or `-LastWrittenValue`; no device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
@@ -171,6 +171,13 @@ broader syntax support and never execute PDL.
   paths cannot satisfy it; a bounded search failure does not prove general
   hardware unreachability.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
+  State assumptions accept scan registers and top-level DataInPort or SelectPort
+  pins with no internal driver; aliases retain source bit ordering and inversion.
+  They change only the assumed snapshot, without clock edges or reset
+  propagation. Internal/output ports and controller-owned instruction storage
+  are rejected before a mixed alias can partially change valid targets.
+  This does not widen the ordinary serial backend's event model: explicit
+  scan-interface control ports still require the supported single-TAP backend.
   Hardware starts unknown; ResetValue metadata is never treated as a power-on
   reset. A child-module iReset is rejected instead of promoted to a global reset.
 - ScanMux and compiled LogicSignal selection, including register-controlled
@@ -365,3 +372,31 @@ truncation. Source/flat/generated-PDL replay matches.
 Evidence is in ignored `build/enum-operands-{red,focused,sanitize,regression,
 coverage,install,installed-tests}.log`. Default generator outputs under `out/`
 are also ignored; source fixtures remain tracked under `tests/`.
+
+### Top-level pin assumptions verification (2026-10-26)
+
+- Full `make check BISON=/usr/bin/bison -j4` passed after all source/test changes:
+  dynamic/static tests, all 334 grammar and 119 scanner rules, and Vim/Neovim
+  corpus runs over 38,629 ICL and 802 PDL files each.
+- Native and CLI tests cover pin/register aliases, inversion, slices, X values,
+  invalid mixed-alias atomicity, child/output-port rejection in source and flat
+  netlists, controller IR protection, event-free snapshots and both replay paths.
+- Independent review, Google format/naming checks, focused Clang ASan/UBSan,
+  dynamic installation and thirteen installed-generator CLI tests passed.
+  Leak checks were disabled and Z3 was not sanitizer-instrumented.
+- Strict coverage completed its functional suites but still failed the unchanged
+  100% line / 90% raw-branch gate: **10,586/11,118 lines (95.2%)** and
+  **17,284/28,602 raw branches (60.4%)**.
+
+The assumption loop previously copied an object's whole prior vector for every
+selected bit. It now initializes that vector once per affected object. On this
+x86_64 host with GCC 16.2.1 and `-O2`, three 65,536-bit pin-assumption samples
+took 0.1550–0.1566 s before and 0.0021–0.0034 s after the change. Reproduce the
+current measurement with `make pattern-scheduler-check`; its `pin assumption`
+line measures only that call. These elapsed-time measurements do not establish
+end-to-end throughput or peak-memory differences.
+
+Logs: ignored `build/port-assumptions-{red,final-focused,sanitize,regression,
+coverage,install,installed-tests}.log`, `baseline*.log` and `optimized*.log`
+(all use the `build/port-assumptions-` prefix). Tessent equivalence was not rerun;
+remaining generator requirements are unchanged.

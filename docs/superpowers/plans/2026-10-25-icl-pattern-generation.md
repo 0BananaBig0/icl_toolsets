@@ -498,3 +498,19 @@ unchanged 100% / 90% gate. See the current generator guide for evidence.
 
 This closes enum operands for the supported scan-register/alias transactions;
 it does not complete the remaining access models, merging or reset-only output.
+
+### Task 4 continuation: top-level pin state assumptions
+
+- [x] Apply IEEE 1687-2014 §7.9.22 to supported top-level DataInPort/SelectPort
+  snapshots without clock or reset events; share target validation and state
+  assignment between serial and native TAP paths.
+- [x] Preserve aliases, slices and unknowns; reject internal/output/controller
+  targets before mutation and verify source/flat identity and generated replay.
+- [x] Remove repeated full-vector reads in the per-bit assumption loop; compare
+  three 65,536-bit samples before/after on the same host.
+- [x] Complete independent review, full regression, sanitizer/style checks and
+  thirteen installed-generator tests. Strict coverage remains unmet at
+  95.2% lines / 60.4% raw branches; the original thresholds remain unchanged.
+
+DataRegister state/execution and readback-history flags remain unfinished, as
+do the previously listed access-model, merge and reset-rewrite requirements.

@@ -74,6 +74,38 @@ Module Events {
           "flat reset semantics replay");
 }
 
+void TestPinSnapshot() {
+  pattern::Design design;
+  design.AddIcl("snapshot.icl", R"(
+Module Leaf {
+  ResetPort rst; ScanInPort si;
+  ScanRegister r { ScanInSource si; ResetValue 1'b0; }
+}
+Module Top {
+  DataInPort reset_value; SelectPort selected;
+  Instance leaf Of Leaf { InputPort rst = reset_value; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::NetworkState state(netlist);
+  const auto reg = netlist.node_ids.at("leaf.r");
+  const auto pin = netlist.node_ids.at("reset_value");
+  state.Assume(reg, "1");
+  state.Assume(pin, "1");
+  state.Assume(netlist.node_ids.at("selected"), "x");
+  Require(state.Value(reg) == "1" && state.TakeResetEvents().empty(),
+          "iState pin assumptions do not propagate resets or execute events");
+  bool rejected = false;
+  try {
+    state.Assume(pin, "10");
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && state.Value(pin) == "1",
+          "invalid pin width preserves assumed state");
+  state.Reset();
+  Require(state.Value(reg) == "0", "later reset replay uses assumed pins");
+}
+
 void TestLogicEvaluation() {
   pattern::Design design;
   design.AddIcl("logic-state.icl", R"(
@@ -334,6 +366,7 @@ void TestLongChain() {
 int main() {
   try {
     TestLogicEvaluation();
+    TestPinSnapshot();
     TestResetReleaseOrdering();
     TestRegisterEvents();
     TestTapExecution(false);

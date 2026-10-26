@@ -347,6 +347,10 @@ See the [command support table](docs/pattern-generation.md#command-support)
 before choosing a PDL sequence; parsing a command does not imply that the
 experimental generator can execute it.
 
+`iState` can record numeric assumptions for scan registers and top-level
+DataInPort/SelectPort pins without generating a hardware transaction. Internal
+ports and controller-owned instruction state cannot be overwritten this way.
+
 For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
 be known unsigned 64-bit integers, with no unapplied reads or writes.

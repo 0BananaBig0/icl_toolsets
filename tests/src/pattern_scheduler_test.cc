@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern_scheduler.h"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -52,6 +53,16 @@ void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
   }
   Require(rejected, "unknown controller state must require explicit reset");
   scheduler.Reset(synchronous);
+  const auto ir = network.netlist.taps.begin()->second.instruction_register;
+  rejected = false;
+  try {
+    scheduler.Assume(network.netlist.nodes[ir].name,
+                     std::string(network.netlist.nodes[ir].Width(), '1'));
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("controller-owned") != std::string::npos;
+  }
+  Require(rejected, "iState cannot replace controller-owned instruction state");
   const auto steps =
       scheduler.Apply({{"iWrite", {"core.r", "0x59"}, "tap-test:1", {}}});
   Require(steps.size() == 2, "IR selection must precede DR write");
@@ -144,6 +155,55 @@ void TestChangingIdleState() {
               "idle must replay changes before skipping a fixed point");
     }
   }
+}
+void TestTopPortAssumptions() {
+  pattern::Design design;
+  design.AddIcl("port-state.icl", R"(
+Module Top {
+  ScanInPort si;
+  DataInPort mode[1:0];
+  DataInPort wide[65535:0];
+  ScanRegister r[3:0] { ScanInSource si; }
+  ScanMux route SelectedBy mode { 2'b01: r[0]; 2'b10: r[0]; 2'b00: si; }
+  ScanOutPort so { Source route; }
+  DataOutPort observed { Source r[0]; }
+  Alias mixed[2:0] = ~mode, r[3];
+  Alias invalid[2:0] = mode, observed;
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("mode", "01");
+  scheduler.Assume("r", "0000");
+  scheduler.Assume("mixed", "001");
+  Require(scheduler.Value("mode") == "11" && scheduler.Value("r") == "1000",
+          "mixed pin/register alias assumptions preserve inversion");
+  scheduler.Assume("mode[0]", "0");
+  Require(scheduler.Value("mode") == "10", "pin slices preserve other bits");
+  bool rejected = false;
+  try {
+    scheduler.Assume("invalid", "000");
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("mode") == "10",
+          "invalid state-point alias must not partially change valid pins");
+  scheduler.Assume("mode", "x1");
+  Require(scheduler.Value("mode") == "x1", "pin assumptions retain unknowns");
+  scheduler.Assume("mode", "01");
+  const std::vector<pattern::Operation> operations{
+      {"iWrite", {"r", "3"}, "port-state.pdl", {}}};
+  const auto steps = scheduler.Apply(operations);
+  Require(steps.size() == 1 && scheduler.Value("r") == "0011",
+          "serial scheduling uses the assumed pin state");
+  const auto start = std::chrono::steady_clock::now();
+  scheduler.Assume("wide", std::string(65536, '1'));
+  const auto seconds =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+          .count();
+  Require(scheduler.Value("wide[65535]") == "1" &&
+              scheduler.Value("wide[0]") == "1",
+          "wide pin assumptions retain both ends of the vector");
+  std::cout << "pin assumption: bits=65536 seconds=" << seconds << '\n';
 }
 void TestTapExternalReset() {
   const std::string directory =
@@ -470,6 +530,7 @@ int main() {
     TestTapScheduling(true, false, false);
     TestTapScheduling(false, true, true);
     TestChangingIdleState();
+    TestTopPortAssumptions();
     TestTapExternalReset();
     TestTapControlRejection();
     TestApplyTogether();

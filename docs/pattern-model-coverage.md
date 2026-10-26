@@ -55,7 +55,7 @@ full model coverage or Tessent equivalence.
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides | Complete runtime command coverage and broader real-pair generation |
 | Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; source-located diagnostics | Full source-kind checks and corpus specialization |
 | Structural address/one-hot models | Contributor/domain/default/alias resolution and canonical metadata replay | Runtime uniqueness, enable solving, address selection and execution |
-| Native hardware state | Unknown initial state, reset propagation, separate shift/update storage and clock edges | Feedback resets, addressed behavior and vendor builtin models |
+| Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, clock edges and event-free top-level pin assumptions | Feedback resets, addressed behavior and vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL | Multi-TAP scheduling and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP complete-event constraints and concrete replay | Shared-chain, shadow-register and independently gated event scheduling |
 | Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations and partial/X writes | Multiple roots, overlapping intermediate taps, broader access models |
@@ -65,7 +65,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
 | Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
 | Tessent oracle | Isolated vendor probes, manifests and comparison harness | Complete reviewed pair execution, reset-rewrite routing and semantic equivalence |
-| Acceptance checks | Full regression, sanitizers/style and independent review passed through TCK idle replay and enum operands (`7f43156`) | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.4%; full vendor equivalence is unverified |
+| Acceptance checks | Full regression, sanitizers/style and independent review passed through top-level pin assumptions; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.4%; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values

@@ -267,19 +267,22 @@ class ScanScheduler::Impl {
     for (size_t i = 0; i < bits.size(); ++i) {
       const auto& ref = resolved.bits[i];
       const auto& node = netlist_.nodes.at(ref.node);
-      if (node.kind != "ScanRegister") {
-        throw std::runtime_error("state assumption requires ScanRegister");
+      ValidateStateAssumption(netlist_, ref.node);
+      auto entry = changed.find(ref.node);
+      if (entry == changed.end()) {
+        entry = changed.emplace(ref.node, state_.Value(ref.node)).first;
       }
-      auto entry = changed.emplace(ref.node, state_.Value(ref.node)).first;
       char bit = bits[i];
       if (ref.inverted && bit != 'x') bit = bit == '1' ? '0' : '1';
       entry->second.at(Offset(node, ref.index)) = bit;
     }
     for (const auto& [id, value] : changed) {
       if (execution_) execution_->Assume(id, value);
-      state_.SetRegister(id, state_.Value(id, true), value);
-      for (size_t i = 0; i < value.size(); ++i) {
-        if (value[i] != 'x') fill_.at(id)[i] = value[i];
+      state_.Assume(id, value);
+      if (netlist_.nodes[id].kind == "ScanRegister") {
+        for (size_t i = 0; i < value.size(); ++i) {
+          if (value[i] != 'x') fill_.at(id)[i] = value[i];
+        }
       }
     }
   }

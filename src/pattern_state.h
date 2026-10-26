@@ -15,12 +15,16 @@ struct ScanControl {
   char capture = '0', shift = '0', update = '0', select = '0';
 };
 class SignalEvaluator;
+// Supported iState targets; excludes controller-owned instruction storage.
+void ValidateStateAssumption(const Netlist& netlist, size_t node);
 // Netlist must outlive this state and remain immutable. Values are MSB/leftmost
 // first, independent of numeric index direction. No initial reset is assumed.
 class NetworkState {
  public:
   explicit NetworkState(const Netlist& netlist);
   void Drive(size_t node, const std::string& value);
+  // Update the assumed snapshot without clock edges or reset propagation.
+  void Assume(size_t node, const std::string& value);
   std::string Value(size_t node, bool scan = false) const;
   char Read(const BitReference& bit, bool scan = false) const;
   void Clock(const std::map<size_t, ScanControl>& controls, bool rising);

@@ -206,6 +206,24 @@ class SignalEvaluator {
   std::set<Key> visiting_;
 };
 
+void ValidateStateAssumption(const Netlist& netlist, size_t id) {
+  const auto& node = netlist.nodes.at(id);
+  if (node.kind != "ScanRegister" &&
+      !(node.model == ModelKind::kPort && node.scope == 0 &&
+        (node.kind == "DataInPort" || node.kind == "SelectPort") &&
+        !node.inputs.count("Source"))) {
+    throw std::runtime_error(
+        node.origin + ": state assumption for " + node.name +
+        " requires a ScanRegister or top-level DataInPort/SelectPort");
+  }
+  for (const auto& [name, tap] : netlist.taps) {
+    if (id == tap.instruction_register) {
+      throw std::runtime_error(
+          "cannot assume controller-owned instruction state");
+    }
+  }
+}
+
 NetworkState::NetworkState(const Netlist& netlist)
     : netlist_(netlist),
       update_(netlist.nodes.size()),
@@ -260,6 +278,14 @@ void NetworkState::Drive(size_t id, const std::string& value) {
                              node.name);
   }
   driven_[id] = value;
+}
+void NetworkState::Assume(size_t id, const std::string& value) {
+  ValidateStateAssumption(netlist_, id);
+  if (netlist_.nodes[id].kind == "ScanRegister") {
+    SetRegister(id, shift_[id], value);
+  } else {
+    Drive(id, value);
+  }
 }
 std::string NetworkState::Value(size_t node, bool scan) const {
   return SignalEvaluator(*this).Value(node, scan);

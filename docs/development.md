@@ -81,6 +81,12 @@ on the original target declaration before alias-bit mapping. It uses the shared
 elaborated constants and PDL bit-sizing helper; no second enum parser or global
 member-name lookup is involved. Numeric-only commands continue using `PdlNumber`.
 
+`NetworkState::Assume` handles supported `iState` snapshots. The scheduler checks
+every alias target through shared validation before committing any changes;
+the TAP executor delegates to the same state method. Port assumptions use no
+clock/reset processing. The scheduler reads each affected object's previous
+vector once, then edits its selected bits, avoiding repeated whole-vector copies.
+
 Registers model ports, state, behavior and connections to other components;
 they are not expanded into internal flip-flop/gate netlists. The scheduler uses
 runtime interface membership and must replay candidate scans before committing

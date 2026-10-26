@@ -259,3 +259,14 @@ register, port or alias. The §7.9.10 explanation treats it like a plain number;
 bits retain previous controlling values. The generator reuses the elaborated
 enum table and its instance parameters, retaining those distinct masks.
 This does not extend numeric-only `iState` (§7.9.22) or `iRunLoop` syntax.
+
+### State assumptions for top-level pins
+
+IEEE 1687-2014 §7.9.22, printed pp. 180–182, allows `iState` to describe
+registers and top-level DataInPort/SelectPort state. Internal ports are not
+state points. Rules (c), (e), (f) and (i) retain unknown placeholders, use the
+latest specified value, update the default/LastWrittenValue logic snapshot and
+forbid resulting device operations. The current generator supports these pin
+assumptions alongside ScanRegister assumptions, including aliases and slices;
+DataRegister execution and readback-history flags remain separate unfinished
+work. Controller-owned instruction state still requires explicit TAP reset.

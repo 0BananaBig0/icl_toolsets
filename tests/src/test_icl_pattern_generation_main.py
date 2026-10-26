@@ -142,6 +142,35 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "out/debug/AccessTop.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
         self.assertEqual(output, (self.root / "flat.pdl").read_text())
 
+    def test_top_level_port_assumptions(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
+        source = (fixture / "simple.icl").read_text().replace(
+            "Module AccessTop {", "Module AccessTop {\n  SelectPort enabled; DataInPort mode;"
+        ).replace("InputPort mode = tap.long_setup;", "InputPort mode = mode; InputPort select = enabled;")
+        (self.root / "source.icl").write_text(source)
+        (self.root / "source.pdl").write_text(
+            "iReset\niState enabled 1\niState mode 1\niWrite core.r 0x59\niApply\n"
+            "iState enabled 0\niRunLoop 1\niState enabled 1 -LastWrittenValue\n"
+            "iRead core.r 0x59\niApply\n")
+        inputs = ("--icl", "source.icl", "--bsdl", "AccessProbe", fixture / "simple.bsdl")
+        self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
+        output = (self.root / "out/AccessTop.pdl").read_text()
+        self.assertIn("iState enabled 0b1\n", output)
+        self.assertIn("iState mode 0b1\n", output)
+        self.assertIn("iWrite core.r 0b01011001\n", output)
+        self.run_tool(*inputs, "--pdl", "out/AccessTop.pdl", "--output", "again.pdl")
+        self.assertEqual(output, (self.root / "again.pdl").read_text())
+        self.run_tool("--icl", "out/debug/AccessTop.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
+        self.assertEqual(output, (self.root / "flat.pdl").read_text())
+        for target in ("core.mode", "core.select", "core.so"):
+            with self.subTest(target=target):
+                (self.root / "bad.pdl").write_text(f"iReset; iState {target} 1\n")
+                for design in (inputs, ("--icl", "out/debug/AccessTop.icl")):
+                    result = self.run_tool(*design, "--pdl", "bad.pdl", "--output", "bad-result.pdl", ok=False)
+                    self.assertIn("bad.pdl", result.stdout)
+                    self.assertIn("top-level", result.stdout)
+                    self.assertFalse((self.root / "bad-result.pdl").exists())
+
     def test_enumerated_operands(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/enumerated_values.icl"
         (self.root / "source.pdl").write_text(
