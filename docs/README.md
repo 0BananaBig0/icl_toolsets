@@ -65,3 +65,9 @@ precedence when they conflict with historical descriptions.
 The `superpowers/specs/` and `superpowers/plans/` directories retain task-specific
 designs and execution records. A plan describes intended work; use its recorded
 checks and the verification reports to determine what was actually verified.
+
+For current generator evidence, start with the latest dated sections in
+[pattern-generation.md](pattern-generation.md). They distinguish complete
+functional regression, focused sanitizer checks, installation checks and the
+still-failing strict coverage gate. Historical component milestones do not
+establish full retargeting or Tessent equivalence.

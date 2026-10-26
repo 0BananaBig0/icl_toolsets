@@ -350,6 +350,9 @@ experimental generator can execute it.
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
+The generator's [verification record](docs/pattern-generation.md#top-level-pin-assumptions-verification-2026-10-26)
+lists the tests and measured vector-assumption improvement; it also records
+the strict coverage gate that remains unmet.
 
 For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
