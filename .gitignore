@@ -10,6 +10,9 @@
 # make: all object files, binaries, and gen/ when PREBUILT=0
 build/
 
+# Default pattern-generator output and runnable documentation examples
+/out/
+
 # the parser/scanner shipped inside a `make dist` tarball
 gen/
 

@@ -340,6 +340,10 @@ transactions and checks each result through concrete controller/event replay.
 prerequisite scans may precede that cycle. It does not require reads to occur
 together.
 
+`iRead` and `iWrite` accept numeric values or names from the target's `RefEnum`.
+An alias uses its own `RefEnum`; generated PDL spells the resolved values as
+binary numbers, including X masks.
+
 For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
 be known unsigned 64-bit integers, with no unapplied reads or writes.

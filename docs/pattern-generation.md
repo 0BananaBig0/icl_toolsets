@@ -142,7 +142,12 @@ they do not establish a live hardware readback or Tessent-equivalence result.
 ## Current transaction support
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric
-  values, last-write masks, and all-X observation requests.
+  values and names from the target's `RefEnum`, last-write masks, and all-X
+  observation requests. Enum resolution uses the named register or alias and
+  its elaborated instance parameters. Aliases do not inherit a source enum.
+  Enum constants use the same PDL width and X-mask rules as numeric values;
+  a slice still rejects truncation of significant bits. `iState` and `iRunLoop`
+  retain their numeric-only syntax. Generated PDL contains resolved numbers.
 - `iApply -together` enforces a common update cycle for all queued writes
   (IEEE 1687-2014 §7.9.14(c), printed p. 173). Prerequisite scans can precede
   it. Read-only groups need not share a capture cycle. The common update is
@@ -322,3 +327,25 @@ Evidence: `build/tck-idle-final-regression.log`, `-coverage.log`, `-focused.log`
 `build/tck-idle-install.log`, `build/tck-idle-installed-tests.log`, and the
 reset reproduction in `build/tck-idle-reset-red.log`. No new Tessent-equivalence
 run was performed; the remaining generator requirements above still apply.
+
+### Enumerated operand verification (2026-10-26)
+
+`iRead`/`iWrite` now use the elaborated target's enum table through the shared
+operand converter. The new parameterized `enumerated_values.icl` fixture and
+native tests cover distinct instance values, alias-local enums and inversion,
+read/write X masks, slice sizing, unknown/unattached names and significant-bit
+truncation. Source/flat/generated-PDL replay matches.
+
+- Complete `make check BISON=/usr/bin/bison -j4` passed, including static/dynamic
+  tests, all 334 grammar and 119 scanner rules, and both editor corpus runs over
+  38,629 ICL and 802 PDL files each.
+- Independent review, Google format/naming checks, focused Clang ASan/UBSan and
+  all twelve installed-generator CLI tests passed. Sanitizer leak checks were
+  disabled; Z3 remained uninstrumented.
+- Strict coverage still fails the unchanged gate: **10,562/11,100 lines
+  (95.2%)**, **17,241/28,562 raw branches (60.4%)**. No Tessent-equivalence
+  run was performed for this continuation.
+
+Evidence is in ignored `build/enum-operands-{red,focused,sanitize,regression,
+coverage,install,installed-tests}.log`. Default generator outputs under `out/`
+are also ignored; source fixtures remain tracked under `tests/`.

@@ -76,6 +76,11 @@ PDL Document          -> bounded Runtime -> ordered Operation records
 | `pattern_symbolic.*`, `pattern_values.*`, `pattern_scheduler.*` | Z3 constraints, PDL values/targets and complete-scan scheduling. |
 | `pattern_flatten.*`, `icl_pattern_generation_main.cc`, `file_output.h` | Canonical structural output, CLI orchestration and shared staged file replacement. |
 
+`PdlDataValue` resolves read/write enum operands from `NetlistNode::enumeration`
+on the original target declaration before alias-bit mapping. It uses the shared
+elaborated constants and PDL bit-sizing helper; no second enum parser or global
+member-name lookup is involved. Numeric-only commands continue using `PdlNumber`.
+
 Registers model ports, state, behavior and connections to other components;
 they are not expanded into internal flip-flop/gate netlists. The scheduler uses
 runtime interface membership and must replay candidate scans before committing

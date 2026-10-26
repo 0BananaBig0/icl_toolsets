@@ -485,3 +485,16 @@ timing, unsupported access topologies or the separate local-reset artifact.
 
 Strict coverage remains unmet: 95.2% lines and 60.3% raw branches against the
 unchanged 100% / 90% gate. See the current generator guide for evidence.
+
+### Task 4 continuation: enumerated read/write operands
+
+- [x] Resolve `iRead`/`iWrite` named values through the original target's
+  elaborated `RefEnum`, preserving instance parameterization and alias identity.
+- [x] Reuse numeric width/X rules, leaving numeric-only commands unchanged;
+  cover masks, slices, invalid names and both replay forms.
+- [x] Complete independent review, full regression, sanitizer/style checks and
+  twelve CLI tests against the dynamic installation. Strict coverage remains
+  unmet at 95.2% lines / 60.4% raw branches; thresholds are unchanged.
+
+This closes enum operands for the supported scan-register/alias transactions;
+it does not complete the remaining access models, merging or reset-only output.

@@ -249,3 +249,13 @@ period information. The current generator implements literal TCK counts through
 native single-TAP Run-Test/Idle replay after explicit reset and rejects the
 other clock/time modes. Fixed-point acceleration changes only simulation work,
 not the emitted cycle count. It does not stand in for BIST status observation.
+
+### Enumerated read/write operands
+
+IEEE 1687-2014 §7.9.10(c–d), printed p. 166, and §7.9.11(c–d), printed
+p. 167, bind an enumerated operand to the `RefEnum` attached to the named
+register, port or alias. The §7.9.10 explanation treats it like a plain number;
+§7.8 supplies width conversion. Read X bits clear comparisons, while write X
+bits retain previous controlling values. The generator reuses the elaborated
+enum table and its instance parameters, retaining those distinct masks.
+This does not extend numeric-only `iState` (§7.9.22) or `iRunLoop` syntax.

@@ -584,10 +584,10 @@ class ScanScheduler::Impl {
             "operations");
       }
       const auto target = ResolvePdlTarget(netlist_, operation.arguments[0]);
-      const auto bits =
-          operation.arguments.size() == 1
-              ? std::string(target.bits.size(), 'x')
-              : PdlNumber(context_, operation.arguments[1], target.bits.size());
+      const auto bits = operation.arguments.size() == 1
+                            ? std::string(target.bits.size(), 'x')
+                            : PdlDataValue(context_, netlist_, target,
+                                           operation.arguments[1]);
       for (size_t i = 0; i < bits.size(); ++i) {
         const auto& ref = target.bits[i];
         if (ref.node == kMissing ||

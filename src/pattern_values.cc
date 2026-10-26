@@ -29,6 +29,20 @@ size_t Offset(const NetlistNode& node, int64_t index) {
   }
   return node.left >= node.right ? node.left - index : index - node.left;
 }
+std::string ResizePdlBits(std::string bits, size_t width) {
+  if (bits.empty() || !width || width > kMaxBits) {
+    throw std::runtime_error("invalid PDL value width");
+  }
+  if (bits.size() > width) {
+    const size_t extra = bits.size() - width;
+    if (bits.substr(0, extra).find('1') != std::string::npos) {
+      throw std::runtime_error("PDL value truncates significant bits");
+    }
+    bits.erase(0, extra);
+  }
+  bits.insert(0, width - bits.size(), bits[0] == 'x' ? 'x' : '0');
+  return bits;
+}
 }  // namespace
 std::string PdlNumber(z3::context& context, const std::string& text,
                       size_t width) {
@@ -66,15 +80,25 @@ std::string PdlNumber(z3::context& context, const std::string& text,
     context.int_val(decimal.c_str()).as_binary(bits);
     if (bits.empty()) bits = "0";
   }
-  if (bits.size() > width) {
-    const size_t extra = bits.size() - width;
-    if (bits.substr(0, extra).find('1') != std::string::npos) {
-      throw std::runtime_error("PDL value truncates significant bits");
-    }
-    bits.erase(0, extra);
+  return ResizePdlBits(std::move(bits), width);
+}
+std::string PdlDataValue(z3::context& context, const Netlist& netlist,
+                         const PdlTarget& target, const std::string& text) {
+  if (pdl::IsNumberLiteral(text)) {
+    return PdlNumber(context, text, target.bits.size());
   }
-  bits.insert(0, width - bits.size(), bits[0] == 'x' ? 'x' : '0');
-  return bits;
+  const auto& node = netlist.nodes.at(target.declaration);
+  if (!node.enumeration) {
+    throw std::runtime_error(node.origin + ": " + node.name +
+                             " has no RefEnum for value " + text);
+  }
+  const auto& table = netlist.nodes.at(*node.enumeration);
+  const auto value = table.constants.find(text);
+  if (value == table.constants.end()) {
+    throw std::runtime_error(node.origin + ": unknown enum value " + text +
+                             " in " + table.name + " for " + node.name);
+  }
+  return ResizePdlBits(value->second.data, target.bits.size());
 }
 PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text) {
   const auto open = text.find_first_of("[(");

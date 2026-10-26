@@ -101,7 +101,7 @@ void TestPdlOperands() {
               "1" + std::string(64, '0'),
           "decimal PDL values are not limited to machine integers");
   for (const auto* value :
-       {"0b101", "-1", "1'b1", "$value", "0x", "0o1", "1_0"}) {
+       {"0b101", "-1", "1'b1", "$value", "0x", "0o1", "1_0", "Active"}) {
     bool rejected = false;
     try {
       pattern::PdlNumber(context, value, 2);
@@ -113,9 +113,12 @@ void TestPdlOperands() {
   pattern::Design design;
   design.AddIcl("operands.icl", R"(
 Module Targets {
+ Enum register_values { Active = 8'h96; Low = 8'h03; Mask = 8'bxxxxxx01; }
+ Enum alias_values { Active = 4'b0101; }
  ScanInPort si;
- ScanRegister r[0:7] { ScanInSource si; }
- Alias a[3:0] = ~r[4:7];
+ ScanRegister r[0:7] { ScanInSource si; RefEnum register_values; }
+ Alias a[3:0] = ~r[4:7] { RefEnum alias_values; }
+ Alias plain[3:0] = r[4:7];
 })");
   const auto netlist = pattern::Elaborate(design, "Targets");
   const auto target = pattern::ResolvePdlTarget(netlist, "a[2:1]");
@@ -126,6 +129,26 @@ Module Targets {
   Require(reverse.bits.size() == 4 && reverse.bits[0].index == 7 &&
               reverse.bits[3].index == 4,
           "legacy PDL parentheses preserve explicitly reversed bit order");
+  const auto value = [&](const std::string& name, const std::string& literal) {
+    return pattern::PdlDataValue(
+        context, netlist, pattern::ResolvePdlTarget(netlist, name), literal);
+  };
+  Require(value("r", "Active") == "10010110" &&
+              value("a", "Active") == "0101" && value("a", "0xa") == "1010",
+          "register and alias enums resolve against their own RefEnum");
+  Require(value("r(7:4)", "Low") == "0011" && value("r[6:7]", "Mask") == "01",
+          "enum values follow numeric sizing without reordering the literal");
+  for (const auto& [name, literal] :
+       {std::pair{"r", "Missing"}, {"plain", "Active"}, {"r[6:7]", "Active"}}) {
+    bool rejected = false;
+    try {
+      value(name, literal);
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected,
+            "unknown/unattached enums and significant truncation fail");
+  }
 }
 }  // namespace
 int main() {

@@ -142,6 +142,39 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "out/debug/AccessTop.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
         self.assertEqual(output, (self.root / "flat.pdl").read_text())
 
+    def test_enumerated_operands(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/enumerated_values.icl"
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule EnumChild\niProc configure {value} {iWrite r $value; iApply}\n"
+            "iProcsForModule EnumTop\niCall a.configure Active\niCall b.configure Active\n"
+            "iWrite a.r 0xf\niApply\niWrite a.r Mask\niApply\n"
+            "iRead a.r Mask\niApply\niWrite a.complement Active\niApply\n"
+            "iWrite a.r(2:3) Clear\niApply\niRead b.r Active\niRead a.r AllX\niApply\n")
+        inputs = ("--icl", fixture)
+        self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
+        output = (self.root / "out/EnumTop.pdl").read_text()
+        self.assertIn("iWrite a.r 0b0101\n", output)
+        self.assertIn("iWrite b.r 0b1010\n", output)
+        self.assertIn("iWrite a.r 0b1101\n", output)
+        self.assertIn("iRead a.r 0bxx01\n", output)
+        self.assertIn("iWrite a.r 0b0100\n", output)
+        self.assertIn("iRead b.r 0b1010\n", output)
+        self.assertIn("iRead a.r 0bxxxx\n", output)
+        self.run_tool(*inputs, "--pdl", "out/EnumTop.pdl", "--output", "again.pdl")
+        self.assertEqual(output, (self.root / "again.pdl").read_text())
+        self.run_tool("--icl", "out/debug/EnumTop.icl", "--pdl", "source.pdl", "--output", "flat.pdl")
+        self.assertEqual(output, (self.root / "flat.pdl").read_text())
+        for command, message in (
+                ("iWrite a.r Missing", "unknown enum value"),
+                ("iRead a.unnamed Active", "no RefEnum"),
+                ("iWrite a.r(2:3) Active", "truncates significant bits")):
+            with self.subTest(command=command):
+                (self.root / "bad.pdl").write_text(command + "; iApply\n")
+                result = self.run_tool(*inputs, "--pdl", "bad.pdl", "--output", "bad-result.pdl", ok=False)
+                self.assertIn("bad.pdl", result.stdout)
+                self.assertIn(message, result.stdout)
+                self.assertFalse((self.root / "bad-result.pdl").exists())
+
     def test_idle_rejections(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
         inputs = ("--icl", fixture / "simple.icl", "--bsdl", "AccessProbe", fixture / "simple.bsdl")
