@@ -13,6 +13,10 @@ records ordered overrides, netlist elaboration, configuration scheduling,
 local-reset rewriting and round-trip acceptance tests. It does not change the
 execution-free contract of the formatters or language servers.
 
+Generator component models describe observable ports, behavior/state and
+connections to other components or ports. Treat primitives such as ScanRegister
+as atomic behavioral units; internal flip-flop or gate wiring is not required.
+
 ## Product behavior
 
 - **P1 — Formatter:** `icl-format` must format ICL as a language-aware formatter,

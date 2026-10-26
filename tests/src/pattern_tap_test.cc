@@ -231,6 +231,312 @@ std::string Replace(std::string text, const std::string& from,
   text.replace(at, from.size(), to);
   return text;
 }
+pattern::BsdlTap InstructionMetadata() {
+  return pattern::ReadBsdlTap("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                              "AccessProbe");
+}
+void InstructionClock(pattern::TapInstructionRegister* reg, char tms,
+                      char tdi = 'x') {
+  reg->RisingEdge(tms, tdi);
+  reg->FallingEdge();
+}
+void LoadInstruction(pattern::TapInstructionRegister* reg,
+                     const std::string& bits) {
+  // Start in Run-Test/Idle; enter Capture-IR, capture, then shift LSB first.
+  for (char tms : std::string("1100")) InstructionClock(reg, tms);
+  for (size_t offset = 0; offset < bits.size(); ++offset) {
+    InstructionClock(reg, offset + 1 == bits.size() ? '1' : '0',
+                     bits[bits.size() - 1 - offset]);
+  }
+  InstructionClock(reg, '1');
+  InstructionClock(reg, '0');
+}
+void TestInstructionExecution() {
+  pattern::TapInstructionRegister reg(InstructionMetadata());
+  Require(reg.ShiftBits() == "xxxx" && reg.ShiftOut() == 'x' &&
+              reg.InstructionCodes() == std::vector<std::string>{"xxxx"},
+          "instruction construction leaves both stages unknown");
+  reg.SetTrst('0');
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0010"} &&
+              reg.ShiftBits() == "xxxx",
+          "TRST initializes only the active instruction");
+  reg.SetTrst('1');
+  for (char tms : std::string("0110")) InstructionClock(&reg, tms);
+  Require(reg.ShiftBits() == "xxxx", "entry into Capture-IR does not capture");
+  InstructionClock(&reg, '0');
+  Require(reg.ShiftBits() == "0001" && reg.ShiftOut() == '1',
+          "Capture-IR loads the BSDL capture pattern on the next rising edge");
+  const std::string shifted[] = {"0000", "1000", "0100", "1010"};
+  for (size_t i = 0; i < 4; ++i) {
+    InstructionClock(&reg, i == 3 ? '1' : '0', "0101"[i]);
+    Require(reg.ShiftBits() == shifted[i] &&
+                reg.InstructionCodes() == std::vector<std::string>{"0010"},
+            "LSB-first shifts do not change the active instruction latch");
+  }
+  reg.RisingEdge('1', 'x');
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0010"},
+          "entering Update-IR does not latch at the rising edge");
+  reg.FallingEdge();
+  Require(
+      reg.InstructionCodes() == std::vector<std::string>{"1010"},
+      "falling Update-IR transfers the shift stage into the instruction latch");
+  InstructionClock(&reg, '0');
+  LoadInstruction(&reg, "0101");
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0101"},
+          "a subsequent scan captures and replaces the prior instruction");
+  reg.SetTrst('0');
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0010"} &&
+              reg.ShiftBits() == "xxxx",
+          "reset discards undefined shift-stage knowledge");
+}
+
+void TestInstructionResetAlternatives() {
+  auto bsdl = InstructionMetadata();
+  bsdl.opcodes["IDCODE"] = {"1010", "0010", "1010", "10x0"};
+  pattern::TapInstructionRegister reg(bsdl);
+  bsdl.capture = "1111";
+  bsdl.opcodes.clear();
+  reg.SetTrst('0');
+  Require(
+      reg.InstructionCodes() ==
+          std::vector<std::string>({"0010", "1010", "10x0"}),
+      "owned reset alternatives retain masks instead of inventing one opcode");
+  reg.SetTrst('1');
+  InstructionClock(&reg, '0');
+  LoadInstruction(&reg, "0101");
+  reg.SetTrst('x');
+  Require(
+      reg.InstructionCodes() ==
+          std::vector<std::string>({"0010", "0101", "1010", "10x0"}),
+      "unknown TRST retains both active instruction and reset alternatives");
+  reg.SetTrst('1');
+  for (int i = 0; i < 5; ++i) reg.RisingEdge('1', 'x');
+  Require(reg.InstructionCodes().size() == 4,
+          "five rising TMS clocks do not latch synchronous reset early");
+  reg.FallingEdge();
+  Require(reg.InstructionCodes().size() == 3,
+          "synchronous reset selects only reset alternatives on falling TCK");
+  auto no_id = InstructionMetadata();
+  no_id.idcode.reset();
+  no_id.opcodes.erase("IDCODE");
+  pattern::TapInstructionRegister bypass(no_id);
+  bypass.SetTrst('0');
+  Require(bypass.InstructionCodes() == std::vector<std::string>{"1111"},
+          "a device without IDCODE resets to BYPASS");
+}
+void TestInstructionWithoutTrst() {
+  auto metadata = InstructionMetadata();
+  metadata.ports.erase("tap_scan_reset");
+  pattern::TapInstructionRegister reg(metadata);
+  Require(reg.Controller().PossibleStates() == 0xffff &&
+              reg.InstructionCodes() == std::vector<std::string>{"xxxx"},
+          "an absent TRST pin must not imply a power-up reset");
+  for (int i = 0; i < 5; ++i) InstructionClock(&reg, '1');
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0010"},
+          "TMS-only reset works without the optional TRST pin");
+  InstructionClock(&reg, '0');
+  Require(reg.Controller().PossibleStates() ==
+              pattern::TapStateBit(pattern::TapState::kRunTestIdle),
+          "absent TRST cannot hold the controller in reset after TMS reset");
+  LoadInstruction(&reg, "0011");
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0011"},
+          "IR scans work when the BSDL TAP has no TRST pin");
+  reg.SetTrst('1');
+  for (char value : {'0', 'x'}) {
+    bool rejected = false;
+    try {
+      reg.SetTrst(value);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("no TRST") != std::string::npos;
+    }
+    Require(
+        rejected && reg.InstructionCodes() == std::vector<std::string>{"0011"},
+        "a nonexistent TRST pin cannot asynchronously reset the device");
+  }
+}
+void TestInstructionUnknownsAndValidation() {
+  auto metadata = InstructionMetadata();
+  // An unknown initial instruction already includes every reset encoding.
+  metadata.instruction_width = 1024 * 1024;
+  metadata.capture = std::string(metadata.instruction_width - 2, 'x') + "01";
+  metadata.opcodes["IDCODE"] = {std::string(metadata.instruction_width, '0')};
+  pattern::TapInstructionRegister wide(metadata);
+  wide.RisingEdge('0', 'x');
+  Require(
+      wide.InstructionCodes() == std::vector<std::string>{std::string(
+                                     metadata.instruction_width, 'x')},
+      "unknown reset must not expand an already universal instruction state");
+  pattern::TapInstructionRegister reg(InstructionMetadata());
+  reg.SetTrst('0');
+  reg.SetTrst('1');
+  InstructionClock(&reg, '0');
+  for (char tms : std::string("1100")) InstructionClock(&reg, tms);
+  InstructionClock(&reg, 'x', '1');
+  Require(reg.ShiftBits() == "1000", "unknown exit decision still shifts once");
+  InstructionClock(&reg, '0', '0');
+  Require(reg.ShiftBits() == "xx00",
+          "uncertain Shift/Pause path joins hold and shift bit values");
+  for (char invalid : {'z', 'X', '2'}) {
+    for (int input = 0; input < 3; ++input) {
+      const auto states = reg.Controller().PossibleStates();
+      const auto shift = reg.ShiftBits();
+      const auto codes = reg.InstructionCodes();
+      bool rejected = false;
+      try {
+        if (input == 0) reg.SetTrst(invalid);
+        if (input == 1) reg.RisingEdge(invalid, '0');
+        if (input == 2) reg.RisingEdge('0', invalid);
+      } catch (const std::invalid_argument&) {
+        rejected = true;
+      }
+      Require(rejected && reg.Controller().PossibleStates() == states &&
+                  reg.ShiftBits() == shift && reg.InstructionCodes() == codes,
+              "invalid pin values cannot partly advance the IR model");
+    }
+  }
+  const auto reject = [](const pattern::BsdlTap& bsdl,
+                         const std::string& cause) {
+    bool rejected = false;
+    try {
+      pattern::TapInstructionRegister invalid(bsdl);
+    } catch (const std::runtime_error& error) {
+      const std::string message = error.what();
+      rejected = message.find(bsdl.origin) == 0 &&
+                 message.find(cause) != std::string::npos;
+    }
+    Require(rejected,
+            "invalid BSDL IR metadata reports its origin and cause: " + cause);
+  };
+  for (size_t width : {size_t{0}, size_t{1}, size_t{1024 * 1024 + 1}}) {
+    auto bad = InstructionMetadata();
+    bad.instruction_width = width;
+    reject(bad, "width/capture");
+  }
+  for (const auto* capture : {"01", "00z1", "0011"}) {
+    auto bad = InstructionMetadata();
+    bad.capture = capture;
+    reject(bad, "width/capture");
+  }
+  auto bad = InstructionMetadata();
+  bad.idcode.reset();
+  reject(bad, "IDCODE_REGISTER");
+  bad = InstructionMetadata();
+  bad.opcodes.erase("IDCODE");
+  reject(bad, "missing reset");
+  bad.opcodes["IDCODE"] = {};
+  reject(bad, "missing reset");
+  for (const auto* code : {"01", "00z0"}) {
+    bad.opcodes["IDCODE"] = {code};
+    reject(bad, "invalid reset");
+  }
+  bad.opcodes["IDCODE"].assign(262145, "0010");
+  reject(bad, "work limit");
+}
+
+void TestInstructionShiftScale() {
+  auto metadata = InstructionMetadata();
+  constexpr size_t kWidth = 65537;
+  constexpr size_t kEdges = 262151;
+  metadata.instruction_width = kWidth;
+  metadata.capture = std::string(kWidth - 2, 'x') + "01";
+  metadata.opcodes["IDCODE"] = {std::string(kWidth, '0')};
+  pattern::TapInstructionRegister reg(metadata);
+  reg.SetTrst('0');
+  reg.SetTrst('1');
+  for (char tms : std::string("01100")) InstructionClock(&reg, tms);
+  const auto start = std::chrono::steady_clock::now();
+  for (size_t i = 0; i < kEdges; ++i)
+    InstructionClock(&reg, '0', i % 2 ? '1' : '0');
+  const auto seconds =
+      std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
+          .count();
+  std::string expected(kWidth, 'x');
+  for (size_t i = 0; i < kWidth; ++i)
+    expected[i] = (kEdges - 1 - i) % 2 ? '1' : '0';
+  Require(reg.ShiftBits() == expected && reg.ShiftOut() == expected.back(),
+          "large repeated shifts wrap without reversing bit order");
+  Require(reg.InstructionCodes() ==
+              std::vector<std::string>{std::string(kWidth, '0')},
+          "large shifting does not mutate the active instruction latch");
+  std::cout << "TAP IR: width=" << kWidth << " edges=" << kEdges
+            << " seconds=" << seconds << '\n';
+}
+void TestInstructionUncertainUpdate() {
+  pattern::TapInstructionRegister reg(InstructionMetadata());
+  reg.SetTrst('0');
+  reg.SetTrst('1');
+  for (char tms : std::string("01100")) InstructionClock(&reg, tms);
+  for (char tms : std::string("0001")) InstructionClock(&reg, tms, '1');
+  reg.RisingEdge('x', 'x');
+  Require(reg.InstructionCodes() == std::vector<std::string>{"0010"},
+          "uncertain entry into Update-IR cannot latch early");
+  reg.FallingEdge();
+  Require(reg.InstructionCodes() == std::vector<std::string>({"0010", "1111"}),
+          "uncertain Update-IR retains complete old and new code alternatives");
+  reg.SetTrst('x');
+  reg.FallingEdge();
+  Require(
+      reg.InstructionCodes() == std::vector<std::string>{"xxxx"},
+      "unknown shift-stage update subsumes narrower instruction possibilities");
+}
+
+void TestInstructionStateLimits() {
+  auto metadata = InstructionMetadata();
+  metadata.instruction_width = 11;
+  metadata.capture = "xxxxxxxxx01";
+  auto& alternatives = metadata.opcodes["IDCODE"];
+  alternatives.clear();
+  for (size_t i = 0; i < 65537; ++i) {
+    size_t code = i;
+    std::string bits(11, '0');
+    for (char& bit : bits) {
+      bit = "01x"[code % 3];
+      code /= 3;
+    }
+    alternatives.push_back(std::move(bits));
+  }
+  bool rejected = false;
+  try {
+    pattern::TapInstructionRegister excessive(metadata);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("instruction state limit") !=
+               std::string::npos;
+  }
+  Require(rejected, "distinct reset alternatives have a bounded entry count");
+
+  constexpr size_t kWidth = 65536;
+  metadata.instruction_width = kWidth;
+  metadata.capture = std::string(kWidth - 2, 'x') + "01";
+  alternatives.clear();
+  for (size_t i = 0; i < 16; ++i) {
+    std::string bits(kWidth, '0');
+    for (size_t bit = 0; bit < 4; ++bit) bits[bit] = (i >> bit) & 1 ? '1' : '0';
+    alternatives.push_back(std::move(bits));
+  }
+  pattern::TapInstructionRegister reg(metadata);
+  reg.SetTrst('0');
+  reg.SetTrst('1');
+  InstructionClock(&reg, '0');
+  LoadInstruction(&reg, std::string(kWidth, '1'));
+  const auto states = reg.Controller().PossibleStates();
+  const auto shift = reg.ShiftBits();
+  const auto codes = reg.InstructionCodes();
+  rejected = false;
+  try {
+    reg.SetTrst('x');
+  } catch (const std::runtime_error& error) {
+    const std::string message = error.what();
+    rejected = message.find(metadata.origin) == 0 &&
+               message.find("instruction state limit") != std::string::npos;
+  }
+  Require(rejected && reg.Controller().PossibleStates() == states &&
+              reg.ShiftBits() == shift && reg.InstructionCodes() == codes,
+          "runtime union overflow preserves controller and register state");
+  InstructionClock(&reg, '0');
+  Require(reg.Controller().PossibleStates() ==
+              pattern::TapStateBit(pattern::TapState::kRunTestIdle),
+          "failed unknown TRST did not change the stored reset input");
+}
 pattern::TapDatapathModel Build(const std::string& icl,
                                 const std::string& bsdl) {
   pattern::Design design;
@@ -287,6 +593,26 @@ void TestSharedSignalsAndMasks() {
   Require(ReadBit(model, {model.netlist.node_ids.at("long_setup"), 0},
                   "10xx") == '1',
           "opcode masks do not depend on unknown masked bits");
+}
+void TestInstructionDecoderIntegration() {
+  const auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "IDCODE (0010)",
+                            "IDCODE (0010, 1010)");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  pattern::TapInstructionRegister reg(
+      pattern::ReadBsdlTap("probe.bsdl", bsdl, "AccessProbe"));
+  const auto signal = model.netlist.node_ids.at("long_setup");
+  reg.SetTrst('0');
+  for (const auto& code : reg.InstructionCodes()) {
+    Require(ReadBit(model, {signal, 0}, code) == '0',
+            "every reset encoding leaves IJTAG ActiveSignal inactive");
+  }
+  reg.SetTrst('1');
+  InstructionClock(&reg, '0');
+  LoadInstruction(&reg, "0011");
+  Require(
+      reg.InstructionCodes().size() == 1 &&
+          ReadBit(model, {signal, 0}, reg.InstructionCodes()[0]) == '1',
+      "latched instruction state drives the shared AST/netlist opcode decoder");
 }
 void TestNamesAndMissingSignals() {
   auto icl =
@@ -976,6 +1302,14 @@ int main() {
   try {
     TestControllerTransitions();
     TestControllerEdgesAndReset();
+    TestInstructionExecution();
+    TestInstructionResetAlternatives();
+    TestInstructionWithoutTrst();
+    TestInstructionUnknownsAndValidation();
+    TestInstructionShiftScale();
+    TestInstructionUncertainUpdate();
+    TestInstructionStateLimits();
+    TestInstructionDecoderIntegration();
     TestUnassignedOpcodes();
     TestUsercodeCapture();
     TestImplicitStandardRegisters();

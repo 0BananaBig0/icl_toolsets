@@ -30,6 +30,28 @@ char ClockAction(uint16_t states, TapState state, char trst) {
 
 constexpr size_t kMaxModelBytes = 16 * 1024 * 1024;
 constexpr size_t kMaxActiveBits = 1024 * 1024;
+constexpr size_t kMaxInstructionAlternatives = 65536;
+
+void AddInstructionCode(std::set<std::string>* codes, size_t* bits,
+                        const std::string& code, const std::string& origin) {
+  if (codes->size() == 1 &&
+      codes->begin()->find_first_not_of('x') == std::string::npos) {
+    return;
+  }
+  if (codes->count(code)) return;
+  // A wholly unknown value already includes every other possible encoding.
+  if (code.find_first_not_of('x') == std::string::npos) {
+    codes->clear();
+    *bits = 0;
+  }
+  if (codes->size() >= kMaxInstructionAlternatives ||
+      code.size() > kMaxActiveBits - *bits) {
+    throw std::runtime_error(origin + ": instruction state limit exceeded");
+  }
+  codes->insert(code);
+  *bits += code.size();
+}
+
 struct SignalRange {
   bool indexed = false;
   int64_t left = 0, right = 0;
@@ -614,6 +636,140 @@ TapActions TapController::FallingEdge() {
   ir_select_ = states_ == TapStateBit(S::kShiftIr)   ? '1'
                : states_ == TapStateBit(S::kShiftDr) ? '0'
                                                      : 'x';
+  return actions;
+}
+
+TapInstructionRegister::TapInstructionRegister(const BsdlTap& bsdl)
+    : origin_(bsdl.origin) {
+  const size_t width = bsdl.instruction_width;
+  if (width < 2 || width > kMaxActiveBits || bsdl.capture.size() != width ||
+      bsdl.capture.find_first_not_of("01x") != std::string::npos ||
+      bsdl.capture.substr(width - 2) != "01") {
+    throw std::runtime_error(origin_ + ": invalid instruction width/capture");
+  }
+  if (bsdl.opcodes.count("IDCODE") && !bsdl.idcode) {
+    throw std::runtime_error(origin_ +
+                             ": missing IDCODE_REGISTER for reset instruction");
+  }
+  const auto reset = bsdl.opcodes.find(bsdl.idcode ? "IDCODE" : "BYPASS");
+  if (reset == bsdl.opcodes.end() || reset->second.empty()) {
+    throw std::runtime_error(origin_ + ": missing reset instruction opcode");
+  }
+  size_t retained = 0, examined = 0;
+  std::set<std::string> codes;
+  for (const auto& code : reset->second) {
+    if (code.size() != width ||
+        code.find_first_not_of("01x") != std::string::npos) {
+      throw std::runtime_error(origin_ + ": invalid reset instruction opcode");
+    }
+    if (code.size() > kMaxActiveBits - examined) {
+      throw std::runtime_error(origin_ + ": reset opcode work limit exceeded");
+    }
+    examined += code.size();
+    AddInstructionCode(&codes, &retained, code, origin_);
+  }
+  reset_codes_.assign(codes.begin(), codes.end());
+  capture_ = bsdl.capture;
+  shift_bits_.assign(width, 'x');
+  codes_.emplace_back(width, 'x');
+  has_trst_ = bsdl.ports.count("tap_scan_reset") != 0;
+  if (!has_trst_) controller_.SetTrst('1');
+}
+
+std::string TapInstructionRegister::ShiftBits() const {
+  if (!shift_valid_) return std::string(capture_.size(), 'x');
+  return shift_bits_.substr(shift_head_) + shift_bits_.substr(0, shift_head_);
+}
+
+char TapInstructionRegister::ShiftOut() const {
+  if (!shift_valid_) return 'x';
+  return shift_bits_[(shift_head_ + shift_bits_.size() - 1) %
+                     shift_bits_.size()];
+}
+
+std::optional<std::vector<std::string>>
+TapInstructionRegister::NextInstructions(const TapActions& actions) const {
+  if (actions.reset_ir == '0' && actions.update_ir == '0') return std::nullopt;
+  size_t bits = 0;
+  std::set<std::string> codes;
+  const auto add = [&](const std::string& code) {
+    AddInstructionCode(&codes, &bits, code, origin_);
+  };
+  if (actions.reset_ir != '1' && actions.update_ir != '1') {
+    for (const auto& code : codes_) add(code);
+  }
+  if (actions.reset_ir != '0') {
+    for (const auto& code : reset_codes_) add(code);
+  }
+  if (actions.update_ir != '0') add(ShiftBits());
+  return std::vector<std::string>(codes.begin(), codes.end());
+}
+
+void TapInstructionRegister::Shift(const TapActions& actions, char tdi) {
+  using S = TapState;
+  constexpr uint16_t kDefinedShiftStates =
+      TapStateBit(S::kCaptureIr) | TapStateBit(S::kShiftIr) |
+      TapStateBit(S::kExit1Ir) | TapStateBit(S::kPauseIr) |
+      TapStateBit(S::kExit2Ir) | TapStateBit(S::kUpdateIr);
+  if (controller_.PossibleStates() & ~kDefinedShiftStates) shift_valid_ = false;
+  if (actions.capture_ir == '1') {
+    shift_bits_ = capture_;
+    shift_head_ = 0;
+    shift_valid_ = true;
+  } else if (actions.shift_ir == '1') {
+    if (!shift_valid_) {
+      shift_bits_.assign(capture_.size(), 'x');
+      shift_valid_ = true;
+    }
+    shift_head_ = (shift_head_ + shift_bits_.size() - 1) % shift_bits_.size();
+    shift_bits_[shift_head_] = tdi;
+  } else if (shift_valid_ &&
+             (actions.capture_ir == 'x' || actions.shift_ir == 'x')) {
+    const auto old = ShiftBits();
+    auto joined = old;
+    for (size_t i = 0; i < joined.size(); ++i) {
+      if ((actions.capture_ir == 'x' && old[i] != capture_[i]) ||
+          (actions.shift_ir == 'x' && old[i] != (i == 0 ? tdi : old[i - 1]))) {
+        joined[i] = 'x';
+      }
+    }
+    shift_bits_ = std::move(joined);
+    shift_head_ = 0;
+  }
+}
+
+TapActions TapInstructionRegister::SetTrst(char value) {
+  auto next = controller_;
+  const auto actions = next.SetTrst(value);
+  if (!has_trst_ && value != '1') {
+    throw std::runtime_error(origin_ + ": TAP has no TRST input");
+  }
+  auto codes = NextInstructions(actions);
+  if (codes) codes_ = std::move(*codes);
+  if (actions.reset_ir != '0') shift_valid_ = false;
+  controller_ = next;
+  return actions;
+}
+
+TapActions TapInstructionRegister::RisingEdge(char tms, char tdi) {
+  ValidateTapInput(tdi);
+  auto next = controller_;
+  const auto actions = next.RisingEdge(tms);
+  auto codes = NextInstructions(actions);
+  Shift(actions, tdi);
+  if (codes) codes_ = std::move(*codes);
+  if (actions.reset_ir != '0') shift_valid_ = false;
+  controller_ = next;
+  return actions;
+}
+
+TapActions TapInstructionRegister::FallingEdge() {
+  auto next = controller_;
+  const auto actions = next.FallingEdge();
+  auto codes = NextInstructions(actions);
+  if (codes) codes_ = std::move(*codes);
+  if (actions.reset_ir != '0') shift_valid_ = false;
+  controller_ = next;
   return actions;
 }
 

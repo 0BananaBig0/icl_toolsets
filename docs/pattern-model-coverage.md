@@ -902,3 +902,79 @@ its five missed lines are existing defensive datapath validation paths.
 `pattern_tap.h` reaches **5/5 lines (100%)**. Evidence:
 `build/tap-controller-delivery-coverage.log`. This is a verified component
 checkpoint, not completion of the generator or its coverage acceptance gate.
+
+## TAP instruction-register execution (2026-10-26)
+
+After pushed checkpoint `863c658`, `TapInstructionRegister` consumes the native
+controller's IR actions. It owns capture/reset metadata extracted by the existing
+BSDL reader and keeps circular shift storage separate from active instruction
+codes. Both stages start unknown. Capture/shift occur on rising TCK; only falling
+Update-IR changes the active instruction during a scan. Reset chooses IDCODE
+when the BSDL describes its register, otherwise BYPASS. A declared IDCODE without
+`IDCODE_REGISTER` is an error, matching the datapath builder's missing-metadata
+handling. Capture metadata must have the required `01` least-significant bits.
+
+Reset preserves every alternative/masked encoding described for the selected
+instruction, with deterministic ordering and duplicate removal. It does not
+invent a particular encoding or collapse disjoint alternatives into one bitwise
+pattern. Unknown update/reset events retain possible old/new values. A wholly
+unknown code subsumes all narrower alternatives, avoiding false resource errors
+on an already unknown instruction. Uncertain shifts conservatively join bit
+values; correlations between controller state and data may be lost. These joins
+must not be used to prove unreachability or claim optimal patterns.
+
+For a BSDL TAP without the optional TRST pin, the reset input is tied inactive
+without initializing the controller or instruction. Five TMS-high clocks can
+then establish reset and normal IR scans work. Attempts to assert or make an
+absent TRST pin unknown fail. With TRST present, explicit assertion resets the
+instruction asynchronously. Undefined shift-stage knowledge is discarded;
+construction and reset do not invent shift-register contents.
+
+Width and retained encoding text are bounded at 1,048,576 bits/characters, with
+at most 65,536 distinct alternatives. Raw reset-code examination also has a
+1,048,576-character work limit, including duplicates. Runtime union overflow
+reports the BSDL origin and preserves controller/register state, including the
+stored reset input. Invalid pin values also fail before mutation.
+
+Known-state shifts use circular storage and take constant work per clock edge,
+independent of instruction width. Capture, update, snapshots and uncertain
+shifts traverse the width; alternative unions use a bounded ordered set. Tests
+exercise 262,151 cycles at width 65,537 and verify bit order after wraparound.
+The focused suite records the timing; this is a scale check, not a comparison
+against a previous implementation. See `build/tap-instruction-measurement.log`
+for native g++ `-O2` wall time and peak RSS on this WSL2 host.
+
+Tests also cover full serial IR loads, update-edge timing, reset alternatives,
+unknown TMS/TRST, uncertain updates, metadata ownership/validation, absent TRST,
+runtime budget rollback, duplicate-work and alternative-count limits. A decoder
+integration test feeds the active instruction codes through the existing shared
+AST/netlist logic evaluator. No new parser, AST, or ICL/PDL token set is added.
+
+This component executes IR events and returns DR actions for the future runtime.
+`ShiftOut()` exposes the shift stage's internal serial bit; it is not a modeled
+physical TDO pin. Live instruction-dependent datapath evaluation, DR execution,
+falling-edge TDO sampling, child-interface wiring and full pattern generation
+remain unfinished.
+
+Final complete `make check` passed (`build/tap-instruction-regression.log`),
+including dynamic/static checks, 2,180 ICL conformance cases, 212 PDL block cases,
+137 vendor PDL streams, all 334/334 grammar and 119/119 scanner rules, and both
+editor runs (38,627 ICL / 802 PDL files each). ASan/UBSan passed with leak checks
+disabled (`build/tap-instruction-delivery-sanitize.log`); Google style/naming and
+independent review passed. The native focused suite took 0.40 s and 63,744 KiB
+peak RSS; its 65,537-bit / 262,151-cycle check took 0.0111 s while broader checks
+were running. No isolated speedup comparison is claimed.
+
+The instrumented suites passed but the strict gate remains unmet:
+**8,186/8,517 lines (96.1%)**, **13,373/21,772 raw branches (61.4%)**.
+`pattern_tap.cc`: **582/589 lines (98.8%)**, **843/1,302 branches (64.7%)**;
+`pattern_tap.h`: **7/7 lines (100%)**. Misses include the earlier defensive
+datapath validation paths and defensive shift reinitialization. Evidence:
+`build/tap-instruction-coverage.log`. Thresholds remain unchanged.
+
+After adding the isolated AccessLink connection-probe stager and its safety
+tests, the final combined complete regression also passed:
+`build/tap-instruction-connections-final-regression.log`. The eight remote
+elaboration outcomes and their limitations are recorded in
+[the reference ledger](pattern-retargeting-references.md#accesslink-connection-precedence-probes).
+No C++ behavior changed after the coverage/sanitizer runs above.

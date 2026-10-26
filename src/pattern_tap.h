@@ -5,7 +5,9 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
+#include <vector>
 
 #include "pattern_access_link.h"
 #include "pattern_netlist.h"
@@ -62,6 +64,32 @@ class TapController {
   char trst_ = 'x';
   char tdo_enabled_ = 'x';
   char ir_select_ = 'x';
+};
+
+// Executes IR events only; DR actions are returned for the surrounding runtime.
+// Codes are MSB-first 0/1/x patterns, retaining reset encoding alternatives.
+// State joins conservatively lose correlations; no hardware reset is assumed.
+class TapInstructionRegister {
+ public:
+  explicit TapInstructionRegister(const BsdlTap& bsdl);
+  TapActions SetTrst(char value);
+  TapActions RisingEdge(char tms, char tdi);
+  TapActions FallingEdge();
+  const TapController& Controller() const { return controller_; }
+  const std::vector<std::string>& InstructionCodes() const { return codes_; }
+  std::string ShiftBits() const;
+  char ShiftOut() const;
+
+ private:
+  std::optional<std::vector<std::string>> NextInstructions(
+      const TapActions& actions) const;
+  void Shift(const TapActions& actions, char tdi);
+  TapController controller_;
+  std::string origin_, capture_, shift_bits_;
+  std::vector<std::string> reset_codes_, codes_;
+  size_t shift_head_ = 0;
+  bool shift_valid_ = false;
+  bool has_trst_ = false;
 };
 
 struct TapDatapathModel {

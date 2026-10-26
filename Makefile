@@ -704,6 +704,7 @@ check check-dynamic:
 	@python3 tests/tests/test_block_review.py
 	@python3 tests/tests/test_regression.py
 	@python3 tests/tests/test_makefile.py
+	@python3 tests/tests/src/test_probe_pattern_access_link_connections.py
 	@python3 tests/tests/test_tree_clean_test.py
 	@python3 tests/whitespace_test.py --binary $(BIN)
 	@python3 tests/fuzz.py --binary $(BIN)

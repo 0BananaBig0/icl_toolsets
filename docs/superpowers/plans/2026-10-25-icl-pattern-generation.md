@@ -26,6 +26,9 @@ GNU Make, Python unittest regression.
   Keep findings in [pattern generation references](../../pattern-retargeting-references.md).
 - Google C++ style; generated outputs remain ignored; test scripts under `tests/`.
 - No implicit hardware reset; unknown initial logic state; source-located errors.
+- Model component ports, function/state and external connections only. Treat
+  primitives such as ScanRegister as behavioral units, without internal
+  flip-flop/gate connectivity; preserve real inter-component ICL connections.
 - Preserve existing formatters/LSPs/Vim plugin; complete regression after changes.
 - No commit or push without a new explicit request.
 - Proceed inline under existing autonomous-edit authorization. Keep the current
@@ -367,5 +370,49 @@ sources from totals. The unchanged strict coverage gate still fails at
 `build/tap-controller-delivery-regression.log`,
 `build/tap-controller-final-sanitize.log`,
 `build/tap-controller-delivery-style.log`,
-`build/tap-controller-delivery-coverage.log`. No commit/push was requested for
-this continuation; full runtime and child wiring remain open.
+`build/tap-controller-delivery-coverage.log`. This checkpoint was committed and
+pushed as `863c658`; full runtime and child wiring remain open.
+
+### Task 2 continuation: instruction-register execution
+
+- [x] Consume the native controller events in an owning instruction-register
+  state component, keeping shift storage and active instruction latch separate.
+  Read capture/reset metadata from the existing BSDL model; do not initialize
+  either stage until an observed event determines it.
+- [x] Retain alternative/masked reset encodings as possible instruction values.
+  Bound retained state and report resource limits separately from unreachability.
+  Use circular shift storage for constant work per known shift edge; capture,
+  update and uncertain-state joins may traverse the instruction width.
+- [x] Test complete IR scans, capture/shift/update edge timing, reset selection,
+  uncertain events, metadata validation, ownership and large repeated shifts.
+  Run focused checks, independent review and final complete regression.
+- [ ] Connect this state to instruction-dependent datapath evaluation and child
+  scan/control interfaces. Standalone IR execution does not complete that wiring.
+
+IR execution verification: complete `make check`, focused dynamic/static,
+ASan/UBSan (leak checks disabled), Google style/naming and independent review
+passed. Strict coverage remains below the unchanged gate at 96.1% lines / 61.4%
+branches. Logs: `build/tap-instruction-regression.log`,
+`build/tap-instruction-coverage.log`, `build/tap-instruction-delivery-sanitize.log`,
+`build/tap-instruction-delivery-style.log`. This continuation is uncommitted
+after checkpoint `863c658`.
+
+### Task 2 continuation: AccessLink connection evidence
+
+- [x] Probe explicit scan-input/control bindings, existing top-level TAP ports
+  and two-interface order in isolated Tessent 2026.2 elaborations. Retain a
+  reproducible stager under `tests/` and record outcomes in the reference ledger.
+- [ ] Expand AccessLinks before ordinary signal resolution. Preserve shared
+  parsed module definitions, qualified namespace resolution, parameter values
+  and original source locations; do not overwrite unrelated ordered overrides.
+- [ ] Reuse valid existing top TAP ports; reject wrong functions, existing TDO
+  Source and explicit child scan-input bindings. Preserve explicit control
+  bindings and wire ordered chains through instruction-dependent muxes.
+- [ ] Connect native controller/IR state to child controls and DR execution,
+  then verify canonical flat replay and generated-pattern equivalence.
+
+The probe stager's focused safety tests and independent review passed; the final
+combined `make check` also passed after integration into the regression recipe
+(`build/tap-instruction-connections-final-regression.log`). The probe results
+establish connection precedence for the next implementation, not completion of
+native wiring or retargeting.

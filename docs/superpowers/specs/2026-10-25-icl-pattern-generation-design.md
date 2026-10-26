@@ -17,6 +17,13 @@ languages; formatters and language servers must never execute user PDL.
 This is an elaboration, execution and retargeting feature, not a formatter option.
 The existing four tools and standalone Vim plugin retain their behavior.
 
+Model boundary clarified by the user: model each component's observable ports,
+function, state and connections to other components/ports. A ScanRegister is an
+atomic behavioral component; do not expand its internal flip-flops or gate
+wiring. This also applies to other primitives. Internal storage used to compute
+behavior (such as a circular shift buffer) is not a structural netlist expansion.
+Continue to preserve the actual ICL module hierarchy and inter-component nets.
+
 ## Requested command-line contract
 
 | Option | Required behavior |

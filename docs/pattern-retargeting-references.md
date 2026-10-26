@@ -144,3 +144,51 @@ IEEE Std 1149.1-2001 (R2008), local Zotero `RLZEUHNS`: Figure 6-1 and
 §7.2.1/Table 7-1 (printed 34–35 / PDF 42–43) separates rising capture/shift,
 falling instruction update/reset, and asynchronous instruction reset. These
 govern `TapController`; a runtime consuming its actions is still required.
+
+The instruction-register continuation consumes those IR actions in
+`TapInstructionRegister`. Table 7-1's separate shift/parallel stages and
+§7.2.1(c–f) govern capture, shift, update and reset timing; undefined shift-stage
+values are not treated as retained hardware knowledge. BSDL opcode alternatives
+remain alternatives on reset rather than selecting an arbitrary encoding.
+Optional TRST is handled from the already parsed `TAP_SCAN_RESET` role; an absent
+pin is inactive, not an observed power-up reset. DR execution and child wiring
+remain separate unfinished work.
+
+### AccessLink connection precedence probes
+
+IEEE 1687-2014 §6.4.17(f), printed p. 135, fixes interface ordering from TDI
+toward TDO. The Tessent Shell Reference Manual v2023.4, *AccessLink*, describes
+the synthesized TAP instance and top-level ports. Before implementing connection
+precedence, eight self-constructed variants of the maintained AccessLink fixture
+were elaborated in isolated **Tessent Shell 2026.2** processes under the authorized
+`lianghuaxiao` account. No original EDA project files were edited.
+
+| Probe | Observed 2026.2 result |
+| --- | --- |
+| Baseline | Elaborates and emits expanded ICL |
+| Existing correctly typed TAP ports, TDO without Source | Reuses those ports and supplies TDO's TAP source |
+| Existing TDO Source | Rejected during `read_icl`; TAP_SCAN_OUT must not have a Source statement |
+| TDI declared as DataInPort | Rejected during `read_icl`; wrong port function |
+| Explicit child ScanInPort InputPort binding | Rejected during elaboration, ICL98 |
+| Explicit feedback binding on first member of a two-interface chain | Rejected during elaboration, ICL98 |
+| Explicit child select/capture/shift/update bindings | Preserved in expanded ICL |
+| Two listed child interfaces | First child feeds the second, and the second returns to the TAP |
+
+The four accepted cases returned zero, printed the exact completion marker, and
+produced fresh expanded ICL. The four rejected cases returned one and produced
+no expanded ICL; the cause was checked in each console log. These are measured
+elaboration rules, not evidence that a network with explicit disabled controls
+can generate patterns. They are also not a native AccessLink-equivalence result:
+the native wiring implementation is still pending.
+
+Reproduce the inputs with
+`python3 tests/src/probe_pattern_access_link_connections.py <fresh-directory>`.
+The eight complete ICL/BSDL/Tcl pairs are staged from source-controlled,
+self-constructed fixtures without storing duplicate module files in Git. The
+stager rejects existing destinations; its safety checks run in `make check`.
+Execute each `run.tcl` in its own fresh remote process/directory, never locally.
+The commands use `patterns -ijtag / setup`; their legality was checked in the
+v2023.4 *set_context*, *read_icl*, *set_current_design*, and *write_icl* topics.
+Generated evidence is ignored under
+`build/access-link-connections-evidence-20261026/`; the isolated remote directory
+is `/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl-toolsets-connections.h7xp5L`.
