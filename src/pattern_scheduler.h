@@ -19,7 +19,8 @@ struct ScanStep {
   std::map<std::string, std::string> loads;
   std::map<std::string, std::string> writes, expected;
 };
-// Plans complete serial transactions on SI/SO boundaries or a single TAP.
+// Plans serial transactions on SI/SO boundaries or a single TAP, and writes
+// through purely combinational primary DataInPort networks.
 // State assumptions are explicit PDL declarations, never inferred from
 // ResetValue metadata.
 // The borrowed netlist must outlive the scheduler.

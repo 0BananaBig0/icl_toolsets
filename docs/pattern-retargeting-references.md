@@ -309,3 +309,25 @@ PDL names the underlying storage. The diagnostic names the alias and its ICL
 source. The frontend, elaborator and flat serializer continue to preserve the
 property; source/flat rejection and output preservation have regression tests.
 The guard does not claim complete end-state semantic validation or execution.
+
+
+### Combinational port writes
+
+IEEE 1687-2014 §7.6(c–i), printed p. 153, assigns data ports controlling state
+separate from expected/hardware state, initializes controlling bits from non-X
+default/reset values or zero, and includes primary-input stimulation in iApply.
+§7.9.11(d), printed p. 167, retains controlling state on X writes. Therefore an
+X write to a disabled output is not a no-op: its previous controlling value
+must be established. The scheduler stores that history separately, including
+when another command changes the upstream input.
+
+The measured Tessent Shell 2026.2 `WidthProbe_xx96` and
+`AscendingWidthProbe_xx96` cases accept explicit X on fixed leading padding
+of narrow OneHotDataGroup Port contributors, while 0/1 there is rejected as
+fixed unknown. This is a narrowly implemented vendor behavior, not a general
+IEEE rule allowing X to discard controlling requirements. The proof follows
+Source bit mappings to a OneHotDataGroup and requires every contributor to
+pad that bit. Dynamic enable uncertainty is never classified as padding.
+Native and symbolic models retain the padding as X. The existing three-state
+truth-table tests independently check unique, absent, multiple and uncertain
+enables against §6.4.15 and Tessent's OneHotDataGroup reference topic.

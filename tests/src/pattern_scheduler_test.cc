@@ -18,6 +18,111 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestPrimaryWrites() {
+  pattern::Design design;
+  design.AddIcl("primary.icl", R"(
+Module Primary {
+ DataInPort data[3:0]; DataInPort unused;
+ DataOutPort out[3:0] { Source data; }
+ DataOutPort inverted[3:0] { Source ~data; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Primary");
+  pattern::ScanScheduler scheduler(netlist);
+  const auto first =
+      scheduler.Apply({{"iWrite", {"data[0]", "1"}, "primary:1", {}}});
+  Require(first.size() == 1 && first[0].writes.at("data") == "0001",
+          "partial primary write fills unspecified initial bits");
+  Require(scheduler.Value("unused") == "x",
+          "unrelated primary input remains undriven");
+  scheduler.Assume("data", "1010");
+  scheduler.Apply({{"iWrite", {"data", "0bxx01"}, "primary:2", {}},
+                   {"iWrite", {"data[1]", "1"}, "primary:3", {}}},
+                  true);
+  Require(scheduler.Value("out") == "1011",
+          "masked primary values and last write wins");
+  scheduler.Apply({{"iWrite", {"out", "0b1011"}, "primary:3a", {}}});
+  const auto selected =
+      scheduler.Apply({{"iWrite", {"out[2]", "1"}, "primary:4", {}}});
+  Require(selected.size() == 1 && scheduler.Value("out") == "1111",
+          "forwarded port writes preserve other known bits");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"out", "0"}, "primary:5", {}},
+                     {"iWrite", {"inverted", "0"}, "primary:6", {}}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("cannot justify") != std::string::npos;
+  }
+  Require(rejected && scheduler.Value("out") == "1111",
+          "conflicting parallel targets fail without changing state");
+}
+void TestPrimaryControllingState() {
+  pattern::Design design;
+  design.AddIcl("primary-control.icl", R"(
+Module Control {
+ DataInPort data;
+ DataInPort enable;
+ DataOutPort out { Source data; Enable enable; }
+ Alias paired[1:0] = data, enable { AccessTogether; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Control");
+  pattern::ScanScheduler scheduler(netlist);
+  const auto first =
+      scheduler.Apply({{"iWrite", {"out", "0bX"}, "control:1", {}}});
+  Require(first.size() == 1 && scheduler.Value("out") == "0" &&
+              first[0].writes.at("data") == "0" &&
+              first[0].writes.at("enable") == "1",
+          "unknown hardware is not the initial output controlling state");
+  scheduler.Apply({{"iWrite", {"out", "1"}, "control:2", {}}});
+  scheduler.Apply({{"iWrite", {"data", "0"}, "control:3", {}}});
+  scheduler.Apply({{"iWrite", {"out", "0bX"}, "control:4", {}}});
+  Require(scheduler.Value("out") == "1",
+          "output controlling state survives writes to upstream pins");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"paired[1]", "0"}, "control:5", {}}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("AccessTogether") != std::string::npos;
+  }
+  Require(rejected && scheduler.Value("out") == "1",
+          "unimplemented whole-alias port access must not be ignored");
+}
+void TestPrimaryLimits() {
+  pattern::Design design;
+  design.AddIcl("wide-primary.icl", R"(
+Module Wide {
+ DataInPort data[1023:0];
+ DataOutPort out[1023:0] { Source data; }
+}
+Module TooWide { DataInPort data[4096:0]; }
+)");
+  const auto netlist = pattern::Elaborate(design, "Wide");
+  pattern::ScanScheduler scheduler(netlist);
+  const auto start = std::chrono::steady_clock::now();
+  const std::string bits(1024, '1');
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"out", "0b" + bits}, "wide:1", {}}});
+  Require(steps.size() == 1 && steps[0].writes.at("data") == bits,
+          "wide primary-input replay");
+  std::cout << "primary write: bits=1024 seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+  const auto large = pattern::Elaborate(design, "TooWide");
+  pattern::ScanScheduler limited(large);
+  bool rejected = false;
+  try {
+    limited.Apply({{"iWrite", {"data", "1"}, "wide:2", {}}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("resource limit") != std::string::npos;
+  }
+  Require(rejected && limited.Value("data") == std::string(4097, 'x'),
+          "oversized primary input fails atomically");
+}
 void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
   const std::string directory =
       "tests/cases/ours/pattern_generation/access_link/";
@@ -668,6 +773,9 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestPrimaryWrites();
+    TestPrimaryLimits();
+    TestPrimaryControllingState();
     TestTapScheduling(false, false, false);
     TestTapScheduling(true, false, false);
     TestTapScheduling(false, true, true);

@@ -75,8 +75,9 @@ class ScanScheduler::Impl {
                                  " requires restoration scheduling, which is "
                                  "not implemented");
       }
-      if (node.kind == "ScanRegister") {
-        registers_.push_back(id);
+      if (node.kind == "ScanRegister" || node.kind == "DataInPort" ||
+          node.kind == "DataOutPort") {
+        if (node.kind == "ScanRegister") registers_.push_back(id);
         auto initial = std::string(node.Width(), '0');
         for (const auto* property : {"ResetValue", "DefaultLoadValue"}) {
           const auto found = node.constants.find(property);
@@ -286,7 +287,7 @@ class ScanScheduler::Impl {
     for (const auto& [id, value] : changed) {
       if (execution_) execution_->Assume(id, value);
       state_.Assume(id, value);
-      if (netlist_.nodes[id].kind == "ScanRegister") {
+      if (fill_.count(id)) {
         for (size_t i = 0; i < value.size(); ++i) {
           if (value[i] != 'x') fill_.at(id)[i] = value[i];
         }
@@ -319,6 +320,165 @@ class ScanScheduler::Impl {
   }
 
  private:
+  static bool PrimaryInput(const NetlistNode& node) {
+    return node.scope == 0 && node.kind == "DataInPort" &&
+           !node.inputs.count("Source");
+  }
+  bool FixedOneHotPadding(BitReference ref) const {
+    std::set<Key> visited;
+    while (ref.node != kMissing &&
+           visited.insert({ref.node, ref.index}).second) {
+      const auto& node = netlist_.nodes.at(ref.node);
+      const size_t offset = Offset(node, ref.index);
+      if (node.kind == "OneHotDataGroup") {
+        return !node.one_hot_sources.empty() &&
+               std::all_of(node.one_hot_sources.begin(),
+                           node.one_hot_sources.end(),
+                           [&](const OneHotSource& source) {
+                             return source.kind == OneHotSourceKind::kPort &&
+                                    offset < node.Width() - source.bits.size();
+                           });
+      }
+      const auto source = node.inputs.find("Source");
+      if (source == node.inputs.end()) break;
+      ref = source->second.at(offset);
+    }
+    return false;
+  }
+  std::vector<ScanStep> SolvePrimaryWrites(
+      const std::vector<Operation>& operations, bool together) {
+    for (const auto& node : netlist_.nodes) {
+      if (node.model == ModelKind::kRegister ||
+          (node.model == ModelKind::kPort && node.kind == "AddressPort")) {
+        throw std::runtime_error(
+            "stateful/addressed primary-input scheduling is not implemented");
+      }
+    }
+    std::map<size_t, std::string> goals;
+    for (const auto& operation : operations) {
+      if (operation.command != "iWrite" || operation.arguments.size() != 2) {
+        throw std::runtime_error(
+            "primary-input scheduling requires literal iWrite target/value");
+      }
+      const auto target = ResolvePdlTarget(netlist_, operation.arguments[0]);
+      if (!target.access_together.empty()) {
+        throw std::runtime_error(
+            "AccessTogether primary-port groups are not implemented");
+      }
+      const auto bits =
+          PdlDataValue(context_, netlist_, target, operation.arguments[1]);
+      for (size_t i = 0; i < bits.size(); ++i) {
+        const auto& ref = target.bits[i];
+        if (ref.node == kMissing ||
+            (netlist_.nodes.at(ref.node).kind != "DataInPort" &&
+             netlist_.nodes.at(ref.node).kind != "DataOutPort")) {
+          throw std::runtime_error(
+              "primary write requires a data port or its Alias");
+        }
+        auto found = goals.find(ref.node);
+        if (found == goals.end()) {
+          auto goal = fill_.at(ref.node);
+          const auto& node = netlist_.nodes[ref.node];
+          for (size_t bit = 0; bit < goal.size(); ++bit) {
+            const int64_t index =
+                node.left + (node.left <= node.right
+                                 ? static_cast<int64_t>(bit)
+                                 : -static_cast<int64_t>(bit));
+            // Tessent permits X on structurally padded bits; disabled ports are
+            // not padding and retain their distinct 0/1 controlling state.
+            if (FixedOneHotPadding({ref.node, index})) goal[bit] = 'x';
+          }
+          found = goals.emplace(ref.node, std::move(goal)).first;
+        }
+        if (bits[i] != 'x') {
+          found->second.at(Offset(netlist_.nodes[ref.node], ref.index)) =
+              ref.inverted ? (bits[i] == '1' ? '0' : '1') : bits[i];
+        }
+      }
+    }
+    z3::optimize solver(context_);
+    z3::params parameters(context_);
+    parameters.set("timeout", 2000U);
+    solver.set(parameters);
+    Values assignments;
+    std::map<size_t, z3::expr> drives;
+    std::vector<z3::expr> deviations;
+    auto count = context_.int_val(0);
+    size_t total_bits = 0;
+    for (const auto& [name, id] : netlist_.node_ids) {
+      const auto& node = netlist_.nodes[id];
+      if (!PrimaryInput(node)) continue;
+      total_bits += node.Width();
+      if (drives.size() >= 256 || total_bits > 4096) {
+        throw std::runtime_error(
+            "primary-input scheduler resource limit exceeded");
+      }
+      const auto drive = context_.bool_const(("drive_" + name).c_str());
+      const auto bits =
+          context_.bv_const(("pin_" + name).c_str(), node.Width());
+      const auto known =
+          SymbolicValue::Literal(context_, std::string(node.Width(), '1')).bits;
+      assignments.emplace(
+          id, Choose(drive, {bits, known},
+                     SymbolicValue::Literal(context_, state_.Value(id))));
+      drives.emplace(id, drive);
+      count = count + z3::ite(drive, context_.int_val(1), context_.int_val(0));
+      deviations.push_back(bits ^
+                           SymbolicValue::Literal(context_, fill_.at(id)).bits);
+      // An explicitly written primary port remains an action even if unchanged.
+      if (goals.count(id)) solver.add(drive);
+    }
+    SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
+    for (const auto& [id, goal] : goals) {
+      const auto wanted = SymbolicValue::Literal(context_, goal);
+      const auto actual = values.Value(id);
+      solver.add((actual.known & wanted.known) == wanted.known &&
+                 (actual.bits & wanted.known) == wanted.bits);
+    }
+    solver.minimize(count);
+    // Name order and bit-vector objectives make flat/source replay
+    // deterministic.
+    for (const auto& deviation : deviations) solver.minimize(deviation);
+    const auto status = solver.check();
+    if (status == z3::unsat) {
+      throw std::runtime_error(
+          "cannot justify primary-input write requirements");
+    }
+    if (status != z3::sat) {
+      throw std::runtime_error("primary-input solver resource limit reached");
+    }
+    const auto model = solver.get_model();
+    NetworkState replay(state_);
+    auto fill = fill_;
+    ScanStep step;
+    step.together = together;
+    for (const auto& [id, drive] : drives) {
+      if (!model.eval(drive, true).is_true()) continue;
+      const auto bits = Decode(model, assignments.at(id));
+      replay.Drive(id, bits);
+      fill.at(id) = bits;
+      step.writes.emplace(netlist_.nodes[id].name, bits);
+    }
+    for (const auto& [id, goal] : goals) {
+      const auto actual = replay.Value(id);
+      for (size_t i = 0; i < goal.size(); ++i) {
+        if (goal[i] != 'x' && actual[i] != goal[i]) {
+          throw std::runtime_error(
+              "symbolic/concrete primary replay mismatch at " +
+              netlist_.nodes[id].name);
+        }
+      }
+    }
+    for (const auto& [id, goal] : goals) {
+      for (size_t i = 0; i < goal.size(); ++i) {
+        if (goal[i] != 'x') fill.at(id)[i] = goal[i];
+      }
+    }
+    state_.Restore(replay);
+    fill_ = std::move(fill);
+    return step.writes.empty() ? std::vector<ScanStep>{}
+                               : std::vector<ScanStep>{std::move(step)};
+  }
   struct Edge {
     size_t next, choice;
     bool inverted;
@@ -578,6 +738,9 @@ class ScanScheduler::Impl {
   std::vector<ScanStep> Solve(const std::vector<Operation>& operations,
                               bool together) {
     if (operations.empty()) return {};
+    if (roots_.empty() && registers_.empty() && !tap_) {
+      return SolvePrimaryWrites(operations, together);
+    }
     if (tap_ && !tap_ready_) {
       throw std::runtime_error(
           "TAP state is unknown; explicit iReset is required");

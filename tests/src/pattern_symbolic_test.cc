@@ -58,6 +58,49 @@ Module Signals {
         }
     }
 }
+void TestOneHotPortValues() {
+  pattern::Design design;
+  design.AddIcl("one_hot.icl", R"(
+Module Ports {
+ DataInPort a[1:0]; DataInPort b[1:0];
+ DataInPort ea; DataInPort eb;
+ DataOutPort pa[1:0] { Source a; Enable ea; }
+ DataOutPort forwarded[1:0] { Source pa; }
+ DataOutPort pb[1:0] { Source b; Enable eb; }
+ OneHotDataGroup group[0:2] { Port forwarded; Port pb; }
+ DataOutPort out[2:0] { Source group; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Ports");
+  z3::context context;
+  for (char ea : std::string("01x")) {
+    for (char eb : std::string("01x")) {
+      pattern::NetworkState native(netlist);
+      std::map<size_t, pattern::SymbolicValue> assignments;
+      for (const auto& [name, value] : std::map<std::string, std::string>{
+               {"a", "10"}, {"b", "01"}, {"ea", {ea}}, {"eb", {eb}}}) {
+        const auto id = netlist.node_ids.at(name);
+        native.Drive(id, value);
+        assignments.emplace(id,
+                            pattern::SymbolicValue::Literal(context, value));
+      }
+      const std::string expected = ea == '1' && eb == '0'   ? "x10"
+                                   : ea == '0' && eb == '1' ? "x01"
+                                                            : "xxx";
+      pattern::SymbolicNetwork symbolic(netlist, context, assignments);
+      for (const auto* name : {"group", "out"}) {
+        const auto id = netlist.node_ids.at(name);
+        Require(native.Value(id) == expected,
+                "one-hot unique selection and unknown padding truth table");
+        const auto value = symbolic.Value(id);
+        const auto want = pattern::SymbolicValue::Literal(context, expected);
+        z3::solver solver(context);
+        solver.add(value.bits != want.bits || value.known != want.known);
+        Require(solver.check() == z3::unsat,
+                "symbolic one-hot value matches independent truth table");
+      }
+    }
+  }
+}
 void TestJustification() {
   pattern::Design design;
   design.AddIcl("justify.icl", R"(
@@ -154,6 +197,7 @@ Module Targets {
 int main() {
   try {
     TestTernaryAgreement();
+    TestOneHotPortValues();
     TestJustification();
     TestPdlOperands();
     std::cout << "pattern symbolic tests passed\n";

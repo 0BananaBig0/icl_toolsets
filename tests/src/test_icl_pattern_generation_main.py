@@ -58,6 +58,41 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "replay.pdl")
         self.assertEqual(original, (self.root / "replay.pdl").read_text())
 
+    def test_primary_input_one_hot_write_round_trips(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/one_hot_width.icl"
+        for top, value in (("EqualWidthProbe", "0x96"),
+                           ("WidthProbe", "0bXXXXXXXX10010110"),
+                           ("AscendingWidthProbe", "0bXXXXXXXX10010110")):
+            with self.subTest(top=top):
+                (self.root / "source.pdl").write_text(
+                    f"iProcsForModule {top}\niWrite observed {value}\niApply\n")
+                inputs = ("--icl", fixture, "--top_module", top)
+                self.run_tool(*inputs, "--pdl", "source.pdl", "--output", "result.pdl",
+                              "--debug", "--local_reset", "reset.pdl")
+                output = (self.root / "result.pdl").read_text()
+                self.assertIn("iWrite data 0b10010110\n", output)
+                self.assertIn("iWrite enable 0b1\n", output)
+                self.assertEqual((self.root / "reset.pdl").read_bytes(),
+                                 (self.root / "source.pdl").read_bytes())
+                self.run_tool(*inputs, "--pdl", "result.pdl", "--output", "again.pdl")
+                self.assertEqual(output, (self.root / "again.pdl").read_text())
+                flat = self.root / f"debug/{top}.icl"
+                flat_bytes = flat.read_bytes()
+                self.run_tool("--icl", flat, "--pdl", "source.pdl", "--output", "flat/result.pdl", "--debug")
+                self.assertEqual(output, (self.root / "flat/result.pdl").read_text())
+                self.assertEqual(flat_bytes, (self.root / f"flat/debug/{top}.icl").read_bytes())
+        for top in ("WidthProbe", "AscendingWidthProbe"):
+            for value in ("0x96", "0xff96", "0b10010110XXXXXXXX"):
+                with self.subTest(top=top, rejected=value):
+                    (self.root / "source.pdl").write_text(
+                        f"iProcsForModule {top}\niWrite observed {value}\niApply\n")
+                    original = b"previous output\n"
+                    (self.root / "result.pdl").write_bytes(original)
+                    failure = self.run_tool("--icl", fixture, "--top_module", top,
+                                            "--pdl", "source.pdl", "--output", "result.pdl", ok=False)
+                    self.assertIn("cannot justify", failure.stdout)
+                    self.assertEqual((self.root / "result.pdl").read_bytes(), original)
+
     def test_tap_round_trips(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
         for name in ("simple.icl", "simple.bsdl"):

@@ -142,6 +142,9 @@ SymbolicValue SymbolicNetwork::Value(size_t node) {
     for (const auto& choice : object.choices) {
       for (const auto& bit : choice.source) add(bit);
     }
+    for (const auto& source : object.one_hot_sources) {
+      for (const auto& bit : source.bits) add(bit);
+    }
     for (const auto& term : object.logic) {
       for (const auto& bit : term.signals) add(bit);
     }
@@ -246,8 +249,25 @@ SymbolicValue SymbolicNetwork::Compute(size_t id) {
     }
     result = Select(defined, result, unknown);
   } else if (node.model == ModelKind::kGroup) {
-    throw std::runtime_error(node.origin +
-                             ": symbolic one-hot execution is not implemented");
+    if (node.kind != "OneHotDataGroup") {
+      throw std::runtime_error(
+          node.origin + ": symbolic one-hot scan execution is not implemented");
+    }
+    auto found = context_.bool_val(false), uncertain = context_.bool_val(false);
+    for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+      const auto enabled =
+          Read(netlist_.OneHotPortEnable(node.one_hot_sources[source]));
+      const auto known = enabled.known == context_.bv_val(1, 1);
+      const auto active = known && enabled.bits == context_.bv_val(1, 1);
+      uncertain = uncertain || !known || (found && active);
+      auto next = Read(node.OneHotSourceBit(source, 0));
+      for (size_t bit = 1; bit < node.Width(); ++bit) {
+        next = Concat(next, Read(node.OneHotSourceBit(source, bit)));
+      }
+      result = Select(active, next, result);
+      found = found || active;
+    }
+    result = Select(found && !uncertain, result, unknown);
   } else {
     const auto source = node.inputs.find("Source");
     if (source != node.inputs.end()) result = Bits(source->second);

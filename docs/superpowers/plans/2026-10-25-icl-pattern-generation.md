@@ -604,3 +604,45 @@ Parallel ports, DataRegisters and alias `iApplyEndState` need separate work.
 - [x] Finalize fresh remote evidence in README/docs and obtain independent
   verification of all hashes, traces and outcome counts; keep remaining
   generator acceptance gaps explicit. User requested commit/push after checks.
+
+
+### Task 4 continuation: combinational primary-input writes
+
+- Reuse the existing elaborated netlist, symbolic combinational evaluator,
+  concrete NetworkState, PDL values and CLI emitter. No new parser or token set.
+- First complete the purely combinational DataInPort-driven path: one iApply
+  drives necessary primary inputs; solve simultaneous target requirements,
+  retain partial-write state and replay target values before publishing.
+- Support OneHotDataGroup Port contributors with a uniform explicit Enable,
+  including forwarding DataOutPorts, unique selection and unknown leading pad
+  bits. Reject addressed/register contributors and unsupported enable forms
+  explicitly; do not guess their stateful access behavior.
+- Keep mixed scan/parallel scheduling and general addressed execution pending;
+  this step must finish the nine maintained port-width cases, not claim all 24.
+- Add failing native/symbolic truth-table and CLI source/flat/generated replay
+  tests, including masked writes, contradiction rollback and unused inputs.
+- Bound solver work and measure a representative larger combinational input.
+  Reuse the current Z3 backend instead of exponential input enumeration.
+- Run focused checks, independent review, full regression, sanitizer and coverage;
+  rerun the affected vendor comparisons without changing their source bytes.
+
+
+Completion evidence for this continuation:
+
+- [x] Reused netlist/state/symbolic/PDL paths; bounded primary-input writes and
+  OneHotDataGroup Port enable evaluation, with separate controlling history.
+- [x] Nine maintained Port-width outcomes: three accepted, six rejected;
+  source/flat/generated replay, rollback, X/history, enable truth table,
+  resource bound and 1024-bit scale tests pass.
+- [x] Independent review finding reproduced RED and fixed GREEN; unsupported
+  AccessTogether port groups explicitly rejected with a failing-first test.
+- [x] Full regression, focused/style/naming, ASan/UBSan and 19 installed CLI
+  tests pass. Strict coverage measured 95.3% lines / 60.5% branches and still
+  fails the unchanged 100%/90% gate; it was not waived or weakened.
+- [x] Tessent 2026.2 rerun matches 36 expected reference outcomes. Three newly
+  generated fixed-vector transactions match vendor pin values/apply grouping.
+  Strict traces retain 30 generator blockers, one vendor blocker and five
+  differences; no full-equivalence claim. Verified 236 input/22 export hashes.
+- [ ] General addressed and mixed scan/parallel scheduling, transitive local
+  reset release, merging and the original full pattern-generation acceptance
+  criteria remain required; this continuation is only the combinational path.

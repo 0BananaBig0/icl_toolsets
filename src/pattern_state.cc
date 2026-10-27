@@ -124,6 +124,9 @@ class SignalEvaluator {
           add(bit, serial);
         }
       }
+      for (const auto& source : node.one_hot_sources) {
+        for (const auto& bit : source.bits) add(bit, false);
+      }
       for (const auto& term : node.logic) {
         for (const auto& bit : term.signals) {
           add(bit, false);
@@ -186,8 +189,24 @@ class SignalEvaluator {
         }
       }
     } else if (node.model == ModelKind::kGroup) {
-      throw std::runtime_error(node.origin +
-                               ": one-hot state execution is not implemented");
+      if (node.kind != "OneHotDataGroup") {
+        throw std::runtime_error(node.origin +
+                                 ": one-hot scan execution is not implemented");
+      }
+      size_t selected = 0;
+      bool uncertain = false;
+      for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+        const char enable =
+            Read(netlist_.OneHotPortEnable(node.one_hot_sources[source]));
+        uncertain = uncertain || enable == 'x';
+        if (enable != '1') continue;
+        ++selected;
+        value.clear();
+        for (size_t bit = 0; bit < node.Width(); ++bit) {
+          value += Read(node.OneHotSourceBit(source, bit));
+        }
+      }
+      if (selected != 1 || uncertain) value = unknown;
     } else {
       const auto source = node.inputs.find("Source");
       if (source != node.inputs.end()) {

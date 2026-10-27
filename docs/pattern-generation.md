@@ -176,12 +176,61 @@ inversion, retains the common update as `iApply -together`, and contains no
 procedure calls. This example checks scheduling and deterministic replay; it
 is not a Tessent equivalence result.
 
+## Combinational primary-input writes
+
+For a network without scan/stateful/addressed elements, `iWrite` on data ports
+or ordinary aliases can solve for primary DataInPort values. One transaction
+satisfies the queued requirements and concrete replay verifies the result before
+publishing any state or output. Inputs unrelated to the goals remain undriven.
+The solver minimizes driven port vectors, then uses stable name/bit ordering
+relative to controlling fills to choose a deterministic solution.
+
+```icl
+Module Pins {
+  DataInPort data[7:0];
+  DataInPort enable;
+  DataOutPort value[7:0] { Source data; Enable enable; }
+}
+```
+
+```tcl
+iProcsForModule Pins
+iWrite value 0x96
+iApply
+```
+
+The generated transaction writes `data` as `0b10010110`, `enable` as `0b1`,
+then applies them. Native tests cover initial zero controlling state, X retention,
+independent output controlling history after upstream writes, last-write wins,
+contradiction rollback and preservation of unused inputs. Ordinary ports retain
+0/1 controlling values separately from potentially unknown hardware values.
+The fixed OneHot Port-width padding exception is documented in the
+[retargeting references](pattern-retargeting-references.md#combinational-port-writes).
+
+OneHotDataGroup accepts Port contributors whose DataOutPort paths have uniform
+explicit enables, including forwarding ports. Exactly one known-enabled
+contributor selects its data; zero, multiple or uncertain enables produce X.
+Register/instance contributors, mixed-node enable forwarding, OneHotScanGroup,
+addressed instances, DataRegisters, primary-port AccessTogether groups, reads
+and mixed scan/parallel scheduling remain unsupported and report errors.
+No new grammar or AST is introduced.
+
+This path is bounded to 256 primary input vectors and 4096 total input bits,
+with a two-second solver timeout. A limit is not proof of unreachability.
+The 1024-bit native regression (`make pattern-scheduler-check
+BISON=/usr/bin/bison`) measured 0.17–0.20 seconds for a direct output write on
+Linux x86_64 with GCC 16.2.1, `-O2`, and Z3 4.13.3. Logs are
+`build/primary-write-final-regression.log`; the timed region includes solving
+and concrete replay, not compilation. The prior backend rejected this input,
+so there is no supported old throughput baseline or claimed speedup. This is
+a scale check, not a throughput guarantee for arbitrary logic cones.
+
 ## Command support
 
 | Command | Current generator behavior |
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
-| `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
+| `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses and combinational primary-input writes; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
 | `iState` | Numeric assumptions for scan registers and top-level DataInPort/SelectPort pins, including aliases and slices; default or `-LastWrittenValue`; no device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
@@ -607,3 +656,42 @@ case counts and evidence. The repeat passed 22 harness and three trace tests;
 only documentation changed, so the previous full regression remains the latest
 complete check. Full generator equivalence and general reset rewriting remain
 unfinished.
+
+
+## Primary-input verification (2026-10-27)
+
+The complete `make check BISON=/usr/bin/bison -j4` passed with
+`ICL_REF_DIR=/tmp/icl-reference-honza-20261021` and the existing reference Python
+environment on PATH. This includes dynamic/static generator checks, 19 CLI
+cases, the symbolic and scheduler tests, 334/334 grammar rules, 119/119 scanner
+rules, and Vim/Neovim corpus runs of 38,633 ICL and 805 PDL files per editor.
+The final log is `build/primary-write-final-regression.log`.
+
+Focused checks, Google format/naming checks, and Clang AddressSanitizer plus
+UndefinedBehaviorSanitizer runs passed. Sanitizer targets were
+`pattern-generation-check pattern-symbolic-check pattern-scheduler-check`,
+with `ASAN_OPTIONS=detect_leaks=0`, `-O1 -g -fsanitize=address,undefined
+-fno-omit-frame-pointer`, and the existing external Z3 archive. That archive
+is not instrumented, and leak detection was not run. Evidence is in
+`build/primary-write-final-{focused,sanitizer}.log`.
+
+Independent review found incorrect output controlling-state initialization.
+A failing regression reproduced an all-X write incorrectly emitting no pin
+stimulation. The fix preserves controlling history separately, and the new
+case checks both initial state and later upstream changes. An additional
+partial AccessTogether port-alias regression first failed and now explicitly
+rejects unsupported whole-group access. Existing elaboration already rejects
+an addressed-instance bypass; no redundant validation was added.
+
+`make coverage BISON=/usr/bin/bison -j4` completed its tests but failed the
+unchanged strict coverage gate: **95.3% lines / 60.5% raw branches**, against
+100% / 90%. It is not reported as passing. Evidence is in
+`build/primary-write-coverage.log`; generated Flex/Bison internals remain excluded.
+
+`make install-dynamic BISON=/usr/bin/bison` succeeded; all 19 CLI tests passed
+against `/home/banana/.local/bin/icl-pattern-generation`. Installation and
+installed checks are logged in `build/primary-write-{install,installed-check}.log`.
+The [Tessent rerun](tessent-oracle.md#primary-input-rerun-2026-10-27) verifies the
+nine Port-width accept/reject outcomes and records the remaining comparison
+gaps. This continuation does not complete addressed scheduling, general local
+reset rewriting, mixed scan/parallel execution or full pattern equivalence.

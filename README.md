@@ -352,10 +352,17 @@ See the [command support table](docs/pattern-generation.md#command-support)
 before choosing a PDL sequence; parsing a command does not imply that the
 experimental generator can execute it.
 
+For purely combinational networks, `iWrite` can drive primary DataInPort pins
+through data ports and aliases, including OneHotDataGroup Port contributors
+with uniform explicit enables. Output X writes retain the target's controlling
+value; fixed OneHot width padding follows the measured Tessent behavior.
+Readback, addressed access and mixed scan/parallel transactions remain unsupported
+on this path. See the [limits and example](docs/pattern-generation.md#combinational-primary-input-writes).
+
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
-The generator's [verification record](docs/pattern-generation.md#local-reset-passthrough-verification-2026-10-27)
+The generator's [verification record](docs/pattern-generation.md#primary-input-verification-2026-10-27)
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
 
@@ -376,11 +383,14 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 | `--local_reset PATH` | Preserve one PDL input byte-for-byte when reset paths need no local-reset TDR release; reject local controls or multiple PDL inputs. |
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, addressed/one-hot execution, merges, system clocks, resources, the
-general local-reset rewrite, and full Tessent pattern equivalence remain
-unfinished. The [latest Tessent rerun](docs/tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
-matched all 36 expected reference outcomes. Generator comparisons still report
-blocked cases and differing traces, with no exact operation matches. Remote experiments
+scheduling, addressed execution, general one-hot execution, merges, system
+clocks, resources, the general local-reset rewrite, and full Tessent pattern
+equivalence remain
+unfinished. The [latest Tessent rerun](docs/tessent-oracle.md#primary-input-rerun-2026-10-27)
+matched all 36 expected reference outcomes. Three new pin-write cases match
+the vendor pin values and apply grouping, but strict trace comparison still
+reports 30 generator-blocked cases, one vendor-blocked case and five differing
+traces, with no exact operation matches. Remote experiments
 are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
 `test_Local_Reset`. New bundles contain `test_<case-name>` directories with no
 random suffixes; archived bundles remain readable.

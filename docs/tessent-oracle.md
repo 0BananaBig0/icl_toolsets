@@ -12,6 +12,55 @@ unimplemented. The dated sections below preserve historical measurements; their
 then-current implementation limitations are not the current support matrix.
 See [the generator guide](pattern-generation.md) for current capabilities.
 
+## Primary-input rerun (2026-10-27)
+
+The primary-input implementation makes three previously blocked maintained
+cases generate PDL: `EqualWidthProbe_0096`, `WidthProbe_xx96` and
+`AscendingWidthProbe_xx96`. The other six Port-width cases are intentionally
+invalid writes to unknown padding and now fail with a requirement-justification
+error; they remain negative cases, not missing valid pattern support.
+
+Fresh serial Tessent Shell 2026.2 execution reproduced **36/36 expected reference
+outcomes: 17 exports and 19 expected errors**. Six comparison jobs ran using
+generator-produced `local_reset.pdl`, preserving source bytes. The strict
+operation comparison reports:
+
+| Result | Cases |
+| --- | ---: |
+| Blocked at generator preparation (including negative cases) | 30 |
+| Blocked by vendor ICL71-1 (`SerialWrite`) | 1 |
+| Different operation sequences | 5 |
+| Exact operation matches | 0 |
+
+The three new differences are vector grouping: our `iWrite data 0b10010110`
+is represented by Tessent as `data[7]` through `data[0]` writes with those same
+bits. Both write `enable=1` and use one `iApply`. An explicit expansion of
+these three fixed 8-bit fixtures verified the pin transaction. This check is
+limited to those fixtures; it is not a general hardware-equivalence checker
+and does not change the strict trace status. The other two differences are
+the previously documented TAP traces. Full Tessent equivalence remains unmet.
+
+The reference runner returned 0. The comparison runner and comparison command
+returned 1 because unresolved cases remain. All **236 input/script hashes**
+and **22 export hashes** were verified after retrieval (127/17 reference and
+109/5 comparison). A fresh preparation with the final reviewed binary produced
+identical input hashes for all six remote comparison jobs, including generated
+PDL, reset PDL and Tcl; no remote input needed replacement after review fixes.
+
+Remote evidence is preserved under:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_primary_input_writes/
+  tessent-primary-reference/test_<case-id>/
+  tessent-primary-comparison/test_<case-id>/
+```
+
+Ignored local records are `build/tessent-primary-{reference,comparison}-evidence/`,
+`build/tessent-primary-verification.json`,
+`build/tessent-primary-port-transactions.json`, and
+`build/primary-write-{remote,comparison}.log`. Generated vendor outputs and
+compiled artifacts are not committed.
+
 ## Prefixed-layout rerun (2026-10-27)
 
 The requested repeat run against commit `a39fc7b` matched **36/36 expected

@@ -162,6 +162,7 @@ struct Netlist {
   std::map<std::string, size_t> node_ids;
   std::map<std::string, TapRuntimeModel> taps;
   const NetlistNode& NodeAt(const std::string& path) const;
+  BitReference OneHotPortEnable(const OneHotSource& source) const;
   int64_t Integer(const Expression& expression) const;
   Constant Value(const Expression& expression, size_t width = 0) const;
   Expression ExpressionAt(size_t scope, icl::SourceSpan span) const;
