@@ -432,7 +432,7 @@ scheduling, addressed execution, general one-hot execution, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
 rewriting, and full Tessent pattern
 equivalence remain
-unfinished. The [latest full-manifest Tessent rerun](docs/tessent-oracle.md#primary-input-rerun-2026-10-27)
+unfinished. The [latest full-manifest Tessent rerun](docs/tessent-oracle.md#protected-scheduling-rerun-2026-10-27)
 matched all 36 expected reference outcomes. Three new pin-write cases match
 the vendor pin values and apply grouping, but strict trace comparison still
 reports 30 generator-blocked cases, one vendor-blocked case and five differing
@@ -443,6 +443,10 @@ random suffixes; archived bundles remain readable.
 The [new transitive-reset probe](docs/tessent-oracle.md#transitive-local-reset-rewrite-2026-10-27)
 also exports successfully in Tessent, but its strict operation trace differs;
 it is not an approved equivalence golden.
+Three new reservation probes also exported successfully in Tessent, but retain
+strict trace differences; the explicit-release case has a different final SIB
+state. All seven existing formatter/pattern standards were requalified under
+their original policies without replacing their expected outputs.
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

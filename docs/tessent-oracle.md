@@ -1,5 +1,85 @@
 # Tessent PDL differential tests
 
+## Protected scheduling rerun (2026-10-27)
+
+Fresh serial Tessent Shell **2026.2** runs against generator commit `ea7f5d1`
+reproduced **36/36 expected reference outcomes** (17 exports, 19 expected errors).
+The maintained comparison manifest still has 30 generator preparation failures,
+one expected vendor failure (`SerialWrite`, ICL71-1), five differing operation
+traces and **zero exact operation matches**. Expected negative cases remain in
+these counts. This is not a full equivalence pass.
+
+The three new authored reservation probes are in
+`tests/cases/ours/pattern_generation/resources/oracle_cases.json`. They use the
+existing AccessProbe BSDL, a two-bit SIB control and a select-qualified child
+instrument. They cover persistent takes, default-instance takes with iPrefix,
+and explicit nested release. Tessent consumes each generator-produced
+`--local_reset` artifact; the generator consumes the original source PDL.
+All three export successfully, but strict comparison reports differences:
+
+| Probe | Observed comparison |
+| --- | --- |
+| Persistent/default take | Both write `gate=11` then `leaf.value=10100101`, preserving `gate=11`. Tessent also emits explicit TAP instruction write/read/apply and splits iState into individual bits. |
+| Explicit release | Both open the gate and write the target. Our final gate is `00`; Tessent retains `01`. This is a real final-state difference. |
+
+The trace helper now retains literal `iState` commands and operands, rather than
+rejecting them as unsupported. It does not discard assumptions, turn them into
+hardware writes, or accept dynamic values. The new tests distinguish changed or
+missing assumptions. These three probes remain unqualified as equivalence goldens.
+An initial local probe with unqualified downstream updates was rejected by the
+scheduler; the maintained fixture explicitly qualifies the child select by the
+SIB. This does not add support for arbitrary bypassed-register update behavior.
+
+The transitive-local-reset probe was also rerun successfully. Its strict trace
+still differs, including the previously documented final SIB state.
+
+Golden requalification ran 12 source/candidate jobs with Verilog testbench
+exports, plus two dedicated ScalarPins PDL fixed-point jobs. All six formatter
+standards passed both PDL and complete testbench-bundle comparison. ScalarPins
+passed its existing PDL-only generator certification policy. Fresh artifacts,
+traces and applicable normalized testbench hashes match **all seven existing
+standards**, so the committed standards were not replaced.
+
+The additional ScalarPins generator testbench check fails the strict bundle
+policy solely because `.vec` comments describe `observed=1` in the source and
+`data=1, enable=1` in the flattened input. That stronger check remains a failure;
+its result was not normalized away. The two vector-port generator cases still
+fail the literal PDL fixed-point criterion. See [golden policy](tessent-goldens.md).
+
+Across the six completed bundles, all **307 input/script hashes**, **40 PDL
+export hashes** and **48 testbench-file hashes** verified after retrieval.
+Prepared bundle metadata also matched the local staged originals. After the
+parser initialization fix below, fresh preparation reproduced all staged input
+hashes for the six maintained, one reset and three reservation comparison jobs;
+the seven freshly qualified standards also passed with the rebuilt tools.
+The 60 vendor
+executions comprise 40 successful exports and 20 expected tool errors. The
+30 failed generator preparations never launched a vendor job.
+
+Remote evidence is retained in:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_protected_scheduling/
+```
+
+The completed bundles are `tessent-reservations-reference`, `-comparison`,
+`-goldens`, `-local-reset`, `-qualified-resources` and `-pattern-fixed-point`.
+The earlier `-resources` preparation failure is retained separately. Local
+retrieved bundles are ignored under `build/tessent-reservations-*-evidence/`.
+Hash and certification summaries are in `build/tessent-reservations-verification.json`,
+`-certification.json` and `-standards-comparison.json`; fresh certificates stay
+under `build/tessent-reservations-certified/`.
+
+During verification, the instrumented trace helper exposed a shared PDL parser
+initialization crash in Tcl's allocator on vector tokens. Passing the existing
+lazy parser interpreter into Tcl_ParseCommand initializes it before parsing;
+no Tcl_Init or script evaluation is added. After this fix, full `make check`
+passed, including dynamic/static generator checks, all grammar/scanner rules,
+seven offline goldens and Vim/Neovim corpus checks. Four trace tests and eighteen
+resource tests passed ASan/UBSan with leak detection enabled. Independent review
+found no blocking issues. Strict authored-C++ coverage was not rerun.
+Final verification evidence is recorded in the [rerun plan](superpowers/plans/2026-10-27-tessent-protected-rerun.md).
+
 ## Transitive local-reset rewrite (2026-10-27)
 
 The maintained case at
@@ -52,9 +132,8 @@ explicitly certified outputs for offline regression. It never substitutes
 local-reset output for the flattened pattern.
 
 The generator executable, BSDL loader and single-TAP scheduler now exist.
-Comparison now accepts the restricted `--local_reset` passthrough for
-networks without instrument-controlled resets; general reset rewriting remains
-unimplemented. The dated sections below preserve historical measurements; their
+Comparison uses the generator-produced `--local_reset` artifact, including
+the supported transitive local-reset rewrite. The dated sections below preserve historical measurements; their
 then-current implementation limitations are not the current support matrix.
 See [the generator guide](pattern-generation.md) for current capabilities.
 

@@ -221,6 +221,34 @@ class Reservations(unittest.TestCase):
             with self.subTest(target=target):
                 self.generate(f'iTake {target}\niWrite target 5\niApply\n', ok=False)
 
+    def test_vendor_reservation_probes_and_replay(self):
+        bsdl = FIXTURE.parent / 'access_link/simple.bsdl'
+        for name in ('persistent', 'default', 'release'):
+            with self.subTest(name=name):
+                source = FIXTURE / f'vendor_{name}.pdl'
+                inputs = ['--icl', str(FIXTURE / 'vendor.icl'), '--bsdl', 'AccessProbe', str(bsdl)]
+                result = subprocess.run([str(BIN), *inputs, '--pdl', str(source),
+                                         '--output', 'result.pdl', '--local_reset', 'reset.pdl',
+                                         '--debug'], cwd=self.root, text=True,
+                                        capture_output=True, timeout=40)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                text = (self.root / 'result.pdl').read_text()
+                self.assertIn('iWrite core.leaf.value 0b10100101', text)
+                self.assertEqual(text.count('iApply'), 2)
+                if name != 'release':
+                    self.assertEqual([line for line in text.splitlines()
+                                      if line.startswith('iWrite core.gate ')],
+                                     ['iWrite core.gate 0b11'] * 2)
+                for icl, pdl in [(FIXTURE / 'vendor.icl', self.root / 'result.pdl'),
+                                 (FIXTURE / 'vendor.icl', self.root / 'reset.pdl'),
+                                 (self.root / 'debug/ResourceAccessTop.icl', source)]:
+                    replay = subprocess.run([str(BIN), '--icl', str(icl), '--pdl', str(pdl),
+                                             '--bsdl', 'AccessProbe', str(bsdl),
+                                             '--output', 'replay.pdl'], cwd=self.root,
+                                            text=True, capture_output=True, timeout=40)
+                    self.assertEqual(replay.returncode, 0, replay.stdout + replay.stderr)
+                    self.assertEqual(text, (self.root / 'replay.pdl').read_text())
+
 
 if __name__ == '__main__':
     unittest.main()

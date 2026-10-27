@@ -219,3 +219,20 @@ No product C++ changed. C++ coverage was not remeasured for this Python test
 harness; the previous strict coverage result remains 95.3% lines / 60.5% branches,
 below the unchanged 100%/90% requirement. Full pattern-retargeting acceptance
 remains separate from this new regression capability.
+
+## Protected scheduling requalification (2026-10-27)
+
+The [fresh rerun](tessent-oracle.md#protected-scheduling-rerun-2026-10-27)
+requalified all seven stored standards under their original policies: six
+schema-2 formatter standards with PDL and full testbench comparison, and the
+schema-1 ScalarPins generator standard with PDL fixed-point comparison. Their
+artifacts, traces and applicable normalized testbench hashes remain unchanged;
+no standard was overwritten.
+
+The optional stronger ScalarPins generator testbench comparison failed because
+vector-file comments identify the original `observed` write versus flattened
+`data`/`enable` writes. The strict testbench policy retains those comments, so
+this result remains a failure. A separate fresh two-job run using the existing
+PDL-only generator policy passed. Vector-port generator fixed points remain
+unqualified. The initial 12-job certification outcomes and all raw vendor files
+are retained under ignored `build/tessent-reservations-*` paths.

@@ -7,8 +7,8 @@
 #include <stdexcept>
 #include <string>
 
-#include "utility/json.h"
 #include "pdl/pdl_document.h"
+#include "utility/json.h"
 #include "utility/text_input.h"
 
 namespace {
@@ -54,8 +54,9 @@ Json Trace(const pdl::Document& document, const std::string& entry) {
     }
   }
   if (!entry.empty() && !found) throw std::runtime_error("missing entry");
-  const std::set<std::string> allowed = {
-      "iWrite", "iRead", "iApply", "iReset", "iRunLoop", "iScan", "iClock"};
+  const std::set<std::string> allowed = {"iWrite", "iRead",    "iApply",
+                                         "iReset", "iRunLoop", "iScan",
+                                         "iClock", "iState"};
   Json::Elements operations;
   for (const auto& command : *commands) {
     if (command.words.empty()) continue;

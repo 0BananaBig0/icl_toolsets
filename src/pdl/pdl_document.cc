@@ -638,7 +638,7 @@ std::vector<Command> Document::Parse(size_t begin, size_t end, int depth) {
   while (begin < end) {
     Tcl_Parse parsed{};
     const int result =
-        Tcl_ParseCommand(nullptr, ParserData() + begin,
+        Tcl_ParseCommand(ParserInterpreter(), ParserData() + begin,
                          static_cast<TclCount>(end - begin), 0, &parsed);
     if (parsed.commentStart && parsed.commentSize) {
       const size_t start = parsed.commentStart - ParserData();

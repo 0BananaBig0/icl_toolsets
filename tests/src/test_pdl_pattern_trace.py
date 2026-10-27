@@ -37,11 +37,27 @@ class Trace(unittest.TestCase):
         self.assertEqual(b.returncode, 0, b.stderr)
         self.assertNotEqual(json.loads(a.stdout), json.loads(b.stdout))
 
+    def test_state_assumptions_are_retained_in_strict_comparison(self):
+        source = 'iState gate[0] 0b1 -LastWrittenValue\niWrite r 5\niApply\n'
+        actual = self.run_trace(source)
+        wrapped = self.run_trace('iProcsForModule M\niProc oracle {} {\n' + source + '}\n', 'oracle')
+        self.assertEqual(actual.returncode, 0, actual.stderr)
+        self.assertEqual(wrapped.returncode, 0, wrapped.stderr)
+        expected = [['iState', 'gate[0]', '0b1', '-LastWrittenValue'],
+                    ['iWrite', 'r', '5'], ['iApply']]
+        self.assertEqual(json.loads(actual.stdout)['operations'], expected)
+        self.assertEqual(json.loads(wrapped.stdout)['operations'], expected)
+        for changed in (source.replace('0b1', '0b0'), 'iWrite r 5\niApply\n'):
+            result = self.run_trace(changed)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertNotEqual(json.loads(result.stdout)['operations'], expected)
+
     def test_dynamic_commands_ambiguous_entries_and_missing_entry_rejected(self):
         cases = [('iWrite r [exec echo bad]\niApply', ''),
                  ('iWrite r[0][exec echo bad] 1\niApply', ''),
                  (r'iWrite r \x31' + '\niApply', ''),
                  ('iWrite r $value\niApply', ''),
+                 ('iState r $value\niApply', ''),
                  ('iCall run', ''),
                  ('iProcsForModule M\niProc oracle {} {iApply}\niApply', 'oracle'),
                  ('iProcsForModule M\niProc other {} {iApply}', 'oracle'),

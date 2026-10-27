@@ -1,0 +1,46 @@
+{
+  "cases": [
+    {
+      "id": "resource_persistent",
+      "top": "ResourceAccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/vendor.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/vendor_persistent.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "resource_default",
+      "top": "ResourceAccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/vendor.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/vendor_default.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "resource_release",
+      "top": "ResourceAccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/vendor.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/vendor_release.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}
