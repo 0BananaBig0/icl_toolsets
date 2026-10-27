@@ -1,0 +1,4 @@
+iProcsForModule AccessTop
+iReset
+iWrite core.r 0x96
+iApply

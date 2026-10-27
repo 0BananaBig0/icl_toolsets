@@ -430,6 +430,47 @@
       "expected": "error",
       "diagnostic": "ICL1-1",
       "bsdl_entity": "AccessProbe"
+    },
+    {
+      "id": "SerialWrite",
+      "top": "SerialOracle",
+      "icl": [
+        "tests/cases/ours/pattern_generation/oracle_serial.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/oracle_serial_write.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "error",
+      "diagnostic": "ICL71-1"
+    },
+    {
+      "id": "AccessLink_ProcedureReset",
+      "top": "AccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/access_link/simple.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/access_link/reset_calls.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok",
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe"
+    },
+    {
+      "id": "AccessLink_ExplicitReset",
+      "top": "AccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/access_link/simple.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/access_link/reset_write.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

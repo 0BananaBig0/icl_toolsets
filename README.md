@@ -355,7 +355,7 @@ experimental generator can execute it.
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
-The generator's [verification record](docs/pattern-generation.md#end-state-directive-guard-verification-2026-10-27)
+The generator's [verification record](docs/pattern-generation.md#local-reset-passthrough-verification-2026-10-27)
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
 
@@ -373,13 +373,15 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 | `--output PATH` | Write generated PDL; defaults to `out/<top>.pdl`. |
 | `--debug` | Also write `debug/<top>.icl` beside the output, including TAP/BSDL metadata for replay. |
 | `--log PATH` | Copy stdout diagnostics to a file. |
-| `--local_reset PATH` | Reserved; the separate procedure-preserving rewrite is not implemented. |
+| `--local_reset PATH` | Preserve one PDL input byte-for-byte when reset paths need no local-reset TDR release; reject local controls or multiple PDL inputs. |
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
 scheduling, addressed/one-hot execution, merges, system clocks, resources, the
-separate local-reset artifact, and full Tessent pattern equivalence remain
-unfinished. The [latest vendor rerun](docs/tessent-oracle.md#rerun-2026-10-27)
-separates Tessent reference outcomes from blocked generator comparisons.
+general local-reset rewrite, and full Tessent pattern equivalence remain
+unfinished. The [latest vendor comparison](docs/tessent-oracle.md#reset-passthrough-comparison-2026-10-27)
+records actual operation differences and remaining blockers. Remote experiments
+are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
+`test_Local_Reset`; new test folders use descriptive names without random suffixes.
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

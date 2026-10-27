@@ -67,7 +67,8 @@ class Generator(unittest.TestCase):
             "iRunLoop 0x100000000 -tck\niRunLoop -tck 0b11\niRunLoop 0\n"
             "iRead core.r 0x59\niWrite core.r 0xa6\niApply\n")
         inputs = ("--icl", "simple.icl", "--bsdl", "AccessProbe", "simple.bsdl")
-        self.run_tool(*inputs, "--pdl", "source.pdl", "--debug")
+        self.run_tool(*inputs, "--pdl", "source.pdl", "--debug", "--local_reset", "reset.pdl")
+        self.assertEqual((self.root / "reset.pdl").read_bytes(), (self.root / "source.pdl").read_bytes())
         original = (self.root / "out/AccessTop.pdl").read_text()
         self.assertIn("iReset -sync\n", original)
         self.assertEqual(original.count("iApply -together"), 1)
@@ -182,6 +183,68 @@ class Generator(unittest.TestCase):
                     self.assertIn("not implemented", result.stdout)
                     self.assertEqual((self.root / "result.pdl").read_text(), "previous output\n")
                     self.assertFalse((self.root / "debug/EndState.icl").exists())
+
+    def test_local_reset_passthrough_preserves_procedures(self):
+        source = (self.root / "source.pdl").read_bytes()
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--local_reset", "reset.pdl", "--debug")
+        self.assertEqual((self.root / "reset.pdl").read_bytes(), source)
+        original = (self.root / "out/Network.pdl").read_bytes()
+        self.run_tool("--icl", "out/debug/Network.icl", "--pdl", "reset.pdl",
+                      "--output", "again.pdl", "--local_reset", "again-reset.pdl")
+        self.assertEqual((self.root / "again.pdl").read_bytes(), original)
+        self.assertEqual((self.root / "again-reset.pdl").read_bytes(), source)
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--local_reset", "source.pdl", ok=False)
+        self.assertEqual((self.root / "source.pdl").read_bytes(), source)
+        (self.root / "blocked-reset").mkdir()
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "out/Network.pdl", "--local_reset", "blocked-reset", ok=False)
+        self.assertEqual((self.root / "out/Network.pdl").read_bytes(), original)
+        (self.root / "second.pdl").write_text("iApply\n")
+        failure = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "second.pdl",
+                                "--local_reset", "multi.pdl", ok=False)
+        self.assertIn("one PDL input", failure.stdout)
+        self.assertFalse((self.root / "multi.pdl").exists())
+
+    def test_local_reset_passthrough_checks_reset_connections(self):
+        source = """Module Child {
+ ScanInPort si; ResetPort rst;
+ ScanRegister r { ScanInSource si; ResetValue 1'b0; }
+ ScanOutPort so { Source r; }
+}
+Module Network {
+ ScanInPort si; ResetPort rst;
+ ScanRegister release { ScanInSource si; }
+ Instance child Of Child { InputPort si = release; }
+ ScanOutPort so { Source child.so; }
+}
+"""
+        (self.root / "source.icl").write_text(source)
+        (self.root / "source.pdl").write_text("iReset\niWrite child.r 1\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--local_reset", "reset.pdl")
+        self.assertEqual((self.root / "reset.pdl").read_bytes(), (self.root / "source.pdl").read_bytes())
+        for connection in ("1'bx", "loop"):
+            invalid = source.replace("InputPort si = release;",
+                                     f"InputPort si = release; InputPort rst = {connection};")
+            if connection == "loop":
+                invalid = invalid.replace(" ScanRegister release", " ToResetPort loop { Source loop; }\n ScanRegister release")
+            (self.root / "source.icl").write_text(invalid)
+            failure = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                    "--local_reset", "invalid-reset.pdl", ok=False)
+            self.assertIn("cycle" if connection == "loop" else "unknown local-reset",
+                          failure.stdout)
+            self.assertFalse((self.root / "invalid-reset.pdl").exists())
+        source = source.replace("InputPort si = release;", "InputPort si = release; InputPort rst = ~release;")
+        (self.root / "source.icl").write_text(source)
+        (self.root / "reset.pdl").write_text("preserve reset output\n")
+        (self.root / "result.pdl").write_text("preserve pattern output\n")
+        failure = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                "--local_reset", "reset.pdl", "--output", "result.pdl", ok=False)
+        self.assertIn("local-reset", failure.stdout)
+        self.assertIn("release", failure.stdout)
+        self.assertEqual((self.root / "reset.pdl").read_text(), "preserve reset output\n")
+        self.assertEqual((self.root / "result.pdl").read_text(), "preserve pattern output\n")
 
     def test_idle_transient_reset_fill(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"

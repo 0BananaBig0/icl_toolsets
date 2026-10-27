@@ -25,6 +25,9 @@ GNU Make, Python unittest regression.
   capabilities and tests for applicable implementation ideas, not authority.
   Keep findings in [pattern generation references](../../pattern-retargeting-references.md).
 - Google C++ style; generated outputs remain ignored; test scripts under `tests/`.
+- Remote experiments follow `test_Local_Reset`: group under
+  `test_icl_toolsets/test_<topic>`, with descriptive names and no random suffixes.
+  Preserve previous evidence in distinct, meaningful run subdirectories.
 - No implicit hardware reset; unknown initial logic state; source-located errors.
 - Model component ports, function/state and external connections only. Treat
   primitives such as ScanRegister as behavioral units, without internal
@@ -562,3 +565,23 @@ Parallel ports, DataRegisters and alias `iApplyEndState` need separate work.
   no remaining code or evidence issues.
 - [ ] Implement local-reset output and rerun actual generator comparisons;
   reference-only expected outcomes do not complete this acceptance requirement.
+
+### Task 5 continuation: proven passthrough local-reset artifacts
+
+- [x] Implement a byte-preserving artifact for one original PDL input when the
+  elaborated register reset ancestry contains only reset-port forwarding to
+  global, known constant or root external reset sources. Reuse the netlist and
+  existing staged output writer; no second parser or register-internal model.
+- [x] Reject instrument-control/logic reset cones, cycles, unknown sources and
+  multiple PDL inputs rather than claiming a complete local-reset rewrite.
+- [x] Cover procedure/source bytes, source/flat replay, single-TAP behavior,
+  source-path protection and failure publication with CLI tests.
+- [x] Complete independent review, full regression and installed checks: no
+  actionable findings; full `make check` and 18 installed CLI tests passed.
+  Strict coverage remains 95.2% lines / 60.5% raw branches, below 100%/90%.
+- [x] Run expanded Tessent reference suite and the three prepared comparisons:
+  36 maintained cases match vendor expectations (17 exports / 19 errors);
+  two TAP comparisons differ, one serial comparison is blocked by ICL71-1.
+  No exact operation or full hardware-state equivalence pass is claimed.
+- [ ] Implement general transitive local-reset releases and safe multi-file
+  source rewriting; this narrow passthrough does not complete original Task 5.

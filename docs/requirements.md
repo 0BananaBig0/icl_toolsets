@@ -139,6 +139,10 @@ as atomic behavioral units; internal flip-flop or gate wiring is not required.
   explicitly justified, hash-pinned repeats needed for independent examples,
   formatter variants or other distinct assertions. Treat malformed fixtures
   conservatively. Follow the [corpus policy](../tests/cases/CORPUS_DEDUPLICATION.md).
+  Remote agent-created Tessent experiments must follow the `test_Local_Reset`
+  organization: one `test_icl_toolsets` parent with descriptive `test_<topic>`
+  subdirectories. Do not add opaque random suffixes. Preserve earlier inputs
+  and results in clearly named run subdirectories; do not overwrite evidence.
 - **T5 — Honest verification:** run focused checks and the broader checks required
   by the change; record commands, outcomes and skipped/unavailable suites. Do
   not infer full regression or editor success from compilation, schema checks,

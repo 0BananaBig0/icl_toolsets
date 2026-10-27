@@ -63,9 +63,9 @@ full model coverage or Tessent equivalence.
 | Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle; `iApply -together` verified on a common update cycle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
-| Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
-| Tessent oracle | 2026-10-27 rerun: 33/33 expected vendor outcomes, 15 PDL exports; BSDL CLI contract corrected | All 33 real comparison preparations fail on missing local-reset rewriting; no generator equivalence established |
-| Acceptance checks | Full regression, sanitizers/style and independent review passed through the end-state directive guard; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.5%; full vendor equivalence is unverified |
+| Local-reset-only artifact | One source preserved byte-for-byte after proving reset-port ancestry needs no instrument release; procedures and source/flat replay tested | Transitive releases, safe batching and safe multiple-file rewriting |
+| Tessent oracle | 36 maintained cases: 17 exports / 19 expected errors across reviewed runs; two actual TAP comparisons differ and one serial comparison is blocked by vendor ICL71-1 | Original 33 comparison preparations remain blocked by model/execution limits; no full state equivalence established |
+| Acceptance checks | Full regression, sanitizers/style and independent review passed through restricted reset passthrough; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.5%; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values

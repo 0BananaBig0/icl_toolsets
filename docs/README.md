@@ -71,3 +71,8 @@ For current generator evidence, start with the latest dated sections in
 functional regression, focused sanitizer checks, installation checks and the
 still-failing strict coverage gate. Historical component milestones do not
 establish full retargeting or Tessent equivalence.
+
+The latest [Tessent comparison](tessent-oracle.md#reset-passthrough-comparison-2026-10-27)
+records two differing TAP operation traces, not an equivalence pass. The same
+guide documents the `test_icl_toolsets/test_<topic>` remote layout, modeled on
+`test_Local_Reset`, and preservation of earlier experiment evidence.

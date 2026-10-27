@@ -5,8 +5,10 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -97,6 +99,45 @@ std::string Command(const std::vector<std::string>& words) {
   const std::string result = std::string(Tcl_DStringValue(&list)) + "\n";
   Tcl_DStringFree(&list);
   return result;
+}
+// A passthrough rewrite is valid only when resets have no instrument controls.
+void ValidateResetPassthrough(const pattern::Netlist& netlist) {
+  const size_t missing = std::numeric_limits<size_t>::max();
+  std::set<size_t> verified;
+  for (const auto& target : netlist.nodes) {
+    if (!target.reset) continue;
+    auto bit = *target.reset;
+    std::set<size_t> path;
+    while (bit.node != missing && !verified.count(bit.node)) {
+      const auto& node = netlist.nodes.at(bit.node);
+      if (!path.insert(bit.node).second) {
+        throw std::runtime_error(node.origin + ": cyclic local-reset path at " +
+                                 node.name);
+      }
+      if (node.kind != "ResetPort" && node.kind != "ToResetPort") {
+        throw std::runtime_error(
+            target.origin + ": local-reset rewriting is not implemented for " +
+            target.name + " through " + node.name);
+      }
+      const auto source = node.inputs.find("Source");
+      if (source == node.inputs.end() && node.kind == "ResetPort" &&
+          node.scope == 0) {
+        break;
+      }
+      if (source == node.inputs.end() || source->second.size() != 1) {
+        throw std::runtime_error(
+            node.origin + ": unresolved local-reset path at " + node.name);
+      }
+      bit = source->second.front();
+    }
+    if (bit.node == missing &&
+        bit.virtual_signal == pattern::VirtualSignal::kNone &&
+        bit.constant != '0' && bit.constant != '1') {
+      throw std::runtime_error(
+          target.origin + ": unknown local-reset source for " + target.name);
+    }
+    verified.insert(path.begin(), path.end());
+  }
 }
 std::string Generate(const pattern::Netlist& netlist,
                      const std::vector<pattern::Operation>& operations) {
@@ -254,8 +295,10 @@ int main(int argc, char** argv) {
            "  --output PATH        Output PDL (default: out/<top>.pdl)\n"
            "  --debug              Also write debug/<top>.icl beside output\n"
            "  --log PATH           Copy diagnostics to a file\n"
-           "  --local_reset PATH   Reserved; reset-only rewriting is not yet "
-           "implemented\n"
+           "  --local_reset PATH   Preserve one PDL input when reset paths "
+           "are\n"
+           "                       global/constant only; local controls "
+           "unsupported\n"
            "Current scheduling: ordinary single SI/SO, scan registers, muxes,\n"
            "logic-controlled paths and local resets; literal "
            "iWrite/iApply/iState.\n"
@@ -296,13 +339,19 @@ int main(int argc, char** argv) {
     log_path.clear();
     CheckPaths(inputs, {output, debug, options.log, options.local_reset});
     log_path = options.log;
-    if (!options.local_reset.empty()) {
+    if (!options.local_reset.empty() && options.pdl.size() != 1) {
       throw std::runtime_error(
-          "--local_reset rewrite integration is not implemented");
+          "--local_reset currently requires one PDL input");
     }
     const auto network = pattern::ElaborateTapNetwork(design, top);
+    if (!options.local_reset.empty()) ValidateResetPassthrough(network.netlist);
     pattern::Runtime runtime(design, network.netlist);
-    for (const auto& path : options.pdl) runtime.Execute(path, Read(path));
+    std::string local_reset;
+    for (const auto& path : options.pdl) {
+      const auto source = Read(path);
+      runtime.Execute(path, source);
+      if (!options.local_reset.empty()) local_reset = source;
+    }
     runtime.Finish();
     const auto pdl = Generate(network.netlist, runtime.operations());
     for (const auto& warning : design.warnings()) messages += warning + "\n";
@@ -312,6 +361,9 @@ int main(int argc, char** argv) {
     std::vector<std::pair<std::string, std::string>> artifacts;
     if (!debug.empty()) {
       artifacts.emplace_back(debug, pattern::SerializeIcl(network.netlist));
+    }
+    if (!options.local_reset.empty()) {
+      artifacts.emplace_back(options.local_reset, local_reset);
     }
     artifacts.emplace_back(output, pdl);
     if (!log_path.empty()) artifacts.emplace_back(log_path, success_messages);

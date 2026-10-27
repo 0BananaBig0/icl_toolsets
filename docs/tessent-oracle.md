@@ -6,12 +6,75 @@ It exports **PDL** through `write_patterns -pdl`, not STIL or Verilog patterns.
 No normal regression requires a Tessent license or SSH connection.
 
 The generator executable, BSDL loader and single-TAP scheduler now exist.
-End-to-end comparison remains blocked by the unimplemented `--local_reset`
-artifact. The dated sections below preserve historical measurements; their
+Comparison now accepts the restricted `--local_reset` passthrough for
+networks without instrument-controlled resets; general reset rewriting remains
+unimplemented. The dated sections below preserve historical measurements; their
 then-current implementation limitations are not the current support matrix.
 See [the generator guide](pattern-generation.md) for current capabilities.
 
-## Rerun 2026-10-27
+## Reset-passthrough comparison (2026-10-27)
+
+The maintained manifest now has **36 cases**. A fresh 36-case reference run
+initially produced two unexpected failures: the two new plain serial examples
+lacked Tessent's required scan-interface controls (ICL71-1). Adding an empty
+ScanInterface would not supply a valid client/host/TAP interface, so that attempted
+fixture change was discarded. `SerialWrite` now explicitly records the measured
+vendor restriction, and the procedure case uses the existing complete TAP model.
+The old 33 cases were unchanged and all matched their expected outcomes; a fresh
+run of the three final cases also matched all expectations. Together these
+reviewed inputs give **17 successful exports and 19 expected vendor errors**.
+An expected error is a compatibility result, not an equivalence pass.
+
+The real generator now emits a byte-preserving `--local_reset` artifact for one
+PDL source when the reset ancestry proves no local-reset TDR release is needed.
+Tessent consumed **that artifact only** in comparison mode. It did not receive a
+substituted source file or a fabricated rewrite. All three new comparison jobs
+ran, and the static comparison returned exit 1:
+
+| Case | Result |
+| --- | --- |
+| `SerialWrite` | Generator succeeded; Tessent rejected the incomplete vendor interface with ICL71-1; comparison blocked by reference. |
+| `AccessLink_ExplicitReset` | Both exported PDL; literal operation sequences differ. |
+| `AccessLink_ProcedureReset` | Both exported PDL; literal operation sequences differ; the reset artifact preserves the original procedure bytes. |
+
+For both TAP cases Tessent emits `iWrite tap.INSTRUCTION[3:0] 0b0011`,
+`iRead tap.INSTRUCTION[3:0] 0b0001`, and an `iApply` before the core writes.
+Our output leaves synthetic instruction-register selection inside retargeting.
+Tessent also spells `core.r` as `core.r[7:0]`. The core write values agree:
+`0b10010110`, followed by `0b00000101` in the procedure case. These observations
+do **not** justify discarding instruction readback or claiming hardware-state
+equivalence. There are **zero exact-operation matches** and no new proven full
+Tessent-equivalence result. Independent state/observation comparison remains work.
+
+The original 33 comparison preparations still fail, now with specific model or
+execution limitations: addressed/one-hot targets, interface-event scheduling,
+multiple PDL inputs, an invalid contributor width, or missing explicit TAP reset.
+They no longer all fail on an unimplemented option. General local-reset releases
+and safe multi-file rewriting are still required.
+
+All retrieved input/script and successful-output hashes match the prepared
+bundles. Verification covered 126 inputs / 16 exports in the initial bundle,
+11 inputs / 2 exports in the corrected reference subset, and 17 inputs / 2
+exports in the comparison subset. All 20 exports across these bundles parsed
+with the shared static trace helper; counts include repeated cases. Evidence:
+
+- `build/tessent-reset-initial-reference-evidence/`: initial run, including both
+  unexpected failures rather than hiding them.
+- `build/tessent-reset-reviewed-reference-evidence/` and
+  `build/tessent-reset-reviewed-comparison-evidence/`: final three-case inputs,
+  logs, exports, hashes and operation comparisons.
+- `build/reset-passthrough-evidence-verification.json`: hash/trace/count checks.
+- `build/tessent-identity-20261027-comparison/`: original 33 generator failures.
+
+Remote work lives in `test_icl_toolsets/test_reset_passthrough`, under the
+workspace described below. Tessent Shell is **2026.2**, banner dated
+21 May 2026; jobs ran serially. Evidence and generated files remain ignored.
+The complete functional regression passed after fixtures were frozen, including
+18 CLI tests and both editors over 38,633 ICL / 805 PDL files. Sanitizers and
+style checks passed; strict coverage remains below its unchanged threshold.
+See [the verification record](pattern-generation.md#local-reset-passthrough-verification-2026-10-27).
+
+## Reference rerun before reset passthrough (2026-10-27)
 
 The fresh **Tessent Shell 2026.2** run matched **33/33 expected outcomes**:
 **15 successful PDL exports** and **18 expected tool errors**. All 116 staged
@@ -44,7 +107,7 @@ its ICL/PDL/BSDL and Tcl script bytes are unchanged by the fix. The isolated
 remote directory is:
 
 ```text
-/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_equivalence_20261027_6lIdtz
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_equivalence
 ```
 
 Tool banner: `Tessent Shell 2026.2 Thu May 21 21:09:45 GMT 2026`;
@@ -70,6 +133,35 @@ coverage gate remains unmet at 95.2% lines / 60.5% raw branches against unchange
 100%/90% thresholds, as recorded in [the generator guide](pattern-generation.md).
 Implementing and validating local-reset rewriting remains necessary before
 this harness can establish any end-to-end generator comparison.
+
+## Remote test organization
+
+The local mount `/home/banana/remote_eda/lianghuaxiao/test/tessent_ijtag`
+corresponds to `/data/workspaces/lianghuaxiao/test/tessent_ijtag` on
+`lianghuaxiao@192.168.6.20`. Following `test_Local_Reset`, all seven agent-created
+experiment directories have been moved under one parent, with descriptive names:
+
+```text
+test_icl_toolsets/
+  README.md
+  migration.json
+  test_oracle/
+  test_contributors/
+  test_domains/
+  test_address_defaults/
+  test_tap_signals/
+  test_equivalence/
+  test_reset_passthrough/
+```
+
+Moves preserved each directory inode and its contents; no existing destination
+was overwritten. The original `test_Local_Reset` was not modified. The paths in
+this guide point to the new locations. `migration.json` retains the old-to-new
+mapping; historical logs may still mention their original paths. Existing
+bundle case IDs, relative input paths and hashes were preserved. New topic
+directories must use `test_` and meaningful names, without opaque random
+suffixes. Retain each run in a fresh descriptive subdirectory; never replace
+old evidence to rerun a case. Generated evidence stays outside Git.
 
 ## Input contract
 
@@ -113,13 +205,15 @@ make tessent-oracle-check BISON=/usr/bin/bison
 python3 tests/tessent_oracle.py inventory --output build/oracle-inventory.json
 python3 tests/tessent_oracle.py prepare --reference-only --output build/oracle-reference
 
-# Comparison requires local-reset output; currently reports generator_failed:
+# Comparison requires generator-produced local-reset output; unsupported cases fail:
 python3 tests/tessent_oracle.py prepare \
   --generator build/icl-pattern-generation --output build/oracle-comparison
 ```
 
 Copy the prepared bundle and `tests/tessent_oracle.py` into a new directory
-under the authorized remote experiment area. On lianghuaxiao's EDA host:
+under `test_icl_toolsets/test_<topic>` in the authorized remote experiment area.
+Use descriptive topic/run names without random suffixes and never overwrite a
+previous run. On lianghuaxiao's EDA host:
 
 ```sh
 python3 tessent_oracle.py run --output oracle-reference \
@@ -143,7 +237,7 @@ operations alone do not establish hardware equivalence or shortest patterns.
 ## Measured results, 2026-10-25
 
 Remote experiments ran in the newly created directory
-`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_oracle_20261025_HygZyT`.
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_oracle`.
 Existing external cases were read, not changed. The tool banner was
 `Tessent Shell 2026.2 Thu May 21 21:09:45 GMT 2026`; the runner also works with
 the host's Python 3.8.16.
@@ -179,7 +273,7 @@ Actual logs, generated PDL and reports are ignored build artifacts in
 `build/tessent-reference-final-results-20261025/`. They are not committed golden files.
 That historical preparation run reported **11 blocked_generator** cases before
 the executable existed. The generator now supports serial and single-TAP
-transactions; its separate local-reset rewrite remains unimplemented. The old
+transactions; general local-reset release insertion remains unimplemented. The old
 blocked count is not a current generator result; rerun preparation and compare
 reviewed pairs before reporting vendor equivalence.
 End-to-end comparison, local-reset vendor cases and independent state-equivalence
@@ -250,7 +344,7 @@ not a successful pattern export. Use the oracle harness for automated outcome
 classification. Tool-generated logs/PDL belong under ignored `build/` locally.
 
 Observed with **Tessent Shell 2026.2** in the isolated remote directory
-`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_address_defaults_20261025_Mwxclr`:
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_address_defaults`:
 
 | Top module | Observed data connectivity and pattern outcome |
 | --- | --- |
@@ -286,7 +380,7 @@ our generator; the executable and scheduler were unfinished at that checkpoint.
 self-constructed direct-register and nested-instance probes for IEEE 1687-2014
 §6.4.15(b,c). Additional modules exercise mixed source widths and split logical
 data buses in local tests. Tessent Shell 2026.2 ran the eight maintained cases in
-`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_contributors_20261025_BN5L5k`.
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_contributors`.
 
 Both tested groups have a 16-bit output supplied by an 8-bit contributor; the
 instance case reverses the group/output vector direction. Observed results:
@@ -322,7 +416,7 @@ generator/scheduler/local-reset implementation.
 The self-constructed `address_domains/` fixtures separate each top into its own
 input file: Tessent validates modules while loading, so an invalid unused module
 can contaminate another probe. Tessent Shell **2026.2** ran these cases in
-`/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_domains_20261025_DEq8hc`.
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_domains`.
 The corrected isolated run matched **5/5 measured expectations**:
 
 | Top | Observed result |
@@ -393,7 +487,7 @@ current comparison preparation reaches the unimplemented local-reset rewrite.
 The maintained runner reproduced the positive outcome, all staged input/script
 hashes match, and the shared PDL parser confirms the five operations above.
 Evidence: `build/access-link-oracle-evidence/`, from the isolated remote
-`icl_toolsets_domains_20261025_DEq8hc` directory. The manifest now has 30 cases;
+`test_icl_toolsets/test_domains` directory. The manifest now has 30 cases;
 this is a vendor reference test, not generator equivalence or HDL simulation.
 
 The final inventory after this addition records 35 manifest-assigned source

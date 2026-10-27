@@ -251,9 +251,17 @@ one-hot/addressed transactions, feedback reset scheduling, iMerge,
 system-clock/absolute-time waits, resource commands and other unsupported
 operations. Transactions needing shadow-register effects or independently gated
 interface events are outside the current complete-scan model; inability to
-schedule them is not proof of hardware unreachability. `--local_reset` remains
-reserved and reports that its separate
-rewrite artifact is not implemented.
+schedule them is not proof of hardware unreachability.
+
+`--local_reset PATH` currently accepts one PDL source and preserves its bytes,
+including all procedures, when the elaborated reset paths need no local-reset
+TDR release. The check follows single-source ResetPort/ToResetPort forwarding
+to global reset, known constants, or an external top-level ResetPort. Register
+or logic-driven reset paths, unknown/unresolved sources and cycles are rejected.
+This conservative check visits all modeled register reset paths, even for
+registers not accessed by the supplied procedure. Successful flattened generation
+is required before any reset artifact is published. Multiple PDL inputs and
+insertion of transitive local-reset releases remain unsupported by this option.
 These restrictions are outstanding requirements, not a reduced final scope.
 
 ## Validation and limits
@@ -509,11 +517,53 @@ coverage,sanitize,install,installed-tests}.log`. Restoration scheduling and its
 semantic validation remain mandatory unfinished work; no Tessent equivalence
 is claimed. Generated artifacts remain outside Git.
 
-### Tessent comparison rerun (2026-10-27)
+### Tessent comparison before reset passthrough (2026-10-27)
 
-The [fresh vendor rerun](tessent-oracle.md#rerun-2026-10-27) matched all
+The [earlier vendor rerun](tessent-oracle.md#reference-rerun-before-reset-passthrough-2026-10-27) matched all
 33 expected Tessent outcomes and produced 15 verified PDL exports. The real
-generator failed all 33 comparison preparations because `--local_reset` remains
-unimplemented. No generator-equivalence comparison completed. The harness now
+generator then failed all 33 comparison preparations because `--local_reset`
+was unimplemented. No generator-equivalence comparison completed. The harness now
 uses `--bsdl ENTITY FILE`; full restoration/reset-rewrite requirements remain
 open. Reference results must not be reported as generator equivalence.
+
+
+### Local-reset passthrough verification (2026-10-27)
+
+The CLI now supports the restricted, single-input `--local_reset` behavior
+specified above. Its memoized traversal reuses elaborated `node.reset` links;
+it does not parse ICL again. Original PDL bytes, procedures and comments are
+retained. Scheduling and validation must succeed before staged publication.
+The option rejects controls that require real reset release insertion.
+
+The old implementation rejected the newly supported cases; those regressions
+now pass. Tests also cover root/global forwarding, X and cyclic reset sources,
+instrument controls, source/output aliasing, staging failures, multiple input
+rejection and source/flattened ICL replay. An initial cycle assertion incorrectly
+expected the passthrough diagnostic when elaboration correctly rejected the
+cycle earlier; only that expectation was corrected. A later full regression
+correctly detected a fixture edited during the editor corpus run. After freezing
+all fixtures, the complete suite was rerun successfully.
+
+- `make pattern-generation-check tessent-oracle-check formatcheck namingcheck
+  BISON=/usr/bin/bison -j4` passed: 18 CLI tests, 18 harness tests, three trace
+  tests, Google formatting and naming checks.
+- `make check BISON=/usr/bin/bison -j4`, with the existing reference environment,
+  passed. Static/dynamic suites, all 334 grammar / 119 scanner rules, and both
+  Vim and Neovim corpus tests passed (38,633 ICL / 805 PDL files per editor).
+- Clang ASan/UBSan pattern-generation checks passed after the cycle assertion
+  correction. Leak detection was disabled and external Z3 was uninstrumented.
+- `make install-dynamic BISON=/usr/bin/bison` succeeded; all 18 CLI tests
+  passed against `/home/banana/.local/bin/icl-pattern-generation`. Installation
+  printed the combined ICL/PDL coc.nvim configuration.
+- Strict coverage ran after the successful full check. Functional checks passed,
+  but the unchanged 100% line / 90% raw-branch gate failed:
+  **10,701/11,235 lines (95.2%)**, **17,487/28,916 branches (60.5%)**.
+
+Evidence: `build/reset-passthrough-reviewed-focused.log`,
+`build/reset-passthrough-frozen-{regression,coverage}.log`, and
+`build/reset-passthrough-final-sanitize.log`, plus
+`build/reset-passthrough-reviewed-{install,installed-tests}.log`. The [new vendor comparison](tessent-oracle.md#reset-passthrough-comparison-2026-10-27)
+ran two TAP operation comparisons, both different, with one additional serial
+case blocked by the vendor reference. It does not establish hardware equivalence.
+General transitive reset release, batching and multiple-file rewriting remain
+mandatory unfinished work.

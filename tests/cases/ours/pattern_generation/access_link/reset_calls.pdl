@@ -1,0 +1,10 @@
+iPDLLevel 0
+iProcsForModule AccessTop
+iProc set_value {} {
+  iWrite core.r 0x96
+  iApply
+}
+iReset
+iCall set_value
+iWrite core.r 5
+iApply
