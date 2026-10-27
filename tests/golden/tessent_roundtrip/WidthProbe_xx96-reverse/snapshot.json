@@ -1,0 +1,131 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "WidthProbe_xx96",
+    "top": "WidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_xx96.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+    "tests/cases/ours/pattern_generation/write_xx96.pdl": "b75f0696c190f97f1b7efcacebd5a0be0800c5948675852fdb13ca1e5f3a08d3"
+  },
+  "job": {
+    "id": "WidthProbe_xx96",
+    "top": "WidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_xx96.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "source_0.pdl": "b75f0696c190f97f1b7efcacebd5a0be0800c5948675852fdb13ca1e5f3a08d3",
+      "run.tcl": "a59bc9f5d5620f880e8cae4c61c597713b5f478beee45d3ec1fa2adf64bf95ac"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "tests/cases/ours/pattern_generation/write_xx96.pdl": "b75f0696c190f97f1b7efcacebd5a0be0800c5948675852fdb13ca1e5f3a08d3"
+    },
+    "export_testbench": true,
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.583669978193939,
+    "outcome": "ok",
+    "testbench_hashes": {
+      "result.v": "ac86e8e99ec686ee97c1267b55acc155d88b23ead2a18362859caa25242ee89b",
+      "result.v.0.vec": "b203952d21707fb0b06f9e3c4225e75110e6fa25dd7d3ff367ac9642636bf7bd",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "990a426eccd9b7ff6449248d4e286ba683509f8b1e705a103fd51dca5f93f19a"
+    },
+    "result_sha256": "32e6a49109f1224ecb6e4db5e286d66b72af4544ea4c9d568d07c48748d84490",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "WidthProbe",
+    "operations": [
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ],
+          [
+            "data",
+            4,
+            "1"
+          ],
+          [
+            "data",
+            5,
+            "0"
+          ],
+          [
+            "data",
+            6,
+            "0"
+          ],
+          [
+            "data",
+            7,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "2d20a00faa4506bca6299482cb9015075cceaa7ed1ff6386fd90fc07a82d969d",
+  "vendor_console_sha256": "7f0929d7c3d573e7bd4d52a9e4e94935fe4627485cb481fd412d11e0d541b821",
+  "artifacts": {
+    "flat.pdl": "7542a21ca3a6040d9f6a6483995b894b63b0bc2925741bcb3a1781292fdedfb0",
+    "vendor.pdl": "32e6a49109f1224ecb6e4db5e286d66b72af4544ea4c9d568d07c48748d84490"
+  }
+}

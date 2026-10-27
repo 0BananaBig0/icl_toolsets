@@ -315,10 +315,14 @@ local flat patterns and formatted ICL/PDL against explicitly certified standards
 including a second-pass stability check. Tessent runs only when deliberately
 creating new standards. Formatter certification compares both exported PDL and
 the complete Tessent Verilog testbench bundle before and after formatting; only
-the leading generation-date comment is normalized. Seven standards are certified,
-including six formatter cases with testbench evidence. This comparison does not
-run RTL simulation. Two vector pattern candidates remain unqualified because
-Tessent changes their write grouping.
+the leading generation-date comment is normalized. Generator qualification checks
+both round-trip directions separately: our flat PDL through Tessent, or Tessent's
+source-PDL export through our generator. Either passing direction qualifies the
+case; independent source schedules need not match. `iApply` order is preserved,
+while independent writes within one group may reorder. Six directional standards
+cover three scalar/vector cases in both directions, alongside the seven legacy
+standards (including six formatter cases with testbench evidence).
+This comparison does not run RTL simulation.
 See [qualification, limitations and refresh commands](docs/tessent-goldens.md).
 
 Passing regression does not establish complete language conformance. The strict
@@ -430,13 +434,13 @@ repeated source insertions, or changes to Tcl substitution order. See
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
 scheduling, addressed execution, general one-hot execution, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
-rewriting, and full Tessent pattern
-equivalence remain
+rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. The [latest full-manifest Tessent rerun](docs/tessent-oracle.md#protected-scheduling-rerun-2026-10-27)
 matched all 36 expected reference outcomes. Three new pin-write cases match
 the vendor pin values and apply grouping, but strict trace comparison still
 reports 30 generator-blocked cases, one vendor-blocked case and five differing
-traces, with no exact operation matches. Remote experiments
+traces, with no exact operation matches under that historical strict policy.
+Those differences alone are not failures of the current directional criterion. Remote experiments
 are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
 `test_Local_Reset`. New bundles contain `test_<case-name>` directories with no
 random suffixes; archived bundles remain readable.

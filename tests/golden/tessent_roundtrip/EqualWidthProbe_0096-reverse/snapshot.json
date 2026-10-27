@@ -1,0 +1,131 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "EqualWidthProbe_0096",
+    "top": "EqualWidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_0096.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+    "tests/cases/ours/pattern_generation/write_0096.pdl": "bdf458c31741740049d5976ff221cbc8ff39870746cd941c39f310a0b8228dc5"
+  },
+  "job": {
+    "id": "EqualWidthProbe_0096",
+    "top": "EqualWidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_0096.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "source_0.pdl": "bdf458c31741740049d5976ff221cbc8ff39870746cd941c39f310a0b8228dc5",
+      "run.tcl": "e5bd670628ce114fe3540ff4e09affe64bb2612e02a84cc66ff0a3471bae949b"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "tests/cases/ours/pattern_generation/write_0096.pdl": "bdf458c31741740049d5976ff221cbc8ff39870746cd941c39f310a0b8228dc5"
+    },
+    "export_testbench": true,
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.578288481105119,
+    "outcome": "ok",
+    "testbench_hashes": {
+      "result.v": "2277dce37d1665baff9082d7d1a95dbfb33d9cfc0d51238bf3b646159e54a824",
+      "result.v.0.vec": "019e49a13d527bc802df85f05ad9ed2b348d7a83ea543e0a205503f1ddbddbfb",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "6295156fd727f501d71a5044e6934118e1c1d116b8b341001e3fd623944788c8"
+    },
+    "result_sha256": "6ccd04145b18fdcc3aec629ae2c94c80966c36cfaecd6762061eed5983d8bfad",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "EqualWidthProbe",
+    "operations": [
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ],
+          [
+            "data",
+            4,
+            "1"
+          ],
+          [
+            "data",
+            5,
+            "0"
+          ],
+          [
+            "data",
+            6,
+            "0"
+          ],
+          [
+            "data",
+            7,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "2d20a00faa4506bca6299482cb9015075cceaa7ed1ff6386fd90fc07a82d969d",
+  "vendor_console_sha256": "2e0e5c1a88dfb38ff79c7f84a3e53a8ed3367aad467ae627348f1d2e0a6ec348",
+  "artifacts": {
+    "flat.pdl": "b35590e8f57f46fe0facc6b9b210d435f89a0bea6c6fc0e3f10f861edf247cc6",
+    "vendor.pdl": "6ccd04145b18fdcc3aec629ae2c94c80966c36cfaecd6762061eed5983d8bfad"
+  }
+}

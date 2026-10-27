@@ -1,0 +1,103 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "ScalarPins",
+    "top": "ScalarPins",
+    "icl": [
+      "tests/cases/ours/tessent_golden/scalar.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/tessent_golden/scalar.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/tessent_golden/scalar.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
+    "tests/cases/ours/tessent_golden/scalar.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec"
+  },
+  "job": {
+    "id": "ScalarPins-icl-pattern-generation",
+    "top": "ScalarPins",
+    "icl": [
+      "tests/cases/ours/tessent_golden/scalar.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/tessent_golden/scalar.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
+      "source_0.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec",
+      "run.tcl": "d5301aba545cf5887b4b14551972a24839f6a8e2ee44380a2ac4d1529fd8b44f",
+      "flat.pdl": "79fb8c2d8fabc2b40d48b6298d32ff382c325af99804cdb622f727a9c297971a"
+    },
+    "tessent_pdl_inputs": [
+      "flat.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/tessent_golden/scalar.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
+      "tests/cases/ours/tessent_golden/scalar.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec"
+    },
+    "export_testbench": true,
+    "golden_tool": "icl-pattern-generation",
+    "original_id": "ScalarPins",
+    "artifacts": [
+      "flat.pdl"
+    ],
+    "binary_sha256": "5bb71c8eb63fd04735c239c7013f8ad29bba3ba9d4240547852207483e0367c1",
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.629538381937891,
+    "outcome": "ok",
+    "testbench_hashes": {
+      "result.v": "622ff14c56280587fe04995dd13f75bb9ef0814a662658a4146feba5e8e123c1",
+      "result.v.0.vec": "2343128c5726335cb0f02c37899917ba47d02ea4110fb64c093c3242b01270ae",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "35a713bebfc7754619d47e667887ae3d066237e9b6cb715b955abe1f30e78c1a"
+    },
+    "result_sha256": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ScalarPins",
+    "operations": [
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "2d20a00faa4506bca6299482cb9015075cceaa7ed1ff6386fd90fc07a82d969d",
+  "vendor_console_sha256": "53584554bf3658beaea3e7de7f03fa5834cf6c1dfab3f233157cf8bacccaf2c6",
+  "artifacts": {
+    "flat.pdl": "79fb8c2d8fabc2b40d48b6298d32ff382c325af99804cdb622f727a9c297971a",
+    "vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10"
+  }
+}

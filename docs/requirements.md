@@ -7,11 +7,21 @@ and [corpus deduplication](../tests/cases/CORPUS_DEDUPLICATION.md) for the later
 corpus audit. The [historical record](history/requirements-legacy.md) preserves
 the original requests and implementation history.
 
-The requested `icl-pattern-generation` executable is a separate, unimplemented
+The requested `icl-pattern-generation` executable is a separate, partially implemented
 extension. Its [requirements and design draft](superpowers/specs/2026-10-25-icl-pattern-generation-design.md)
 records ordered overrides, netlist elaboration, configuration scheduling,
 local-reset rewriting and round-trip acceptance tests. It does not change the
 execution-free contract of the formatters or language servers.
+
+Generator vendor acceptance uses either directional round trip with identical
+ordered `iApply` groups: local output re-exported by Tessent, or Tessent's source
+export replayed locally. Independent writes within a group may reorder; changed
+values, overlapping effects, waits, resets and apply boundaries remain significant.
+Independent local/vendor schedules from the original PDL need not agree. A target
+must be selected at its update; closing its SIB on that same edge is permitted.
+Record directions separately and preserve formatter PDL/testbench qualification.
+See [certification and offline regression](tessent-goldens.md).
+
 
 Generator component models describe observable ports, behavior/state and
 connections to other components or ports. Treat primitives such as ScanRegister

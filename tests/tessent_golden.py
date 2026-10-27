@@ -144,6 +144,31 @@ def testbench_digest(path, name):
     return hasher.hexdigest()
 
 
+def verified_job(root, bundle, report, prepared, case, job_id):
+    matches = [job for job in report['cases'] if job['id'] == job_id]
+    originals = [job for job in prepared['cases'] if job['id'] == job_id]
+    if len(matches) != 1 or len(originals) != 1:
+        raise ValueError('missing or ambiguous vendor job')
+    job, original = matches[0], originals[0]
+    if (job.get('status') != 'reference_pass' or job.get('outcome') != 'ok'
+            or job.get('exit_code') != 0 or 'Tessent Shell ' not in job.get('version', '')):
+        raise ValueError('vendor job did not successfully export a pattern')
+    for key, value in original.items():
+        if key != 'status' and job.get(key) != value:
+            raise ValueError(f'changed prepared {key}')
+    if job['source_hashes'] != source_hashes(root, case):
+        raise ValueError('changed source hashes: regenerate vendor evidence')
+    directory = oracle.case_directory(bundle, report, job)
+    verify(directory, dict(job['inputs'], **{'result.pdl': job['result_sha256']}))
+    console = oracle.input_path(directory, 'console.log').read_text(errors='replace')
+    observed_version = next((line.strip() for line in console.splitlines()
+                             if 'Tessent Shell ' in line), 'not reported')
+    if (oracle.result_status(job['exit_code'], console, directory / 'result.pdl') != 'ok'
+            or observed_version != job['version']):
+        raise ValueError('vendor console does not confirm successful export/version')
+    return job, directory
+
+
 def record(root, bundle, case_id, tool, output, trace):
     if output.exists() or output.is_symlink():
         raise FileExistsError(f'snapshot already exists: {output}')
@@ -160,28 +185,7 @@ def record(root, bundle, case_id, tool, output, trace):
     oracle.validate(root, [case])
     jobs = []
     for job_id in (case_id, case_id + '-' + tool):
-        matches = [job for job in report['cases'] if job['id'] == job_id]
-        originals = [job for job in prepared['cases'] if job['id'] == job_id]
-        if len(matches) != 1 or len(originals) != 1:
-            raise ValueError('missing or ambiguous vendor job')
-        job, original = matches[0], originals[0]
-        if (job.get('status') != 'reference_pass' or job.get('outcome') != 'ok'
-                or job.get('exit_code') != 0 or 'Tessent Shell ' not in job.get('version', '')):
-            raise ValueError('vendor job did not successfully export a pattern')
-        for key, value in original.items():
-            if key != 'status' and job.get(key) != value:
-                raise ValueError(f'changed prepared {key}')
-        if job['source_hashes'] != source_hashes(root, case):
-            raise ValueError('changed source hashes: regenerate vendor evidence')
-        directory = oracle.case_directory(bundle, report, job)
-        verify(directory, dict(job['inputs'], **{'result.pdl': job['result_sha256']}))
-        console = oracle.input_path(directory, 'console.log').read_text(errors='replace')
-        observed_version = next((line.strip() for line in console.splitlines()
-                                 if 'Tessent Shell ' in line), 'not reported')
-        if (oracle.result_status(job['exit_code'], console, directory / 'result.pdl') != 'ok'
-                or observed_version != job['version']):
-            raise ValueError('vendor console does not confirm successful export/version')
-        jobs.append((job, directory))
+        jobs.append(verified_job(root, bundle, report, prepared, case, job_id))
     baseline, variant = jobs
     before = trace_file(trace, baseline[1] / 'result.pdl', 'oracle')
     after = trace_file(trace, variant[1] / 'result.pdl', 'oracle')

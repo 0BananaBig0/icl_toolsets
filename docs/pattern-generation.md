@@ -5,6 +5,16 @@ PDL procedures and Tcl computations and schedules single-input,
 single-output scan networks, including single-TAP instruction/data scans. It is
 **not yet the complete retargeter described in the requirements**.
 
+## Vendor round-trip acceptance
+
+The [directional qualification harness](tessent-goldens.md) accepts either local
+flat output re-exported unchanged by Tessent, or Tessent source output replayed
+unchanged by the local generator. Compare ordered apply groups, allowing
+independent writes inside a group to reorder. Independent source schedules need
+not match. Six stored directional pin/vector standards currently pass offline.
+The concrete scheduler test also covers writing a selected TDR while closing its
+SIB on the same update, then reopening before the next target write.
+
 ## Build and run
 
 The generator reuses the shared ICL parser, elaborated netlist, PDL parser and

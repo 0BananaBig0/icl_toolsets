@@ -773,9 +773,13 @@ tessent-oracle-check: $(BUILD_DIR)/pdl_pattern_trace $(BUILD_DIR)/icl_corpus_inv
 tessent-golden-check: $(BIN) $(PDL_BIN) $(BUILD_DIR)/icl-pattern-generation $(BUILD_DIR)/pdl_pattern_trace
 	@GOLDEN_BUILD=$(BUILD_DIR) python3 tests/tests/test_tessent_golden.py
 	@python3 tests/tessent_golden.py check --build $(BUILD_DIR)
+	@GOLDEN_BUILD=$(BUILD_DIR) python3 tests/tests/test_tessent_roundtrip.py
+	@python3 tests/tessent_roundtrip.py check --build $(BUILD_DIR)
 
-$(BUILD_DIR)/pdl_pattern_trace: tests/src/pdl_pattern_trace.cc $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/utility/json.o
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+$(BUILD_DIR)/pdl_pattern_trace: tests/src/pdl_pattern_trace.cc \
+    $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/utility/json.o \
+    $(PATTERN_OBJECTS) $(BUILD_DIR)/pattern/pattern_values.o | check-z3
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc \
     $(SHARED_OBJECTS) $(BUILD_DIR)/utility/json.o

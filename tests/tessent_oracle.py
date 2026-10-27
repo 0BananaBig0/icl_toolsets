@@ -180,7 +180,7 @@ def case_directory(bundle, report, case):
     return directory
 
 
-def prepare(root, cases, output, generator=None, reference_only=False, inventory=None):
+def prepare(root, cases, output, generator=None, reference_only=False, inventory=None, flat_pattern=False):
     root, output = root.resolve(), output.resolve()
     validate(root, cases)
     # Never truncate an existing run or replace test inputs with generated artifacts.
@@ -224,18 +224,19 @@ def prepare(root, cases, output, generator=None, reference_only=False, inventory
             command = [str(generator.resolve()), '--icl',
                        *[str(directory / n) for n in icl_names], '--pdl',
                        *[str(directory / n) for n in pdl_names],
-                       '--top_module', case['top'], '--output', str(directory / 'ours.pdl'),
-                       '--local_reset', str(directory / 'local_reset.pdl')]
+                       '--top_module', case['top'], '--output', str(directory / 'ours.pdl')]
+            if not flat_pattern:
+                command += ['--local_reset', str(directory / 'local_reset.pdl')]
             if bsdl_name:
                 command += ['--bsdl', case['bsdl_entity'], str(directory / bsdl_name)]
             item['generator_command'] = command
             code, elapsed = run_process(command, directory, directory / 'generator.log', 120)
             item['generator_exit'], item['generator_seconds'] = code, elapsed
             if code or any(not (directory / name).is_file() or not (directory / name).stat().st_size
-                           for name in ('ours.pdl', 'local_reset.pdl')):
+                           for name in (('ours.pdl',) if flat_pattern else ('ours.pdl', 'local_reset.pdl'))):
                 item['status'] = 'generator_failed'
                 continue
-            pdl_names = ['local_reset.pdl']
+            pdl_names = ['ours.pdl' if flat_pattern else 'local_reset.pdl']
         item['tessent_pdl_inputs'] = pdl_names
         item['status'] = 'ready_reference_only' if reference_only else 'ready_comparison'
         (directory / 'run.tcl').write_text(tessent_script(case['top'], icl_names, pdl_names, bsdl_name))

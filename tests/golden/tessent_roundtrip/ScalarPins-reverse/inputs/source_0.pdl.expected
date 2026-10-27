@@ -1,0 +1,5 @@
+# Self-constructed, with an explicit main call and no implicit reset.
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule ScalarPins
+iProc configure {} { iWrite observed 0b1; iApply; }
+iCall configure

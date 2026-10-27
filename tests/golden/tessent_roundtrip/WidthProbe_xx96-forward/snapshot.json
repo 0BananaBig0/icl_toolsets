@@ -1,0 +1,138 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "WidthProbe_xx96",
+    "top": "WidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_xx96.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+    "tests/cases/ours/pattern_generation/write_xx96.pdl": "b75f0696c190f97f1b7efcacebd5a0be0800c5948675852fdb13ca1e5f3a08d3"
+  },
+  "job": {
+    "id": "WidthProbe_xx96-icl-pattern-generation",
+    "top": "WidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_xx96.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "source_0.pdl": "b75f0696c190f97f1b7efcacebd5a0be0800c5948675852fdb13ca1e5f3a08d3",
+      "run.tcl": "5961ddae57c8c0cc3997cb4f475c891a6fcd656216a8d9a9956be55c5e4c15f6",
+      "flat.pdl": "7542a21ca3a6040d9f6a6483995b894b63b0bc2925741bcb3a1781292fdedfb0"
+    },
+    "tessent_pdl_inputs": [
+      "flat.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "tests/cases/ours/pattern_generation/write_xx96.pdl": "b75f0696c190f97f1b7efcacebd5a0be0800c5948675852fdb13ca1e5f3a08d3"
+    },
+    "export_testbench": true,
+    "golden_tool": "icl-pattern-generation",
+    "original_id": "WidthProbe_xx96",
+    "artifacts": [
+      "flat.pdl"
+    ],
+    "binary_sha256": "5bb71c8eb63fd04735c239c7013f8ad29bba3ba9d4240547852207483e0367c1",
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.6753586628474295,
+    "outcome": "ok",
+    "testbench_hashes": {
+      "result.v": "d207d7e0d0ef0ebdc0f70cb9f46622eea8d70d34d49b189bf2064b810cced594",
+      "result.v.0.vec": "c11e49180ea50ad6632ab8e786c10f38296dd38c610130e026b1c9422d7b21b5",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "64bf77a91d665dc1e9018bbca30833b8368777eff9ed2654e82cae5190c23a52"
+    },
+    "result_sha256": "32e6a49109f1224ecb6e4db5e286d66b72af4544ea4c9d568d07c48748d84490",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "WidthProbe",
+    "operations": [
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ],
+          [
+            "data",
+            4,
+            "1"
+          ],
+          [
+            "data",
+            5,
+            "0"
+          ],
+          [
+            "data",
+            6,
+            "0"
+          ],
+          [
+            "data",
+            7,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "2d20a00faa4506bca6299482cb9015075cceaa7ed1ff6386fd90fc07a82d969d",
+  "vendor_console_sha256": "cbb34fbf1b59b81d53f5c88ebb36002c6c5fed0179a692b9a7d771c897a59f92",
+  "artifacts": {
+    "flat.pdl": "7542a21ca3a6040d9f6a6483995b894b63b0bc2925741bcb3a1781292fdedfb0",
+    "vendor.pdl": "32e6a49109f1224ecb6e4db5e286d66b72af4544ea4c9d568d07c48748d84490"
+  }
+}

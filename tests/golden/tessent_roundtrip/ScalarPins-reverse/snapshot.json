@@ -1,0 +1,96 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "ScalarPins",
+    "top": "ScalarPins",
+    "icl": [
+      "tests/cases/ours/tessent_golden/scalar.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/tessent_golden/scalar.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/tessent_golden/scalar.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
+    "tests/cases/ours/tessent_golden/scalar.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec"
+  },
+  "job": {
+    "id": "ScalarPins",
+    "top": "ScalarPins",
+    "icl": [
+      "tests/cases/ours/tessent_golden/scalar.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/tessent_golden/scalar.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
+      "source_0.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec",
+      "run.tcl": "ffef305806f54853dc499ee6077d73b301f93515680ec455de80af26d6a398dd"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/tessent_golden/scalar.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
+      "tests/cases/ours/tessent_golden/scalar.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec"
+    },
+    "export_testbench": true,
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.629987930878997,
+    "outcome": "ok",
+    "testbench_hashes": {
+      "result.v": "2d62bcb4400ac7dd83d38689019b1557f0a40d0a7fc879321212a4f206930444",
+      "result.v.0.vec": "7e413b0101594f78eeb68129928c8e57d359f38bc5c8d83c616c2b693a8429f7",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "86d23a9b451b6ae0a359b25eb63a21619b01f767f3700cc39761f2b0e5311496"
+    },
+    "result_sha256": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ScalarPins",
+    "operations": [
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "2d20a00faa4506bca6299482cb9015075cceaa7ed1ff6386fd90fc07a82d969d",
+  "vendor_console_sha256": "e5683652e65ea7d53b57af40308716d34255562fdf73998897806635ef304a5f",
+  "artifacts": {
+    "flat.pdl": "79fb8c2d8fabc2b40d48b6298d32ff382c325af99804cdb622f727a9c297971a",
+    "vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10"
+  }
+}

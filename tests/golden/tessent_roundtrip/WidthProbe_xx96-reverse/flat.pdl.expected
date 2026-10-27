@@ -1,0 +1,5 @@
+iPDLLevel 0
+iProcsForModule WidthProbe
+iWrite data 0b10010110
+iWrite enable 0b1
+iApply

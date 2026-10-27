@@ -274,7 +274,7 @@ Maintain source-attributed complete case manifests and emit Tessent scripts
 using `write_patterns -pdl` in `patterns -ijtag` analysis mode. Record the actual
 Tessent release, input hashes, command, exit status, tool errors and output files.
 
-For differential execution, our generator reads the original source PDL and
+For the legacy differential diagnostic mode, our generator reads the original source PDL and
 produces both flattened PDL and the `--local_reset` rewrite. Tessent must read
 that rewrite, including preserved procedures, rather than the source PDL or our
 fully flattened output. Never substitute a hand-written reset fix and claim the
@@ -286,6 +286,17 @@ Compare canonical executable operations using the shared PDL frontend; report
 structural differences separately from proved behavioral mismatches. Different
 valid schedules require state/target and cost checks, not an unconditional
 byte-equality assertion. Keep vendor-generated patterns and logs ignored.
+
+Current generator acceptance (user correction, 2026-10-27) is directional:
+local(A) → B, Tessent(B) → C, or Tessent(A) → B, local(B) → C. Either direction
+may qualify, with B/C compared by ordered apply groups and resolved bit values.
+Independent writes may reorder within one group; apply boundaries/options,
+state assumptions, reset and waits remain significant. Independent local/vendor
+source schedules need not agree. Forward certification uses flat output rather
+than local-reset-only output. Record directions and blocked reasons separately.
+At a TDR update, selection is evaluated from pre-update state, permitting a
+controlling SIB to close on the same update when useful. Formatter source-vs-
+formatted PDL/testbench qualification is unchanged.
 
 All new test scripts belong under `tests/`, mirroring their source paths.
 Classify fixtures by IEEE, Tessent, existing repository/corpus or self-constructed

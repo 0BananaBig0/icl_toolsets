@@ -772,6 +772,36 @@ Module Network {
   }
   Require(rejected, "SO reachability without controllable SI cannot pass");
 }
+void TestCloseSelectOnTargetUpdate() {
+  const auto read = [](const std::string& path) {
+    std::ifstream input("tests/cases/ours/pattern_generation/" + path);
+    Require(input.good(), "missing select-close fixture");
+    return std::string(std::istreambuf_iterator<char>(input), {});
+  };
+  pattern::Design design;
+  design.AddIcl("vendor.icl", read("resources/vendor.icl"));
+  design.AddBsdl("simple.bsdl", read("access_link/simple.bsdl"), "AccessProbe");
+  const auto network =
+      pattern::ElaborateTapNetwork(design, "ResourceAccessTop");
+  pattern::ScanScheduler scheduler(network.netlist);
+  scheduler.Reset();
+  // Establish selection, then close it on the target's update edge.
+  scheduler.Apply({{"iWrite", {"core.gate", "1"}, "close.pdl:1", {}}});
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"core.leaf.value", "5"}, "close.pdl:2", {}},
+                       {"iWrite", {"core.gate", "0"}, "close.pdl:3", {}}});
+  Require(
+      steps.size() == 1 && steps[0].writes.at("core.gate") == "00" &&
+          steps[0].writes.at("core.leaf.value") == "00000101" &&
+          scheduler.Value("core.gate") == "00" &&
+          scheduler.Value("core.leaf.value") == "00000101",
+      "pre-update selection permits the target write and SIB close together");
+  const auto reopen = scheduler.Apply(
+      {{"iWrite", {"core.leaf.value", "6"}, "close.pdl:4", {}}});
+  Require(reopen.size() == 2 && reopen[0].writes.at("core.gate") == "01" &&
+              scheduler.Value("core.leaf.value") == "00000110",
+          "a subsequent target write must reopen the closed select first");
+}
 void TestImplicitControl() {
   pattern::Design design;
   design.AddIcl("implicit.icl", R"(
@@ -916,6 +946,7 @@ int main() {
     TestPrerequisites();
     TestUnknownAndDisconnected();
     TestImplicitControl();
+    TestCloseSelectOnTargetUpdate();
     TestResetFill();
     TestReadCapture();
     TestMinimumScans();

@@ -3,16 +3,112 @@
 // Static operation comparison only; this never executes input Tcl.
 #include <fstream>
 #include <iostream>
+#include <limits>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <string>
 
+#include "pattern/pattern_tap.h"
+#include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
 #include "utility/json.h"
 #include "utility/text_input.h"
 
 namespace {
 using icl::Json;
+
+std::string ReadFile(const std::string& path) {
+  std::ifstream input(path, std::ios::binary);
+  std::string text;
+  if (!input || !toolsets::ReadTextStream(input, &text))
+    throw std::runtime_error("cannot read input: " + path);
+  return text;
+}
+
+using BitValues = std::map<std::pair<std::string, int64_t>, char>;
+Json BitRows(const BitValues& values) {
+  Json::Elements rows;
+  for (const auto& [key, value] : values)
+    rows.push_back(Json::Array({Json::String(key.first), Json::Int(key.second),
+                                Json::String(std::string(1, value))}));
+  return Json::Array(std::move(rows));
+}
+
+Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
+                 const std::string& top) {
+  const auto binding = trace.Find("binding")->string_value();
+  if (!binding.empty() && binding != top)
+    throw std::runtime_error("trace binding differs from comparison top");
+  z3::context context;
+  BitValues writes, reads, states;
+  Json::Elements events;
+  size_t expanded = 0;
+  const auto flush_states = [&] {
+    if (!states.empty()) {
+      events.push_back(Json::Object({{"iState", BitRows(states)}}));
+      states.clear();
+    }
+  };
+  for (const auto& operation : trace.Find("operations")->elements()) {
+    const auto& words = operation.elements();
+    const auto name = words.at(0).string_value();
+    if (name != "iState") flush_states();
+    if (name == "iWrite" || name == "iRead" || name == "iState") {
+      if (words.size() < 2 || words.size() > (name == "iState" ? 4U : 3U) ||
+          (words.size() == 2 && name != "iRead") ||
+          (words.size() == 4 && words[3].string_value() != "-LastWrittenValue"))
+        throw std::runtime_error("unsupported apply-group assignment options");
+      if (name == "iState" && (!writes.empty() || !reads.empty()))
+        throw std::runtime_error("state assumption with pending actions");
+      const auto target =
+          pattern::ResolvePdlTarget(netlist, words[1].string_value());
+      if (!target.access_together.empty())
+        throw std::runtime_error(
+            "AccessTogether obligations need explicit comparison support");
+      expanded += target.bits.size();
+      if (expanded > 256 * 1024)
+        throw std::runtime_error("apply-group bit expansion limit exceeded");
+      const auto bits = words.size() == 2
+                            ? std::string(target.bits.size(), 'x')
+                            : pattern::PdlDataValue(context, netlist, target,
+                                                    words[2].string_value());
+      auto& destination = name == "iWrite"  ? writes
+                          : name == "iRead" ? reads
+                                            : states;
+      for (size_t i = 0; i < bits.size(); ++i) {
+        const auto& bit = target.bits[i];
+        if (bit.node == std::numeric_limits<size_t>::max())
+          throw std::runtime_error("constant target in apply-group comparison");
+        const auto key =
+            std::make_pair(netlist.nodes.at(bit.node).name, bit.index);
+        char value = bits[i];
+        if (bit.inverted && value != 'x') value = value == '0' ? '1' : '0';
+        // X assumptions retain prior known fill; preserve overlapping history,
+        // including repeated physical bits within one alias.
+        if (name == "iState" && states.count(key)) flush_states();
+        // X writes retain earlier controlling assignments in the same queue.
+        if (name != "iWrite" || value != 'x' || !destination.count(key))
+          destination.insert_or_assign(key, value);
+      }
+    } else if (name == "iApply") {
+      events.push_back(Json::Object({{"writes", BitRows(writes)},
+                                     {"reads", BitRows(reads)},
+                                     {"apply", operation}}));
+      writes.clear();
+      reads.clear();
+    } else {
+      if (!writes.empty() || !reads.empty())
+        throw std::runtime_error("unapplied actions before " + name);
+      events.push_back(operation);
+    }
+  }
+  flush_states();
+  if (!writes.empty() || !reads.empty())
+    throw std::runtime_error("unapplied actions at end of trace");
+  return Json::Object({{"binding", Json::String(top)},
+                       {"operations", Json::Array(std::move(events))}});
+}
 
 void RequireStatic(const pdl::Command& command) {
   for (const auto& word : command.words) {
@@ -82,15 +178,34 @@ Json Trace(const pdl::Document& document, const std::string& entry) {
 
 int main(int argc, char** argv) {
   try {
-    if (argc != 3) {
-      throw std::runtime_error("usage: pdl_pattern_trace FILE ENTRY");
+    if (argc < 3) {
+      throw std::runtime_error(
+          "usage: pdl_pattern_trace FILE ENTRY [--apply-groups TOP --icl FILE "
+          "...]");
     }
-    std::ifstream input(argv[1], std::ios::binary);
-    std::string source;
-    if (!input || !toolsets::ReadTextStream(input, &source)) {
-      throw std::runtime_error("cannot read input");
+    auto trace = Trace(pdl::Document(ReadFile(argv[1])), argv[2]);
+    if (argc > 3) {
+      if (argc < 7 || std::string(argv[3]) != "--apply-groups")
+        throw std::runtime_error("expected --apply-groups TOP --icl FILE");
+      const std::string top = argv[4];
+      pattern::Design design;
+      for (int i = 5; i < argc;) {
+        const std::string option = argv[i++];
+        if (option == "--icl" && i < argc) {
+          const std::string path = argv[i++];
+          design.AddIcl(path, ReadFile(path));
+        } else if (option == "--bsdl" && i + 1 < argc) {
+          const std::string entity = argv[i++], path = argv[i++];
+          design.AddBsdl(path, ReadFile(path), entity);
+        } else {
+          throw std::runtime_error("invalid comparison design option: " +
+                                   option);
+        }
+      }
+      trace = ApplyGroups(
+          trace, pattern::ElaborateTapNetwork(design, top).netlist, top);
     }
-    std::cout << Trace(pdl::Document(source), argv[2]).Serialize() << '\n';
+    std::cout << trace.Serialize() << '\n';
     return 0;
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

@@ -1,29 +1,67 @@
 # Tessent-qualified offline regression
 
-The requested method is implemented by `tests/tessent_golden.py`. Tessent is
-used when explicitly creating a standard. Normal `make check` runs local tools
-and compares their outputs against committed standards without invoking Tessent,
-SSH, or a license service.
+Generator qualification uses `tests/tessent_roundtrip.py`; formatter qualification
+uses `tests/tessent_golden.py`. Tessent runs only when explicitly creating a
+standard. Normal `make check` compares local output with stored standards without
+Tessent, SSH or a license service.
 
 ## What each test establishes
 
 | Tool | Qualification with Tessent | Ordinary offline check |
 | --- | --- | --- |
-| `icl-pattern-generation` | Run original ICL/source PDL through Tessent; separately feed our **flat generated PDL** to Tessent with the same ICL/BSDL. Require agreement with the original request and a fixed point between the flat pattern and its re-export. | Compare newly generated flat PDL byte-for-byte with the certified flat artifact; regenerate it again and require idempotency. |
-| `icl-format` | Tessent receives original ICL + source PDL, then formatted ICL + the same source PDL, in separate fresh runs. Compare the exported PDL and complete Verilog testbench bundles. | Compare formatted ICL byte-for-byte with its certified formatted artifact; format it again and require idempotency. |
-| `pdl-format` | Tessent receives source ICL + original PDL, then the same ICL + formatted PDL, in separate fresh runs. Compare the exported PDL and complete Verilog testbench bundles. | Compare formatted PDL byte-for-byte with its certified formatted artifact; format it again and require idempotency. |
+| `icl-pattern-generation`, forward | Local generator(A.icl, A.pdl) → B; Tessent(A.icl, B) → C; compare B/C by ordered apply groups. | Regenerate B exactly; compare with the stored vendor trace and check local idempotency. |
+| `icl-pattern-generation`, reverse | Tessent(A.icl, A.pdl) → B; local generator(A.icl, B) → C; compare B/C by ordered apply groups. | Replay stored B locally, require the certified C bytes and matching groups, then check local idempotency. |
+| `icl-format` | Original ICL/source PDL versus formatted ICL/same PDL: compare exported PDL and complete Verilog testbench bundles. | Exact formatted bytes and idempotency. |
+| `pdl-format` | Source ICL/original PDL versus same ICL/formatted PDL: compare exported PDL and complete Verilog testbench bundles. | Exact formatted bytes and idempotency. |
 
-The generator qualification **does not use `--local_reset` output**. Only
-successful source cases marked `requires_local_reset: false` are accepted by
-this harness. Source PDL must contain any necessary reset actions explicitly.
-The older local-reset-aware differential harness remains available separately.
+Each direction is recorded separately. Either successful direction qualifies the
+case under the requested rule. Independently generated local/vendor schedules
+from the original PDL **need not match**. This supersedes the earlier generator
+policy preserved in legacy schema-1/2 certificates below.
 
-A fixed point alone is insufficient: a generator could emit the wrong writes
-and still reach a stable result. Requiring agreement with Tessent's original
-source run catches that failure. Even both checks establish agreement only for
-the selected inputs, model, initial conditions, options and vendor version.
-They do not prove complete language support, physical timing, or correctness
-for every possible instrument state.
+Forward qualification feeds the **flat output**, never `--local_reset` output,
+to Tessent. It can stage source cases requiring automatic local-reset release.
+Reverse qualification feeds original source PDL to Tessent; cases marked as
+requiring local-reset insertion remain blocked in that direction because Tessent
+does not supply those releases. No missing prerequisites or TAP operations are
+silently removed to obtain a match.
+
+A round trip checks schedule stability for the particular model, initial state,
+inputs and vendor version. It is not a proof of all requested target values,
+complete retargeting support or hardware timing. Source-intent tests and concrete
+state replay remain separate regression obligations.
+
+### Ordered apply groups
+
+`pdl_pattern_trace --apply-groups TOP --icl FILE ...` uses the shared PDL parser,
+ICL elaboration, target/alias resolution and numeric conversion, without executing
+Tcl or running the scheduler. Independent writes within one group may reorder;
+whole-register and bitwise spellings resolve to the same bits. Overlapping writes
+retain their last effective assignments (an X write retains an earlier queued
+controlling value). Reads and state assumptions remain explicit.
+
+Group order, apply options/boundaries, resets, waits and other executable commands
+remain significant. A new apply cannot be removed merely because the final state
+matches. Dynamic/unhandled commands, pending actions at a non-apply boundary,
+unknown targets and AccessTogether aliases fail qualification. AccessTogether
+needs explicit group-obligation support before it can be canonicalized safely.
+Repeated state assumptions retain their order, including known-to-X history.
+Expansion is bounded to 256 Ki bits per trace;
+canonicalization uses ordered maps, O(expanded bits × log distinct bits), with no
+schedule enumeration.
+
+A TDR must be selected before its update. Its controlling SIB may close on that
+same update. The scheduler regression uses the existing ResourceAccessTop
+TAP/SIB fixture to verify this transition and reopening before a later write.
+
+Schema-3 snapshots under `tests/golden/tessent_roundtrip/` preserve the direction,
+comparison policy, original source hashes, staged inputs/scripts, raw vendor
+export, local output, binary/version provenance and compared trace. Ordinary
+checks never refresh them. The six directional standards cover ScalarPins,
+EqualWidthProbe_0096 and WidthProbe_xx96 in both directions, using unchanged,
+hash-verified Tessent Shell 2026.2 evidence from the protected-scheduling rerun.
+No new licensed run was needed for these exact inputs. These are pin/vector
+probes, not vendor qualification of every SIB/controller topology.
 
 ## Comparison and immutable standards
 
@@ -46,13 +84,13 @@ existing schema-1 generator standard retains its separate PDL criterion.
 Matching generated testbenches strengthens evidence for these selected cases;
 it does not execute the testbenches or establish RTL simulation equivalence.
 
-Vendor pattern comparison reuses `pdl_pattern_trace` and the shared PDL parser.
+Legacy schema-1/2 and formatter pattern comparison reuses `pdl_pattern_trace` and the shared PDL parser.
 It compares module binding and ordered executable commands, including operands,
 bit/range spelling and apply boundaries. It ignores comments, `iNote`, PDL level
 declarations and the exported zero-argument `oracle` wrapper. It never executes
 PDL while comparing traces. Unsupported/dynamic traces fail qualification.
 
-There is no regrouping of vector/bit writes, numeric normalization or reordering.
+That legacy policy has no regrouping, numeric normalization or reordering.
 A behaviorally equivalent alternative schedule can therefore fail this strict
 check. Such a failure is not automatically a product bug and is never silently
 accepted as a new standard.
@@ -73,8 +111,8 @@ symlinks, are refused. Recording stages a complete directory before publishing;
 use a fresh destination and a single maintainer for snapshot publication.
 These are reproducible evidence records, not cryptographic signatures.
 
-The user explicitly requested stored generated standards. They live only under
-`tests/golden/tessent/`; repeated vendor wrappers/design text there are intentional
+The user explicitly requested stored generated standards. They live under
+`tests/golden/tessent/` and `tests/golden/tessent_roundtrip/`; repeated vendor wrappers/design text there are intentional
 expected-output fixtures. Their `.expected` suffix keeps them separate from the
 source corpus without weakening its duplicate audit. Binaries, generated parsers,
 logs and remote workspaces
@@ -89,40 +127,51 @@ make tessent-golden-check BISON=/usr/bin/bison
 # Included by make check and make check-dynamic.
 ```
 
-For explicit qualification, build the tools and prepare a fresh bundle locally:
+Prepare one direction in a new bundle:
 
 ```sh
 make dynamic build/pdl_pattern_trace BISON=/usr/bin/bison
-python3 tests/tessent_golden.py prepare --output build/new-vendor-goldens
+python3 tests/tessent_roundtrip.py prepare --direction forward \
+  --output build/forward-roundtrip
+python3 tests/tessent_roundtrip.py prepare --direction reverse \
+  --output build/reverse-roundtrip
 ```
 
-The default manifest is `tests/cases/ours/tessent_golden/cases.json`. Each source
-case creates four jobs: original, flat generated PDL, formatted ICL and formatted
-PDL. Existing paired corpus/origin and BSDL staging uses the original oracle
-helpers. Local transformations have 120-second subprocess timeouts. Vendor
-jobs run serially; no license-parallel execution is introduced.
+The default manifest is `tests/cases/ours/tessent_golden/cases.json`. Each bundle
+has one job per case. Reverse replay invokes the exported zero-argument `oracle`
+procedure explicitly. Original source order, top and companion BSDL are retained.
+The runner uses serial jobs with bounded subprocess timeouts.
 
-Copy the bundle and `tests/tessent_oracle.py` into a fresh descriptive directory
-under the authorized remote `test_icl_toolsets/test_<topic>` area. On the EDA host:
+Copy a prepared bundle and `tests/tessent_oracle.py` into a fresh descriptive
+`test_icl_toolsets/test_<topic>` directory on the authorized EDA host. Run:
 
 ```sh
-python3 tessent_oracle.py run --output new-vendor-goldens \
+python3 tessent_oracle.py run --output forward-roundtrip \
   --tessent /data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent
 ```
 
-The reused Tcl script loads ICL/BSDL in `patterns -ijtag / setup`, changes to
-analysis, opens a pattern set with `-no_initial_ireset`, executes the selected PDL,
-and exports it using `write_patterns -pdl`. Original and candidate jobs have
-independent tool processes, the same top, source order and companion inputs.
-
-Retrieve the result bundle, then explicitly record one passing case/tool into
-a **new** destination:
+Retrieve the results, then record a passing direction to a **new** destination:
 
 ```sh
+python3 tests/tessent_roundtrip.py record \
+  --bundle build/forward-roundtrip-evidence \
+  --case ScalarPins --direction forward \
+  --output build/reviewed-scalar-forward
+```
+
+For reverse, select the reverse bundle and `--direction reverse`. Existing
+unchanged `vendor_goldens` bundles can also be certified with this command;
+forward uses their generator candidate job, reverse their original source job.
+The unrelated job need not pass. Source/input/export hashes and console status
+are rechecked before publication.
+
+Formatter staging and certification retain their existing commands:
+
+```sh
+python3 tests/tessent_golden.py prepare --output build/new-formatter-goldens
 python3 tests/tessent_golden.py record \
-  --bundle build/new-vendor-goldens-evidence \
-  --case ScalarPins --tool icl-pattern-generation \
-  --output build/reviewed-scalar-standard
+  --bundle build/new-formatter-goldens-evidence \
+  --case ScalarPins --tool icl-format --output build/reviewed-scalar-format
 ```
 
 Review the record and file diff before adding it under `tests/golden/tessent/`.
@@ -130,7 +179,10 @@ To replace a previous standard after an intentional change, record to a fresh
 scratch directory, review the differences, and explicitly replace the previous
 snapshot in Git. Do not remove a failure by blindly regenerating goldens.
 
-## Qualification on 2026-10-27
+## Historical strict-policy qualification on 2026-10-27
+
+The vector rejections in this historical record are superseded by the six
+ordered-apply directional standards described above; legacy files are retained.
 
 Tessent Shell **2026.2** successfully exported all **12 original/candidate jobs**.
 All 39 staged input/script hashes and 12 export hashes verified after retrieval.
@@ -236,3 +288,35 @@ this result remains a failure. A separate fresh two-job run using the existing
 PDL-only generator policy passed. Vector-port generator fixed points remain
 unqualified. The initial 12-job certification outcomes and all raw vendor files
 are retained under ignored `build/tessent-reservations-*` paths.
+
+
+## Directional regression evidence (2026-10-27)
+
+The corrected policy has six schema-3 certificates: forward and reverse for each
+of ScalarPins, EqualWidthProbe_0096 and WidthProbe_xx96. Inputs and vendor exports
+were reverified from `build/tessent-reservations-goldens-evidence`; the licensed
+Tessent 2026.2 executions are the earlier protected-scheduling run, not new runs.
+The unchanged seven legacy standards also pass.
+
+Focused validation includes 13 trace tests, seven directional harness tests,
+17 legacy certificate tests, 23 oracle tests, and the concrete scheduler suite.
+Independent review found two unsafe canonicalizations; new failing regressions
+reproduced both before fixes: known-to-X state history (also through a repeated-bit
+alias), and erased AccessTogether obligations. The comparator now preserves that
+history and rejects the unsupported obligation.
+
+ASan/UBSan validation kept `ASAN_OPTIONS=detect_leaks=1` enabled for all 13 trace
+tests, the scheduler suite and six offline directional certificates. The log is
+`build/apply-group-sanitizer-tests.log`. A local GCC optimized-build run of the
+trace suite, including 65,536-bit whole/partitioned inputs and an over-budget
+trace, took 0.81 seconds and 87,696 KiB peak RSS under `/usr/bin/time`; this is a
+single-run scale check, not a speedup claim. Logs remain ignored.
+
+Final `make check BISON=/usr/bin/bison -j4` passed using
+`ICL_REF_DIR=/tmp/icl-reference-honza-20261021` and the existing reference virtual
+environment. The log is `build/apply-group-final-regression.log`. It includes
+all 334 grammar alternatives, 119 scanner rules, dynamic/static checks and
+38,645 ICL plus 815 PDL files per Vim/Neovim. The editor suite completed in
+169.133 seconds. Strict authored-code line/branch coverage was not remeasured;
+rule reachability is a different metric. No new vendor execution or RTL
+simulation is claimed by this run.
