@@ -142,7 +142,7 @@ def run_process(argv, cwd, console, timeout):
     return code, time.monotonic() - start
 
 
-def tessent_script(top, icl_names, pdl_names, bsdl_name=None):
+def tessent_script(top, icl_names, pdl_names, bsdl_name=None, testbench=False):
     lines = ['# patterns -ijtag: setup for loading; analysis for PDL/export.',
              'set here [file dirname [info script]]', 'if {[catch {',
              '  set_context patterns -ijtag']
@@ -157,8 +157,10 @@ def tessent_script(top, icl_names, pdl_names, bsdl_name=None):
     for name in pdl_names:
         lines.append('  dofile [file join $here ' + tcl_word(name) + ']')
     lines += ['  close_pattern_set',
-              '  write_patterns [file join $here result.pdl] -pdl -pattern_sets oracle',
-              '  puts "' + MARKER + '"', '} message]} {',
+              '  write_patterns [file join $here result.pdl] -pdl -pattern_sets oracle']
+    if testbench:
+        lines.append('  write_patterns result.v -verilog -pattern_sets oracle')
+    lines += ['  puts "' + MARKER + '"', '} message]} {',
               '  puts stderr "ICL_TOOLSETS_ORACLE_ERROR: $message"',
               '  exit 1', '}', 'exit 0', '']
     return '\n'.join(lines)
@@ -255,6 +257,23 @@ def result_status(code, console, output):
     return 'ok'
 
 
+def testbench_hashes(directory):
+    paths = sorted(directory.glob('result.v*'))
+    main = directory / 'result.v'
+    if not main.is_file() or not main.stat().st_size:
+        raise ValueError('missing testbench result.v')
+    result = {}
+    for path in paths:
+        if path.is_symlink() or not path.is_file():
+            raise ValueError('invalid testbench artifact: ' + path.name)
+        hasher = hashlib.sha256()
+        with path.open('rb') as stream:
+            for block in iter(lambda: stream.read(1024 * 1024), b''):
+                hasher.update(block)
+        result[path.name] = hasher.hexdigest()
+    return result
+
+
 def run_bundle(bundle, tessent, timeout):
     report = json.loads((bundle / 'bundle.json').read_text())
     if (bundle / 'results.json').exists():
@@ -273,6 +292,8 @@ def run_bundle(bundle, tessent, timeout):
         if any((directory / name).exists() or (directory / name).is_symlink()
                for name in ('result.pdl', 'console.log', 'tessent.log')):
             raise FileExistsError(f'{case["id"]}: stale run artifacts')
+        if case.get('export_testbench') and any(directory.glob('result.v*')):
+            raise FileExistsError(f'{case["id"]}: stale testbench artifacts')
         required = ['run.tcl'] + case['tessent_pdl_inputs']
         if case.get('bsdl'):
             required.append('model.bsdl')
@@ -286,6 +307,11 @@ def run_bundle(bundle, tessent, timeout):
         console = (directory / 'console.log').read_text(errors='replace')
         case.update(tessent_command=command, exit_code=code, seconds=elapsed,
                     outcome=result_status(code, console, directory / 'result.pdl'))
+        if case['outcome'] == 'ok' and case.get('export_testbench'):
+            try:
+                case['testbench_hashes'] = testbench_hashes(directory)
+            except ValueError as error:
+                case.update(outcome='missing_testbench', testbench_error=str(error))
         if case['outcome'] == 'ok':
             case['result_sha256'] = hashlib.sha256((directory / 'result.pdl').read_bytes()).hexdigest()
         case['version'] = next((line.strip() for line in console.splitlines()

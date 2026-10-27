@@ -10,8 +10,8 @@ SSH, or a license service.
 | Tool | Qualification with Tessent | Ordinary offline check |
 | --- | --- | --- |
 | `icl-pattern-generation` | Run original ICL/source PDL through Tessent; separately feed our **flat generated PDL** to Tessent with the same ICL/BSDL. Require agreement with the original request and a fixed point between the flat pattern and its re-export. | Compare newly generated flat PDL byte-for-byte with the certified flat artifact; regenerate it again and require idempotency. |
-| `icl-format` | Tessent receives original ICL + source PDL, then formatted ICL + the same source PDL, in separate fresh runs. Compare the exported patterns. | Compare formatted ICL byte-for-byte with its certified formatted artifact; format it again and require idempotency. |
-| `pdl-format` | Tessent receives source ICL + original PDL, then the same ICL + formatted PDL, in separate fresh runs. Compare the exported patterns. | Compare formatted PDL byte-for-byte with its certified formatted artifact; format it again and require idempotency. |
+| `icl-format` | Tessent receives original ICL + source PDL, then formatted ICL + the same source PDL, in separate fresh runs. Compare the exported PDL and complete Verilog testbench bundles. | Compare formatted ICL byte-for-byte with its certified formatted artifact; format it again and require idempotency. |
+| `pdl-format` | Tessent receives source ICL + original PDL, then the same ICL + formatted PDL, in separate fresh runs. Compare the exported PDL and complete Verilog testbench bundles. | Compare formatted PDL byte-for-byte with its certified formatted artifact; format it again and require idempotency. |
 
 The generator qualification **does not use `--local_reset` output**. Only
 successful source cases marked `requires_local_reset: false` are accepted by
@@ -26,6 +26,25 @@ They do not prove complete language support, physical timing, or correctness
 for every possible instrument state.
 
 ## Comparison and immutable standards
+
+Formatter qualification also exports `result.v` with
+`write_patterns result.v -verilog -pattern_sets oracle` in both independent jobs.
+The relative basename is identical. Every `result.v*` artifact must be present
+and match, including `.0.vec`, `.cfg` and `.info.dict` sidecars observed with
+Tessent 2026.2. Added, omitted, empty-main, linked or changed artifacts fail
+qualification. Export hashing is streamed in 1 MiB blocks.
+
+The `leading-date-comment-v1` policy normalizes only a precisely matched Date
+line in the initial contiguous comment header (`//`, or `#` for `.info.dict`).
+Everything else remains byte-sensitive, including executable content, vectors,
+timing, filenames, other comments and `Idstamp`. Raw files remain preserved as
+`.expected` artifacts. Schema-2 certificates store raw SHA-256 hashes, compared
+hashes and the policy; offline checks validate the exact inventory and hashes.
+Legacy PDL-only formatter certificates require explicit recertification. The
+existing schema-1 generator standard retains its separate PDL criterion.
+
+Matching generated testbenches strengthens evidence for these selected cases;
+it does not execute the testbenches or establish RTL simulation equivalence.
 
 Vendor pattern comparison reuses `pdl_pattern_trace` and the shared PDL parser.
 It compares module binding and ordered executable commands, including operands,
@@ -48,7 +67,7 @@ with the snapshot. Changing a source, its order, the top or a staged Tcl script
 requires explicit recertification.
 
 Recording rechecks input/export hashes, immutable preparation metadata, console
-completion/error status and version, and both vendor traces before publishing.
+completion/error status and version, both vendor traces and, for formatters, complete testbench bundles before publishing.
 A failed validation leaves no snapshot. Existing destinations, including dangling
 symlinks, are refused. Recording stages a complete directory before publishing;
 use a fresh destination and a single maintainer for snapshot publication.
@@ -136,15 +155,29 @@ Remote evidence is preserved in:
 /data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_vendor_goldens/tessent-goldens/
 ```
 
-Local evidence is ignored under `build/tessent-goldens-evidence/` and
-`build/tessent-goldens-{remote,certification,offline,final-focused}.log/json` as
-applicable. Committed snapshots preserve the checked exports and compact
-provenance. Eleven local harness tests exercise real tools/trace parsing and
-simulate only the licensed process boundary for failure injection. They cover
-wrong original semantics despite a fixed point, operand changes, failed consoles,
-changed preparation/context, stale sources/manifest, tampered files and overwrite
-protection. Actual qualification uses the remote vendor exports, not those
-simulated unit-test results.
+### Formatter testbench recertification on 2026-10-27
+
+A fresh Tessent Shell 2026.2 run passed all 12 original/candidate export jobs.
+All staged inputs, PDL exports and testbench file hashes were verified after
+retrieval. All six formatter standards passed both PDL and testbench comparison
+and were explicitly replaced with schema-2 records. Their formatted output bytes
+and PDL operation traces are unchanged. The scalar generator standard remains
+unchanged; vector generator rejections above still apply.
+
+The complete raw exports are preserved remotely in:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_testbench_goldens/tessent-testbench-goldens/
+```
+
+Local evidence is ignored under `build/tessent-testbench-goldens-evidence/`;
+`build/testbench-goldens-remote.log` records the licensed run. The committed
+formatter snapshots preserve both raw bundles. Seventeen golden-harness tests
+and 23 oracle tests cover failed exports, missing/changed testbenches, sidecar
+inventory tampering, narrow Date normalization, legacy formatter rejection,
+source/context changes and the existing fixed-point/overwrite protections.
+Unit tests simulate only the licensed process boundary; actual certification
+uses the retrieved remote vendor exports.
 
 ## Leak detection
 
@@ -159,12 +192,13 @@ The commands and results are in `build/tessent-goldens-leak-check.log` and
 environment limitation and its successful workaround; it does not retroactively
 turn earlier leak-disabled runs into leak checks.
 
-The seven offline snapshots took 0.29 seconds and 55,512 KiB maximum resident
+After testbench recertification, the seven offline snapshots took 0.21 seconds
+and 55,516 KiB maximum resident
 memory in one Linux x86_64 run using `/usr/bin/time -f 'elapsed_seconds=%e
 max_rss_kib=%M' python3 tests/tessent_golden.py check`. The measurement includes
 local process startup, transformation, hashing and idempotency, with existing
 GCC 16.2.1 `-O2` product binaries. Evidence is
-`build/tessent-goldens-offline-performance.log`. This small corpus measurement
+`build/testbench-goldens-offline-performance.log`. This small corpus measurement
 is not a throughput claim for large designs or vendor qualification.
 
 
@@ -173,12 +207,13 @@ is not a throughput claim for large designs or vendor qualification.
 
 `make check BISON=/usr/bin/bison -j4` passed with the established reference
 Python environment and `ICL_REF_DIR=/tmp/icl-reference-honza-20261021`. It includes
-all seven offline snapshots, the 11 new harness tests, the existing 22 oracle
+all seven offline snapshots, the 17 golden-harness tests, the 23 oracle
 and three trace tests, dynamic/static generator checks, all 334 grammar and
 119 scanner rules, and both Vim/Neovim corpus checks (38,634 ICL and 806 PDL
-files per editor). The first duplicate-artifact failure and the final passing
-run remain in `build/tessent-goldens-regression.log` and
-`build/tessent-goldens-final-regression.log` respectively.
+files per editor). The complete run exited successfully; its log is
+`build/testbench-goldens-regression.log`. Vim/Neovim plugin checks completed
+in 196.982 seconds. The log heading `FAIL: invalid ICL must be rejected` labels
+expected-negative inputs; the regression reports `PASS=1916 FAIL=0`.
 
 No product C++ changed. C++ coverage was not remeasured for this Python test
 harness; the previous strict coverage result remains 95.3% lines / 60.5% branches,

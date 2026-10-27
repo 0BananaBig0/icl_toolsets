@@ -1,0 +1,20 @@
+#
+# Information Dictionary File produced by Tessent Shell 2026.2
+# Date           : Tue Oct 27 14:58:36 2026
+#
+# <view> : (interface) | scan_graybox | full | ijtag_graybox
+# <language_version> : (verilog_2001) | verilog_sv31a
+
+set pattern_info_dict {
+  version 1
+  pattern_type ijtag
+  simulation_design_view {
+    testbench_language verilog_2001
+    testbench_name EqualWidthProbe_result_v_ctl
+    dut_inst EqualWidthProbe_inst
+    current_design_block {
+      module_name EqualWidthProbe
+      view full
+    }
+  }
+}

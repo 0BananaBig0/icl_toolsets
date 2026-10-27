@@ -313,8 +313,12 @@ make tessent-golden-check BISON=/usr/bin/bison
 This check is included in `make check` and needs no Tessent license. It compares
 local flat patterns and formatted ICL/PDL against explicitly certified standards,
 including a second-pass stability check. Tessent runs only when deliberately
-creating new standards. Seven standards are currently certified; two vector
-pattern candidates remain unqualified because Tessent changes their write grouping.
+creating new standards. Formatter certification compares both exported PDL and
+the complete Tessent Verilog testbench bundle before and after formatting; only
+the leading generation-date comment is normalized. Seven standards are certified,
+including six formatter cases with testbench evidence. This comparison does not
+run RTL simulation. Two vector pattern candidates remain unqualified because
+Tessent changes their write grouping.
 See [qualification, limitations and refresh commands](docs/tessent-goldens.md).
 
 Passing regression does not establish complete language conformance. The strict

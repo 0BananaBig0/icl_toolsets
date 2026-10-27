@@ -46,6 +46,11 @@ class Goldens(unittest.TestCase):
             (folder / 'result.pdl').write_bytes(data)
             (folder / 'console.log').write_text(
                 '// Tessent Shell TEST FIXTURE\n' + golden.oracle.MARKER + '\n')
+            for name, content in {
+                    'result.v': b'// Date            : Tue Oct 27 14:36:03 2026\nmodule tb; endmodule\n',
+                    'result.v.0.vec': b'01\n', 'result.v.cfg': b'result.v.0.vec 1\n'}.items():
+                (folder / name).write_bytes(content)
+            job['testbench_hashes'] = golden.oracle.testbench_hashes(folder)
             job.update(status='reference_pass', outcome='ok', exit_code=0,
                        version='// Tessent Shell TEST FIXTURE',
                        result_sha256=hashlib.sha256(data).hexdigest())
@@ -187,6 +192,80 @@ class Goldens(unittest.TestCase):
              '--manifest', str(manifest)], capture_output=True, text=True)
         self.assertNotEqual(run.returncode, 0)
         self.assertIn('manifest', run.stderr)
+
+    def test_formatter_requires_both_testbench_bundles(self):
+        self.vendor_evidence(self.prepared())
+        (self.bundle / 'test_Example-icl-format/result.v').unlink()
+        with self.assertRaisesRegex(ValueError, 'testbench'):
+            golden.record(self.root, self.bundle, 'Example', 'icl-format',
+                          self.work / 'snapshot', self.trace)
+        self.assertFalse((self.work / 'snapshot').exists())
+
+    def test_testbench_sidecar_change_rejected_even_with_matching_pdl(self):
+        self.vendor_evidence(self.prepared())
+        path = self.bundle / 'results.json'
+        report = json.loads(path.read_text())
+        job = report['cases'][2]
+        folder = self.bundle / ('test_' + job['id'])
+        (folder / 'result.v.0.vec').write_bytes(b'10\n')
+        job['testbench_hashes'] = golden.oracle.testbench_hashes(folder)
+        path.write_text(json.dumps(report))
+        with self.assertRaisesRegex(ValueError, 'testbench.*differ'):
+            golden.record(self.root, self.bundle, 'Example', 'icl-format',
+                          self.work / 'snapshot', self.trace)
+        self.assertFalse((self.work / 'snapshot').exists())
+
+    def test_testbench_date_only_normalization_and_executable_preservation(self):
+        a, b = self.work / 'a', self.work / 'b'
+        a.write_bytes(b'// Date            : Tue Oct 27 14:36:03 2026\nmodule tb; endmodule\n')
+        b.write_bytes(a.read_bytes().replace(b'14:36:03', b'14:36:04'))
+        self.assertEqual(golden.testbench_digest(a, 'result.v'), golden.testbench_digest(b, 'result.v'))
+        b.write_bytes(b.read_bytes().replace(b'module tb;', b'module wrong;'))
+        self.assertNotEqual(golden.testbench_digest(a, 'result.v'), golden.testbench_digest(b, 'result.v'))
+        a.write_bytes(b'module tb;\n// Date            : Tue Oct 27 14:36:03 2026\nendmodule\n')
+        b.write_bytes(a.read_bytes().replace(b'14:36:03', b'14:36:04'))
+        self.assertNotEqual(golden.testbench_digest(a, 'result.v'), golden.testbench_digest(b, 'result.v'))
+
+    def test_unrecorded_testbench_sidecar_rejected(self):
+        self.vendor_evidence(self.prepared())
+        (self.bundle / 'test_Example-icl-format/result.v.extra').write_text('extra')
+        with self.assertRaisesRegex(ValueError, 'testbench.*hash|testbench.*inventory'):
+            golden.record(self.root, self.bundle, 'Example', 'icl-format',
+                          self.work / 'snapshot', self.trace)
+
+    def test_offline_rejects_extra_or_omitted_testbench_artifact(self):
+        self.vendor_evidence(self.prepared())
+        snapshot = self.work / 'snapshot'
+        golden.record(self.root, self.bundle, 'Example', 'icl-format', snapshot, self.trace)
+        extra = snapshot / 'testbench/result.v.extra.expected'
+        extra.write_bytes(b'extra')
+        with self.assertRaisesRegex(ValueError, 'testbench.*inventory'):
+            golden.check(self.root, snapshot, self.binaries)
+        extra.unlink()
+        path = snapshot / 'snapshot.json'
+        cert = json.loads(path.read_text())
+        for hashes in cert['testbench_comparison']['raw_hashes']:
+            del hashes['result.v.0.vec']
+        del cert['testbench_comparison']['compared_hashes']['result.v.0.vec']
+        path.write_text(json.dumps(cert))
+        with self.assertRaisesRegex(ValueError, 'testbench.*inventory'):
+            golden.check(self.root, snapshot, self.binaries)
+
+    def test_offline_rejects_testbench_tampering_and_legacy_formatter(self):
+        self.vendor_evidence(self.prepared())
+        snapshot = self.work / 'snapshot'
+        golden.record(self.root, self.bundle, 'Example', 'icl-format', snapshot, self.trace)
+        vec = snapshot / 'testbench/result.v.0.vec.expected'
+        vec.write_bytes(b'11\n')
+        with self.assertRaisesRegex(ValueError, 'testbench|hash'):
+            golden.check(self.root, snapshot, self.binaries)
+        certpath = snapshot / 'snapshot.json'
+        cert = json.loads(certpath.read_text())
+        cert['schema'] = 1
+        del cert['testbench_comparison']
+        certpath.write_text(json.dumps(cert))
+        with self.assertRaisesRegex(ValueError, 'recertification'):
+            golden.check(self.root, snapshot, self.binaries)
 
 
 if __name__ == '__main__':

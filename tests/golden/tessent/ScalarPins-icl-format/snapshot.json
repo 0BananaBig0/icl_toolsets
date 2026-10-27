@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "case": {
     "id": "ScalarPins",
     "top": "ScalarPins",
@@ -44,23 +44,54 @@
     "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026"
   ],
   "vendor_console_sha256": [
-    "40dc9114cd739a8aee16fff92dbbd20771b417ba0770ee5746bd50245ce7f921",
-    "4643ff99e44d8ead0233c4f0274455dea99b08f6a022a1764832242c03df2e76"
+    "a1c427993fd97e0b8b70ac0a8a1fb27fd4e30e3c8e6803a5fccf747e7bf174e9",
+    "b2cc3db929f37577887e4c1042d810fd11710455b4b00ef5e1db7b4c893ba7a6"
   ],
   "vendor_inputs": [
     {
       "design_0.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
       "source_0.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec",
-      "run.tcl": "fc5df827523f20a50367b71dc2dc8c9332b7e735a8c368091f50afdb96c36f13"
+      "run.tcl": "ffef305806f54853dc499ee6077d73b301f93515680ec455de80af26d6a398dd"
     },
     {
       "design_0.icl": "db6a9e0fc9440814440855f14a6e2053d484480b549345ddaa2a86fe0bb3766f",
       "source_0.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec",
-      "run.tcl": "fc5df827523f20a50367b71dc2dc8c9332b7e735a8c368091f50afdb96c36f13"
+      "run.tcl": "ffef305806f54853dc499ee6077d73b301f93515680ec455de80af26d6a398dd"
     }
   ],
   "vendor_outputs": {
     "original_vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10",
-    "vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10"
+    "vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10",
+    "original_testbench/result.v": "ca104c191f1f9bc159dc076f728df08b413435d3f7901baa079a3b753f35d26b",
+    "original_testbench/result.v.0.vec": "dd13f4d472073dde7ddda0458f862300398ddf35f43c4a52346998ba4e7a7e8c",
+    "original_testbench/result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+    "original_testbench/result.v.info.dict": "1dd94eccc4b5808532016e6c771d4579231097ca642d87b0c462ee8137a54f2c",
+    "testbench/result.v": "2e223385b71df5dbf218dad5aa429bfb8363c7497f8ca6c062a62f0649df01b1",
+    "testbench/result.v.0.vec": "5e96eb327512416236faef2d945baac445d83633df6c03e44c0e5e46e52c298f",
+    "testbench/result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+    "testbench/result.v.info.dict": "a4453c9fc850733c2bae4047cd28210f1c6a70b4974240affbe3cb01e83c1395"
+  },
+  "testbench_comparison": {
+    "policy": "leading-date-comment-v1",
+    "raw_hashes": [
+      {
+        "result.v": "ca104c191f1f9bc159dc076f728df08b413435d3f7901baa079a3b753f35d26b",
+        "result.v.0.vec": "dd13f4d472073dde7ddda0458f862300398ddf35f43c4a52346998ba4e7a7e8c",
+        "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+        "result.v.info.dict": "1dd94eccc4b5808532016e6c771d4579231097ca642d87b0c462ee8137a54f2c"
+      },
+      {
+        "result.v": "2e223385b71df5dbf218dad5aa429bfb8363c7497f8ca6c062a62f0649df01b1",
+        "result.v.0.vec": "5e96eb327512416236faef2d945baac445d83633df6c03e44c0e5e46e52c298f",
+        "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+        "result.v.info.dict": "a4453c9fc850733c2bae4047cd28210f1c6a70b4974240affbe3cb01e83c1395"
+      }
+    ],
+    "compared_hashes": {
+      "result.v": "ce69dd7734f78776963f1b120cfefd1508e6b89d173a787ebf8f592c34ed815c",
+      "result.v.0.vec": "262f0611419e027a797cca8b18d2a43a21dff6a3a68da60c5c3eaa848b909f71",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "08205d37d8e107b40c391707d79933b1d84fc38986a3573437704939556587a6"
+    }
   }
 }

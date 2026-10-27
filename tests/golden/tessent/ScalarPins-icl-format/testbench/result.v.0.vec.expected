@@ -1,0 +1,32 @@
+//
+// Verilog format test patterns produced by Tessent Shell 2026.2
+// Filename       : result.v.0.vec
+// Idstamp        : 2026.2:ec94:508e:0:0000
+// Date           : Tue Oct 27 14:58:56 2026
+//
+// Format of broadside vector:
+//   PI_bits PO_bits MASK_bits Increment_bit Timeplate_bits(1) PatType_bits(3)
+//   VecType_bits(4)
+//   Increment_bit  - indicates when to increment pattern count
+//   Timeplate_bits - encodes timeplate number to use
+//   PatType_bits   - encodes pattern type
+//   VecType_bits   - encodes vector type
+
+// Scan test block
+
+// Pattern 0 Cycle 0 Timestamp 0 ns 
+000000000000000000000000000001000110000
+ // Start Pattern (0) MSG
+// Pattern_set oracle 
+000000000000000000000000000101000110000
+// + Targets: 
+//   Apply 0 
+//     writes: 
+//        observed  =  1 
+//  
+//  
+// Simulation Cycle 0  Timestamp 0 ns
+11Z10101011
+// Total count SimulationCycles:1 Timestamp:100 ns
+// end of Vec file MSG
+000000000000000000000000000000110110000

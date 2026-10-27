@@ -331,6 +331,29 @@ class Oracle(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'changed comparison input'):
                     oracle.compare(bundle, ROOT / 'build/pdl_pattern_trace')
 
+    def test_required_testbench_missing_or_hashed(self):
+        for exported in (False, True):
+            with self.subTest(exported=exported):
+                bundle = self.root / f'testbench_{exported}'
+                report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+                report['cases'][0]['export_testbench'] = True
+                (bundle / 'bundle.json').write_text(json.dumps(report))
+                vendor = self.root / f'vendor_{exported}'
+                body = ('#!/usr/bin/env python3\nfrom pathlib import Path\n'
+                        'Path("result.pdl").write_text("iWrite r 1; iApply\\n")\n'
+                        'print("ICL_TOOLSETS_ORACLE_COMPLETE")\n')
+                if exported:
+                    body += ('Path("result.v").write_text("module tb; endmodule\\n")\n'
+                             'Path("result.v.0.vec").write_text("01\\n")\n')
+                vendor.write_text(body)
+                vendor.chmod(0o755)
+                result = oracle.run_bundle(bundle, str(vendor), 10)['cases'][0]
+                self.assertEqual(result['status'], 'reference_pass' if exported else 'reference_fail')
+                if exported:
+                    self.assertEqual(set(result['testbench_hashes']), {'result.v', 'result.v.0.vec'})
+                else:
+                    self.assertEqual(result['outcome'], 'missing_testbench')
+
 
 if __name__ == '__main__':
     unittest.main()

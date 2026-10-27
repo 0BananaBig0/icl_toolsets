@@ -4,6 +4,7 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -57,7 +58,7 @@ def candidate(directory, case, tool, binary):
     return artifacts, icl, pdl
 
 
-def prepare(root, cases, output, binaries, selected=TOOLS):
+def prepare(root, cases, output, binaries, selected=TOOLS, testbenches=True):
     root, output = root.resolve(), output.resolve()
     if any(tool not in TOOLS for tool in selected):
         raise ValueError('unknown golden tool')
@@ -71,6 +72,13 @@ def prepare(root, cases, output, binaries, selected=TOOLS):
     for source, original in zip(cases, originals):
         original['source_hashes'] = source_hashes(root, source)
         folder = oracle.case_directory(output, report, original)
+        if testbenches:
+            original['export_testbench'] = True
+            icl = [name for name in original['inputs'] if name.endswith('.icl')]
+            (folder / 'run.tcl').write_text(oracle.tessent_script(
+                original['top'], icl, original['tessent_pdl_inputs'],
+                'model.bsdl' if original.get('bsdl') else None, testbench=True))
+            original['inputs']['run.tcl'] = digest(folder / 'run.tcl')
         for tool in selected:
             job = copy.deepcopy(original)
             job['id'] += '-' + tool
@@ -91,7 +99,8 @@ def prepare(root, cases, output, binaries, selected=TOOLS):
                 job['binary_sha256'] = digest(binaries[tool])
                 job['tessent_pdl_inputs'] = pdl
                 (destination / 'run.tcl').write_text(oracle.tessent_script(
-                    job['top'], icl, pdl, 'model.bsdl' if job.get('bsdl') else None))
+                    job['top'], icl, pdl, 'model.bsdl' if job.get('bsdl') else None,
+                    testbench=testbenches))
                 names = list(dict.fromkeys(list(original['inputs']) + artifacts))
                 job['inputs'] = {name: digest(destination / name) for name in names}
                 job['status'] = 'ready_reference_only'
@@ -108,6 +117,31 @@ def trace_file(binary, path, entry):
     if not trace.get('operations'):
         raise ValueError('empty vendor trace cannot certify a semantic test')
     return trace
+
+
+TESTBENCH_POLICY = 'leading-date-comment-v1'
+
+
+def testbench_digest(path, name):
+    # Only the observed leading provenance Date comment is volatile. Preserve
+    # executable text, other comments, Idstamp, timing, vectors and filenames.
+    marker = b'#' if name.endswith('.info.dict') else b'//'
+    date = re.compile(rb'(//|#) Date +: (Mon|Tue|Wed|Thu|Fri|Sat|Sun) '
+                      rb'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) '
+                      rb'[ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}\r?\n')
+    hasher = hashlib.sha256()
+    with path.open('rb') as stream:
+        while True:
+            line = stream.readline()
+            if not line:
+                break
+            if not line.startswith(marker):
+                hasher.update(line)
+                break
+            hasher.update(marker + b' Date : <timestamp>\n' if date.fullmatch(line) else line)
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            hasher.update(block)
+    return hasher.hexdigest()
 
 
 def record(root, bundle, case_id, tool, output, trace):
@@ -156,8 +190,22 @@ def record(root, bundle, case_id, tool, output, trace):
     if tool == 'icl-pattern-generation':
         if trace_file(trace, variant[1] / 'flat.pdl', '') != after:
             raise ValueError('flat pattern is not a vendor fixed point: operations differ')
+    testbench = None
+    if tool != 'icl-pattern-generation' or any(job.get('export_testbench') for job, _ in jobs):
+        normalized, raw = [], []
+        for job, directory in jobs:
+            if job.get('export_testbench') is not True:
+                raise ValueError('formatter needs fresh testbench-certified evidence')
+            observed = oracle.testbench_hashes(directory)
+            if observed != job.get('testbench_hashes'):
+                raise ValueError('changed testbench hashes/inventory')
+            raw.append(observed)
+            normalized.append({name: testbench_digest(directory / name, name) for name in observed})
+        if normalized[0] != normalized[1]:
+            raise ValueError('original and candidate testbench bundles differ')
+        testbench = dict(policy=TESTBENCH_POLICY, raw_hashes=raw, compared_hashes=normalized[0])
     artifacts = {name: variant[0]['inputs'][name] for name in variant[0]['artifacts']}
-    certificate = dict(schema=1, case=case, tool=tool, source_hashes=source_hashes(root, case),
+    certificate = dict(schema=2 if testbench else 1, case=case, tool=tool, source_hashes=source_hashes(root, case),
                        artifacts=artifacts, trace=after,
                        binary_sha256=variant[0]['binary_sha256'],
                        vendor_version=[job['version'] for job, _ in jobs],
@@ -165,6 +213,10 @@ def record(root, bundle, case_id, tool, output, trace):
                        vendor_inputs=[job['inputs'] for job, _ in jobs],
                        vendor_outputs={'original_vendor.pdl': baseline[0]['result_sha256'],
                                        'vendor.pdl': variant[0]['result_sha256']})
+    if testbench:
+        certificate['testbench_comparison'] = testbench
+        for prefix, hashes in zip(('original_testbench/', 'testbench/'), testbench['raw_hashes']):
+            certificate['vendor_outputs'].update({prefix + name: sha for name, sha in hashes.items()})
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.golden-', dir=output.parent) as temp:
         staged = Path(temp) / 'snapshot'
@@ -173,6 +225,11 @@ def record(root, bundle, case_id, tool, output, trace):
             (staged / (name + '.expected')).write_bytes(oracle.input_path(variant[1], name).read_bytes())
         for name, (_, directory) in zip(('original_vendor.pdl', 'vendor.pdl'), jobs):
             (staged / (name + '.expected')).write_bytes((directory / 'result.pdl').read_bytes())
+        if testbench:
+            for prefix, (job, directory) in zip(('original_testbench', 'testbench'), jobs):
+                (staged / prefix).mkdir()
+                for name in job['testbench_hashes']:
+                    (staged / prefix / (name + '.expected')).write_bytes((directory / name).read_bytes())
         (staged / 'snapshot.json').write_text(json.dumps(certificate, indent=2) + '\n')
         if output.exists() or output.is_symlink():
             raise FileExistsError(f'snapshot already exists: {output}')
@@ -182,9 +239,40 @@ def record(root, bundle, case_id, tool, output, trace):
 
 def check(root, snapshot, binaries):
     certificate = json.loads((snapshot / 'snapshot.json').read_text())
-    if certificate.get('schema') != 1 or certificate.get('tool') not in TOOLS:
+    if certificate.get('schema') not in (1, 2) or certificate.get('tool') not in TOOLS:
         raise ValueError('unsupported golden schema/tool')
     case, tool = certificate['case'], certificate['tool']
+    testbench = certificate.get('testbench_comparison')
+    if tool != 'icl-pattern-generation' and not testbench:
+        raise ValueError('formatter snapshot needs testbench recertification')
+    if certificate['schema'] == 2 and not testbench:
+        raise ValueError('missing certified testbench comparison')
+    if testbench:
+        if (certificate['schema'] != 2 or testbench['policy'] != TESTBENCH_POLICY
+                or len(testbench['raw_hashes']) != 2):
+            raise ValueError('unsupported testbench comparison policy/schema')
+        for prefix, hashes in zip(('original_testbench/', 'testbench/'), testbench['raw_hashes']):
+            if 'result.v' not in hashes:
+                raise ValueError('missing certified testbench result.v')
+            if any(Path(name).name != name or not name.startswith('result.v') for name in hashes):
+                raise ValueError('invalid certified testbench inventory name')
+            directory = snapshot / prefix
+            if directory.is_symlink() or not directory.is_dir():
+                raise ValueError('invalid certified testbench inventory directory')
+            files = list(directory.iterdir())
+            outputs = {name[len(prefix):]: sha for name, sha in certificate['vendor_outputs'].items()
+                       if name.startswith(prefix)}
+            if (outputs != hashes or {p.name for p in files} != {n + '.expected' for n in hashes}
+                    or any(p.is_symlink() or not p.is_file() for p in files)):
+                raise ValueError('changed certified testbench inventory')
+            normalized = {}
+            for name, sha in hashes.items():
+                if certificate['vendor_outputs'].get(prefix + name) != sha:
+                    raise ValueError('inconsistent certified testbench hashes')
+                path = oracle.input_path(snapshot, prefix + name + '.expected')
+                normalized[name] = testbench_digest(path, name)
+            if normalized != testbench['compared_hashes']:
+                raise ValueError('changed certified testbench comparison')
     if certificate['trace']['binding'] != case['top']:
         raise ValueError('changed certified module binding/context')
     if source_hashes(root, case) != certificate['source_hashes']:
@@ -193,7 +281,7 @@ def check(root, snapshot, binaries):
         verify(snapshot, {name + '.expected': sha for name, sha in certificate[key].items()})
     with tempfile.TemporaryDirectory(prefix='icl-toolsets-golden-') as temp:
         bundle = Path(temp) / 'bundle'
-        report = prepare(root, [case], bundle, binaries, (tool,))
+        report = prepare(root, [case], bundle, binaries, (tool,), testbenches=bool(testbench))
         job = report['cases'][-1]
         if not job['status'].startswith('ready_'):
             raise ValueError(job.get('error', 'candidate failed'))

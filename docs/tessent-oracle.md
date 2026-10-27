@@ -2,11 +2,14 @@
 
 `tests/tessent_oracle.py` prepares isolated, serial Tessent runs and records
 input SHA-256 hashes, exit codes, timeouts, tool banners and expected diagnostics.
-It exports **PDL** through `write_patterns -pdl`, not STIL or Verilog patterns.
+Its default export is **PDL** through `write_patterns -pdl`. Golden qualification
+also requests `write_patterns result.v -verilog -pattern_sets oracle` and records
+the complete `result.v*` testbench bundle. Missing exports fail qualification.
 No normal regression requires a Tessent license or SSH connection.
 
 The [Tessent-qualified golden harness](tessent-goldens.md) additionally checks
-flat-pattern re-ingestion and source/formatted ICL/PDL pairs, then stores
+flat-pattern re-ingestion and source/formatted ICL/PDL pairs (including matching
+Verilog testbench bundles for formatter standards), then stores
 explicitly certified outputs for offline regression. It never substitutes
 local-reset output for the flattened pattern.
 

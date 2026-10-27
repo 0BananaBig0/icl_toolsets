@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "case": {
     "id": "ScalarPins",
     "top": "ScalarPins",
@@ -44,23 +44,54 @@
     "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026"
   ],
   "vendor_console_sha256": [
-    "40dc9114cd739a8aee16fff92dbbd20771b417ba0770ee5746bd50245ce7f921",
-    "569862c0804c7db8c5d9c3acdaf777564eb1ca286e74d187fa5927517d8e84e4"
+    "a1c427993fd97e0b8b70ac0a8a1fb27fd4e30e3c8e6803a5fccf747e7bf174e9",
+    "a2b9e0352e53534fab79c49e2b7fa38e09b5e71c8f1072ed0c190b7425f7f670"
   ],
   "vendor_inputs": [
     {
       "design_0.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
       "source_0.pdl": "56b313742fe4430e816118b4d8806accf70d6ab39ce087d51578d8c0e13d3aec",
-      "run.tcl": "fc5df827523f20a50367b71dc2dc8c9332b7e735a8c368091f50afdb96c36f13"
+      "run.tcl": "ffef305806f54853dc499ee6077d73b301f93515680ec455de80af26d6a398dd"
     },
     {
       "design_0.icl": "f0cc5c4ea8e6512bf100534f6b2cb36ab4d94b6e35314c7afa1fc1c71e01365a",
       "source_0.pdl": "14f500f8559b95c10bf78d45183ca5f8facf38deebbbb1784ebfd1705d20586c",
-      "run.tcl": "fc5df827523f20a50367b71dc2dc8c9332b7e735a8c368091f50afdb96c36f13"
+      "run.tcl": "ffef305806f54853dc499ee6077d73b301f93515680ec455de80af26d6a398dd"
     }
   ],
   "vendor_outputs": {
     "original_vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10",
-    "vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10"
+    "vendor.pdl": "d0e15a6d39a7dcd8e9ca342c4815432fe2a0f12a6c7e9af2221872d82a8afb10",
+    "original_testbench/result.v": "ca104c191f1f9bc159dc076f728df08b413435d3f7901baa079a3b753f35d26b",
+    "original_testbench/result.v.0.vec": "dd13f4d472073dde7ddda0458f862300398ddf35f43c4a52346998ba4e7a7e8c",
+    "original_testbench/result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+    "original_testbench/result.v.info.dict": "1dd94eccc4b5808532016e6c771d4579231097ca642d87b0c462ee8137a54f2c",
+    "testbench/result.v": "588508d033af294ae7b578f40bebef18716d1f83d06456f0437b4bb2b03b7c61",
+    "testbench/result.v.0.vec": "34415bb25e5cce9d2f246591a8cdb873fde417a4c28f2e87d78cd35e0943bbf0",
+    "testbench/result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+    "testbench/result.v.info.dict": "38c5ae844368838f1343162cf2cc6e07b3d7c06e30ea7bc655adbad03dc19d40"
+  },
+  "testbench_comparison": {
+    "policy": "leading-date-comment-v1",
+    "raw_hashes": [
+      {
+        "result.v": "ca104c191f1f9bc159dc076f728df08b413435d3f7901baa079a3b753f35d26b",
+        "result.v.0.vec": "dd13f4d472073dde7ddda0458f862300398ddf35f43c4a52346998ba4e7a7e8c",
+        "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+        "result.v.info.dict": "1dd94eccc4b5808532016e6c771d4579231097ca642d87b0c462ee8137a54f2c"
+      },
+      {
+        "result.v": "588508d033af294ae7b578f40bebef18716d1f83d06456f0437b4bb2b03b7c61",
+        "result.v.0.vec": "34415bb25e5cce9d2f246591a8cdb873fde417a4c28f2e87d78cd35e0943bbf0",
+        "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+        "result.v.info.dict": "38c5ae844368838f1343162cf2cc6e07b3d7c06e30ea7bc655adbad03dc19d40"
+      }
+    ],
+    "compared_hashes": {
+      "result.v": "ce69dd7734f78776963f1b120cfefd1508e6b89d173a787ebf8f592c34ed815c",
+      "result.v.0.vec": "262f0611419e027a797cca8b18d2a43a21dff6a3a68da60c5c3eaa848b909f71",
+      "result.v.cfg": "050a36a144754a50dba5d4dad22381329bcbf780d6d33b7149fcf7ece9a0913b",
+      "result.v.info.dict": "08205d37d8e107b40c391707d79933b1d84fc38986a3573437704939556587a6"
+    }
   }
 }
