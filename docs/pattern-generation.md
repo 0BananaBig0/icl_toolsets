@@ -594,3 +594,16 @@ none is claimed as an exact or hardware-equivalence pass. All 227 staged input
 hashes and 19 export hashes were verified, and every successful export parsed
 through the shared trace helper. The renamed connections probe is preserved;
 no random-suffixed icl_toolsets experiment directory remains at the remote root.
+
+
+The requested repeat against `a39fc7b` reproduced all 36 vendor outcomes and
+all 19 exported static traces; both TAP comparison files are byte-identical to
+the prior run. The 33 generator failures break down into 24 addressed/one-hot
+targets, three interface-event scheduling cases, one multi-source reset artifact,
+one invalid contributor width and four procedures without explicit TAP reset.
+These are first diagnostics, and include intentionally negative fixtures.
+See [the current report](tessent-oracle.md#prefixed-layout-rerun-2026-10-27) for
+case counts and evidence. The repeat passed 22 harness and three trace tests;
+only documentation changed, so the previous full regression remains the latest
+complete check. Full generator equivalence and general reset rewriting remain
+unfinished.

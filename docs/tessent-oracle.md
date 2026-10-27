@@ -14,8 +14,8 @@ See [the generator guide](pattern-generation.md) for current capabilities.
 
 ## Prefixed-layout rerun (2026-10-27)
 
-A fresh full run with the new directory layout matched **36/36 expected Tessent
-outcomes: 17 PDL exports and 19 expected errors**. All 36 reference cases' input
+The requested repeat run against commit `a39fc7b` matched **36/36 expected
+Tessent outcomes: 17 PDL exports and 19 expected errors**. All 36 reference cases' input
 and Tcl hashes, and their outcomes, match the previously reviewed inputs. The
 runner naming change has not changed the vendor workload.
 
@@ -29,6 +29,21 @@ each preserves its original PDL bytes. The comparison report remains:
 | Blocked by vendor ICL71-1 (`SerialWrite`) | 1 |
 | Different operation sequences (the two TAP cases) | 2 |
 | Exact operation matches | 0 |
+
+The 33 generator failures have these recorded first causes:
+
+| First diagnostic | Cases | Interpretation |
+| --- | ---: | --- |
+| Target requires ScanRegister or Alias | 24 | Addressed/one-hot target execution is unsupported. |
+| Interface controls require event scheduling | 3 | Required control-event scheduling is unsupported. |
+| Reset artifact requires one PDL source | 1 | Safe multiple-file reset output is unfinished. |
+| Parent logical DataIn width too small | 1 | This is an intentionally invalid contributor-width fixture. |
+| Explicit TAP reset required | 4 | These source procedures omit reset; the generator refuses unknown TAP state. |
+
+These counts identify the first blocker, not every missing feature. Some cases
+are deliberately negative vendor tests and cannot become positive pattern
+comparisons without changing their purpose. Keep these expectations separate
+from the work needed to support valid networks.
 
 The TAP traces are unchanged from the reset-passthrough comparison below,
 including Tessent's explicit instruction-register write/readback/apply. The
@@ -46,22 +61,26 @@ execution used Tessent Shell 2026.2 and serial jobs in:
 
 ```text
 /data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_equivalence/
-  tessent-prefixed-reference/test_<case-id>/
-  tessent-prefixed-comparison/test_<case-id>/
+  tessent-repeat-reference/test_<case-id>/
+  tessent-repeat-comparison/test_<case-id>/
 ```
 
 Local evidence remains ignored:
-`build/tessent-prefixed-{reference,comparison}-evidence/`,
-`build/tessent-prefixed-verification.json` and
-`build/tessent-prefixed-remote.log`. The two TAP `operation_comparison.json`
-files exactly match the prior reviewed trace comparisons.
+`build/tessent-repeat-{reference,comparison}-evidence/`,
+`build/tessent-repeat-verification.json`, `build/tessent-repeat-blockers.json`
+and `build/tessent-repeat-remote.log`. All 19 exported static traces are
+unchanged from the prior run; the two TAP `operation_comparison.json` files are
+byte-identical. Earlier `tessent-prefixed-*` evidence remains intact. No result
+was replaced or accepted solely because it matched an expected filename.
 
-The complete repository regression passed, including 22 harness tests, three
-trace tests, all 334 grammar / 119 scanner rules and both editor corpus runs
-(38,633 ICL / 805 PDL per editor). Independent review found no actionable code
-issues. C++ sources are unchanged; sanitizers and strict C++ coverage were not
-rerun for this harness change. The prior coverage gate remains unmet at
-95.2% lines / 60.5% raw branches. See the [verification record](pattern-generation.md#tessent-harness-directory-naming-2026-10-27).
+This repeat changes documentation only. The 22 harness tests and three shared
+trace tests were rerun and passed (`build/tessent-repeat-focused.log`). The latest
+complete regression remains the successful check for `a39fc7b`, including all
+334 grammar / 119 scanner rules and both editor corpus runs (38,633 ICL / 805
+PDL per editor). The complete regression, sanitizers and strict C++ coverage
+were not repeated for this documentation update. The last measured coverage
+gate remains unmet at 95.2% lines / 60.5% raw branches. See the [verification
+record](pattern-generation.md#tessent-harness-directory-naming-2026-10-27).
 
 ## Reset-passthrough comparison (2026-10-27)
 

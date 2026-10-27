@@ -378,8 +378,9 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
 scheduling, addressed/one-hot execution, merges, system clocks, resources, the
 general local-reset rewrite, and full Tessent pattern equivalence remain
-unfinished. The [latest vendor comparison](docs/tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
-records actual operation differences and remaining blockers. Remote experiments
+unfinished. The [latest Tessent rerun](docs/tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
+matched all 36 expected reference outcomes. Generator comparisons still report
+blocked cases and differing traces, with no exact operation matches. Remote experiments
 are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
 `test_Local_Reset`. New bundles contain `test_<case-name>` directories with no
 random suffixes; archived bundles remain readable.
