@@ -11,7 +11,7 @@ usage, editor setup, supported features and practical limitations.
 | [Pattern-generation user guide](pattern-generation.md) | Build, command support, runnable serial/TAP/alias examples, replay checks, output safety and remaining requirements. |
 | [Pattern-generation design](superpowers/specs/2026-10-25-icl-pattern-generation-design.md) | Complete requested scope and architecture; implementation in progress; executable has serial and single-TAP backends. |
 | [Pattern-generation model coverage](pattern-model-coverage.md) | Current model/runtime/scheduler support, remaining gaps and dated implementation evidence. |
-| [Tessent oracle verification](tessent-oracle.md) | Vendor PDL generation, width experiments, corpus accounting and local-reset input routing. |
+| [Tessent oracle verification](tessent-oracle.md) | Current vendor rerun, blocked comparison evidence, BSDL contract, corpus accounting and local-reset input routing. |
 | [Combined language/editor audit](combined-language-audit.md) | Sequential ICL/PDL block revalidation, upstream comparison, highlighting fix and verification. |
 | [PDL tools](pdl-tools.md) | Separate Tcl/PDL architecture, static dependency build, analysis limits and verification. |
 | [PDL block review](pdl-block-review.md) | IEEE clauses 7–8, PDL fixtures, upstream comparison and syntax-review evidence. |

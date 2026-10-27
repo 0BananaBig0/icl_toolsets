@@ -59,6 +59,9 @@ def validate(root, cases):
             if not isinstance(case['bsdl'], str) or not case['bsdl']:
                 raise ValueError(f'{name}: bsdl must name a repository file')
             input_path(root, case['bsdl'])
+            entity = case.get('bsdl_entity')
+            if not isinstance(entity, str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', entity):
+                raise ValueError(f'{name}: bsdl_entity must name the BSDL entity explicitly')
 
 
 def origin_files(root, origin):
@@ -207,7 +210,7 @@ def prepare(root, cases, output, generator=None, reference_only=False, inventory
                        '--top_module', case['top'], '--output', str(directory / 'ours.pdl'),
                        '--local_reset', str(directory / 'local_reset.pdl')]
             if bsdl_name:
-                command += ['--bsdl', str(directory / bsdl_name)]
+                command += ['--bsdl', case['bsdl_entity'], str(directory / bsdl_name)]
             item['generator_command'] = command
             code, elapsed = run_process(command, directory, directory / 'generator.log', 120)
             item['generator_exit'], item['generator_seconds'] = code, elapsed

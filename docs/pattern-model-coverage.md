@@ -64,7 +64,7 @@ full model coverage or Tessent equivalence.
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
 | Local-reset-only artifact | Reserved CLI option; explicit unsupported error | Transitive releases, safe batching, exact iProc preservation and rewrite replay |
-| Tessent oracle | Isolated vendor probes, manifests and comparison harness | Complete reviewed pair execution, reset-rewrite routing and semantic equivalence |
+| Tessent oracle | 2026-10-27 rerun: 33/33 expected vendor outcomes, 15 PDL exports; BSDL CLI contract corrected | All 33 real comparison preparations fail on missing local-reset rewriting; no generator equivalence established |
 | Acceptance checks | Full regression, sanitizers/style and independent review passed through the end-state directive guard; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.5%; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed

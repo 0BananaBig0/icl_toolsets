@@ -508,3 +508,12 @@ Evidence: ignored `build/end-state-{red,native-red,final-focused,regression,
 coverage,sanitize,install,installed-tests}.log`. Restoration scheduling and its
 semantic validation remain mandatory unfinished work; no Tessent equivalence
 is claimed. Generated artifacts remain outside Git.
+
+### Tessent comparison rerun (2026-10-27)
+
+The [fresh vendor rerun](tessent-oracle.md#rerun-2026-10-27) matched all
+33 expected Tessent outcomes and produced 15 verified PDL exports. The real
+generator failed all 33 comparison preparations because `--local_reset` remains
+unimplemented. No generator-equivalence comparison completed. The harness now
+uses `--bsdl ENTITY FILE`; full restoration/reset-rewrite requirements remain
+open. Reference results must not be reported as generator equivalence.

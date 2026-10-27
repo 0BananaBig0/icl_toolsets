@@ -380,7 +380,8 @@
       ],
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "requires_local_reset": false,
-      "expected": "ok"
+      "expected": "ok",
+      "bsdl_entity": "AccessProbe"
     },
     {
       "id": "AccessLink_range_down",
@@ -395,7 +396,8 @@
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "requires_local_reset": false,
       "expected": "error",
-      "diagnostic": "ICL1-1"
+      "diagnostic": "ICL1-1",
+      "bsdl_entity": "AccessProbe"
     },
     {
       "id": "AccessLink_range_up",
@@ -410,7 +412,8 @@
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "requires_local_reset": false,
       "expected": "error",
-      "diagnostic": "ICL1-1"
+      "diagnostic": "ICL1-1",
+      "bsdl_entity": "AccessProbe"
     },
     {
       "id": "AccessLink_single_bit",
@@ -425,7 +428,8 @@
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "requires_local_reset": false,
       "expected": "error",
-      "diagnostic": "ICL1-1"
+      "diagnostic": "ICL1-1",
+      "bsdl_entity": "AccessProbe"
     }
   ]
 }

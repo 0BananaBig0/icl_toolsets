@@ -378,7 +378,8 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
 scheduling, addressed/one-hot execution, merges, system clocks, resources, the
 separate local-reset artifact, and full Tessent pattern equivalence remain
-unfinished.
+unfinished. The [latest vendor rerun](docs/tessent-oracle.md#rerun-2026-10-27)
+separates Tessent reference outcomes from blocked generator comparisons.
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

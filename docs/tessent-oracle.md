@@ -5,6 +5,72 @@ input SHA-256 hashes, exit codes, timeouts, tool banners and expected diagnostic
 It exports **PDL** through `write_patterns -pdl`, not STIL or Verilog patterns.
 No normal regression requires a Tessent license or SSH connection.
 
+The generator executable, BSDL loader and single-TAP scheduler now exist.
+End-to-end comparison remains blocked by the unimplemented `--local_reset`
+artifact. The dated sections below preserve historical measurements; their
+then-current implementation limitations are not the current support matrix.
+See [the generator guide](pattern-generation.md) for current capabilities.
+
+## Rerun 2026-10-27
+
+The fresh **Tessent Shell 2026.2** run matched **33/33 expected outcomes**:
+**15 successful PDL exports** and **18 expected tool errors**. All 116 staged
+input/script hashes and all 15 generated-output hashes were verified after
+retrieval. The shared-parser static trace helper accepted all 15 exports.
+
+**Zero generator-equivalence comparisons completed.** Fresh comparison
+preparation using the real `build/icl-pattern-generation` executable failed
+all 33 cases with:
+
+```text
+error: --local_reset rewrite integration is not implemented
+```
+
+The harness continues to require the generator's original-input output and
+its separate local-reset rewrite; Tessent must consume that rewrite in
+comparison mode. Reference-only success does not satisfy this contract. The
+rerun did not substitute source PDL or fabricated rewrites for missing generator
+output, nor does parsing exported PDL prove hardware-state equivalence.
+
+During preparation, the harness's obsolete `--bsdl FILE` invocation was fixed to
+use the current `--bsdl ENTITY FILE` CLI. BSDL cases now declare and validate
+`bsdl_entity` before creating their run directory. Failing argument-contract
+and invalid-entity tests reproduced the gap; all 18 harness tests and three
+shared-parser trace tests pass after the correction. The four maintained BSDL
+cases identify the actual entity `AccessProbe`.
+
+The reference bundle was prepared before this comparison-only CLI correction;
+its ICL/PDL/BSDL and Tcl script bytes are unchanged by the fix. The isolated
+remote directory is:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/icl_toolsets_equivalence_20261027_6lIdtz
+```
+
+Tool banner: `Tessent Shell 2026.2 Thu May 21 21:09:45 GMT 2026`;
+remote Python: 3.8.16. The jobs ran serially, and original external projects
+were not modified. Local evidence is ignored build output:
+
+- `build/tessent-rerun-20261027-evidence/`: retrieved `results.json`, vendor
+  logs/PDL, verified traces and `verification-summary.json`.
+- `build/tessent-rerun-20261027-comparison/`: current generator commands,
+  per-case failure logs and `bundle.json`.
+- `build/tessent-rerun-20261027-inventory.json`: 39,435 inputs with hashes and
+  dispositions: 38 manifest-assigned, 36,588 generated syntax fixtures,
+  88 syntax-negative and 2,721 unpaired files.
+- `build/tessent-rerun-{remote,focused,comparison-prepare,regression}.log`:
+  run, harness and repository-check output.
+
+Full `make check BISON=/usr/bin/bison -j4` passed after the harness correction:
+static/dynamic checks, all 334 grammar and 119 scanner rules, and both editor
+corpus runs over 38,632 ICL and 802 PDL files each. Independent code and evidence
+review found no remaining issues. C++ production code is unchanged by this
+rerun; sanitizers and strict C++ coverage were not rerun. The latest measured
+coverage gate remains unmet at 95.2% lines / 60.5% raw branches against unchanged
+100%/90% thresholds, as recorded in [the generator guide](pattern-generation.md).
+Implementing and validating local-reset rewriting remains necessary before
+this harness can establish any end-to-end generator comparison.
+
 ## Input contract
 
 In comparison mode the generator receives the original ordered ICL and PDL
@@ -47,7 +113,7 @@ make tessent-oracle-check BISON=/usr/bin/bison
 python3 tests/tessent_oracle.py inventory --output build/oracle-inventory.json
 python3 tests/tessent_oracle.py prepare --reference-only --output build/oracle-reference
 
-# Once the generator and local-reset output exist:
+# Comparison requires local-reset output; currently reports generator_failed:
 python3 tests/tessent_oracle.py prepare \
   --generator build/icl-pattern-generation --output build/oracle-comparison
 ```
@@ -121,7 +187,7 @@ checks remain requirements; the reference results do not complete them.
 
 ## Harness checks
 
-`make tessent-oracle-check BISON=/usr/bin/bison` runs 15 Python harness tests and
+`make tessent-oracle-check BISON=/usr/bin/bison` runs 18 Python harness tests and
 three static-trace tests (including multiple rejection subcases). Checks cover
 original/rewrite routing, expected-error enforcement, timeout handling, stale
 outputs, altered scripts/rewrites, inventory accounting, exact source module
@@ -212,7 +278,7 @@ script hashes matching the staged sources. Both successful exports passed the
 shared-parser static trace helper. Retrieved evidence is in
 `build/address-defaults-evidence/address-defaults-oracle/`; generated artifacts
 are not tracked. The manifest now has 16 cases in total. No run here compares
-our generator, which still lacks its executable and scheduler.
+our generator; the executable and scheduler were unfinished at that checkpoint.
 
 ## Addressed register and instance contributors
 
@@ -314,13 +380,15 @@ Generated expanded ICL stays under ignored `build/`; it parses with our shared
 ICL frontend but is not a verified independent model of the TAP.
 
 The maintained oracle manifest accepts an optional **single** `bsdl` repository
-path per case, matching Tessent's `read_icl -bsdl_file` option. The harness stages
-it as `model.bsdl`, checks its hash along with the ICL/PDL/script, and forwards
-`--bsdl model.bsdl` to the proposed generator input interface in comparison mode.
+path per case, matching Tessent's `read_icl -bsdl_file` option. Each such case
+also requires `bsdl_entity`, naming the entity explicitly (`AccessProbe` in the
+maintained fixtures). The harness stages the file as `model.bsdl`, checks its
+hash along with the ICL/PDL/script, and forwards
+`--bsdl ENTITY model.bsdl` to the generator in comparison mode.
 Inventory includes explicitly declared inputs regardless of filename extension
 (including `.vhd` BSDL files). A missing, changed or out-of-repository BSDL does
-not silently disappear. The generator's BSDL loader and TAP construction remain
-unimplemented, so comparison is still blocked when the generator is absent.
+not silently disappear. The historical run preceded generator BSDL/TAP support;
+current comparison preparation reaches the unimplemented local-reset rewrite.
 
 The maintained runner reproduced the positive outcome, all staged input/script
 hashes match, and the shared PDL parser confirms the five operations above.
@@ -331,9 +399,9 @@ this is a vendor reference test, not generator equivalence or HDL simulation.
 The final inventory after this addition records 35 manifest-assigned source
 files, 36,588 generated syntax inputs, 88 syntax-negative files and 2,529 unpaired
 files (39,240 total, now including BSDL inputs). Running comparison preparation
-for the AccessLink case returns `blocked_generator`, as expected while the real
-executable is absent. The 17 harness tests and three shared-parser trace tests
-pass; they do not substitute for the blocked generator comparison.
+for the AccessLink case returned `blocked_generator` at that checkpoint,
+when the executable was absent. Its 17 harness tests and three shared-parser
+trace tests passed; they did not substitute for generator comparison.
 
 After the final inventory correction, the complete repository regression exited
 0 (`build/address-accesslink-final-regression.log`), including all 17 oracle

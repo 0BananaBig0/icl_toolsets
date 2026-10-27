@@ -36,6 +36,7 @@ class Oracle(unittest.TestCase):
         source = self.root / 'tests/model with $ and [chars].vhd'
         source.write_text('entity Probe is end Probe;\n')
         self.case['bsdl'] = source.relative_to(self.root).as_posix()
+        self.case['bsdl_entity'] = 'Probe'
         bundle = self.root / 'bundle'
         report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
         directory = bundle / 'simple'
@@ -51,6 +52,20 @@ class Oracle(unittest.TestCase):
         staged.write_text('modified')
         with self.assertRaisesRegex(ValueError, 'changed input model.bsdl'):
             oracle.run_bundle(bundle, '/no/tool', 1)
+
+    def test_bsdl_entity_is_explicit_and_validated(self):
+        self.case['bsdl'] = 'tests/model.bsdl'
+        (self.root / self.case['bsdl']).write_text('entity Probe is end Probe;')
+        for index, entity in enumerate([None, '', 'bad name', 'x/y', 17]):
+            with self.subTest(entity=entity):
+                self.case['bsdl_entity'] = entity
+                output = self.root / f'entity_{index}'
+                with self.assertRaisesRegex(ValueError, 'bsdl_entity'):
+                    oracle.prepare(self.root, [self.case], output, reference_only=True)
+                self.assertFalse(output.exists())
+        del self.case['bsdl_entity']
+        with self.assertRaisesRegex(ValueError, 'bsdl_entity'):
+            oracle.validate(self.root, [self.case])
 
     def test_invalid_bsdl_inputs_are_rejected_before_staging(self):
         for index, invalid in enumerate(['../escape.bsdl', '/outside.bsdl',
@@ -135,7 +150,8 @@ class Oracle(unittest.TestCase):
             'a=sys.argv\n'
             'p=pathlib.Path(a[a.index("--pdl")+1])\n'
             'assert "iWrite r 1" in p.read_text()\n'
-            'b=pathlib.Path(a[a.index("--bsdl")+1])\n'
+            'assert a[a.index("--bsdl")+1] == "Probe"\n'
+            'b=pathlib.Path(a[a.index("--bsdl")+2])\n'
             'assert b.read_text() == "entity Probe is end Probe;"\n'
             'pathlib.Path(a[a.index("--output")+1]).write_text("iWrite r 1\\niApply\\n")\n'
             'pathlib.Path(a[a.index("--local_reset")+1]).write_text('
@@ -143,13 +159,15 @@ class Oracle(unittest.TestCase):
         generator.chmod(0o755)
         self.case['requires_local_reset'] = True
         self.case['bsdl'] = 'tests/source.bsdl'
+        self.case['bsdl_entity'] = 'Probe'
         (self.root / self.case['bsdl']).write_text('entity Probe is end Probe;')
         report = oracle.prepare(self.root, [self.case], self.root / 'bundle',
                                 generator=generator)
         self.assertEqual(report['cases'][0]['status'], 'ready_comparison')
         command = report['cases'][0]['generator_command']
         self.assertIn('--bsdl', command)
-        self.assertEqual(Path(command[command.index('--bsdl') + 1]).read_text(),
+        self.assertEqual(command[command.index('--bsdl') + 1], 'Probe')
+        self.assertEqual(Path(command[command.index('--bsdl') + 2]).read_text(),
                          'entity Probe is end Probe;')
         script = (self.root / 'bundle/simple/run.tcl').read_text()
         self.assertIn('local_reset.pdl', script)

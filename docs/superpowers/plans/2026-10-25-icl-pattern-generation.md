@@ -546,3 +546,19 @@ Parallel ports, DataRegisters and alias `iApplyEndState` need separate work.
 - [ ] Implement end-state validation, default controlling-state behavior and
   final restoration with source/flat/generated-PDL equivalence. The guard is
   protection against incorrect output, not completion of that requirement.
+
+### Tessent rerun and harness CLI compatibility (2026-10-27)
+
+- [x] Rerun all 33 maintained cases in a new isolated remote workspace;
+  verify all expected outcomes, 116 input/script hashes and 15 output hashes.
+- [x] Parse all 15 PDL exports using the shared-parser trace helper.
+- [x] Correct BSDL comparison invocation to `--bsdl ENTITY FILE`, require an
+  explicit manifest entity and cover the argument contract and invalid values.
+- [x] Rerun real generator comparison preparation: all 33 cases fail on the
+  unimplemented local-reset rewrite; preserve the required input routing.
+- [x] Complete full regression for the harness correction: `make check` exited
+  0, including 18 harness tests, three trace tests, 334 grammar/119 scanner
+  rules and both editor corpora (38,632 ICL / 802 PDL). Independent review found
+  no remaining code or evidence issues.
+- [ ] Implement local-reset output and rerun actual generator comparisons;
+  reference-only expected outcomes do not complete this acceptance requirement.
