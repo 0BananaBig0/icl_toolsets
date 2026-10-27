@@ -585,3 +585,22 @@ Parallel ports, DataRegisters and alias `iApplyEndState` need separate work.
   No exact operation or full hardware-state equivalence pass is claimed.
 - [ ] Implement general transitive local-reset releases and safe multi-file
   source rewriting; this narrow passthrough does not complete original Task 5.
+
+
+### Tessent case layout and repeat comparison
+
+- [x] Rename the requested connections experiment to
+  `test_icl_toolsets/test_connections`, preserving its contents and recording
+  the old-to-new mapping.
+- [x] Prepare individual cases under `test_<id>` and preserve stable logical
+  IDs; markerless archived bundles remain runnable/comparable.
+- [x] Cover prepared paths, both runner/comparison layouts, unsupported prefix,
+  case path escape and symlink rejection; 22 harness / three trace tests pass.
+- [x] Rerun all 36 vendor reference cases: 17 exports / 19 expected errors.
+  Comparison retains 33 generator blockers, one vendor blocker and two differing
+  traces; verify 227 staged hashes and 19 export hashes. No equivalence pass.
+- [x] Complete full regression and independent review: `make check` and all
+  22 harness / three trace tests passed; no actionable review findings.
+- [x] Finalize fresh remote evidence in README/docs and obtain independent
+  verification of all hashes, traces and outcome counts; keep remaining
+  generator acceptance gaps explicit. User requested commit/push after checks.

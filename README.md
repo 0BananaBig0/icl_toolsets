@@ -378,10 +378,11 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
 scheduling, addressed/one-hot execution, merges, system clocks, resources, the
 general local-reset rewrite, and full Tessent pattern equivalence remain
-unfinished. The [latest vendor comparison](docs/tessent-oracle.md#reset-passthrough-comparison-2026-10-27)
+unfinished. The [latest vendor comparison](docs/tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
 records actual operation differences and remaining blockers. Remote experiments
 are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
-`test_Local_Reset`; new test folders use descriptive names without random suffixes.
+`test_Local_Reset`. New bundles contain `test_<case-name>` directories with no
+random suffixes; archived bundles remain readable.
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

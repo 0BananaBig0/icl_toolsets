@@ -164,12 +164,27 @@ def tessent_script(top, icl_names, pdl_names, bsdl_name=None):
     return '\n'.join(lines)
 
 
+def case_directory(bundle, report, case):
+    # Markerless bundles retain their historical directory names.
+    prefix = report.get('case_directory_prefix', '')
+    if prefix not in ('', 'test_'):
+        raise ValueError('unsupported case directory prefix')
+    name = case['id']
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*', name):
+        raise ValueError(f'invalid case id: {name}')
+    directory = bundle / (prefix + name)
+    if directory.is_symlink():
+        raise ValueError(f'{name}: invalid case directory')
+    return directory
+
+
 def prepare(root, cases, output, generator=None, reference_only=False, inventory=None):
     root, output = root.resolve(), output.resolve()
     validate(root, cases)
     # Never truncate an existing run or replace test inputs with generated artifacts.
     output.mkdir(parents=True, exist_ok=False)
-    report = dict(mode='reference_only' if reference_only else 'comparison', cases=[])
+    report = dict(mode='reference_only' if reference_only else 'comparison',
+                  case_directory_prefix='test_', cases=[])
     inventory = inventory or root / 'build/icl_corpus_inventory'
     for case in cases:
         item = dict(case)
@@ -180,7 +195,7 @@ def prepare(root, cases, output, generator=None, reference_only=False, inventory
         if not reference_only and (generator is None or not generator.is_file()):
             item['status'] = 'blocked_generator'
             continue
-        directory = output / case['id']
+        directory = case_directory(output, report, case)
         directory.mkdir()
         icl_names = []
         if case.get('icl_origin'):
@@ -250,10 +265,10 @@ def run_bundle(bundle, tessent, timeout):
         if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*', name) or name in seen:
             raise ValueError(f'invalid or duplicate case id: {name}')
         seen.add(name)
+        directory = case_directory(bundle, report, case)
         if not case['status'].startswith('ready_'):
             continue
-        directory = bundle / case['id']
-        if directory.is_symlink() or not directory.is_dir():
+        if not directory.is_dir():
             raise ValueError(f'{name}: invalid case directory')
         if any((directory / name).exists() or (directory / name).is_symlink()
                for name in ('result.pdl', 'console.log', 'tessent.log')):
@@ -287,7 +302,7 @@ def run_bundle(bundle, tessent, timeout):
 def compare(bundle, trace):
     report = json.loads((bundle / 'results.json').read_text())
     for case in report['cases']:
-        directory = bundle / case['id']
+        directory = case_directory(bundle, report, case)
         if report['mode'] != 'comparison' or not (directory / 'ours.pdl').is_file():
             case['comparison'] = 'blocked_generator'
             continue

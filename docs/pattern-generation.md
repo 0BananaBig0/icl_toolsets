@@ -567,3 +567,30 @@ ran two TAP operation comparisons, both different, with one additional serial
 case blocked by the vendor reference. It does not establish hardware equivalence.
 General transitive reset release, batching and multiple-file rewriting remain
 mandatory unfinished work.
+
+
+### Tessent harness directory naming (2026-10-27)
+
+New reference and comparison bundles use `test_<case-id>` directories under
+`test_icl_toolsets/test_<topic>` on the remote host. The bundle records its prefix;
+markerless archives keep their original paths. Both layouts pass runner and
+static-comparison tests, with invalid prefixes, escaping IDs and case symlinks
+rejected. The requested connections probe directory was moved intact to
+`test_icl_toolsets/test_connections`.
+
+`make tessent-oracle-check BISON=/usr/bin/bison` passed 22 harness tests and
+three shared-parser trace tests. Independent review found no actionable issues.
+The complete `make check BISON=/usr/bin/bison -j4` passed with the reference
+environment, including all 334 grammar / 119 scanner rules and both editors over
+38,633 ICL / 805 PDL files. Logs: `build/tessent-layout-final-focused.log` and
+`build/tessent-layout-regression.log`. C++ production sources are unchanged;
+sanitizers and strict coverage were not rerun for this harness-only change.
+The last measured 95.2% line / 60.5% raw-branch coverage gate remains unmet.
+
+The [fresh full Tessent rerun](tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
+matched all 36 expected vendor outcomes (17 exports / 19 errors). Comparison
+retains 33 generator blockers, one vendor blocker and two differing TAP traces;
+none is claimed as an exact or hardware-equivalence pass. All 227 staged input
+hashes and 19 export hashes were verified, and every successful export parsed
+through the shared trace helper. The renamed connections probe is preserved;
+no random-suffixed icl_toolsets experiment directory remains at the remote root.

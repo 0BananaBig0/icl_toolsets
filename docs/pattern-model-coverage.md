@@ -64,7 +64,7 @@ full model coverage or Tessent equivalence.
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
 | Local-reset-only artifact | One source preserved byte-for-byte after proving reset-port ancestry needs no instrument release; procedures and source/flat replay tested | Transitive releases, safe batching and safe multiple-file rewriting |
-| Tessent oracle | 36 maintained cases: 17 exports / 19 expected errors across reviewed runs; two actual TAP comparisons differ and one serial comparison is blocked by vendor ICL71-1 | Original 33 comparison preparations remain blocked by model/execution limits; no full state equivalence established |
+| Tessent oracle | Fresh 36-case rerun in prefixed directories: 17 exports / 19 expected errors; two actual TAP comparisons differ and one serial comparison is blocked by vendor ICL71-1 | Original 33 comparison preparations remain blocked by model/execution limits; no full state equivalence established |
 | Acceptance checks | Full regression, sanitizers/style and independent review passed through restricted reset passthrough; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.5%; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed

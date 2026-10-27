@@ -12,6 +12,57 @@ unimplemented. The dated sections below preserve historical measurements; their
 then-current implementation limitations are not the current support matrix.
 See [the generator guide](pattern-generation.md) for current capabilities.
 
+## Prefixed-layout rerun (2026-10-27)
+
+A fresh full run with the new directory layout matched **36/36 expected Tessent
+outcomes: 17 PDL exports and 19 expected errors**. All 36 reference cases' input
+and Tcl hashes, and their outcomes, match the previously reviewed inputs. The
+runner naming change has not changed the vendor workload.
+
+Real comparison preparation produced **33 generator failures and three ready
+cases**. Tessent consumed the three generator-produced `local_reset.pdl` files;
+each preserves its original PDL bytes. The comparison report remains:
+
+| Result | Cases |
+| --- | ---: |
+| Blocked by generator/model limitations | 33 |
+| Blocked by vendor ICL71-1 (`SerialWrite`) | 1 |
+| Different operation sequences (the two TAP cases) | 2 |
+| Exact operation matches | 0 |
+
+The TAP traces are unchanged from the reset-passthrough comparison below,
+including Tessent's explicit instruction-register write/readback/apply. The
+comparison command returned exit 1, correctly retaining these unresolved
+outcomes. The reference runner returned 0; the comparison runner returned 1
+because its report retains the 33 failed generator preparations, even though
+all three ready jobs matched their expected vendor outcomes. **This is not a
+full equivalence pass.** General reset rewriting, the other generator/model
+limitations and independent state/observation equivalence remain unfinished.
+
+All **227 staged input/script hashes** and **19 successful export hashes** were
+verified after retrieval (127/17 in the reference bundle, 100/2 in comparison).
+The shared trace helper parsed all 19 exports, including repeat cases. Remote
+execution used Tessent Shell 2026.2 and serial jobs in:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_equivalence/
+  tessent-prefixed-reference/test_<case-id>/
+  tessent-prefixed-comparison/test_<case-id>/
+```
+
+Local evidence remains ignored:
+`build/tessent-prefixed-{reference,comparison}-evidence/`,
+`build/tessent-prefixed-verification.json` and
+`build/tessent-prefixed-remote.log`. The two TAP `operation_comparison.json`
+files exactly match the prior reviewed trace comparisons.
+
+The complete repository regression passed, including 22 harness tests, three
+trace tests, all 334 grammar / 119 scanner rules and both editor corpus runs
+(38,633 ICL / 805 PDL per editor). Independent review found no actionable code
+issues. C++ sources are unchanged; sanitizers and strict C++ coverage were not
+rerun for this harness change. The prior coverage gate remains unmet at
+95.2% lines / 60.5% raw branches. See the [verification record](pattern-generation.md#tessent-harness-directory-naming-2026-10-27).
+
 ## Reset-passthrough comparison (2026-10-27)
 
 The maintained manifest now has **36 cases**. A fresh 36-case reference run
@@ -138,7 +189,7 @@ this harness can establish any end-to-end generator comparison.
 
 The local mount `/home/banana/remote_eda/lianghuaxiao/test/tessent_ijtag`
 corresponds to `/data/workspaces/lianghuaxiao/test/tessent_ijtag` on
-`lianghuaxiao@192.168.6.20`. Following `test_Local_Reset`, all seven agent-created
+`lianghuaxiao@192.168.6.20`. Following `test_Local_Reset`, all eight agent-created
 experiment directories have been moved under one parent, with descriptive names:
 
 ```text
@@ -152,6 +203,7 @@ test_icl_toolsets/
   test_tap_signals/
   test_equivalence/
   test_reset_passthrough/
+  test_connections/
 ```
 
 Moves preserved each directory inode and its contents; no existing destination
@@ -162,6 +214,31 @@ bundle case IDs, relative input paths and hashes were preserved. New topic
 directories must use `test_` and meaningful names, without opaque random
 suffixes. Retain each run in a fresh descriptive subdirectory; never replace
 old evidence to rerun a case. Generated evidence stays outside Git.
+
+The separately named `icl-toolsets-connections.h7xp5L` experiment is now
+`test_icl_toolsets/test_connections`; its directory inode and contents were
+preserved, and its Tcl probes use relative inputs. The mapping is recorded in
+the parent `migration.json`.
+
+New harness bundles record `case_directory_prefix: "test_"` and place each case
+in `test_<case-id>`, keeping logical case IDs unchanged. For example:
+
+```text
+test_equivalence/
+  tessent-prefixed-reference/
+    bundle.json
+    test_AccessLink_ExplicitReset/
+      design_0.icl
+      model.bsdl
+      source_0.pdl
+      run.tcl
+```
+
+The runner and comparison command use this explicit layout marker. Archived
+bundles without it retain their original case paths; existing evidence does not
+need renaming or rehashing. Unsupported prefixes, escaping case IDs and case
+symlinks are rejected. The naming change does not alter the prepared Tcl,
+source bytes, case IDs, or expected vendor outcomes.
 
 ## Input contract
 
@@ -281,12 +358,13 @@ checks remain requirements; the reference results do not complete them.
 
 ## Harness checks
 
-`make tessent-oracle-check BISON=/usr/bin/bison` runs 18 Python harness tests and
+`make tessent-oracle-check BISON=/usr/bin/bison` runs 22 Python harness tests and
 three static-trace tests (including multiple rejection subcases). Checks cover
 original/rewrite routing, expected-error enforcement, timeout handling, stale
 outputs, altered scripts/rewrites, inventory accounting, exact source module
 reconstruction (including namespace resets), unsafe Tcl substitution and
-ambiguous procedure entries.
+ambiguous procedure entries, prefixed and legacy bundle layouts, and unsafe
+case paths.
 Subprocess protocol fixtures simulate the tools only in unit tests; they are
 not evidence of generator/vendor equivalence. Native generator verification is
 recorded separately in [the generator guide](pattern-generation.md).

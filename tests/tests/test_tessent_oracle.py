@@ -25,6 +25,53 @@ class Oracle(unittest.TestCase):
                          pdl=['tests/a.pdl'], requires_local_reset=False,
                          expected='ok')
 
+    def test_new_cases_have_test_prefix_and_stable_ids(self):
+        bundle = self.root / 'bundle'
+        report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+        self.assertTrue((bundle / 'test_simple/design_0.icl').is_file())
+        self.assertTrue((bundle / 'test_simple/run.tcl').is_file())
+        self.assertFalse((bundle / 'simple').exists())
+        self.assertEqual(report['cases'][0]['id'], 'simple')
+        self.assertEqual(report['case_directory_prefix'], 'test_')
+
+    def test_run_and_compare_reject_unsafe_directory_prefix(self):
+        for index, prefix in enumerate(('../', '/tmp/', 'other_', None, ['test_'])):
+            with self.subTest(prefix=prefix):
+                bundle = self.root / f'bundle_{index}'
+                report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+                # Rejection must happen even when there is no tool work to perform.
+                report['cases'][0]['status'] = 'blocked_generator'
+                report['case_directory_prefix'] = prefix
+                (bundle / 'bundle.json').write_text(json.dumps(report))
+                with self.assertRaisesRegex(ValueError, 'directory prefix'):
+                    oracle.run_bundle(bundle, '/no/tool', 1)
+                (bundle / 'results.json').write_text(json.dumps(report))
+                with self.assertRaisesRegex(ValueError, 'directory prefix'):
+                    oracle.compare(bundle, Path('/no/trace'))
+
+    def test_run_and_compare_reject_case_directory_symlinks(self):
+        bundle = self.root / 'bundle'
+        report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+        directory = bundle / 'test_simple'
+        moved = self.root / 'moved'
+        directory.rename(moved)
+        directory.symlink_to(moved, target_is_directory=True)
+        report['cases'][0]['status'] = 'blocked_generator'
+        (bundle / 'bundle.json').write_text(json.dumps(report))
+        with self.assertRaisesRegex(ValueError, 'invalid case directory'):
+            oracle.run_bundle(bundle, '/no/tool', 1)
+        (bundle / 'results.json').write_text(json.dumps(report))
+        with self.assertRaisesRegex(ValueError, 'invalid case directory'):
+            oracle.compare(bundle, Path('/no/trace'))
+
+    def test_compare_rejects_escaping_case_ids(self):
+        bundle = self.root / 'bundle'
+        report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+        report['cases'][0]['id'] = '../escape'
+        (bundle / 'results.json').write_text(json.dumps(report))
+        with self.assertRaisesRegex(ValueError, 'case id'):
+            oracle.compare(bundle, Path('/no/trace'))
+
     def test_tcl_paths_are_literal(self):
         value = 'path with $var [error bad] "quotes" \\ and\nnewline'
         script = 'puts ' + oracle.tcl_word(value) + '\n'
@@ -39,7 +86,7 @@ class Oracle(unittest.TestCase):
         self.case['bsdl_entity'] = 'Probe'
         bundle = self.root / 'bundle'
         report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
-        directory = bundle / 'simple'
+        directory = bundle / 'test_simple'
         staged = directory / 'model.bsdl'
         self.assertTrue(staged.is_file(), 'BSDL must be staged with the ICL/PDL')
         self.assertEqual(staged.read_bytes(), source.read_bytes())
@@ -80,7 +127,7 @@ class Oracle(unittest.TestCase):
     def test_missing_generator_is_blocked_not_reference_success(self):
         report = oracle.prepare(self.root, [self.case], self.root / 'bundle')
         self.assertEqual(report['cases'][0]['status'], 'blocked_generator')
-        self.assertFalse((self.root / 'bundle/simple/run.tcl').exists())
+        self.assertFalse((self.root / 'bundle/test_simple/run.tcl').exists())
 
     def test_reference_only_does_not_bypass_required_local_reset(self):
         self.case['requires_local_reset'] = True
@@ -118,7 +165,7 @@ class Oracle(unittest.TestCase):
                                 reference_only=True)
         self.assertEqual(report['cases'][0]['status'], 'ready_reference_only')
         # Exercise emitted Tcl with recording commands; no Tcl expressions in paths.
-        script = (self.root / 'bundle/simple/run.tcl').read_text()
+        script = (self.root / 'bundle/test_simple/run.tcl').read_text()
         capture = self.root / 'captured'
         shim = ('proc unknown {args} {puts $::capture $args}\n'
                 'rename exit real_exit\nproc exit {args} {}\n'
@@ -169,11 +216,11 @@ class Oracle(unittest.TestCase):
         self.assertEqual(command[command.index('--bsdl') + 1], 'Probe')
         self.assertEqual(Path(command[command.index('--bsdl') + 2]).read_text(),
                          'entity Probe is end Probe;')
-        script = (self.root / 'bundle/simple/run.tcl').read_text()
+        script = (self.root / 'bundle/test_simple/run.tcl').read_text()
         self.assertIn('local_reset.pdl', script)
         self.assertNotIn('source_0.pdl', script)
         self.assertIn('iWrite reset 1',
-                      (self.root / 'bundle/simple/local_reset.pdl').read_text())
+                      (self.root / 'bundle/test_simple/local_reset.pdl').read_text())
 
     def test_manifest_requires_explicit_reset_policy(self):
         del self.case['requires_local_reset']
@@ -184,7 +231,7 @@ class Oracle(unittest.TestCase):
     def test_bundle_rejects_changed_scripts_and_escaping_ids(self):
         bundle = self.root / 'bundle'
         report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
-        script = bundle / 'simple/run.tcl'
+        script = bundle / 'test_simple/run.tcl'
         script.write_text('error changed')
         with self.assertRaisesRegex(ValueError, 'changed input'):
             oracle.run_bundle(bundle, '/no/tool', 1)
@@ -201,7 +248,7 @@ class Oracle(unittest.TestCase):
         self.assertEqual(oracle.result_status(code, '', self.root / 'absent'), 'timeout')
         bundle = self.root / 'bundle'
         oracle.prepare(self.root, [self.case], bundle, reference_only=True)
-        (bundle / 'simple/result.pdl').write_text('stale')
+        (bundle / 'test_simple/result.pdl').write_text('stale')
         with self.assertRaises(FileExistsError):
             oracle.run_bundle(bundle, '/no/tool', 1)
 
@@ -252,31 +299,37 @@ class Oracle(unittest.TestCase):
                          [('scoped', 'scoped'), ('', '')])
 
     def test_run_compare_and_changed_rewrite(self):
-        bundle = self.root / 'bundle'
-        report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
-        directory = bundle / 'simple'
-        report['mode'] = 'comparison'
-        for name in ['ours.pdl', 'local_reset.pdl']:
-            data = b'iProcsForModule M\niWrite r 1\niApply\n'
-            (directory / name).write_bytes(data)
-            report['cases'][0]['inputs'][name] = hashlib.sha256(data).hexdigest()
-        report['cases'][0]['tessent_pdl_inputs'] = ['local_reset.pdl']
-        (bundle / 'bundle.json').write_text(json.dumps(report))
-        # Simulated vendor subprocess tests the runner protocol, not retargeting.
-        vendor = self.root / 'vendor'
-        vendor.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
-            'Path("result.pdl").write_text('
-            '"iProcsForModule M\\niProc oracle {} {iWrite r 1; iApply}\\n")\n'
-            'print("Tessent Shell fixture")\n'
-            'print("ICL_TOOLSETS_ORACLE_COMPLETE")\n')
-        vendor.chmod(0o755)
-        result = oracle.run_bundle(bundle, str(vendor), 10)
-        self.assertEqual(result['cases'][0]['status'], 'reference_pass')
-        compared = oracle.compare(bundle, ROOT / 'build/pdl_pattern_trace')
-        self.assertEqual(compared['cases'][0]['comparison'], 'same_operations')
-        (directory / 'local_reset.pdl').write_text('iReset')
-        with self.assertRaisesRegex(ValueError, 'changed comparison input'):
-            oracle.compare(bundle, ROOT / 'build/pdl_pattern_trace')
+        for prefix in ('test_', ''):
+            with self.subTest(prefix=prefix):
+                bundle = self.root / ('prefixed' if prefix else 'legacy')
+                report = oracle.prepare(self.root, [self.case], bundle, reference_only=True)
+                directory = bundle / 'test_simple'
+                if not prefix:
+                    report.pop('case_directory_prefix', None)
+                    directory.rename(bundle / 'simple')
+                    directory = bundle / 'simple'
+                report['mode'] = 'comparison'
+                for name in ['ours.pdl', 'local_reset.pdl']:
+                    data = b'iProcsForModule M\niWrite r 1\niApply\n'
+                    (directory / name).write_bytes(data)
+                    report['cases'][0]['inputs'][name] = hashlib.sha256(data).hexdigest()
+                report['cases'][0]['tessent_pdl_inputs'] = ['local_reset.pdl']
+                (bundle / 'bundle.json').write_text(json.dumps(report))
+                # Simulated vendor subprocess tests the runner protocol, not retargeting.
+                vendor = self.root / 'vendor'
+                vendor.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\n'
+                    'Path("result.pdl").write_text('
+                    '"iProcsForModule M\\niProc oracle {} {iWrite r 1; iApply}\\n")\n'
+                    'print("Tessent Shell fixture")\n'
+                    'print("ICL_TOOLSETS_ORACLE_COMPLETE")\n')
+                vendor.chmod(0o755)
+                result = oracle.run_bundle(bundle, str(vendor), 10)
+                self.assertEqual(result['cases'][0]['status'], 'reference_pass')
+                compared = oracle.compare(bundle, ROOT / 'build/pdl_pattern_trace')
+                self.assertEqual(compared['cases'][0]['comparison'], 'same_operations')
+                (directory / 'local_reset.pdl').write_text('iReset')
+                with self.assertRaisesRegex(ValueError, 'changed comparison input'):
+                    oracle.compare(bundle, ROOT / 'build/pdl_pattern_trace')
 
 
 if __name__ == '__main__':
