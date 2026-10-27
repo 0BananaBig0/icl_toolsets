@@ -532,3 +532,17 @@ do the previously listed access-model, merge and reset-rewrite requirements.
 
 This completes a scoped alias feature, not the original generator requirements.
 Parallel ports, DataRegisters and alias `iApplyEndState` need separate work.
+
+### Task 4 continuation: prevent ignored end-state obligations
+
+- [x] Reproduce successful pattern publication that ignores alias
+  `iApplyEndState`, through direct-storage and alias targets with/without debug.
+- [x] Reject unimplemented restoration centrally in the scheduler; retain
+  frontend/elaboration/serialization support and source/alias diagnostics.
+- [x] Complete independent review, full regression, style/sanitizer checks and
+  sixteen installed-generator CLI tests. Strict coverage remains below the
+  unchanged 100% line / 90% raw-branch gate at 95.2% / 60.5%; see the dated
+  end-state guard verification in the generator guide.
+- [ ] Implement end-state validation, default controlling-state behavior and
+  final restoration with source/flat/generated-PDL equivalence. The guard is
+  protection against incorrect output, not completion of that requirement.

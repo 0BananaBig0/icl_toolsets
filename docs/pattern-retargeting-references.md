@@ -293,3 +293,19 @@ bounds still apply; no large-network throughput claim is made.
 
 The implementation does not validate all unused alias groups, implement
 parallel-port/DataRegister access, or implement `iApplyEndState` restoration.
+
+### Alias end-state obligations
+
+IEEE 1687-2014 §6.5.2(h6) and its explanation, printed p. 137, limit a
+PDL override of `iApplyEndState` to the next apply interval. An override in the
+final interval requires an additional operation restoring the specified state.
+This is a persistent ICL directive, not a property enabled only when PDL uses
+the alias name. Treating it as `DefaultLoadValue`, or accepting it while emitting
+only the requested final write, is insufficient.
+
+Until restoration scheduling is implemented, the shared scheduler rejects
+models containing this directive before generating patterns, including when
+PDL names the underlying storage. The diagnostic names the alias and its ICL
+source. The frontend, elaborator and flat serializer continue to preserve the
+property; source/flat rejection and output preservation have regression tests.
+The guard does not claim complete end-state semantic validation or execution.

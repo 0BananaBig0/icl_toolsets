@@ -340,7 +340,8 @@ transactions and checks each result through concrete controller/event replay.
 prerequisite scans may precede that cycle. It does not require reads to occur
 together. An ICL alias marked `AccessTogether` requires its register group to
 be accessed in one scan. Nested aliases and slices retain that constraint;
-unrelated queued accesses can use separate scans. See the
+unrelated queued accesses can use separate scans. Models containing alias
+`iApplyEndState` are rejected until restoration scheduling is implemented. See the
 [runnable alias example](docs/pattern-generation.md#alias-access-group-example)
 for generation and replay commands.
 
@@ -354,7 +355,7 @@ experimental generator can execute it.
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
-The generator's [verification record](docs/pattern-generation.md#access-together-verification-2026-10-27)
+The generator's [verification record](docs/pattern-generation.md#end-state-directive-guard-verification-2026-10-27)
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
 

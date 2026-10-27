@@ -68,6 +68,13 @@ class ScanScheduler::Impl {
     }
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
+      // End-state obligations apply even when PDL names the underlying storage.
+      if (node.properties.count("iApplyEndState")) {
+        throw std::runtime_error(node.origin + ": iApplyEndState on " +
+                                 node.name +
+                                 " requires restoration scheduling, which is "
+                                 "not implemented");
+      }
       if (node.kind == "ScanRegister") {
         registers_.push_back(id);
         auto initial = std::string(node.Width(), '0');

@@ -213,7 +213,9 @@ broader syntax support and never execute PDL.
   requested bits together after any prerequisite scans. Unrelated accesses may
   use separate scans. Unsupported port/DataRegister members are rejected.
   Flattened ICL preserves the marker; emitted common updates use
-  `iApply -together`. This does not implement alias `iApplyEndState` behavior.
+  `iApply -together`. Models containing alias `iApplyEndState` are explicitly rejected because
+  restoration scheduling is not implemented. The directive cannot be ignored
+  even when PDL accesses the underlying register directly.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
   State assumptions accept scan registers and top-level DataInPort or SelectPort
   pins with no internal driver; aliases retain source bit ordering and inversion.
@@ -476,3 +478,33 @@ Logs: `build/access-together-{regression,coverage,final-focused,sanitize,
 install,installed-tests}.log`; failing pre-fix reproductions use the same prefix.
 No Tessent equivalence or large-network throughput claim is made;
 parallel-port/DataRegister access and `iApplyEndState` remain unfinished.
+
+### End-state directive guard verification (2026-10-27)
+
+A regression reproduced successful pattern publication while ignoring an alias
+`iApplyEndState` obligation, both with and without `--debug`. The shared
+scheduler now rejects these models with an ICL source location and alias name.
+This protects direct-storage accesses as well as accesses through the alias.
+Parsing, elaboration and flattened serialization continue to retain the legal
+ICL property; this is a generator capability restriction.
+
+Focused native, CLI, flattening and Google style checks passed after correcting
+a test's source-location expectation: re-imported flattened ICL reports its own
+input file. Independent review found no remaining issues. Native tests cover
+source/flat behavior; CLI tests cover direct and aliased writes, reads, debug
+mode, preserved existing output and absence of newly published debug output.
+
+- Full `make check BISON=/usr/bin/bison -j4` passed, including dynamic/static
+  checks, 334/334 grammar rules, 119/119 scanner rules and Vim/Neovim corpus
+  runs over 38,632 ICL and 802 PDL files each.
+- Focused Clang ASan/UBSan passed; leak checks were disabled and external Z3 was
+  not instrumented. Dynamic installation and all sixteen installed-generator
+  CLI tests passed.
+- Strict coverage passed its functional suites but failed the unchanged
+  100% line / 90% raw-branch gate: **10,661/11,195 lines (95.2%)** and
+  **17,420/28,814 raw branches (60.5%)**.
+
+Evidence: ignored `build/end-state-{red,native-red,final-focused,regression,
+coverage,sanitize,install,installed-tests}.log`. Restoration scheduling and its
+semantic validation remain mandatory unfinished work; no Tessent equivalence
+is claimed. Generated artifacts remain outside Git.

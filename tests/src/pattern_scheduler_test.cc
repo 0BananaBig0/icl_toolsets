@@ -446,6 +446,31 @@ Module Network {
               scans.back().together && scans.back().writes.at("child.r") == "0",
           "even an unrequested alias member must update after reset release");
 }
+void TestUnsupportedEndState() {
+  std::ifstream file("tests/cases/ours/pattern_generation/apply_end_state.icl");
+  const std::string source(std::istreambuf_iterator<char>(file), {});
+  pattern::Design design;
+  design.AddIcl("end-state.icl", source);
+  const auto netlist = pattern::Elaborate(design, "EndState");
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat.icl", pattern::SerializeIcl(netlist));
+  const auto flat = pattern::Elaborate(flat_design, "EndState");
+  for (const auto* candidate : {&netlist, &flat}) {
+    bool rejected = false;
+    try {
+      pattern::ScanScheduler scheduler(*candidate);
+    } catch (const std::exception& error) {
+      const std::string message = error.what();
+      rejected = message.find("iApplyEndState") != std::string::npos &&
+                 message.find("idle_trigger") != std::string::npos &&
+                 message.find(candidate == &netlist
+                                  ? "end-state.icl:"
+                                  : "flat.icl:") != std::string::npos;
+    }
+    Require(rejected,
+            "source and flat models must not silently ignore end states");
+  }
+}
 void TestPrerequisites() {
   pattern::Design design;
   design.AddIcl("scheduler.icl", R"(
@@ -653,6 +678,7 @@ int main() {
     TestApplyTogether();
     TestAccessTogether();
     TestAccessTogetherPrerequisites();
+    TestUnsupportedEndState();
     TestPrerequisites();
     TestUnknownAndDisconnected();
     TestImplicitControl();
