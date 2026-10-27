@@ -5,6 +5,11 @@ input SHA-256 hashes, exit codes, timeouts, tool banners and expected diagnostic
 It exports **PDL** through `write_patterns -pdl`, not STIL or Verilog patterns.
 No normal regression requires a Tessent license or SSH connection.
 
+The [Tessent-qualified golden harness](tessent-goldens.md) additionally checks
+flat-pattern re-ingestion and source/formatted ICL/PDL pairs, then stores
+explicitly certified outputs for offline regression. It never substitutes
+local-reset output for the flattened pattern.
+
 The generator executable, BSDL loader and single-TAP scheduler now exist.
 Comparison now accepts the restricted `--local_reset` passthrough for
 networks without instrument-controlled resets; general reset rewriting remains

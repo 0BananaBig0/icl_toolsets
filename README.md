@@ -304,6 +304,19 @@ CLI/LSP consistency, and Vim/Neovim integration. Formatter tests compare reviewe
 expected output and check that formatting it again makes no changes. See
 [formatter self-tests](docs/formatter-self-tests.md).
 
+Tessent-qualified regression standards are also available:
+
+```sh
+make tessent-golden-check BISON=/usr/bin/bison
+```
+
+This check is included in `make check` and needs no Tessent license. It compares
+local flat patterns and formatted ICL/PDL against explicitly certified standards,
+including a second-pass stability check. Tessent runs only when deliberately
+creating new standards. Seven standards are currently certified; two vector
+pattern candidates remain unqualified because Tessent changes their write grouping.
+See [qualification, limitations and refresh commands](docs/tessent-goldens.md).
+
 Passing regression does not establish complete language conformance. The strict
 handwritten-code coverage target remains unmet. ICL has been tested in a live
 Vim/coc.nvim session; a full PDL coc.nvim session remains unverified. Detailed

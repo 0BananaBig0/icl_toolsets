@@ -1,0 +1,3 @@
+# Constrain only the low eight bits of the 16-bit target.
+iWrite observed 0bXXXXXXXX10010110
+iApply

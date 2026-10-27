@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "case": {
+    "id": "EqualWidthProbe_0096",
+    "top": "EqualWidthProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/one_hot_width.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/write_0096.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "tool": "icl-format",
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/one_hot_width.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+    "tests/cases/ours/pattern_generation/write_0096.pdl": "bdf458c31741740049d5976ff221cbc8ff39870746cd941c39f310a0b8228dc5"
+  },
+  "artifacts": {
+    "design_0.icl": "b644d0bcea5a1136b655d1b4446eaf36f0f91729a6fb33ee180c48fb315c21be"
+  },
+  "trace": {
+    "binding": "EqualWidthProbe",
+    "operations": [
+      [
+        "iWrite",
+        "data[7]",
+        "0b1"
+      ],
+      [
+        "iWrite",
+        "data[6]",
+        "0b0"
+      ],
+      [
+        "iWrite",
+        "data[5]",
+        "0b0"
+      ],
+      [
+        "iWrite",
+        "data[4]",
+        "0b1"
+      ],
+      [
+        "iWrite",
+        "data[3]",
+        "0b0"
+      ],
+      [
+        "iWrite",
+        "data[2]",
+        "0b1"
+      ],
+      [
+        "iWrite",
+        "data[1]",
+        "0b1"
+      ],
+      [
+        "iWrite",
+        "data[0]",
+        "0b0"
+      ],
+      [
+        "iWrite",
+        "enable",
+        "0b1"
+      ],
+      [
+        "iApply"
+      ]
+    ]
+  },
+  "binary_sha256": "8c323d6d8ffc793f18b033f51ddf38adb791bc26e096de8e9ef72554792f195b",
+  "vendor_version": [
+    "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026"
+  ],
+  "vendor_console_sha256": [
+    "75062767a6e805e36020cdc77c18f5e40c055f046b56093c622fce69466d95af",
+    "dc20e491624e0c3e275fe006cd799213c3cad1a29be695b0226c3e3b678e019f"
+  ],
+  "vendor_inputs": [
+    {
+      "design_0.icl": "a8ac0284d86b35ad95bd6bd8f081a8029dc428532704c98af697310e4a665fb1",
+      "source_0.pdl": "bdf458c31741740049d5976ff221cbc8ff39870746cd941c39f310a0b8228dc5",
+      "run.tcl": "8e47b53442ca1dd283e99cc1c3a9178a0fde05c5ec0c4c217a6b2c8047c5955f"
+    },
+    {
+      "design_0.icl": "b644d0bcea5a1136b655d1b4446eaf36f0f91729a6fb33ee180c48fb315c21be",
+      "source_0.pdl": "bdf458c31741740049d5976ff221cbc8ff39870746cd941c39f310a0b8228dc5",
+      "run.tcl": "8e47b53442ca1dd283e99cc1c3a9178a0fde05c5ec0c4c217a6b2c8047c5955f"
+    }
+  ],
+  "vendor_outputs": {
+    "original_vendor.pdl": "6ccd04145b18fdcc3aec629ae2c94c80966c36cfaecd6762061eed5983d8bfad",
+    "vendor.pdl": "6ccd04145b18fdcc3aec629ae2c94c80966c36cfaecd6762061eed5983d8bfad"
+  }
+}

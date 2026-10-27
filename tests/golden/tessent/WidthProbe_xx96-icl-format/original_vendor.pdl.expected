@@ -1,0 +1,17 @@
+iProcsForModule WidthProbe
+
+iProc oracle {} {
+
+   iWrite data[7] 0b1
+   iWrite data[6] 0b0
+   iWrite data[5] 0b0
+   iWrite data[4] 0b1
+   iWrite data[3] 0b0
+   iWrite data[2] 0b1
+   iWrite data[1] 0b1
+   iWrite data[0] 0b0
+   iWrite enable 0b1
+   iApply
+
+
+}

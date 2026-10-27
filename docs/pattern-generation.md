@@ -672,7 +672,9 @@ UndefinedBehaviorSanitizer runs passed. Sanitizer targets were
 `pattern-generation-check pattern-symbolic-check pattern-scheduler-check`,
 with `ASAN_OPTIONS=detect_leaks=0`, `-O1 -g -fsanitize=address,undefined
 -fno-omit-frame-pointer`, and the existing external Z3 archive. That archive
-is not instrumented, and leak detection was not run. Evidence is in
+is not instrumented, and leak detection was not run in this historical check.
+A [subsequent leak-enabled run](tessent-goldens.md#leak-detection) passed outside
+the sandbox. Evidence for the earlier check is in
 `build/primary-write-final-{focused,sanitizer}.log`.
 
 Independent review found incorrect output controlling-state initialization.

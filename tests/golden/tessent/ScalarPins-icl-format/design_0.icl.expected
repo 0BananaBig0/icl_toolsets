@@ -1,0 +1,9 @@
+// Self-constructed scalar pin fixture for Tessent-qualified golden tests.
+Module ScalarPins {
+  DataInPort data;
+  DataInPort enable;
+  DataOutPort observed {
+    Source data;
+    Enable enable;
+  }
+}
