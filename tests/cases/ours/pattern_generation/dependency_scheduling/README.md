@@ -10,3 +10,9 @@ readback, proprietary models or hidden temporal behavior is assumed.
 The independent regression model checks old-state accessibility, requested
 values and minimal scan counts for these specific topologies. It does not
 claim a general optimality proof for the heuristic scheduler.
+
+The test driver also constructs variants of these fixtures with protected
+storage and multi-bit protected selectors. It checks 40-level scheduling,
+partial/X/full explicit changes, forbidden intermediate values, fixed-point
+replay, and single-TAP control protection. These variants are self-constructed;
+they are not vendor equivalence goldens.

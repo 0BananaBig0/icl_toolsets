@@ -339,7 +339,8 @@ For write-only batches in larger networks, a dependency-guided planner groups
 reachable reset/selector controls before accessing their targets. It can handle
 deep SIB chains beyond the bounded solver's 32-scan horizon and retain open
 paths for reuse. Each scan still passes concrete replay; explicit user writes,
-including partial writes, retain their requested values. Cases the heuristic
+including partial writes, retain their requested values. Protected ScanRegisters
+remain fixed unless that apply explicitly requests a new value. Cases the heuristic
 cannot plan use the existing bounded solver. It does not guarantee globally
 shortest patterns. See [scheduling behavior and limits](docs/pattern-generation.md#dependency-guided-scheduling).
 

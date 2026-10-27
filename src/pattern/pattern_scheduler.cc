@@ -944,7 +944,10 @@ class ScanScheduler::Impl {
   std::optional<std::vector<ScanStep>> TryGreedy(
       const std::vector<Operation>& operations,
       const std::map<size_t, std::string>& goals,
-      const std::set<size_t>& required, bool together) {
+      const std::set<size_t>& required, bool together,
+      const std::map<size_t, std::string>& preserved,
+      const std::map<size_t, std::string>& desired_preserved,
+      bool explicit_writes) {
     const auto start = std::chrono::steady_clock::now();
     NetworkState current(state_);
     if (tap_) current.Drive(tap_->ir_select, "0");
@@ -957,7 +960,8 @@ class ScanScheduler::Impl {
         })) {
       // Already expanded patterns need no prerequisite configuration solve.
       try {
-        return Solve(operations, together, 1, {}, false);
+        return Solve(operations, together, 1, {}, false, preserved,
+                     explicit_writes);
       } catch (const ScheduleLimit&) {
         // A visible target can still need other state/control preparation.
       }
@@ -994,7 +998,14 @@ class ScanScheduler::Impl {
           ("prerequisite_value_" + name).c_str(), node.Width());
       const auto allowed = SymbolicValue::Literal(context_, mask->second);
       const auto fill = SymbolicValue::Literal(context_, fill_.at(id));
-      solver.add((load & ~allowed.bits) == (fill.bits & ~allowed.bits));
+      if (preserved.count(id)) {
+        const auto held = SymbolicValue::Literal(context_, preserved.at(id));
+        const auto desired =
+            SymbolicValue::Literal(context_, desired_preserved.at(id));
+        solver.add(load == held.bits || load == desired.bits);
+      } else {
+        solver.add((load & ~allowed.bits) == (fill.bits & ~allowed.bits));
+      }
       SymbolicValue value{load, ~context_.bv_val(0, node.Width())};
       assignments.emplace(id, Choose(drive, value, previous));
       choices.emplace(id, value);
@@ -1041,6 +1052,7 @@ class ScanScheduler::Impl {
     if (execution_)
       trial.execution_ = std::make_unique<TapExecution>(*execution_);
     std::vector<ScanStep> steps;
+    auto held = preserved;
     size_t previous_pending = configuration.size() + 1;
     for (size_t batch = 0; batch <= configuration.size(); ++batch) {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(15)) {
@@ -1092,6 +1104,9 @@ class ScanScheduler::Impl {
               load[bit] = desired[bit];
             }
           }
+          // A protected register may only take the original explicit value,
+          // including its non-control bits, during prerequisite configuration.
+          if (preserved.count(id)) load = desired;
           if (satisfied) continue;
           ++pending;
           if (writable(id)) {
@@ -1104,8 +1119,9 @@ class ScanScheduler::Impl {
         previous_pending = pending;
       }
       try {
-        auto scans =
-            trial.Solve(next, ready && together, tap_ ? 2 : 1, fixed, false);
+        auto scans = trial.Solve(next, ready && together, tap_ ? 2 : 1, fixed,
+                                 false, held, explicit_writes);
+        for (auto& [id, value] : held) value = trial.state_.Value(id);
         steps.insert(steps.end(), std::make_move_iterator(scans.begin()),
                      std::make_move_iterator(scans.end()));
       } catch (const ScheduleLimit&) {
@@ -1324,12 +1340,6 @@ class ScanScheduler::Impl {
                                  netlist_.nodes[id].name);
       }
     }
-    if (allow_greedy && preserved.empty() && registers_.size() >= 32 &&
-        expected.empty()) {
-      auto planned = TryGreedy(operations, goals, required, together);
-      if (planned) return std::move(*planned);
-    }
-    const auto start = std::chrono::steady_clock::now();
     auto desired_preserved = preserved;
     for (auto& [id, value] : desired_preserved) {
       const auto& node = netlist_.nodes.at(id);
@@ -1338,6 +1348,12 @@ class ScanScheduler::Impl {
         throw std::runtime_error("invalid reserved ScanRegister value");
       if (explicit_writes && goals.count(id)) value = goals.at(id);
     }
+    if (allow_greedy && registers_.size() >= 32 && expected.empty()) {
+      auto planned = TryGreedy(operations, goals, required, together, preserved,
+                               desired_preserved, explicit_writes);
+      if (planned) return std::move(*planned);
+    }
+    const auto start = std::chrono::steady_clock::now();
     for (size_t horizon = 1; horizon <= max_steps; ++horizon) {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(15) ||
           horizon * (graph_.size() + registers_.size()) > 262144) {

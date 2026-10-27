@@ -428,11 +428,11 @@ without retaining procedure scopes or resource directives. Generated-PDL and
 flattened-ICL replay are tested. Source-preserving `--local_reset` output retains
 the original resource commands and is separately re-executed before publication.
 
-Written reservations currently select the bounded 32-scan scheduler. Unwritten
-takes retain the large-network greedy path. `iReset` with active protected
-values reports an explicit unsupported error; release first.
-TCK waits must preserve protected values. Full resource/model support and a
-reservation-aware scalable heuristic remain outstanding requirements.
+Large write-only applies can use dependency-guided scheduling with reservations;
+reads and incompatible prerequisite configurations use the bounded solver.
+`iReset` with active protected values reports an explicit unsupported error;
+release first. TCK waits must preserve protected values. Full resource/model support and
+broader scheduling scale qualification remain outstanding requirements.
 
 Fixtures: `tests/cases/ours/pattern_generation/resources/`; regression:
 `tests/src/pattern/test_resource_reservations.py`. Tests include protected SIB
@@ -486,6 +486,25 @@ snapshot configurations or exhausted bounded batch attempts return to the
 original solver without publishing trial state. A directly accessible request
 tries a single scan first, avoiding unnecessary prerequisite solving when
 replaying generated PDL. Reads continue through the original solver.
+
+Reservations are checked in both the directly accessible fast path and every
+prerequisite batch. A protected controller can stay at its held value or advance
+to the original apply's explicitly requested full-register value, including its
+non-control bits. Batch boundaries retain the new protected value, preventing a
+return to the old value during later preparation. Automatic local-reset writes
+do not acquire permission to change protected values. Partial/X requests retain
+the controlling fill from before preparation. A protected register unrelated to
+the access path therefore does not force a deep network into the 32-scan solver.
+
+Protected-batch regression covers a 40-level SIB chain (41 scans), explicit
+partial/X/full updates to a protected controller, forbidden intermediate values,
+automatic-write restrictions, failed-trial rollback and TAP replay. The full
+regression passed (`build/protected-dependency-regression.log`), as did independent
+review and leak-enabled ASan/UBSan checks of 13 dependency cases, 17 reservation
+cases and the native scheduler. The 5398-byte protected deep-chain case took
+0.313 s for generation; measurements overlapped other checks and are not a
+speedup claim. See the [plan and evidence](superpowers/plans/2026-10-27-protected-dependency-scheduling.md).
+Fresh Tessent equivalence and strict authored-C++ coverage were not rerun.
 
 This is a heuristic, not a globally optimal scheduler. It groups targets whose
 reset/select requirements can coexist; mutually exclusive paths use the bounded

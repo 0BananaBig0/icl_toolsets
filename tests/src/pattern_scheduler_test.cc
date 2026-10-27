@@ -71,10 +71,12 @@ Module GreedyRollback {
   const auto netlist = pattern::Elaborate(design, "GreedyRollback");
   pattern::ScanScheduler scheduler(netlist);
   scheduler.Reset();
+  const std::map<size_t, std::string> held{{netlist.node_ids.at("pad0"), "0"}};
   bool rejected = false;
   try {
     scheduler.Apply({{"iWrite", {"child.target", "5"}, "rollback:1", {}},
-                     {"iWrite", {"release", "0"}, "rollback:2", {}}});
+                     {"iWrite", {"release", "0"}, "rollback:2", {}}},
+                    false, held);
   } catch (const std::exception& error) {
     rejected =
         std::string(error.what()).find("no schedule") != std::string::npos;
@@ -82,8 +84,8 @@ Module GreedyRollback {
   Require(rejected && scheduler.Value("release") == "0" &&
               scheduler.Value("child.target") == "0000",
           "failed greedy final update must not publish prerequisite state");
-  const auto steps =
-      scheduler.Apply({{"iWrite", {"child.target", "5"}, "rollback:3", {}}});
+  const auto steps = scheduler.Apply(
+      {{"iWrite", {"child.target", "5"}, "rollback:3", {}}}, false, held);
   Require(
       steps.size() == 2 && scheduler.Value("release") == "1" &&
           scheduler.Value("child.target") == "0101",
@@ -130,33 +132,43 @@ Module Primary {
 void TestReservationRollback() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/resources/network.icl");
-  pattern::Design design;
-  design.AddIcl("resource.icl",
-                std::string(std::istreambuf_iterator<char>(file), {}));
-  const auto netlist = pattern::Elaborate(design, "ResourceNetwork");
-  pattern::ScanScheduler scheduler(netlist);
-  scheduler.Reset();
-  const std::map<size_t, std::string> held{{netlist.node_ids.at("gate"), "00"}};
-  for (const auto& operations : std::vector<std::vector<pattern::Operation>>{
-           {{"iWrite", {"target", "5"}, "resource:1", {}}},
-           {{"iWrite", {"gate", "1"}, "resource:2", {}}}}) {
-    bool rejected = false;
-    try {
-      scheduler.Apply(operations, false, held, false);
-    } catch (const std::exception& error) {
-      rejected =
-          std::string(error.what()).find("reserved gate") != std::string::npos;
+  const std::string source(std::istreambuf_iterator<char>(file), {});
+  for (size_t padding : {0U, 32U}) {
+    auto expanded = source;
+    for (size_t i = 0; i < padding; ++i) {
+      expanded.insert(expanded.rfind('}'),
+                      "ScanRegister pad" + std::to_string(i) +
+                          " { ScanInSource si; ResetValue 1'b0; }\n");
     }
-    Require(rejected && scheduler.Value("gate") == "00" &&
-                scheduler.Value("target") == "0000",
-            "reserved-control failures must leave hardware and fill unchanged");
+    pattern::Design design;
+    design.AddIcl("resource.icl", expanded);
+    const auto netlist = pattern::Elaborate(design, "ResourceNetwork");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const std::map<size_t, std::string> held{
+        {netlist.node_ids.at("gate"), "00"}};
+    for (const auto& operations : std::vector<std::vector<pattern::Operation>>{
+             {{"iWrite", {"target", "5"}, "resource:1", {}}},
+             {{"iWrite", {"gate", "1"}, "resource:2", {}}}}) {
+      bool rejected = false;
+      try {
+        scheduler.Apply(operations, false, held, false);
+      } catch (const std::exception& error) {
+        rejected = std::string(error.what()).find("reserved gate") !=
+                   std::string::npos;
+      }
+      Require(
+          rejected && scheduler.Value("gate") == "00" &&
+              scheduler.Value("target") == "0000",
+          "reserved-control failures must leave hardware and fill unchanged");
+    }
+    scheduler.Apply({{"iWrite", {"gate", "1"}, "resource:3", {}},
+                     {"iWrite", {"target", "5"}, "resource:4", {}}},
+                    false, held);
+    Require(
+        scheduler.Value("gate") == "01" && scheduler.Value("target") == "0101",
+        "explicit source update replaces a reservation after failed trials");
   }
-  scheduler.Apply({{"iWrite", {"gate", "1"}, "resource:3", {}},
-                   {"iWrite", {"target", "5"}, "resource:4", {}}},
-                  false, held);
-  Require(
-      scheduler.Value("gate") == "01" && scheduler.Value("target") == "0101",
-      "explicit source update replaces a reservation after failed trials");
 }
 void TestPrimaryControllingState() {
   pattern::Design design;

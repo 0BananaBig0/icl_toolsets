@@ -89,6 +89,69 @@ class DependencyScheduling(unittest.TestCase):
     def test_deep_tree(self):
         self.check_case('deep', 'DeepDependencies')
 
+    def test_deep_tree_with_protected_storage(self):
+        source = (FIXTURE / 'deep.icl').read_text().replace(
+            "ScanRegister gate0 { ScanInSource si;",
+            "ScanRegister held[1:0] { ScanInSource si; ResetValue 2'b10; }\n"
+            "  ScanRegister gate0 { ScanInSource held[0];")
+        (self.directory / 'source.icl').write_text(source)
+        (self.directory / 'source.pdl').write_text(
+            'iReset\niTake held -persistent\niState held 2\niWrite target 0xa5\niApply\n')
+        elapsed = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                '--output', 'result.pdl', '--debug')
+        text = (self.directory / 'result.pdl').read_text()
+        held = [line for line in text.splitlines() if line.startswith('iWrite held ')]
+        self.assertEqual(held, ['iWrite held 0b10'] * 41)
+        self.check_tree('\n'.join(line for line in text.splitlines()
+                                  if not line.startswith(('iState ', 'iWrite held '))), True)
+        for icl, pdl in [('source.icl', 'result.pdl'),
+                         ('debug/DeepDependencies.icl', 'source.pdl')]:
+            self.run_tool('--icl', icl, '--pdl', pdl, '--output', 'again.pdl')
+            self.assertEqual(text, (self.directory / 'again.pdl').read_text())
+        print(f'protected deep40: bytes={len(source)} seconds={elapsed:.6f}', flush=True)
+
+    def test_deep_tree_with_explicit_protected_control_update(self):
+        source = (FIXTURE / 'deep.icl').read_text().replace(
+            "ScanRegister gate0 { ScanInSource si; ResetValue 1'b0; }",
+            "ScanRegister gate0[1:0] { ScanInSource si; ResetValue 2'b10; }")
+        source = source.replace('gate0;', 'gate0[0];').replace(
+            'SelectedBy gate0 {', 'SelectedBy gate0[0] {')
+        (self.directory / 'source.icl').write_text(source)
+        for write, value in (('iWrite gate0[0] 1', '11'),
+                             ('iWrite gate0 0bX1', '11'),
+                             ('iWrite gate0 0b01', '01')):
+            with self.subTest(write=write):
+                (self.directory / 'source.pdl').write_text(
+                    f'iReset\niTake gate0\niState gate0 2\n{write}\niWrite target 0xa5\niApply\n')
+                self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl', '--output', 'result.pdl')
+                text = (self.directory / 'result.pdl').read_text()
+                writes = [line for line in text.splitlines() if line.startswith('iWrite gate0 ')]
+                self.assertEqual(writes, [f'iWrite gate0 0b{value}'] * 41)
+                normalized = text.replace(f'iWrite gate0 0b{value}', 'iWrite gate0 0b1')
+                self.check_tree('\n'.join(line for line in normalized.splitlines()
+                                          if not line.startswith('iState ')), True)
+                self.run_tool('--icl', 'source.icl', '--pdl', 'result.pdl', '--output', 'again.pdl')
+                self.assertEqual(text, (self.directory / 'again.pdl').read_text())
+
+    def test_protected_control_cannot_take_intermediate_value(self):
+        (self.directory / 'source.icl').write_text(padded('''
+ScanRegister gate[1:0] { ScanInSource si; ResetValue 2'b00; }
+ScanRegister target[3:0] { ScanInSource gate[0]; ResetValue 4'b0; }
+ScanMux route SelectedBy gate[0] { 1'b0: gate[0]; 1'b1: target[0]; }
+ScanOutPort so { Source route; }
+'''))
+        for write in ('', 'iWrite gate 2;'):
+            with self.subTest(write=write):
+                (self.directory / 'source.pdl').write_text(
+                    f'iReset; iTake gate; iState gate 0; {write} iWrite target 5; iApply')
+                (self.directory / 'result.pdl').write_text('previous artifact')
+                result = subprocess.run([str(BIN), '--icl', 'source.icl', '--pdl', 'source.pdl',
+                                         '--output', 'result.pdl'], cwd=self.directory,
+                                        text=True, capture_output=True, timeout=40)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('reserved gate', result.stdout)
+                self.assertEqual((self.directory / 'result.pdl').read_text(), 'previous artifact')
+
     def test_wide_tree(self):
         self.check_case('wide', 'WideDependencies')
 
@@ -278,6 +341,17 @@ Module SelectedTop {
         self.run_tool('--icl', 'debug/SelectedTop.icl', '--pdl', 'source.pdl',
                       '--output', 'flat.pdl')
         self.assertEqual(result, (self.directory / 'flat.pdl').read_text())
+        source_pdl = (self.directory / 'source.pdl').read_text().replace(
+            'iReset\n', 'iReset\niTake core.gate0\niState core.gate0 0\niWrite core.gate0 1\n')
+        (self.directory / 'source.pdl').write_text(source_pdl)
+        self.run_tool(*inputs, '--pdl', 'source.pdl', '--output', 'protected.pdl')
+        protected = (self.directory / 'protected.pdl').read_text()
+        self.assertEqual(protected.count('iApply'), 2)
+        self.assertEqual([line for line in protected.splitlines()
+                          if line.startswith('iWrite core.gate0 ')],
+                         ['iWrite core.gate0 0b1'] * 2)
+        self.run_tool(*inputs, '--pdl', 'protected.pdl', '--output', 'again.pdl')
+        self.assertEqual(protected, (self.directory / 'again.pdl').read_text())
 
 
 if __name__ == '__main__':
