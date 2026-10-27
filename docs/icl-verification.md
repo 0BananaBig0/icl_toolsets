@@ -110,8 +110,8 @@ exception and cleanup edges and are not a count of handwritten decisions alone.
 | Measured source | Lines | Raw branches |
 |---|---:|---:|
 | All handwritten sources and headers | 2247/2286 (98.3%) | 3829/6452 (59.3%) |
-| `src/icl_parser.yy` | 418/418 (100%) | 843/1582 (53.3%) |
-| `src/icl_lexer.l` | 205/207 (99.0%) | 77/138 (55.8%) |
+| `src/icl/icl_parser.yy` | 418/418 (100%) | 843/1582 (53.3%) |
+| `src/icl/icl_lexer.l` | 205/207 (99.0%) | 77/138 (55.8%) |
 
 The final coverage run included all 42 semantic LSP tests. Its nonzero status is
 the threshold failure, not a failed functional assertion.

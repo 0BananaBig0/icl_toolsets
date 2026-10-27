@@ -7,9 +7,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "json.h"
-#include "pdl_document.h"
-#include "text_input.h"
+#include "utility/json.h"
+#include "pdl/pdl_document.h"
+#include "utility/text_input.h"
 
 namespace {
 using icl::Json;

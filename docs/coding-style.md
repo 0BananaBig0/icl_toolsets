@@ -56,7 +56,7 @@ style to embedded code, with the following language-specific conventions:
 From the repository root:
 
 ```sh
-clang-format -i src/*.cc src/*.h
+clang-format -i src/*/*.cc src/*/*.h
 make formatcheck
 make namingcheck BISON=/path/to/bison
 make check-dynamic BISON=/path/to/bison -j4

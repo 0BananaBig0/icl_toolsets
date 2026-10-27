@@ -1,12 +1,12 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_runtime.h"
+#include "pattern/pattern_runtime.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-#include "pattern_netlist.h"
+#include "pattern/pattern_netlist.h"
 
 namespace {
 void Require(bool value, const std::string& message) {

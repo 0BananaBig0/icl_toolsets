@@ -134,7 +134,7 @@ def main():
     check('Tessent baseline files are byte-identical', ok, detail)
 
     # Every scanner keyword must also work as an ICL Attribute identifier.
-    scanner = os.path.join(HERE, '..', 'src', 'icl_lexer.l')
+    scanner = os.path.join(HERE, '..', 'src', 'icl', 'icl_lexer.l')
     keyword_re = re.compile(r'^([A-Z][A-Za-z0-9_]*)\s+\{[^}]*make_[A-Z_]+\(',
                             re.M)
     with open(scanner, 'r', encoding='utf-8') as f:

@@ -1,0 +1,10 @@
+iPDLLevel 0
+iProcsForModule MergeNetwork
+iReset
+iProc first {} { iWrite a 5; iApply; }
+iProc second {} { iWrite b 10; iApply; }
+iMerge -begin
+iCall first
+iNote "before merged calls"
+iCall second
+iMerge -end

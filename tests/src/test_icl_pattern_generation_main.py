@@ -237,10 +237,9 @@ class Generator(unittest.TestCase):
                       "--output", "out/Network.pdl", "--local_reset", "blocked-reset", ok=False)
         self.assertEqual((self.root / "out/Network.pdl").read_bytes(), original)
         (self.root / "second.pdl").write_text("iApply\n")
-        failure = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "second.pdl",
-                                "--local_reset", "multi.pdl", ok=False)
-        self.assertIn("one PDL input", failure.stdout)
-        self.assertFalse((self.root / "multi.pdl").exists())
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "second.pdl",
+                      "--local_reset", "multi.pdl")
+        self.assertEqual((self.root / "multi.pdl").read_bytes(), source + b"\n\niApply\n")
 
     def test_local_reset_passthrough_checks_reset_connections(self):
         source = """Module Child {
@@ -274,12 +273,114 @@ Module Network {
         (self.root / "source.icl").write_text(source)
         (self.root / "reset.pdl").write_text("preserve reset output\n")
         (self.root / "result.pdl").write_text("preserve pattern output\n")
-        failure = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
-                                "--local_reset", "reset.pdl", "--output", "result.pdl", ok=False)
-        self.assertIn("local-reset", failure.stdout)
-        self.assertIn("release", failure.stdout)
-        self.assertEqual((self.root / "reset.pdl").read_text(), "preserve reset output\n")
-        self.assertEqual((self.root / "result.pdl").read_text(), "preserve pattern output\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--local_reset", "reset.pdl", "--output", "result.pdl")
+        self.assertIn("iWrite release 0b1\niApply\niWrite child.r 1",
+                      (self.root / "reset.pdl").read_text())
+
+    def test_transitive_local_reset_rewrite_preserves_procedures(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset"
+        self.run_tool("--icl", fixture / "nested.icl", "--pdl",
+                      fixture / "procedures.pdl", fixture / "main.pdl",
+                      "--local_reset", "reset.pdl", "--output", "result.pdl")
+        rewritten = (self.root / "reset.pdl").read_text()
+        self.assertTrue(rewritten.startswith((fixture / "procedures.pdl").read_text()))
+        self.assertIn("iWrite root 0b1\niApply\niWrite branch.release 0b1\niApply\n", rewritten)
+        self.assertTrue(rewritten.endswith("iCall configure 10\n"))
+        self.assertNotIn("iWrite gate", rewritten)
+        original = (self.root / "result.pdl").read_bytes()
+        self.run_tool("--icl", fixture / "nested.icl", "--pdl", "reset.pdl",
+                      "--local_reset", "again-reset.pdl", "--output", "replayed.pdl")
+        self.assertEqual(rewritten, (self.root / "again-reset.pdl").read_text())
+        self.assertIn(b"iWrite a.value 0b1010", original)
+        self.assertIn(b"iWrite a.value 0b1010", (self.root / "replayed.pdl").read_bytes())
+
+    def test_local_reset_groups_parallel_controls_before_user_queue(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset"
+        source = "iReset\niWrite a.value 5; iWrite b.value 6; iApply\n"
+        (self.root / "source.pdl").write_text(source)
+        self.run_tool("--icl", fixture / "nested.icl", fixture / "parallel.icl",
+                      "--top_module", "ParallelResetNetwork", "--pdl", "source.pdl",
+                      "--local_reset", "reset.pdl")
+        expected = "iReset\niWrite ra 0b1\niWrite rb 0b0\niApply\n" + source.split("\n", 1)[1]
+        self.assertEqual((self.root / "reset.pdl").read_text(), expected)
+
+    def test_local_reset_tap_round_trips(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation"
+        inputs = ("--icl", fixture / "local_reset/nested.icl", fixture / "local_reset/vendor.icl",
+                  "--bsdl", "AccessProbe", fixture / "access_link/simple.bsdl",
+                  "--top_module", "ResetAccessTop")
+        self.run_tool(*inputs, "--pdl", fixture / "local_reset/vendor.pdl",
+                      "--output", "result.pdl", "--local_reset", "reset.pdl", "--debug")
+        original = (self.root / "result.pdl").read_bytes()
+        rewritten = (self.root / "reset.pdl").read_text()
+        self.assertIn("iWrite core.root 0b1\niApply\niWrite core.branch.release 0b1\niApply\n", rewritten)
+        self.assertNotIn("iWrite core.gate", rewritten)
+        self.run_tool(*inputs, "--pdl", "reset.pdl", "--output", "reset-result.pdl",
+                      "--local_reset", "reset-again.pdl")
+        self.assertEqual(rewritten, (self.root / "reset-again.pdl").read_text())
+        self.run_tool(*inputs, "--pdl", "result.pdl", "--output", "again.pdl")
+        self.assertEqual(original, (self.root / "again.pdl").read_bytes())
+        flat = self.root / "debug/ResetAccessTop.icl"
+        self.run_tool("--icl", flat, "--pdl", fixture / "local_reset/vendor.pdl",
+                      "--output", "flat/result.pdl", "--debug")
+        self.assertEqual(original, (self.root / "flat/result.pdl").read_bytes())
+        self.assertEqual(flat.read_bytes(), (self.root / "flat/debug/ResetAccessTop.icl").read_bytes())
+
+    def test_local_reset_prefix_and_called_body_failure(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset/nested.icl"
+        body = "iProc configure {v} { iWrite value $v; iApply }"
+        source = "iPDLLevel 1\niProcsForModule Leaf\n" + body + "\niReset\niPrefix a\niCall configure 7\n"
+        (self.root / "source.pdl").write_text(source)
+        self.run_tool("--icl", fixture, "--pdl", "source.pdl", "--local_reset", "reset.pdl")
+        rewritten = (self.root / "reset.pdl").read_text()
+        self.assertIn(body, rewritten)
+        self.assertIn("iPrefix -\niWrite root 0b1\niApply\niWrite branch.release 0b1\niApply\niPrefix a\niCall", rewritten)
+        self.run_tool("--icl", fixture, "--pdl", "reset.pdl", "--output", "replayed.pdl")
+        source = "iPDLLevel 1\niProcsForModule Network\niProc bad {} { iWrite root 0; iApply; iWrite a.value 7; iApply }\niReset\niCall bad\n"
+        (self.root / "source.pdl").write_text(source)
+        (self.root / "reset.pdl").write_text("previous artifact\n")
+        failure = self.run_tool("--icl", fixture, "--pdl", "source.pdl", "--local_reset", "reset.pdl", ok=False)
+        self.assertIn("cannot repair", failure.stdout)
+        self.assertIn("iCall bad", failure.stdout)
+        self.assertEqual((self.root / "reset.pdl").read_text(), "previous artifact\n")
+
+    def test_local_reset_rejects_unfaithful_source_insertion(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset/nested.icl"
+        for source in (
+                "iPDLLevel 1\niReset\nforeach v {1 2} { iWrite a.value $v }\niApply\n",
+                "iPDLLevel 1\niReset\nforeach v {a b} { iPrefix $v; iWrite value 3 }\niApply\n",
+                "iPDLLevel 1\niWrite a.value [iReset; expr 3]\niApply\n"):
+            with self.subTest(source=source):
+                (self.root / "source.pdl").write_text(source)
+                (self.root / "reset.pdl").write_text("previous artifact\n")
+                failure = self.run_tool("--icl", fixture, "--pdl", "source.pdl",
+                                        "--local_reset", "reset.pdl", ok=False)
+                self.assertIn("local-reset", failure.stdout)
+                self.assertEqual((self.root / "reset.pdl").read_text(), "previous artifact\n")
+
+    def test_local_reset_nested_access_together(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset"
+        source = (fixture / "parallel.icl").read_text()
+        source = source.rsplit("}", 1)[0] + """
+ Alias inner[7:0] = a.value, b.value { AccessTogether; }
+ Alias outer[4:0] = ra, inner[7:4] { AccessTogether; }
+}
+"""
+        (self.root / "source.icl").write_text(source)
+        (self.root / "source.pdl").write_text("iReset\niWrite outer[4] 1\niApply\n")
+        self.run_tool("--icl", fixture / "nested.icl", "source.icl", "--top_module",
+                      "ParallelResetNetwork", "--pdl", "source.pdl", "--local_reset", "reset.pdl")
+        self.assertIn("iWrite ra 0b1\niWrite rb 0b0\niApply\n",
+                      (self.root / "reset.pdl").read_text())
+
+    def test_local_reset_multi_file_continued_comment(self):
+        (self.root / "source.pdl").write_text("iPDLLevel 1\niState gate 0\n# continued comment " + chr(92) + "\n")
+        (self.root / "next.pdl").write_text("iWrite target 10\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "next.pdl",
+                      "--local_reset", "reset.pdl", "--output", "first.pdl")
+        self.run_tool("--icl", "source.icl", "--pdl", "reset.pdl", "--output", "second.pdl")
+        self.assertEqual((self.root / "first.pdl").read_bytes(), (self.root / "second.pdl").read_bytes())
 
     def test_idle_transient_reset_fill(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"

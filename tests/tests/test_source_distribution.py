@@ -46,6 +46,7 @@ class SourceDistribution(unittest.TestCase):
             self.assertEqual({path.name for path in (prefix / 'bin').iterdir()},
                              {'unrelated'})
             self.assertEqual(sentinel.read_text(), 'preserve\n')
+            self.assertFalse((prefix / 'include/icl-format').exists())
 
 
 if __name__ == '__main__':

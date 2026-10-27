@@ -1,13 +1,13 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_design.h"
+#include "pattern/pattern_design.h"
 
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-#include "text_input.h"
+#include "utility/text_input.h"
 
 namespace {
 void Require(bool condition, const std::string& message) {

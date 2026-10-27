@@ -2,7 +2,7 @@
 """Reports which rules of the hand-written grammar and scanner the corpus reaches.
 
 The generated C++ from bison and flex is machine-written; a missing line there
-tells nobody anything. A rule in src/icl_parser.yy or src/icl_lexer.l that no
+tells nobody anything. A rule in src/icl/icl_parser.yy or src/icl/icl_lexer.l that no
 test ever reaches is different: it is a construct nobody has checked, or a
 rule that is dead and should be deleted.
 
@@ -161,8 +161,8 @@ def main():
         return missing
 
     print('Corpus: %d files' % len(files))
-    g_missing = report('grammar', 'src/icl_parser.yy', grammar_seen, grammar_all)
-    s_missing = report('scanner', 'src/icl_lexer.l', scanner_seen, scanner_all)
+    g_missing = report('grammar', 'src/icl/icl_parser.yy', grammar_seen, grammar_all)
+    s_missing = report('scanner', 'src/icl/icl_lexer.l', scanner_seen, scanner_all)
 
     if args.report:
         for block in blocks.values():
@@ -175,8 +175,8 @@ def main():
         }, indent=2) + '\n')
 
     ok = True
-    for label, source, missing in (('grammar', 'src/icl_parser.yy', g_missing),
-                                   ('scanner', 'src/icl_lexer.l', s_missing)):
+    for label, source, missing in (('grammar', 'src/icl/icl_parser.yy', g_missing),
+                                   ('scanner', 'src/icl/icl_lexer.l', s_missing)):
         if not missing:
             continue
         ok = False

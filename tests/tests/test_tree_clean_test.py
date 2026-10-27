@@ -33,7 +33,7 @@ class TrackedArtifacts(unittest.TestCase):
                 self.assertEqual(self.result([name]), 1)
 
     def test_maintained_sources_and_input_fixtures_are_allowed(self):
-        self.assertEqual(self.result(['src/icl_parser.yy', 'tests/cases/standard/enum/result.icl',
+        self.assertEqual(self.result(['src/icl/icl_parser.yy', 'tests/cases/standard/enum/result.icl',
                                       'tests/cases/ours/coverage/counts.txt', 'docs/icl-verification.md']), 0)
 
 

@@ -1,6 +1,6 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_state.h"
+#include "pattern/pattern_state.h"
 
 #include <chrono>
 #include <fstream>
@@ -8,9 +8,9 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "pattern_design.h"
-#include "pattern_flatten.h"
-#include "pattern_tap_execution.h"
+#include "pattern/pattern_design.h"
+#include "pattern/pattern_flatten.h"
+#include "pattern/pattern_tap_execution.h"
 
 namespace {
 void Require(bool condition, const char* message) {

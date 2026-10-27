@@ -22,7 +22,7 @@ Checked:
    comments.
 4. No PDL token *name* appears in the ICL scanner or grammar. This is the
    "do not reuse one set of token definitions" check: `make_ISCAN_NUMBER`
-   or a `%token EVALUE` in src/icl_lexer.l / src/icl_parser.yy would mean
+   or a `%token EVALUE` in src/icl/icl_lexer.l / src/icl/icl_parser.yy would mean
    the two languages had been wired to the same symbols.
 5. `iApplyEndState` (ICL) is not cut into `iApply` (a PDL command) plus
    `EndState`. The two differ by a suffix and are the closest pair across
@@ -38,8 +38,8 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-LEXER = os.path.join(ROOT, 'src', 'icl_lexer.l')
-GRAMMAR = os.path.join(ROOT, 'src', 'icl_parser.yy')
+LEXER = os.path.join(ROOT, 'src', 'icl', 'icl_lexer.l')
+GRAMMAR = os.path.join(ROOT, 'src', 'icl', 'icl_parser.yy')
 ICL_SOURCES = [LEXER, GRAMMAR]
 
 # Token *names* from pdl.g4 that must never appear in the ICL scanner or

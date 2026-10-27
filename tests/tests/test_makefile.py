@@ -47,10 +47,10 @@ class BuildGraph(unittest.TestCase):
         self.assertEqual(removals, [['build', '.worktrees/coverage']])
 
     def test_grammar_coverage_header_dependencies(self):
-        target = 'build/gramcov/format_job.o'
+        target = 'build/gramcov/icl/format_job.o'
         subprocess.run(['make', target, 'BISON=/usr/bin/bison'], cwd=ROOT,
                        capture_output=True, text=True, check=True)
-        for header in ('src/icl_semantics.h', 'src/text_position.h'):
+        for header in ('src/icl/icl_semantics.h', 'src/utility/text_position.h'):
             with self.subTest(header=header):
                 # Hold generated headers fixed: their empty rule can otherwise
                 # make a dry run pretend to rebuild unrelated objects.
@@ -59,12 +59,12 @@ class BuildGraph(unittest.TestCase):
                                       'BISON=/usr/bin/bison'], cwd=ROOT,
                                      capture_output=True, text=True)
                 self.assertEqual(run.returncode, 0, run.stderr)
-                self.assertIn('-c src/format_job.cc', run.stdout)
+                self.assertIn('-c src/icl/format_job.cc', run.stdout)
 
     def test_unit_header_dependencies(self):
         subprocess.run(['make', 'build/unit_tests', 'BISON=/usr/bin/bison'],
                        cwd=ROOT, capture_output=True, text=True, check=True)
-        for header in ('src/text_position.h', 'src/utf8.h'):
+        for header in ('src/utility/text_position.h', 'src/utility/utf8.h'):
             with self.subTest(header=header):
                 run = subprocess.run(['make', '-n', '-W', header, 'build/unit_tests',
                                       'BISON=/usr/bin/bison'],
@@ -91,10 +91,14 @@ class BuildGraph(unittest.TestCase):
             self.assertTrue(notices.is_file())
             self.assertIn('Regents of the University of', notices.read_text())
             self.assertIn(str(notices), (prefix / 'manifest').read_text())
-            headers = sorted((prefix / 'include/icl-format').glob('*.h'))
-            self.assertEqual({header.name for header in headers},
-                             {header.name for header in (ROOT / 'src').glob('*.h')})
-            source = ''.join(f'#include "{header.name}"\n' for header in headers)
+            include = prefix / 'include/icl-format'
+            self.assertEqual({p.name for p in include.iterdir()},
+                             {'icl', 'pdl', 'pattern', 'utility'})
+            headers = sorted(p.relative_to(include) for p in include.rglob('*.h'))
+            self.assertEqual(set(headers),
+                             {p.relative_to(ROOT / 'src') for p in (ROOT / 'src').rglob('*.h')})
+            self.assertTrue(headers)
+            source = ''.join(f'#include "{header.as_posix()}"\n' for header in headers)
             flags = subprocess.run(
                 ['make', '-s', '--no-print-directory',
                  '--eval=print-z3-cflags:;@echo $(Z3_CFLAGS)', 'print-z3-cflags'],
@@ -105,6 +109,30 @@ class BuildGraph(unittest.TestCase):
                  f'-I{prefix}/include/icl-format', '-'],
                 cwd=prefix, input=source, capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stderr)
+
+    def test_install_migrates_only_owned_flat_headers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            prefix = Path(directory)
+            include = prefix / 'include/icl-format'
+            include.mkdir(parents=True)
+            old = include / 'json.h'
+            old.write_text('previous installed header\n')
+            unowned = include / 'text_input.h'
+            unowned.write_text('preserve unowned header\n')
+            manifest = prefix / 'manifest'
+            manifest.write_text(str(old) + '\n')
+            options = ['BISON=/usr/bin/bison', f'prefix={prefix}', f'MANIFEST={manifest}']
+            run = subprocess.run(['make', 'install-dynamic'] + options,
+                                 cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            self.assertFalse(old.exists(), 'obsolete owned flat header must be migrated')
+            self.assertTrue((include / 'utility/json.h').is_file())
+            self.assertEqual(unowned.read_text(), 'preserve unowned header\n')
+            run = subprocess.run(['make', 'uninstall'] + options,
+                                 cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            self.assertEqual(list(include.iterdir()), [unowned])
+            self.assertEqual(unowned.read_text(), 'preserve unowned header\n')
 
     def test_source_distribution_needs_no_static_libraries(self):
         run = subprocess.run(['make', '-n', 'dist', 'BISON=/usr/bin/bison'], cwd=ROOT, capture_output=True, text=True)

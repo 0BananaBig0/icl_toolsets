@@ -1,5 +1,43 @@
 # Tessent PDL differential tests
 
+## Transitive local-reset rewrite (2026-10-27)
+
+The maintained case at
+`tests/cases/ours/pattern_generation/local_reset/oracle_cases.json` exercises
+two reset-control stages before a preserved `iCall`, behind a BSDL-backed TAP.
+Our generator receives `vendor.pdl`; Tessent receives its `--local_reset`
+artifact. Tessent Shell 2026.2 completed pattern export successfully in
+`test_icl_toolsets/test_local_reset_explicit/test_transitive_releases`.
+Local evidence is ignored under `build/local-reset-explicit-evidence/`.
+
+The strict comparison reports `different_operations_requires_review`.
+Both outputs write leaf values `1010` and `0011` after releasing `core.root`
+and `core.branch.release`. Tessent additionally exports TAP instruction
+write/read operations and an intermediate read of the reset controller, uses
+explicit vector ranges, and keeps `core.gate=1` at the final apply. Our output
+keeps instruction selection internal and ends with `core.gate=0`. The latter
+is a real final control-state difference, not just formatting. No equivalence
+golden was recorded, and these observations do not establish full state or
+testbench equivalence.
+
+Earlier probes are retained in descriptively named `test_local_reset_rewrite`,
+`test_local_reset_ports` and `test_local_reset_tap` directories. Vendor DRC
+identified an internal-register hierarchy reference, reset-source restrictions,
+a missing scan interface and ambiguous reset binding. The final fixture uses
+explicit ToResetPort forwarding, DataMux reset gating, an AccessLink interface
+and the BSDL's TRST pin. Failed probes were not relabeled as passing runs.
+
+Reproduce preparation locally (choose a new output directory for each run):
+
+```sh
+python3 tests/tessent_oracle.py prepare \
+  --manifest tests/cases/ours/pattern_generation/local_reset/oracle_cases.json \
+  --generator build/icl-pattern-generation --output build/local-reset-oracle-new
+```
+
+Use the existing remote runner and compare command described below. Preparation
+must use comparison mode so Tessent consumes the reset-only rewrite.
+
 `tests/tessent_oracle.py` prepares isolated, serial Tessent runs and records
 input SHA-256 hashes, exit codes, timeouts, tool banners and expected diagnostics.
 Its default export is **PDL** through `write_patterns -pdl`. Golden qualification

@@ -51,6 +51,6 @@ class CoverageReader(unittest.TestCase):
                                  cwd=tmp, capture_output=True, text=True)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertNotIn('<source not found>', run.stdout)
-        self.assertIn((ROOT / 'src/icl_driver.cc').read_text().splitlines()[0], run.stdout)
+        self.assertIn((ROOT / 'src/icl/icl_driver.cc').read_text().splitlines()[0], run.stdout)
 
 if __name__ == '__main__': unittest.main()

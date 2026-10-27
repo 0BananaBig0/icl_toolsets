@@ -27,7 +27,7 @@ should be reported as the wrong language rather than parsed as a broken ICL
 one.
 
 Two of the rejections are lexer rules written for exactly this, in
-`src/icl_lexer.l` — `0x`/`0b` and `#`. Before they existed, `0x10` was cut
+`src/icl/icl_lexer.l` — `0x`/`0b` and `#`. Before they existed, `0x10` was cut
 into NUMBER("0") and IDENT("x10"), and the space-separated value rule
 joined them back as `0 x10`: the formatter changed the text of a file while
 every invariant still held, because character conservation cannot see a

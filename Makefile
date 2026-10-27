@@ -103,31 +103,31 @@ CPPFLAGS += -I$(SRC_DIR) -I$(GEN_DIR) \
 # was requested" and "here is the formatted text". Both binaries link it, so
 # the two front ends cannot disagree about style clamping or error phrasing.
 SHARED_SOURCES := \
-    $(SRC_DIR)/icl_driver.cc \
-    $(SRC_DIR)/format_tree.cc \
-    $(SRC_DIR)/format_job.cc \
-    $(SRC_DIR)/icl_semantics.cc
+    $(SRC_DIR)/icl/icl_driver.cc \
+    $(SRC_DIR)/icl/format_tree.cc \
+    $(SRC_DIR)/icl/format_job.cc \
+    $(SRC_DIR)/icl/icl_semantics.cc
 
-CLI_SOURCES := $(SRC_DIR)/icl_format_main.cc
-LSP_SOURCES := $(SRC_DIR)/json.cc $(SRC_DIR)/icl_lsp_main.cc
-PDL_SOURCES := $(SRC_DIR)/pdl_document.cc $(SRC_DIR)/pdl_format_main.cc \
-    $(SRC_DIR)/pdl_lsp_main.cc
+CLI_SOURCES := $(SRC_DIR)/icl/icl_format_main.cc
+LSP_SOURCES := $(SRC_DIR)/utility/json.cc $(SRC_DIR)/icl/icl_lsp_main.cc
+PDL_SOURCES := $(SRC_DIR)/pdl/pdl_document.cc $(SRC_DIR)/pdl/pdl_format_main.cc \
+    $(SRC_DIR)/pdl/pdl_lsp_main.cc
 
 SOURCES := $(SHARED_SOURCES) $(CLI_SOURCES) $(LSP_SOURCES) $(PDL_SOURCES)
-PDL_OBJECT := $(BUILD_DIR)/pdl_document.o
-PATTERN_SOURCES := $(SRC_DIR)/pattern_design.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_runtime.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_expression.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_netlist.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_logic.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_flatten.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_address.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_bsdl.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_access_link.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_tap.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_tap_network.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_state.cc
-PATTERN_SOURCES += $(SRC_DIR)/pattern_tap_execution.cc
+PDL_OBJECT := $(BUILD_DIR)/pdl/pdl_document.o
+PATTERN_SOURCES := $(SRC_DIR)/pattern/pattern_design.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_runtime.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_expression.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_netlist.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_logic.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_flatten.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_address.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_bsdl.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_access_link.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_tap.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_tap_network.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_state.cc
+PATTERN_SOURCES += $(SRC_DIR)/pattern/pattern_tap_execution.cc
 PATTERN_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PATTERN_SOURCES))
 
 # The constraint backend is separate from parser/editor and replay objects.
@@ -136,13 +136,15 @@ Z3_PREFIX ?= $(abspath $(BUILD_DIR)/deps/z3-$(Z3_VERSION))
 Z3_CFLAGS ?= $(if $(wildcard $(Z3_PREFIX)/include/z3++.h),-isystem $(Z3_PREFIX)/include,$(shell pkg-config --cflags z3 2>/dev/null))
 Z3_STATIC_LIB ?= $(firstword $(wildcard $(Z3_PREFIX)/lib/libz3.a $(Z3_PREFIX)/lib64/libz3.a /usr/lib/libz3.a /usr/lib64/libz3.a /usr/lib/x86_64-linux-gnu/libz3.a))
 Z3_LIBS ?= $(if $(Z3_STATIC_LIB),$(Z3_STATIC_LIB) -lpthread,$(shell pkg-config --libs z3 2>/dev/null))
-SOLVER_SOURCES := $(SRC_DIR)/pattern_symbolic.cc $(SRC_DIR)/pattern_values.cc $(SRC_DIR)/pattern_scheduler.cc
+SOLVER_SOURCES := $(SRC_DIR)/pattern/pattern_symbolic.cc $(SRC_DIR)/pattern/pattern_values.cc $(SRC_DIR)/pattern/pattern_scheduler.cc
+SOLVER_SOURCES += $(SRC_DIR)/pattern/pattern_merge.cc
+SOLVER_SOURCES += $(SRC_DIR)/pattern/pattern_resources.cc
 SOLVER_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SOLVER_SOURCES))
 SOURCES += $(SOLVER_SOURCES)
 $(SOLVER_OBJECTS): CPPFLAGS += $(Z3_CFLAGS)
 $(SOLVER_OBJECTS): | check-z3
 
-SOURCES += $(PATTERN_SOURCES) $(SRC_DIR)/icl_pattern_generation_main.cc
+SOURCES += $(PATTERN_SOURCES) $(SRC_DIR)/pattern/icl_pattern_generation_main.cc
 
 # bison / flex outputs. Kept in $(GEN_DIR) so that `make clean` cannot leave a
 # stale generated parser behind a hand-edited .yy file.
@@ -160,7 +162,7 @@ LSP_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(LSP_SOURCES))
 
 OBJECTS := $(SHARED_OBJECTS) $(CLI_OBJECTS) $(LSP_OBJECTS)
 OBJECTS += $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(PDL_SOURCES))
-OBJECTS += $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(BUILD_DIR)/icl_pattern_generation_main.o
+OBJECTS += $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(BUILD_DIR)/pattern/icl_pattern_generation_main.o
 
 # ---- statically linked binary ----
 #
@@ -176,7 +178,7 @@ OBJECTS += $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(BUILD_DIR)/icl_pattern_generat
 # Development-only style checks; normal builds need no LLVM tools. Review the
 # embedded C++ in .l/.yy separately: neither file is a C++ translation unit.
 formatcheck:
-	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(wildcard $(SRC_DIR)/*.h)
+	$(CLANG_FORMAT) --dry-run --Werror $(SOURCES) $(wildcard $(SRC_DIR)/*/*.h)
 
 namingcheck: $(GEN_SOURCES)
 	$(CLANG_TIDY) $(SOURCES) -- $(CXXSTD) $(CPPFLAGS) $(TCL_CFLAGS) $(Z3_CFLAGS)
@@ -238,19 +240,19 @@ check-tcl-static:
 	  exit 1; \
 	fi
 
-$(BUILD_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
-$(BUILD_DIR)/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
+$(BUILD_DIR)/pdl/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
+$(BUILD_DIR)/pattern/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
 
-$(PDL_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_format_main.o
+$(PDL_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl/pdl_format_main.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) -o $@
 
-$(PDL_LSP_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_lsp_main.o $(BUILD_DIR)/json.o
+$(PDL_LSP_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl/pdl_lsp_main.o $(BUILD_DIR)/utility/json.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) -o $@
 
-$(PDL_STATIC_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_format_main.o | check-tcl-static
+$(PDL_STATIC_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl/pdl_format_main.o | check-tcl-static
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
 
-$(PDL_LSP_STATIC_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl_lsp_main.o $(BUILD_DIR)/json.o | check-tcl-static
+$(PDL_LSP_STATIC_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl/pdl_lsp_main.o $(BUILD_DIR)/utility/json.o | check-tcl-static
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
 
 $(BIN): $(SHARED_OBJECTS) $(CLI_OBJECTS)
@@ -305,6 +307,7 @@ $(LSP_STATIC_BIN): $(SHARED_OBJECTS) $(LSP_OBJECTS)
 # private member of Json and running `make` produced a binary that segfaulted
 # on its first message, because icl_lsp_main.o still used the old layout.
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc $(PARSER_HH) | $(BUILD_DIR)
+	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
 
 $(BUILD_DIR)/%.o: $(GEN_DIR)/%.cc | $(BUILD_DIR)
@@ -330,7 +333,7 @@ else
 # greps for conflicts.
 BISON_FLAGS = -Wall -Werror=other --report=all
 
-$(PARSER_CC) $(PARSER_HH) &: $(SRC_DIR)/icl_parser.yy
+$(PARSER_CC) $(PARSER_HH) &: $(SRC_DIR)/icl/icl_parser.yy
 	@mkdir -p $(GEN_DIR)
 	$(BISON) $(BISON_FLAGS) --output=$(PARSER_CC) --defines=$(PARSER_HH) $<
 	@if grep -q "conflict" $(GEN_DIR)/icl_parser.output 2>/dev/null; then \
@@ -340,7 +343,7 @@ $(PARSER_CC) $(PARSER_HH) &: $(SRC_DIR)/icl_parser.yy
 
 # flex reports "rule cannot be matched" — a scanner rule shadowed by an
 # earlier one, so it can never fire. Silent today, and invisible tomorrow.
-$(LEXER_CC) $(LEXER_HH) &: $(SRC_DIR)/icl_lexer.l $(PARSER_HH)
+$(LEXER_CC) $(LEXER_HH) &: $(SRC_DIR)/icl/icl_lexer.l $(PARSER_HH)
 	@mkdir -p $(GEN_DIR)
 	$(FLEX) --outfile=$(LEXER_CC) --header-file=$(LEXER_HH) $< 2> $(GEN_DIR)/flex.log
 	@if grep -qiE "warning|rule cannot be matched" $(GEN_DIR)/flex.log 2>/dev/null; then \
@@ -374,8 +377,8 @@ codegraph: $(ALL_OBJECTS)
 	  echo "error: codegraph not installed (pip install codegraph)" >&2; exit 1; }
 	codegraph tests --output $(CODEGRAPH_DIR)/tests_codegraph.html \
 	  --csv $(CODEGRAPH_DIR)/tests_codegraph.csv
-	@for f in $(SRC_DIR)/*.cc; do \
-	  $(CXX) $(CXXSTD) -I$(SRC_DIR) -I$(GEN_DIR) -MM $$f; \
+	@for f in $(SOURCES); do \
+	  $(CXX) $(CXXSTD) $(CPPFLAGS) $(TCL_CFLAGS) $(Z3_CFLAGS) -MM $$f; \
 	done > $(CODEGRAPH_DIR)/cpp_deps.makefile
 	@python3 tests/deps_to_dot.py $(CODEGRAPH_DIR)
 	@echo "codegraph: $(CODEGRAPH_DIR)/ refreshed"
@@ -395,7 +398,7 @@ codegraph: $(ALL_OBJECTS)
 COV_DIR := $(BUILD_DIR)/cov
 COV_REPORT_DIR := .worktrees/coverage
 COV_CXXFLAGS := -fprofile-arcs -ftest-coverage -g -O0 -MMD -MP
--include $(wildcard $(COV_DIR)/*.d)
+-include $(wildcard $(COV_DIR)/*.d $(COV_DIR)/*/*.d)
 
 # One set of instrumented objects, linked three ways. Each binary has its own
 # `main`, so the other two mains are filtered out rather than listed by hand.
@@ -403,7 +406,7 @@ COV_SHARED := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(SHARED_SOURCES)) \
     $(patsubst $(GEN_DIR)/%.cc,$(COV_DIR)/%.o,$(GEN_SOURCES))
 COV_CLI := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(CLI_SOURCES))
 COV_LSP := $(COV_SHARED) $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(LSP_SOURCES))
-COV_UNIT := $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/unit_tests.o
+COV_UNIT := $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/unit_tests.o
 COV_BINARIES := $(COV_DIR)/icl-format $(COV_DIR)/icl-lsp $(COV_DIR)/unittests
 COV_BINARIES += $(COV_DIR)/pdl-format $(COV_DIR)/pdl-lsp
 COV_PATTERN := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(PATTERN_SOURCES))
@@ -414,25 +417,26 @@ COV_BINARIES += $(COV_DIR)/pattern_access_link_test
 COV_BINARIES += $(COV_DIR)/pattern_tap_test $(COV_DIR)/pattern_state_test
 COV_BINARIES += $(COV_DIR)/pattern_symbolic_test $(COV_DIR)/pattern_scheduler_test $(COV_DIR)/icl-pattern-generation
 COV_BINARIES += $(COV_DIR)/pattern_logic_test $(COV_DIR)/pattern_flatten_test
-COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/json.o \
-    $(COV_DIR)/icl_lsp_main.o $(COV_DIR)/unit_tests.o
-COV_REPORT_OBJECTS += $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o \
-    $(COV_DIR)/pdl_lsp_main.o
+COV_REPORT_OBJECTS := $(COV_CLI) $(COV_DIR)/utility/json.o \
+    $(COV_DIR)/icl/icl_lsp_main.o $(COV_DIR)/unit_tests.o
+COV_REPORT_OBJECTS += $(COV_DIR)/pdl/pdl_document.o $(COV_DIR)/pdl/pdl_format_main.o \
+    $(COV_DIR)/pdl/pdl_lsp_main.o
 COV_SOLVER := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(SOLVER_SOURCES))
-COV_REPORT_OBJECTS += $(COV_PATTERN) $(COV_SOLVER) $(COV_DIR)/icl_pattern_generation_main.o
+COV_REPORT_OBJECTS += $(COV_PATTERN) $(COV_SOLVER) $(COV_DIR)/pattern/icl_pattern_generation_main.o
 $(COV_SOLVER): CPPFLAGS += $(Z3_CFLAGS)
 $(COV_SOLVER): | check-z3
 # Inline authored headers can be emitted only in a test translation unit.
 COV_REPORT_OBJECTS += $(foreach test,$(filter %_test,$(COV_BINARIES)),\
     $(test)-$(notdir $(test)).gcno)
 
-$(COV_DIR)/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
-$(COV_DIR)/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
+$(COV_DIR)/pdl/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
+$(COV_DIR)/pattern/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
 
 $(COV_DIR):
 	mkdir -p $(COV_DIR)
 
 $(COV_DIR)/%.o: $(SRC_DIR)/%.cc $(PARSER_HH) | $(COV_DIR)
+	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 $(COV_DIR)/%.o: $(GEN_DIR)/%.cc | $(COV_DIR)
@@ -447,39 +451,39 @@ $(COV_DIR)/icl-format: $(COV_CLI)
 $(COV_DIR)/icl-lsp: $(COV_LSP)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
-$(COV_DIR)/pdl-format: $(COV_SHARED) $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_format_main.o
+$(COV_DIR)/pdl-format: $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o $(COV_DIR)/pdl/pdl_format_main.o
 	$(CXX) $(CXXSTD) --coverage $^ $(TCL_LIBS) -o $@
 
-$(COV_DIR)/pdl-lsp: $(COV_SHARED) $(COV_DIR)/pdl_document.o $(COV_DIR)/pdl_lsp_main.o $(COV_DIR)/json.o
+$(COV_DIR)/pdl-lsp: $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o $(COV_DIR)/pdl/pdl_lsp_main.o $(COV_DIR)/utility/json.o
 	$(CXX) $(CXXSTD) --coverage $^ $(TCL_LIBS) -o $@
 
 $(COV_DIR)/unittests: $(COV_UNIT)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
-$(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_SHARED)
+$(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl_document.o
+$(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
 
-$(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl_document.o
+$(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
 
-$(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+$(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(COV_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+$(COV_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(COV_DIR)/pattern/pattern_flatten.o $(COV_DIR)/utility/json.o $(COV_DIR)/pattern/pattern_logic.o $(COV_DIR)/pattern/pattern_netlist.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(COV_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(COV_DIR)/pattern_address.o $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+$(COV_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(COV_DIR)/pattern/pattern_address.o $(COV_DIR)/pattern/pattern_flatten.o $(COV_DIR)/utility/json.o $(COV_DIR)/pattern/pattern_logic.o $(COV_DIR)/pattern/pattern_netlist.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
-$(COV_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(COV_DIR)/pattern_flatten.o $(COV_DIR)/json.o $(COV_DIR)/pattern_logic.o $(COV_DIR)/pattern_netlist.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_DIR)/pattern_expression.o $(COV_SHARED)
+$(COV_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(COV_DIR)/pattern/pattern_flatten.o $(COV_DIR)/utility/json.o $(COV_DIR)/pattern/pattern_logic.o $(COV_DIR)/pattern/pattern_netlist.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
 coverage: $(COV_BINARIES)
 	@mkdir -p $(COV_REPORT_DIR)
-	@rm -f $(COV_DIR)/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
+	@rm -f $(COV_DIR)/*.gcda $(COV_DIR)/*/*.gcda $(COV_REPORT_DIR)/*.gcov *.gcov
 	@python3 tests/tests/test_golden_test.py
 	@python3 tests/golden_test.py --binary $(COV_DIR)/icl-format --server $(COV_DIR)/icl-lsp
 	@python3 tests/golden_test.py --language pdl --binary $(COV_DIR)/pdl-format --server $(COV_DIR)/pdl-lsp
@@ -513,14 +517,14 @@ coverage: $(COV_BINARIES)
 	@python3 tests/src/test_pattern_address.py $(COV_DIR)/pattern_address_test
 	@$(COV_DIR)/pattern_logic_test
 	@$(COV_DIR)/pattern_flatten_test
-	@gcov -b -c -o $(COV_DIR) $(COV_REPORT_OBJECTS) > /dev/null
+	@gcov -b -c $(COV_REPORT_OBJECTS) > /dev/null
 	@mv *.gcov $(COV_REPORT_DIR)/
 	@cd $(COV_REPORT_DIR) && python3 $(abspath tests/coverage.py) --min-line 100 --min-branch 90 --strict
 
 # ---- grammar and scanner coverage ----
 #
 # Measures distinct productions and scanner source-rule lines reached in
-# src/icl_parser.yy and src/icl_lexer.l. The generated C++ is not measured —
+# src/icl/icl_parser.yy and src/icl/icl_lexer.l. The generated C++ is not measured —
 # it is machine-written and nobody can act on its line numbers — but a rule in
 # the .y/.l that no test ever reaches is a rule nobody knows works.
 #
@@ -537,12 +541,12 @@ GRAMCOV_BIN := $(GRAMCOV_DIR)/icl-format
 GRAMCOV_SRCS := $(SHARED_SOURCES) $(CLI_SOURCES)
 GRAMCOV_OBJS := $(patsubst $(SRC_DIR)/%.cc,$(GRAMCOV_DIR)/%.o,$(GRAMCOV_SRCS)) \
     $(GRAMCOV_DIR)/icl_parser.o $(GRAMCOV_DIR)/icl_lexer.o
--include $(wildcard $(GRAMCOV_DIR)/*.d)
+-include $(wildcard $(GRAMCOV_DIR)/*.d $(GRAMCOV_DIR)/*/*.d)
 
 $(GRAMCOV_DIR):
 	mkdir -p $(GRAMCOV_DIR)
 
-$(GRAMCOV_PARSER): $(SRC_DIR)/icl_parser.yy | $(GRAMCOV_DIR)
+$(GRAMCOV_PARSER): $(SRC_DIR)/icl/icl_parser.yy | $(GRAMCOV_DIR)
 	$(BISON) --output=$(GRAMCOV_PARSER) --defines=$(GRAMCOV_DIR)/icl_parser.hh $<
 
 # bison writes the header alongside the .cc, so it has no recipe of its own;
@@ -550,10 +554,11 @@ $(GRAMCOV_PARSER): $(SRC_DIR)/icl_parser.yy | $(GRAMCOV_DIR)
 $(GRAMCOV_DIR)/icl_parser.hh: $(GRAMCOV_PARSER) ;
 $(GRAMCOV_DIR)/icl_lexer.h: $(GRAMCOV_LEXER) ;
 
-$(GRAMCOV_LEXER): $(SRC_DIR)/icl_lexer.l $(GRAMCOV_DIR)/icl_parser.hh
+$(GRAMCOV_LEXER): $(SRC_DIR)/icl/icl_lexer.l $(GRAMCOV_DIR)/icl_parser.hh
 	$(FLEX) -d --outfile=$(GRAMCOV_LEXER) --header-file=$(GRAMCOV_DIR)/icl_lexer.h $<
 
 $(GRAMCOV_DIR)/%.o: $(SRC_DIR)/%.cc $(GRAMCOV_DIR)/icl_parser.hh | $(GRAMCOV_DIR)
+	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -MMD -MP -DICL_PARSER_TRACE -I$(GRAMCOV_DIR) \
 	  $(CPPFLAGS) -c $< -o $@
 
@@ -592,7 +597,7 @@ MANIFEST := $(BUILD_DIR)/install_manifest.txt
 #   install-static   no ELF shared-library dependencies; see Tcl/glibc limits in docs
 #
 # Because both write the same paths, the manifest is correct whichever ran.
-HEADERS := $(wildcard $(SRC_DIR)/*.h)
+HEADERS := $(wildcard $(SRC_DIR)/*/*.h)
 
 install: install-dynamic
 
@@ -609,7 +614,13 @@ define install_body
 	$(INSTALL) -d $(docdir)/licenses
 	$(INSTALL_DATA) docs/licenses/Z3.txt $(docdir)/licenses/Z3.txt
 	@for h in $(HEADERS); do \
-	  $(INSTALL_DATA) $$h $(includedir)/$(PACKAGE)/; \
+	  relative=$${h#$(SRC_DIR)/}; \
+	  $(INSTALL) -d "$(includedir)/$(PACKAGE)/$${relative%/*}" || exit $$?; \
+	  $(INSTALL_DATA) "$$h" "$(includedir)/$(PACKAGE)/$$relative" || exit $$?; \
+	  previous="$(includedir)/$(PACKAGE)/$${h##*/}"; \
+	  if [ -f "$(MANIFEST)" ] && grep -Fxq -- "$$previous" "$(MANIFEST)"; then \
+	    rm -f "$$previous" || exit $$?; \
+	  fi; \
 	done
 	$(INSTALL_DATA) docs/third-party-notices.md $(docdir)/third-party-notices.md
 	@if [ -f $(PACKAGE).1 ]; then $(INSTALL_DATA) $(PACKAGE).1 $(man1dir)/; fi
@@ -622,7 +633,7 @@ define install_body
 	@echo $(docdir)/licenses/Z3.txt >> $(MANIFEST)
 	@echo $(docdir)/third-party-notices.md >> $(MANIFEST)
 	@for h in $(HEADERS); do \
-	  echo $(includedir)/$(PACKAGE)/`basename $$h` >> $(MANIFEST); \
+	  echo $(includedir)/$(PACKAGE)/$${h#$(SRC_DIR)/} >> $(MANIFEST); \
 	done
 	@if [ -f $(PACKAGE).1 ]; then echo $(man1dir)/$(PACKAGE).1 >> $(MANIFEST); fi
 	@echo "installed ($3) icl-format, icl-lsp, pdl-format, pdl-lsp, icl-pattern-generation $(VERSION) into $(prefix)"
@@ -679,7 +690,7 @@ uninstall:
 	  rm -f $(MANIFEST); \
 	fi
 	@# Remove directories that are now empty, but never $(prefix) itself.
-	@-rmdir $(includedir)/$(PACKAGE) $(docdir) 2>/dev/null || true
+	@-rmdir $(addprefix $(includedir)/$(PACKAGE)/,icl pdl pattern utility) $(includedir)/$(PACKAGE) $(docdir) 2>/dev/null || true
 	@echo "uninstalled $(PACKAGE) from $(prefix)"
 
 # Optional: exercise the server from neovim's built-in LSP client. This is a
@@ -734,6 +745,7 @@ check check-dynamic:
 	@python3 tests/tests/test_block_review.py
 	@python3 tests/tests/test_regression.py
 	@python3 tests/tests/test_makefile.py
+	@python3 tests/tests/test_deps_to_dot.py
 	@python3 tests/tests/src/test_probe_pattern_access_link_connections.py
 	@python3 tests/tests/test_tree_clean_test.py
 	@python3 tests/whitespace_test.py --binary $(BIN)
@@ -762,11 +774,11 @@ tessent-golden-check: $(BIN) $(PDL_BIN) $(BUILD_DIR)/icl-pattern-generation $(BU
 	@GOLDEN_BUILD=$(BUILD_DIR) python3 tests/tests/test_tessent_golden.py
 	@python3 tests/tessent_golden.py check --build $(BUILD_DIR)
 
-$(BUILD_DIR)/pdl_pattern_trace: tests/src/pdl_pattern_trace.cc $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/json.o
+$(BUILD_DIR)/pdl_pattern_trace: tests/src/pdl_pattern_trace.cc $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/utility/json.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
 
 $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc \
-    $(SHARED_OBJECTS) $(BUILD_DIR)/json.o
+    $(SHARED_OBJECTS) $(BUILD_DIR)/utility/json.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 # Acceptance-preserving IEEE transformations, independent of our .yy/.l rules.
@@ -801,56 +813,56 @@ unitcheck: $(UNIT_BIN)
 pattern-design-check: $(BUILD_DIR)/pattern_design_test
 	@$(BUILD_DIR)/pattern_design_test
 
-$(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-expression-check
 pattern-expression-check: $(BUILD_DIR)/pattern_expression_test
 	@$(BUILD_DIR)/pattern_expression_test
 
-$(BUILD_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-netlist-check
 pattern-netlist-check: $(BUILD_DIR)/pattern_netlist_test
 	@$(BUILD_DIR)/pattern_netlist_test
 
-$(BUILD_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(BUILD_DIR)/pattern/pattern_flatten.o $(BUILD_DIR)/utility/json.o $(BUILD_DIR)/pattern/pattern_logic.o $(BUILD_DIR)/pattern/pattern_netlist.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-netlist-benchmark
 pattern-netlist-benchmark: $(BUILD_DIR)/pattern_netlist_benchmark
 	@python3 tests/src/test_pattern_netlist_benchmark.py $(BUILD_DIR)/pattern_netlist_benchmark
 
-$(BUILD_DIR)/pattern_netlist_benchmark: tests/src/pattern_netlist_benchmark.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_netlist_benchmark: tests/src/pattern_netlist_benchmark.cc $(BUILD_DIR)/pattern/pattern_flatten.o $(BUILD_DIR)/utility/json.o $(BUILD_DIR)/pattern/pattern_logic.o $(BUILD_DIR)/pattern/pattern_netlist.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-logic-check
 pattern-logic-check: $(BUILD_DIR)/pattern_logic_test
 	@$(BUILD_DIR)/pattern_logic_test
 
-$(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pattern/pattern_flatten.o $(BUILD_DIR)/utility/json.o $(BUILD_DIR)/pattern/pattern_logic.o $(BUILD_DIR)/pattern/pattern_netlist.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
 .PHONY: pattern-runtime-check pattern-runtime-static-check
 pattern-runtime-check: $(BUILD_DIR)/pattern_runtime_test
 	@$(BUILD_DIR)/pattern_runtime_test
 
-$(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
+$(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
 
 pattern-runtime-static-check: $(BUILD_DIR)/pattern_runtime_test-static
 	@$(BUILD_DIR)/pattern_runtime_test-static
 
-$(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
+$(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
 
-$(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/format_tree.cc \
-    $(SRC_DIR)/json.cc $(SRC_DIR)/icl_ast.h $(SRC_DIR)/format_tree.h \
-    $(SRC_DIR)/json.h $(SRC_DIR)/utf8.h $(SRC_DIR)/text_position.h
+$(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/icl/format_tree.cc \
+    $(SRC_DIR)/utility/json.cc $(SRC_DIR)/icl/icl_ast.h $(SRC_DIR)/icl/format_tree.h \
+    $(SRC_DIR)/utility/json.h $(SRC_DIR)/utility/utf8.h $(SRC_DIR)/utility/text_position.h
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) \
-	  tests/unit_tests.cc $(SRC_DIR)/format_tree.cc $(SRC_DIR)/json.cc -o $@
+	  tests/unit_tests.cc $(SRC_DIR)/icl/format_tree.cc $(SRC_DIR)/utility/json.cc -o $@
 
 # ---- source distribution with the parser pre-generated ----
 #
@@ -869,9 +881,7 @@ dist: dynamic
 	@rm -rf $(DIST_DIR)
 	@mkdir -p $(DIST_OUT)
 	@mkdir -p $(DIST_DIR)/src $(DIST_DIR)/tests $(DIST_DIR)/gen
-	cp $(SOURCES) $(DIST_DIR)/src/
-	cp $(SRC_DIR)/*.h $(DIST_DIR)/src/
-	cp $(SRC_DIR)/icl_parser.yy $(SRC_DIR)/icl_lexer.l $(DIST_DIR)/src/
+	cp --parents $(SOURCES) $(HEADERS) $(SRC_DIR)/icl/icl_parser.yy $(SRC_DIR)/icl/icl_lexer.l $(DIST_DIR)/
 	cp $(PARSER_CC) $(PARSER_HH) $(LEXER_CC) $(LEXER_HH) $(DIST_DIR)/gen/
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	# Recursive: the corpus is sorted into per-source subdirectories, and a
@@ -902,14 +912,14 @@ distclean: clean
 pattern-flatten-check: $(BUILD_DIR)/pattern_flatten_test
 	@$(BUILD_DIR)/pattern_flatten_test
 
-$(BUILD_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
+$(BUILD_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
 
 .PHONY: pattern-flatten-static-check
 pattern-flatten-static-check: $(BUILD_DIR)/pattern_flatten_test-static
 	@$(BUILD_DIR)/pattern_flatten_test-static
 
-$(BUILD_DIR)/pattern_flatten_test-static: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
+$(BUILD_DIR)/pattern_flatten_test-static: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
 
 .PHONY: pattern-address-check pattern-address-static-check
@@ -919,10 +929,10 @@ pattern-address-check: $(BUILD_DIR)/pattern_address_test
 pattern-address-static-check: $(BUILD_DIR)/pattern_address_test-static
 	@python3 tests/src/test_pattern_address.py $(BUILD_DIR)/pattern_address_test-static
 
-$(BUILD_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(BUILD_DIR)/pattern_address.o $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(BUILD_DIR)/pattern/pattern_address.o $(BUILD_DIR)/pattern/pattern_flatten.o $(BUILD_DIR)/utility/json.o $(BUILD_DIR)/pattern/pattern_logic.o $(BUILD_DIR)/pattern/pattern_netlist.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
-$(BUILD_DIR)/pattern_address_test-static: tests/src/pattern_address_test.cc $(BUILD_DIR)/pattern_address.o $(BUILD_DIR)/pattern_flatten.o $(BUILD_DIR)/json.o $(BUILD_DIR)/pattern_logic.o $(BUILD_DIR)/pattern_netlist.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(BUILD_DIR)/pattern_expression.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_address_test-static: tests/src/pattern_address_test.cc $(BUILD_DIR)/pattern/pattern_address.o $(BUILD_DIR)/pattern/pattern_flatten.o $(BUILD_DIR)/utility/json.o $(BUILD_DIR)/pattern/pattern_logic.o $(BUILD_DIR)/pattern/pattern_netlist.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
 check check-dynamic: pattern-address-check
@@ -935,13 +945,13 @@ pattern-bsdl-check: $(BUILD_DIR)/pattern_bsdl_test
 pattern-bsdl-static-check: $(BUILD_DIR)/pattern_bsdl_test-static
 	@$(BUILD_DIR)/pattern_bsdl_test-static
 
-$(BUILD_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(BUILD_DIR)/pattern_bsdl.o
+$(BUILD_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(BUILD_DIR)/pattern/pattern_bsdl.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
-$(BUILD_DIR)/pattern_bsdl_test-static: tests/src/pattern_bsdl_test.cc $(BUILD_DIR)/pattern_bsdl.o
+$(BUILD_DIR)/pattern_bsdl_test-static: tests/src/pattern_bsdl_test.cc $(BUILD_DIR)/pattern/pattern_bsdl.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
-$(COV_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(COV_DIR)/pattern_bsdl.o
+$(COV_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(COV_DIR)/pattern/pattern_bsdl.o
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
 check check-dynamic: pattern-bsdl-check
@@ -954,13 +964,13 @@ pattern-access-link-check: $(BUILD_DIR)/pattern_access_link_test
 pattern-access-link-static-check: $(BUILD_DIR)/pattern_access_link_test-static
 	@$(BUILD_DIR)/pattern_access_link_test-static
 
-$(BUILD_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(BUILD_DIR)/pattern_access_link.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(BUILD_DIR)/pattern/pattern_access_link.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 
-$(BUILD_DIR)/pattern_access_link_test-static: tests/src/pattern_access_link_test.cc $(BUILD_DIR)/pattern_access_link.o $(BUILD_DIR)/pattern_design.o $(BUILD_DIR)/pattern_bsdl.o $(SHARED_OBJECTS)
+$(BUILD_DIR)/pattern_access_link_test-static: tests/src/pattern_access_link_test.cc $(BUILD_DIR)/pattern/pattern_access_link.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
-$(COV_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(COV_DIR)/pattern_access_link.o $(COV_DIR)/pattern_design.o $(COV_DIR)/pattern_bsdl.o $(COV_SHARED)
+$(COV_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(COV_DIR)/pattern/pattern_access_link.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
 check check-dynamic: pattern-access-link-check
@@ -973,7 +983,7 @@ pattern-tap-check: $(BUILD_DIR)/pattern_tap_test
 pattern-tap-static-check: $(BUILD_DIR)/pattern_tap_test-static
 	@$(BUILD_DIR)/pattern_tap_test-static
 
-TAP_TEST_OBJECTS := $(filter-out $(BUILD_DIR)/pattern_runtime.o,$(PATTERN_OBJECTS)) $(SHARED_OBJECTS) $(BUILD_DIR)/json.o
+TAP_TEST_OBJECTS := $(filter-out $(BUILD_DIR)/pattern/pattern_runtime.o,$(PATTERN_OBJECTS)) $(SHARED_OBJECTS) $(BUILD_DIR)/utility/json.o
 
 $(BUILD_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(TAP_TEST_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
@@ -981,7 +991,7 @@ $(BUILD_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(TAP_TEST_OBJECTS)
 $(BUILD_DIR)/pattern_tap_test-static: tests/src/pattern_tap_test.cc $(TAP_TEST_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
-$(COV_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o
+$(COV_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 
 check check-dynamic: pattern-tap-check
@@ -996,7 +1006,7 @@ $(BUILD_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(TAP_TEST_OBJE
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
 $(BUILD_DIR)/pattern_state_test-static: tests/src/pattern_state_test.cc $(TAP_TEST_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
-$(COV_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o
+$(COV_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
 check check-dynamic: pattern-state-check
 check check-static: pattern-state-static-check
@@ -1022,12 +1032,12 @@ pattern-symbolic-check: $(BUILD_DIR)/pattern_symbolic_test
 	@$(BUILD_DIR)/pattern_symbolic_test
 pattern-symbolic-static-check: $(BUILD_DIR)/pattern_symbolic_test-static
 	@$(BUILD_DIR)/pattern_symbolic_test-static
-$(BUILD_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3
+$(BUILD_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
-$(BUILD_DIR)/pattern_symbolic_test-static: tests/src/pattern_symbolic_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3 check-tcl-static
+$(BUILD_DIR)/pattern_symbolic_test-static: tests/src/pattern_symbolic_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3 check-tcl-static
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
-$(COV_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/pdl_document.o | check-z3
+$(COV_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 check check-dynamic: pattern-symbolic-check
 check check-static: pattern-symbolic-static-check
@@ -1035,33 +1045,39 @@ check check-static: pattern-symbolic-static-check
 .PHONY: pattern-scheduler-check
 pattern-scheduler-check: $(BUILD_DIR)/pattern_scheduler_test
 	@$(BUILD_DIR)/pattern_scheduler_test
-$(BUILD_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3
+$(BUILD_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 PATTERN_GENERATOR := $(BUILD_DIR)/icl-pattern-generation
 PATTERN_GENERATOR_STATIC := $(PATTERN_GENERATOR)-static
-$(BUILD_DIR)/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
-$(PATTERN_GENERATOR): $(BUILD_DIR)/icl_pattern_generation_main.o $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/json.o | check-z3 check-tcl
+$(BUILD_DIR)/pattern/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
+$(PATTERN_GENERATOR): $(BUILD_DIR)/pattern/icl_pattern_generation_main.o $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/utility/json.o | check-z3 check-tcl
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
-$(PATTERN_GENERATOR_STATIC): $(BUILD_DIR)/icl_pattern_generation_main.o $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/json.o | check-z3 check-tcl-static
+$(PATTERN_GENERATOR_STATIC): $(BUILD_DIR)/pattern/icl_pattern_generation_main.o $(PATTERN_OBJECTS) $(SOLVER_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/utility/json.o | check-z3 check-tcl-static
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 .PHONY: pattern-generation-check pattern-generation-static-check
 pattern-generation-check: $(PATTERN_GENERATOR)
 	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR)
+	python3 tests/src/pattern/test_dependency_scheduling.py $(PATTERN_GENERATOR)
+	python3 tests/src/pattern/test_merge_scheduling.py $(PATTERN_GENERATOR)
+	python3 tests/src/pattern/test_resource_reservations.py $(PATTERN_GENERATOR)
 pattern-generation-static-check: $(PATTERN_GENERATOR_STATIC)
 	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR_STATIC)
+	python3 tests/src/pattern/test_dependency_scheduling.py $(PATTERN_GENERATOR_STATIC)
+	python3 tests/src/pattern/test_merge_scheduling.py $(PATTERN_GENERATOR_STATIC)
+	python3 tests/src/pattern/test_resource_reservations.py $(PATTERN_GENERATOR_STATIC)
 
-$(BUILD_DIR)/pattern_scheduler_test-static: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl_document.o | check-z3 check-tcl-static
+$(BUILD_DIR)/pattern_scheduler_test-static: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3 check-tcl-static
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 .PHONY: pattern-scheduler-static-check
 pattern-scheduler-static-check: $(BUILD_DIR)/pattern_scheduler_test-static
 	@$(BUILD_DIR)/pattern_scheduler_test-static
-$(COV_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/pdl_document.o | check-z3
+$(COV_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
-$(COV_DIR)/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
-$(COV_DIR)/icl-pattern-generation: $(COV_DIR)/icl_pattern_generation_main.o $(COV_PATTERN) $(COV_SOLVER) $(COV_SHARED) $(COV_DIR)/json.o $(COV_DIR)/pdl_document.o | check-z3
+$(COV_DIR)/pattern/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
+$(COV_DIR)/icl-pattern-generation: $(COV_DIR)/pattern/icl_pattern_generation_main.o $(COV_PATTERN) $(COV_SOLVER) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 check check-dynamic: pattern-scheduler-check pattern-generation-check
 check check-static: pattern-scheduler-static-check pattern-generation-static-check

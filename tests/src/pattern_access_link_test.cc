@@ -1,6 +1,6 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_access_link.h"
+#include "pattern/pattern_access_link.h"
 
 #include <chrono>
 #include <fstream>
@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "text_input.h"
+#include "utility/text_input.h"
 
 namespace {
 void Require(bool value, const std::string& message) {

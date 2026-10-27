@@ -1,6 +1,6 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_flatten.h"
+#include "pattern/pattern_flatten.h"
 
 #include <fstream>
 #include <iostream>
@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "pattern_logic.h"
-#include "pattern_runtime.h"
-#include "text_input.h"
+#include "pattern/pattern_logic.h"
+#include "pattern/pattern_runtime.h"
+#include "utility/text_input.h"
 
 namespace {
 void Require(bool condition, const std::string& message) {

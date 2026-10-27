@@ -1,6 +1,6 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_tap.h"
+#include "pattern/pattern_tap.h"
 
 #include <chrono>
 #include <fstream>
@@ -10,9 +10,9 @@
 #include <stdexcept>
 #include <string>
 
-#include "pattern_flatten.h"
-#include "pattern_logic.h"
-#include "text_input.h"
+#include "pattern/pattern_flatten.h"
+#include "pattern/pattern_logic.h"
+#include "utility/text_input.h"
 
 namespace {
 void Require(bool value, const std::string& message) {

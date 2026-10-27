@@ -3,6 +3,25 @@
 Start with [project requirements](requirements.md). User installation and editor
 instructions are in the [main README](../README.md).
 
+## Source layout
+
+| Directory | Responsibility |
+|---|---|
+| `src/icl/` | ICL AST, Flex/Bison frontend, semantic analysis, formatter and LSP adapters. |
+| `src/pdl/` | Independent PDL/Tcl document frontend, formatter and LSP adapters. |
+| `src/pattern/` | Pattern-generator entry point, netlist/model elaboration, replay, scheduling and solver support. |
+| `src/utility/` | Shared CLI/LSP infrastructure, JSON, file I/O and text/UTF-8 helpers. |
+
+Includes are relative to `src`, for example `"icl/icl_ast.h"` and
+`"utility/json.h"`. Installed headers preserve these categories beneath
+`include/icl-format/`. Use that directory as the include root. Authored object
+files mirror the same categories under `build/` (also in coverage builds);
+generated parser/scanner sources stay under `build/gen/`. Executable names and
+locations are unchanged. Reinstalling removes obsolete flat headers only when
+the previous installation manifest records them; unowned files are preserved.
+Existing regression scripts retain their paths under
+`tests/`; new scripts mirror the source they test.
+
 ## Shared architecture
 
 The two ICL executables link the same scanner, parser, AST definitions, document
@@ -23,14 +42,14 @@ workspace management and responses form the necessary outer boundaries.
 
 | Source | Responsibility |
 |---|---|
-| `src/icl_lexer.l`, `src/icl_parser.yy` | ICL tokens, grammar productions and local validation actions. |
-| `src/icl_ast.h`, `src/icl_driver.{h,cc}` | Shared AST ownership, source spans, parser state and validation helpers. |
-| `src/icl_semantics.{h,cc}` | Parsed documents, scoped declarations/references and workspace resolution. |
-| `src/format_tree.{h,cc}` | Layout decisions and rendering. |
-| `src/format_job.{h,cc}` | Shared formatting requests, outcomes and diagnostics. |
-| `src/format_cli.h`, `src/*_format_main.cc` | Shared CLI implementation and language adapters. |
-| `src/lsp_server.h`, `src/*_lsp_main.cc`, `src/json.{h,cc}` | Shared LSP services/transport and separate language adapters. |
-| `src/pdl_document.{h,cc}` | Shared PDL source tree, non-evaluating Tcl parsing, analysis and formatting; see [PDL tools](pdl-tools.md). |
+| `src/icl/icl_lexer.l`, `src/icl/icl_parser.yy` | ICL tokens, grammar productions and local validation actions. |
+| `src/icl/icl_ast.h`, `src/icl/icl_driver.{h,cc}` | Shared AST ownership, source spans, parser state and validation helpers. |
+| `src/icl/icl_semantics.{h,cc}` | Parsed documents, scoped declarations/references and workspace resolution. |
+| `src/icl/format_tree.{h,cc}` | Layout decisions and rendering. |
+| `src/icl/format_job.{h,cc}` | Shared formatting requests, outcomes and diagnostics. |
+| `src/utility/format_cli.h`, `src/{icl,pdl}/*_format_main.cc` | Shared CLI implementation and language adapters. |
+| `src/utility/lsp_server.h`, `src/{icl,pdl}/*_lsp_main.cc`, `src/utility/json.{h,cc}` | Shared LSP services/transport and separate language adapters. |
+| `src/pdl/pdl_document.{h,cc}` | Shared PDL source tree, non-evaluating Tcl parsing, analysis and formatting; see [PDL tools](pdl-tools.md). |
 
 The ICL AST uses three node shapes: comment, statement and header/body block. Nodes
 are non-copyable and owned by an `AstUnit` arena; child pointers are non-owning.

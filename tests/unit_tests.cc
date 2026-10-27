@@ -14,10 +14,10 @@
 #include <string>
 #include <vector>
 
-#include "format_tree.h"
-#include "icl_ast.h"
-#include "json.h"
-#include "text_position.h"
+#include "icl/format_tree.h"
+#include "icl/icl_ast.h"
+#include "utility/json.h"
+#include "utility/text_position.h"
 
 namespace icl {
 namespace {

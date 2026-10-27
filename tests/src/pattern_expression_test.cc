@@ -1,12 +1,12 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_expression.h"
+#include "pattern/pattern_expression.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-#include "icl_semantics.h"
+#include "icl/icl_semantics.h"
 
 namespace {
 int64_t Evaluate(const std::string& expression) {

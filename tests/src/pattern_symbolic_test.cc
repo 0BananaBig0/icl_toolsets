@@ -1,13 +1,13 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_symbolic.h"
+#include "pattern/pattern_symbolic.h"
 
 #include <iostream>
 #include <stdexcept>
 
-#include "pattern_design.h"
-#include "pattern_state.h"
-#include "pattern_values.h"
+#include "pattern/pattern_design.h"
+#include "pattern/pattern_state.h"
+#include "pattern/pattern_values.h"
 
 namespace {
 void Require(bool condition, const char* message) {

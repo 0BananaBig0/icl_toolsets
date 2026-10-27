@@ -60,12 +60,13 @@ full model coverage or Tessent equivalence.
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP complete-event constraints and concrete replay | Shared-chain, shadow-register and independently gated event scheduling |
 | Serial scheduler | Register/mux/logic paths, SIB and acyclic reset prerequisites, read obligations, AccessTogether alias groups and partial/X writes; explicit rejection of unimplemented iApplyEndState restoration | Multiple roots, overlapping intermediate taps, broader access models |
 | Idle cycles | Literal TCK counts on a reset single TAP; native state replay, fixed-point acceleration, retained output count | System clocks, absolute-time waits, external time-dependent instrument behavior |
-| Optimization | Increasing horizons, shifted-bit/TAP overhead costs, deterministic ties; small independent nested-SIB oracle; `iApply -together` verified on a common update cycle | Merging, timing/resources, whole-program optimization and larger-scale measurements |
+| Optimization | Dependency-guided batches for larger write-only groups; nested iMerge normalization with conservative disjoint single-apply batching and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization, general optimality and broader scale/vendor qualification |
+| Resource ownership | Full named ScanRegister/instance storage takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; per-clock replay and atomic failures | Ports, alias/slice reservation names, protected reset, pattern-set lifecycle, scalable protected scheduling and vendor qualification |
 | Flattened output | Shared netlist serializer; original/flat/generated-PDL tests, including single-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading, installed-program replay | Remaining command semantics and all required platform validation |
-| Local-reset-only artifact | One source preserved byte-for-byte after proving reset-port ancestry needs no instrument release; procedures and source/flat replay tested | Transitive releases, safe batching and safe multiple-file rewriting |
-| Tessent oracle | Fresh 36-case rerun in prefixed directories: 17 exports / 19 expected errors; two actual TAP comparisons differ and one serial comparison is blocked by vendor ICL71-1 | Original 33 comparison preparations remain blocked by model/execution limits; no full state equivalence established |
-| Acceptance checks | Full regression, sanitizers/style and independent review passed through restricted reset passthrough; evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: 95.2%/60.5%; full vendor equivalence is unverified |
+| Local-reset-only artifact | Transitive reset-control releases, grouped independent controls, ordered multi-file rewriting, unchanged procedures and actual rewritten-runtime validation | Internal procedure reassertions, conflicting repeated source sites, feedback and broader vendor qualification |
+| Tessent oracle | Full 36-case rerun: 17 exports / 19 expected errors; additional transitive-reset TAP rewrite exported successfully, with a differing strict trace | Original full-manifest comparison limits and final-state/trace differences remain; no full state equivalence established |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset evidence in the generator guide | Last strict coverage measurement remains below 100% lines/90% raw branches: 95.2%/60.5%; not remeasured for reset rewriting; full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -78,6 +79,17 @@ per elaborated design; signal ranges are checked before expansion and dependency
 references are deduplicated. These limits reject excessive work with a resource
 error; they do not prove that a target cannot be configured.
 No end-to-end performance or optimality claim has been established yet.
+
+Reset dependency ordering now uses a deterministic ready queue, avoiding repeated
+whole-register scans for reverse-declared chains. The ordering phase costs
+`O((V+E) log V)` with ordered containers; reset-cone tracing and symbolic pattern
+search are separate costs. At the supported 4096-register limit, the added
+reverse-chain test measured 0.342 s for scheduler construction before this
+change and 0.010–0.019 s over three runs afterward (g++ 16.2.1, `-O2`, Linux
+6.18.33.2 WSL2). These are construction measurements, not an end-to-end speedup.
+The native test also closes the chain into a cycle and requires rejection.
+Reproduce with `make pattern-scheduler-check BISON=/usr/bin/bison`; logs are
+`build/reset-dependency-{baseline,ready-queue,ready-queue-repeat}.log`.
 
 A repeatable foundation benchmark is `make pattern-netlist-benchmark
 BISON=/usr/bin/bison`. It builds a 377,286-byte input with 5,000 specialized
@@ -440,7 +452,7 @@ separate strict coverage gate remains failed as reported above.
 
 ## Address/control requirement resolution
 
-`src/pattern_address.{h,cc}` consumes the existing immutable `Netlist` and returns
+`src/pattern/pattern_address.{h,cc}` consumes the existing immutable `Netlist` and returns
 an addressed DataRegister's effective address signals, computed numeric address,
 and read or write enable source. It does not execute PDL, schedule operations,
 initialize registers, or prove global address uniqueness. The netlist must
@@ -846,7 +858,7 @@ corpus checkpoint; the full generator remains unfinished.
 
 ## Native TAP controller (2026-10-26)
 
-`TapController` in `src/pattern_tap.h/.cc` now models all 16 controller states.
+`TapController` in `src/pattern/pattern_tap.h/.cc` now models all 16 controller states.
 Its 16-bit set starts with every state possible; explicit TRST assertion or five
 high TMS rising edges establishes Test-Logic-Reset. Inputs accept normalized
 `0`, `1`, and `x`; invalid characters throw before state mutation. Unknown TMS
@@ -1090,7 +1102,7 @@ generator.
 
 ## TAP pins and serial-network assembly (2026-10-26)
 
-`ElaborateTapNetwork` in `src/pattern_tap_network.cc` binds AccessLinks, builds
+`ElaborateTapNetwork` in `src/pattern/pattern_tap_network.cc` binds AccessLinks, builds
 the existing behavioral datapaths, inserts their shared ASTs, and connects the
 serial topology. Missing BSDL-named TAP pins are synthesized before ordinary
 connection resolution and reset/TMS inference. Correct existing scalar pins,

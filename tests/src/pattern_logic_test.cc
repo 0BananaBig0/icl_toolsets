@@ -1,6 +1,6 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_logic.h"
+#include "pattern/pattern_logic.h"
 
 #include <iostream>
 #include <stdexcept>

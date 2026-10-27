@@ -235,7 +235,9 @@ a scale check, not a throughput guarantee for arbitrary logic cones.
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
-| `iMerge`, resource and system-clock commands | Execution/scheduling remains unfinished and reports an error. |
+| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint full-register single-apply calls, with serial fallback. |
+| `iTake`, `iRelease` | Full named ScanRegisters and instance ScanRegister storage; protection after applied writes or `iState`, inherited ownership and scoped release. Tessent default-instance and persistent takes are supported within the input stream; port/alias/slice reservation names remain unsupported. |
+| System-clock commands | Execution/scheduling remains unfinished and reports an error. |
 | Hardware readback commands | Static generation cannot supply live device observations. |
 
 This table describes generator execution. The formatter and LSP have separate,
@@ -296,24 +298,262 @@ broader syntax support and never execute PDL.
 
 The backend accepts one SI/SO boundary and at most one TAP. It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
-one-hot/addressed transactions, feedback reset scheduling, iMerge,
-system-clock/absolute-time waits, resource commands and other unsupported
+one-hot/addressed transactions, feedback reset scheduling,
+system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing shadow-register effects or independently gated
 interface events are outside the current complete-scan model; inability to
 schedule them is not proof of hardware unreachability.
 
-`--local_reset PATH` currently accepts one PDL source and preserves its bytes,
-including all procedures, when the elaborated reset paths need no local-reset
-TDR release. The check follows single-source ResetPort/ToResetPort forwarding
-to global reset, known constants, or an external top-level ResetPort. Register
-or logic-driven reset paths, unknown/unresolved sources and cycles are rejected.
-This conservative check visits all modeled register reset paths, even for
-registers not accessed by the supplied procedure. Successful flattened generation
-is required before any reset artifact is published. Multiple PDL inputs and
-insertion of transitive local-reset releases remain unsupported by this option.
-These restrictions are outstanding requirements, not a reduced final scope.
+### Local-reset output
+
+`--local_reset PATH` preserves source text, including procedure definitions, and
+inserts reset-control writes before main-level writes, calls or whole merge
+blocks. Releases are never inserted between a merge's begin/end markers. Multiple PDL
+files are combined in command-line order, with separators that preserve commands
+after continued EOF comments. When no release is needed, a single input is
+preserved byte-for-byte.
+
+The planner follows transitive reset dependencies, including nested
+`AccessTogether` aliases and logic-driven resets supported by the symbolic
+network. It uses actual reset polarity and the scheduler's current state to
+choose release values. Ancestor controls are released on earlier apply
+boundaries; independent controls share an apply. The reset-only artifact contains
+no additional SIB setup. The normal flattened output still comes from the
+original PDL operation stream and includes scan-access scheduling.
+
+Source tracing belongs to the existing PDL runtime; reset planning shares the
+scan scheduler's netlist, concrete state and symbolic model. Insertions are
+hoisted before whole pending queues so an added `iApply` cannot flush a user
+write early. After patching the source, a fresh runtime executes the actual
+rewritten text and compares its ordered commands and resolved arguments with
+the planned stream. All analysis and replay must succeed before publication.
+
+Remaining limits: a procedure that reasserts reset internally and then needs
+another release cannot always be repaired from its caller without changing the
+procedure. Repeated source sites needing different preambles, insertions that
+split a repeated pending queue, nonliteral/procedure-body insertion sites, and
+effectful substitutions that change execution order are rejected. Unresolved
+reset sources, forwarding cycles, feedback scheduling and unsupported controller
+models remain errors. Reset solving is bounded to 4096 control bits and two
+seconds per solver query; a limit is not proof of unreachability. These are
+outstanding requirements, not a reduced final scope.
+
+### Merge scheduling
+
+IEEE 1687-2014 §7.9.18 permits serial execution or merging, requires an empty
+queue at merge entry and direct-call return, and forbids `iReset` inside any
+merged call. Direct `iNote` commands execute before the calls. Recursive merges
+through `iCall` are supported; a directly nested begin/end pair in the same
+procedure is invalid. Tessent IJTAG User's Manual v2023.4, “How to Run iCalls in
+Parallel”, also describes serial fallback and recursive merging.
+
+`pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
+invocation identities distinguish repeated calls without introducing another
+PDL parser. It combines consecutive calls only when each contains a single
+plain apply with fully known, full-width direct ScanRegister writes, and their
+register sets do not overlap. It does not merge across outside apply boundaries.
+Multi-apply calls, aliases, partial/X writes, reads, notes within calls, state
+changes, `-together`, and clock waits retain their serial barriers. Nested blocks
+are processed recursively. Calls containing resource commands remain serialized.
+
+The combined stream uses the existing scheduler and concrete replay. A failed
+attempt is discarded and retried serially with a fresh scheduler; artifacts are
+published only after success. This is a conservative heuristic, not a proof of
+the globally shortest pattern. A shared apply may still need multiple scans.
+The merge pass uses ordered-set conflict checks, not interleaving enumeration.
+
+Regression input is under `tests/cases/ours/pattern_generation/merge/`; the
+runner is `tests/src/pattern/test_merge_scheduling.py`. It checks source/flat
+ICL and generated-PDL fixed points, notes, nested/repeated calls, conflicting
+writes, barriers, reset rules, reset-only hoisting and fresh-state fallback.
+The scale case combines 256 calls into one apply. These are locally checked
+cases, not newly qualified Tessent goldens.
+
+Verification on 2026-10-27: full `make check BISON=/usr/bin/bison -j4` passed
+(`build/merge-scheduling-regression.log`), including dynamic/static merge tests
+and unchanged offline vendor goldens. ASan/UBSan with leak detection enabled
+passed nine merge tests, 26 existing generator CLI tests and native runtime
+tests. The 256-call case (26,471 source bytes) took 0.120 seconds; the Python
+harness measured 0.17 seconds and 60,908 KiB peak RSS on WSL2 with g++ 16.2.1
+`-O2` and Z3 4.13.3. See the [plan and evidence](superpowers/plans/2026-10-27-merge-scheduling.md)
+for commands and limits. No fresh Tessent equivalence or strict authored-C++
+coverage run was performed for this increment.
+
+### Resource reservations
+
+`pattern_resources.cc` tracks ownership using the existing runtime call stacks.
+An `iTake` alone does not pin hardware: the retargeter remains free to configure
+it until an explicit user write is applied (IEEE 1687-2014 §7.9.19), or an
+explicit `iState` assigns it (Tessent Shell Reference Manual v2023.4, `iTake`). A take
+within the same pending apply group also protects that group's applied value.
+Preparatory writes generated by the scheduler do not acquire protection.
+
+Supported resources are full named ScanRegisters and ScanRegister storage in
+an instance subtree. Alias/slice **writes** to a taken register are supported;
+alias/slice **reservation names** and direct ports are rejected.
+Taking an instance does not add support for port or other unsupported register
+transactions. Calls inherit ownership; returning drops only acquisitions made
+in that call. Explicit release propagates to inherited ownership, following
+§7.9.20(e) and Tessent IJTAG User's Manual v2023.4, “How to Run iCalls in
+Parallel”. Overlapping parent/child takes do not lose the parent's protection
+on return.
+
+Tessent's `iTake [resource] [-persistent]` extension is supported for this
+ScanRegister subset. Missing or empty resources select the effective instance
+from the current `iCall` and `iPrefix`. Persistent takes survive procedure
+returns and later input files until explicitly released. Ordinary nested takes
+do not erase overlapping persistent ownership when they return. This executable
+does not model Tessent pattern-set, `test_setup` or `test_end` lifecycles.
+
+`iTake` must precede `iState` to protect the assumed value. A later explicit
+`iState` may replace it, including through an alias or slice, without a hardware
+transaction. Unknown protected values and assumptions with pending actions are
+rejected. An assumption made before the take is not retroactively protected.
+These defaults and extensions follow the v2023.4 reference topic
+`tshell_ref/topics/Command_Itake_idd8a68c5f.html`.
+
+The scheduler constrains protected values at each scan state and checks them
+during concrete clock replay. Explicit user writes may replace a protected
+value with their requested value; automatic reset-only preambles cannot.
+Failed schedules or idle replays do not publish partial state or files. Taking
+a resource after an earlier apply does not retroactively protect that write.
+Reset-only rewriting also rejects insertion of an explicit prerequisite write
+to a taken-but-unwritten resource: executing that file would otherwise acquire
+a lock that the original source never acquired.
+Read reservations do not authorize concurrent interleaving: calls using
+reservations remain serialized.
+
+The fully generated pattern resolves reservations into concrete writes/applies,
+without retaining procedure scopes or resource directives. Generated-PDL and
+flattened-ICL replay are tested. Source-preserving `--local_reset` output retains
+the original resource commands and is separately re-executed before publication.
+
+Written reservations currently select the bounded 32-scan scheduler. Unwritten
+takes retain the large-network greedy path. `iReset` with active protected
+values reports an explicit unsupported error; release first.
+TCK waits must preserve protected values. Full resource/model support and a
+reservation-aware scalable heuristic remain outstanding requirements.
+
+Fixtures: `tests/cases/ours/pattern_generation/resources/`; regression:
+`tests/src/pattern/test_resource_reservations.py`. Tests include protected SIB
+failures, same-group takes, explicit updates, inherited/overlapping ownership,
+instance and alias/partial writes, merges, reset-rewrite protection and TAP
+waits. Native tests also check rollback after rejected writes and changing idle
+states. The scale case protects 128 registers and updates an independent target.
+
+Verification on 2026-10-27: the final full regression passed after the review
+fix (`build/resource-reservations-final-regression.log`), including thirteen
+dynamic/static resource cases and seven unchanged offline vendor goldens.
+ASan/UBSan with leak detection enabled passed those thirteen cases, 26 existing
+generator cases and native scheduler checks. The 128-register case took 0.073 s
+for the CLI, or 0.13 s / 57,616 KiB peak RSS including its Python harness, on
+WSL2 with g++ 16.2.1 `-O2` and Z3 4.13.3. Per-clock reservation checks scale with
+protected bit count; this measurement does not establish a general performance
+bound. See [plan and evidence](superpowers/plans/2026-10-27-resource-reservations.md).
+Fresh Tessent equivalence and strict authored-C++ coverage were not rerun.
+
+Persistent/default takes and taken-state assumptions were added in the
+[next increment](superpowers/plans/2026-10-27-persistent-reservations.md).
+Its full regression passed (`build/persistent-regression.log`), including
+17 resource tests for both dynamic/static executables, seven offline vendor
+goldens, full grammar/scanner rule coverage, and Vim/Neovim corpus checks.
+Leak-enabled ASan/UBSan passed those 17 cases, 26 existing generator cases and
+native scheduler/runtime checks. Independent review found no defects.
+Fresh Tessent execution and strict authored-C++ coverage remain unrun for this
+increment; these checks do not establish complete vendor equivalence.
+
+### Dependency-guided scheduling
+
+Write-only applies on networks with at least 32 ScanRegisters first try a
+dependency-guided planner. This is an implementation threshold, not an IEEE
+limit. A shared serial-path constraint pass solves one desired selector/reset
+configuration, minimizing the number of changed control registers. Only the
+controllers needed to establish access are proposed; actual reset polarity and
+logic remain in the existing symbolic netlist model.
+
+The planner batches currently reachable, reset-released controllers toward that
+configuration. It does not assume a reset release or SIB update can take effect
+earlier in the same scan. Each batch uses the existing solver for at most one DR
+scan plus a TAP instruction scan when necessary, followed by concrete replay.
+Known prerequisite bits are retained across batches. The final batch preserves
+the original resolved full-register values for partial/X writes and the original
+alias and `iApply -together` obligations. Explicit requests may close SIBs in
+that final update; otherwise prerequisite selectors may remain open.
+
+All speculative state and controlling fill belong to a trial scheduler. They
+are committed only after the final request succeeds. No-progress, incompatible
+snapshot configurations or exhausted bounded batch attempts return to the
+original solver without publishing trial state. A directly accessible request
+tries a single scan first, avoiding unnecessary prerequisite solving when
+replaying generated PDL. Reads continue through the original solver.
+
+This is a heuristic, not a globally optimal scheduler. It groups targets whose
+reset/select requirements can coexist; mutually exclusive paths use the bounded
+fallback. Snapshot queries retain a two-second solver timeout and a 4096-bit
+control-choice limit. The planner checks a 15-second attempt budget between
+batches and requires fewer unresolved controls after each preparation batch.
+These limits are separate from the existing structural bounds. Unsupported
+models and solver exhaustion are not evidence of hardware unreachability.
+
+Self-constructed fixtures and an independent tree model check 40 nested SIBs
+(41 scans), 64 independent SIB/TDR pairs (two scans), and 256 pairs/512 registers
+(two scans). Additional cases exercise TAP select gating, reset dependencies,
+aliases, explicit closure/reopening, partial and X writes, fallback, unknown
+initial state, rollback and source/flat/generated-PDL replay. Small finite-state
+searches remain independent optimality oracles for their specific topologies.
 
 ## Validation and limits
+
+### Dependency-guided scheduler verification (2026-10-27)
+
+The final full regression exited 0 (`build/dependency-scheduling-regression.log`).
+Dynamic and static builds each passed 26 existing generator CLI cases and ten
+new dependency-scheduling cases, plus native scheduler tests. All seven offline
+Tessent goldens still match. Grammar/scanner rule coverage remains 334/334 and
+119/119; Vim and Neovim each checked 38,639 ICL and 811 PDL files. The corpus
+audit found no duplicate-file groups. Style checks passed.
+
+ASan/UBSan passed the new/existing CLI and native scheduler tests with leak
+detection enabled, outside the sandbox. Independent review caught a partial-write
+fill regression; the reproduced failure and fix are recorded in the
+[implementation plan](superpowers/plans/2026-10-27-dependency-guided-scheduling.md).
+The strict authored-C++ coverage gate and fresh Tessent equivalence were not
+rerun for this scheduler change; existing gaps remain open.
+
+Repeated full CLI measurements with g++ 16.2.1 `-O2` on Linux 6.18.33.2 WSL2:
+
+| Input | ICL bytes | Result | Wall time | Peak RSS |
+|---|---:|---|---:|---:|
+| 40 nested SIBs | 5,329 | 41 scans | 0.31–0.34 s | 74,364–74,704 KiB |
+| 64 independent SIB/TDR pairs | 13,245 | 2 scans | 0.23–0.24 s | 75,460–75,784 KiB |
+
+The 256-pair/512-register test uses 53,661 input bytes and completed in 2.97 s
+in the focused suite. These measurements establish the tested scale, not a
+general optimality or maximum-throughput claim. Commands and repetitions are in
+`build/dependency-scheduling-measurements.log`.
+
+### Local-reset rewrite verification (2026-10-27)
+
+The local-reset checkpoint regression exited 0 after the rewrite, source reorganization
+and reset dependency ordering change. Both dynamic and static CLI suites passed
+26 tests; the seven existing offline Tessent standards still match. Grammar
+coverage reached 334/334 productions and 119/119 scanner rules, and both editor
+runners checked 38,637 ICL and 809 PDL files. See
+`build/local-reset-final-regression.log` and the
+[implementation record](superpowers/plans/2026-10-27-local-reset-rewrite.md).
+
+ASan/UBSan passed the 26 CLI cases and native runtime/scheduler tests with leak
+detection enabled. LeakSanitizer cannot run under this sandbox's ptrace
+environment; the same checks passed outside it. Z3 itself was not instrumented.
+The authored C++ strict coverage gate was not rerun for these changes, and the
+previous coverage gap remains recorded in the model ledger.
+
+Tessent accepted the explicit TAP fixture's reset-only rewrite, but its exported
+trace differs, including the final SIB state. This establishes vendor acceptance
+of that input, not full equivalence. No new golden was approved; details are in
+the [oracle report](tessent-oracle.md#transitive-local-reset-rewrite-2026-10-27).
+
+### Replay guarantees
 
 Every candidate scan is replayed through the separate concrete hardware-state
 engine before it is accepted. Tests compare source and flattened ICL output,
@@ -323,8 +563,8 @@ unknown external hardware will match a requested expected value.
 
 A small independently enumerated nested-SIB model checks minimum scan count and
 shifted-bit cost. TAP transactions additionally count the IR/DR entry and exit
-cycles when comparing schedules within a horizon. The solver searches increasing
-scan horizons up to 32 scans,
+cycles when comparing schedules within a horizon. The bounded fallback searches
+increasing scan horizons up to 32 scans,
 with resource/time limits; exceeding a bound is not a proof of unreachability.
 Optimality evidence is limited to this supported transaction model and each
 apply group. It does not establish global optimality over an entire PDL program.

@@ -221,6 +221,24 @@ as atomic behavioral units; internal flip-flop or gate wiring is not required.
 See the [documentation index](README.md) for the maintained records. New evidence
 must state its scope and date; a requirements checklist is not itself a test result.
 
+## Pattern scheduling scalability
+
+The 2026-10-27 scheduling guidance supplements the original pattern-generation
+requirements. For many TDR/SIB requests in one `iApply`, trace reset sources,
+group targets using the same reset signal, and release prerequisite controls
+from roots to leaves. Trace IJTAG select dependencies similarly and configure
+compatible groups together. Signal identity (including polarity) and dependency
+depth are separate: unrelated reset signals can have the same depth.
+
+Use dependency-guided heuristics or greedy batching for production-scale
+networks; do not enumerate every possible pattern. Prefer reusing open paths,
+sharing prerequisites, and reducing shifted bits and controller transitions.
+Preserve user ordering/barriers and validate candidates through concrete replay.
+Reconvergent logic may require a graph rather than a strict tree, and shared
+signals do not establish simultaneous scan accessibility. Small exhaustive
+models remain useful as independent test oracles. Report heuristic results and
+resource limits honestly; do not claim global minimality without proof.
+
 ## PDL delivery acceptance
 
 The [PDL design](superpowers/specs/2026-10-23-pdl-tools-design.md) defines the

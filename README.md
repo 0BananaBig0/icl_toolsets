@@ -335,6 +335,26 @@ logic-controlled paths and acyclic local-reset dependencies. Hardware starts
 unknown: use explicit `iState` declarations where appropriate, and `iReset`
 before TAP transactions.
 
+For write-only batches in larger networks, a dependency-guided planner groups
+reachable reset/selector controls before accessing their targets. It can handle
+deep SIB chains beyond the bounded solver's 32-scan horizon and retain open
+paths for reuse. Each scan still passes concrete replay; explicit user writes,
+including partial writes, retain their requested values. Cases the heuristic
+cannot plan use the existing bounded solver. It does not guarantee globally
+shortest patterns. See [scheduling behavior and limits](docs/pattern-generation.md#dependency-guided-scheduling).
+
+`iMerge` blocks are flattened into the same output stream. Compatible calls
+containing one apply of disjoint, fully specified ScanRegister writes can share
+that apply. Other supported calls retain serial order, including reads, waits
+and partial writes; nested merges are supported. The tool validates each result
+through the existing scheduler and concrete replay, and retries serial execution
+if a combined schedule fails. `iTake`/`iRelease` protect ScanRegister values
+assigned by an applied write or `iState`, with instance storage ownership and
+nested-call lifetime handling. Tessent's default-instance `iTake` and
+`-persistent` option are supported within the ordered input stream.
+Calls containing reservations remain serialized. Port reservations and
+cross-pattern-set lifecycles remain unsupported; see [resource limits](docs/pattern-generation.md#resource-reservations).
+
 For an ordinary scan network:
 
 ```sh
@@ -397,13 +417,21 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 | `--output PATH` | Write generated PDL; defaults to `out/<top>.pdl`. |
 | `--debug` | Also write `debug/<top>.icl` beside the output, including TAP/BSDL metadata for replay. |
 | `--log PATH` | Copy stdout diagnostics to a file. |
-| `--local_reset PATH` | Preserve one PDL input byte-for-byte when reset paths need no local-reset TDR release; reject local controls or multiple PDL inputs. |
+| `--local_reset PATH` | Write source PDL with transitive local-reset releases before main-level writes, calls or whole merge blocks; preserve procedure definitions and combine ordered input files. |
+
+The reset-only output releases prerequisite TDRs in dependency order and groups
+independent releases under one `iApply`. It does not insert SIB-opening commands.
+Before publishing it, the tool re-executes the rewritten PDL and verifies the
+operation sequence. It rejects cases that need edits inside procedures, unsafe
+repeated source insertions, or changes to Tcl substitution order. See
+[local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, addressed execution, general one-hot execution, merges, system
-clocks, resources, the general local-reset rewrite, and full Tessent pattern
+scheduling, addressed execution, general one-hot execution, resource
+reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
+rewriting, and full Tessent pattern
 equivalence remain
-unfinished. The [latest Tessent rerun](docs/tessent-oracle.md#primary-input-rerun-2026-10-27)
+unfinished. The [latest full-manifest Tessent rerun](docs/tessent-oracle.md#primary-input-rerun-2026-10-27)
 matched all 36 expected reference outcomes. Three new pin-write cases match
 the vendor pin values and apply grouping, but strict trace comparison still
 reports 30 generator-blocked cases, one vendor-blocked case and five differing
@@ -411,6 +439,9 @@ traces, with no exact operation matches. Remote experiments
 are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
 `test_Local_Reset`. New bundles contain `test_<case-name>` directories with no
 random suffixes; archived bundles remain readable.
+The [new transitive-reset probe](docs/tessent-oracle.md#transitive-local-reset-rewrite-2026-10-27)
+also exports successfully in Tessent, but its strict operation trace differs;
+it is not an approved equivalence golden.
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

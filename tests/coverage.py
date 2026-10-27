@@ -12,7 +12,6 @@ Assumes the tree was already built with --coverage and the test suites run.
 
 import argparse
 import glob
-import os
 import re
 from pathlib import Path
 import sys
@@ -39,6 +38,11 @@ SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'pattern_logic.cc', 'pattern_symbolic.cc', 'pattern_values.cc',
            'pattern_scheduler.cc', 'icl_pattern_generation_main.cc', 'file_output.h',
            'pattern_runtime.cc', 'pattern_flatten.cc']
+
+
+SOURCE_PATHS = {path.name: path for path in
+                (Path(__file__).resolve().parents[1] / 'src').glob('*/*')
+                if path.is_file()}
 
 
 LINE = re.compile(r'^\s*([0-9]+\*?|#####|=====|-):\s*(\d+):')
@@ -81,14 +85,11 @@ def source_line(name, number):
     original keeps this independent of gcov's formatting and of whether the
     file was emitted at all.
     """
-    root = Path(__file__).resolve().parents[1]
-    for directory in (root / 'src', root):
-        path = os.path.join(directory, name)
-        if os.path.exists(path):
-            with open(path, encoding='utf-8', errors='replace') as handle:
-                lines = handle.read().split('\n')
-            if 1 <= number <= len(lines):
-                return lines[number - 1].strip()[:96]
+    path = SOURCE_PATHS.get(name)
+    if path is not None:
+        lines = path.read_text(encoding='utf-8', errors='replace').split('\n')
+        if 1 <= number <= len(lines):
+            return lines[number - 1].strip()[:96]
     return '<source not found>'
 
 

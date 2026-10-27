@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "pattern_flatten.h"
+#include "pattern/pattern_flatten.h"
 
 int main() {
   try {

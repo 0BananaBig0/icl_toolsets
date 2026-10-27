@@ -244,7 +244,8 @@ class Formatter(unittest.TestCase):
 
     def test_tessent_apply_and_persistent_take(self):
         for command in ('iApply -end_in_pause', 'iTake', 'iTake reg -persistent',
-                        'iTake -persistent', 'iTake reg',
+                        'iTake -persistent', 'iTake reg', 'iTake {}',
+                        'iTake {} -persistent',
                         'iWrite reg 1 -ignore_when_value_already_present on',
                         'iWrite reg 1 -ignore_when_value_already_present off',
                         'iWrite reg 1 -ignore_when_value_already_present auto'):

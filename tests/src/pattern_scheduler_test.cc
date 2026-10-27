@@ -1,6 +1,6 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
-#include "pattern_scheduler.h"
+#include "pattern/pattern_scheduler.h"
 
 #include <chrono>
 #include <fstream>
@@ -10,13 +10,84 @@
 #include <stdexcept>
 #include <tuple>
 
-#include "pattern_design.h"
-#include "pattern_flatten.h"
-#include "pattern_tap.h"
+#include "pattern/pattern_design.h"
+#include "pattern/pattern_flatten.h"
+#include "pattern/pattern_tap.h"
 
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestResetDependencyScale() {
+  // Reverse declaration order is the worst case for repeatedly scanning all
+  // registers to discover the next reset dependency.
+  pattern::Netlist netlist;
+  constexpr size_t kRegisters = 4096;
+  for (size_t id = 0; id < kRegisters; ++id) {
+    pattern::NetlistNode node;
+    node.name = "r" + std::to_string(id);
+    node.kind = "ScanRegister";
+    node.model = pattern::ModelKind::kRegister;
+    if (id + 1 < kRegisters) node.reset = pattern::BitReference{id + 1, 0};
+    netlist.node_ids.emplace(node.name, id);
+    netlist.nodes.push_back(std::move(node));
+  }
+  const auto start = std::chrono::steady_clock::now();
+  pattern::ScanScheduler scheduler(netlist);
+  std::cout << "reset dependencies: registers=" << kRegisters << " seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+  netlist.nodes.back().reset = pattern::BitReference{0, 0};
+  bool rejected = false;
+  try {
+    pattern::ScanScheduler cyclic(netlist);
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("feedback reset") != std::string::npos;
+  }
+  Require(rejected, "reset dependency cycle must not be silently ordered");
+}
+void TestGreedyRollback() {
+  std::string source = R"(
+Module GreedyLeaf {
+ ScanInPort si; ResetPort rst;
+ ScanRegister target[3:0] { ScanInSource si; ResetValue 4'b0; }
+ ScanOutPort so { Source target[0]; }
+}
+Module GreedyRollback {
+ ScanInPort si;
+ ScanRegister release { ScanInSource si; ResetValue 1'b0; }
+ Instance child Of GreedyLeaf { InputPort si = release; InputPort rst = ~release; }
+ ScanOutPort so { Source child.so; }
+)";
+  for (size_t i = 0; i < 32; ++i) {
+    source += "ScanRegister pad" + std::to_string(i) +
+              " { ScanInSource si; ResetValue 1'b0; }\n";
+  }
+  pattern::Design design;
+  design.AddIcl("greedy-rollback.icl", source + "}\n");
+  const auto netlist = pattern::Elaborate(design, "GreedyRollback");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"child.target", "5"}, "rollback:1", {}},
+                     {"iWrite", {"release", "0"}, "rollback:2", {}}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("no schedule") != std::string::npos;
+  }
+  Require(rejected && scheduler.Value("release") == "0" &&
+              scheduler.Value("child.target") == "0000",
+          "failed greedy final update must not publish prerequisite state");
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"child.target", "5"}, "rollback:3", {}}});
+  Require(
+      steps.size() == 2 && scheduler.Value("release") == "1" &&
+          scheduler.Value("child.target") == "0101",
+      "greedy reset prerequisite precedes target update and preserves fill");
 }
 void TestPrimaryWrites() {
   pattern::Design design;
@@ -55,6 +126,37 @@ Module Primary {
   }
   Require(rejected && scheduler.Value("out") == "1111",
           "conflicting parallel targets fail without changing state");
+}
+void TestReservationRollback() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/resources/network.icl");
+  pattern::Design design;
+  design.AddIcl("resource.icl",
+                std::string(std::istreambuf_iterator<char>(file), {}));
+  const auto netlist = pattern::Elaborate(design, "ResourceNetwork");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const std::map<size_t, std::string> held{{netlist.node_ids.at("gate"), "00"}};
+  for (const auto& operations : std::vector<std::vector<pattern::Operation>>{
+           {{"iWrite", {"target", "5"}, "resource:1", {}}},
+           {{"iWrite", {"gate", "1"}, "resource:2", {}}}}) {
+    bool rejected = false;
+    try {
+      scheduler.Apply(operations, false, held, false);
+    } catch (const std::exception& error) {
+      rejected =
+          std::string(error.what()).find("reserved gate") != std::string::npos;
+    }
+    Require(rejected && scheduler.Value("gate") == "00" &&
+                scheduler.Value("target") == "0000",
+            "reserved-control failures must leave hardware and fill unchanged");
+  }
+  scheduler.Apply({{"iWrite", {"gate", "1"}, "resource:3", {}},
+                   {"iWrite", {"target", "5"}, "resource:4", {}}},
+                  false, held);
+  Require(
+      scheduler.Value("gate") == "01" && scheduler.Value("target") == "0101",
+      "explicit source update replaces a reservation after failed trials");
 }
 void TestPrimaryControllingState() {
   pattern::Design design;
@@ -234,6 +336,15 @@ void TestChangingIdleState() {
             "nonzero idle cycles require established controller state");
     scheduler.Reset();
     scheduler.Assume("core.r", "100");
+    rejected = false;
+    try {
+      scheduler.Idle(1, {{network.netlist.node_ids.at("core.r"), "100"}});
+    } catch (const std::exception& error) {
+      rejected = std::string(error.what()).find("reserved resource core.r") !=
+                 std::string::npos;
+    }
+    Require(rejected && scheduler.Value("core.r") == "100",
+            "reserved idle failure must not publish transient hardware state");
     if (periodic) {
       scheduler.Idle(1);
       Require(scheduler.Value("core.r") == "001",
@@ -773,6 +884,9 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestResetDependencyScale();
+    TestGreedyRollback();
+    TestReservationRollback();
     TestPrimaryWrites();
     TestPrimaryLimits();
     TestPrimaryControllingState();

@@ -23,7 +23,7 @@ bfrg/vim-c-cpp-modern, inspected locally at commit
 `b194a25209ed99ae73175cc5cbc94b2d5684f657`. No code was copied from its Vim-licensed
 implementation. Online retrieval failed; the installed copy supplied the actual
 README and syntax files. The ICL lexical inventory follows IEEE 1687 clause 6
-and `src/icl_lexer.l`; PDL follows clauses 7–8 and its separate command table.
+and `src/icl/icl_lexer.l`; PDL follows clauses 7–8 and its separate command table.
 
 ## Verification and packaging
 

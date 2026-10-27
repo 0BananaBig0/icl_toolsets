@@ -40,9 +40,9 @@ class Plugin(unittest.TestCase):
             for filename in ['example.icl', 'example.pdl', 'plain.tcl', 'plain.cpp']:
                 (temp / filename).write_text('')
             icl = re.findall(r'^([A-Za-z][A-Za-z0-9_]*) \{ return icl::IclParser::make_',
-                             (ROOT / 'src/icl_lexer.l').read_text(), re.MULTILINE)
+                             (ROOT / 'src/icl/icl_lexer.l').read_text(), re.MULTILINE)
             pdl = re.findall(r'\{"(i[A-Z][A-Za-z]+)", \{\d+,',
-                             (ROOT / 'src/pdl_document.cc').read_text())
+                             (ROOT / 'src/pdl/pdl_document.cc').read_text())
             self.assertGreater(len(icl), 70)
             self.assertEqual(len(pdl), 24)
             for language, words in [('icl', icl), ('pdl', pdl)]:

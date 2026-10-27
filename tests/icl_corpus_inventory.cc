@@ -5,8 +5,8 @@
 #include <iostream>
 #include <iterator>
 #include <stdexcept>
-#include "icl_semantics.h"
-#include "json.h"
+#include "icl/icl_semantics.h"
+#include "utility/json.h"
 
 using icl::Json;
 

@@ -13,7 +13,7 @@ PDL/Tcl source -> Tcl parsing API -> pdl::Document -> analysis/formatting
 ```
 
 Both tools consume the same source-preserving command/word tree, spans,
-declarations, references and formatter in `src/pdl_document.{h,cc}`. PDL does
+declarations, references and formatter in `src/pdl/pdl_document.{h,cc}`. PDL does
 not reuse ICL grammar, tokens or AST definitions. `format_cli.h` and
 `lsp_server.h` share file handling and protocol behavior across language adapters.
 PDL workspace navigation reads ICL through the existing ICL parser and projects

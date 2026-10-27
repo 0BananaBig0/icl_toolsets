@@ -1,0 +1,10 @@
+iPDLLevel 1
+iProcsForModule Network
+# This definition must survive byte-for-byte, including its comment.
+iProc configure {value} {
+    # Both leaves have the same transitive reset prerequisites.
+    iWrite a.value $value
+    iWrite b.value 3
+    iApply
+}
+iReset
