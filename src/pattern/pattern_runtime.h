@@ -37,7 +37,7 @@ class Runtime {
   void Finish();
   const std::vector<Operation>& operations() const;
   const std::vector<std::string>& warnings() const;
-  const std::vector<SourceAction>& source_actions() const;
+  const std::vector<SourceAction>& SourceActions() const;
 
  private:
   class Impl;

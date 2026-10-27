@@ -38,8 +38,9 @@ class Merger {
   bool Batchable(const std::vector<Operation>& stream,
                  std::set<size_t>& targets) {
     if (!combine_ || stream.size() < 2 || stream.back().command != "iApply" ||
-        !stream.back().arguments.empty())
+        !stream.back().arguments.empty()) {
       return false;
+    }
     // Partial/alias writes and stateful calls keep their original
     // fill/barriers.
     try {
@@ -50,8 +51,9 @@ class Merger {
         const auto& node = netlist_.nodes.at(target.declaration);
         if (node.kind != "ScanRegister" || target.bits.size() != node.Width() ||
             PdlDataValue(context_, netlist_, target, op.arguments[1])
-                    .find('x') != std::string::npos)
+                    .find('x') != std::string::npos) {
           return false;
+        }
         targets.insert(target.declaration);
       }
     } catch (const std::runtime_error&) {
@@ -64,8 +66,9 @@ class Merger {
 
   std::vector<Operation> Block() {
     const auto& begin = operations_.at(position_++);
-    if (begin.arguments != std::vector<std::string>{"-begin"})
+    if (begin.arguments != std::vector<std::string>{"-begin"}) {
       throw std::runtime_error(begin.origin + ": unmatched iMerge");
+    }
     const size_t depth = begin.call_stack.size();
     std::vector<Operation> result;
     std::vector<std::vector<Operation>> streams;
@@ -74,16 +77,18 @@ class Merger {
       const auto& operation = operations_[position_];
       if (operation.command == "iMerge" &&
           operation.call_stack.size() == depth &&
-          operation.arguments == std::vector<std::string>{"-end"})
+          operation.arguments == std::vector<std::string>{"-end"}) {
         break;
+      }
       if (operation.call_stack.size() == depth &&
           operation.command == "iNote") {
         result.push_back(operation);
         ++position_;
         continue;
       }
-      if (operation.call_stack.size() <= depth)
+      if (operation.call_stack.size() <= depth) {
         throw std::runtime_error(operation.origin + ": invalid iMerge body");
+      }
       const auto& call = operation.call_stack[depth];
       if (streams.empty() || call != invocation) {
         streams.emplace_back();
@@ -91,8 +96,9 @@ class Merger {
       }
       AppendNext(streams.back());
     }
-    if (position_ == operations_.size())
+    if (position_ == operations_.size()) {
       throw std::runtime_error(begin.origin + ": unclosed iMerge");
+    }
     ++position_;
 
     std::set<size_t> occupied;
@@ -115,8 +121,9 @@ class Merger {
         continue;
       }
       if (std::any_of(targets.begin(), targets.end(),
-                      [&](size_t target) { return occupied.count(target); }))
+                      [&](size_t target) { return occupied.count(target); })) {
         flush();
+      }
       occupied.insert(targets.begin(), targets.end());
       apply = std::move(stream.back());
       stream.pop_back();

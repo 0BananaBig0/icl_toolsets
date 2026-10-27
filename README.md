@@ -425,7 +425,9 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 | `--local_reset PATH` | Write source PDL with transitive local-reset releases before main-level writes, calls or whole merge blocks; preserve procedure definitions and combine ordered input files. |
 
 The reset-only output releases prerequisite TDRs in dependency order and groups
-independent releases under one `iApply`. It does not insert SIB-opening commands.
+independent releases under one `iApply`. It chooses release paths that respect
+resource reservations, including taken-but-unwritten controls. It does not insert
+SIB-opening commands.
 Before publishing it, the tool re-executes the rewritten PDL and verifies the
 operation sequence. It rejects cases that need edits inside procedures, unsafe
 repeated source insertions, or changes to Tcl substitution order. See

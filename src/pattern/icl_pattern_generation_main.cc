@@ -183,8 +183,9 @@ std::string Generate(
         // Hoist prerequisites before the whole queue, never insert an apply
         // that would flush a preceding user write early.
         for (size_t next = index; next < end || queued; ++next) {
-          if (next >= operations.size())
+          if (next >= operations.size()) {
             throw std::runtime_error("unapplied reset rewrite group");
+          }
           const auto nested = starts.find(next);
           if (nested != starts.end()) end = std::max(end, nested->second->end);
           const auto& name = operations[next].command;
@@ -194,18 +195,20 @@ std::string Generate(
         }
         const std::vector<pattern::Operation> group(operations.begin() + index,
                                                     operations.begin() + end);
-        const auto prerequisites = scheduler.ResetPrerequisites(group);
+        const auto prerequisites = scheduler.ResetPrerequisites(
+            group, reservations.Values(), reservations.UnwrittenRegisters());
         if (!prerequisites.empty() && !pending.empty()) {
           throw std::runtime_error(
               "local-reset insertion would flush pending user operations");
         }
         std::string preamble;
-        if (!prerequisites.empty() && !action.prefix.empty())
+        if (!prerequisites.empty() && !action.prefix.empty()) {
           preamble += "iPrefix -\n";
+        }
         for (const auto& layer : prerequisites) {
           reservations.CheckAutomaticWrites(layer);
           scheduler.CheckLocalResets(layer);
-          scheduler.Apply(layer, false, reservations.values(), false);
+          scheduler.Apply(layer, false, reservations.Values(), false);
           if (rewritten) {
             rewritten->insert(rewritten->end(), layer.begin(), layer.end());
             rewritten->push_back({"iApply", {}, operation.origin, {}});
@@ -220,9 +223,10 @@ std::string Generate(
           preamble += Command({"iPrefix", action.prefix});
         }
         if (action.source == std::numeric_limits<size_t>::max()) {
-          if (!preamble.empty())
+          if (!preamble.empty()) {
             throw std::runtime_error(
                 "local-reset rewrite needs a literal source write/call site");
+          }
         } else {
           const auto key = std::make_pair(action.source, action.offset);
           const auto previous = edits->find(key);
@@ -246,7 +250,7 @@ std::string Generate(
         }
         if (edits) scheduler.CheckLocalResets(pending);
         const auto steps =
-            scheduler.Apply(pending, together, reservations.values());
+            scheduler.Apply(pending, together, reservations.Values());
         reservations.Assigned(pending, scheduler);
         for (const auto& step : steps) {
           // IR selection is internal to retargeting; synthetic registers are
@@ -267,10 +271,11 @@ std::string Generate(
         if (steps.empty()) result += "iApply\n";
         pending.clear();
       } else if (operation.command == "iReset") {
-        if (!reservations.values().empty())
+        if (!reservations.Values().empty()) {
           throw std::runtime_error(
               "iReset with written reservations is not "
               "implemented; release resources first");
+        }
         if (!pending.empty()) {
           throw std::runtime_error(
               "iReset with pending actions requires queued-state integration");
@@ -305,7 +310,7 @@ std::string Generate(
           }
           cycles = (cycles << 1) | (bit == '1');
         }
-        scheduler.Idle(cycles, reservations.values());
+        scheduler.Idle(cycles, reservations.Values());
         result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
       } else if (operation.command == "iState") {
         if (!pending.empty()) {
@@ -359,8 +364,9 @@ std::string Generate(
 std::string GenerateMerged(const pattern::Netlist& netlist,
                            const std::vector<pattern::Operation>& operations) {
   if (std::none_of(operations.begin(), operations.end(),
-                   [](const auto& op) { return op.command == "iMerge"; }))
+                   [](const auto& op) { return op.command == "iMerge"; })) {
     return Generate(netlist, operations);
+  }
   try {
     return Generate(netlist,
                     pattern::MergeOperations(netlist, operations, true));
@@ -471,7 +477,7 @@ int main(int argc, char** argv) {
     if (!options.local_reset.empty()) {
       ResetEdits edits;
       std::vector<pattern::Operation> expected;
-      Generate(network.netlist, runtime.operations(), &runtime.source_actions(),
+      Generate(network.netlist, runtime.operations(), &runtime.SourceActions(),
                &edits, &expected);
       for (size_t source = 0; source < sources.size(); ++source) {
         size_t offset = 0;

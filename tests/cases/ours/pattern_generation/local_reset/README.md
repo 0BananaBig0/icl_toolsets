@@ -17,3 +17,10 @@ the generated `local_reset.pdl`. Tessent 2026.2 accepted the explicit TAP case
 on 2026-10-27. Strict exported traces differ, so this is not a golden-equivalence
 fixture; see `docs/tessent-oracle.md` for the observed differences. The CLI
 regression independently checks source/flat replay and output idempotency.
+
+`alternatives.icl` reuses `Leaf` from `nested.icl` and has two OR-combined reset
+release paths. Resource regressions take one path (with/without a prior applied
+write or state assumption), require the other path, verify release/blocked
+behavior and replay the rewrite. A self-constructed 40-control variant in the
+same test script leaves exactly one unreserved release path. These are local
+regression fixtures; no new Tessent qualification is claimed.

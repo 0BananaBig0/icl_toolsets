@@ -123,7 +123,7 @@ class Runtime::Impl {
 
   const std::vector<Operation>& operations() const { return operations_; }
   const std::vector<std::string>& warnings() const { return warnings_; }
-  const std::vector<SourceAction>& source_actions() const { return actions_; }
+  const std::vector<SourceAction>& SourceActions() const { return actions_; }
 
  private:
   struct Site {
@@ -685,8 +685,8 @@ void Runtime::Finish() { impl_->Finish(); }
 const std::vector<Operation>& Runtime::operations() const {
   return impl_->operations();
 }
-const std::vector<SourceAction>& Runtime::source_actions() const {
-  return impl_->source_actions();
+const std::vector<SourceAction>& Runtime::SourceActions() const {
+  return impl_->SourceActions();
 }
 const std::vector<std::string>& Runtime::warnings() const {
   return impl_->warnings();

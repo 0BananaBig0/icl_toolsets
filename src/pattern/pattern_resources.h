@@ -16,9 +16,10 @@ class ResourceReservations {
   void Enter(const std::vector<std::string>& call_stack);
   void Change(const Operation& operation);
   void CheckAutomaticWrites(const std::vector<Operation>& operations) const;
+  std::set<size_t> UnwrittenRegisters() const;
   void Assigned(const std::vector<Operation>& operations,
                 const ScanScheduler& scheduler);
-  const std::map<size_t, std::string>& values() const { return values_; }
+  const std::map<size_t, std::string>& Values() const { return values_; }
 
  private:
   std::set<size_t> Targets(const std::string& name) const;

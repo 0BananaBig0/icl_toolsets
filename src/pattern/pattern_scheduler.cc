@@ -322,8 +322,9 @@ class ScanScheduler::Impl {
     } catch (const std::exception& error) {
       std::string message = together ? "iApply -together: " : "";
       message += error.what();
-      for (const auto& [id, value] : preserved)
+      for (const auto& [id, value] : preserved) {
         message += "\n  reserved " + netlist_.nodes.at(id).name + " = " + value;
+      }
       for (const auto& operation : operations) {
         message += "\n  " + operation.origin + ": " + operation.command;
         for (const auto& arg : operation.arguments) message += " " + arg;
@@ -336,7 +337,9 @@ class ScanScheduler::Impl {
   }
 
   std::vector<std::vector<Operation>> ResetPrerequisites(
-      const std::vector<Operation>& operations) {
+      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& preserved,
+      const std::set<size_t>& unwritten) {
     auto targets = ResetTargets(operations);
     std::set<size_t> controls;
     std::vector<size_t> pending(targets.begin(), targets.end());
@@ -362,7 +365,7 @@ class ScanScheduler::Impl {
     size_t total_bits = 0;
     for (const auto& [name, id] : netlist_.node_ids) {
       const auto& node = netlist_.nodes[id];
-      if (controls.count(id)) {
+      if (controls.count(id) && !unwritten.count(id)) {
         if (node.kind != "ScanRegister" ||
             (tap_ && id == tap_->instruction_register)) {
           throw std::runtime_error(
@@ -380,6 +383,11 @@ class ScanScheduler::Impl {
         const SymbolicValue value{bits, known};
         assignments.emplace(id, value);
         choices.emplace(id, value);
+        const auto held = preserved.find(id);
+        if (held != preserved.end()) {
+          solver.add(bits ==
+                     SymbolicValue::Literal(context_, held->second).bits);
+        }
         const auto previous =
             SymbolicValue::Literal(context_, state_.Value(id));
         changes =
@@ -402,17 +410,30 @@ class ScanScheduler::Impl {
     for (const auto& tie : tie_breaks) solver.minimize(tie);
     const auto result = solver.check();
     if (result != z3::sat) {
-      throw std::runtime_error(
+      std::string message =
           result == z3::unsat
               ? "local-reset requirements cannot be released together before "
                 "this write/call"
-              : "local-reset solver limit; release feasibility not proved");
+              : "local-reset solver limit; release feasibility not proved";
+      for (const auto& [id, value] : preserved) {
+        if (controls.count(id)) {
+          message +=
+              "\n  reserved " + netlist_.nodes.at(id).name + " = " + value;
+        }
+      }
+      for (size_t id : unwritten) {
+        if (controls.count(id)) {
+          message +=
+              "\n  taken-but-unwritten resource " + netlist_.nodes.at(id).name;
+        }
+      }
+      throw std::runtime_error(message);
     }
     const auto model = solver.get_model();
     std::map<size_t, size_t> depth;
     std::map<size_t, std::vector<Operation>> layers;
     for (size_t id : reset_order_) {
-      if (!controls.count(id)) continue;
+      if (!choices.count(id)) continue;
       const auto bits = Decode(model, choices.at(id));
       if (bits == state_.Value(id)) continue;
       size_t level = 0;
@@ -455,9 +476,10 @@ class ScanScheduler::Impl {
                       const std::map<size_t, std::string>& desired) const {
     for (auto& [id, previous] : held) {
       const auto actual = state.Value(id);
-      if (actual != previous && actual != desired.at(id))
+      if (actual != previous && actual != desired.at(id)) {
         throw std::runtime_error("concrete replay changed reserved resource " +
                                  netlist_.nodes.at(id).name);
+      }
       previous = actual;
     }
   }
@@ -465,12 +487,14 @@ class ScanScheduler::Impl {
       const std::vector<Operation>& operations) const {
     std::set<size_t> targets, aliases;
     for (const auto& operation : operations) {
-      if (operation.command != "iWrite" && operation.command != "iRead")
+      if (operation.command != "iWrite" && operation.command != "iRead") {
         continue;
+      }
       const auto target = ResolvePdlTarget(netlist_, operation.arguments.at(0));
       for (const auto& bit : target.bits) {
-        if (bit.node != kMissing && netlist_.nodes[bit.node].reset)
+        if (bit.node != kMissing && netlist_.nodes[bit.node].reset) {
           targets.insert(bit.node);
+        }
       }
       aliases.insert(target.access_together.begin(),
                      target.access_together.end());
@@ -484,8 +508,9 @@ class ScanScheduler::Impl {
         if (aliases.insert(alias).second) pending.push_back(alias);
       }
       for (const auto& bit : target.bits) {
-        if (bit.node != kMissing && netlist_.nodes[bit.node].reset)
+        if (bit.node != kMissing && netlist_.nodes[bit.node].reset) {
           targets.insert(bit.node);
+        }
       }
     }
     return targets;
@@ -1049,8 +1074,9 @@ class ScanScheduler::Impl {
     trial.fill_ = fill_;
     trial.global_resets_ = global_resets_;
     trial.tap_ready_ = tap_ready_;
-    if (execution_)
+    if (execution_) {
       trial.execution_ = std::make_unique<TapExecution>(*execution_);
+    }
     std::vector<ScanStep> steps;
     auto held = preserved;
     size_t previous_pending = configuration.size() + 1;
@@ -1344,8 +1370,9 @@ class ScanScheduler::Impl {
     for (auto& [id, value] : desired_preserved) {
       const auto& node = netlist_.nodes.at(id);
       if (node.kind != "ScanRegister" || value.size() != node.Width() ||
-          value.find_first_not_of("01") != std::string::npos)
+          value.find_first_not_of("01") != std::string::npos) {
         throw std::runtime_error("invalid reserved ScanRegister value");
+      }
       if (explicit_writes && goals.count(id)) value = goals.at(id);
     }
     if (allow_greedy && registers_.size() >= 32 && expected.empty()) {
@@ -1366,8 +1393,9 @@ class ScanScheduler::Impl {
       solver.set(parameters);
       Values state, fills;
       std::map<size_t, z3::expr> reserved_changed;
-      for (const auto& [id, value] : preserved)
+      for (const auto& [id, value] : preserved) {
         reserved_changed.emplace(id, context_.bool_val(false));
+      }
       for (size_t id : registers_) {
         state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
         fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
@@ -1829,8 +1857,10 @@ std::vector<ScanStep> ScanScheduler::Apply(
   return impl_->Apply(operations, together, preserved, explicit_writes);
 }
 std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(
-    const std::vector<Operation>& operations) {
-  return impl_->ResetPrerequisites(operations);
+    const std::vector<Operation>& operations,
+    const std::map<size_t, std::string>& preserved,
+    const std::set<size_t>& unwritten) {
+  return impl_->ResetPrerequisites(operations, preserved, unwritten);
 }
 void ScanScheduler::CheckLocalResets(
     const std::vector<Operation>& operations) const {

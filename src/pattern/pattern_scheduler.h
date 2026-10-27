@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -39,7 +40,9 @@ class ScanScheduler {
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   std::vector<std::vector<Operation>> ResetPrerequisites(
-      const std::vector<Operation>& operations);
+      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& preserved = {},
+      const std::set<size_t>& unwritten = {});
   void CheckLocalResets(const std::vector<Operation>& operations) const;
 
  private:

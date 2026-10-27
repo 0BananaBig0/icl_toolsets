@@ -331,6 +331,16 @@ boundaries; independent controls share an apply. The reset-only artifact contain
 no additional SIB setup. The normal flattened output still comes from the
 original PDL operation stream and includes scan-access scheduling.
 
+Release-value selection includes resource ownership before solving. Written
+reservations must retain their held value; taken-but-unwritten controls remain
+at their current hardware state so inserted writes cannot acquire protection.
+For example, if `reset = ~(a | b)` and `b` is reserved at zero, a writable `a`
+can release reset instead. `iRelease b` makes that control available again.
+If all release choices are unavailable, report the reserved/unwritten controls
+and original source command, preserving existing output artifacts. The same
+4096-control-bit and two-second solver bounds still apply.
+
+
 Source tracing belongs to the existing PDL runtime; reset planning shares the
 scan scheduler's netlist, concrete state and symbolic model. Insertions are
 hoisted before whole pending queues so an added `iApply` cannot flush a user
@@ -966,3 +976,31 @@ The [Tessent rerun](tessent-oracle.md#primary-input-rerun-2026-10-27) verifies t
 nine Port-width accept/reject outcomes and records the remaining comparison
 gaps. This continuation does not complete addressed scheduling, general local
 reset rewriting, mixed scan/parallel execution or full pattern equivalence.
+
+
+### Reservation-aware reset release (2026-10-28)
+
+The local-reset solver now receives held resource values and taken-but-unwritten
+controls before selecting release values. This fixes a feasible alternative
+being rejected after the solver chose a protected TDR. A two-control fixture
+checks applied writes, state assumptions, unwritten takes, persistent takes,
+release, atomic failure, rewrite replay and idempotency. A 40-control fixture
+with 39 protected alternatives exercises the same path at larger scale.
+
+Dynamic/static generator and resource suites, native scheduler tests, and Google
+format/naming checks passed. The style check initially exposed missing braces
+and getter naming in existing pattern code; those were repaired at all callers,
+with no check suppressions. Independent review found no blocking issue.
+ASan/UBSan with `detect_leaks=1` passed 21 resource tests, 26 generator CLI tests
+and the scheduler suite. Evidence is in ignored
+`build/reset-reservations-{focused-final,sanitizer-tests,performance}.log`.
+The 40-control CLI run took 0.105 seconds (2663-byte ICL, 0.14 seconds including
+the test process, 76356 KiB peak RSS); this is a scale check, not an optimality
+claim. No fresh Tessent run or unrestricted source-rewrite support is claimed.
+
+Full `make check BISON=/usr/bin/bison -j4` also passed with the established
+reference Python environment and `ICL_REF_DIR`. Log:
+`build/reset-reservations-full-regression.log`. It includes 334/334 grammar
+alternatives, 119/119 scanner rules, seven legacy plus six directional offline
+standards, and both editors over 38,646 ICL / 815 PDL files. The editor suite
+completed in 167.685 seconds. Strict authored-code coverage was not remeasured.

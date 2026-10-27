@@ -19,8 +19,8 @@ class Reservations(unittest.TestCase):
         self.root = pathlib.Path(temp.name)
         (self.root / 'source.icl').write_bytes((FIXTURE / 'network.icl').read_bytes())
 
-    def generate(self, body, ok=True, extra=()):
-        (self.root / 'source.pdl').write_text('iPDLLevel 1\niProcsForModule ResourceNetwork\niReset\n' + body)
+    def generate(self, body, ok=True, extra=(), binding="ResourceNetwork"):
+        (self.root / 'source.pdl').write_text(f'iPDLLevel 1\niProcsForModule {binding}\niReset\n' + body)
         result = subprocess.run([str(BIN), '--icl', 'source.icl', '--pdl', 'source.pdl',
                                  '--output', 'result.pdl', *extra], cwd=self.root,
                                 text=True, capture_output=True, timeout=40)
@@ -157,6 +157,74 @@ class Reservations(unittest.TestCase):
         self.assertIn('reserved reset', error)
         self.assertEqual((self.root / 'result.pdl').read_text(), previous)
         self.assertFalse((self.root / 'reset.pdl').exists())
+
+    def test_reset_planner_chooses_available_alternative(self):
+        fixtures = ROOT / 'tests/cases/ours/pattern_generation/local_reset'
+        (self.root / 'source.icl').write_bytes((fixtures / 'alternatives.icl').read_bytes())
+        context = ('--icl', fixtures / 'nested.icl', '--top_module', 'ResetChoice')
+        for take in ('iTake b; iWrite b 0; iApply;', 'iTake b;',
+                     'iTake b; iState b 0;', 'iTake b -persistent;'):
+            with self.subTest(take=take):
+                body = take + '\niWrite child.value 5; iApply\n'
+                original = self.generate(body, extra=context, binding='ResetChoice')
+                self.generate(body, extra=(*context, '--local_reset', 'reset.pdl'),
+                              binding='ResetChoice')
+                self.assertEqual(original, (self.root / 'result.pdl').read_text())
+                reset = (self.root / 'reset.pdl').read_text()
+                self.assertIn('iWrite a 0b1\niApply\n', reset)
+                self.assertNotIn('iWrite b 0b1', reset)
+                replay = subprocess.run([str(BIN), '--icl', 'source.icl', str(fixtures / 'nested.icl'),
+                                         '--top_module', 'ResetChoice', '--pdl', 'reset.pdl',
+                                         '--local_reset', 'reset-again.pdl', '--output', 'replay.pdl'],
+                                        cwd=self.root, text=True, capture_output=True, timeout=40)
+                self.assertEqual(replay.returncode, 0, replay.stdout + replay.stderr)
+                self.assertEqual(reset, (self.root / 'reset-again.pdl').read_text())
+                self.assertIn('iWrite child.value 0b0101', (self.root / 'replay.pdl').read_text())
+
+    def test_reset_planner_rejects_blocked_and_honors_release(self):
+        fixtures = ROOT / 'tests/cases/ours/pattern_generation/local_reset'
+        (self.root / 'source.icl').write_bytes((fixtures / 'alternatives.icl').read_bytes())
+        context = ('--icl', fixtures / 'nested.icl', '--top_module', 'ResetChoice',
+                   '--local_reset', 'reset.pdl')
+        (self.root / 'result.pdl').write_text('prior flat output')
+        (self.root / 'reset.pdl').write_text('prior reset output')
+        prefix = 'iTake a; iTake b;'
+        failure = self.generate(prefix + 'iWrite child.value 5; iApply', ok=False,
+                                extra=context, binding='ResetChoice')
+        self.assertIn('taken-but-unwritten resource a', failure)
+        self.assertIn('taken-but-unwritten resource b', failure)
+        self.assertEqual((self.root / 'result.pdl').read_text(), 'prior flat output')
+        self.assertEqual((self.root / 'reset.pdl').read_text(), 'prior reset output')
+        self.generate(prefix + 'iRelease b; iWrite child.value 5; iApply',
+                      extra=context, binding='ResetChoice')
+        rewritten = (self.root / 'reset.pdl').read_text()
+        self.assertIn('iWrite b 0b1\niApply', rewritten)
+        self.assertNotIn('iWrite a 0b1', rewritten)
+
+    def test_reset_planner_many_reserved_alternatives(self):
+        fixtures = ROOT / 'tests/cases/ours/pattern_generation/local_reset'
+        names = [f'r{i:02}' for i in range(40)]
+        source = 'Module ResetChoice { ScanInPort si;\n'
+        previous = 'si'
+        for name in names:
+            source += f"ScanRegister {name} {{ ScanInSource {previous}; ResetValue 1'b0; }}\n"
+            previous = name
+        source += 'LogicSignal release_reset { ~(' + ' | '.join(names) + '); }\n'
+        source += ('Instance child Of Leaf { InputPort si = ' + previous +
+                   '; InputPort rst = release_reset; }\nScanOutPort so { Source child.so; } }\n')
+        (self.root / 'source.icl').write_text(source)
+        body = ''.join(f'iTake {n}; iWrite {n} 0; ' for n in names[1:])
+        body += 'iApply; iWrite child.value 5; iApply'
+        start = time.monotonic()
+        self.generate(body, binding='ResetChoice',
+                      extra=('--icl', fixtures / 'nested.icl', '--top_module', 'ResetChoice',
+                             '--local_reset', 'reset.pdl'))
+        elapsed = time.monotonic() - start
+        reset = (self.root / 'reset.pdl').read_text()
+        self.assertIn('iWrite r00 0b1\niApply', reset)
+        for name in names[1:]:
+            self.assertNotIn(f'iWrite {name} 0b1', reset)
+        print(f'reset choices: controls=40 reserved=39 bytes={len(source)} seconds={elapsed:.3f}')
 
     def test_tap_idle_keeps_reserved_value(self):
         fixture = ROOT / 'tests/cases/ours/pattern_generation/access_link'
