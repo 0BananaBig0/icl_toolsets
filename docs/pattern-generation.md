@@ -188,7 +188,7 @@ is not a Tessent equivalence result.
 
 ## Combinational primary-input writes
 
-For a network without scan/stateful/addressed elements, `iWrite` on data ports
+For a network without scan elements, `iWrite` on data ports
 or ordinary aliases can solve for primary DataInPort values. One transaction
 satisfies the queued requirements and concrete replay verifies the result before
 publishing any state or output. Inputs unrelated to the goals remain undriven.
@@ -220,9 +220,9 @@ The fixed OneHot Port-width padding exception is documented in the
 OneHotDataGroup accepts Port contributors whose DataOutPort paths have uniform
 explicit enables, including forwarding ports. Exactly one known-enabled
 contributor selects its data; zero, multiple or uncertain enables produce X.
-Register/instance contributors, mixed-node enable forwarding, OneHotScanGroup,
-addressed instances, DataRegisters, primary-port AccessTogether groups, reads
-and mixed scan/parallel scheduling remain unsupported and report errors.
+Addressed register/instance contributors and routed reads are supported on the
+primary-input path described below. OneHotScanGroup, primary-port AccessTogether
+groups and mixed scan/parallel scheduling remain unsupported and report errors.
 No new grammar or AST is introduced.
 
 This path is bounded to 256 primary input vectors and 4096 total input bits,
@@ -235,12 +235,68 @@ and concrete replay, not compilation. The prior backend rejected this input,
 so there is no supported old throughput baseline or claimed speedup. This is
 a scale check, not a throughput guarantee for arbitrary logic cones.
 
+## DataRegister access
+
+The primary-input backend supports selectable and addressed DataRegisters,
+including cascades, partial and enum writes, addressed instance offsets, shared
+buses, and non-destructive reads. It reuses the shared ICL/PDL frontends, netlist,
+address resolver, symbolic values, concrete event state and PDL serializer.
+No second parser or register model is introduced.
+
+```sh
+build/icl-pattern-generation \
+  --icl tests/cases/ours/pattern_generation/data_registers/addressed.icl \
+  --pdl tests/cases/ours/pattern_generation/data_registers/addressed.pdl \
+  --output out/addressed.pdl --debug
+```
+
+`DataRegisterPlan` caches activation and dependency order. Structural read routes
+are built once per scheduler and reused across applies. `NetworkState` applies
+parallel pin changes atomically, then settles cascaded data updates and resets.
+Qualified falling-edge scan updates also settle the concrete model, including
+uncertain events; this does **not** yet provide serial DataRegister scheduling.
+IEEE 1687-2014 §6.4.9, printed pp.118–121, defines cascaded evaluation after
+UpdateEn, controlling-value fill, reset priority and address/read/write activation.
+Tessent's v2023.4 DataRegister/Instance topics supplement inherited connections.
+
+The scheduler models up to 32 parallel events, choosing shorter horizons first.
+It then prefers controlling-value retention and fewer pin writes. It does not
+claim global minimum pattern length. Simultaneous writes on incompatible address
+codes fail under `iApply -together`; ordinary applies can split them. Already-known
+DataRegister values need not be rewritten, which also preserves held end-state
+overrides when low-level PDL is replayed. Physical pin writes remain explicit.
+
+Read routes follow direct/inverted forwarding, DataMux choices and addressed
+OneHotDataGroup register/instance contributors. Read expectations are comparisons,
+not constraints that manufacture storage. Pending reads preserve observed storage;
+held write enables are allowed only when both value and known-bit mask remain
+unchanged. Output-port reads conservatively protect all DataRegisters in their
+physical output's fan-in, including logic expressions; this can reject a route
+that needs to change an unobserved alternative. Arbitrary logic does not become a
+transparent route for direct register comparisons. Unknown or competing OneHot
+contributors yield unknown data. Explicit output comparisons may compare unknown
+hardware values, just as scan comparisons can.
+
+Limits: 4096 writable DataRegisters, 4 Mi dependency visits, 256 primary vectors /
+4096 input bits, 262144 read-route visits and at most 256 selection guards per path.
+The temporal model limits horizon × (netlist nodes + input bits) to 262144, with
+2 seconds per solver invocation and 15 seconds across horizons. Exhaustion reports
+a limit, not proven unreachability. Cyclic/self-referential data updates, callbacks,
+serial/mixed DataRegister transactions and DataRegister reservations are not yet
+supported. Control events must have definite activation unless reset dominates.
+
+The focused suite is `tests/src/pattern/test_data_register_scheduling.py`; it is
+included in dynamic/static and coverage recipes. Native tests check address
+collisions, unknown enables/events, reset priority, atomic failures and a
+reverse-declared 1024-register cascade. The source-derived probes and provenance
+are in `tests/cases/ours/pattern_generation/data_registers/`.
+
 ## Command support
 
 | Command | Current generator behavior |
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
-| `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses and combinational primary-input writes; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
+| `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
 | `iState` | Numeric assumptions for scan registers and top-level DataInPort/SelectPort pins, including aliases and slices; default or `-LastWrittenValue`; no device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
@@ -277,13 +333,13 @@ broader syntax support and never execute PDL.
   `iApply -together`.
 - Alias `iApplyEndState` follows IEEE 1687-2014 6.5.2(h): known, consistent
   per-bit defaults, matching register reset values, and ungated direct source
-  paths. Supported ultimate sources are ScanRegisters, primary DataInPorts and
+  paths. Supported ultimate sources are ScanRegisters, primary-driven DataRegisters, primary DataInPorts and
   compatible constants. Explicit writes override defaults for their next apply;
   a later apply or end of the input sequence restores them. Partial/X writes,
   inversion and direct-storage access retain the directive. Register defaults
   participate in final-state constraints, allowing a SIB to close while its
   selected target updates. Automatic restoration cannot change a protected
-  reservation. DataRegister and mixed primary/scan execution remain unsupported.
+  reservation. Mixed primary/scan execution remains unsupported.
   End-state models use the bounded symbolic scheduler, not the large-network
   greedy path; the existing resource limits still apply.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
@@ -324,7 +380,7 @@ broader syntax support and never execute PDL.
 
 The backend accepts one SI/SO boundary and at most one TAP. It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
-one-hot/addressed transactions, feedback reset scheduling,
+serial one-hot/addressed transactions, feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing shadow-register effects or independently gated
 interface events are outside the current complete-scan model; inability to
@@ -1076,8 +1132,8 @@ greedy heuristic is not used for these models.
 One new immutable TAP/SIB forward certificate passes the requested Tessent
 round-trip rule. The primary-input and reverse-export differences remain
 unqualified; see [vendor evidence](tessent-goldens.md#end-state-qualification-2026-10-28).
-The larger retargeter remains incomplete for addressed/selectable DataRegister
-execution, OneHot register/instance/scan execution, mixed pin/scan transactions,
+At this checkpoint the larger retargeter remained incomplete for DataRegister
+execution (subsequently extended below), OneHotScanGroup execution, mixed pin/scan transactions,
 multiple TAP/output scheduling, independently gated events and system clocks.
 
 Final `make check` passed (334/334 grammar alternatives, 119/119 scanner rules,
@@ -1088,3 +1144,45 @@ passed. ASan/UBSan with `detect_leaks=1` passed all eleven end-state cases,
 25 CLI cases, 21 reservation cases and the native scheduler suite. Logs:
 `build/apply-end-state-{regression-final,focused-final,style-final,sanitizer-tests}.log`.
 Strict authored-code coverage, RTL simulation and a new installation were not run.
+
+### DataRegister execution verification (2026-10-28)
+
+The primary backend now handles selectable/addressed writes, cascaded data,
+forwarded controls, nested OneHot observations and non-destructive routed reads.
+Eighteen CLI tests exercise source/flat/generated-PDL replay, partial and unknown
+comparisons, incompatible shared-bus `-together` requests, and atomic failures.
+The native model additionally covers uncertain scan events and address collisions.
+
+Independent review reproduced three important defects before publication:
+unknown write-enables could corrupt unrelated storage, output-port reads could
+rewrite the storage they observe, and held end-state markers could add apply
+groups during replay. Each received a failing regression before its fix. The read
+protection also covers logic-derived outputs; explicit inherited enable writes
+reuse `AddressResolver`, rather than adding a second connectivity resolver.
+
+Full `make check` passed after the fixes: dynamic/static suites, grammar
+334/334 alternatives and scanner 119/119 rules. Vim and Neovim each exercised
+38,650 ICL and 821 PDL inputs. ASan/UBSan with LeakSanitizer enabled passed native
+state/scheduler checks and all 18 DataRegister CLI tests. LeakSanitizer's sandbox
+ptrace failure was rerun outside the sandbox, never disabled. Google formatting
+and naming checks passed; strict authored-code coverage was not remeasured.
+
+The 1024-register reverse-declared cascade took 0.00098 seconds for model
+construction and two events (source parsing excluded), GCC 16.2.1 `-O2`, Linux
+x86_64. The complete native state suite took 0.10 seconds / 22,912 KiB peak RSS,
+measured by `/usr/bin/time -f 'wall_s=%e max_rss_kib=%M' build/pattern_state_test`.
+This measures concrete replay, not maximum-size scheduling throughput, and is
+not a speedup claim.
+
+Three new Tessent certificates qualify selectable storage in both directions
+and shared-bus addressed storage in reverse. The nested address-default case and
+the addressed forward comparison remain unqualified; see
+[the vendor evidence](tessent-goldens.md#dataregister-qualification-2026-10-28).
+The complete retargeter remains unfinished for serial/mixed DataRegister access,
+callbacks, feedback, OneHotScanGroup, multiple controllers/outputs, independently
+gated or shadow events, system clocks and the other limits above.
+
+Evidence logs: `build/data-register-regression-published.log`,
+`build/data-register-style-passed.log`, `build/data-register-sanitizer-*-final.log`,
+`build/data-register-scale-final.log`, and `build/data-register-goldens-final.log`.
+No installation or RTL simulation was performed in this phase.

@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "pattern/pattern_data.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_symbolic.h"
 #include "pattern/pattern_tap_execution.h"
@@ -72,8 +73,9 @@ class ScanScheduler::Impl {
     }
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
-      if (node.kind == "ScanRegister" || node.kind == "DataInPort" ||
-          node.kind == "DataOutPort") {
+      if (node.model == ModelKind::kRegister || node.kind == "DataInPort" ||
+          node.kind == "DataOutPort" || ParallelControl(node) ||
+          PrimaryInput(node)) {
         if (node.kind == "ScanRegister") registers_.push_back(id);
         auto initial = std::string(node.Width(), '0');
         for (const auto* property : {"ResetValue", "DefaultLoadValue"}) {
@@ -661,8 +663,14 @@ class ScanScheduler::Impl {
     return targets;
   }
   static bool PrimaryInput(const NetlistNode& node) {
-    return node.scope == 0 && node.kind == "DataInPort" &&
+    return node.scope == 0 &&
+           (node.kind == "DataInPort" || node.kind == "AddressPort" ||
+            node.kind == "WriteEnPort" || node.kind == "ReadEnPort") &&
            !node.inputs.count("Source");
+  }
+  static bool ParallelControl(const NetlistNode& node) {
+    return node.kind == "AddressPort" || node.kind == "ReadEnPort" ||
+           node.kind == "WriteEnPort";
   }
   bool FixedOneHotPadding(BitReference ref) const {
     std::set<Key> visited;
@@ -687,31 +695,73 @@ class ScanScheduler::Impl {
   }
   std::vector<ScanStep> SolvePrimaryWrites(
       const std::vector<Operation>& operations, bool together) {
-    for (const auto& node : netlist_.nodes) {
-      if (node.model == ModelKind::kRegister ||
-          (node.model == ModelKind::kPort && node.kind == "AddressPort")) {
-        throw std::runtime_error(
-            "stateful/addressed primary-input scheduling is not implemented");
-      }
-    }
+    const auto& data_plan = state_.DataRegisters();
     std::map<size_t, std::string> goals;
+    std::map<size_t, std::map<int64_t, char>> reads;
+    std::unique_ptr<AddressResolver> controls;
     for (const auto& operation : operations) {
-      if (operation.command != "iWrite" || operation.arguments.size() != 2) {
+      const bool read = operation.command == "iRead";
+      if ((!read && operation.command != "iWrite") ||
+          operation.arguments.empty() || operation.arguments.size() > 2 ||
+          (!read && operation.arguments.size() != 2)) {
         throw std::runtime_error(
-            "primary-input scheduling requires literal iWrite target/value");
+            "primary-input scheduling requires literal iWrite/iRead "
+            "target/value");
       }
       const auto target = ResolvePdlTarget(netlist_, operation.arguments[0]);
       if (!target.access_together.empty()) {
         throw std::runtime_error(
             "AccessTogether primary-port groups are not implemented");
       }
-      const auto bits =
-          PdlDataValue(context_, netlist_, target, operation.arguments[1]);
+      const auto bits = operation.arguments.size() == 1
+                            ? std::string(target.bits.size(), 'x')
+                            : PdlDataValue(context_, netlist_, target,
+                                           operation.arguments[1]);
       for (size_t i = 0; i < bits.size(); ++i) {
-        const auto& ref = target.bits[i];
+        auto ref = target.bits[i];
+        if (!read && ref.node != kMissing) {
+          const auto& node = netlist_.nodes.at(ref.node);
+          if (node.scope != 0 &&
+              (node.kind == "ReadEnPort" || node.kind == "WriteEnPort")) {
+            if (!controls) {
+              controls = std::make_unique<AddressResolver>(netlist_);
+            }
+            const auto terminal = controls->ResolveEnable(
+                node.scope, node.kind == "ReadEnPort"
+                                ? AddressOperation::kRead
+                                : AddressOperation::kWrite);
+            const bool inverted = ref.inverted != terminal.inverted;
+            ref = terminal;
+            ref.inverted = inverted;
+          }
+        }
+        if (read) {
+          if (ref.node == kMissing ||
+              (netlist_.nodes.at(ref.node).kind != "DataRegister" &&
+               netlist_.nodes.at(ref.node).kind != "DataOutPort")) {
+            throw std::runtime_error(
+                "primary read requires a DataRegister or DataOutPort");
+          }
+          const char value = ref.inverted && bits[i] != 'x'
+                                 ? (bits[i] == '1' ? '0' : '1')
+                                 : bits[i];
+          auto& expected = reads[ref.node];
+          const auto previous = expected.find(ref.index);
+          if (previous != expected.end() && previous->second != 'x' &&
+              value != 'x' && previous->second != value) {
+            throw std::runtime_error("conflicting primary read comparisons");
+          }
+          if (previous == expected.end() || value != 'x') {
+            expected[ref.index] = value;
+          }
+          continue;
+        }
         if (ref.node == kMissing ||
             (netlist_.nodes.at(ref.node).kind != "DataInPort" &&
-             netlist_.nodes.at(ref.node).kind != "DataOutPort")) {
+             netlist_.nodes.at(ref.node).kind != "DataOutPort" &&
+             !ParallelControl(netlist_.nodes.at(ref.node)) &&
+             !PrimaryInput(netlist_.nodes.at(ref.node)) &&
+             !data_plan.writes.count(ref.node))) {
           throw std::runtime_error(
               "primary write requires a data port or its Alias");
         }
@@ -736,95 +786,414 @@ class ScanScheduler::Impl {
         }
       }
     }
-    z3::optimize solver(context_);
-    z3::params parameters(context_);
-    parameters.set("timeout", 2000U);
-    solver.set(parameters);
-    Values assignments;
-    std::map<size_t, z3::expr> drives;
-    std::vector<z3::expr> deviations;
-    auto count = context_.int_val(0);
-    size_t total_bits = 0;
-    for (const auto& [name, id] : netlist_.node_ids) {
-      const auto& node = netlist_.nodes[id];
-      if (!PrimaryInput(node)) continue;
-      total_bits += node.Width();
-      if (drives.size() >= 256 || total_bits > 4096) {
-        throw std::runtime_error(
-            "primary-input scheduler resource limit exceeded");
+    const DataReadRoutes* routes = nullptr;
+    std::map<size_t, std::set<size_t>> pending_reads;
+    if (!reads.empty()) {
+      if (!data_read_routes_) {
+        data_read_routes_ = std::make_unique<DataReadRoutes>(netlist_);
       }
-      const auto drive = context_.bool_const(("drive_" + name).c_str());
-      const auto bits =
-          context_.bv_const(("pin_" + name).c_str(), node.Width());
-      const auto known =
-          SymbolicValue::Literal(context_, std::string(node.Width(), '1')).bits;
-      assignments.emplace(
-          id, Choose(drive, {bits, known},
-                     SymbolicValue::Literal(context_, state_.Value(id))));
-      drives.emplace(id, drive);
-      count = count + z3::ite(drive, context_.int_val(1), context_.int_val(0));
-      deviations.push_back(bits ^
-                           SymbolicValue::Literal(context_, fill_.at(id)).bits);
-      // An explicitly written primary port remains an action even if unchanged.
-      if (goals.count(id)) solver.add(drive);
-    }
-    SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
-    for (const auto& [id, goal] : goals) {
-      const auto wanted = SymbolicValue::Literal(context_, goal);
-      const auto actual = values.Value(id);
-      solver.add((actual.known & wanted.known) == wanted.known &&
-                 (actual.bits & wanted.known) == wanted.bits);
-    }
-    for (const auto& [id, bits] : EndGoals(operations)) {
-      const auto wanted = SymbolicValue::Literal(context_, bits);
-      const auto actual = values.Value(id);
-      solver.add((actual.known & wanted.known) == wanted.known &&
-                 (actual.bits & wanted.known) == wanted.bits);
-    }
-    solver.minimize(count);
-    // Name order and bit-vector objectives make flat/source replay
-    // deterministic.
-    for (const auto& deviation : deviations) solver.minimize(deviation);
-    const auto status = solver.check();
-    if (status == z3::unsat) {
-      throw std::runtime_error(
-          "cannot justify primary-input write requirements");
-    }
-    if (status != z3::sat) {
-      throw std::runtime_error("primary-input solver resource limit reached");
-    }
-    const auto model = solver.get_model();
-    NetworkState replay(state_);
-    auto fill = fill_;
-    ScanStep step;
-    step.together = together;
-    for (const auto& [id, drive] : drives) {
-      if (!model.eval(drive, true).is_true()) continue;
-      const auto bits = Decode(model, assignments.at(id));
-      replay.Drive(id, bits);
-      fill.at(id) = bits;
-      step.writes.emplace(netlist_.nodes[id].name, bits);
-    }
-    for (const auto& [id, goal] : goals) {
-      const auto actual = replay.Value(id);
-      for (size_t i = 0; i < goal.size(); ++i) {
-        if (goal[i] != 'x' && actual[i] != goal[i]) {
-          throw std::runtime_error(
-              "symbolic/concrete primary replay mismatch at " +
-              netlist_.nodes[id].name);
+      routes = data_read_routes_.get();
+      for (const auto& [id, bits] : reads) {
+        for (const auto& [index, expected] : bits) {
+          if (!routes->routes.count({id, index})) {
+            throw std::runtime_error("unobservable data read target " +
+                                     netlist_.nodes[id].name);
+          }
+          if (netlist_.nodes[id].kind == "DataRegister") {
+            pending_reads[id].insert(id);
+          } else {
+            for (const auto& route : routes->routes.at({id, index})) {
+              const auto found =
+                  routes->storage.find({route.output.node, route.output.index});
+              if (found != routes->storage.end()) {
+                for (size_t reg : found->second) pending_reads[reg].insert(id);
+              }
+            }
+          }
         }
       }
     }
-    for (const auto& [id, goal] : goals) {
-      for (size_t i = 0; i < goal.size(); ++i) {
-        if (goal[i] != 'x') fill.at(id)[i] = goal[i];
+    struct ReadChoice {
+      Key bit;
+      size_t route;
+      z3::expr selected;
+    };
+    struct PrimaryFrame {
+      Values state, fill, activation;
+      std::map<size_t, z3::expr> drives;
+      std::vector<ReadChoice> reads;
+    };
+    std::vector<size_t> pins;
+    size_t total_bits = 0;
+    for (const auto& [name, id] : netlist_.node_ids) {
+      if (!PrimaryInput(netlist_.nodes[id])) continue;
+      pins.push_back(id);
+      total_bits += netlist_.nodes[id].Width();
+    }
+    if (pins.size() > 256 || total_bits > 4096) {
+      throw std::runtime_error(
+          "primary-input scheduler resource limit exceeded");
+    }
+    const auto end_goals = EndGoals(operations);
+    const auto started = std::chrono::steady_clock::now();
+    const size_t limit = data_plan.order.empty() ? 1 : kMaxSteps;
+    for (size_t horizon = 1; horizon <= limit; ++horizon) {
+      if (std::chrono::steady_clock::now() - started >
+              std::chrono::seconds(15) ||
+          horizon * (netlist_.nodes.size() + total_bits) > 262144) {
+        throw std::runtime_error(
+            "primary-input scheduling resource limit; reachability not proved");
+      }
+      z3::optimize solver(context_);
+      z3::params parameters(context_);
+      parameters.set("timeout", 2000U);
+      solver.set(parameters);
+      Values state, fills;
+      for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+        if (netlist_.nodes[id].model == ModelKind::kRegister ||
+            PrimaryInput(netlist_.nodes[id])) {
+          state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
+          if (data_plan.writes.count(id)) {
+            fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
+          }
+        }
+      }
+      std::map<size_t, z3::expr> touched;
+      for (const auto& [id, goal] : goals) {
+        bool satisfied = data_plan.writes.count(id);
+        const auto actual = state_.Value(id);
+        for (size_t bit = 0; bit < goal.size(); ++bit) {
+          satisfied =
+              satisfied && (goal[bit] == 'x' || goal[bit] == actual[bit]);
+        }
+        touched.emplace(id, context_.bool_val(satisfied));
+      }
+      std::map<size_t, z3::expr> read_done;
+      for (const auto& [id, bits] : reads) {
+        read_done.emplace(id, context_.bool_val(false));
+      }
+      auto simultaneous = context_.bool_val(false);
+      auto count = context_.int_val(0);
+      std::vector<z3::expr> deviations, data_deviations;
+      std::vector<PrimaryFrame> frames;
+      for (size_t time = 0; time < horizon; ++time) {
+        PrimaryFrame frame;
+        Values next = state;
+        auto any_drive = context_.bool_val(false);
+        for (size_t id : pins) {
+          const auto& node = netlist_.nodes[id];
+          const auto suffix = node.name + "_" + std::to_string(time);
+          const auto drive = context_.bool_const(("drive_" + suffix).c_str());
+          const auto bits =
+              context_.bv_const(("pin_" + suffix).c_str(), node.Width());
+          const auto known = ~context_.bv_val(0, node.Width());
+          next.insert_or_assign(id, Choose(drive, {bits, known}, state.at(id)));
+          frame.drives.emplace(id, drive);
+          any_drive = any_drive || drive;
+          count =
+              count + z3::ite(drive, context_.int_val(1), context_.int_val(0));
+          deviations.push_back(
+              bits ^ SymbolicValue::Literal(context_, fill_.at(id)).bits);
+          if (touched.count(id)) touched.at(id) = touched.at(id) || drive;
+        }
+        for (size_t id : data_plan.order) {
+          const auto& node = netlist_.nodes[id];
+          const auto suffix = node.name + "_" + std::to_string(time);
+          next.insert_or_assign(
+              id, SymbolicValue{context_.bv_const(("data_" + suffix).c_str(),
+                                                  node.Width()),
+                                context_.bv_const(("known_" + suffix).c_str(),
+                                                  node.Width())});
+        }
+        SymbolicNetwork values(netlist_, context_, next, global_resets_);
+        for (size_t id : data_plan.order) {
+          const auto& node = netlist_.nodes[id];
+          const auto active =
+              Choose(any_drive, values.Active(data_plan.writes.at(id)),
+                     SymbolicValue::Literal(context_, "0"));
+          const auto load = values.Bits(node.inputs.at("WriteDataSource"));
+          auto updated = ResetValue(active, load, state.at(id));
+          auto enabled = Known(active, true);
+          auto definite_event = enabled || Known(active, false);
+          if (node.reset) {
+            const auto reset = values.Read(*node.reset);
+            updated =
+                ResetValue(reset,
+                           SymbolicValue::Literal(
+                               context_, node.constants.at("ResetValue").data),
+                           updated);
+            enabled = enabled && Known(reset, false);
+            definite_event = definite_event || Known(reset, true);
+          }
+          // An emitted input event must not leave unrequested storage exposed
+          // to an unknown write-enable (and silently destroy known values).
+          solver.add(definite_event);
+          solver.add(next.at(id).bits == updated.bits &&
+                     next.at(id).known == updated.known);
+          solver.add(z3::implies(
+              enabled, load.known == ~context_.bv_val(0, node.Width())));
+          const auto inputs = data_plan.primary_inputs.find(id);
+          const bool explicit_pins =
+              inputs != data_plan.primary_inputs.end() &&
+              std::any_of(inputs->second.begin(), inputs->second.end(),
+                          [&](size_t pin) { return goals.count(pin); });
+          if (!explicit_pins) {
+            data_deviations.push_back(
+                z3::ite(enabled, load.bits ^ fills.at(id).bits,
+                        context_.bv_val(0, node.Width())));
+          }
+          auto fill = Choose(enabled, load, fills.at(id));
+          if (node.reset) {
+            fill = Choose(
+                Known(values.Read(*node.reset), true),
+                SymbolicValue::Literal(context_, initial_fill_.at(id)), fill);
+          }
+          fills.at(id) = fill;
+          frame.activation.emplace(id, active);
+          const auto waiting = pending_reads.find(id);
+          if (waiting != pending_reads.end()) {
+            for (size_t read : waiting->second) {
+              solver.add(
+                  z3::implies(!read_done.at(read),
+                              next.at(id).bits == state.at(id).bits &&
+                                  next.at(id).known == state.at(id).known));
+            }
+          }
+          if (touched.count(id)) {
+            auto requested_drive = context_.bool_val(false);
+            const auto inputs = data_plan.primary_inputs.find(id);
+            if (inputs != data_plan.primary_inputs.end()) {
+              for (size_t pin : inputs->second) {
+                if (frame.drives.count(pin)) {
+                  requested_drive = requested_drive || frame.drives.at(pin);
+                }
+              }
+            }
+            touched.at(id) = touched.at(id) || (enabled && requested_drive);
+          }
+        }
+        auto all_reads = context_.bool_val(true);
+        std::map<std::pair<Key, char>, z3::expr> output_comparisons;
+        for (const auto& [id, bits] : reads) {
+          const auto observe = context_.bool_const(
+              ("observe_" + std::to_string(id) + "_" + std::to_string(time))
+                  .c_str());
+          solver.add(z3::implies(observe, !read_done.at(id)));
+          all_reads = all_reads && observe;
+          for (const auto& [index, expected] : bits) {
+            const Key key{id, index};
+            const auto& choices = routes->routes.at(key);
+            auto selected_count = context_.int_val(0);
+            for (size_t route = 0; route < choices.size(); ++route) {
+              const auto& path = choices[route];
+              const auto selected = context_.bool_const(
+                  ("read_route_" + std::to_string(id) + "_" +
+                   std::to_string(index) + "_" + std::to_string(time) + "_" +
+                   std::to_string(route))
+                      .c_str());
+              auto valid = context_.bool_val(true);
+              for (const auto& guard : path.guards) {
+                valid = valid && DataReadGuardActive(values, guard);
+              }
+              solver.add(z3::implies(selected, valid));
+              selected_count =
+                  selected_count +
+                  z3::ite(selected, context_.int_val(1), context_.int_val(0));
+              frame.reads.push_back({key, route, selected});
+              if (expected != 'x') {
+                const char compare = path.output.inverted
+                                         ? (expected == '1' ? '0' : '1')
+                                         : expected;
+                const auto physical = std::make_pair(
+                    Key{path.output.node, path.output.index}, compare);
+                const auto found = output_comparisons.find(physical);
+                if (found == output_comparisons.end()) {
+                  output_comparisons.emplace(physical, selected);
+                } else {
+                  found->second = found->second || selected;
+                }
+              }
+            }
+            solver.add(selected_count == z3::ite(observe, context_.int_val(1),
+                                                 context_.int_val(0)));
+          }
+          read_done.at(id) = read_done.at(id) || observe;
+        }
+        for (const auto& [key, selected] : output_comparisons) {
+          const auto opposite = output_comparisons.find(
+              {key.first, key.second == '1' ? '0' : '1'});
+          if (opposite != output_comparisons.end()) {
+            solver.add(!(selected && opposite->second));
+          }
+        }
+        auto complete = context_.bool_val(true);
+        for (const auto& [id, goal] : goals) {
+          const auto wanted = SymbolicValue::Literal(context_, goal);
+          const auto actual = values.Value(id);
+          complete = complete &&
+                     (actual.known & wanted.known) == wanted.known &&
+                     (actual.bits & wanted.known) == wanted.bits;
+          if (frame.drives.count(id)) {
+            complete = complete && frame.drives.at(id);
+          }
+          if (frame.activation.count(id)) {
+            complete = complete && Known(frame.activation.at(id), true);
+          }
+        }
+        simultaneous = simultaneous || (complete && all_reads);
+        frame.state = next;
+        frame.fill = fills;
+        frames.push_back(std::move(frame));
+        state = std::move(next);
+      }
+      SymbolicNetwork final(netlist_, context_, state, global_resets_);
+      for (const auto& [id, done] : read_done) solver.add(done);
+      for (const auto& [id, goal] : goals) {
+        const auto wanted = SymbolicValue::Literal(context_, goal);
+        const auto actual = final.Value(id);
+        solver.add((actual.known & wanted.known) == wanted.known &&
+                   (actual.bits & wanted.known) == wanted.bits);
+        if (PrimaryInput(netlist_.nodes[id]) || data_plan.writes.count(id)) {
+          solver.add(touched.at(id));
+        }
+      }
+      for (const auto& [id, bits] : end_goals) {
+        const auto wanted = SymbolicValue::Literal(context_, bits);
+        const auto actual = final.Value(id);
+        solver.add((actual.known & wanted.known) == wanted.known &&
+                   (actual.bits & wanted.known) == wanted.bits);
+      }
+      if (together) solver.add(simultaneous);
+      for (const auto& deviation : data_deviations) solver.minimize(deviation);
+      solver.minimize(count);
+      for (const auto& deviation : deviations) solver.minimize(deviation);
+      const auto status = solver.check();
+      if (status == z3::unsat) continue;
+      if (status != z3::sat) {
+        throw std::runtime_error("primary-input solver resource limit reached");
+      }
+      const auto model = solver.get_model();
+      NetworkState replay(state_);
+      auto fill = fill_;
+      std::vector<ScanStep> steps;
+      for (const auto& frame : frames) {
+        ScanStep step;
+        step.together = together;
+        std::map<size_t, std::string> driven;
+        for (const auto& [id, drive] : frame.drives) {
+          if (!model.eval(drive, true).is_true()) continue;
+          const auto bits = Decode(model, frame.state.at(id));
+          driven.emplace(id, bits);
+          fill.at(id) = bits;
+          step.writes.emplace(netlist_.nodes[id].name, bits);
+        }
+        if (!driven.empty()) replay.ApplyInputs(driven);
+        Values concrete;
+        for (const auto& [id, value] : frame.state) {
+          concrete.emplace(id,
+                           SymbolicValue::Literal(context_, replay.Value(id)));
+        }
+        SymbolicNetwork observed(netlist_, context_, std::move(concrete),
+                                 global_resets_);
+        for (const auto& choice : frame.reads) {
+          if (!model.eval(choice.selected, true).is_true()) continue;
+          const auto& route = routes->routes.at(choice.bit).at(choice.route);
+          for (const auto& guard : route.guards) {
+            if (!DataReadGuardActive(observed, guard).simplify().is_true()) {
+              throw std::runtime_error(
+                  "symbolic/concrete data read route mismatch");
+            }
+          }
+          char expected = reads.at(choice.bit.first).at(choice.bit.second);
+          if (expected != 'x' && route.output.inverted) {
+            expected = expected == '1' ? '0' : '1';
+          }
+          const auto& output = netlist_.nodes[route.output.node];
+          auto& comparisons =
+              step.expected.try_emplace(output.name, output.Width(), 'x')
+                  .first->second;
+          if (expected != 'x') {
+            comparisons.at(Offset(output, route.output.index)) = expected;
+          }
+        }
+        for (const auto& [id, value] : frame.state) {
+          if (replay.Value(id) != Decode(model, value)) {
+            throw std::runtime_error(
+                "symbolic/concrete primary replay mismatch at " +
+                netlist_.nodes[id].name);
+          }
+        }
+        for (size_t id : data_plan.order) {
+          fill.at(id) = Decode(model, frame.fill.at(id));
+        }
+        if (!step.writes.empty()) {
+          // Preserve temporary data-register overrides when flat PDL writes
+          // the physical ports instead of naming the abstract register.
+          for (const auto& [id, defaults] : end_states_) {
+            if (!data_plan.writes.count(id)) continue;
+            const auto bits = replay.Value(id);
+            bool overridden = false;
+            for (size_t bit = 0; bit < bits.size(); ++bit) {
+              overridden =
+                  overridden || (defaults[bit] != 'x' && bits[bit] != 'x' &&
+                                 defaults[bit] != bits[bit]);
+            }
+            if (overridden) step.writes.emplace(netlist_.nodes[id].name, bits);
+          }
+        }
+        if (!step.writes.empty() || !step.expected.empty()) {
+          steps.push_back(std::move(step));
+        }
+      }
+      for (const auto& [id, goal] : goals) {
+        const auto actual = replay.Value(id);
+        for (size_t i = 0; i < goal.size(); ++i) {
+          if (goal[i] != 'x' && actual[i] != goal[i]) {
+            throw std::runtime_error(
+                "symbolic/concrete primary goal mismatch at " +
+                netlist_.nodes[id].name);
+          }
+          if (goal[i] != 'x') fill.at(id)[i] = goal[i];
+        }
+      }
+      state_.Restore(replay);
+      fill_ = std::move(fill);
+      return steps;
+    }
+    throw std::runtime_error(
+        "cannot justify primary-input write requirements within the scan "
+        "budget");
+  }
+
+  z3::expr DataReadGuardActive(SymbolicNetwork& values,
+                               const DataReadGuard& guard) {
+    const auto& node = netlist_.nodes[guard.node];
+    if (guard.choice == kMissing) {
+      return Known(values.Read(node.inputs.at("Enable").at(0)), true);
+    }
+    auto valid = context_.bool_val(true);
+    if (node.kind == "OneHotDataGroup") {
+      for (size_t i = 0; i < node.one_hot_sources.size(); ++i) {
+        valid = valid && Known(values.OneHotActive(node.one_hot_sources[i]),
+                               i == guard.choice);
+      }
+    } else {
+      const auto selector = values.Bits(node.inputs.at("SelectedBy"));
+      valid = selector.known ==
+              ~context_.bv_val(0, selector.bits.get_sort().bv_size());
+      for (size_t i = 0; i < node.choices.size(); ++i) {
+        auto match = context_.bool_val(false);
+        for (const auto& code : node.choices[i].codes) {
+          const auto wanted = SymbolicValue::Literal(context_, code.data);
+          match = match || ((selector.bits ^ wanted.bits) & wanted.known) ==
+                               context_.bv_val(0, code.data.size());
+        }
+        valid = valid && (i == guard.choice ? match : !match);
       }
     }
-    state_.Restore(replay);
-    fill_ = std::move(fill);
-    return step.writes.empty() ? std::vector<ScanStep>{}
-                               : std::vector<ScanStep>{std::move(step)};
+    return valid;
   }
+
   struct Edge {
     size_t next, choice;
     bool inverted;
@@ -2032,6 +2401,7 @@ class ScanScheduler::Impl {
   NetworkState state_;
   const TapRuntimeModel* tap_ = nullptr;
   std::unique_ptr<TapExecution> execution_;
+  std::unique_ptr<DataReadRoutes> data_read_routes_;
   bool tap_ready_ = false;
   std::string global_resets_ = "xx";
   z3::context context_;

@@ -1,0 +1,168 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "data_register_selectable",
+    "top": "SelectableData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_registers/selectable.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_registers/selectable.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/data_registers/selectable.icl": "87343a99bbaf17aa2ae8799b3194fea2a5bca164e427321ec4e2d0c09a05441d",
+    "tests/cases/ours/pattern_generation/data_registers/selectable.pdl": "d44a8a20e627c1ccf4fc6805d3bbb209f556cf8daf31b6516bb7eaaac4a7931d"
+  },
+  "job": {
+    "id": "data_register_selectable",
+    "top": "SelectableData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_registers/selectable.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_registers/selectable.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "87343a99bbaf17aa2ae8799b3194fea2a5bca164e427321ec4e2d0c09a05441d",
+      "source_0.pdl": "d44a8a20e627c1ccf4fc6805d3bbb209f556cf8daf31b6516bb7eaaac4a7931d",
+      "run.tcl": "6536a89ef746c0b3e64dba835b3989da8b925d5dfaa925ba83c481c58742727d"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_registers/selectable.icl": "87343a99bbaf17aa2ae8799b3194fea2a5bca164e427321ec4e2d0c09a05441d",
+      "tests/cases/ours/pattern_generation/data_registers/selectable.pdl": "d44a8a20e627c1ccf4fc6805d3bbb209f556cf8daf31b6516bb7eaaac4a7931d"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.7325428910553455,
+    "outcome": "ok",
+    "result_sha256": "7e0820143a2e84c933d27e2bd9363367ef844fbb3d16bd2595ecd150d7e4cd7c",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "SelectableData",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "1"
+          ],
+          [
+            "data",
+            1,
+            "0"
+          ],
+          [
+            "data",
+            2,
+            "0"
+          ],
+          [
+            "data",
+            3,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "observed",
+            0,
+            "1"
+          ],
+          [
+            "observed",
+            1,
+            "0"
+          ],
+          [
+            "observed",
+            2,
+            "0"
+          ],
+          [
+            "observed",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "b78c47e102106f1e43065c5fba6e2dac539c221e2066c2f88acf4f4c70d2c83e",
+  "vendor_console_sha256": "87f07d94eb592a6c3b6c1243627337ffb3e0f0c1ad6ab380b6328c96c0a5f688",
+  "artifacts": {
+    "flat.pdl": "8ebff17f36aa53d11d5dff4c16450aa5bc2d0e152cff554fc4bcc2888c25d465",
+    "vendor.pdl": "7e0820143a2e84c933d27e2bd9363367ef844fbb3d16bd2595ecd150d7e4cd7c"
+  }
+}

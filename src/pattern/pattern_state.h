@@ -4,6 +4,7 @@
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_STATE_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -15,6 +16,7 @@ struct ScanControl {
   char capture = '0', shift = '0', update = '0', select = '0';
 };
 class SignalEvaluator;
+struct DataRegisterPlan;
 // Supported iState targets; excludes controller-owned instruction storage.
 void ValidateStateAssumption(const Netlist& netlist, size_t node);
 // Netlist must outlive this state and remain immutable. Values are MSB/leftmost
@@ -28,6 +30,10 @@ class NetworkState {
   std::string Value(size_t node, bool scan = false) const;
   char Read(const BitReference& bit, bool scan = false) const;
   void Clock(const std::map<size_t, ScanControl>& controls, bool rising);
+  // A parallel apply changes all primary pins simultaneously, then settles
+  // data-register updates and resets. Failure leaves the snapshot unchanged.
+  void ApplyInputs(const std::map<size_t, std::string>& values);
+  const DataRegisterPlan& DataRegisters() const;
   void Reset();
   void Restore(const NetworkState& state);
   bool SameState(const NetworkState& state) const;
@@ -41,6 +47,11 @@ class NetworkState {
 
  private:
   friend class SignalEvaluator;
+  void ClockRegisters(const std::map<size_t, ScanControl>& controls,
+                      bool rising);
+  void UpdateDataRegisters(char event = '1');
+  mutable std::shared_ptr<const DataRegisterPlan> data_registers_;
+  bool has_data_registers_ = false;
   const Netlist& netlist_;
   std::vector<std::string> update_, shift_, driven_;
   std::set<size_t> updated_;

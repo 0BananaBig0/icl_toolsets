@@ -133,6 +133,42 @@
       "bsdl_entity": "AccessProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "data_register_selectable",
+      "top": "SelectableData",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_registers/selectable.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/data_registers/selectable.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "data_register_addressed",
+      "top": "AddressedData",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_registers/addressed.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/data_registers/addressed.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "data_register_address_defaults",
+      "top": "AddressDefaultsTop",
+      "icl": [
+        "tests/cases/tessent/pattern_generation/address_defaults.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/data_registers/address_defaults.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

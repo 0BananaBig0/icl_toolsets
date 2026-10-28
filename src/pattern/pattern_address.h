@@ -27,6 +27,8 @@ class AddressResolver {
   explicit AddressResolver(const Netlist& netlist);
   AddressRequirement Resolve(const std::string& target,
                              AddressOperation operation);
+  // Resolve explicit bindings and inherited addressed-instance control ports.
+  BitReference ResolveEnable(size_t scope, AddressOperation operation) const;
 
  private:
   struct Ports {
@@ -41,7 +43,6 @@ class AddressResolver {
     std::optional<size_t> scan_register;
   };
   const Domain& ResolveDomain(size_t scope);
-  BitReference ResolveEnable(size_t scope, AddressOperation operation) const;
   BitReference Terminal(BitReference bit, size_t stop_scope,
                         const std::string& stop_kind) const;
   bool ParentAddress(const std::vector<BitReference>& bits, size_t scope) const;

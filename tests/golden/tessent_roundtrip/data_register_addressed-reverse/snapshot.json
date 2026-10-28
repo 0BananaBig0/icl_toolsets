@@ -1,0 +1,342 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "data_register_addressed",
+    "top": "AddressedData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_registers/addressed.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_registers/addressed.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/data_registers/addressed.icl": "cf3e025284773e3a065002050e1307355636a76db4ec5bc8c5b1858929feb20c",
+    "tests/cases/ours/pattern_generation/data_registers/addressed.pdl": "e24be2f80740be30c720584472cd4ff0030e3511f0fb9e58b47c9b15227ff518"
+  },
+  "job": {
+    "id": "data_register_addressed",
+    "top": "AddressedData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_registers/addressed.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_registers/addressed.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "cf3e025284773e3a065002050e1307355636a76db4ec5bc8c5b1858929feb20c",
+      "source_0.pdl": "e24be2f80740be30c720584472cd4ff0030e3511f0fb9e58b47c9b15227ff518",
+      "run.tcl": "4252026e78b15b0a919e4a63f2c34de6538380c0cdc373a4860328dc301cd57c"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_registers/addressed.icl": "cf3e025284773e3a065002050e1307355636a76db4ec5bc8c5b1858929feb20c",
+      "tests/cases/ours/pattern_generation/data_registers/addressed.pdl": "e24be2f80740be30c720584472cd4ff0030e3511f0fb9e58b47c9b15227ff518"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.632964639924467,
+    "outcome": "ok",
+    "result_sha256": "11818c33fd35d73a648cc28d7567ddbfb7d6bcaa57a6b32dd44202875664bcae",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "AddressedData",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "address",
+            0,
+            "1"
+          ],
+          [
+            "address",
+            1,
+            "0"
+          ],
+          [
+            "data",
+            0,
+            "1"
+          ],
+          [
+            "data",
+            1,
+            "0"
+          ],
+          [
+            "data",
+            2,
+            "0"
+          ],
+          [
+            "data",
+            3,
+            "1"
+          ],
+          [
+            "we",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "address",
+            0,
+            "0"
+          ],
+          [
+            "address",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ],
+          [
+            "we",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "address",
+            0,
+            "1"
+          ],
+          [
+            "address",
+            1,
+            "0"
+          ],
+          [
+            "data",
+            0,
+            "1"
+          ],
+          [
+            "data",
+            1,
+            "0"
+          ],
+          [
+            "data",
+            2,
+            "0"
+          ],
+          [
+            "data",
+            3,
+            "1"
+          ],
+          [
+            "re",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "re",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "observed",
+            0,
+            "1"
+          ],
+          [
+            "observed",
+            1,
+            "0"
+          ],
+          [
+            "observed",
+            2,
+            "0"
+          ],
+          [
+            "observed",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "address",
+            0,
+            "0"
+          ],
+          [
+            "address",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ],
+          [
+            "re",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "re",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "observed",
+            0,
+            "0"
+          ],
+          [
+            "observed",
+            1,
+            "1"
+          ],
+          [
+            "observed",
+            2,
+            "1"
+          ],
+          [
+            "observed",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "data",
+            1,
+            "1"
+          ],
+          [
+            "data",
+            2,
+            "1"
+          ],
+          [
+            "data",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "b78c47e102106f1e43065c5fba6e2dac539c221e2066c2f88acf4f4c70d2c83e",
+  "vendor_console_sha256": "c257cd8e9f48a701acb53efa1f8e7d67eaff492d5a8cca2a771f29a38802aba4",
+  "artifacts": {
+    "flat.pdl": "dbee13afaf7e4b0ef66d7898c34be7a36aec509a689eb36230f8550331f8636a",
+    "vendor.pdl": "11818c33fd35d73a648cc28d7567ddbfb7d6bcaa57a6b32dd44202875664bcae"
+  }
+}

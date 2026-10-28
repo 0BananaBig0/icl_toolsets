@@ -1,0 +1,27 @@
+iPDLLevel 0
+iProcsForModule AddressedData
+iReset
+iWrite address 0b01
+iWrite data 0b1001
+iWrite we 0b1
+iApply
+iWrite address 0b10
+iWrite data 0b0110
+iWrite we 0b1
+iApply
+iWrite address 0b01
+iWrite data 0b1001
+iWrite re 0b1
+iApply
+iWrite re 0b1
+iRead observed 0b1001
+iApply
+iWrite address 0b10
+iWrite data 0b0110
+iWrite re 0b1
+iApply
+iWrite re 0b1
+iRead observed 0b0110
+iApply
+iWrite data 0b0110
+iApply

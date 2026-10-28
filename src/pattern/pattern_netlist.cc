@@ -1415,41 +1415,6 @@ BitReference NetlistNode::OneHotSourceBit(size_t source,
   return position < padding ? BitReference{} : bits.at(position - padding);
 }
 
-BitReference Netlist::OneHotPortEnable(const OneHotSource& source) const {
-  if (source.kind != OneHotSourceKind::kPort) {
-    throw std::runtime_error("addressed one-hot execution is not implemented");
-  }
-  const auto* bits = &source.bits;
-  std::set<size_t> visited;
-  while (!bits->empty()) {
-    const size_t id = bits->front().node;
-    if (id == std::numeric_limits<size_t>::max() ||
-        !std::all_of(bits->begin(), bits->end(),
-                     [&](const BitReference& bit) { return bit.node == id; })) {
-      break;
-    }
-    const auto& node = nodes.at(id);
-    if (!visited.insert(id).second) {
-      throw std::runtime_error(node.origin + ": cyclic one-hot enable path");
-    }
-    if (node.kind != "DataOutPort") break;
-    for (size_t scope = node.scope;; scope = scopes.at(scope).parent) {
-      if (scopes.at(scope).address_value) {
-        throw std::runtime_error(
-            node.origin + ": addressed one-hot execution is not implemented");
-      }
-      if (scope == 0) break;
-    }
-    const auto enable = node.inputs.find("Enable");
-    if (enable != node.inputs.end()) return enable->second.at(0);
-    const auto next = node.inputs.find("Source");
-    if (next == node.inputs.end()) break;
-    bits = &next->second;
-  }
-  throw std::runtime_error(
-      "one-hot Port execution requires a uniformly enabled DataOutPort path");
-}
-
 const NetlistNode& Netlist::NodeAt(const std::string& path) const {
   const auto found = node_ids.find(path);
   if (found == node_ids.end()) {

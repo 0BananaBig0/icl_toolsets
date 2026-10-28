@@ -1,0 +1,11 @@
+iPDLLevel 0
+iProcsForModule SelectableData
+iReset
+iWrite data 0b1001
+iWrite enable 0b1
+iApply
+iRead observed 0b1001
+iApply
+iWrite data 0b0110
+iWrite enable 0b1
+iApply

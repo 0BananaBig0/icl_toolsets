@@ -74,6 +74,169 @@ Module Events {
           "flat reset semantics replay");
 }
 
+void TestDataRegisterEvents() {
+  pattern::Design design;
+  design.AddIcl("data-events.icl", R"(
+Module DataEvents {
+  ScanInPort si;
+  ResetPort rst;
+  ScanRegister bus[4:0] { ScanInSource si; ResetValue 5'b0; }
+  DataRegister first[3:0] {
+    WriteDataSource bus[3:0]; WriteEnSource bus[4]; ResetValue 4'b0;
+  }
+  DataRegister second[3:0] { WriteDataSource first; ResetValue 4'b0; }
+  DataRegister constant { WriteDataSource 1'b1; ResetValue 1'b0; }
+  ScanOutPort so { Source bus[0]; }
+})");
+  const auto netlist = pattern::Elaborate(design, "DataEvents");
+  pattern::NetworkState state(netlist);
+  const auto bus = netlist.node_ids.at("bus");
+  const auto first = netlist.node_ids.at("first");
+  const auto second = netlist.node_ids.at("second");
+  state.Drive(netlist.node_ids.at("rst"), "1");
+  state.Reset();
+  state.Drive(netlist.node_ids.at("rst"), "0");
+  state.Clock({{bus, {'0', '0', 'x', '1'}}}, false);
+  Require(state.Value(netlist.node_ids.at("constant")) == "x",
+          "uncertain update joins event and no-event storage");
+  state.Clock({{bus, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(netlist.node_ids.at("constant")) == "1",
+          "known update loads constant data");
+  state.Clock({{bus, {'0', '0', 'x', '1'}}}, false);
+  Require(state.Value(netlist.node_ids.at("constant")) == "1",
+          "uncertain update retains equal event and no-event values");
+  state.SetRegister(bus, "11010", "00000");
+  state.Clock({{bus, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(first) == "1010" && state.Value(second) == "1010",
+          "selectable data-register cascades evaluate after scan update");
+  state.SetRegister(bus, "10101", "11010");
+  state.Clock({{bus, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(first) == "0101" && state.Value(second) == "0101",
+          "active write enable loads the next update request");
+  state.SetRegister(bus, "01111", "10101");
+  state.Clock({{bus, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(first) == "0101" && state.Value(second) == "0101",
+          "disabled selectable data register retains storage");
+  state.SetRegister(bus, "x1111", "01111");
+  state.Clock({{bus, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(first) == "x1x1" && state.Value(second) == "x1x1",
+          "unknown enable joins retained and potentially loaded values");
+  state.Drive(netlist.node_ids.at("rst"), "1");
+  state.SetRegister(bus, "11111", "00000");
+  state.Clock({{bus, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(first) == "0000" && state.Value(second) == "0000",
+          "reset dominates data updates");
+}
+
+void TestAddressedDataEvents() {
+  std::ifstream file(
+      "tests/cases/tessent/pattern_generation/address_defaults.icl");
+  const std::string source(std::istreambuf_iterator<char>(file), {});
+  pattern::Design design;
+  design.AddIcl("address-events.icl", source);
+  const auto netlist = pattern::Elaborate(design, "AddressDefaultsTop");
+  pattern::NetworkState state(netlist);
+  const auto address = netlist.node_ids.at("address");
+  const auto data = netlist.node_ids.at("data");
+  const auto we = netlist.node_ids.at("we");
+  const auto target = netlist.node_ids.at("child.r");
+  state.ApplyInputs(
+      {{address, "00000101"}, {data, "1001011000000000"}, {we, "1"}});
+  Require(
+      state.Value(target) == "10010110",
+      "cumulative address and Tessent data-bus default update the register");
+  state.ApplyInputs({{netlist.node_ids.at("re"), "1"}, {we, "0"}});
+  Require(state.Value(netlist.node_ids.at("out")) == "10010110",
+          "addressed instance and register contributors expose selected data");
+  state.ApplyInputs(
+      {{address, "00000100"}, {data, "0000000000000000"}, {we, "1"}});
+  Require(state.Value(netlist.node_ids.at("out")) == "xxxxxxxx",
+          "unmapped address does not drive a one-hot output");
+  Require(state.Value(target) == "10010110",
+          "a nonmatching address does not update storage");
+  state.ApplyInputs({{address, "0000010x"}});
+  Require(state.Value(target) == "x00x0xx0",
+          "uncertain address joins possible update and retained state");
+  pattern::NetworkState before(state);
+  bool rejected = false;
+  try {
+    state.ApplyInputs({{we, "0"}, {data, "1"}});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && state.SameState(before),
+          "invalid parallel updates are atomic");
+}
+
+void TestAmbiguousDataAddress() {
+  pattern::Design design;
+  design.AddIcl("ambiguous.icl", R"(
+Module Ambiguous {
+  AddressPort address; DataInPort data; WriteEnPort we; ReadEnPort re;
+  OneHotDataGroup group {
+    DataRegister a { AddressValue 0; }
+    DataRegister b { AddressValue 0; }
+  }
+  DataOutPort out { Source group; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Ambiguous");
+  pattern::NetworkState state(netlist), before(state);
+  bool rejected = false;
+  try {
+    state.ApplyInputs({{netlist.node_ids.at("address"), "0"},
+                       {netlist.node_ids.at("data"), "1"},
+                       {netlist.node_ids.at("we"), "1"}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("ambiguous data-register address") !=
+        std::string::npos;
+  }
+  Require(rejected && state.SameState(before),
+          "colliding addressed storage rejects before mutation");
+}
+
+void TestDataCascadeScaleAndFeedback() {
+  const size_t count = 1024;
+  std::string source = "Module Cascade { DataInPort data;\n";
+  for (size_t i = 0; i < count; ++i) {
+    source += "DataRegister r" + std::to_string(i) + " { WriteDataSource " +
+              (i + 1 == count ? "data" : "r" + std::to_string(i + 1)) + "; }\n";
+  }
+  source += "}";
+  pattern::Design design;
+  design.AddIcl("cascade.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Cascade");
+  pattern::NetworkState state(netlist);
+  const auto start = std::chrono::steady_clock::now();
+  state.ApplyInputs({{netlist.node_ids.at("data"), "1"}});
+  Require(state.Value(netlist.node_ids.at("r0")) == "1",
+          "reverse-declared data cascade propagates in dependency order");
+  state.ApplyInputs({{netlist.node_ids.at("data"), "0"}});
+  Require(state.Value(netlist.node_ids.at("r0")) == "0",
+          "cached cascade order supports subsequent transactions");
+  std::cout << "data cascade: registers=" << count << " seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << "\n";
+  const auto position = source.rfind("WriteDataSource data");
+  source.replace(position, std::string("WriteDataSource data").size(),
+                 "WriteDataSource r0");
+  pattern::Design cyclic;
+  cyclic.AddIcl("cyclic.icl", source);
+  const auto loop = pattern::Elaborate(cyclic, "Cascade");
+  pattern::NetworkState failed(loop), before(failed);
+  bool rejected = false;
+  try {
+    failed.ApplyInputs({{loop.node_ids.at("data"), "1"}});
+  } catch (const std::exception& error) {
+    rejected = std::string(error.what()).find("cyclic data-register") !=
+               std::string::npos;
+  }
+  Require(rejected && failed.SameState(before),
+          "cyclic data updates reject atomically");
+}
+
 void TestPinSnapshot() {
   pattern::Design design;
   design.AddIcl("snapshot.icl", R"(
@@ -369,6 +532,10 @@ int main() {
     TestPinSnapshot();
     TestResetReleaseOrdering();
     TestRegisterEvents();
+    TestDataRegisterEvents();
+    TestAddressedDataEvents();
+    TestAmbiguousDataAddress();
+    TestDataCascadeScaleAndFeedback();
     TestTapExecution(false);
     TestTapExecution(true);
     TestTapExecution(false, true);

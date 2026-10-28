@@ -128,6 +128,42 @@ probes remain in `end-state-forward` and `end-state-reverse`. Local retrieved
 bundles use the corresponding `build/*-evidence` names. No new formatter or RTL
 simulation qualification is claimed by these runs.
 
+## DataRegister qualification, 2026-10-28
+
+Three new certificates exercise selectable and addressed primary-input storage:
+
+- `data_register_selectable`: both forward and reverse fixed points pass.
+- `data_register_addressed`: the reverse fixed point passes, covering two
+  registers sharing an address bus followed by independent comparisons.
+
+The reviewed addressed forward output remains unqualified: during a read with
+held write-enable, Tessent repeats the unchanged data-bus write. The local pattern
+retains that already-driven value. Ordered apply groups therefore differ under
+the unchanged comparison policy; the reverse certificate qualifies this case.
+
+`data_register_address_defaults` reuses the existing nested offset/unequal-width
+model. Both directions execute successfully after inherited ReadEnPort writes
+were resolved through the shared address resolver, but neither comparison passes.
+Tessent adds an initial enable-zero apply and explicit internal `child.re` override
+markers and repeated data writes. Local output resolves that inherited control
+to the root pin. These operations are retained by the comparator; no certificate
+was created for this case.
+
+All source, staging, exports and unsuccessful comparisons remain available in:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_data_register_execution/
+  data-register-forward/
+  data-register-reverse/
+  data-register-reviewed-forward/
+```
+
+Local retrieved bundles use the corresponding `build/*-evidence` names.
+`build/data-register-certification.log` records the six final certification
+attempts. The three successful immutable standards raise the offline directional
+suite to 19 certificates; seven legacy certificates also remain passing. This
+phase did not regenerate formatter/testbench standards or run RTL simulation.
+
 ## Comparison and immutable standards
 
 Formatter qualification also exports `result.v` with

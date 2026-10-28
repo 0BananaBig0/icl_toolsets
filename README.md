@@ -1,8 +1,8 @@
 # icl_toolsets
 
 Format, inspect, and navigate IEEE 1687-2014 ICL and PDL in the terminal,
-Vim, or Neovim. Generate flattened PDL for the supported serial and single-TAP
-access networks.
+Vim, or Neovim. Generate flattened PDL for supported serial, single-TAP and
+primary-input DataRegister access networks.
 
 | Tool | Purpose |
 |---|---|
@@ -10,7 +10,7 @@ access networks.
 | `icl-lsp` | ICL diagnostics, completion, navigation, symbols, and editor formatting. |
 | `pdl-format` | Format PDL while respecting Tcl scripts, data, and substitutions. |
 | `pdl-lsp` | PDL diagnostics, completion, navigation, symbols, and editor formatting. |
-| `icl-pattern-generation` | Experimental PDL expansion and prerequisite scheduling for serial and single-TAP networks. |
+| `icl-pattern-generation` | Experimental PDL expansion and prerequisite scheduling for serial, single-TAP and primary-input DataRegister networks. |
 | `vim-icl-pdl-modern` | Standalone ICL/PDL highlighting and filetype detection. |
 
 ICL (**Instrument Connectivity Language**) and PDL (**Procedural Description
@@ -389,7 +389,7 @@ prerequisite scans may precede that cycle. It does not require reads to occur
 together. An ICL alias marked `AccessTogether` requires its register group to
 be accessed in one scan. Nested aliases and slices retain that constraint;
 unrelated queued accesses can use separate scans. Alias `iApplyEndState` supplies
-a default for supported ScanRegister or primary-input bits. Explicit writes
+a default for supported ScanRegister, DataRegister or primary-input bits. Explicit writes
 override it for one apply; the next apply or end of the input sequence restores
 the default. A SIB can close in the update that writes its selected TDR. See the
 [runnable alias example](docs/pattern-generation.md#alias-access-group-example)
@@ -406,8 +406,13 @@ For purely combinational networks, `iWrite` can drive primary DataInPort pins
 through data ports and aliases, including OneHotDataGroup Port contributors
 with uniform explicit enables. Output X writes retain the target's controlling
 value; fixed OneHot width padding follows the measured Tessent behavior.
-Readback, addressed access and mixed scan/parallel transactions remain unsupported
-on this path. See the [limits and example](docs/pattern-generation.md#combinational-primary-input-writes).
+Networks driven by primary pins also support selectable and addressed
+DataRegister writes, cascades, and reads routed to DataOutPorts through forwarding,
+DataMuxes and OneHotDataGroups. Shared address buses use separate applies as needed.
+Read comparisons do not set register contents. Reads preserve the storage they
+observe, including while resolving output enables. Generated PDL and flattened
+ICL are checked by replay; see the [DataRegister example and limits](docs/pattern-generation.md#data-register-access).
+Scan-driven DataRegister scheduling and mixed scan/parallel transactions remain unfinished.
 
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
@@ -442,7 +447,7 @@ repeated source insertions, or changes to Tcl substitution order. See
 [local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, addressed execution, general one-hot execution, resource
+scheduling, scan-driven DataRegister execution, OneHotScanGroup execution, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Fresh Tessent 2026.2 runs qualify the three reservation probes and

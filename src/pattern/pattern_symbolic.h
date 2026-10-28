@@ -9,6 +9,8 @@
 #include <set>
 #include <string>
 
+#include "pattern/pattern_address.h"
+#include "pattern/pattern_data.h"
 #include "pattern/pattern_netlist.h"
 
 namespace pattern {
@@ -28,8 +30,11 @@ class SymbolicNetwork {
   SymbolicValue Value(size_t node);
   SymbolicValue Read(const BitReference& bit);
 
- private:
   SymbolicValue Bits(const std::vector<BitReference>& bits);
+  SymbolicValue Active(const AddressRequirement& requirement);
+  SymbolicValue OneHotActive(const OneHotSource& source);
+
+ private:
   SymbolicValue Compute(size_t node);
   SymbolicValue Logic(const NetlistNode& node);
   const Netlist& netlist_;
@@ -37,6 +42,7 @@ class SymbolicNetwork {
   std::map<size_t, SymbolicValue> cache_;
   std::set<size_t> visiting_;
   std::string global_resets_;
+  OneHotReadResolver one_hot_;
 };
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_SYMBOLIC_H_

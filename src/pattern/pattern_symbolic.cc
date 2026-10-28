@@ -51,7 +51,8 @@ SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
                                  std::string global_resets)
     : netlist_(netlist),
       context_(context),
-      global_resets_(std::move(global_resets)) {
+      global_resets_(std::move(global_resets)),
+      one_hot_(netlist) {
   if (global_resets_.size() != 2 ||
       global_resets_.find_first_not_of("01x") != std::string::npos) {
     throw std::runtime_error("invalid symbolic global reset state");
@@ -113,6 +114,23 @@ SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits) {
   }
   return result;
 }
+SymbolicValue SymbolicNetwork::Active(const AddressRequirement& requirement) {
+  const auto enable = Read(requirement.enable);
+  if (!requirement.signals) return enable;
+  const auto address = Bits(*requirement.signals);
+  auto code = requirement.value.data;
+  code.insert(0, requirement.signals->size() - code.size(), '0');
+  const auto wanted = SymbolicValue::Literal(context_, code);
+  const auto different = ((address.bits ^ wanted.bits) & address.known) !=
+                         context_.bv_val(0, code.size());
+  const auto defined = address.known == wanted.known;
+  const SymbolicValue match{BoolBit(defined && !different),
+                            BoolBit(defined || different)};
+  const auto known = (enable.known & match.known) |
+                     (enable.known & ~enable.bits) |
+                     (match.known & ~match.bits);
+  return {enable.bits & match.bits & known, known};
+}
 SymbolicValue SymbolicNetwork::Value(size_t node) {
   if (cache_.count(node)) return cache_.at(node);
   std::vector<std::pair<size_t, bool>> stack{{node, false}};
@@ -144,6 +162,12 @@ SymbolicValue SymbolicNetwork::Value(size_t node) {
     }
     for (const auto& source : object.one_hot_sources) {
       for (const auto& bit : source.bits) add(bit);
+      for (const auto& condition : one_hot_.Resolve(source)) {
+        add(condition.enable);
+        if (condition.signals) {
+          for (const auto& bit : *condition.signals) add(bit);
+        }
+      }
     }
     for (const auto& term : object.logic) {
       for (const auto& bit : term.signals) add(bit);
@@ -153,6 +177,17 @@ SymbolicValue SymbolicNetwork::Value(size_t node) {
     }
   }
   return cache_.at(node);
+}
+SymbolicValue SymbolicNetwork::OneHotActive(const OneHotSource& source) {
+  auto enabled = SymbolicValue::Literal(context_, "0");
+  for (const auto& condition : one_hot_.Resolve(source)) {
+    const auto value = Active(condition);
+    const auto known = (enabled.known & value.known) |
+                       (enabled.known & enabled.bits) |
+                       (value.known & value.bits);
+    enabled = {(enabled.bits | value.bits) & known, known};
+  }
+  return enabled;
 }
 SymbolicValue SymbolicNetwork::Logic(const NetlistNode& node) {
   std::vector<SymbolicValue> values;
@@ -255,8 +290,7 @@ SymbolicValue SymbolicNetwork::Compute(size_t id) {
     }
     auto found = context_.bool_val(false), uncertain = context_.bool_val(false);
     for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
-      const auto enabled =
-          Read(netlist_.OneHotPortEnable(node.one_hot_sources[source]));
+      const auto enabled = OneHotActive(node.one_hot_sources[source]);
       const auto known = enabled.known == context_.bv_val(1, 1);
       const auto active = known && enabled.bits == context_.bv_val(1, 1);
       uncertain = uncertain || !known || (found && active);

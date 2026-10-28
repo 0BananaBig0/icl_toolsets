@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "pattern/pattern_data.h"
 #include "pattern/pattern_logic.h"
 
 namespace pattern {
@@ -14,6 +15,9 @@ namespace {
 constexpr size_t kMissing = std::numeric_limits<size_t>::max();
 char Invert(char value) {
   return value == '0' ? '1' : value == '1' ? '0' : 'x';
+}
+char Or(char a, char b) {
+  return a == '1' || b == '1' ? '1' : a == '0' && b == '0' ? '0' : 'x';
 }
 char And(char a, char b) {
   return a == '0' || b == '0' ? '0' : a == '1' && b == '1' ? '1' : 'x';
@@ -54,7 +58,7 @@ size_t Offset(const NetlistNode& node, int64_t index) {
 class SignalEvaluator {
  public:
   explicit SignalEvaluator(const NetworkState& state)
-      : state_(state), netlist_(state.netlist_) {}
+      : state_(state), netlist_(state.netlist_), one_hot_(netlist_) {}
   char Read(const BitReference& bit, bool scan = false) {
     char result = 'x';
     if (bit.node == kMissing) {
@@ -126,6 +130,12 @@ class SignalEvaluator {
       }
       for (const auto& source : node.one_hot_sources) {
         for (const auto& bit : source.bits) add(bit, false);
+        for (const auto& condition : one_hot_.Resolve(source)) {
+          add(condition.enable, false);
+          if (condition.signals) {
+            for (const auto& bit : *condition.signals) add(bit, false);
+          }
+        }
       }
       for (const auto& term : node.logic) {
         for (const auto& bit : term.signals) {
@@ -139,6 +149,20 @@ class SignalEvaluator {
       }
     }
     return cache_.at(requested);
+  }
+
+  char Active(const AddressRequirement& condition) {
+    char enabled = Read(condition.enable);
+    if (!condition.signals) return enabled;
+    const auto actual = Bits(*condition.signals);
+    auto wanted = condition.value.data;
+    wanted.insert(0, actual.size() - wanted.size(), '0');
+    for (size_t i = 0; i < actual.size(); ++i) {
+      enabled = And(enabled, actual[i] == 'x'         ? 'x'
+                             : actual[i] == wanted[i] ? '1'
+                                                      : '0');
+    }
+    return enabled;
   }
 
  private:
@@ -196,8 +220,11 @@ class SignalEvaluator {
       size_t selected = 0;
       bool uncertain = false;
       for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
-        const char enable =
-            Read(netlist_.OneHotPortEnable(node.one_hot_sources[source]));
+        char enable = '0';
+        for (const auto& condition :
+             one_hot_.Resolve(node.one_hot_sources[source])) {
+          enable = Or(enable, Active(condition));
+        }
         uncertain = uncertain || enable == 'x';
         if (enable != '1') continue;
         ++selected;
@@ -221,6 +248,7 @@ class SignalEvaluator {
   }
   const NetworkState& state_;
   const Netlist& netlist_;
+  OneHotReadResolver one_hot_;
   std::map<Key, std::string> cache_;
   std::set<Key> visiting_;
 };
@@ -255,6 +283,9 @@ NetworkState::NetworkState(const Netlist& netlist)
       throw std::runtime_error("network state bit limit exceeded");
     }
     remaining -= node.Width();
+    has_data_registers_ =
+        has_data_registers_ ||
+        (node.kind == "DataRegister" && node.inputs.count("WriteDataSource"));
     if (node.model == ModelKind::kRegister) {
       update_[id].assign(node.Width(), 'x');
       if (node.kind == "ScanRegister") {
@@ -331,8 +362,58 @@ void NetworkState::SetRegister(size_t node, const std::string& shift,
   shift_[node] = shift;
   update_[node] = update;
 }
+const DataRegisterPlan& NetworkState::DataRegisters() const {
+  if (!data_registers_) {
+    data_registers_ = std::make_shared<DataRegisterPlan>(netlist_);
+  }
+  return *data_registers_;
+}
+void NetworkState::ApplyInputs(const std::map<size_t, std::string>& values) {
+  if (has_data_registers_) DataRegisters();
+  NetworkState next(*this);
+  for (const auto& [id, value] : values) next.Drive(id, value);
+  next.Reset();
+  next.UpdateDataRegisters();
+  Restore(next);
+}
+void NetworkState::UpdateDataRegisters(char event) {
+  if (!has_data_registers_) return;
+  const auto& plan = DataRegisters();
+  for (size_t id : plan.order) {
+    const auto& node = netlist_.nodes[id];
+    const auto& activation = plan.writes.at(id);
+    SignalEvaluator values(*this);
+    const char enabled = And(event, values.Active(activation));
+    auto next = Choose(enabled, values.Bits(node.inputs.at("WriteDataSource")),
+                       update_[id]);
+    if (node.reset) {
+      next = Choose(values.Read(*node.reset),
+                    node.constants.at("ResetValue").data, next);
+    }
+    update_[id] = std::move(next);
+  }
+  Reset();
+}
 void NetworkState::Clock(const std::map<size_t, ScanControl>& controls,
                          bool rising) {
+  char data_update = '0';
+  if (has_data_registers_ && !rising) {
+    for (const auto& [id, control] : controls) {
+      data_update = Or(data_update, And(control.select, control.update));
+    }
+  }
+  if (data_update == '0') {
+    ClockRegisters(controls, rising);
+    return;
+  }
+  DataRegisters();
+  NetworkState next(*this);
+  next.ClockRegisters(controls, rising);
+  next.UpdateDataRegisters(data_update);
+  Restore(next);
+}
+void NetworkState::ClockRegisters(const std::map<size_t, ScanControl>& controls,
+                                  bool rising) {
   SignalEvaluator values(*this);
   std::map<size_t, std::string> next_shift, next_update;
   std::set<size_t> updated;
