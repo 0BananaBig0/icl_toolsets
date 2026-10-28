@@ -72,13 +72,6 @@ class ScanScheduler::Impl {
     }
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
-      // End-state obligations apply even when PDL names the underlying storage.
-      if (node.properties.count("iApplyEndState")) {
-        throw std::runtime_error(node.origin + ": iApplyEndState on " +
-                                 node.name +
-                                 " requires restoration scheduling, which is "
-                                 "not implemented");
-      }
       if (node.kind == "ScanRegister" || node.kind == "DataInPort" ||
           node.kind == "DataOutPort") {
         if (node.kind == "ScanRegister") registers_.push_back(id);
@@ -118,6 +111,7 @@ class ScanScheduler::Impl {
           "multiple scan outputs require shared-control transaction "
           "scheduling");
     }
+    BuildEndStates();
     initial_fill_ = fill_;
     BuildResetOrder();
     for (const auto& node : netlist.nodes) {
@@ -157,6 +151,147 @@ class ScanScheduler::Impl {
       check(binding.interface.ports);
       for (const auto& chain : binding.interface.chains) check(chain.ports);
     }
+  }
+  BitReference EndStateSource(BitReference bit) const {
+    std::set<Key> visited;
+    while (bit.node != kMissing) {
+      const auto& node = netlist_.nodes.at(bit.node);
+      if (!visited.emplace(bit.node, bit.index).second) {
+        throw std::runtime_error("cyclic iApplyEndState source");
+      }
+      if (node.kind == "ScanRegister" || node.kind == "DataRegister" ||
+          PrimaryInput(node)) {
+        return bit;
+      }
+      if (node.model != ModelKind::kAlias && node.kind != "DataInPort" &&
+          node.kind != "DataOutPort") {
+        throw std::runtime_error("unsuitable iApplyEndState source " +
+                                 node.name);
+      }
+      if (node.inputs.count("Enable") ||
+          node.properties.count("EnableSource")) {
+        throw std::runtime_error("gated iApplyEndState source " + node.name);
+      }
+      const auto source = node.inputs.find("Source");
+      if (source == node.inputs.end()) {
+        throw std::runtime_error("unconnected iApplyEndState source " +
+                                 node.name);
+      }
+      auto next = source->second.at(Offset(node, bit.index));
+      next.inverted = next.inverted != bit.inverted;
+      bit = next;
+    }
+    return bit;
+  }
+  void BuildEndStates() {
+    for (const auto& node : netlist_.nodes) {
+      const auto directive = node.constants.find("iApplyEndState");
+      if (directive == node.constants.end()) continue;
+      try {
+        const auto target = ResolvePdlTarget(netlist_, node.name);
+        const auto& bits = directive->second.data;
+        if (bits.size() != target.bits.size() ||
+            bits.find_first_not_of("01") != std::string::npos) {
+          throw std::runtime_error("requires matching width and known bits");
+        }
+        for (size_t i = 0; i < bits.size(); ++i) {
+          const auto ref = EndStateSource(target.bits[i]);
+          const char value =
+              ref.inverted ? (bits[i] == '1' ? '0' : '1') : bits[i];
+          if (ref.node == kMissing) {
+            if (ref.virtual_signal != VirtualSignal::kNone ||
+                ref.constant != value) {
+              throw std::runtime_error("incompatible constant source");
+            }
+            continue;
+          }
+          const auto& source = netlist_.nodes.at(ref.node);
+          const size_t offset = Offset(source, ref.index);
+          if (source.model == ModelKind::kRegister) {
+            const auto reset = source.constants.find("ResetValue");
+            if (reset == source.constants.end() ||
+                reset->second.data.at(offset) != value) {
+              throw std::runtime_error(
+                  "requires a matching register ResetValue");
+            }
+          }
+          if (!fill_.count(ref.node)) {
+            throw std::runtime_error(
+                "DataRegister execution is not implemented");
+          }
+          auto& values = end_states_.try_emplace(ref.node, source.Width(), 'x')
+                             .first->second;
+          if (values[offset] != 'x' && values[offset] != value) {
+            throw std::runtime_error("conflicting directives");
+          }
+          values[offset] = value;
+        }
+      } catch (const std::exception& error) {
+        throw std::runtime_error(node.origin + ": iApplyEndState on " +
+                                 node.name + ": " + error.what());
+      }
+    }
+  }
+  std::map<size_t, std::string> EndGoals(
+      const std::vector<Operation>& operations) {
+    auto result = end_states_;
+    if (result.empty()) return result;
+    for (const auto& operation : operations) {
+      if (operation.command != "iWrite" || operation.arguments.size() != 2) {
+        continue;
+      }
+      const auto target = ResolvePdlTarget(netlist_, operation.arguments[0]);
+      const auto bits =
+          PdlDataValue(context_, netlist_, target, operation.arguments[1]);
+      for (size_t i = 0; i < bits.size(); ++i) {
+        if (bits[i] == 'x') continue;
+        // Only direct data paths can override an end-state obligation.
+        BitReference ref;
+        try {
+          ref = EndStateSource(target.bits[i]);
+        } catch (const std::runtime_error&) {
+          continue;
+        }
+        const auto found = result.find(ref.node);
+        if (found != result.end()) {
+          found->second.at(Offset(netlist_.nodes[ref.node], ref.index)) = 'x';
+        }
+      }
+    }
+    return result;
+  }
+  std::string DefaultFill(size_t id) const {
+    auto result = fill_.at(id);
+    if (end_states_.empty()) return result;
+    const auto& node = netlist_.nodes[id];
+    for (size_t i = 0; i < result.size(); ++i) {
+      const auto index =
+          node.left + (node.left <= node.right ? static_cast<int64_t>(i)
+                                               : -static_cast<int64_t>(i));
+      BitReference ref;
+      try {
+        ref = EndStateSource({id, index});
+      } catch (const std::runtime_error&) {
+        continue;
+      }
+      const auto found = end_states_.find(ref.node);
+      if (found == end_states_.end()) continue;
+      const char value =
+          found->second.at(Offset(netlist_.nodes[ref.node], ref.index));
+      if (value != 'x') {
+        result[i] = ref.inverted ? (value == '1' ? '0' : '1') : value;
+      }
+    }
+    return result;
+  }
+  bool NeedsEndState(const std::map<size_t, std::string>& values) const {
+    for (const auto& [id, bits] : values) {
+      const auto actual = state_.Value(id);
+      for (size_t i = 0; i < bits.size(); ++i) {
+        if (bits[i] != 'x' && bits[i] != actual[i]) return true;
+      }
+    }
+    return false;
   }
   void Cycle(TapExecution* run, char tms, char tdi = '0',
              const std::function<void(const NetworkState&)>& check = {}) const {
@@ -319,10 +454,17 @@ class ScanScheduler::Impl {
                               bool together,
                               const std::map<size_t, std::string>& preserved,
                               bool explicit_writes) {
+    const auto previous_fill = fill_;
     try {
+      for (const auto& [id, bits] : end_states_) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          if (bits[i] != 'x') fill_.at(id)[i] = bits[i];
+        }
+      }
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
                    explicit_writes);
     } catch (const std::exception& error) {
+      fill_ = previous_fill;
       std::string message = together ? "iApply -together: " : "";
       message += error.what();
       for (const auto& [id, value] : preserved) {
@@ -575,7 +717,7 @@ class ScanScheduler::Impl {
         }
         auto found = goals.find(ref.node);
         if (found == goals.end()) {
-          auto goal = fill_.at(ref.node);
+          auto goal = DefaultFill(ref.node);
           const auto& node = netlist_.nodes[ref.node];
           for (size_t bit = 0; bit < goal.size(); ++bit) {
             const int64_t index =
@@ -629,6 +771,12 @@ class ScanScheduler::Impl {
     SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
     for (const auto& [id, goal] : goals) {
       const auto wanted = SymbolicValue::Literal(context_, goal);
+      const auto actual = values.Value(id);
+      solver.add((actual.known & wanted.known) == wanted.known &&
+                 (actual.bits & wanted.known) == wanted.bits);
+    }
+    for (const auto& [id, bits] : EndGoals(operations)) {
+      const auto wanted = SymbolicValue::Literal(context_, bits);
       const auto actual = values.Value(id);
       solver.add((actual.known & wanted.known) == wanted.known &&
                  (actual.bits & wanted.known) == wanted.bits);
@@ -1243,7 +1391,8 @@ class ScanScheduler::Impl {
       bool allow_greedy = true,
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true) {
-    if (operations.empty()) return {};
+    const auto end_goals = EndGoals(operations);
+    if (operations.empty() && !NeedsEndState(end_goals)) return {};
     if (roots_.empty() && registers_.empty() && !tap_) {
       return SolvePrimaryWrites(operations, together);
     }
@@ -1344,6 +1493,18 @@ class ScanScheduler::Impl {
       auto& group = groups[{kMissing, false}];
       for (const auto& [id, goal] : goals) group.members.insert(id);
     }
+    std::set<size_t> explicit_goals;
+    for (const auto& [id, goal] : goals) explicit_goals.insert(id);
+    for (const auto& [id, bits] : end_goals) {
+      if (netlist_.nodes[id].kind != "ScanRegister") {
+        throw std::runtime_error(
+            "mixed primary/scan iApplyEndState scheduling is not implemented");
+      }
+      if (NeedsEndState({{id, bits}})) {
+        goals.emplace(id, fill_.at(id));
+        required.insert(id);
+      }
+    }
     std::string access_context;
     std::set<size_t> grouped_reads;
     for (const auto& [key, group] : groups) {
@@ -1389,9 +1550,20 @@ class ScanScheduler::Impl {
           value.find_first_not_of("01") != std::string::npos) {
         throw std::runtime_error("invalid reserved ScanRegister value");
       }
-      if (explicit_writes && goals.count(id)) value = goals.at(id);
+      if (explicit_writes && explicit_goals.count(id)) value = goals.at(id);
+      const auto defaults = end_goals.find(id);
+      if (defaults != end_goals.end()) {
+        for (size_t i = 0; i < value.size(); ++i) {
+          if (defaults->second[i] != 'x' && defaults->second[i] != value[i]) {
+            throw std::runtime_error(
+                node.origin + ": iApplyEndState conflicts with reserved " +
+                node.name);
+          }
+        }
+      }
     }
-    if (allow_greedy && registers_.size() >= 32 && expected.empty()) {
+    if (allow_greedy && end_states_.empty() && registers_.size() >= 32 &&
+        expected.empty()) {
       auto planned = TryGreedy(operations, goals, required, together, preserved,
                                desired_preserved, explicit_writes);
       if (planned) return std::move(*planned);
@@ -1594,6 +1766,11 @@ class ScanScheduler::Impl {
         const auto expected = SymbolicValue::Literal(context_, goal);
         solver.add(touched.at(id) && state.at(id).known == expected.known &&
                    state.at(id).bits == expected.bits);
+      }
+      for (const auto& [id, bits] : end_goals) {
+        const auto wanted = SymbolicValue::Literal(context_, bits);
+        solver.add((state.at(id).known & wanted.known) == wanted.known &&
+                   (state.at(id).bits & wanted.known) == wanted.bits);
       }
       for (const auto& [id, observed] : read) solver.add(observed);
       for (const auto& complete : simultaneous) solver.add(complete);
@@ -1859,7 +2036,8 @@ class ScanScheduler::Impl {
   std::string global_resets_ = "xx";
   z3::context context_;
   std::vector<size_t> registers_, roots_, order_, reset_order_;
-  std::map<size_t, std::string> fill_, initial_fill_, control_masks_;
+  std::map<size_t, std::string> fill_, initial_fill_, control_masks_,
+      end_states_;
   std::map<size_t, std::set<size_t>> reset_dependencies_;
   std::set<Key> control_seen_;
   std::map<Key, size_t> ids_;

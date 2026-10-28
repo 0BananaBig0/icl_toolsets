@@ -388,8 +388,10 @@ transactions and checks each result through concrete controller/event replay.
 prerequisite scans may precede that cycle. It does not require reads to occur
 together. An ICL alias marked `AccessTogether` requires its register group to
 be accessed in one scan. Nested aliases and slices retain that constraint;
-unrelated queued accesses can use separate scans. Models containing alias
-`iApplyEndState` are rejected until restoration scheduling is implemented. See the
+unrelated queued accesses can use separate scans. Alias `iApplyEndState` supplies
+a default for supported ScanRegister or primary-input bits. Explicit writes
+override it for one apply; the next apply or end of the input sequence restores
+the default. A SIB can close in the update that writes its selected TDR. See the
 [runnable alias example](docs/pattern-generation.md#alias-access-group-example)
 for generation and replay commands.
 

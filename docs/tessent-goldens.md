@@ -57,9 +57,9 @@ TAP/SIB fixture to verify this transition and reopening before a later write.
 Schema-3 snapshots under `tests/golden/tessent_roundtrip/` preserve the direction,
 comparison policy, original source hashes, staged inputs/scripts, raw vendor
 export, local output, binary/version provenance and compared trace. Ordinary
-checks never refresh them. Fifteen directional standards cover eight source cases:
+checks never refresh them. Sixteen directional standards cover nine source cases:
 three scalar/vector probes and four SIB/reservation probes in both directions,
-plus transitive-reset release in the forward direction. The original six pin
+plus transitive-reset release and TAP end-state restoration in the forward direction. The original six pin
 standards retain their earlier hash-verified evidence. The nine TAP/reset
 standards come from fresh Tessent Shell 2026.2 runs described below.
 
@@ -98,6 +98,35 @@ new immutable `.expected` standards are added; no existing standard is replaced.
 This qualifies these inputs and models, not all controller/reset topologies or
 RTL timing. Preparing the default reverse manifest reports the one reset blocker
 and returns nonzero; its seven prepared jobs remain executable.
+
+## End-state qualification, 2026-10-28
+
+The `end_state_tap` forward certificate qualifies automatic SIB opening, closing
+with the target update, an explicit subsequent SIB override, and final restoration.
+It reuses ResourceInstrument and AccessProbe rather than duplicating their models.
+
+Both directions exported successfully for `end_state_ports` and `end_state_tap`
+with Tessent Shell 2026.2. Only the TAP forward direction matched ordered apply
+groups. The other three comparisons remain failures, with no standard recorded:
+
+- Tessent inserts an initial zero drive for the primary-input end-state source;
+  the local generator starts with the explicit write. This adds an apply group.
+- Both reverse exports end with the explicit override still active. The local
+  generator appends the final restoration required by IEEE 1687-2014 6.5.2(h6).
+  The staged oracle procedure export therefore is not a fixed point locally.
+
+An earlier port probe attached the directive to a DataOutPort and Tessent rejected
+it with ICL62-1. The maintained vendor probe attaches it to the ultimate
+DataInPort, while writing through an inverted DataOutPort. Independent local tests
+retain direct-path/inverted-source validation against IEEE 6.5.2(h5).
+No extra applies or initialization operations were removed from the comparator.
+
+Remote evidence is under
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_apply_end_state/`,
+in `end-state-source-forward` and `end-state-source-reverse`. Earlier rejected
+probes remain in `end-state-forward` and `end-state-reverse`. Local retrieved
+bundles use the corresponding `build/*-evidence` names. No new formatter or RTL
+simulation qualification is claimed by these runs.
 
 ## Comparison and immutable standards
 

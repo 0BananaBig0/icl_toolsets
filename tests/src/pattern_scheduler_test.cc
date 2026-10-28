@@ -674,7 +674,7 @@ Module Network {
               scans.back().together && scans.back().writes.at("child.r") == "0",
           "even an unrequested alias member must update after reset release");
 }
-void TestUnsupportedEndState() {
+void TestEndState() {
   std::ifstream file("tests/cases/ours/pattern_generation/apply_end_state.icl");
   const std::string source(std::istreambuf_iterator<char>(file), {});
   pattern::Design design;
@@ -684,19 +684,25 @@ void TestUnsupportedEndState() {
   flat_design.AddIcl("flat.icl", pattern::SerializeIcl(netlist));
   const auto flat = pattern::Elaborate(flat_design, "EndState");
   for (const auto* candidate : {&netlist, &flat}) {
+    pattern::ScanScheduler scheduler(*candidate);
+    scheduler.Reset();
+    auto steps =
+        scheduler.Apply({{"iWrite", {"idle_trigger", "1"}, "test", {}}});
+    Require(steps.size() == 1 && scheduler.Value("trigger") == "1",
+            "an explicit end-state override lasts through its apply");
     bool rejected = false;
     try {
-      pattern::ScanScheduler scheduler(*candidate);
-    } catch (const std::exception& error) {
-      const std::string message = error.what();
-      rejected = message.find("iApplyEndState") != std::string::npos &&
-                 message.find("idle_trigger") != std::string::npos &&
-                 message.find(candidate == &netlist
-                                  ? "end-state.icl:"
-                                  : "flat.icl:") != std::string::npos;
+      scheduler.Apply({}, false, {{candidate->node_ids.at("trigger"), "1"}});
+    } catch (const std::exception&) {
+      rejected = true;
     }
-    Require(rejected,
-            "source and flat models must not silently ignore end states");
+    Require(rejected && scheduler.Value("trigger") == "1",
+            "failed automatic restoration must preserve reserved state");
+    steps = scheduler.Apply({});
+    Require(steps.size() == 1 && steps[0].writes.at("trigger") == "0" &&
+                scheduler.Value("trigger") == "0" &&
+                scheduler.Apply({}).empty(),
+            "source and flat end states restore once after the override");
   }
 }
 void TestPrerequisites() {
@@ -942,7 +948,7 @@ int main() {
     TestApplyTogether();
     TestAccessTogether();
     TestAccessTogetherPrerequisites();
-    TestUnsupportedEndState();
+    TestEndState();
     TestPrerequisites();
     TestUnknownAndDisconnected();
     TestImplicitControl();

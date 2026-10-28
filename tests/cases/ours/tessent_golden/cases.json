@@ -106,6 +106,33 @@
       "bsdl_entity": "AccessProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "end_state_ports",
+      "top": "EndStatePins",
+      "icl": [
+        "tests/cases/ours/pattern_generation/end_state/ports.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/end_state/ports.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "end_state_tap",
+      "top": "EndStateAccessTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/vendor.icl",
+        "tests/cases/ours/pattern_generation/end_state/tap.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/end_state/tap.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

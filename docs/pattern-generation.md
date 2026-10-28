@@ -11,7 +11,7 @@ The [directional qualification harness](tessent-goldens.md) accepts either local
 flat output re-exported unchanged by Tessent, or Tessent source output replayed
 unchanged by the local generator. Compare ordered apply groups, allowing
 independent writes inside a group to reorder. Independent source schedules need
-not match. Six stored directional pin/vector standards currently pass offline.
+not match. Stored directional pin/vector, TAP, reservation and reset standards pass offline.
 The concrete scheduler test also covers writing a selected TDR while closing its
 SIB on the same update, then reopening before the next target write.
 
@@ -274,9 +274,18 @@ broader syntax support and never execute PDL.
   requested bits together after any prerequisite scans. Unrelated accesses may
   use separate scans. Unsupported port/DataRegister members are rejected.
   Flattened ICL preserves the marker; emitted common updates use
-  `iApply -together`. Models containing alias `iApplyEndState` are explicitly rejected because
-  restoration scheduling is not implemented. The directive cannot be ignored
-  even when PDL accesses the underlying register directly.
+  `iApply -together`.
+- Alias `iApplyEndState` follows IEEE 1687-2014 6.5.2(h): known, consistent
+  per-bit defaults, matching register reset values, and ungated direct source
+  paths. Supported ultimate sources are ScanRegisters, primary DataInPorts and
+  compatible constants. Explicit writes override defaults for their next apply;
+  a later apply or end of the input sequence restores them. Partial/X writes,
+  inversion and direct-storage access retain the directive. Register defaults
+  participate in final-state constraints, allowing a SIB to close while its
+  selected target updates. Automatic restoration cannot change a protected
+  reservation. DataRegister and mixed primary/scan execution remain unsupported.
+  End-state models use the bounded symbolic scheduler, not the large-network
+  greedy path; the existing resource limits still apply.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
   State assumptions accept scan registers and top-level DataInPort or SelectPort
   pins with no internal driver; aliases retain source bit ordering and inversion.
@@ -820,13 +829,14 @@ these rules without a second ICL parser or AST.
 Logs: `build/access-together-{regression,coverage,final-focused,sanitize,
 install,installed-tests}.log`; failing pre-fix reproductions use the same prefix.
 No Tessent equivalence or large-network throughput claim is made;
-parallel-port/DataRegister access and `iApplyEndState` remain unfinished.
+parallel-port/DataRegister access and `iApplyEndState` were unfinished at that checkpoint.
 
-### End-state directive guard verification (2026-10-27)
+### Historical end-state directive guard verification (2026-10-27)
 
 A regression reproduced successful pattern publication while ignoring an alias
 `iApplyEndState` obligation, both with and without `--debug`. The shared
-scheduler now rejects these models with an ICL source location and alias name.
+scheduler at that checkpoint rejected these models with an ICL source location
+and alias name. This guard is superseded by the implementation described above.
 This protects direct-storage accesses as well as accesses through the alias.
 Parsing, elaboration and flattened serialization continue to retain the legal
 ICL property; this is a generator capability restriction.
@@ -1039,3 +1049,42 @@ ASan/UBSan with leak detection enabled passed the nine new tests, 26 CLI tests,
 Both editors checked 38,646 ICL / 816 PDL files; all 334 grammar and 119 scanner
 rules were reached. Strict authored-code coverage and RTL simulation were not
 run. Other documented retargeter/source-rewrite limits still apply.
+### End-state defaults and final restoration (2026-10-28)
+
+The earlier blanket rejection is replaced with per-bit default resolution and
+shared scheduler constraints. Explicit overrides last for one apply; empty
+applies, subsequent reads and program completion can restore defaults. Inverted
+and partial aliases preserve unaffected bits. Final restore failures identify
+the PDL source and call stack. Conflicting reservations are rejected before
+searching scan horizons. Failed solves retain the prior scheduler snapshot and
+published output files.
+
+Eleven CLI tests cover these behaviors, invalid/unknown/reset-incompatible/gated
+directives, primary paths, nested SIB access and original/flat/generated-PDL
+replay. The native test checks failed restoration rollback and repeated no-op
+restoration. Independent review found a stale forwarded-port fill for X writes;
+both polarities reproduced the error and now use the resolved source default.
+
+A 1024-bit primary-input default/override/restore case generated its source
+sequence in 0.150 seconds with g++ 16.2.1 `-O2` on the existing Linux/WSL2 host,
+while regression/build jobs ran concurrently. This is an observed scale check,
+not a controlled speedup. Reproduce with
+`python3 tests/src/pattern/test_apply_end_state.py build/icl-pattern-generation ApplyEndState.test_wide_primary_default_round_trip`.
+End-state models retain the bounded symbolic solver's limits; the large-network
+greedy heuristic is not used for these models.
+
+One new immutable TAP/SIB forward certificate passes the requested Tessent
+round-trip rule. The primary-input and reverse-export differences remain
+unqualified; see [vendor evidence](tessent-goldens.md#end-state-qualification-2026-10-28).
+The larger retargeter remains incomplete for addressed/selectable DataRegister
+execution, OneHot register/instance/scan execution, mixed pin/scan transactions,
+multiple TAP/output scheduling, independently gated events and system clocks.
+
+Final `make check` passed (334/334 grammar alternatives, 119/119 scanner rules,
+16 directional plus seven legacy standards). Vim and Neovim each exercised
+38,648 ICL and 818 PDL files; the editor suite took 197.371 seconds.
+Dynamic/static generator and native scheduler suites and Google style checks
+passed. ASan/UBSan with `detect_leaks=1` passed all eleven end-state cases,
+25 CLI cases, 21 reservation cases and the native scheduler suite. Logs:
+`build/apply-end-state-{regression-final,focused-final,style-final,sanitizer-tests}.log`.
+Strict authored-code coverage, RTL simulation and a new installation were not run.

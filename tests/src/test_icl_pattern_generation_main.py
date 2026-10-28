@@ -201,25 +201,6 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "source.icl", "--pdl", "out/Network.pdl", "--output", "again.pdl")
         self.assertEqual(original, (self.root / "again.pdl").read_text())
 
-    def test_unimplemented_end_state_rejects_without_publication(self):
-        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/apply_end_state.icl"
-        (self.root / "source.icl").write_bytes(fixture.read_bytes())
-        # The persistent alias directive applies even when PDL names storage.
-        for command in ("iWrite trigger 1", "iWrite idle_trigger 1", "iRead trigger 0"):
-            for debug in ((), ("--debug",)):
-                with self.subTest(command=command, debug=debug):
-                    (self.root / "source.pdl").write_text(
-                        f"iProcsForModule EndState\niReset\n{command}\niApply\n")
-                    (self.root / "result.pdl").write_text("previous output\n")
-                    result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
-                                           "--output", "result.pdl", *debug, ok=False)
-                    self.assertIn("iApplyEndState", result.stdout)
-                    self.assertIn("idle_trigger", result.stdout)
-                    self.assertIn("source.icl:", result.stdout)
-                    self.assertIn("not implemented", result.stdout)
-                    self.assertEqual((self.root / "result.pdl").read_text(), "previous output\n")
-                    self.assertFalse((self.root / "debug/EndState.icl").exists())
-
     def test_local_reset_passthrough_preserves_procedures(self):
         source = (self.root / "source.pdl").read_bytes()
         self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",

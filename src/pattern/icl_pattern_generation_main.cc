@@ -153,6 +153,21 @@ std::string Generate(
   std::vector<pattern::Operation> pending;
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
+  const auto append_steps = [&](const std::vector<pattern::ScanStep>& steps) {
+    for (const auto& step : steps) {
+      if (step.writes.empty() && step.expected.empty()) {
+        throw std::runtime_error(
+            "scan transaction has no expressible PDL update");
+      }
+      for (const auto& [name, bits] : step.writes) {
+        result += Command({"iWrite", name, "0b" + bits});
+      }
+      for (const auto& [name, bits] : step.expected) {
+        result += Command({"iRead", name, "0b" + bits});
+      }
+      result += step.together ? "iApply -together\n" : "iApply\n";
+    }
+  };
   std::map<size_t, const pattern::SourceAction*> starts;
   if (actions) {
     for (const auto& action : *actions) {
@@ -252,19 +267,7 @@ std::string Generate(
         const auto steps =
             scheduler.Apply(pending, together, reservations.Values());
         reservations.Assigned(pending, scheduler);
-        for (const auto& step : steps) {
-          if (step.writes.empty() && step.expected.empty()) {
-            throw std::runtime_error(
-                "scan transaction has no expressible PDL update");
-          }
-          for (const auto& [name, bits] : step.writes) {
-            result += Command({"iWrite", name, "0b" + bits});
-          }
-          for (const auto& [name, bits] : step.expected) {
-            result += Command({"iRead", name, "0b" + bits});
-          }
-          result += step.together ? "iApply -together\n" : "iApply\n";
-        }
+        append_steps(steps);
         if (steps.empty()) result += "iApply\n";
         pending.clear();
       } else if (operation.command == "iReset") {
@@ -351,6 +354,17 @@ std::string Generate(
     }
   }
   if (!pending.empty()) throw std::runtime_error("unapplied PDL operations");
+  if (!operations.empty()) {
+    try {
+      append_steps(scheduler.Apply({}, false, reservations.Values(), false));
+    } catch (const std::exception& error) {
+      const auto& last = operations.back();
+      std::string message =
+          last.origin + ": final iApplyEndState restoration: " + error.what();
+      for (const auto& frame : last.call_stack) message += "\n  while " + frame;
+      throw std::runtime_error(message);
+    }
+  }
   const pdl::Document validated(result);
   if (!validated.ok()) {
     throw std::runtime_error("generated PDL failed shared parser: " +

@@ -1,0 +1,8 @@
+iPDLLevel 0 -version STD_1687_2014
+iProcsForModule EndStatePins
+iWrite observed 0
+iApply
+iWrite observed 0bx
+iApply
+iWrite pin 1
+iApply
