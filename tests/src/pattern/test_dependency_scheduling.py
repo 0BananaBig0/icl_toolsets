@@ -331,11 +331,12 @@ Module SelectedTop {
                   FIXTURE.parent / 'access_link/simple.bsdl')
         self.run_tool(*inputs, '--pdl', 'source.pdl', '--output', 'result.pdl', '--debug')
         result = (self.directory / 'result.pdl').read_text()
-        self.assertEqual(result.count('iApply'), 2)
+        self.assertEqual(result.count('iApply'), 3)
+        self.assertIn('iWrite tap.INSTRUCTION', result.split('iApply')[0])
         self.assertEqual(result.count('iApply -together'), 1)
         for i in range(16):
             self.assertIn(f'iWrite core.target{i}.value 0b10100101\n', result)
-            self.assertIn(f'iWrite core.gate{i} 0b1\n', result.split('iApply')[1])
+            self.assertIn(f'iWrite core.gate{i} 0b1\n', result.split('iApply')[2])
         self.run_tool(*inputs, '--pdl', 'result.pdl', '--output', 'again.pdl')
         self.assertEqual(result, (self.directory / 'again.pdl').read_text())
         self.run_tool('--icl', 'debug/SelectedTop.icl', '--pdl', 'source.pdl',
@@ -346,7 +347,7 @@ Module SelectedTop {
         (self.directory / 'source.pdl').write_text(source_pdl)
         self.run_tool(*inputs, '--pdl', 'source.pdl', '--output', 'protected.pdl')
         protected = (self.directory / 'protected.pdl').read_text()
-        self.assertEqual(protected.count('iApply'), 2)
+        self.assertEqual(protected.count('iApply'), 3)
         self.assertEqual([line for line in protected.splitlines()
                           if line.startswith('iWrite core.gate0 ')],
                          ['iWrite core.gate0 0b1'] * 2)

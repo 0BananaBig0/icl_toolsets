@@ -57,11 +57,47 @@ TAP/SIB fixture to verify this transition and reopening before a later write.
 Schema-3 snapshots under `tests/golden/tessent_roundtrip/` preserve the direction,
 comparison policy, original source hashes, staged inputs/scripts, raw vendor
 export, local output, binary/version provenance and compared trace. Ordinary
-checks never refresh them. The six directional standards cover ScalarPins,
-EqualWidthProbe_0096 and WidthProbe_xx96 in both directions, using unchanged,
-hash-verified Tessent Shell 2026.2 evidence from the protected-scheduling rerun.
-No new licensed run was needed for these exact inputs. These are pin/vector
-probes, not vendor qualification of every SIB/controller topology.
+checks never refresh them. Fifteen directional standards cover eight source cases:
+three scalar/vector probes and four SIB/reservation probes in both directions,
+plus transitive-reset release in the forward direction. The original six pin
+standards retain their earlier hash-verified evidence. The nine TAP/reset
+standards come from fresh Tessent Shell 2026.2 runs described below.
+
+## TAP and reset qualification, 2026-10-28
+
+All eight forward jobs and seven eligible reverse jobs exported successfully.
+The original transitive-reset PDL is blocked in reverse preparation: Tessent
+does not supply the needed reset releases. Its forward input is our **flat PDL**,
+not the reset-only artifact, and its ordered apply groups match Tessent's export.
+
+| Case | Forward | Reverse |
+| --- | --- | --- |
+| ScalarPins, EqualWidthProbe_0096, WidthProbe_xx96 | Existing standards retained | Existing standards retained |
+| resource_persistent, resource_default, resource_release | Certified | Certified |
+| sib_close_reopen | Certified | Certified |
+| transitive_releases | Certified | Blocked: source requires reset releases |
+
+The new close/reopen input updates a selected leaf while closing its SIB, then
+requires the SIB to reopen before the next update. Tests also retain every TAP
+instruction write, capture comparison and apply. Reset-held storage in a scan
+is represented by a read without an expected value, not a write it cannot accept.
+No comparator policy was weakened to obtain these matches. Original source
+schedules still need not agree between tools.
+
+Remote evidence (serial jobs, descriptive names) is retained under:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_directional_reset_roundtrips/tap-replay-forward/
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_directional_reset_roundtrips/tap-replay-reverse/
+```
+
+Local retrieved bundles are `build/tap-replay-{forward,reverse}-evidence`.
+Certification rechecks all staged source/script hashes, completion status,
+vendor export hashes and exact regenerated forward input bytes. Only the nine
+new immutable `.expected` standards are added; no existing standard is replaced.
+This qualifies these inputs and models, not all controller/reset topologies or
+RTL timing. Preparing the default reverse manifest reports the one reset blocker
+and returns nonzero; its seven prepared jobs remain executable.
 
 ## Comparison and immutable standards
 

@@ -302,7 +302,8 @@ class Reservations(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 text = (self.root / 'result.pdl').read_text()
                 self.assertIn('iWrite core.leaf.value 0b10100101', text)
-                self.assertEqual(text.count('iApply'), 2)
+                self.assertEqual(text.count('iApply'), 3)
+                self.assertIn('iWrite tap.INSTRUCTION', text.split('iApply')[0])
                 if name != 'release':
                     self.assertEqual([line for line in text.splitlines()
                                       if line.startswith('iWrite core.gate ')],

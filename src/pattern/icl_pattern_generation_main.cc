@@ -253,9 +253,6 @@ std::string Generate(
             scheduler.Apply(pending, together, reservations.Values());
         reservations.Assigned(pending, scheduler);
         for (const auto& step : steps) {
-          // IR selection is internal to retargeting; synthetic registers are
-          // not user-facing PDL targets. Re-ingestion selects the same route.
-          if (step.instruction) continue;
           if (step.writes.empty() && step.expected.empty()) {
             throw std::runtime_error(
                 "scan transaction has no expressible PDL update");

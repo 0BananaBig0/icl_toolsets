@@ -1,0 +1,237 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "resource_default",
+    "top": "ResourceAccessTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/resources/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/resources/vendor_default.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/resources/vendor.icl": "a2adfcf4f984daacc49bb7e6df1d4bc2a158c4fc92bfbce6c56fc54341083652",
+    "tests/cases/ours/pattern_generation/resources/vendor_default.pdl": "0191e2587bd472596bc60bb19fadb899d2ef7777e889dfc34cb4fb9e03249cf5",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "resource_default",
+    "top": "ResourceAccessTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/resources/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/resources/vendor_default.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "a2adfcf4f984daacc49bb7e6df1d4bc2a158c4fc92bfbce6c56fc54341083652",
+      "source_0.pdl": "0191e2587bd472596bc60bb19fadb899d2ef7777e889dfc34cb4fb9e03249cf5",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "63f5ef571b8520d83c3f8cfbc05c4d3e7e8ad9e154be7926a1251e60af59ee87",
+      "ours.pdl": "60d8d0569a355ad1a1e9bf57eb93a4625b28f9f11173688646fa451f4a93f4bb"
+    },
+    "generator_command": [
+      "/home/banana/cpp_workspace/icl-format/build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_resource_default/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_resource_default/source_0.pdl",
+      "--top_module",
+      "ResourceAccessTop",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_resource_default/ours.pdl",
+      "--bsdl",
+      "AccessProbe",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_resource_default/model.bsdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.11471245205029845,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/resources/vendor.icl": "a2adfcf4f984daacc49bb7e6df1d4bc2a158c4fc92bfbce6c56fc54341083652",
+      "tests/cases/ours/pattern_generation/resources/vendor_default.pdl": "0191e2587bd472596bc60bb19fadb899d2ef7777e889dfc34cb4fb9e03249cf5",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.979814206715673,
+    "outcome": "ok",
+    "result_sha256": "a9d10553a589b135a6262624d0f9a87f8ce9842833b1843996f11f8f5436d05c",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ResourceAccessTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "iState": [
+          [
+            "core.gate",
+            0,
+            "0"
+          ],
+          [
+            "core.gate",
+            1,
+            "1"
+          ]
+        ]
+      },
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "1"
+          ],
+          [
+            "core.gate",
+            1,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "1"
+          ],
+          [
+            "core.gate",
+            1,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            0,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            1,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            2,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            3,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            4,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            5,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            6,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            7,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "182a0b26ba98d5006ee0dfcc320ca5fd68b8113a1f1bcfd6254f4921b7fa7293",
+  "vendor_console_sha256": "9a86ae17820bc91e04ff1e4fe5fab3bff4152c5c6f7f018740c8df8a9f519a5d",
+  "artifacts": {
+    "flat.pdl": "60d8d0569a355ad1a1e9bf57eb93a4625b28f9f11173688646fa451f4a93f4bb",
+    "vendor.pdl": "a9d10553a589b135a6262624d0f9a87f8ce9842833b1843996f11f8f5436d05c"
+  }
+}

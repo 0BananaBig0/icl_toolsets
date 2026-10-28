@@ -319,9 +319,10 @@ the leading generation-date comment is normalized. Generator qualification check
 both round-trip directions separately: our flat PDL through Tessent, or Tessent's
 source-PDL export through our generator. Either passing direction qualifies the
 case; independent source schedules need not match. `iApply` order is preserved,
-while independent writes within one group may reorder. Six directional standards
-cover three scalar/vector cases in both directions, alongside the seven legacy
-standards (including six formatter cases with testbench evidence).
+while independent writes within one group may reorder. Fifteen directional standards
+cover scalar/vector operations, reserved SIBs, same-update SIB closure/reopening
+and transitive local-reset release, alongside the seven legacy standards
+(including six formatter cases with testbench evidence).
 This comparison does not run RTL simulation.
 See [qualification, limitations and refresh commands](docs/tessent-goldens.md).
 
@@ -338,6 +339,11 @@ one ordinary SI/SO boundary or one IEEE 1149.1 TAP, with ScanRegisters, muxes,
 logic-controlled paths and acyclic local-reset dependencies. Hardware starts
 unknown: use explicit `iState` declarations where appropriate, and `iReset`
 before TAP transactions.
+
+Flat TAP output includes instruction-register writes, capture comparisons and
+their `iApply` boundaries. Explicit `tap.INSTRUCTION` reads/writes can be replayed
+using the same BSDL model. If reset permits several instruction encodings, a
+read or partial write must first supply the unknown instruction bits explicitly.
 
 For write-only batches in larger networks, a dependency-guided planner groups
 reachable reset/selector controls before accessing their targets. It can handle
@@ -437,22 +443,12 @@ This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
 scheduling, addressed execution, general one-hot execution, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
-unfinished. The [latest full-manifest Tessent rerun](docs/tessent-oracle.md#protected-scheduling-rerun-2026-10-27)
-matched all 36 expected reference outcomes. Three new pin-write cases match
-the vendor pin values and apply grouping, but strict trace comparison still
-reports 30 generator-blocked cases, one vendor-blocked case and five differing
-traces, with no exact operation matches under that historical strict policy.
-Those differences alone are not failures of the current directional criterion. Remote experiments
-are grouped under `test/tessent_ijtag/test_icl_toolsets/test_<topic>`, following
-`test_Local_Reset`. New bundles contain `test_<case-name>` directories with no
-random suffixes; archived bundles remain readable.
-The [new transitive-reset probe](docs/tessent-oracle.md#transitive-local-reset-rewrite-2026-10-27)
-also exports successfully in Tessent, but its strict operation trace differs;
-it is not an approved equivalence golden.
-Three new reservation probes also exported successfully in Tessent, but retain
-strict trace differences; the explicit-release case has a different final SIB
-state. All seven existing formatter/pattern standards were requalified under
-their original policies without replacing their expected outputs.
+unfinished. Fresh Tessent 2026.2 runs qualify the three reservation probes and
+the SIB-close/reopen probe in both directions, and the transitive-reset probe
+in the forward direction. The latter feeds our flat output to Tessent; Tessent
+does not automatically release the local resets in the original source PDL.
+These certified cases run offline in ordinary regression; see
+[evidence and remaining limits](docs/tessent-goldens.md#tap-and-reset-qualification-2026-10-28).
 Unsupported cases report errors. Search limits are reported as limits, not proof
 that a target is unreachable. Generated PDL describes register operations, not
 ATE pin-vector files. Input files are protected from output-path aliasing.

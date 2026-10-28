@@ -183,6 +183,9 @@ class ScanScheduler::Impl {
         for (int i = 0; i < 5; ++i) Cycle(run.get(), '1');
       }
       auto fill = initial_fill_;
+      // IR reset is driven by the controller, not an ICL ResetValue property.
+      fill[tap_->instruction_register] =
+          run->State().Value(tap_->instruction_register);
       for (size_t id : registers_) {
         const auto& node = netlist_.nodes[id];
         if (node.reset && run->State().Read(*node.reset) == '1') {
@@ -1306,12 +1309,11 @@ class ScanScheduler::Impl {
               "read/write target requires a ScanRegister or its Alias");
         }
         if (tap_ &&
-            (ref.node == tap_->instruction_register ||
-             std::any_of(
-                 tap_->data_registers.begin(), tap_->data_registers.end(),
-                 [&](const auto& item) { return item.second == ref.node; }))) {
+            std::any_of(
+                tap_->data_registers.begin(), tap_->data_registers.end(),
+                [&](const auto& item) { return item.second == ref.node; })) {
           throw std::runtime_error(
-              "synthetic TAP registers are not PDL targets");
+              "synthetic TAP data registers are not PDL targets");
         }
         required.insert(ref.node);
         auto& values = read ? expected : goals;
@@ -1329,6 +1331,15 @@ class ScanScheduler::Impl {
         }
       }
     }
+    if (tap_ && required.count(tap_->instruction_register)) {
+      const auto id = tap_->instruction_register;
+      const auto& instruction = goals.count(id) ? goals.at(id) : fill_.at(id);
+      if (instruction.find('x') != std::string::npos) {
+        throw std::runtime_error(
+            "ambiguous instruction after reset; explicitly write its unknown "
+            "bits before reading or partially updating the IR");
+      }
+    }
     if (together && !goals.empty()) {
       auto& group = groups[{kMissing, false}];
       for (const auto& [id, goal] : goals) group.members.insert(id);
@@ -1336,6 +1347,11 @@ class ScanScheduler::Impl {
     std::string access_context;
     std::set<size_t> grouped_reads;
     for (const auto& [key, group] : groups) {
+      if (tap_ && group.members.count(tap_->instruction_register) &&
+          group.members.size() > 1) {
+        throw std::runtime_error(
+            "IR and DR registers cannot share a simultaneous access");
+      }
       if (group.read) {
         grouped_reads.insert(group.requested.begin(), group.requested.end());
       }
@@ -1622,11 +1638,13 @@ class ScanScheduler::Impl {
             reset.insert(id);
           }
         }
-        auto step = Replay(frame, model, expected, &replay, tap_replay.get(),
-                           replayed_preserved, desired_preserved);
+        auto step =
+            Replay(frame, model, expected,
+                   tap_ && !required.count(tap_->instruction_register), &replay,
+                   tap_replay.get(), replayed_preserved, desired_preserved);
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
-          bool complete = !step.instruction;
+          bool complete = true;
           for (size_t id : group.members) {
             const auto& name = netlist_.nodes[id].name;
             if (group.read) {
@@ -1685,7 +1703,8 @@ class ScanScheduler::Impl {
   }
   ScanStep Replay(const Frame& frame, const z3::model& model,
                   const std::map<size_t, std::string>& expected,
-                  NetworkState* replay, TapExecution* tap_replay,
+                  bool implicit_instruction, NetworkState* replay,
+                  TapExecution* tap_replay,
                   std::map<size_t, std::string>& preserved,
                   const std::map<size_t, std::string>& desired_preserved) {
     std::function<void(const NetworkState&)> check;
@@ -1763,6 +1782,9 @@ class ScanScheduler::Impl {
           model.eval(frame.read.at(id), true).is_true()) {
         compare = expected.at(id);
         step.expected.emplace(netlist_.nodes[id].name, compare);
+      } else if (step.instruction && implicit_instruction) {
+        compare = tap_->bsdl.capture;
+        step.expected.emplace(netlist_.nodes[id].name, compare);
       }
       for (auto it = compare.rbegin(); it != compare.rend(); ++it) {
         step.serial_expected +=
@@ -1810,9 +1832,13 @@ class ScanScheduler::Impl {
     for (size_t id : writable) {
       const auto& node = netlist_.nodes[id];
       if (!node.reset || replay->Read(*node.reset) == '0') {
-        if (!tap_ || id != tap_->instruction_register) {
-          step.writes.emplace(node.name, step.loads.at(node.name));
-        }
+        step.writes.emplace(node.name, step.loads.at(node.name));
+      }
+    }
+    // A scanned register held in reset was observed, but received no update.
+    for (const auto& [name, bits] : step.loads) {
+      if (!step.writes.count(name)) {
+        step.expected.emplace(name, std::string(bits.size(), 'x'));
       }
     }
     for (size_t id : registers_) {

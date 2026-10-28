@@ -1,0 +1,13 @@
+iPDLLevel 1
+iProcsForModule ResourceInstrument
+iProc own {} {
+    iTake {} -persistent
+    iState gate 2
+}
+iProcsForModule ResourceAccessTop
+iReset
+iPrefix core
+iCall own
+iWrite gate[0] 1
+iWrite leaf.value 0xa5
+iApply

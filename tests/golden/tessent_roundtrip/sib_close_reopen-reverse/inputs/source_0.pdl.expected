@@ -1,0 +1,10 @@
+# Self-constructed: update the selected TDR and close its SIB together twice.
+iProcsForModule ResourceAccessTop
+iReset
+iState core.gate 0
+iWrite core.leaf.value 0xa5
+iWrite core.gate 0
+iApply
+iWrite core.leaf.value 0x5a
+iWrite core.gate 0
+iApply

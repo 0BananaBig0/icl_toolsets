@@ -20,6 +20,9 @@ values, overlapping effects, waits, resets and apply boundaries remain significa
 Independent local/vendor schedules from the original PDL need not agree. A target
 must be selected at its update; closing its SIB on that same edge is permitted.
 Record directions separately and preserve formatter PDL/testbench qualification.
+Flat single-TAP output must retain instruction scans and capture comparisons;
+exported instruction-register operations must be accepted on replay. Unknown
+reset opcode bits must never be silently filled into an unrelated instruction.
 See [certification and offline regression](tessent-goldens.md).
 
 

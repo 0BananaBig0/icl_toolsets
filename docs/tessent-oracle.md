@@ -1,5 +1,11 @@
 # Tessent PDL differential tests
 
+The current generator acceptance criterion is the directional apply-group
+round trip in [Tessent-qualified regression](tessent-goldens.md). Fresh
+2026-10-28 runs qualify the reservation and SIB-close/reopen probes both ways,
+and transitive-reset release forward. The dated strict comparisons below are
+historical independent-source runs, not failures of the newer criterion.
+
 ## Protected scheduling rerun (2026-10-27)
 
 Fresh serial Tessent Shell **2026.2** runs against generator commit `ea7f5d1`

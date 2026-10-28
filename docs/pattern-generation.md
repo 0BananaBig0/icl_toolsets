@@ -294,8 +294,15 @@ broader syntax support and never execute PDL.
   and explicit/implicit scan-interface controls. Each complete scan must operate
   its observed storage without also clocking bypassed registers. Every accepted
   transaction executes through the native TAP controller and child event model.
-  IR selection is internal to retargeting; generated PDL names actual instruments,
-  never synthetic instruction registers.
+  Generated PDL includes IR selection writes and their apply boundaries, and
+  compares the BSDL capture pattern for automatically inserted instruction
+  scans. Explicit instruction reads preserve the user's compare mask/value;
+  explicit write-only instruction scans do not gain a comparison. The modeled
+  `tap.INSTRUCTION` target supports reads, writes and ranges; synthetic TAP data
+  registers remain rejected. An instruction read/partial update after an
+  ambiguous reset encoding requires explicit values for the unknown bits.
+  Storage scanned while held in reset is emitted as an unqualified read rather
+  than an update. These operations also survive flat-ICL/generated-PDL replay.
 - Source-attributed failures and invocation stacks. Structural disconnection,
   unsupported behavior and bounded solver exhaustion are distinct errors.
 - Literal TCK `iRunLoop` counts (IEEE 1687-2014 §7.9.17, printed pp. 175–176)
@@ -1004,3 +1011,31 @@ reference Python environment and `ICL_REF_DIR`. Log:
 alternatives, 119/119 scanner rules, seven legacy plus six directional offline
 standards, and both editors over 38,646 ICL / 815 PDL files. The editor suite
 completed in 167.685 seconds. Strict authored-code coverage was not remeasured.
+
+### Explicit TAP replay and reset qualification (2026-10-28)
+
+The scheduler now emits the instruction scans it already executed, and accepts
+explicit instruction-register transactions on replay. Known reset instruction
+bits initialize their controlling fill. If reset admits multiple encodings,
+unknown bits stay unknown; an explicit read/partial write must supply them rather
+than silently selecting an unrelated instruction. Synthetic DR access and
+controller-owned iState remain rejected. Scanned reset-held storage retains an
+unqualified read in the flat PDL. Reset-only source rewriting is unchanged.
+
+Nine TAP replay regressions cover masks, readonly/partial operations, ambiguous
+reset encodings, IR/DR grouping, output protection, flat replay, repeated SIB
+closure/reopening and transitive-reset observations. Independent review's
+ambiguous-reset finding was reproduced and fixed before final checks.
+
+Fresh Tessent 2026.2 runs produced nine new directional certificates: both
+directions for three reservation probes and repeated SIB closure/reopening;
+forward for transitive-reset release. All stages retain apply boundaries and
+TAP operations. See [certification evidence](tessent-goldens.md#tap-and-reset-qualification-2026-10-28).
+
+Full `make check`, final dynamic/static tests and Google style checks passed.
+ASan/UBSan with leak detection enabled passed the nine new tests, 26 CLI tests,
+21 resource tests and native scheduler suite. Logs are
+`build/tap-pdl-{full-regression,static-final,style-final,sanitizer-tests}.log`.
+Both editors checked 38,646 ICL / 816 PDL files; all 334 grammar and 119 scanner
+rules were reached. Strict authored-code coverage and RTL simulation were not
+run. Other documented retargeter/source-rewrite limits still apply.

@@ -1,0 +1,313 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "sib_close_reopen",
+    "top": "ResourceAccessTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/resources/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/resources/vendor_close_reopen.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/resources/vendor.icl": "a2adfcf4f984daacc49bb7e6df1d4bc2a158c4fc92bfbce6c56fc54341083652",
+    "tests/cases/ours/pattern_generation/resources/vendor_close_reopen.pdl": "21f9da9bbf7aef7900dd6e9ae7a7950fd8de49eaa4e825e024d572d3e1abfffe",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "sib_close_reopen",
+    "top": "ResourceAccessTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/resources/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/resources/vendor_close_reopen.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "a2adfcf4f984daacc49bb7e6df1d4bc2a158c4fc92bfbce6c56fc54341083652",
+      "source_0.pdl": "21f9da9bbf7aef7900dd6e9ae7a7950fd8de49eaa4e825e024d572d3e1abfffe",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "63f5ef571b8520d83c3f8cfbc05c4d3e7e8ad9e154be7926a1251e60af59ee87",
+      "ours.pdl": "733d5a443fb5574d389a0cca7fa80b39eb630a26c391c1858ee955f1bc93385b"
+    },
+    "generator_command": [
+      "/home/banana/cpp_workspace/icl-format/build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_sib_close_reopen/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_sib_close_reopen/source_0.pdl",
+      "--top_module",
+      "ResourceAccessTop",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_sib_close_reopen/ours.pdl",
+      "--bsdl",
+      "AccessProbe",
+      "/home/banana/cpp_workspace/icl-format/build/tap-replay-forward/test_sib_close_reopen/model.bsdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.1650047720177099,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/resources/vendor.icl": "a2adfcf4f984daacc49bb7e6df1d4bc2a158c4fc92bfbce6c56fc54341083652",
+      "tests/cases/ours/pattern_generation/resources/vendor_close_reopen.pdl": "21f9da9bbf7aef7900dd6e9ae7a7950fd8de49eaa4e825e024d572d3e1abfffe",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.980713156983256,
+    "outcome": "ok",
+    "result_sha256": "116d3d87d0c13e3977ae419f34449d5e79ad41c1958a03da2b488994351ae59c",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ResourceAccessTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "iState": [
+          [
+            "core.gate",
+            0,
+            "0"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ]
+        ]
+      },
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "1"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "0"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            0,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            1,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            2,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            3,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            4,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            5,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            6,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            7,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "1"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "0"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            0,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            1,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            2,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            3,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            4,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            5,
+            "0"
+          ],
+          [
+            "core.leaf.value",
+            6,
+            "1"
+          ],
+          [
+            "core.leaf.value",
+            7,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "182a0b26ba98d5006ee0dfcc320ca5fd68b8113a1f1bcfd6254f4921b7fa7293",
+  "vendor_console_sha256": "b9ec1e9bb9179daa8e1382819132e9df985b1a4c73c82021ffac004dbe80a7f8",
+  "artifacts": {
+    "flat.pdl": "733d5a443fb5574d389a0cca7fa80b39eb630a26c391c1858ee955f1bc93385b",
+    "vendor.pdl": "116d3d87d0c13e3977ae419f34449d5e79ad41c1958a03da2b488994351ae59c"
+  }
+}

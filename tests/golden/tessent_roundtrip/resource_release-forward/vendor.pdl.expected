@@ -1,0 +1,20 @@
+iProcsForModule ResourceAccessTop
+
+iProc oracle {} {
+
+   iReset
+   iState core.gate[1] 0b0
+   iState core.gate[0] 0b0
+   iWrite tap.INSTRUCTION[3:0] 0b0011
+   iRead  tap.INSTRUCTION[3:0] 0b0001
+   iApply
+
+   iWrite core.gate[1:0] 0b01
+   iApply
+
+   iWrite core.gate[1:0] 0b00
+   iWrite core.leaf.value[7:0] 0b10100101
+   iApply
+
+
+}

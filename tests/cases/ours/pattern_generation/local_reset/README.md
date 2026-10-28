@@ -14,9 +14,12 @@ reset sources use DataMux gating and ToResetPort forwarding across hierarchy.
 The separate `oracle_cases.json` runs through `tests/tessent_oracle.py` in
 comparison mode: our generator consumes the source PDL, while Tessent consumes
 the generated `local_reset.pdl`. Tessent 2026.2 accepted the explicit TAP case
-on 2026-10-27. Strict exported traces differ, so this is not a golden-equivalence
-fixture; see `docs/tessent-oracle.md` for the observed differences. The CLI
-regression independently checks source/flat replay and output idempotency.
+on 2026-10-27. Those independent-source traces differed under the historical
+strict policy. On 2026-10-28, the flat generator output was re-exported by Tessent
+with matching ordered apply groups and certified as
+`tests/golden/tessent_roundtrip/transitive_releases-forward`. Reverse preparation
+of the original source remains blocked because Tessent does not insert reset
+releases. The CLI regression checks source/flat replay and output idempotency.
 
 `alternatives.icl` reuses `Leaf` from `nested.icl` and has two OR-combined reset
 release paths. Resource regressions take one path (with/without a prior applied
