@@ -1,0 +1,310 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "scan_data_selectable",
+    "top": "ScanData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl": "1863c5cf52162116602d8fedf7dd2cbe7f9095b2edce49b23a7b9f7f5ae1bd1d",
+    "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl": "af0fcb65a2533a24778726b217f4e721ee47a2a1f221cee3cdc043f3fb68921e",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "scan_data_selectable",
+    "top": "ScanData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "inputs": {
+      "design_0.icl": "1863c5cf52162116602d8fedf7dd2cbe7f9095b2edce49b23a7b9f7f5ae1bd1d",
+      "source_0.pdl": "af0fcb65a2533a24778726b217f4e721ee47a2a1f221cee3cdc043f3fb68921e",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "9fd78fd3f1ae9a265b1b22d1a23a663fb309846cd2219cc2df6ff7818b6d08e3"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl": "1863c5cf52162116602d8fedf7dd2cbe7f9095b2edce49b23a7b9f7f5ae1bd1d",
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl": "af0fcb65a2533a24778726b217f4e721ee47a2a1f221cee3cdc043f3fb68921e",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.680828861892223,
+    "outcome": "ok",
+    "result_sha256": "aa166da41a04bad670080bb0c72912190f429c8a612d94ac9132e90f69060513",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ScanData",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.bus",
+            0,
+            "1"
+          ],
+          [
+            "core.bus",
+            1,
+            "0"
+          ],
+          [
+            "core.bus",
+            2,
+            "0"
+          ],
+          [
+            "core.bus",
+            3,
+            "1"
+          ],
+          [
+            "core.bus",
+            4,
+            "1"
+          ],
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "0"
+          ],
+          [
+            "core.observed",
+            2,
+            "0"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.bus",
+            0,
+            "0"
+          ],
+          [
+            "core.bus",
+            1,
+            "1"
+          ],
+          [
+            "core.bus",
+            2,
+            "1"
+          ],
+          [
+            "core.bus",
+            3,
+            "0"
+          ],
+          [
+            "core.bus",
+            4,
+            "1"
+          ],
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "0"
+          ],
+          [
+            "core.observed",
+            2,
+            "0"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.bus",
+            0,
+            "0"
+          ],
+          [
+            "core.bus",
+            1,
+            "1"
+          ],
+          [
+            "core.bus",
+            2,
+            "1"
+          ],
+          [
+            "core.bus",
+            3,
+            "0"
+          ],
+          [
+            "core.bus",
+            4,
+            "1"
+          ],
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "0"
+          ],
+          [
+            "core.observed",
+            2,
+            "0"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "1"
+          ],
+          [
+            "core.observed",
+            2,
+            "1"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "77b39d01540ec0b5ae31cbb197859150fa8096e27bad79803c9dec4576560d4e",
+  "vendor_console_sha256": "58ee7425eaa4e3616178857f58f3818182358bd8c86dd98b29797ad850dbf159",
+  "artifacts": {
+    "flat.pdl": "f53ef5a12b56cd532423e66e8e2dce40da48dc6ad903e1a05964d28ccda958b9",
+    "vendor.pdl": "aa166da41a04bad670080bb0c72912190f429c8a612d94ac9132e90f69060513"
+  }
+}

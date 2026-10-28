@@ -1,0 +1,327 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "scan_data_selectable",
+    "top": "ScanData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl": "1863c5cf52162116602d8fedf7dd2cbe7f9095b2edce49b23a7b9f7f5ae1bd1d",
+    "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl": "af0fcb65a2533a24778726b217f4e721ee47a2a1f221cee3cdc043f3fb68921e",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "scan_data_selectable",
+    "top": "ScanData",
+    "icl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "inputs": {
+      "design_0.icl": "1863c5cf52162116602d8fedf7dd2cbe7f9095b2edce49b23a7b9f7f5ae1bd1d",
+      "source_0.pdl": "af0fcb65a2533a24778726b217f4e721ee47a2a1f221cee3cdc043f3fb68921e",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "3ebc737431b7d0df99de0d428169e94e5707546fd55cb484f298a89166bbd829",
+      "ours.pdl": "2379beb2947f8b675315651f740a99f7718f4fa588dda5c616d83d3a732e9fb3"
+    },
+    "generator_command": [
+      "/home/banana/cpp_workspace/icl-format/build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/build/scan-data-forward/test_scan_data_selectable/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/build/scan-data-forward/test_scan_data_selectable/source_0.pdl",
+      "--top_module",
+      "ScanData",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/build/scan-data-forward/test_scan_data_selectable/ours.pdl",
+      "--bsdl",
+      "AccessProbe",
+      "/home/banana/cpp_workspace/icl-format/build/scan-data-forward/test_scan_data_selectable/model.bsdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.11457085993606597,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl": "1863c5cf52162116602d8fedf7dd2cbe7f9095b2edce49b23a7b9f7f5ae1bd1d",
+      "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl": "af0fcb65a2533a24778726b217f4e721ee47a2a1f221cee3cdc043f3fb68921e",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.680630961898714,
+    "outcome": "ok",
+    "result_sha256": "21b621121ec9ab1238344abfe9801d6344880c8ec14755fd8917b1b1fdc561e9",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ScanData",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.bus",
+            0,
+            "1"
+          ],
+          [
+            "core.bus",
+            1,
+            "0"
+          ],
+          [
+            "core.bus",
+            2,
+            "0"
+          ],
+          [
+            "core.bus",
+            3,
+            "1"
+          ],
+          [
+            "core.bus",
+            4,
+            "1"
+          ],
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "0"
+          ],
+          [
+            "core.observed",
+            2,
+            "0"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.bus",
+            0,
+            "0"
+          ],
+          [
+            "core.bus",
+            1,
+            "1"
+          ],
+          [
+            "core.bus",
+            2,
+            "1"
+          ],
+          [
+            "core.bus",
+            3,
+            "0"
+          ],
+          [
+            "core.bus",
+            4,
+            "1"
+          ],
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "0"
+          ],
+          [
+            "core.observed",
+            2,
+            "0"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.bus",
+            0,
+            "0"
+          ],
+          [
+            "core.bus",
+            1,
+            "1"
+          ],
+          [
+            "core.bus",
+            2,
+            "1"
+          ],
+          [
+            "core.bus",
+            3,
+            "0"
+          ],
+          [
+            "core.bus",
+            4,
+            "1"
+          ],
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "0"
+          ],
+          [
+            "core.observed",
+            2,
+            "0"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "core.observed",
+            0,
+            "0"
+          ],
+          [
+            "core.observed",
+            1,
+            "1"
+          ],
+          [
+            "core.observed",
+            2,
+            "1"
+          ],
+          [
+            "core.observed",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "77b39d01540ec0b5ae31cbb197859150fa8096e27bad79803c9dec4576560d4e",
+  "vendor_console_sha256": "9cc4b16b2c8b994f75ed8bac89105ca817da33182fab5c0d7c3acfb31e5c3582",
+  "artifacts": {
+    "flat.pdl": "2379beb2947f8b675315651f740a99f7718f4fa588dda5c616d83d3a732e9fb3",
+    "vendor.pdl": "21b621121ec9ab1238344abfe9801d6344880c8ec14755fd8917b1b1fdc561e9"
+  }
+}

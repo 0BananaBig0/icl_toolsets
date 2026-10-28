@@ -412,7 +412,10 @@ DataMuxes and OneHotDataGroups. Shared address buses use separate applies as nee
 Read comparisons do not set register contents. Reads preserve the storage they
 observe, including while resolving output enables. Generated PDL and flattened
 ICL are checked by replay; see the [DataRegister example and limits](docs/pattern-generation.md#data-register-access).
-Scan-driven DataRegister scheduling and mixed scan/parallel transactions remain unfinished.
+The serial and single-TAP backends also support scan-driven selectable/addressed
+DataRegister writes and reads captured through ScanRegisters. Capture uses the
+value before the same scan's Update; a read and write can share that scan.
+Mixed primary-drive/scan transactions remain unfinished.
 
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
@@ -447,7 +450,7 @@ repeated source insertions, or changes to Tcl substitution order. See
 [local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, scan-driven DataRegister execution, OneHotScanGroup execution, resource
+scheduling, mixed primary/scan transactions, OneHotScanGroup execution, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Fresh Tessent 2026.2 runs qualify the three reservation probes and

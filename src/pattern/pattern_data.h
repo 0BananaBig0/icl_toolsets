@@ -17,7 +17,7 @@ struct DataRegisterPlan {
   explicit DataRegisterPlan(const Netlist& netlist);
   std::map<size_t, AddressRequirement> writes;
   std::vector<size_t> order;
-  std::map<size_t, std::set<size_t>> primary_inputs;
+  std::map<size_t, std::set<size_t>> primary_inputs, scan_inputs;
 };
 struct DataReadGuard {
   size_t node;
@@ -28,10 +28,11 @@ struct DataReadRoute {
   BitReference output;
   std::vector<DataReadGuard> guards;
 };
-// Bounded structural paths from primary outputs through forwarding/mux/groups.
+// Bounded paths from primary outputs or scan captures through
+// forwarding/mux/groups.
 class DataReadRoutes {
  public:
-  explicit DataReadRoutes(const Netlist& netlist);
+  explicit DataReadRoutes(const Netlist& netlist, bool scan_capture = false);
   std::map<std::pair<size_t, int64_t>, std::vector<DataReadRoute>> routes;
   std::map<std::pair<size_t, int64_t>, std::set<size_t>> storage;
 };

@@ -169,6 +169,20 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "scan_data_selectable",
+      "top": "ScanData",
+      "icl": [
+        "tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok",
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe"
     }
   ]
 }

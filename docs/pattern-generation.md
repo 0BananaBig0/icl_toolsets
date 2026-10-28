@@ -253,8 +253,12 @@ build/icl-pattern-generation \
 `DataRegisterPlan` caches activation and dependency order. Structural read routes
 are built once per scheduler and reused across applies. `NetworkState` applies
 parallel pin changes atomically, then settles cascaded data updates and resets.
-Qualified falling-edge scan updates also settle the concrete model, including
-uncertain events; this does **not** yet provide serial DataRegister scheduling.
+The serial/single-TAP scheduler includes the same data storage in its temporal
+frames and settles it after qualified scan updates. It replays each emitted scan
+against the concrete state, checking data values, known-bit masks and controlling
+fills. Cascades use the shared dependency order. Unrequested data retains its
+controlling fill unless it supplies another required control or explicit scan
+writes determine its source.
 IEEE 1687-2014 §6.4.9, printed pp.118–121, defines cascaded evaluation after
 UpdateEn, controlling-value fill, reset priority and address/read/write activation.
 Tessent's v2023.4 DataRegister/Instance topics supplement inherited connections.
@@ -282,14 +286,51 @@ Limits: 4096 writable DataRegisters, 4 Mi dependency visits, 256 primary vectors
 The temporal model limits horizon × (netlist nodes + input bits) to 262144, with
 2 seconds per solver invocation and 15 seconds across horizons. Exhaustion reports
 a limit, not proven unreachability. Cyclic/self-referential data updates, callbacks,
-serial/mixed DataRegister transactions and DataRegister reservations are not yet
-supported. Control events must have definite activation unless reset dominates.
+mixed primary-drive/scan transactions and DataRegister reservations are not yet
+supported. The serial backend retains its bounded temporal solver rather than
+the scan-only large-network greedy path; its structural limits do not guarantee
+successful scheduling of every network below those limits. Control events must have definite activation unless reset dominates.
 
 The focused suite is `tests/src/pattern/test_data_register_scheduling.py`; it is
 included in dynamic/static and coverage recipes. Native tests check address
 collisions, unknown enables/events, reset priority, atomic failures and a
 reverse-declared 1024-register cascade. The source-derived probes and provenance
 are in `tests/cases/ours/pattern_generation/data_registers/`.
+
+### Scan-driven writes and captured reads
+
+`tests/cases/ours/pattern_generation/scan_data_registers/` contains standalone
+serial and BSDL-backed TAP examples. To run the TAP example:
+
+```sh
+build/icl-pattern-generation \
+  --icl tests/cases/ours/pattern_generation/scan_data_registers/vendor.icl \
+  --pdl tests/cases/ours/pattern_generation/scan_data_registers/vendor.pdl \
+  --bsdl AccessProbe tests/cases/ours/pattern_generation/access_link/simple.bsdl \
+  --output out/scan-data.pdl --debug
+```
+
+Writes justify data, address and enables through controlling scan registers.
+Even a same-value explicit write must update those controllers at least once
+(IEEE 7.9.14(a)). Capture routes follow forwarding, inversion, DataMux and
+addressed OneHotDataGroup selection in the **pre-update** state. Comparisons do
+not constrain stored data to match the expected value. Prerequisite scans preserve
+pending observed storage; the observation scan may subsequently update that data.
+Repeated reads use the last expectation for each bit, including an unqualified
+read replacing earlier care bits. Distinct logical targets colliding on a capture
+bit use separate scans. `-together` synchronizes writes only; Alias AccessTogether
+still keeps its read members in one observation.
+
+Physical writes and comparisons are emitted against ScanRegisters. Temporary
+DataRegister end-state override writes are retained where needed for replay,
+using the same marker logic as primary-input patterns. Ordinary DataRegister
+accesses do not require a separate serializer or a second parser.
+
+The focused suite `tests/src/pattern/test_scan_data_register_scheduling.py` is
+included in dynamic/static and coverage recipes. Its cases exercise partial and
+addressed writes, cascades, capture-before-update, inversion, mux/OneHot routes,
+reservations, grouping, end-state restoration, rejected unobservable reads,
+atomic failures and source/flat/generated-PDL replay.
 
 ## Command support
 
@@ -324,16 +365,17 @@ broader syntax support and never execute PDL.
   checked in concrete replay and retained in generated PDL. Mutually exclusive
   paths cannot satisfy it; a bounded search failure does not prove general
   hardware unreachability.
-- `AccessTogether` on a referenced ICL Alias keeps its full ScanRegister group
+- `AccessTogether` on a referenced ICL Alias keeps its full supported register group
   in a single operation, including nested aliases and partial references.
   Writes require simultaneous updates after reset release; reads compare their
   requested bits together after any prerequisite scans. Unrelated accesses may
-  use separate scans. Unsupported port/DataRegister members are rejected.
+  use separate scans. ScanRegister and writable DataRegister members are supported;
+  unsupported port members are rejected.
   Flattened ICL preserves the marker; emitted common updates use
   `iApply -together`.
 - Alias `iApplyEndState` follows IEEE 1687-2014 6.5.2(h): known, consistent
   per-bit defaults, matching register reset values, and ungated direct source
-  paths. Supported ultimate sources are ScanRegisters, primary-driven DataRegisters, primary DataInPorts and
+  paths. Supported ultimate sources are ScanRegisters, selectable/addressed DataRegisters, primary DataInPorts and
   compatible constants. Explicit writes override defaults for their next apply;
   a later apply or end of the input sequence restores them. Partial/X writes,
   inversion and direct-storage access retain the directive. Register defaults
@@ -380,7 +422,7 @@ broader syntax support and never execute PDL.
 
 The backend accepts one SI/SO boundary and at most one TAP. It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
-serial one-hot/addressed transactions, feedback reset scheduling,
+OneHotScanGroup transactions, feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing shadow-register effects or independently gated
 interface events are outside the current complete-scan model; inability to
@@ -1178,7 +1220,7 @@ Three new Tessent certificates qualify selectable storage in both directions
 and shared-bus addressed storage in reverse. The nested address-default case and
 the addressed forward comparison remain unqualified; see
 [the vendor evidence](tessent-goldens.md#dataregister-qualification-2026-10-28).
-The complete retargeter remains unfinished for serial/mixed DataRegister access,
+The complete retargeter remains unfinished for mixed primary/scan DataRegister access,
 callbacks, feedback, OneHotScanGroup, multiple controllers/outputs, independently
 gated or shadow events, system clocks and the other limits above.
 
@@ -1186,3 +1228,49 @@ Evidence logs: `build/data-register-regression-published.log`,
 `build/data-register-style-passed.log`, `build/data-register-sanitizer-*-final.log`,
 `build/data-register-scale-final.log`, and `build/data-register-goldens-final.log`.
 No installation or RTL simulation was performed in this phase.
+
+### Scan-driven DataRegister verification (2026-10-28)
+
+The complete `make check` run exited 0 after review fixes. Dynamic and static
+builds each passed 19 serial DataRegister cases and 20 primary DataRegister cases.
+The corpus covered 334/334 grammar alternatives and 119/119 scanner rules; Vim
+and Neovim each checked 38,654 ICL and 824 PDL files. All 21 directional and seven
+legacy Tessent standards passed offline. Google formatting and the changed C++
+files' naming checks passed.
+
+The independent review found three important defects, each reproduced before
+fixing: `-together` incorrectly constrained reads, same-value data goals could
+skip a controlling ScanRegister UpdateEn, and repeated data reads did not replace
+earlier expectations. The latter fix also covers the primary-input backend.
+The native regression's unsupported-alias assertion was updated to match the
+broader supported-register diagnostic; the invalid port-member case still fails
+atomically.
+
+ASan/UBSan with LeakSanitizer enabled passed the native state/scheduler tests,
+18 serial correctness cases and all 20 primary-data cases. The eight-register
+stress case reaches the existing two-second solver timeout under sanitizers,
+including an isolated rerun; the complete 19-case sanitizer suite therefore did
+not pass. This is a reported scheduling resource limit, with no sanitizer memory
+error reported. Sanitizers were not disabled and solver limits were not raised.
+LeakSanitizer required execution outside the ptrace sandbox.
+
+The 925-byte `scan_data_registers/addressed_eight.icl` uses eight four-bit addressed
+registers on one eight-bit scan bus. GCC 16.2.1 `-O2`, Linux 6.18.33.2 WSL2,
+`/usr/bin/time -v build/icl-pattern-generation --icl
+ tests/cases/ours/pattern_generation/scan_data_registers/addressed_eight.icl --pdl
+ tests/cases/ours/pattern_generation/scan_data_registers/addressed_eight.pdl --output
+ build/scan-data-eight.pdl --debug` measured 1.95 s and 62,032 KiB peak RSS,
+producing eight scans. The instrumented run stopped at the limit after 2.54 s /
+488,932 KiB. This establishes a small tested scale, not maximum throughput or
+optimality. Larger shared-address scheduling needs a dependency-aware heuristic
+before claiming scalable retargeting for such banks.
+
+Evidence: `build/scan-data-regression-published.log`,
+`build/scan-data-review-{red,green}.log`,
+`build/scan-data-sanitizer-{state,scheduler,primary,correctness}-final.log`,
+`build/scan-data-eight{,-sanitized}-measurement.log`, and
+`build/scan-data-goldens-final.log`. Strict authored-code coverage, installation,
+and RTL simulation were not rerun. Mixed primary/scan transactions, multi-TAP
+and shared-output scheduling, OneHotScanGroup, callbacks/feedback, shadow events,
+system-clock waits, broader reservations and general local-reset rewriting
+remain separate unfinished capabilities.

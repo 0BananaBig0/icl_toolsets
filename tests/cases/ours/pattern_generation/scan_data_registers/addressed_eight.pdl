@@ -1,0 +1,11 @@
+iProcsForModule ScanData
+iReset
+iWrite bank.r0 1
+iWrite bank.r1 2
+iWrite bank.r2 3
+iWrite bank.r3 4
+iWrite bank.r4 5
+iWrite bank.r5 6
+iWrite bank.r6 7
+iWrite bank.r7 8
+iApply

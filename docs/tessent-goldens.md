@@ -164,6 +164,30 @@ attempts. The three successful immutable standards raise the offline directional
 suite to 19 certificates; seven legacy certificates also remain passing. This
 phase did not regenerate formatter/testbench standards or run RTL simulation.
 
+## Scan-driven DataRegister qualification, 2026-10-28
+
+The `scan_data_selectable` TAP-backed probe writes a selectable DataRegister twice
+and reads it through a ScanRegister CaptureSource. Fresh Tessent 2026.2 runs pass
+both directional fixed points. The immutable standards are
+`scan_data_selectable-forward` and `scan_data_selectable-reverse` under
+`tests/golden/tessent_roundtrip/`, bringing the directional total to 21.
+These are finite-case qualifications, not proof of arbitrary DataRegister support.
+
+The first standalone probe was rejected by Tessent ICL71-1 because it lacked the
+scan-interface controls needed for elaboration. The corrected fixture uses the
+existing AccessProbe BSDL and explicit client controls. Tessent emits the data-bus
+and capture-register writes, then the captured comparison on the later read.
+This observation agrees with the standard's Capture-before-Update model; it does
+not establish behavior for untested callback or feedback registers.
+
+Evidence is retained below the existing remote
+`test_icl_toolsets/test_data_register_execution/` directory in
+`scan-data-source-reverse-tap/` and `scan-data-forward/`. Local retrieved bundles
+are `build/scan-data-vendor-tap-result/` and `build/scan-data-vendor-forward-result/`.
+The comparator retains ordered apply groups and allows independent operation
+ordering within each group; no initialization or repeated writes were discarded.
+Formatter/testbench certificates and RTL simulation were not regenerated.
+
 ## Comparison and immutable standards
 
 Formatter qualification also exports `result.v` with

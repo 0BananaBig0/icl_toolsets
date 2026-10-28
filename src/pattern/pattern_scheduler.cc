@@ -745,15 +745,7 @@ class ScanScheduler::Impl {
           const char value = ref.inverted && bits[i] != 'x'
                                  ? (bits[i] == '1' ? '0' : '1')
                                  : bits[i];
-          auto& expected = reads[ref.node];
-          const auto previous = expected.find(ref.index);
-          if (previous != expected.end() && previous->second != 'x' &&
-              value != 'x' && previous->second != value) {
-            throw std::runtime_error("conflicting primary read comparisons");
-          }
-          if (previous == expected.end() || value != 'x') {
-            expected[ref.index] = value;
-          }
+          reads[ref.node][ref.index] = value;
           continue;
         }
         if (ref.node == kMissing ||
@@ -1126,21 +1118,7 @@ class ScanScheduler::Impl {
         for (size_t id : data_plan.order) {
           fill.at(id) = Decode(model, frame.fill.at(id));
         }
-        if (!step.writes.empty()) {
-          // Preserve temporary data-register overrides when flat PDL writes
-          // the physical ports instead of naming the abstract register.
-          for (const auto& [id, defaults] : end_states_) {
-            if (!data_plan.writes.count(id)) continue;
-            const auto bits = replay.Value(id);
-            bool overridden = false;
-            for (size_t bit = 0; bit < bits.size(); ++bit) {
-              overridden =
-                  overridden || (defaults[bit] != 'x' && bits[bit] != 'x' &&
-                                 defaults[bit] != bits[bit]);
-            }
-            if (overridden) step.writes.emplace(netlist_.nodes[id].name, bits);
-          }
-        }
+        AppendDataEndOverrides(replay, &step);
         if (!step.writes.empty() || !step.expected.empty()) {
           steps.push_back(std::move(step));
         }
@@ -1165,6 +1143,24 @@ class ScanScheduler::Impl {
         "budget");
   }
 
+  void AppendDataEndOverrides(const NetworkState& replay,
+                              ScanStep* step) const {
+    if (!step->writes.empty()) {
+      // Preserve temporary data-register overrides when flat PDL writes
+      // the physical ports instead of naming the abstract register.
+      for (const auto& [id, defaults] : end_states_) {
+        if (!state_.DataRegisters().writes.count(id)) continue;
+        const auto bits = replay.Value(id);
+        bool overridden = false;
+        for (size_t bit = 0; bit < bits.size(); ++bit) {
+          overridden =
+              overridden || (defaults[bit] != 'x' && bits[bit] != 'x' &&
+                             defaults[bit] != bits[bit]);
+        }
+        if (overridden) step->writes.emplace(netlist_.nodes[id].name, bits);
+      }
+    }
+  }
   z3::expr DataReadGuardActive(SymbolicNetwork& values,
                                const DataReadGuard& guard) {
     const auto& node = netlist_.nodes[guard.node];
@@ -1280,6 +1276,12 @@ class ScanScheduler::Impl {
         continue;
       }
       const auto& node = netlist_.nodes.at(bit.node);
+      if (node.kind == "DataRegister") {
+        auto& mask =
+            data_control_masks_.try_emplace(bit.node, node.Width(), '0')
+                .first->second;
+        mask.at(Offset(node, bit.index)) = '1';
+      }
       if (node.kind == "ScanRegister") {
         auto entry =
             control_masks_.emplace(bit.node, std::string(node.Width(), '0'))
@@ -1374,8 +1376,14 @@ class ScanScheduler::Impl {
     }
     return match;
   }
+  struct CaptureComparison {
+    BitReference output;
+    char expected;
+    z3::expr selected;
+  };
   struct Frame {
     Values state, loads, fill;
+    std::vector<CaptureComparison> comparisons;
     std::optional<SymbolicValue> instruction;
     std::map<size_t, z3::expr> active, read;
     std::vector<z3::expr> selected;
@@ -1769,7 +1777,22 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "TAP state is unknown; explicit iReset is required");
     }
+    const auto& data_plan = state_.DataRegisters();
+    for (size_t id : data_plan.order) {
+      const auto& node = netlist_.nodes[id];
+      for (const auto& bit : node.inputs.at("WriteDataSource")) AddControl(bit);
+      const auto& access = data_plan.writes.at(id);
+      AddControl(access.enable);
+      if (access.signals) {
+        for (const auto& bit : *access.signals) AddControl(bit);
+      }
+    }
+    std::vector<size_t> storage = registers_;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      if (netlist_.nodes[id].kind == "DataRegister") storage.push_back(id);
+    }
     std::map<size_t, std::string> goals, expected;
+    std::map<size_t, std::map<int64_t, char>> data_reads;
     std::set<size_t> required;
     struct AccessGroup {
       bool read = false;
@@ -1801,13 +1824,18 @@ class ScanScheduler::Impl {
                            full.access_together.end());
             for (const auto& bit : full.bits) {
               if (bit.node == kMissing ||
-                  netlist_.nodes.at(bit.node).kind != "ScanRegister") {
+                  (netlist_.nodes.at(bit.node).kind != "ScanRegister" &&
+                   !data_plan.writes.count(bit.node))) {
                 throw std::runtime_error(
                     "AccessTogether " + netlist_.nodes[alias].name +
-                    " requires ScanRegister members in the serial backend");
+                    " requires register members in the serial backend");
               }
               group.members.insert(bit.node);
-              required.insert(bit.node);
+              if (data_plan.writes.count(bit.node)) {
+                if (read) data_reads[bit.node].emplace(bit.index, 'x');
+              } else {
+                required.insert(bit.node);
+              }
             }
           }
         }
@@ -1821,10 +1849,20 @@ class ScanScheduler::Impl {
                                            operation.arguments[1]);
       for (size_t i = 0; i < bits.size(); ++i) {
         const auto& ref = target.bits[i];
+        if (read && ref.node != kMissing &&
+            (netlist_.nodes[ref.node].kind == "DataRegister" ||
+             netlist_.nodes[ref.node].kind == "DataOutPort")) {
+          const char value = ref.inverted && bits[i] != 'x'
+                                 ? (bits[i] == '1' ? '0' : '1')
+                                 : bits[i];
+          data_reads[ref.node][ref.index] = value;
+          continue;
+        }
         if (ref.node == kMissing ||
-            netlist_.nodes.at(ref.node).kind != "ScanRegister") {
+            (netlist_.nodes.at(ref.node).kind != "ScanRegister" &&
+             (read || !data_plan.writes.count(ref.node)))) {
           throw std::runtime_error(
-              "read/write target requires a ScanRegister or its Alias");
+              "serial target requires a ScanRegister or writable DataRegister");
         }
         if (tap_ &&
             std::any_of(
@@ -1833,7 +1871,7 @@ class ScanScheduler::Impl {
           throw std::runtime_error(
               "synthetic TAP data registers are not PDL targets");
         }
-        required.insert(ref.node);
+        if (!data_plan.writes.count(ref.node)) required.insert(ref.node);
         auto& values = read ? expected : goals;
         auto entry =
             values
@@ -1846,6 +1884,44 @@ class ScanScheduler::Impl {
           entry->second.at(Offset(netlist_.nodes[ref.node], ref.index)) =
               ref.inverted && bits[i] != 'x' ? (bits[i] == '1' ? '0' : '1')
                                              : bits[i];
+        }
+      }
+    }
+    const DataReadRoutes* routes = nullptr;
+    std::map<size_t, std::set<size_t>> pending_reads;
+    if (!data_reads.empty()) {
+      if (!scan_read_routes_) {
+        scan_read_routes_ = std::make_unique<DataReadRoutes>(netlist_, true);
+      }
+      routes = scan_read_routes_.get();
+      OneHotReadResolver resolver(netlist_);
+      for (const auto& [id, bits] : data_reads) {
+        for (const auto& [index, expected] : bits) {
+          const auto found = routes->routes.find({id, index});
+          if (found == routes->routes.end()) {
+            throw std::runtime_error("unobservable data read target " +
+                                     netlist_.nodes[id].name);
+          }
+          for (const auto& route : found->second) {
+            const auto stored =
+                routes->storage.find({route.output.node, route.output.index});
+            if (stored != routes->storage.end()) {
+              for (size_t reg : stored->second) pending_reads[reg].insert(id);
+            }
+            for (const auto& guard : route.guards) {
+              const auto& node = netlist_.nodes[guard.node];
+              if (node.kind != "OneHotDataGroup" || guard.choice == kMissing) {
+                continue;
+              }
+              for (const auto& access :
+                   resolver.Resolve(node.one_hot_sources.at(guard.choice))) {
+                AddControl(access.enable);
+                if (access.signals) {
+                  for (const auto& bit : *access.signals) AddControl(bit);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -1865,15 +1941,26 @@ class ScanScheduler::Impl {
     std::set<size_t> explicit_goals;
     for (const auto& [id, goal] : goals) explicit_goals.insert(id);
     for (const auto& [id, bits] : end_goals) {
-      if (netlist_.nodes[id].kind != "ScanRegister") {
+      if (netlist_.nodes[id].kind != "ScanRegister" &&
+          !data_plan.writes.count(id)) {
         throw std::runtime_error(
             "mixed primary/scan iApplyEndState scheduling is not implemented");
       }
       if (NeedsEndState({{id, bits}})) {
         goals.emplace(id, fill_.at(id));
-        required.insert(id);
+        if (!data_plan.writes.count(id)) required.insert(id);
       }
     }
+    // IEEE 7.9.14(a): matching stored data does not waive UpdateEn on
+    // the scan registers controlling an explicit DataRegister write.
+    std::set<size_t> data_controllers;
+    for (size_t id : explicit_goals) {
+      const auto inputs = data_plan.scan_inputs.find(id);
+      if (inputs != data_plan.scan_inputs.end()) {
+        data_controllers.insert(inputs->second.begin(), inputs->second.end());
+      }
+    }
+    required.insert(data_controllers.begin(), data_controllers.end());
     std::string access_context;
     std::set<size_t> grouped_reads;
     for (const auto& [key, group] : groups) {
@@ -1931,8 +2018,8 @@ class ScanScheduler::Impl {
         }
       }
     }
-    if (allow_greedy && end_states_.empty() && registers_.size() >= 32 &&
-        expected.empty()) {
+    if (allow_greedy && data_plan.order.empty() && end_states_.empty() &&
+        registers_.size() >= 32 && expected.empty() && data_reads.empty()) {
       auto planned = TryGreedy(operations, goals, required, together, preserved,
                                desired_preserved, explicit_writes);
       if (planned) return std::move(*planned);
@@ -1940,7 +2027,7 @@ class ScanScheduler::Impl {
     const auto start = std::chrono::steady_clock::now();
     for (size_t horizon = 1; horizon <= max_steps; ++horizon) {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(15) ||
-          horizon * (graph_.size() + registers_.size()) > 262144) {
+          horizon * (graph_.size() + storage.size()) > 262144) {
         throw std::runtime_error(
             "scan scheduling resource limit; reachability not proved");
       }
@@ -1953,7 +2040,7 @@ class ScanScheduler::Impl {
       for (const auto& [id, value] : preserved) {
         reserved_changed.emplace(id, context_.bool_val(false));
       }
-      for (size_t id : registers_) {
+      for (size_t id : storage) {
         state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
         fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
       }
@@ -1964,11 +2051,20 @@ class ScanScheduler::Impl {
       }
       std::map<size_t, z3::expr> touched;
       for (const auto& [id, goal] : goals) {
-        touched.emplace(id, context_.bool_val(false));
+        touched.emplace(id, context_.bool_val(data_plan.writes.count(id) &&
+                                              state_.Value(id) == goal));
+      }
+      std::map<size_t, z3::expr> controller_updated;
+      for (size_t id : data_controllers) {
+        controller_updated.emplace(id, context_.bool_val(false));
       }
       std::map<size_t, z3::expr> read;
       for (const auto& [id, bits] : expected) {
         read.emplace(id, context_.bool_val(false));
+      }
+      std::map<size_t, z3::expr> data_read_done;
+      for (const auto& [id, bits] : data_reads) {
+        data_read_done.emplace(id, context_.bool_val(false));
       }
       std::vector<Frame> frames;
       std::vector<z3::expr> simultaneous(groups.size(),
@@ -2040,6 +2136,9 @@ class ScanScheduler::Impl {
           const auto desired = SymbolicValue::Literal(context_, fill_.at(id));
           changes = changes + z3::ite(active && loaded != desired.bits,
                                       context_.int_val(1), context_.int_val(0));
+          if (controller_updated.count(id)) {
+            controller_updated.at(id) = controller_updated.at(id) || active;
+          }
           if (touched.count(id)) {
             touched.at(id) =
                 touched.at(id) ||
@@ -2059,6 +2158,132 @@ class ScanScheduler::Impl {
                          SymbolicValue::Literal(
                              context_, node.constants.at("ResetValue").data),
                          next.at(id));
+        }
+        // Route comparisons through the value present at Capture, before
+        // this scan's new write-data/address/enable bits reach Update.
+        std::map<std::pair<Key, char>, z3::expr> physical_reads;
+        for (const auto& [id, bits] : expected) {
+          const auto& node = netlist_.nodes[id];
+          for (size_t bit = 0; bit < bits.size(); ++bit) {
+            if (bits[bit] == 'x') continue;
+            const int64_t index =
+                node.left +
+                (node.left <= node.right ? 1 : -1) * static_cast<int64_t>(bit);
+            physical_reads.emplace(std::make_pair(Key{id, index}, bits[bit]),
+                                   frame.read.at(id));
+          }
+        }
+        for (const auto& [id, bits] : data_reads) {
+          const auto observe = context_.bool_const(
+              ("capture_" + std::to_string(id) + "_" + std::to_string(time))
+                  .c_str());
+          solver.add(z3::implies(observe, !data_read_done.at(id)));
+          for (const auto& [index, expected] : bits) {
+            auto count = context_.int_val(0);
+            const auto& choices = routes->routes.at({id, index});
+            for (size_t route = 0; route < choices.size(); ++route) {
+              const auto& path = choices[route];
+              const auto selected = context_.bool_const(
+                  ("capture_route_" + std::to_string(id) + "_" +
+                   std::to_string(index) + "_" + std::to_string(time) + "_" +
+                   std::to_string(route))
+                      .c_str());
+              auto valid = frame.active.count(path.output.node)
+                               ? frame.active.at(path.output.node)
+                               : context_.bool_val(false);
+              for (const auto& guard : path.guards) {
+                valid = valid && DataReadGuardActive(values, guard);
+              }
+              const auto& output = netlist_.nodes[path.output.node];
+              if (output.reset) {
+                valid = valid && Known(values.Read(*output.reset), false);
+              }
+              solver.add(z3::implies(selected, valid));
+              count = count + z3::ite(selected, context_.int_val(1),
+                                      context_.int_val(0));
+              const char compare = path.output.inverted && expected != 'x'
+                                       ? (expected == '1' ? '0' : '1')
+                                       : expected;
+              frame.comparisons.push_back({path.output, compare, selected});
+              if (compare != 'x') {
+                const auto key = std::make_pair(
+                    Key{path.output.node, path.output.index}, compare);
+                const auto found = physical_reads.find(key);
+                if (found == physical_reads.end()) {
+                  physical_reads.emplace(key, selected);
+                } else {
+                  found->second = found->second || selected;
+                }
+              }
+            }
+            solver.add(count == z3::ite(observe, context_.int_val(1),
+                                        context_.int_val(0)));
+          }
+          frame.read.emplace(id, observe);
+          data_read_done.at(id) = data_read_done.at(id) || observe;
+        }
+        for (const auto& [key, selected] : physical_reads) {
+          const auto opposite =
+              physical_reads.find({key.first, key.second == '1' ? '0' : '1'});
+          if (opposite != physical_reads.end()) {
+            solver.add(!(selected && opposite->second));
+          }
+        }
+        // Data storage settles after Update, in dependency order. Capture
+        // uses the pre-update state and cannot be satisfied by these writes.
+        for (size_t id : data_plan.order) {
+          const auto& node = netlist_.nodes[id];
+          SymbolicNetwork data(netlist_, context_, next, global_resets_);
+          const auto active = data.Active(data_plan.writes.at(id));
+          const auto load = data.Bits(node.inputs.at("WriteDataSource"));
+          auto enabled = Known(active, true);
+          auto definite = enabled || Known(active, false);
+          auto updated = ResetValue(active, load, next.at(id));
+          auto fill = Choose(enabled, load, fills.at(id));
+          if (node.reset) {
+            const auto reset = data.Read(*node.reset);
+            updated =
+                ResetValue(reset,
+                           SymbolicValue::Literal(
+                               context_, node.constants.at("ResetValue").data),
+                           updated);
+            enabled = enabled && Known(reset, false);
+            definite = definite || Known(reset, true);
+            fill = Choose(
+                Known(reset, true),
+                SymbolicValue::Literal(context_, initial_fill_.at(id)), fill);
+          }
+          solver.add(definite);
+          solver.add(z3::implies(
+              enabled, load.known == ~context_.bv_val(0, node.Width())));
+          const auto source_scans = data_plan.scan_inputs.find(id);
+          const bool explicit_scan =
+              source_scans != data_plan.scan_inputs.end() &&
+              std::any_of(
+                  source_scans->second.begin(), source_scans->second.end(),
+                  [&](size_t scan) { return explicit_goals.count(scan); });
+          if (!goals.count(id) && !explicit_scan) {
+            const auto care = SymbolicValue::Literal(
+                context_, data_control_masks_.count(id)
+                              ? data_control_masks_.at(id)
+                              : std::string(node.Width(), '0'));
+            solver.add(z3::implies(
+                enabled,
+                (load.bits & ~care.bits) == (fills.at(id).bits & ~care.bits)));
+          }
+
+          const auto waiting = pending_reads.find(id);
+          if (waiting != pending_reads.end()) {
+            for (size_t read : waiting->second) {
+              solver.add(z3::implies(!data_read_done.at(read),
+                                     updated.bits == state.at(id).bits &&
+                                         updated.known == state.at(id).known));
+            }
+          }
+          next.insert_or_assign(id, updated);
+          fills.at(id) = fill;
+          frame.active.insert_or_assign(id, enabled);
+          if (touched.count(id)) touched.at(id) = touched.at(id) || enabled;
         }
         for (const auto& [id, previous] : preserved) {
           const auto old = SymbolicValue::Literal(context_, previous);
@@ -2085,7 +2310,9 @@ class ScanScheduler::Impl {
             const auto active = frame.active.count(id)
                                     ? frame.active.at(id)
                                     : context_.bool_val(false);
-            complete = complete && active;
+            complete = complete &&
+                       (group.read && data_reads.count(id) ? frame.read.at(id)
+                                                           : active);
             if (group.read) {
               if (group.requested.count(id)) {
                 complete = complete && frame.read.at(id);
@@ -2095,7 +2322,9 @@ class ScanScheduler::Impl {
                 const auto requested =
                     SymbolicValue::Literal(context_, goals.at(id));
                 complete = complete &&
-                           frame.loads.at(id).bits == requested.bits &&
+                           (data_plan.writes.count(id)
+                                ? next.at(id).bits
+                                : frame.loads.at(id).bits) == requested.bits &&
                            next.at(id).known == requested.known &&
                            next.at(id).bits == requested.bits;
               }
@@ -2141,7 +2370,9 @@ class ScanScheduler::Impl {
         solver.add((state.at(id).known & wanted.known) == wanted.known &&
                    (state.at(id).bits & wanted.known) == wanted.bits);
       }
+      for (const auto& [id, updated] : controller_updated) solver.add(updated);
       for (const auto& [id, observed] : read) solver.add(observed);
+      for (const auto& [id, observed] : data_read_done) solver.add(observed);
       for (const auto& complete : simultaneous) solver.add(complete);
       solver.minimize(cycles);
       solver.minimize(changes);
@@ -2188,19 +2419,48 @@ class ScanScheduler::Impl {
             Replay(frame, model, expected,
                    tap_ && !required.count(tap_->instruction_register), &replay,
                    tap_replay.get(), replayed_preserved, desired_preserved);
+        for (size_t id : data_plan.order) {
+          if (replay.Value(id) != Decode(model, frame.state.at(id))) {
+            throw std::runtime_error(
+                "symbolic/concrete DataRegister replay mismatch at " +
+                netlist_.nodes[id].name);
+          }
+          if (model.eval(frame.active.at(id), true).is_true()) {
+            fill[id] = replay.Value(id);
+          }
+          const auto& node = netlist_.nodes[id];
+          if (node.reset && replay.Read(*node.reset) == '1') {
+            fill[id] = initial_fill_.at(id);
+          }
+          if (fill.at(id) != Decode(model, frame.fill.at(id))) {
+            throw std::runtime_error("symbolic/concrete data fill mismatch");
+          }
+        }
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           bool complete = true;
           for (size_t id : group.members) {
             const auto& name = netlist_.nodes[id].name;
             if (group.read) {
-              complete =
-                  complete && step.loads.count(name) &&
-                  (!group.requested.count(id) || step.expected.count(name));
+              if (data_reads.count(id)) {
+                complete =
+                    complete && model.eval(frame.read.at(id), true).is_true();
+              } else {
+                complete =
+                    complete && step.loads.count(name) &&
+                    (!group.requested.count(id) || step.expected.count(name));
+              }
             } else {
-              const auto found = step.writes.find(name);
-              complete = complete && found != step.writes.end() &&
-                         (!goals.count(id) || found->second == goals.at(id));
+              if (data_plan.writes.count(id)) {
+                complete =
+                    complete &&
+                    model.eval(frame.active.at(id), true).is_true() &&
+                    (!goals.count(id) || replay.Value(id) == goals.at(id));
+              } else {
+                const auto found = step.writes.find(name);
+                complete = complete && found != step.writes.end() &&
+                           (!goals.count(id) || found->second == goals.at(id));
+              }
             }
           }
           if (complete && !simultaneous_replayed[group_index]) {
@@ -2229,6 +2489,7 @@ class ScanScheduler::Impl {
                 "symbolic/concrete controlling fill mismatch");
           }
         }
+        AppendDataEndOverrides(replay, &step);
         steps.push_back(std::move(step));
       }
       if (std::find(simultaneous_replayed.begin(), simultaneous_replayed.end(),
@@ -2316,6 +2577,17 @@ class ScanScheduler::Impl {
     }
     const size_t input = graph_[vertex].bit.node;
     step.input = netlist_.nodes.at(input).name;
+    std::map<size_t, std::string> capture_expected;
+    for (const auto& item : frame.comparisons) {
+      if (!model.eval(item.selected, true).is_true()) continue;
+      const auto& node = netlist_.nodes[item.output.node];
+      auto& bits =
+          capture_expected.try_emplace(item.output.node, node.Width(), 'x')
+              .first->second;
+      if (item.expected != 'x') {
+        bits.at(Offset(node, item.output.index)) = item.expected;
+      }
+    }
     std::map<size_t, ScanControl> controls;
     for (const auto& [id, suffix] : registers) {
       const auto bits = Decode(model, frame.loads.at(id));
@@ -2331,6 +2603,15 @@ class ScanScheduler::Impl {
       } else if (step.instruction && implicit_instruction) {
         compare = tap_->bsdl.capture;
         step.expected.emplace(netlist_.nodes[id].name, compare);
+      }
+      const auto captured = capture_expected.find(id);
+      if (captured != capture_expected.end()) {
+        for (size_t bit = 0; bit < compare.size(); ++bit) {
+          if (captured->second[bit] != 'x') {
+            compare[bit] = captured->second[bit];
+          }
+        }
+        step.expected.insert_or_assign(netlist_.nodes[id].name, compare);
       }
       for (auto it = compare.rbegin(); it != compare.rend(); ++it) {
         step.serial_expected +=
@@ -2401,13 +2682,13 @@ class ScanScheduler::Impl {
   NetworkState state_;
   const TapRuntimeModel* tap_ = nullptr;
   std::unique_ptr<TapExecution> execution_;
-  std::unique_ptr<DataReadRoutes> data_read_routes_;
+  std::unique_ptr<DataReadRoutes> data_read_routes_, scan_read_routes_;
   bool tap_ready_ = false;
   std::string global_resets_ = "xx";
   z3::context context_;
   std::vector<size_t> registers_, roots_, order_, reset_order_;
   std::map<size_t, std::string> fill_, initial_fill_, control_masks_,
-      end_states_;
+      end_states_, data_control_masks_;
   std::map<size_t, std::set<size_t>> reset_dependencies_;
   std::set<Key> control_seen_;
   std::map<Key, size_t> ids_;

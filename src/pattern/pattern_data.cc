@@ -7,7 +7,7 @@
 #include <tuple>
 
 namespace pattern {
-DataReadRoutes::DataReadRoutes(const Netlist& netlist) {
+DataReadRoutes::DataReadRoutes(const Netlist& netlist, bool scan_capture) {
   constexpr size_t kMissing = std::numeric_limits<size_t>::max();
   struct Pending {
     BitReference bit;
@@ -17,12 +17,19 @@ DataReadRoutes::DataReadRoutes(const Netlist& netlist) {
   size_t remaining = 262144;
   for (size_t id = 0; id < netlist.nodes.size(); ++id) {
     const auto& output = netlist.nodes[id];
-    if (output.scope != 0 || output.kind != "DataOutPort") continue;
+    if (scan_capture ? (output.kind != "ScanRegister" ||
+                        !output.inputs.count("CaptureSource"))
+                     : (output.scope != 0 || output.kind != "DataOutPort")) {
+      continue;
+    }
     for (size_t offset = 0; offset < output.Width(); ++offset) {
       const auto index = output.left + (output.left <= output.right
                                             ? static_cast<int64_t>(offset)
                                             : -static_cast<int64_t>(offset));
-      std::vector<Pending> pending{{{id, index}, {{id, index}, {}}}};
+      const auto source = scan_capture
+                              ? output.inputs.at("CaptureSource").at(offset)
+                              : BitReference{id, index};
+      std::vector<Pending> pending{{source, {{id, index}, {}}}};
       while (!pending.empty()) {
         auto item = std::move(pending.back());
         pending.pop_back();
@@ -150,6 +157,7 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
       const auto& source = netlist.nodes.at(ref.node);
       if (source.model == ModelKind::kRegister) {
         if (writes.count(ref.node)) sources.insert(ref.node);
+        if (source.kind == "ScanRegister") scan_inputs[id].insert(ref.node);
         continue;
       }
       if (source.scope == 0 && IsInputPort(source.kind) &&
@@ -183,6 +191,8 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
     for (size_t consumer : consumers[id]) {
       primary_inputs[consumer].insert(primary_inputs[id].begin(),
                                       primary_inputs[id].end());
+      scan_inputs[consumer].insert(scan_inputs[id].begin(),
+                                   scan_inputs[id].end());
       dependencies[consumer].erase(id);
       if (dependencies[consumer].empty()) {
         ready.emplace(netlist.nodes[consumer].name, consumer);

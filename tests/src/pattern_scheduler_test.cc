@@ -644,9 +644,8 @@ Module Network {
   try {
     scheduler.Apply({{"iWrite", {"invalid[1]", "1"}, "unsupported:1", {}}});
   } catch (const std::exception& error) {
-    rejected =
-        std::string(error.what()).find("requires ScanRegister members") !=
-        std::string::npos;
+    rejected = std::string(error.what()).find("requires register members") !=
+               std::string::npos;
   }
   Require(rejected && scheduler.Value("gate") == "0",
           "unsupported full group members cannot be hidden behind a slice");

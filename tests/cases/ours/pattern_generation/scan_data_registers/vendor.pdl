@@ -1,0 +1,8 @@
+iProcsForModule ScanData
+iReset
+iWrite core.value 9
+iApply
+iWrite core.value 6
+iApply
+iRead core.value 6
+iApply

@@ -35,6 +35,16 @@ class DataRegisterScheduling(unittest.TestCase):
         self.assertEqual(text, self.run_tool(icl=f'debug/{self.top}.icl', output='flat.pdl'))
         self.assertEqual(text, self.run_tool(icl=f'debug/{self.top}.icl', source='result.pdl', output='both.pdl'))
 
+    def test_repeated_read_last_comparison_wins(self):
+        text = self.run_tool('iRead value 9\niRead value 6\niApply\n', extra=('--debug',))
+        self.assertIn('iRead observed 0b0110', text)
+        self.replay(text)
+
+    def test_unqualified_read_replaces_prior_comparison(self):
+        text = self.run_tool('iRead value 9\niRead value\niApply\n', extra=('--debug',))
+        self.assertIn('iRead observed 0bxxxx', text)
+        self.replay(text)
+
     def test_selectable_partial_write(self):
         text = self.run_tool('iReset\niWrite value 9\niApply\n'
                              'iWrite value[1:0] 2\niApply\n', extra=('--debug',))
