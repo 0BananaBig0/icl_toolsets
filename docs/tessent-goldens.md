@@ -463,3 +463,26 @@ Local raw evidence is ignored under `build/hidden-events-evidence/`. The low-bit
 take/write case remains an expected reservation failure and is tested locally;
 it is not a positive round-trip standard. These cases qualify their specific
 phase-controlled shadow behavior, not arbitrary gates, feedback or multiple TAPs.
+
+
+## Mixed parallel/serial frames (2026-10-29)
+
+Two new forward certificates, `mixed_primary_data-forward` and
+`mixed_scan_data-forward`, qualify selectable DataRegisters with parallel data /
+scan enable and scan data / parallel enable respectively. Tessent 2026.2 accepts
+our flattened PDL and preserves its ordered apply groups. The repository now has
+31 directional certificates plus seven legacy standards.
+
+Both reverse jobs also export successfully, but fail ordered-group comparison:
+local replay separates combined primary read/write frames. No reverse certificate
+was recorded. Expected comparisons in the exported PDL do not prove hardware
+values; IEEE-required DataRegister update events and scan-controller updates were
+retained even where the vendor source schedule differs.
+
+Authored sources are in `tests/cases/ours/pattern_generation/mixed_io/`. Raw
+initial PDL and testbench/vector probes are under
+`test_icl_toolsets/test_mixed_io/run_2026_10_29_with_scan_interface/` on the EDA
+host. Certified bundle inputs and exports are in the same remote project's
+`mixed-io-forward/` and `mixed-io-reverse/` directories, with local copies under
+`build/test_mixed_io/`. Only passing forward evidence was recorded as immutable
+schema-3 standards. This run did not simulate RTL or refresh formatter certificates.

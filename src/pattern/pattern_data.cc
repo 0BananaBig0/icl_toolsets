@@ -7,7 +7,7 @@
 #include <tuple>
 
 namespace pattern {
-DataReadRoutes::DataReadRoutes(const Netlist& netlist, bool scan_capture) {
+DataReadRoutes::DataReadRoutes(const Netlist& netlist, DataReadMode mode) {
   constexpr size_t kMissing = std::numeric_limits<size_t>::max();
   struct Pending {
     BitReference bit;
@@ -17,9 +17,11 @@ DataReadRoutes::DataReadRoutes(const Netlist& netlist, bool scan_capture) {
   size_t remaining = 262144;
   for (size_t id = 0; id < netlist.nodes.size(); ++id) {
     const auto& output = netlist.nodes[id];
-    if (scan_capture ? (output.kind != "ScanRegister" ||
-                        !output.inputs.count("CaptureSource"))
-                     : (output.scope != 0 || output.kind != "DataOutPort")) {
+    const bool scan_capture =
+        output.kind == "ScanRegister" && output.inputs.count("CaptureSource");
+    const bool primary = output.scope == 0 && output.kind == "DataOutPort";
+    if ((!scan_capture || mode == DataReadMode::kPrimary) &&
+        (!primary || mode == DataReadMode::kScan)) {
       continue;
     }
     for (size_t offset = 0; offset < output.Width(); ++offset) {
@@ -50,9 +52,7 @@ DataReadRoutes::DataReadRoutes(const Netlist& netlist, bool scan_capture) {
           routes[{bit.node, bit.index}].push_back(item.route);
         }
         if (node.model == ModelKind::kRegister) {
-          if (node.kind == "DataRegister") {
-            storage[{id, index}].insert(bit.node);
-          }
+          storage[{id, index}].insert(bit.node);
           continue;
         }
         if (node.kind == "DataMux" || node.kind == "OneHotDataGroup") {

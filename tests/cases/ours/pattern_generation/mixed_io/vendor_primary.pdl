@@ -1,0 +1,7 @@
+iProcsForModule MixedPrimaryDataProbe
+iReset
+iWrite core.value 5
+iApply
+iRead core.value 5
+iWrite core.value 9
+iApply

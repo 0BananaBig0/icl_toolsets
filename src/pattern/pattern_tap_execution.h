@@ -23,6 +23,8 @@ class TapExecution {
   void Assume(size_t node, const std::string& value);
   explicit TapExecution(const Netlist& netlist);
   void Drive(const std::string& port, const std::string& value);
+  // One parallel input event, without advancing the TAP state machines.
+  void ApplyInputs(const std::map<size_t, std::string>& values);
   void RisingEdge(const std::string& clock);
   void FallingEdge(const std::string& clock);
   std::string Value(const std::string& path, bool scan = false) const;

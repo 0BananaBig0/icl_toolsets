@@ -73,6 +73,10 @@ class ScanDataRegisters(unittest.TestCase):
         ascending = ''.join(f'iWrite bank.r{i}[2:0] 3\n' for i in range(count))
         self.assertEqual(text, self.run_tool('iReset\n' + ascending + 'iApply\n',
                                            output='ascending.pdl'))
+        self.icl.write_text(source.replace('  ScanOutPort so',
+                                          "  DataOutPort unused { Source 1'b0; }\n  ScanOutPort so"))
+        self.assertEqual(text, self.run_tool('iReset\n' + ascending + 'iApply\n',
+                                           output='unused_output.pdl'))
 
     def test_large_bank_together_and_reservations_remain_atomic(self):
         self.icl = FIXTURES / 'addressed_eight.icl'

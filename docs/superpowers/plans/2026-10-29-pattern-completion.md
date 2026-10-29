@@ -122,9 +122,31 @@ Files: pattern_resources.h/.cc and pattern_scheduler.cc; new
   sanitizers and independent review. Document supported data resources and
   remaining control/clock/lifecycle limitations; commit/push before continuing.
 
+## Task 7: Mixed parallel-I/O and serial time frames
+
+Tessent Shell Reference v2023.4 `iApply` specifies a sequence of Scan and
+ParallelIO time frames, all writes satisfied at the end, and each read observed
+once before subsequent changes. Reuse the existing state, route resolvers and
+bounded solver. A serial transaction and a parallel input event must not be
+modeled as interchangeable or simultaneously applied without evidence.
+
+- [x] Probe primary-data/scan-enable and scan-data/primary-enable models with
+  Tessent; retain scripts and self-constructed fixtures under tests/. Add failing
+  CLI/native tests for both dependency directions, prior-value reads, protected
+  storage, aliases, rollback, and original/flat/generated replay.
+- [x] Extend shared scheduling with explicit parallel/serial frame kinds and
+  shared state transitions; bound primary vector count/bit width and total frame
+  work. Preserve scan-only/primary-only fast paths and existing goldens. Replay
+  each frame through existing concrete models; do not concatenate independently
+  planned schedules that ignore shared storage.
+- [x] Validate TAP and non-TAP mixed events, read ordering, end-state and
+  AccessTogether obligations; add representative scale checks, independent
+  review, full dynamic/static regression and leak-enabled sanitizers. Record
+  vendor evidence separately from local coverage and update support docs.
+
 ## Remaining completion work (not yet completed)
 
-- Mixed primary/scan scheduling and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
+- General forwarded/computed mixed-port writes, primary-port AccessTogether, and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
 - General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
@@ -192,3 +214,16 @@ failed first, then passed after the fix. Formatting, naming and whitespace
 checks pass. Source/flat/generated replay and failed-output protection are
 covered; no additional vendor certification is claimed. See
 [data-resource evidence](../../pattern-generation.md#data-resource-reservations-2026-10-29).
+
+
+Task 7 passed the final full dynamic/static `make check` (exit 0,
+`build/mixed-io-regression-final.log`), including 31 directional and seven legacy
+offline vendor standards. Native scheduler tests, 15 mixed-I/O, nine data-resource,
+34 reservation and four hidden-event cases passed ASan/UBSan/LeakSanitizer with
+`detect_leaks=1` (`build/mixed-io-sanitizer-final.log`). Focused native, mixed and
+25 scan-data tests also passed after the final primary-input helper extraction.
+Google formatting, changed-source clang-tidy and whitespace checks pass. Two
+fresh Tessent forward certificates qualify the mixed fixtures; reverse apply
+comparisons remain failures and no reverse standards were recorded. Independent
+review findings were reproduced and fixed, with actual-state and TAP rollback
+coverage. No broader model completeness or shortest-pattern guarantee is claimed.

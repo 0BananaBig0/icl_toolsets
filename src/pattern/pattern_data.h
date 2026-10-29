@@ -28,11 +28,13 @@ struct DataReadRoute {
   BitReference output;
   std::vector<DataReadGuard> guards;
 };
+enum class DataReadMode { kPrimary, kScan, kBoth };
 // Bounded paths from primary outputs or scan captures through
 // forwarding/mux/groups.
 class DataReadRoutes {
  public:
-  explicit DataReadRoutes(const Netlist& netlist, bool scan_capture = false);
+  explicit DataReadRoutes(const Netlist& netlist,
+                          DataReadMode mode = DataReadMode::kPrimary);
   std::map<std::pair<size_t, int64_t>, std::vector<DataReadRoute>> routes;
   std::map<std::pair<size_t, int64_t>, std::set<size_t>> storage;
 };

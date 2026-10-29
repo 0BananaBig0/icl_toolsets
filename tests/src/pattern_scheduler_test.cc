@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <tuple>
 
+#include "pattern/pattern_data.h"
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_tap.h"
@@ -17,6 +18,161 @@
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestMixedReadRoutes() {
+  pattern::Design design;
+  design.AddIcl("mixed-routes.icl", R"(
+Module MixedRoutes {
+  ScanInPort si;
+  DataInPort data[3:0]; DataInPort enable;
+  DataRegister value[3:0] { WriteDataSource data; WriteEnSource enable; }
+  ScanRegister capture[3:0] { ScanInSource si; CaptureSource ~value; }
+  ScanOutPort so { Source capture[0]; }
+  DataOutPort observed[3:0] { Source value; Enable enable; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "MixedRoutes");
+  const pattern::DataReadRoutes routes(netlist, pattern::DataReadMode::kBoth);
+  const auto value = netlist.node_ids.at("value");
+  for (int64_t bit = 0; bit < 4; ++bit) {
+    const auto& choices = routes.routes.at({value, bit});
+    Require(choices.size() == 2, "mixed reads retain both observation routes");
+    for (const auto& route : choices) {
+      const bool capture =
+          netlist.nodes[route.output.node].kind == "ScanRegister";
+      Require(route.output.inverted == capture &&
+                  route.guards.size() == (capture ? 0U : 1U) &&
+                  routes.storage.at({route.output.node, route.output.index})
+                      .count(value),
+              "mixed routes retain inversion, guards and observed storage");
+    }
+  }
+}
+void TestMixedIoPhases() {
+  for (bool tap : {false, true}) {
+    for (bool primary_data : {false, true}) {
+      std::ifstream file(
+          std::string("tests/cases/ours/pattern_generation/mixed_io/") +
+          (primary_data ? "primary_data.icl" : "scan_data.icl"));
+      pattern::Design design;
+      const std::string instrument =
+          primary_data ? "MixedPrimaryData" : "MixedScanData";
+      std::string source(std::istreambuf_iterator<char>(file), {});
+      const std::string pin = primary_data ? "data" : "enable";
+      if (tap) {
+        source.insert(source.find("  ScanInPort si;"), R"(
+  SelectPort select; CaptureEnPort capture; ShiftEnPort shift;
+  UpdateEnPort update; TCKPort clock;
+  ScanInterface client {
+    Port si; Port so; Port select; Port capture; Port shift; Port update; Port clock;
+  }
+)");
+        source += "Module Probe { DataInPort " + pin +
+                  (primary_data ? "[3:0];" : ";") + " Instance core Of " +
+                  instrument + " { InputPort " + pin + " = " + pin + "; }" + R"(
+  DataOutPort observed[3:0] { Source core.observed; }
+  AccessLink tap Of STD_1149_1_2001 {
+    BSDLEntity AccessProbe;
+    IJTAG_ON { ScanInterface { core.client; } }
+    IJTAG_OFF { ScanInterface { core.client; } }
+  }
+})";
+        std::ifstream bsdl(
+            "tests/cases/ours/pattern_generation/access_link/simple.bsdl");
+        design.AddBsdl("simple.bsdl",
+                       std::string(std::istreambuf_iterator<char>(bsdl), {}),
+                       "AccessProbe");
+      }
+      design.AddIcl("mixed.icl", source);
+      const auto netlist =
+          tap ? pattern::ElaborateTapNetwork(design, "Probe").netlist
+              : pattern::Elaborate(design, instrument);
+      const std::string prefix = tap ? "core." : "";
+      const auto target = prefix + "value";
+      pattern::ScanScheduler scheduler(netlist), replay(netlist);
+      scheduler.Reset();
+      replay.Reset();
+      const auto first =
+          scheduler.Apply({{"iWrite", {target, "5"}, "mixed:1", {}}});
+      const auto second =
+          scheduler.Apply({{"iRead", {target, "5"}, "mixed:2", {}},
+                           {"iWrite", {target, "9"}, "mixed:3", {}}});
+      bool observed = false, controller_updated = false;
+      for (const auto* group : {&first, &second}) {
+        for (const auto& step : *group) {
+          if (step.expected.count("observed")) {
+            Require(step.writes.empty() && replay.Value("observed") == "0101",
+                    "parallel observation precedes the stored-value change");
+            observed = true;
+          }
+          if (group == &second &&
+              step.writes.count(prefix + (primary_data ? "enable" : "data"))) {
+            controller_updated = true;
+          }
+          std::vector<pattern::Operation> operations;
+          for (const auto& [name, value] : step.writes) {
+            operations.push_back(
+                {"iWrite", {name, "0b" + value}, "replay", {}});
+          }
+          for (const auto& [name, value] : step.expected) {
+            operations.push_back({"iRead", {name, "0b" + value}, "replay", {}});
+          }
+          replay.Apply(operations);
+        }
+      }
+      Require(observed && controller_updated &&
+                  scheduler.Value(target) == "1001" &&
+                  replay.Value(target) == "1001",
+              "mixed frames retain observations, controller updates and final "
+              "state");
+      const auto before = scheduler.Value(pin);
+      const auto instruction = tap ? scheduler.Value("tap.INSTRUCTION") : "";
+      bool rejected = false;
+      try {
+        scheduler.Apply({{"iWrite", {target, "3"}, "mixed:4", {}}}, false,
+                        {{netlist.node_ids.at(target), "1001"}}, false);
+      } catch (const std::exception& error) {
+        rejected =
+            std::string(error.what()).find("reserved") != std::string::npos;
+      }
+      Require(
+          rejected && scheduler.Value(target) == "1001" &&
+              scheduler.Value(pin) == before &&
+              (!tap || scheduler.Value("tap.INSTRUCTION") == instruction),
+          "failed mixed plans preserve storage, drivers and TAP instruction");
+      scheduler.Apply({{"iWrite", {target, "3"}, "mixed:5", {}}});
+      Require(scheduler.Value(target) == "0011",
+              "mixed scheduler remains usable after rollback");
+    }
+  }
+}
+void TestPrimaryObservationOfScanStorage() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/mixed_io/scan_observation.icl");
+  pattern::Design design;
+  design.AddIcl("scan-observation.icl",
+                std::string(std::istreambuf_iterator<char>(file), {}));
+  const auto netlist = pattern::Elaborate(design, "MixedScanObservation");
+  pattern::ScanScheduler scheduler(netlist), replay(netlist);
+  scheduler.Reset();
+  replay.Reset();
+  const auto steps = scheduler.Apply({{"iRead", {"observed", "0"}, "read", {}},
+                                      {"iWrite", {"data", "9"}, "write", {}}});
+  bool observed = false;
+  for (const auto& step : steps) {
+    if (step.expected.count("observed")) {
+      Require(replay.Value("observed") == "0000",
+              "primary comparison observes old scan storage");
+      observed = true;
+    }
+    std::vector<pattern::Operation> writes;
+    for (const auto& [name, value] : step.writes) {
+      writes.push_back({"iWrite", {name, "0b" + value}, "replay", {}});
+    }
+    if (!writes.empty()) replay.Apply(writes);
+  }
+  Require(observed && replay.Value("data") == "1001",
+          "scan update follows observation");
 }
 void TestResetDependencyScale() {
   // Reverse declaration order is the worst case for repeatedly scanning all
@@ -299,16 +455,13 @@ void TestDataReservationRollback() {
         {"iWrite", {driver, serial ? "25" : "9"}, "data-resource:2", {}}};
     if (!serial)
       indirect.push_back({"iWrite", {"enable", "1"}, "data-resource:3", {}});
+    const std::vector<pattern::Operation> replacement{
+        {"iWrite", {"value", "9"}, "data-resource:4", {}}};
     for (bool automatic : {false, true}) {
       bool rejected = false;
       try {
-        scheduler.Apply(
-            automatic ? std::vector<pattern::Operation>{{"iWrite",
-                                                         {"value", "9"},
-                                                         "data-resource:4",
-                                                         {}}}
-                      : indirect,
-            false, held, !automatic);
+        scheduler.Apply(automatic ? replacement : indirect, false, held,
+                        !automatic);
       } catch (const std::exception& error) {
         rejected = std::string(error.what()).find("reserved value") !=
                    std::string::npos;
@@ -1112,6 +1265,9 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestMixedReadRoutes();
+    TestMixedIoPhases();
+    TestPrimaryObservationOfScanStorage();
     TestResetDependencyScale();
     TestGreedyRollback();
     TestAddressedRollback();

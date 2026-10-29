@@ -1,0 +1,14 @@
+iPDLLevel 0
+iProcsForModule MixedScanDataProbe
+iReset
+iWrite enable 0b1
+iApply
+iWrite tap.INSTRUCTION 0b0011
+iRead tap.INSTRUCTION 0b0001
+iApply
+iWrite core.data 0b0101
+iApply
+iRead observed 0b0101
+iApply
+iWrite core.data 0b1001
+iApply

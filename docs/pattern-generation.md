@@ -222,8 +222,9 @@ explicit enables, including forwarding ports. Exactly one known-enabled
 contributor selects its data; zero, multiple or uncertain enables produce X.
 Addressed register/instance contributors and routed reads are supported on the
 primary-input path described below. Scalar OneHotScanGroup execution is supported
-by the serial backend described below. Primary-port AccessTogether groups and
-mixed scan/parallel scheduling remain unsupported and report errors.
+by the serial backend described below. Primary-port AccessTogether groups remain
+unsupported. Mixed DataRegister/primary-input/scan transactions use the shared
+frame scheduler described in the mixed-I/O section below.
 No new grammar or AST is introduced.
 
 This path is bounded to 256 primary input vectors and 4096 total input bits,
@@ -286,8 +287,9 @@ Limits: 4096 writable DataRegisters, 4 Mi dependency visits, 256 primary vectors
 4096 input bits, 262144 read-route visits and at most 256 selection guards per path.
 The temporal model limits horizon × (netlist nodes + input bits) to 262144, with
 2 seconds per solver invocation and 15 seconds across horizons. Exhaustion reports
-a limit, not proven unreachability. Cyclic/self-referential data updates, callbacks,
-mixed primary-drive/scan transactions are not yet supported. Ordinary write-only groups of at least four addressed data goals on
+a limit, not proven unreachability. Cyclic/self-referential data updates and
+callbacks are not yet supported. Mixed primary-drive/scan DataRegister access
+is supported. Ordinary write-only groups of at least four addressed data goals on
 one physical scan-driven address vector use deterministic address batches.
 Already-satisfied goals join the first necessary batch, or one controller update
 if all are satisfied. Same-address members can share a scan; partial/X goals use
@@ -392,7 +394,8 @@ broader syntax support and never execute PDL.
   inversion and direct-storage access retain the directive. Register defaults
   participate in final-state constraints, allowing a SIB to close while its
   selected target updates. Automatic restoration cannot change a protected
-  reservation. Mixed primary/scan execution remains unsupported.
+  reservation. Mixed frames retain temporary primary-port overrides in emitted
+  PDL so intervening applies cannot restore defaults prematurely.
   End-state models use the bounded symbolic scheduler, not the large-network
   greedy path; the existing resource limits still apply.
 - Explicit `iState` with default/`-LastWrittenValue` semantics and `iReset`.
@@ -1613,3 +1616,63 @@ single-pattern throughput. Raw evidence is in
 These cases are self-constructed and locally verified; no new Tessent
 certification is claimed. Other control/clock/scan-port ownership and
 cross-pattern-set lifecycles remain required future work.
+
+
+### Mixed parallel and serial frames (2026-10-29)
+
+The existing bounded scheduler can alternate parallel I/O and serial frames for
+DataRegister access, explicit top-level primary-input writes and primary-output
+observations. Both frame kinds share hardware/controlling state, resource masks,
+read completion and required scan-controller updates. This follows IEEE §5.16.1
+(printed p.54), §6.4.9 (p.119) and §7.9.14(a) (p.173). Existing primary-only and
+serial-only paths remain available. General forwarded/computed-port writes in a
+mixed network, primary-port AccessTogether aliases, and multiple scan outputs or
+TAPs still require additional implementation.
+
+Parallel comparisons use read-only frames; pin drives are separate events. The
+expected value is never treated as known hardware. Pending observations retain
+both DataRegister and ScanRegister sources until the observation, after which a
+scan update may change them. Explicit `-together` still requires a common write
+cycle; it does not force reads to occur on that cycle. TAP scans finish in idle
+before the next parallel event. Concrete replay checks all modeled storage and
+planned primary drivers; TAP protocol pins remain owned by TAP replay.
+
+Primary planning includes only relevant controls, requested pins and read-route
+requirements, with 256-vector/4096-bit limits. Shared temporal work remains
+bounded by the 32-frame horizon, existing solver timeouts and expression budgets.
+An unrelated output must not disable the existing dependency/address batching
+paths: a 64-register scale regression covers this distinction. Neither shortest
+patterns nor complete mixed-port model coverage is claimed.
+
+Tests in `tests/src/pattern/test_mixed_io_scheduling.py` cover both dependency
+directions, TAP and hidden-storage events, taken drivers, explicit replacements,
+common-cycle rejection, AccessTogether register groups, end-state restoration,
+addressed read controls, prior scan-storage observations, 128-bit data and width
+limits. Every successful case reimports flat ICL, compares the second flat ICL,
+and replays generated PDL. Native scheduler tests inspect actual observation-time
+state, mandatory controller updates and failed-plan rollback for primary drivers,
+storage and TAP instructions. The native tests then perform a successful access
+to ensure failed planning did not leave the TAP executor unusable.
+
+Independent review found and reproduced two defects before publication: missing
+pending-read protection for scan-backed primary outputs, and disabling scalable
+address batching merely because an unused output exists. Both have dedicated
+regressions. The initial 128-bit source/flat/generated check took 2.37 seconds and
+71820 KiB peak RSS on WSL2, g++ 16.2.1 `-O2`, Z3 4.13.3; raw measurement is
+`build/mixed-io-scale.log`. This is the complete replay test, not single-pattern
+throughput.
+
+Fresh Tessent 2026.2 forward certificates qualify the two mixed DataRegister
+fixtures. Reverse export succeeds but certification fails because local replay
+separates combined parallel read/write groups; no reverse standards were recorded
+and no comparison was weakened. Exported Verilog/testbench vectors establish
+emitted timing only; no RTL simulation is claimed. See the Tessent golden guide
+for source/evidence locations and the limits of the fixed-point criterion.
+
+Final verification passed full dynamic/static `make check`
+(`build/mixed-io-regression-final.log`, exit 0), including all 31 directional and
+seven legacy vendor standards. The native scheduler and 15 mixed, nine
+data-resource, 34 reservation and four hidden-event cases passed Clang
+ASan/UBSan/LeakSanitizer with leak detection enabled
+(`build/mixed-io-sanitizer-final.log`). Google formatting, changed-source naming
+and whitespace checks also pass.

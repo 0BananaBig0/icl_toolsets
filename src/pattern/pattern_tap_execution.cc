@@ -106,6 +106,9 @@ void TapExecution::Synchronize(const std::string& name) {
 void TapExecution::Assume(size_t node, const std::string& value) {
   state_.Assume(node, value);
 }
+void TapExecution::ApplyInputs(const std::map<size_t, std::string>& values) {
+  state_.ApplyInputs(values);
+}
 void TapExecution::Drive(const std::string& port, const std::string& value) {
   const size_t id = netlist_.node_ids.at(port);
   state_.Drive(id, value);

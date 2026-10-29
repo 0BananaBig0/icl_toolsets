@@ -1,0 +1,244 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "mixed_scan_data",
+    "top": "MixedScanDataProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/mixed_io/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/mixed_io/vendor_scan.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/mixed_io/vendor.icl": "611ead8f5c117056f4a7871bfad7262663e84fbd7e31ba0db655d44c8def833a",
+    "tests/cases/ours/pattern_generation/mixed_io/vendor_scan.pdl": "0e0356616cc05c0523ac62ca4237fe064d62d261aee50edbb0e41e927a288fc0",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "mixed_scan_data",
+    "top": "MixedScanDataProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/mixed_io/vendor.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/mixed_io/vendor_scan.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "inputs": {
+      "design_0.icl": "611ead8f5c117056f4a7871bfad7262663e84fbd7e31ba0db655d44c8def833a",
+      "source_0.pdl": "0e0356616cc05c0523ac62ca4237fe064d62d261aee50edbb0e41e927a288fc0",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "87fbce440493878861d2eca771754eb20fd1e7661512853eb1dd39bd9ae4abd2",
+      "ours.pdl": "f493d1fda6df5db89848201627b079d66e33e0ba5b59e424e2f388822f3c524f"
+    },
+    "generator_command": [
+      "/home/banana/cpp_workspace/icl-format/build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/source_0.pdl",
+      "--top_module",
+      "MixedScanDataProbe",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/ours.pdl",
+      "--bsdl",
+      "AccessProbe",
+      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/model.bsdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.21496509306598455,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/mixed_io/vendor.icl": "611ead8f5c117056f4a7871bfad7262663e84fbd7e31ba0db655d44c8def833a",
+      "tests/cases/ours/pattern_generation/mixed_io/vendor_scan.pdl": "0e0356616cc05c0523ac62ca4237fe064d62d261aee50edbb0e41e927a288fc0",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.879748526029289,
+    "outcome": "ok",
+    "result_sha256": "e2ee888b03162001a93356c8b190cf9fb10451dce5d01e6e852b8e0071da45a6",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "MixedScanDataProbe",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.data",
+            0,
+            "1"
+          ],
+          [
+            "core.data",
+            1,
+            "0"
+          ],
+          [
+            "core.data",
+            2,
+            "1"
+          ],
+          [
+            "core.data",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "observed",
+            0,
+            "1"
+          ],
+          [
+            "observed",
+            1,
+            "0"
+          ],
+          [
+            "observed",
+            2,
+            "1"
+          ],
+          [
+            "observed",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.data",
+            0,
+            "1"
+          ],
+          [
+            "core.data",
+            1,
+            "0"
+          ],
+          [
+            "core.data",
+            2,
+            "0"
+          ],
+          [
+            "core.data",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "896dd68efeabd92f0988ae2ce95214b07b1925a1133c030fe0b6ae4e39b0c637",
+  "vendor_console_sha256": "1d2ea3542666154d563752523880fa2d48f7aa668c3a91c4b85a431c5ef53a60",
+  "artifacts": {
+    "flat.pdl": "f493d1fda6df5db89848201627b079d66e33e0ba5b59e424e2f388822f3c524f",
+    "vendor.pdl": "e2ee888b03162001a93356c8b190cf9fb10451dce5d01e6e852b8e0071da45a6"
+  }
+}

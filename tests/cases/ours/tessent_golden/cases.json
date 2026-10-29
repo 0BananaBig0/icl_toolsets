@@ -239,6 +239,34 @@
       "bsdl_entity": "AccessProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "mixed_primary_data",
+      "top": "MixedPrimaryDataProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/mixed_io/vendor.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/mixed_io/vendor_primary.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok",
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe"
+    },
+    {
+      "id": "mixed_scan_data",
+      "top": "MixedScanDataProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/mixed_io/vendor.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/mixed_io/vendor_scan.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok",
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe"
     }
   ]
 }
