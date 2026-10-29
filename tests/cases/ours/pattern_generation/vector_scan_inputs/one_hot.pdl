@@ -1,0 +1,13 @@
+iProcsForModule VectorScanTop
+iReset
+iWrite a.data 9
+iWrite select 1
+iApply
+iWrite b.data 6
+iWrite select 0
+iApply
+iRead a.data 9
+iWrite select 1
+iApply
+iRead b.data 6
+iApply

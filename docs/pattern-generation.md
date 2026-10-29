@@ -436,9 +436,11 @@ broader syntax support and never execute PDL.
   Native idle replay includes any explicitly enabled storage events; it does
   not infer BIST completion or live hardware readback.
 
-The backend accepts one SI/SO boundary and at most one TAP. It rejects
+The backend accepts one scalar scan-output boundary and at most one TAP. A
+single path may use an indexed vector input and an indexed one-hot return lane.
+It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
-vector OneHotScanGroup transactions, feedback reset scheduling,
+simultaneous vector OneHotScanGroup lanes, feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
 interface events are outside the current complete-scan model; inability to
@@ -1883,3 +1885,50 @@ flat-ICL and generated-PDL replay test is included in both dynamic/static suites
 This raises directional offline standards from 31 to 37. See
 [exact scope and retained evidence](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30);
 broader model support and vendor qualification remain unfinished.
+
+### Indexed scan inputs (2026-10-30)
+
+The shared scheduler accepts scalar paths terminating at a selected bit of a
+top-level vector ScanInPort. Its existing bit-keyed graph retains the endpoint
+index; concrete replay changes only that input position, and ScanStep records
+indexed endpoint names. This also permits a selected lane of a vector
+OneHotScanGroup to feed a scalar chain. It does not enable simultaneous output
+lanes or multiple TAPs.
+
+IEEE 1687-2014 §6.4.6.1 (printed p82/PDF96) defines ScanInPort with `port_name`;
+§6.4.7 rules d/f (p111/PDF125) permits width-matched sliced connections. Declared
+controls remain authoritative: internal ScanInterface declarations are optional
+(§6.4.16(a), p132/PDF146), only missing controls may be inferred (§6.7(a)), and
+SelectPort is active-high (§6.8/Table 5, p142/PDF156). Because scalar interface
+inference does not cover vector ports, the standalone scheduler also checks
+declared controls in reachable serial scopes. Unsupported events cause an error
+rather than silently writing a deselected child. Reset-only scopes remain usable.
+
+Self-constructed fixtures are in
+`tests/cases/ours/pattern_generation/vector_scan_inputs/`. Native tests check
+literal serial bits, endpoint indices, held register values, untouched unknown
+input bits and failed-transaction rollback. Seven CLI tests cover ascending and
+descending ranges, a nonzero scalar index, inverted mux inputs, vector one-hot
+returns, unknown/contending enables, control rejection, reset-only children and
+a 4096-bit bus. Successful cases check source/flat-ICL/generated-PDL fixed points.
+These tests are local evidence, not new Tessent certificates.
+
+The wide-input check runs a 4096-bit input bus and a 64-bit register through
+all three replay forms. With g++ 16.2.1 `-O2` on Linux 6.18.33.2 WSL2 it took
+0.16 seconds wall time and 57,700 KiB peak RSS, including the Python runner
+(`build/vector-input-scale-final.log`). Reproduce with `/usr/bin/time -f
+'wall_seconds=%e peak_rss_kib=%M' python3 tests/src/pattern/test_vector_scan_inputs.py
+build/icl-pattern-generation VectorScanInputs.test_wide_input_bus`.
+Whole-vector drives cost work proportional to input width times shifted bits;
+this measures that case's scale and does not claim a speedup or a general bound
+on solver runtime.
+
+Final `make -j2 --jobserver-style=pipe check` passed (exit 0,
+`build/vector-input-regression-final.log`), including dynamic/static generator
+tests, 37 directional/seven legacy offline standards, grammar-rule coverage and
+Vim/Neovim corpus checks. Five optional ANTLR integration tests were skipped
+because `ICL_REF_DIR` was unset. Native scheduler tests plus the seven new and
+seven existing one-hot cases passed ASan/UBSan/LeakSanitizer with leaks enabled
+(`build/vector-input-sanitizer-final.log`). Formatting, changed-source naming and
+whitespace checks pass. Independent review exposed the declared-control bypass;
+its retained test reproduced the failure before the guard fix and passed afterward.

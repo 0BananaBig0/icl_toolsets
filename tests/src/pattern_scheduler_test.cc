@@ -19,6 +19,51 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestVectorScanInputs() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/vector_scan_inputs/network.icl");
+  const std::string original(std::istreambuf_iterator<char>(file), {});
+  for (bool ascending : {false, true}) {
+    auto source = original;
+    if (ascending) source.replace(source.find("5:2"), 3, "2:5");
+    pattern::Design design;
+    design.AddIcl("vector-input.icl", source);
+    const auto netlist = pattern::Elaborate(design, "VectorScanTop");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const auto first =
+        scheduler.Apply({{"iWrite", {"data", "9"}, "write", {}},
+                         {"iWrite", {"select", "1"}, "write", {}}});
+    Require(first.size() == 1 && first[0].input == "si[2]" &&
+                first[0].output == "so[7]" && first[0].serial == "11001" &&
+                scheduler.Value("data") == "1001" &&
+                scheduler.Value("si[4]") == "x" &&
+                scheduler.Value("si[2]") == "1",
+            "vector scan input drives only the selected bit");
+    const auto before = scheduler.Value("si");
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"data", "6"}, "reserved", {}}}, false,
+                      {{netlist.node_ids.at("data"), "1001"}}, false);
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("si") == before &&
+                scheduler.Value("data") == "1001",
+            "failed vector-input scan preserves input and register state");
+    const auto second =
+        scheduler.Apply({{"iRead", {"data", "9"}, "read", {}},
+                         {"iWrite", {"data", "6"}, "write", {}},
+                         {"iWrite", {"select", "0"}, "write", {}}});
+    Require(second.size() == 1 && second[0].input == "si[4]" &&
+                second[0].serial == "11001" &&
+                scheduler.Value("data") == "0110" &&
+                scheduler.Value("si[4]") == "1" &&
+                scheduler.Value("si[2]") == "1" &&
+                scheduler.Value("si[5:3]") == "x1x",
+            "mux-selected inverted scan input retains other bus bits");
+  }
+}
 void TestMixedReadRoutes() {
   pattern::Design design;
   design.AddIcl("mixed-routes.icl", R"(
@@ -1403,6 +1448,7 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestVectorScanInputs();
     TestMixedReadRoutes();
     TestMixedIoPhases();
     TestPrimaryObservationOfScanStorage();

@@ -167,6 +167,25 @@ class ScanScheduler::Impl {
       }
       return;
     }
+    std::set<size_t> serial_scopes;
+    for (const auto& vertex : graph_) {
+      if (vertex.bit.node != kMissing) {
+        serial_scopes.insert(netlist.nodes.at(vertex.bit.node).scope);
+      }
+    }
+    // Vector ports need not have an inferred interface, but their controls
+    // apply.
+    for (const auto& node : netlist.nodes) {
+      if (serial_scopes.count(node.scope) &&
+          (node.kind == "SelectPort" || node.kind == "CaptureEnPort" ||
+           node.kind == "ShiftEnPort" || node.kind == "UpdateEnPort" ||
+           node.kind == "TCKPort" || node.kind == "TMSPort" ||
+           node.kind == "TRSTPort")) {
+        throw std::runtime_error(
+            node.origin +
+            ": interface controls require event scheduling integration");
+      }
+    }
     for (const auto& binding : EffectiveScanInterfaces(netlist)) {
       const auto check = [&](const std::vector<BitReference>& ports) {
         for (const auto& port : ports) {
@@ -1402,8 +1421,7 @@ class ScanScheduler::Impl {
       } else if (node.inputs.count("Source")) {
         sources.emplace_back(
             node.inputs.at("Source").at(Offset(node, current.index)), kMissing);
-      } else if (node.kind == "ScanInPort" && node.scope == 0 &&
-                 node.Width() == 1) {
+      } else if (node.kind == "ScanInPort" && node.scope == 0) {
         graph_[id].input = true;
       }
       // Allocate edges on the expanded pass after source identities exist.
@@ -3544,7 +3562,12 @@ class ScanScheduler::Impl {
       step.instruction = Decode(model, *frame.instruction) == "1";
       replay->Drive(tap_->ir_select, step.instruction ? "1" : "0");
     }
-    step.output = netlist_.nodes.at(graph_[root].bit.node).name;
+    const auto endpoint = [&](BitReference bit) {
+      const auto& node = netlist_.nodes.at(bit.node);
+      return node.name +
+             (node.indexed ? "[" + std::to_string(bit.index) + "]" : "");
+    };
+    step.output = endpoint(graph_[root].bit);
     std::vector<std::pair<size_t, bool>> registers;
     bool inverted = false;
     size_t vertex = root;
@@ -3575,8 +3598,9 @@ class ScanScheduler::Impl {
       inverted = inverted != current.edges[selected].inverted;
       vertex = current.edges[selected].next;
     }
-    const size_t input = graph_[vertex].bit.node;
-    step.input = netlist_.nodes.at(input).name;
+    const auto input_bit = graph_[vertex].bit;
+    const size_t input = input_bit.node;
+    step.input = endpoint(input_bit);
     std::map<size_t, std::string> capture_expected;
     for (const auto& item : frame.comparisons) {
       if (!model.eval(item.selected, true).is_true()) continue;
@@ -3641,8 +3665,12 @@ class ScanScheduler::Impl {
       replay->Clock(controls, true);
       if (check) check(*replay);
       for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
+      auto input_bits = replay->Value(input);
+      const size_t input_offset =
+          Offset(netlist_.nodes.at(input), input_bit.index);
       for (char bit : step.serial) {
-        replay->Drive(input, std::string(1, bit));
+        input_bits.at(input_offset) = bit;
+        replay->Drive(input, input_bits);
         replay->Clock(controls, true);
         if (check) check(*replay);
       }

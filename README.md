@@ -422,7 +422,6 @@ DataRegister writes and reads captured through ScanRegisters. Capture uses the
 value before the same scan's Update; a read and write can share that scan.
 Shared-address write banks use address groups to avoid searching write-order
 permutations; already-satisfied values share the required controller update.
-Mixed primary-drive/scan transactions remain unfinished.
 
 Scalar `OneHotScanGroup` returns also work on standalone and single-TAP scan
 networks, including nested groups and inverted returns. Scheduling requires one
@@ -430,6 +429,11 @@ known-enabled contributor and holds the other contributors disabled; inactive
 nested groups may be zero-hot. Independent write-only `iMerge` calls can combine
 multiple apply groups while retaining each call's apply order. These additions
 have local replay/regression coverage; they are not new Tessent certificates.
+
+A single scan chain can use indexed bits of a vector `ScanInPort`, including
+mux-selected or inverted inputs and one lane of a vector `OneHotScanGroup`.
+Replay preserves the other input bits. Declared scan controls require supported
+event handling; simultaneous vector return lanes remain unfinished.
 
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
@@ -483,7 +487,7 @@ The offline suite contains 37 directional standards; see
 [qualification scope](docs/tessent-goldens.md#port-control-and-merge-qualification-2026-10-30).
 
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
-vector one-hot scan paths, resource
+simultaneous vector scan-return lanes, resource
 reservation types beyond scan/data storage, data ports and parallel control ports, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Single-TAP shadow registers with phase-qualified capture, shift and

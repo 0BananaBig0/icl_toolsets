@@ -263,6 +263,44 @@ run serially inside the user's authorized `test_icl_toolsets/test_port_control_m
   regression and review the recorded evidence; update documentation and commit/push.
   Outstanding model requirements remain listed below for subsequent work.
 
+## Task 13: Indexed scan-input endpoints
+
+Ruling: close the independently testable vector-input gap before shared-output
+event planning. IEEE 1687-2014 §6.4.6.1 (printed p82/PDF96) uses `port_name`;
+§6.4.7 rules d/f (p111/PDF125) permits width-matched slice bindings. A scalar
+scan path may end at a selected bit of a vector ScanInPort. This does not authorize
+independently clocking multiple outputs or bypassing the shared-control guard.
+
+Reuse the bit-keyed scan graph and NetworkState::Drive. Preserve untouched input
+bits when replay drives a selected endpoint; identify indexed endpoints in ScanStep.
+The graph remains linear in reachable serial bits. Whole-vector drives reuse the
+existing state API; measure a 4096-bit input with a 64-bit register before claiming
+acceptable scale. No new parser, scheduler backend or state representation.
+
+Files: src/pattern/pattern_scheduler.cc; tests/src/pattern_scheduler_test.cc;
+tests/src/pattern/test_vector_scan_inputs.py; classified fixtures under
+tests/cases/ours/pattern_generation/vector_scan_inputs/; Makefile and support docs.
+
+- [x] Add native and CLI RED cases for ascending/descending indexed inputs,
+  nonzero scalar indices, mux-selected/inverted endpoints and vector one-hot
+  returns feeding one scalar chain. Assert actual register/input state, serial
+  endpoint identity, untouched unknown bits, atomic failures and replay.
+- [x] Recognize all top-level ScanInPort bits; replay a width-matched drive with
+  only the selected position changed. Preserve scalar behavior and all existing
+  multi-output/TAP/event checks. Run native and CLI tests: expected PASS.
+- [x] Test source/flat/generated-PDL fixed points, reserved values and unknown
+  one-hot controls. Run full dynamic/static regression, leak-enabled sanitizers,
+  style/naming and independent review. Record scale and remaining restrictions,
+  update README/docs, commit and push.
+
+Review ruling: scalar-only EffectiveScanInterfaces inference can omit vector
+children's declared controls. The reviewer reproduced a write through a SelectPort
+tied low. Preserve the existing unsupported-event boundary with an additional
+non-TAP guard over reachable serial scopes, not fabricated interface bindings.
+The retained disabled-child test failed before this fix and now passes; the
+reset-only child remains supported. Initial 64-bit fixture preparation also
+corrected a mismatched 4-bit ResetValue before accepting its RED result.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -410,3 +448,16 @@ outside that restriction without disabling leaks. Independent review checked
 all six certificates against staged inputs, hashes and vendor logs and found no
 actionable issue. Whitespace checks pass. These are fixture-specific certificates,
 not completion of the remaining model requirements.
+
+Task 13 passed corrected full dynamic/static `make -j2 --jobserver-style=pipe
+check` (exit 0, `build/vector-input-regression-final.log`), including 37
+directional/seven legacy offline standards and Vim/Neovim corpus checks. All
+334 grammar and 119 scanner rules were reached across 2,504 ICL files. Five
+optional ANTLR tests remain skipped because `ICL_REF_DIR` was unset. Native
+scheduler tests, seven new vector-input cases and seven existing one-hot cases
+passed ASan/UBSan/LeakSanitizer with `detect_leaks=1`
+(`build/vector-input-sanitizer-final.log`). Changed-source Google formatting,
+clang-tidy naming and whitespace checks pass. Independent review's declared-
+control bypass was reproduced RED and repaired GREEN before the final regression.
+A 4096-bit input/64-bit register through three replay forms took 0.16s/57,700 KiB.
+No new Tessent certificate or simultaneous vector-output support is claimed.
