@@ -1,0 +1,21 @@
+iProcsForModule SliceTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite tap.INSTRUCTION[3:0] 0b0011
+   iRead  tap.INSTRUCTION[3:0] 0b0001
+   iApply
+
+   iWrite core.gate[1:0] 0b10
+   iApply
+
+   iWrite core.gate[1:0] 0b11
+   iApply
+
+   iWrite core.gate[1:0] 0b10
+   iWrite core.target[3:0] 0b0101
+   iApply
+
+
+}

@@ -445,3 +445,21 @@ all 334 grammar alternatives, 119 scanner rules, dynamic/static checks and
 169.133 seconds. Strict authored-code line/branch coverage was not remeasured;
 rule reachability is a different metric. No new vendor execution or RTL
 simulation is claimed by this run.
+
+### Hidden-storage certification (2026-10-29)
+
+`shadow_slice_high`, `shadow_slice_release`, `shadow_slice_alias` and
+`shadow_slice_partial_write` use the original self-constructed
+`pattern_generation/resources/slices.icl` TAP network. The target shares controls
+with its bypass register and therefore clocks while hidden. Each case passed
+fresh Tessent 2026.2 forward and reverse runs and the schema-3 recorder's source,
+input/export hash, successful-console and ordered apply-group checks. Eight new
+certificates are stored under `tests/golden/tessent_roundtrip/`; ordinary checks
+run offline, preserving all prior certificate comparison policies.
+
+Vendor working directory:
+`/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_hidden_scan_events/run_2026_10_29_initial/`.
+Local raw evidence is ignored under `build/hidden-events-evidence/`. The low-bit
+take/write case remains an expected reservation failure and is tested locally;
+it is not a positive round-trip standard. These cases qualify their specific
+phase-controlled shadow behavior, not arbitrary gates, feedback or multiple TAPs.

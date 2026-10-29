@@ -48,9 +48,11 @@ SymbolicValue SymbolicValue::Literal(z3::context& context,
 }
 SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
                                  std::map<size_t, SymbolicValue> assignments,
-                                 std::string global_resets)
+                                 std::string global_resets,
+                                 const std::map<size_t, SymbolicValue>* shifts)
     : netlist_(netlist),
       context_(context),
+      has_shift_state_(shifts != nullptr),
       global_resets_(std::move(global_resets)),
       one_hot_(netlist) {
   if (global_resets_.size() != 2 ||
@@ -75,10 +77,25 @@ SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
       throw std::runtime_error(node.origin +
                                ": invalid symbolic state assignment");
     }
-    cache_.emplace(id, SymbolicValue{value.bits & value.known, value.known});
+    cache_.emplace(Key{id, false},
+                   SymbolicValue{value.bits & value.known, value.known});
+  }
+  if (shifts) {
+    for (const auto& [id, value] : *shifts) {
+      const auto& node = netlist.nodes.at(id);
+      if (node.kind != "ScanRegister" || &value.bits.ctx() != &context ||
+          &value.known.ctx() != &context || !value.bits.is_bv() ||
+          !value.known.is_bv() ||
+          value.bits.get_sort().bv_size() != node.Width() ||
+          value.known.get_sort().bv_size() != node.Width()) {
+        throw std::runtime_error("invalid symbolic shift-state assignment");
+      }
+      cache_.emplace(Key{id, true},
+                     SymbolicValue{value.bits & value.known, value.known});
+    }
   }
 }
-SymbolicValue SymbolicNetwork::Read(const BitReference& bit) {
+SymbolicValue SymbolicNetwork::Read(const BitReference& bit, bool scan) {
   auto result = SymbolicValue::Literal(context_, "x");
   if (bit.node == kMissing) {
     if (bit.virtual_signal == VirtualSignal::kNone && bit.constant != '?') {
@@ -100,17 +117,18 @@ SymbolicValue SymbolicNetwork::Read(const BitReference& bit) {
     }
     const unsigned offset = node.left >= node.right ? bit.index - node.right
                                                     : node.right - bit.index;
-    const auto source = Value(bit.node);
+    const auto source = Value(bit.node, scan);
     result = {source.bits.extract(offset, offset),
               source.known.extract(offset, offset)};
   }
   return bit.inverted ? Invert(result) : result;
 }
-SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits) {
+SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits,
+                                    bool scan) {
   if (bits.empty()) throw std::runtime_error("empty symbolic signal");
-  auto result = Read(bits[0]);
+  auto result = Read(bits[0], scan);
   for (size_t i = 1; i < bits.size(); ++i) {
-    result = Concat(result, Read(bits[i]));
+    result = Concat(result, Read(bits[i], scan));
   }
   return result;
 }
@@ -131,37 +149,44 @@ SymbolicValue SymbolicNetwork::Active(const AddressRequirement& requirement) {
                      (match.known & ~match.bits);
   return {enable.bits & match.bits & known, known};
 }
-SymbolicValue SymbolicNetwork::Value(size_t node) {
-  if (cache_.count(node)) return cache_.at(node);
-  std::vector<std::pair<size_t, bool>> stack{{node, false}};
+SymbolicValue SymbolicNetwork::Value(size_t node, bool scan) {
+  const Key requested{node, scan && has_shift_state_ &&
+                                netlist_.nodes.at(node).kind != "DataRegister"};
+  if (cache_.count(requested)) return cache_.at(requested);
+  std::vector<std::pair<Key, bool>> stack{{requested, false}};
   while (!stack.empty()) {
-    const auto [id, expanded] = stack.back();
+    const auto [key, expanded] = stack.back();
     stack.pop_back();
-    if (cache_.count(id)) continue;
-    const auto& object = netlist_.nodes.at(id);
+    if (cache_.count(key)) continue;
+    const auto& object = netlist_.nodes.at(key.first);
     if (expanded) {
-      cache_.emplace(id, Compute(id));
-      visiting_.erase(id);
+      cache_.emplace(key, Compute(key.first, key.second));
+      visiting_.erase(key);
       continue;
     }
-    if (!visiting_.insert(id).second) {
+    if (!visiting_.insert(key).second) {
       throw std::runtime_error(object.origin +
                                ": symbolic combinational cycle");
     }
-    stack.emplace_back(id, true);
+    stack.emplace_back(key, true);
     if (object.model == ModelKind::kRegister) continue;
-    std::set<size_t> dependencies;
-    const auto add = [&](const BitReference& bit) {
-      if (bit.node != kMissing) dependencies.insert(bit.node);
+    const bool serial =
+        has_shift_state_ &&
+        (key.second || object.kind == "ScanMux" ||
+         object.kind == "ScanInPort" || object.kind == "ScanOutPort" ||
+         object.kind == "OneHotScanGroup");
+    std::set<Key> dependencies;
+    const auto add = [&](const BitReference& bit, bool shift = false) {
+      if (bit.node != kMissing) dependencies.emplace(bit.node, shift);
     };
     for (const auto& [name, bits] : object.inputs) {
-      for (const auto& bit : bits) add(bit);
+      for (const auto& bit : bits) add(bit, serial && name == "Source");
     }
     for (const auto& choice : object.choices) {
-      for (const auto& bit : choice.source) add(bit);
+      for (const auto& bit : choice.source) add(bit, serial);
     }
     for (const auto& source : object.one_hot_sources) {
-      for (const auto& bit : source.bits) add(bit);
+      for (const auto& bit : source.bits) add(bit, serial);
       for (const auto& condition : one_hot_.Resolve(source)) {
         add(condition.enable);
         if (condition.signals) {
@@ -172,11 +197,11 @@ SymbolicValue SymbolicNetwork::Value(size_t node) {
     for (const auto& term : object.logic) {
       for (const auto& bit : term.signals) add(bit);
     }
-    for (size_t dependency : dependencies) {
+    for (const auto& dependency : dependencies) {
       if (!cache_.count(dependency)) stack.emplace_back(dependency, false);
     }
   }
-  return cache_.at(node);
+  return cache_.at(requested);
 }
 SymbolicValue SymbolicNetwork::OneHotActive(const OneHotSource& source) {
   auto enabled = SymbolicValue::Literal(context_, "0");
@@ -259,12 +284,21 @@ SymbolicValue SymbolicNetwork::Logic(const NetlistNode& node) {
   }
   return values.back();
 }
-SymbolicValue SymbolicNetwork::Compute(size_t id) {
+SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
   const auto& node = netlist_.nodes.at(id);
   const auto unknown =
       SymbolicValue::Literal(context_, std::string(node.Width(), 'x'));
   if (node.model == ModelKind::kRegister) return unknown;
+  const auto driven = cache_.find({id, false});
+  if (driven != cache_.end() && IsInputPort(node.kind) &&
+      !node.inputs.count("Source")) {
+    return driven->second;
+  }
   if (node.model == ModelKind::kLogic) return Logic(node);
+  const bool serial =
+      has_shift_state_ &&
+      (scan || node.kind == "ScanMux" || node.kind == "ScanInPort" ||
+       node.kind == "ScanOutPort" || node.kind == "OneHotScanGroup");
   auto result = unknown;
   if (node.model == ModelKind::kMux) {
     const auto selector = Bits(node.inputs.at("SelectedBy"));
@@ -278,7 +312,7 @@ SymbolicValue SymbolicNetwork::Compute(size_t id) {
         match =
             match || ((selector.bits ^ pattern.bits) & pattern.known) == zero;
       }
-      const auto next = Bits(choice.source);
+      const auto next = Bits(choice.source, serial);
       result = Select(match, Select(found, Join(result, next), next), result);
       found = found || match;
     }
@@ -290,9 +324,9 @@ SymbolicValue SymbolicNetwork::Compute(size_t id) {
       const auto known = enabled.known == context_.bv_val(1, 1);
       const auto active = known && enabled.bits == context_.bv_val(1, 1);
       uncertain = uncertain || !known || (found && active);
-      auto next = Read(node.OneHotSourceBit(source, 0));
+      auto next = Read(node.OneHotSourceBit(source, 0), serial);
       for (size_t bit = 1; bit < node.Width(); ++bit) {
-        next = Concat(next, Read(node.OneHotSourceBit(source, bit)));
+        next = Concat(next, Read(node.OneHotSourceBit(source, bit), serial));
       }
       result = Select(active, next, result);
       found = found || active;
@@ -300,7 +334,7 @@ SymbolicValue SymbolicNetwork::Compute(size_t id) {
     result = Select(found && !uncertain, result, unknown);
   } else {
     const auto source = node.inputs.find("Source");
-    if (source != node.inputs.end()) result = Bits(source->second);
+    if (source != node.inputs.end()) result = Bits(source->second, serial);
   }
   const auto enable = node.inputs.find("Enable");
   if (enable != node.inputs.end()) {

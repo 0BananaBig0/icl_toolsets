@@ -1,0 +1,204 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "shadow_slice_release",
+    "top": "SliceTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/resources/slices.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/resources/slice_release.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/resources/slices.icl": "259fa7cdeee27e798e0354ddf12bc30bf26d1e2394ad1673a78e3c23d1d64efe",
+    "tests/cases/ours/pattern_generation/resources/slice_release.pdl": "a8c451111242efa5b65a4647debde752f3ed46fadd7af764ddc0b0bcc8bff11d",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "shadow_slice_release",
+    "top": "SliceTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/resources/slices.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/resources/slice_release.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "259fa7cdeee27e798e0354ddf12bc30bf26d1e2394ad1673a78e3c23d1d64efe",
+      "source_0.pdl": "a8c451111242efa5b65a4647debde752f3ed46fadd7af764ddc0b0bcc8bff11d",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "c32261e6120368dad0ea6d0731714e4e2b8c5bd2166ed165795a614ac5acff5e"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/resources/slices.icl": "259fa7cdeee27e798e0354ddf12bc30bf26d1e2394ad1673a78e3c23d1d64efe",
+      "tests/cases/ours/pattern_generation/resources/slice_release.pdl": "a8c451111242efa5b65a4647debde752f3ed46fadd7af764ddc0b0bcc8bff11d",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.7800547438673675,
+    "outcome": "ok",
+    "result_sha256": "7a4fc234e7d233e5fb81a8cff2e598c68e9eda2d3bab1c15ba58a4424286d03e",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "SliceTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "0"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "1"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.gate",
+            0,
+            "1"
+          ],
+          [
+            "core.gate",
+            1,
+            "0"
+          ],
+          [
+            "core.target",
+            0,
+            "1"
+          ],
+          [
+            "core.target",
+            1,
+            "0"
+          ],
+          [
+            "core.target",
+            2,
+            "1"
+          ],
+          [
+            "core.target",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "79bb2d25e7a5a7b5e8abe23ec2d03eb8aae3413a4650a77c3a6fdbd69f83da9c",
+  "vendor_console_sha256": "c7136932a6cb64c44c412bfc30f47883c76909f5f8c51245e07d4581922db12a",
+  "artifacts": {
+    "flat.pdl": "c9d155bf5f47064d47f038d1598c4665027f25377837b52f3b6d46c48ce6fcdb",
+    "vendor.pdl": "7a4fc234e7d233e5fb81a8cff2e598c68e9eda2d3bab1c15ba58a4424286d03e"
+  }
+}

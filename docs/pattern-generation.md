@@ -436,7 +436,7 @@ The backend accepts one SI/SO boundary and at most one TAP. It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
 vector OneHotScanGroup transactions, feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
-operations. Transactions needing shadow-register effects or independently gated
+operations. Transactions needing general independently gated
 interface events are outside the current complete-scan model; inability to
 schedule them is not proof of hardware unreachability.
 
@@ -1431,10 +1431,9 @@ These observations are not new certified round-trip goldens.
 
 The vendor probe also exposes a separate outstanding capability: its bypassed
 TAP target shares unconditional interface controls with the visible register.
-Our scheduler still rejects that hidden clocking instead of modeling its side
-effects. Reservation TAP regression therefore uses the existing gated vendor
-fixture and tests the same take/write/release sequences. It does not establish
-that the original ungated TAP network is supported.
+At this checkpoint the scheduler rejected that hidden clocking. The hidden-event
+implementation below now supports this original network and certifies its four
+positive cases in both directions; the blocked low-bit reservation still fails.
 
 Implementation reuses the target resolver, shared scheduler and concrete replay.
 Per-register masks and ownership counters avoid one map allocation per physical
@@ -1476,3 +1475,64 @@ An initial full run exposed an overly strict new native assertion that required
 an unprotected selector to stay open. The test now verifies protected bits and
 target data while allowing the valid final-update close; the final full rerun
 passes. No production protection constraint was relaxed to satisfy that test.
+
+### Hidden serial storage events (2026-10-29)
+
+IEEE 1687-2014 §6.4.8 (printed pp. 113–115) describes capture/shift/update
+storage and shadow ScanRegisters. A bypassed register may still capture, shift
+or update if its interface controls qualify those events. The scheduler now
+models these side effects for a single TAP with phase-qualified controls.
+Selectors and logic read held values; serial sources read separate shift values.
+Every event uses one input snapshot, and all register states are checked against
+concrete `TapExecution` replay before publishing the transaction. Unknown capture
+sources stay unknown; expected read data never supplies hardware state.
+
+The ordinary path scheduler remains the fast path when a bounded symbolic check
+proves that events exactly match the visible path. Otherwise capture/shift/update
+transitions model visible and hidden storage together. Small networks retain joint
+planning; write-only paths longer than 32 bits (or at least 32 registers) reuse existing
+dependency-guided batches, with concrete replay between batches to avoid expanding
+serial histories across the entire prerequisite sequence. Neither path enumerates
+all possible patterns or relaxes reservation checks. Planning remains bounded by
+the existing solver limits and a 1,048,576-unit event-work budget computed from
+horizon, maximum scan length, register bits and node count.
+
+The self-constructed slice probes now cover the original ungated vendor network,
+partial and alias reservations, unknown/known capture data, suppressed capture,
+unknown controls, hidden protected storage, reset after failed planning and
+output/state rollback. Native tests distinguish held and shifted data, including
+all 27 ternary combinations of three one-hot enables. CLI tests exercise original,
+flat-ICL and generated-PDL replay. A 32/128-bit scale test includes all three
+forms; a 1,024-bit case checks bounded refusal and preservation of an older output.
+
+Four fresh Tessent 2026.2 cases each passed both directional fixed points, adding
+eight certified standards under `tests/golden/tessent_roundtrip/shadow_slice_*`.
+The original source and its independently retargeted schedule need not match.
+Certificates compare ordered apply groups, ignoring only write order inside a
+group. See [vendor evidence](tessent-goldens.md#hidden-storage-certification-2026-10-29).
+
+This does not establish general independently gated event support: serial-derived
+controls/resets, gates changing on clock edges, events outside their designated
+phase, multiple TAPs and shared outputs remain unfinished. Concrete mismatches
+fail closed. Completely unobservable registers are not automatically attached to
+a controller merely because they share a module. Verification results follow below.
+
+
+Full dynamic/static `make check BISON=/usr/bin/bison -j4` passed with the reference
+checkout and venv (`build/hidden-regression-final.log`): 334/334 grammar alternatives,
+119/119 scanner rules, seven legacy and 29 directional offline vendor standards,
+and Vim/Neovim corpora containing 38,658 ICL and 830 PDL files per editor.
+Clang ASan/UBSan/LeakSanitizer passed the four hidden-event CLI tests and native
+symbolic/scheduler tests with `detect_leaks=1`, outside the ptrace sandbox. No
+sanitizer or solver timeout was disabled. Changed-source naming, Google formatting
+and whitespace checks pass. Independent review found no correctness defects.
+
+The 32/128-bit replay plus 1,024-bit bounded-rejection test took 2.89 s and
+131,484 KiB peak RSS on Linux 6.18.33.2 WSL2, GCC 16.2.1 `-O2`, Z3 4.13.3.
+Command: `/usr/bin/time -v python3 tests/src/pattern/test_hidden_scan_events.py
+build/icl-pattern-generation HiddenEvents.test_wide_shadow_storage_and_resource_limit`.
+Before dependency batching, the 32/128-bit cases timed out instead of generating
+patterns (5.82 s combined, 709,260 KiB). This is a tested workload and bounded
+failure, not a maximum throughput or global-optimality claim. Evidence:
+`build/hidden-scale-final.log`, `build/hidden-sanitizer-{cli,native,symbolic}.log`.
+Installation, RTL simulation and strict authored-code coverage were not rerun.

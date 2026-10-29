@@ -1,0 +1,11 @@
+iPDLLevel 0
+iProcsForModule SliceTop
+iReset
+iWrite tap.INSTRUCTION 0b0100
+iRead tap.INSTRUCTION 0b0001
+iApply
+iWrite core.gate 0b11
+iApply
+iWrite core.gate 0b11
+iWrite core.target 0b0101
+iApply

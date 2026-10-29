@@ -48,10 +48,29 @@ Files: pattern_resources.h/.cc, pattern_scheduler.h/.cc and icl_pattern_generati
 - [x] Emit partial reset-control writes when other bits of that register are taken but unwritten, so inserted source commands cannot create new reservations. Re-execute rewritten text and retain failed-output protection.
 - [x] Test ascending/inverted/concatenated aliases, overlapping ownership, partial release, iState, reset rewriting, greedy paths, TAP/flat/generated replay and larger vectors. Run full regression, leak-enabled sanitizers and independent review; document normative rules separately from vendor observations.
 
+## Task 4: Hidden serial storage events
+
+Architecture decision: retain the existing path scheduler as the fast path;
+when explicit interface controls clock storage outside that path, use bounded
+symbolic capture/shift/update transitions and verify every committed register
+against the existing concrete TAP replay. Do not enumerate possible patterns
+or suppress replay mismatches. Use the same held/shift distinction as
+NetworkState. Work is bounded by event count times modeled storage, with the
+existing solver timeout and an explicit expression-work budget.
+
+Files: src/pattern/pattern_symbolic.h/.cc, src/pattern/pattern_scheduler.cc;
+tests/src/pattern_symbolic_test.cc, tests/src/pattern_scheduler_test.cc;
+tests/src/pattern/test_hidden_scan_events.py; existing resource probe fixtures.
+
+- [x] Add native symbolic/concrete tests with deliberately different held and shift bits, including mux selectors, aliases, inverted and one-hot serial returns. Extend SymbolicNetwork with a separate optional shift-state view while preserving existing callers.
+- [x] Reproduce the original five slice probes on their ungated TAP network. Add capture/no-capture, hidden update, unknown source, protected hidden storage, reset and rollback cases with native expected states and original/flat/generated replay.
+- [x] Reuse interface bindings to derive effective events; compute all affected register states from one event snapshot. Carry unknown state without inferring captured data from expected comparisons. Keep full-register state replay equality and per-clock reservation checks.
+- [x] Measure representative larger gated and hidden networks; retain the fast path and fail with a resource-limit diagnostic when bounded event planning is not proved. Run focused checks, full regression, sanitizers and independent review; record any remaining model restrictions explicitly.
+
 ## Remaining completion work (not yet completed)
 
 - Mixed primary/scan scheduling and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
-- Independently gated/shadow events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
+- General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
 - Broader merge optimization: preserve reads, last-write semantics, barriers and reservations while grouping compatible work; benchmark representative scale.
@@ -84,3 +103,16 @@ but are not certified round-trip goldens; their ungated hidden TAP storage
 exposes an additional outstanding event-model limitation. See
 [bit-level evidence](../../pattern-generation.md#bit-level-reservations-2026-10-29).
 The remaining completion work above is still required, not marked complete.
+
+
+Task 4 passed full dynamic/static regression (`build/hidden-regression-final.log`),
+29 directional and seven legacy offline vendor standards, and leak-enabled
+ASan/UBSan native and CLI tests. Eight newly recorded Tessent 2026.2 certificates
+cover four original shadow-storage reservation probes in both directions.
+Independent review found no correctness issues. Wide shadow paths use existing
+dependency-guided batches above 32 scan bits; smaller paths retain joint planning.
+A 32/128-bit original/flat/generated test and 1024-bit work-limit rejection pass
+in 2.89 s / 131484 KiB. Original joint planning timed out on those wide cases.
+Final additional native coverage exercises protected hidden storage rollback and
+reset for both 4-bit joint and 32-bit greedy paths. Current event restrictions
+and the remaining requirements are retained in the generator/model guides.

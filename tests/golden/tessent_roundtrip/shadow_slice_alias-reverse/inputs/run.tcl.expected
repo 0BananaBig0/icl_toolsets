@@ -1,0 +1,17 @@
+# patterns -ijtag: setup for loading; analysis for PDL/export.
+set here [file dirname [info script]]
+if {[catch {
+  set_context patterns -ijtag
+  read_icl [file join $here "design_0.icl"] -force -bsdl_file [file join $here "model.bsdl"]
+  set_current_design "SliceTop"
+  set_system_mode analysis
+  open_pattern_set oracle -no_initial_ireset
+  dofile [file join $here "source_0.pdl"]
+  close_pattern_set
+  write_patterns [file join $here result.pdl] -pdl -pattern_sets oracle
+  puts "ICL_TOOLSETS_ORACLE_COMPLETE"
+} message]} {
+  puts stderr "ICL_TOOLSETS_ORACLE_ERROR: $message"
+  exit 1
+}
+exit 0

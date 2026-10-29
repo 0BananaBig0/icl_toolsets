@@ -153,7 +153,60 @@ Module ScanValues {
         solver.add(value.bits != want.bits || value.known != want.known);
         Require(solver.check() == z3::unsat,
                 "symbolic nested one-hot scan truth table");
+        std::map<size_t, pattern::SymbolicValue> shifts{{a, assignments.at(a)},
+                                                        {b, assignments.at(b)}};
+        assignments.at(a) = pattern::SymbolicValue::Literal(context, "1");
+        assignments.at(b) = pattern::SymbolicValue::Literal(context, "0");
+        pattern::SymbolicNetwork separate(netlist, context, assignments, "xx",
+                                          &shifts);
+        const auto serial = separate.Value(id);
+        z3::solver serial_solver(context);
+        serial_solver.add(serial.bits != want.bits ||
+                          serial.known != want.known);
+        Require(serial_solver.check() == z3::unsat,
+                "one-hot scan uses shift storage while guards use held values");
       }
+    }
+  }
+}
+void TestSeparateShiftState() {
+  pattern::Design design;
+  design.AddIcl("shift-state.icl", R"(
+Module ShiftState {
+  ScanInPort si;
+  ScanRegister a[1:0] { ScanInSource si; CaptureSource 2'b10; }
+  ScanRegister b[1:0] { ScanInSource a[0]; CaptureSource 2'b01; }
+  Alias inverted = ~a[0];
+  ScanMux mux SelectedBy a[1] { 1'b0: inverted; 1'b1: b[0]; }
+  ScanOutPort so { Source mux; }
+  DataOutPort data { Source inverted; }
+})");
+  const auto netlist = pattern::Elaborate(design, "ShiftState");
+  z3::context context;
+  const auto a = netlist.node_ids.at("a"), b = netlist.node_ids.at("b");
+  pattern::NetworkState native(netlist);
+  native.SetRegister(a, "10", "01");
+  native.SetRegister(b, "01", "10");
+  std::map<size_t, pattern::SymbolicValue> shifts{
+      {a, pattern::SymbolicValue::Literal(context, "10")},
+      {b, pattern::SymbolicValue::Literal(context, "01")}};
+  pattern::SymbolicNetwork symbolic(
+      netlist, context,
+      {{a, pattern::SymbolicValue::Literal(context, "01")},
+       {b, pattern::SymbolicValue::Literal(context, "10")}},
+      "xx", &shifts);
+  for (bool scan : {false, true, false}) {
+    for (const auto* name : {"a", "b", "inverted", "mux", "so", "data"}) {
+      const size_t id = netlist.node_ids.at(name);
+      const auto actual = symbolic.Value(id, scan);
+      const auto expected =
+          pattern::SymbolicValue::Literal(context, native.Value(id, scan));
+      z3::solver solver(context);
+      solver.add(actual.bits != expected.bits ||
+                 actual.known != expected.known);
+      Require(solver.check() == z3::unsat,
+              "symbolic held/shift views must agree with concrete serial "
+              "semantics");
     }
   }
 }
@@ -255,6 +308,7 @@ int main() {
     TestTernaryAgreement();
     TestOneHotPortValues();
     TestOneHotScanValues();
+    TestSeparateShiftState();
     TestJustification();
     TestPdlOperands();
     std::cout << "pattern symbolic tests passed\n";

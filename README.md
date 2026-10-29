@@ -460,11 +460,15 @@ operation sequence. It rejects cases that need edits inside procedures, unsafe
 repeated source insertions, or changes to Tcl substitution order. See
 [local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
-This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, mixed primary/scan transactions, vector one-hot scan paths, resource
+This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
+mixed primary/scan transactions, vector one-hot scan paths, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
-unfinished. Fresh Tessent 2026.2 runs qualify the three reservation probes and
+unfinished. Single-TAP shadow registers with phase-qualified capture, shift and
+update controls now use event scheduling and full concrete replay, including
+bypassed storage. Four slice-reservation probes have fresh Tessent 2026.2
+certificates in both directions. See [shadow-register support and bounds](docs/pattern-generation.md#hidden-serial-storage-events-2026-10-29).
+Earlier Tessent 2026.2 runs qualify the three reservation probes and
 the SIB-close/reopen probe in both directions, and the transitive-reset probe
 in the forward direction. The latter feeds our flat output to Tessent; Tessent
 does not automatically release the local resets in the original source PDL.

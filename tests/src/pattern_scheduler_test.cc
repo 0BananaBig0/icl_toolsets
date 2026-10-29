@@ -311,6 +311,67 @@ Module TooWide { DataInPort data[4096:0]; }
   Require(rejected && limited.Value("data") == std::string(4097, 'x'),
           "oversized primary input fails atomically");
 }
+void TestHiddenScanState() {
+  const auto read = [](const std::string& name) {
+    std::ifstream file("tests/cases/ours/pattern_generation/" + name);
+    return std::string(std::istreambuf_iterator<char>(file), {});
+  };
+  for (size_t width : {4U, 32U}) {
+    for (bool capture : {false, true}) {
+      auto source = read("resources/slices.icl");
+      if (capture) {
+        for (const auto& [reset, property] : std::map<std::string, std::string>{
+                 {"ResetValue 2'b00;", "CaptureSource 2'b11; "},
+                 {"ResetValue 4'b0;", "CaptureSource 4'b1010; "}}) {
+          source.insert(source.find(reset), property);
+        }
+      }
+      source.replace(source.find("target[3:0]"),
+                     std::string("target[3:0]").size(),
+                     "target[" + std::to_string(width - 1) + ":0]");
+      if (width != 4) {
+        size_t offset = 0;
+        while ((offset = source.find("4'b", offset)) != std::string::npos) {
+          source.replace(offset, 3, std::to_string(width) + "'b");
+          offset += std::to_string(width).size() + 2;
+        }
+      }
+      pattern::Design design;
+      design.AddIcl("hidden.icl", source);
+      design.AddBsdl("simple.bsdl", read("access_link/simple.bsdl"),
+                     "AccessProbe");
+      auto network = pattern::ElaborateTapNetwork(design, "SliceTop");
+      pattern::ScanScheduler scheduler(network.netlist);
+      scheduler.Reset();
+      const auto steps =
+          scheduler.Apply({{"iWrite", {"core.gate", "2"}, "hidden:1", {}}});
+      Require(steps.size() == 2 && scheduler.Value("core.gate") == "10",
+              "hidden event scheduling selects IR then updates visible gate");
+      Require(scheduler.Value("core.target") ==
+                  (capture ? "11" + std::string(width - 4, '0') + "10"
+                           : std::string(width, 'x')),
+              "two bypass clocks shift captured gate bits into hidden target");
+      scheduler.Assume("core.target", std::string(width, '1'));
+      bool rejected = false;
+      try {
+        scheduler.Apply({{"iWrite", {"core.gate", "0"}, "hidden:2", {}}}, false,
+                        {{network.netlist.node_ids.at("core.target"),
+                          std::string(width, '1')}});
+      } catch (const std::exception&) {
+        rejected = true;
+      }
+      Require(rejected &&
+                  scheduler.Value("core.target") == std::string(width, '1') &&
+                  scheduler.Value("core.gate") == "10",
+              "hidden protected writes fail without changing live state");
+      scheduler.Reset();
+      Require(
+          scheduler.Value("core.target") == std::string(width, '0') &&
+              scheduler.Value("core.gate") == "00",
+          "TAP reset reaches bypassed shadow storage after failed planning");
+    }
+  }
+}
 void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
   const std::string directory =
       "tests/cases/ours/pattern_generation/access_link/";
@@ -1013,6 +1074,7 @@ int main() {
     TestPrimaryWrites();
     TestPrimaryLimits();
     TestPrimaryControllingState();
+    TestHiddenScanState();
     TestTapScheduling(false, false, false);
     TestTapScheduling(true, false, false);
     TestTapScheduling(false, true, true);

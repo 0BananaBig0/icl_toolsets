@@ -183,6 +183,62 @@
       "expected": "ok",
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "bsdl_entity": "AccessProbe"
+    },
+    {
+      "id": "shadow_slice_high",
+      "top": "SliceTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/slices.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/slice_high.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "shadow_slice_release",
+      "top": "SliceTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/slices.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/slice_release.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "shadow_slice_alias",
+      "top": "SliceTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/slices.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/slice_alias.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "shadow_slice_partial_write",
+      "top": "SliceTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/resources/slices.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/resources/slice_partial_write.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }
