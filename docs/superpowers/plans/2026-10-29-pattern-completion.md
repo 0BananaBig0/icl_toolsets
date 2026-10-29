@@ -151,7 +151,7 @@ parallel-port update. Extend the existing group constraints and concrete replay;
 no second scheduler or relaxation of simultaneous access. Ungrouped primary and
 serial fast paths remain. The inherited 256-vector/4096-bit and temporal-work
 bounds cover planning; measure 64 primary members with original/flat/generated
-replays. Forwarded/computed write targets remain a separate pending requirement.
+replays. Forwarded/computed write targets are covered by Task 9.
 
 - [x] Add failing primary-only/mixed CLI tests for direct primary members,
   partial aliases and implicit member access, inverted/sliced nested groups,
@@ -166,9 +166,31 @@ replays. Forwarded/computed write targets remain a separate pending requirement.
   full dynamic/static regression, leak-enabled sanitizers and Google checks.
   Update support documentation, commit/push, and continue remaining requirements.
 
+## Task 9: Forwarded/computed data-port requirements in joint scheduling
+
+Reuse SymbolicNetwork/NetworkState evaluation for logical port goals; do not
+substitute a port's requested data for its hardware state or collapse independent
+controlling histories into upstream registers. Cache guarded dependencies across shared logic,
+retain bounded work, and require controller updates for written scan-driven ports
+(IEEE §7.9.11 and §7.9.14(a), pp.167/173). Keep signal models shared with existing
+primary-only writes. General time/clock/callback models remain separate work.
+
+- [x] Add failing mixed CLI/native cases for forwarded/inverted/logic/mux/one-hot
+  data ports, primary and scan sources, hierarchy, partial/X controlling history,
+  reservations, end states, contradictory/disconnected writes, grouped updates,
+  TAP and concrete rollback. Require original/flat/generated fixed points and
+  a representative wide case.
+- [x] Reuse logical value evaluation and controlling-fill rules in joint goals;
+  discover required driver/control dependencies and support common-cycle checks
+  for ports without pretending those ports contain storage. Replay and validate
+  logical goals against concrete hardware before committing fill/state.
+- [x] Run focused and full dynamic/static regression, leak-enabled sanitizers,
+  naming/style, scale checks and independent review. Record limits and evidence,
+  commit/push, and continue remaining requirements.
+
 ## Remaining completion work (not yet completed)
 
-- General forwarded/computed mixed-port writes and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
+- Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
 - General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
@@ -261,3 +283,15 @@ an obsolete unsupported-feature assertion; the replacement verifies actual whole
 group drives and output state, and the final full run passed. Google formatting,
 changed-source clang-tidy and whitespace checks pass. No new vendor certification
 or completion of the remaining model requirements is claimed.
+
+
+Task 9 passed final full dynamic/static `make check` (exit 0,
+`build/mixed-port-regression-verified.log`), including 31 directional and seven
+legacy offline vendor standards and the complete Vim/Neovim corpus checks.
+Native scheduler plus 26 mixed-port, 13 primary-group, 15 mixed-I/O and nine
+data-resource CLI cases pass ASan/UBSan/LeakSanitizer with `detect_leaks=1`
+(`build/mixed-port-sanitizer-final.log`). Formatting, naming and whitespace
+checks pass. Independent review findings were reproduced and repaired, including
+knownness activity and reconvergent controller dependencies; no findings remain.
+The 64-level graph replay takes 0.15s / 59040 KiB. No new vendor certification or
+completion of the broader remaining model requirements is claimed.

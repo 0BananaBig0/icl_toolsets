@@ -226,6 +226,48 @@ void TestPrimaryAccessTogether() {
             "grouped output comparisons observe actual storage together");
   }
 }
+void TestMixedPortGoals() {
+  pattern::Design design;
+  design.AddIcl("port-goals.icl", R"(
+Module Sink { DataInPort value[3:0]; }
+Module PortGoals {
+  ScanInPort si;
+  ScanRegister sr[3:0] { ScanInSource si; ResetValue 4'b0; }
+  ScanOutPort so { Source sr[0]; }
+  DataInPort pin[3:0];
+  DataOutPort out[7:0] { Source sr, pin; }
+  Instance sink Of Sink { InputPort value = sr; }
+})");
+  const auto netlist = pattern::Elaborate(design, "PortGoals");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto unchanged =
+      scheduler.Apply({{"iWrite", {"sink.value", "0"}, "port:1", {}}});
+  Require(unchanged.size() == 1 && unchanged[0].writes.at("sr") == "0000",
+          "unchanged scan-driven DataInPort still requires controller update");
+  scheduler.Apply({{"iWrite", {"out", "0x59"}, "port:2", {}}});
+  Require(scheduler.Value("sr") == "0101" && scheduler.Value("pin") == "1001" &&
+              scheduler.Value("out") == "01011001",
+          "logical port goals update actual serial and parallel sources");
+  scheduler.Apply({{"iWrite", {"sr", "3"}, "port:3", {}}});
+  scheduler.Apply({{"iWrite", {"out[3:0]", "6"}, "port:4", {}}});
+  Require(scheduler.Value("sr") == "0101" && scheduler.Value("pin") == "0110" &&
+              scheduler.Value("out") == "01010110",
+          "logical controlling history survives physical source writes");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"out", "0x99"}, "port:5", {}}}, false,
+                    {{netlist.node_ids.at("sr"), "0101"}});
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("reserved sr") != std::string::npos;
+  }
+  Require(rejected && scheduler.Value("out") == "01010110",
+          "failed port writes preserve physical state");
+  scheduler.Apply({{"iWrite", {"out", "0bx"}, "port:6", {}}});
+  Require(scheduler.Value("out") == "01010110",
+          "failed port writes preserve logical controlling history");
+}
 void TestResetDependencyScale() {
   // Reverse declaration order is the worst case for repeatedly scanning all
   // registers to discover the next reset dependency.
@@ -1024,16 +1066,11 @@ Module Network {
   }
   pattern::ScanScheduler scheduler(netlist);
   scheduler.Assume("gate", "0");
-  bool rejected = false;
-  try {
-    scheduler.Apply({{"iWrite", {"invalid[1]", "1"}, "unsupported:1", {}}});
-  } catch (const std::exception& error) {
-    rejected =
-        std::string(error.what()).find("requires accessible registers") !=
-        std::string::npos;
-  }
-  Require(rejected && scheduler.Value("gate") == "0",
-          "unsupported full group members cannot be hidden behind a slice");
+  const auto forwarded =
+      scheduler.Apply({{"iWrite", {"invalid[1]", "1"}, "forwarded:1", {}}});
+  Require(forwarded.size() == 1 && forwarded[0].together &&
+              scheduler.Value("a") == "1" && scheduler.Value("output") == "1",
+          "partial groups include forwarded outputs in their update");
 
   pattern::Design reset_design;
   reset_design.AddIcl("reset-group.icl", R"(
@@ -1320,6 +1357,7 @@ int main() {
     TestMixedIoPhases();
     TestPrimaryObservationOfScanStorage();
     TestPrimaryAccessTogether();
+    TestMixedPortGoals();
     TestResetDependencyScale();
     TestGreedyRollback();
     TestAddressedRollback();

@@ -7,6 +7,7 @@
 #include <functional>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 #include "pattern/pattern_data.h"
@@ -777,6 +778,10 @@ class ScanScheduler::Impl {
     return node.kind == "AddressPort" || node.kind == "ReadEnPort" ||
            node.kind == "WriteEnPort";
   }
+  static bool DataPort(const NetlistNode& node) {
+    return node.kind == "DataInPort" || node.kind == "DataOutPort" ||
+           ParallelControl(node);
+  }
   bool FixedOneHotPadding(BitReference ref) const {
     std::set<Key> visited;
     while (ref.node != kMissing &&
@@ -798,6 +803,35 @@ class ScanScheduler::Impl {
     }
     return false;
   }
+  std::string WriteFill(size_t id) const {
+    auto goal = DefaultFill(id);
+    const auto& node = netlist_.nodes[id];
+    for (size_t bit = 0; bit < goal.size(); ++bit) {
+      const int64_t index =
+          node.left + (node.left <= node.right ? static_cast<int64_t>(bit)
+                                               : -static_cast<int64_t>(bit));
+      // Tessent permits X on structurally padded bits; disabled ports are
+      // not padding and retain their distinct 0/1 controlling state.
+      if (FixedOneHotPadding({id, index})) goal[bit] = 'x';
+    }
+    return goal;
+  }
+  BitReference WriteReference(
+      BitReference ref, std::unique_ptr<AddressResolver>* controls) const {
+    if (ref.node == kMissing) return ref;
+    const auto& node = netlist_.nodes.at(ref.node);
+    if (node.scope != 0 &&
+        (node.kind == "ReadEnPort" || node.kind == "WriteEnPort")) {
+      if (!*controls) *controls = std::make_unique<AddressResolver>(netlist_);
+      auto terminal = (*controls)->ResolveEnable(
+          node.scope, node.kind == "ReadEnPort" ? AddressOperation::kRead
+                                                : AddressOperation::kWrite);
+      terminal.inverted = terminal.inverted != ref.inverted;
+      return terminal;
+    }
+    return ref;
+  }
+
   std::vector<ScanStep> SolvePrimaryWrites(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes) {
@@ -825,22 +859,7 @@ class ScanScheduler::Impl {
                                            operation.arguments[1]);
       for (size_t i = 0; i < bits.size(); ++i) {
         auto ref = target.bits[i];
-        if (!read && ref.node != kMissing) {
-          const auto& node = netlist_.nodes.at(ref.node);
-          if (node.scope != 0 &&
-              (node.kind == "ReadEnPort" || node.kind == "WriteEnPort")) {
-            if (!controls) {
-              controls = std::make_unique<AddressResolver>(netlist_);
-            }
-            const auto terminal = controls->ResolveEnable(
-                node.scope, node.kind == "ReadEnPort"
-                                ? AddressOperation::kRead
-                                : AddressOperation::kWrite);
-            const bool inverted = ref.inverted != terminal.inverted;
-            ref = terminal;
-            ref.inverted = inverted;
-          }
-        }
+        if (!read) ref = WriteReference(ref, &controls);
         if (read) {
           if (ref.node == kMissing ||
               (netlist_.nodes.at(ref.node).kind != "DataRegister" &&
@@ -865,17 +884,7 @@ class ScanScheduler::Impl {
         }
         auto found = goals.find(ref.node);
         if (found == goals.end()) {
-          auto goal = DefaultFill(ref.node);
-          const auto& node = netlist_.nodes[ref.node];
-          for (size_t bit = 0; bit < goal.size(); ++bit) {
-            const int64_t index =
-                node.left + (node.left <= node.right
-                                 ? static_cast<int64_t>(bit)
-                                 : -static_cast<int64_t>(bit));
-            // Tessent permits X on structurally padded bits; disabled ports are
-            // not padding and retain their distinct 0/1 controlling state.
-            if (FixedOneHotPadding({ref.node, index})) goal[bit] = 'x';
-          }
+          auto goal = WriteFill(ref.node);
           found = goals.emplace(ref.node, std::move(goal)).first;
         }
         if (bits[i] != 'x') {
@@ -1421,6 +1430,10 @@ class ScanScheduler::Impl {
       }
       for (const auto& choice : node.choices) {
         pending.push_back(choice.source.at(Offset(node, bit.index)));
+      }
+      for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+        pending.push_back(
+            node.OneHotSourceBit(source, Offset(node, bit.index)));
       }
       for (const auto& instruction : node.logic) {
         pending.insert(pending.end(), instruction.signals.begin(),
@@ -2182,21 +2195,13 @@ class ScanScheduler::Impl {
     return next;
   }
   std::pair<std::vector<size_t>, size_t> MixedPrimaryInputs(
-      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& goals,
       const std::map<size_t, std::string>& end_goals,
       std::set<size_t> requested_pins) {
     std::vector<size_t> pins;
     size_t pin_bits = 0;
-    for (const auto& operation : operations) {
-      if (operation.command != "iWrite" || operation.arguments.empty()) {
-        continue;
-      }
-      for (const auto& bit :
-           ResolvePdlTarget(netlist_, operation.arguments[0]).bits) {
-        if (bit.node != kMissing && PrimaryInput(netlist_.nodes[bit.node])) {
-          requested_pins.insert(bit.node);
-        }
-      }
+    for (const auto& [id, goal] : goals) {
+      if (PrimaryInput(netlist_.nodes[id])) requested_pins.insert(id);
     }
     for (const auto& [id, bits] : end_goals) {
       if (PrimaryInput(netlist_.nodes[id]) && NeedsEndState({{id, bits}})) {
@@ -2225,6 +2230,332 @@ class ScanScheduler::Impl {
           "mixed-I/O primary-input resource limit exceeded");
     }
     return {std::move(pins), pin_bits};
+  }
+
+  std::map<size_t, std::set<size_t>> PortDrivers(
+      const std::set<size_t>& ports) {
+    std::map<size_t, std::set<size_t>> result;
+    size_t remaining = 4 * 1024 * 1024;
+    const auto& data = state_.DataRegisters();
+    for (size_t id : ports) {
+      const auto& port = netlist_.nodes[id];
+      for (size_t offset = 0; offset < port.Width(); ++offset) {
+        AddControl({id, port.left + (port.left <= port.right
+                                         ? static_cast<int64_t>(offset)
+                                         : -static_cast<int64_t>(offset))});
+      }
+      auto& drivers = result[id];
+      std::vector<size_t> pending{id};
+      std::set<size_t> visited;
+      while (!pending.empty()) {
+        const size_t current = pending.back();
+        pending.pop_back();
+        if (!remaining--) {
+          throw std::runtime_error("port driver dependency resource limit");
+        }
+        if (current == kMissing || !visited.insert(current).second) continue;
+        const auto& node = netlist_.nodes[current];
+        if (node.model == ModelKind::kRegister || PrimaryInput(node)) {
+          drivers.insert(current);
+          const auto scans = data.scan_inputs.find(current);
+          if (scans != data.scan_inputs.end()) {
+            drivers.insert(scans->second.begin(), scans->second.end());
+          }
+          continue;
+        }
+        for (const auto& [name, refs] : node.inputs) {
+          for (const auto& ref : refs) pending.push_back(ref.node);
+        }
+        for (const auto& choice : node.choices) {
+          for (const auto& ref : choice.source) pending.push_back(ref.node);
+        }
+        for (const auto& source : node.one_hot_sources) {
+          for (const auto& ref : source.bits) pending.push_back(ref.node);
+          for (const auto& access : one_hot_.Resolve(source)) {
+            AddControl(access.enable);
+            pending.push_back(access.enable.node);
+            if (access.signals) {
+              for (const auto& ref : *access.signals) {
+                AddControl(ref);
+                pending.push_back(ref.node);
+              }
+            }
+          }
+        }
+        for (const auto& term : node.logic) {
+          for (const auto& ref : term.signals) pending.push_back(ref.node);
+        }
+      }
+    }
+    return result;
+  }
+
+  void ActivatePorts(const std::map<size_t, std::set<size_t>>& ports,
+                     SymbolicNetwork& before, SymbolicNetwork& after,
+                     const Values& state, size_t time, Frame* frame,
+                     std::map<size_t, z3::expr>* touched) {
+    std::map<size_t, std::unique_ptr<SymbolicNetwork>> alternatives;
+    std::map<std::tuple<size_t, int64_t, bool>, z3::expr> cache;
+    size_t remaining = 262144;
+    std::function<z3::expr(BitReference, size_t, bool)> access;
+    access = [&](BitReference bit, size_t depth, bool control) -> z3::expr {
+      if (!remaining-- || depth > 256) {
+        throw std::runtime_error("port activity dependency resource limit");
+      }
+      if (bit.node == kMissing) {
+        return context_.bool_val(!control &&
+                                 (bit.constant == '0' || bit.constant == '1'));
+      }
+      const auto key = std::make_tuple(bit.node, bit.index, control);
+      const auto cached = cache.find(key);
+      if (cached != cache.end()) return cached->second;
+      const auto& node = netlist_.nodes[bit.node];
+      const size_t offset = Offset(node, bit.index);
+      auto active = context_.bool_val(false);
+      if (node.model == ModelKind::kRegister || PrimaryInput(node)) {
+        const auto event = frame->active.find(bit.node);
+        if (event != frame->active.end()) active = event->second;
+        if (node.reset) {
+          active = active && Known(before.Read(*node.reset), false) &&
+                   Known(after.Read(*node.reset), false);
+        }
+      } else if (node.inputs.count("Source")) {
+        active =
+            access(node.inputs.at("Source").at(offset), depth + 1, control);
+      } else if (node.kind == "DataMux") {
+        auto select = context_.bool_val(false);
+        for (const auto& ref : node.inputs.at("SelectedBy")) {
+          select = select || access(ref, depth + 1, true);
+        }
+        for (size_t choice = 0; choice < node.choices.size(); ++choice) {
+          active = active ||
+                   (DataReadGuardActive(after, {bit.node, choice}) &&
+                    (select || access(node.choices[choice].source.at(offset),
+                                      depth + 1, control)));
+        }
+      } else if (node.kind == "OneHotDataGroup") {
+        auto select = context_.bool_val(false);
+        for (const auto& source : node.one_hot_sources) {
+          for (const auto& condition : one_hot_.Resolve(source)) {
+            select = select || access(condition.enable, depth + 1, true);
+            if (condition.signals) {
+              for (const auto& ref : *condition.signals) {
+                select = select || access(ref, depth + 1, true);
+              }
+            }
+          }
+        }
+        for (size_t choice = 0; choice < node.one_hot_sources.size();
+             ++choice) {
+          active =
+              active || (DataReadGuardActive(after, {bit.node, choice}) &&
+                         (select || access(node.OneHotSourceBit(choice, offset),
+                                           depth + 1, control)));
+        }
+      } else if (node.model == ModelKind::kLogic) {
+        auto& alternative = alternatives[bit.node];
+        if (!alternative) {
+          const size_t work = state.size() + netlist_.nodes.size();
+          if (work > remaining) {
+            throw std::runtime_error("port activity dependency resource limit");
+          }
+          remaining -= work;
+          auto varied = state;
+          for (const auto& [id, event] : frame->active) {
+            const auto& driver = netlist_.nodes[id];
+            if (driver.model != ModelKind::kRegister && !PrimaryInput(driver)) {
+              continue;
+            }
+            auto enabled = event;
+            if (driver.reset) {
+              enabled = enabled && Known(before.Read(*driver.reset), false) &&
+                        Known(after.Read(*driver.reset), false);
+            }
+            const auto name = "port_event_" + std::to_string(time) + "_" +
+                              std::to_string(bit.node) + "_" + driver.name;
+            const auto bits = context_.bv_const(name.c_str(), driver.Width());
+            const auto known =
+                context_.bv_const((name + "_known").c_str(), driver.Width());
+            varied.at(id) = Choose(enabled, {bits, known}, state.at(id));
+          }
+          alternative = std::make_unique<SymbolicNetwork>(
+              netlist_, context_, std::move(varied), global_resets_);
+        }
+        // Vary updated drivers' values and knownness: an update can establish
+        // a known result even when all known input values give the same result.
+        // Shared references and masks use the real signal evaluator.
+        const auto actual = after.Value(bit.node);
+        const auto possible = alternative->Value(bit.node);
+        active = actual.known != possible.known ||
+                 ((actual.bits ^ possible.bits) & actual.known &
+                  possible.known) != context_.bv_val(0, 1);
+        const bool constant =
+            std::all_of(node.logic.begin(), node.logic.end(),
+                        [](const auto& term) { return term.signals.empty(); });
+        active = active || context_.bool_val(constant && !control);
+      }
+      const auto enable = node.inputs.find("Enable");
+      if (enable != node.inputs.end()) {
+        active = (active || access(enable->second.at(0), depth + 1, true)) &&
+                 Known(after.Read(enable->second.at(0)), true);
+      }
+      return cache.emplace(key, active).first->second;
+    };
+    for (const auto& [id, drivers] : ports) {
+      const auto& node = netlist_.nodes[id];
+      auto all = context_.bool_val(true), any = context_.bool_val(false);
+      for (size_t offset = 0; offset < node.Width(); ++offset) {
+        const BitReference ref{
+            id, node.left + (node.left <= node.right
+                                 ? static_cast<int64_t>(offset)
+                                 : -static_cast<int64_t>(offset))};
+        const auto active = FixedOneHotPadding(ref) ? context_.bool_val(true)
+                                                    : access(ref, 0, false);
+        all = all && active;
+        any = any || active;
+      }
+      frame->active.emplace(id, all);
+      const auto found = touched->find(id);
+      if (found != touched->end()) found->second = found->second || any;
+    }
+  }
+
+  void ConstrainPortControllers(z3::optimize& solver, SymbolicNetwork& values,
+                                const std::set<size_t>& ports,
+                                const std::set<size_t>& requested,
+                                const std::map<size_t, z3::expr>& updated) {
+    using Requirements = std::map<size_t, z3::expr>;
+    using Key = std::pair<size_t, int64_t>;
+    std::map<Key, Requirements> cache;
+    std::set<Key> visiting;
+    size_t remaining = 262144;
+    const auto spend = [&] {
+      if (!remaining--) {
+        throw std::runtime_error("port controller dependency resource limit");
+      }
+    };
+    std::function<const Requirements&(BitReference, size_t)> trace;
+    trace = [&](BitReference bit, size_t depth) -> const Requirements& {
+      spend();
+      const Key key{bit.node, bit.index};
+      const auto cached = cache.find(key);
+      if (cached != cache.end()) return cached->second;
+      if (depth > 256 || !visiting.insert(key).second) {
+        throw std::runtime_error(
+            "port controller dependency cycle/depth limit");
+      }
+      Requirements result;
+      const auto merge = [&](BitReference ref, const z3::expr& guard) {
+        for (const auto& [id, condition] : trace(ref, depth + 1)) {
+          spend();
+          const auto selected = (guard && condition).simplify();
+          const auto [entry, inserted] = result.emplace(id, selected);
+          if (!inserted) entry->second = (entry->second || selected).simplify();
+        }
+      };
+      const auto always = context_.bool_val(true);
+      if (bit.node != kMissing) {
+        const auto& node = netlist_.nodes[bit.node];
+        if (node.kind == "ScanRegister") {
+          result.emplace(bit.node, always);
+        } else if (node.kind == "DataRegister") {
+          const auto& controls = state_.DataRegisters().scan_inputs;
+          const auto found = controls.find(bit.node);
+          if (found != controls.end()) {
+            for (size_t id : found->second) {
+              spend();
+              result.emplace(id, always);
+            }
+          }
+        } else {
+          const auto enable = node.inputs.find("Enable");
+          if (enable != node.inputs.end()) merge(enable->second.at(0), always);
+          if (node.inputs.count("Source")) {
+            merge(node.inputs.at("Source").at(Offset(node, bit.index)), always);
+          } else if (node.kind == "DataMux") {
+            for (const auto& ref : node.inputs.at("SelectedBy")) {
+              merge(ref, always);
+            }
+            for (size_t choice = 0; choice < node.choices.size(); ++choice) {
+              merge(node.choices[choice].source.at(Offset(node, bit.index)),
+                    DataReadGuardActive(values, {bit.node, choice}));
+            }
+          } else if (node.kind == "OneHotDataGroup") {
+            for (size_t choice = 0; choice < node.one_hot_sources.size();
+                 ++choice) {
+              for (const auto& access :
+                   one_hot_.Resolve(node.one_hot_sources[choice])) {
+                merge(access.enable, always);
+                if (access.signals) {
+                  for (const auto& ref : *access.signals) merge(ref, always);
+                }
+              }
+              merge(node.OneHotSourceBit(choice, Offset(node, bit.index)),
+                    DataReadGuardActive(values, {bit.node, choice}));
+            }
+          } else if (node.model == ModelKind::kLogic) {
+            for (const auto& term : node.logic) {
+              for (const auto& ref : term.signals) merge(ref, always);
+            }
+          }
+        }
+      }
+      visiting.erase(key);
+      return cache.emplace(key, std::move(result)).first->second;
+    };
+    // Cache each bit's guarded controllers, rather than enumerate paths through
+    // reconvergent logic. A controller shared by mux branches combines guards.
+    for (size_t id : ports) {
+      const auto& node = netlist_.nodes[id];
+      if (!requested.count(id) || node.kind != "DataInPort") continue;
+      for (size_t offset = 0; offset < node.Width(); ++offset) {
+        const BitReference bit{
+            id, node.left + (node.left <= node.right
+                                 ? static_cast<int64_t>(offset)
+                                 : -static_cast<int64_t>(offset))};
+        for (const auto& [controller, selected] : trace(bit, 0)) {
+          solver.add(z3::implies(selected, updated.at(controller)));
+        }
+      }
+    }
+  }
+
+  void CheckScanConnectivity(const std::set<size_t>& required) const {
+    // Check SI/SO connectivity independently of unknown selector values.
+    std::vector<bool> connected(graph_.size());
+    std::set<size_t> reachable;
+    for (size_t id : order_) {
+      connected[id] = graph_[id].input;
+      for (const auto& edge : graph_[id].edges) {
+        connected[id] = connected[id] || connected[edge.next];
+      }
+      if (connected[id]) reachable.insert(graph_[id].bit.node);
+    }
+    for (size_t id : required) {
+      if (!reachable.count(id)) {
+        throw std::runtime_error(netlist_.nodes[id].origin +
+                                 ": disconnected scan input/output for " +
+                                 netlist_.nodes[id].name);
+      }
+    }
+  }
+
+  void UpdatePortFill(const NetworkState& replay,
+                      const std::map<size_t, std::string>& goals,
+                      const std::set<size_t>& ports,
+                      std::map<size_t, std::string>* fill) const {
+    for (const auto& [id, goal] : goals) {
+      if (!ports.count(id)) continue;
+      const auto actual = replay.Value(id);
+      for (size_t bit = 0; bit < goal.size(); ++bit) {
+        if (goal[bit] == 'x') continue;
+        if (actual[bit] != goal[bit]) {
+          throw std::runtime_error("symbolic/concrete port goal mismatch at " +
+                                   netlist_.nodes[id].name);
+        }
+        fill->at(id)[bit] = goal[bit];
+      }
+    }
   }
 
   std::vector<ScanStep> Solve(
@@ -2273,7 +2604,8 @@ class ScanScheduler::Impl {
     }
     std::map<size_t, std::string> goals, expected;
     std::map<size_t, std::map<int64_t, char>> data_reads;
-    std::set<size_t> required, group_pins;
+    std::set<size_t> required, group_pins, port_goals;
+    std::unique_ptr<AddressResolver> controls;
     struct AccessGroup {
       bool read = false;
       std::set<size_t> members, requested;
@@ -2302,22 +2634,27 @@ class ScanScheduler::Impl {
                 ResolvePdlTarget(netlist_, netlist_.nodes[current].name);
             pending.insert(full.access_together.begin(),
                            full.access_together.end());
-            for (const auto& bit : full.bits) {
+            for (auto bit : full.bits) {
+              if (!read) bit = WriteReference(bit, &controls);
               if (bit.node == kMissing ||
                   (netlist_.nodes.at(bit.node).kind != "ScanRegister" &&
                    !data_plan.writes.count(bit.node) &&
                    !(read ? netlist_.nodes.at(bit.node).kind == "DataOutPort"
-                          : PrimaryInput(netlist_.nodes.at(bit.node))))) {
+                          : DataPort(netlist_.nodes.at(bit.node))))) {
                 throw std::runtime_error(
                     "AccessTogether " + netlist_.nodes[alias].name +
                     " requires accessible registers or primary ports");
               }
               group.members.insert(bit.node);
-              if (data_plan.writes.count(bit.node) ||
-                  netlist_.nodes[bit.node].kind == "DataOutPort") {
-                if (read) data_reads[bit.node].emplace(bit.index, 'x');
+              if (read && (data_plan.writes.count(bit.node) ||
+                           netlist_.nodes[bit.node].kind == "DataOutPort")) {
+                data_reads[bit.node].emplace(bit.index, 'x');
               } else if (PrimaryInput(netlist_.nodes[bit.node])) {
                 group_pins.insert(bit.node);
+              } else if (DataPort(netlist_.nodes[bit.node])) {
+                port_goals.insert(bit.node);
+              } else if (data_plan.writes.count(bit.node)) {
+                // DataRegister update qualification is modeled in each frame.
               } else {
                 required.insert(bit.node);
               }
@@ -2333,7 +2670,8 @@ class ScanScheduler::Impl {
                             : PdlDataValue(context_, netlist_, target,
                                            operation.arguments[1]);
       for (size_t i = 0; i < bits.size(); ++i) {
-        const auto& ref = target.bits[i];
+        auto ref = target.bits[i];
+        if (!read) ref = WriteReference(ref, &controls);
         if (read && ref.node != kMissing &&
             (netlist_.nodes[ref.node].kind == "DataRegister" ||
              netlist_.nodes[ref.node].kind == "DataOutPort")) {
@@ -2346,9 +2684,10 @@ class ScanScheduler::Impl {
         if (ref.node == kMissing ||
             (netlist_.nodes.at(ref.node).kind != "ScanRegister" &&
              (read || (!data_plan.writes.count(ref.node) &&
-                       !PrimaryInput(netlist_.nodes[ref.node]))))) {
+                       !DataPort(netlist_.nodes[ref.node]))))) {
           throw std::runtime_error(
-              "serial target requires a ScanRegister or writable DataRegister");
+              "write target requires a register or data port; reads require "
+              "observable storage or outputs");
         }
         if (tap_ &&
             std::any_of(
@@ -2359,15 +2698,20 @@ class ScanScheduler::Impl {
         }
         if (netlist_.nodes[ref.node].kind == "ScanRegister") {
           required.insert(ref.node);
+        } else if (!read && DataPort(netlist_.nodes[ref.node]) &&
+                   !PrimaryInput(netlist_.nodes[ref.node])) {
+          port_goals.insert(ref.node);
         }
         auto& values = read ? expected : goals;
-        auto entry =
-            values
-                .emplace(
-                    ref.node,
-                    read ? std::string(netlist_.nodes[ref.node].Width(), 'x')
-                         : fill_.at(ref.node))
-                .first;
+        auto entry = values.find(ref.node);
+        if (entry == values.end()) {
+          entry = values
+                      .emplace(ref.node,
+                               read ? std::string(
+                                          netlist_.nodes[ref.node].Width(), 'x')
+                                    : WriteFill(ref.node))
+                      .first;
+        }
         if (read || bits[i] != 'x') {
           entry->second.at(Offset(netlist_.nodes[ref.node], ref.index)) =
               ref.inverted && bits[i] != 'x' ? (bits[i] == '1' ? '0' : '1')
@@ -2415,9 +2759,10 @@ class ScanScheduler::Impl {
         }
       }
     }
+    const auto port_drivers = PortDrivers(port_goals);
     const auto [pins, pin_bits] =
-        MixedPrimaryInputs(operations, end_goals, group_pins);
-    mixed = !pins.empty();
+        MixedPrimaryInputs(goals, end_goals, group_pins);
+    mixed = !pins.empty() || !port_drivers.empty();
     if (routes) {
       for (const auto& [id, bits] : data_reads) {
         for (const auto& [index, expected] : bits) {
@@ -2466,6 +2811,18 @@ class ScanScheduler::Impl {
         data_controllers.insert(inputs->second.begin(), inputs->second.end());
       }
     }
+    auto tracked_controllers = data_controllers;
+    for (const auto& [id, drivers] : port_drivers) {
+      if (!explicit_goals.count(id) ||
+          netlist_.nodes[id].kind != "DataInPort") {
+        continue;
+      }
+      for (size_t source : drivers) {
+        if (netlist_.nodes[source].kind == "ScanRegister") {
+          tracked_controllers.insert(source);
+        }
+      }
+    }
     required.insert(data_controllers.begin(), data_controllers.end());
     std::string access_context;
     std::set<size_t> grouped_reads;
@@ -2486,25 +2843,7 @@ class ScanScheduler::Impl {
     std::sort(read_order.begin(), read_order.end(), [&](size_t a, size_t b) {
       return netlist_.nodes[a].name < netlist_.nodes[b].name;
     });
-    // Check structural SI/SO connectivity independently of unknown selectors.
-    std::vector<bool> connected(graph_.size());
-    for (size_t id : order_) {
-      connected[id] = graph_[id].input;
-      for (const auto& edge : graph_[id].edges) {
-        connected[id] = connected[id] || connected[edge.next];
-      }
-    }
-    for (size_t id : required) {
-      bool reachable = false;
-      for (const auto& [key, vertex] : ids_) {
-        if (key.first == id && connected[vertex]) reachable = true;
-      }
-      if (!reachable) {
-        throw std::runtime_error(netlist_.nodes[id].origin +
-                                 ": disconnected scan input/output for " +
-                                 netlist_.nodes[id].name);
-      }
-    }
+    CheckScanConnectivity(required);
     const auto desired_preserved = DesiredPreserved(
         preserved, goals, explicit_goals, end_goals, explicit_writes);
     if (allow_greedy && !mixed && !events && goals.size() >= 4 && !together &&
@@ -2574,7 +2913,7 @@ class ScanScheduler::Impl {
                                               state_.Value(id) == goal));
       }
       std::map<size_t, z3::expr> controller_updated;
-      for (size_t id : data_controllers) {
+      for (size_t id : tracked_controllers) {
         controller_updated.emplace(id, context_.bool_val(false));
       }
       std::map<size_t, z3::expr> read;
@@ -2878,6 +3217,8 @@ class ScanScheduler::Impl {
                           Matches(load, wanted)));
         }
         SymbolicNetwork after(netlist_, context_, next, global_resets_);
+        ActivatePorts(port_drivers, values, after, next, time, &frame,
+                      &touched);
         ConstrainPreserved(solver, after, preserved, desired_preserved,
                            reserved_changed);
         size_t group_index = 0;
@@ -2898,13 +3239,10 @@ class ScanScheduler::Impl {
               if (goals.count(id)) {
                 const auto requested =
                     SymbolicValue::Literal(context_, goals.at(id));
-                complete = complete &&
-                           (data_plan.writes.count(id) ||
-                                    PrimaryInput(netlist_.nodes[id])
-                                ? next.at(id).bits
-                                : frame.loads.at(id).bits) == requested.bits &&
-                           next.at(id).known == requested.known &&
-                           next.at(id).bits == requested.bits;
+                complete = complete && Matches(after.Value(id), requested);
+                if (netlist_.nodes[id].kind == "ScanRegister") {
+                  complete = complete && Matches(frame.loads.at(id), requested);
+                }
               }
               const auto& node = netlist_.nodes[id];
               if (node.reset) {
@@ -2944,17 +3282,19 @@ class ScanScheduler::Impl {
         frames.push_back(std::move(frame));
         state = std::move(next);
       }
+      SymbolicNetwork final(netlist_, context_, state, global_resets_);
       for (const auto& [id, goal] : goals) {
         const auto expected = SymbolicValue::Literal(context_, goal);
-        solver.add(touched.at(id) && state.at(id).known == expected.known &&
-                   state.at(id).bits == expected.bits);
+        solver.add(touched.at(id) && Matches(final.Value(id), expected));
       }
       for (const auto& [id, bits] : end_goals) {
         const auto wanted = SymbolicValue::Literal(context_, bits);
         solver.add((state.at(id).known & wanted.known) == wanted.known &&
                    (state.at(id).bits & wanted.known) == wanted.bits);
       }
-      for (const auto& [id, updated] : controller_updated) solver.add(updated);
+      for (size_t id : data_controllers) solver.add(controller_updated.at(id));
+      ConstrainPortControllers(solver, final, port_goals, explicit_goals,
+                               controller_updated);
       for (const auto& [id, observed] : read) solver.add(observed);
       for (const auto& [id, observed] : data_read_done) solver.add(observed);
       for (const auto& complete : simultaneous) solver.add(complete);
@@ -3052,7 +3392,7 @@ class ScanScheduler::Impl {
                     (!group.requested.count(id) || step.expected.count(name));
               }
             } else {
-              if (data_plan.writes.count(id)) {
+              if (data_plan.writes.count(id) || port_drivers.count(id)) {
                 complete =
                     complete &&
                     model.eval(frame.active.at(id), true).is_true() &&
@@ -3091,7 +3431,9 @@ class ScanScheduler::Impl {
           }
         }
         AppendDataEndOverrides(replay, &step);
-        steps.push_back(std::move(step));
+        if (!step.writes.empty() || !step.expected.empty()) {
+          steps.push_back(std::move(step));
+        }
       }
       if (std::find(simultaneous_replayed.begin(), simultaneous_replayed.end(),
                     false) != simultaneous_replayed.end()) {
@@ -3099,6 +3441,7 @@ class ScanScheduler::Impl {
             "concrete replay has no simultaneous access cycle" +
             access_context);
       }
+      UpdatePortFill(replay, goals, port_goals, &fill);
       state_.Restore(replay);
       execution_ = std::move(tap_replay);
       fill_ = std::move(fill);

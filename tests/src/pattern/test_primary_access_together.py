@@ -11,7 +11,7 @@ BIN = pathlib.Path(sys.argv.pop(1)).resolve() if len(sys.argv) > 1 else ROOT / '
 
 
 class PrimaryAccessTogether(unittest.TestCase):
-    def exercise(self, declarations, commands, *, serial=False, tap=False, ok=True):
+    def exercise(self, declarations, commands, *, serial=False, tap=False, ok=True, modules=''):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             scan = '''ScanInPort si;
@@ -40,7 +40,7 @@ AccessLink tap Of STD_1149_1_2001 {
 '''
                 arguments = ['--bsdl', 'AccessProbe', str(ROOT / 'tests/cases/ours/pattern_generation/access_link/simple.bsdl')]
             model = root / 'model.icl'
-            model.write_text('Module Grouped {\n' + scan + declarations + '\n}\n' + suffix)
+            model.write_text('Module Grouped {\n' + scan + declarations + '\n}\n' + suffix + modules)
             source = root / 'source.pdl'
             source.write_text('iProcsForModule Grouped\niReset\n' + commands)
 

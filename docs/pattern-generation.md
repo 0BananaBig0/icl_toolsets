@@ -384,8 +384,8 @@ broader syntax support and never execute PDL.
   Writes require simultaneous updates after reset release; reads compare their
   requested bits together after any prerequisite scans. Unrelated accesses may
   use separate operations. ScanRegister and writable DataRegister members, direct
-  primary-input writes, and primary-output reads are supported. General
-  forwarded/computed write members remain unsupported.
+  primary-input writes, primary-output reads, and forwarded/computed data-port
+  write members are supported within the joint scheduler bounds described below.
   Flattened ICL preserves the marker; emitted common updates use
   `iApply -together`.
 - Alias `iApplyEndState` follows IEEE 1687-2014 6.5.2(h): known, consistent
@@ -1628,10 +1628,9 @@ DataRegister access, explicit top-level primary-input writes and primary-output
 observations. Both frame kinds share hardware/controlling state, resource masks,
 read completion and required scan-controller updates. This follows IEEE §5.16.1
 (printed p.54), §6.4.9 (p.119) and §7.9.14(a) (p.173). Existing primary-only and
-serial-only paths remain available. General forwarded/computed-port writes in a
-mixed network and multiple scan outputs or TAPs still require additional
-implementation. The following increment adds direct primary-port AccessTogether
-groups.
+serial-only paths remain available. Forwarded/computed data-port writes are
+covered by the later increment below. Multiple scan outputs or TAPs still require
+additional implementation.
 
 Parallel comparisons use read-only frames; pin drives are separate events. The
 expected value is never treated as known hardware. Pending observations retain
@@ -1690,7 +1689,7 @@ Primary-only grouped operations use the existing joint scheduler so their group
 constraints and concrete replay are identical to those in mixed networks. The
 ordinary primary-only fast path remains available for ungrouped operations.
 Nested/inverted/sliced aliases keep obligations for the entire marked group.
-Unsupported forwarded/computed write members still fail explicitly.
+Forwarded/computed write members are covered by the following increment.
 
 Unrequested group controls remain selectable: a partial write to the data portion
 of an `enable,value` alias can drive its implicit enable high in the same event.
@@ -1723,3 +1722,62 @@ legacy vendor standards. Native scheduler tests and all 13 primary-group, 15 mix
 and nine data-reservation cases passed Clang ASan/UBSan/LeakSanitizer with leaks
 enabled (`build/primary-access-sanitizer-reviewed.log`). Formatting, naming and
 whitespace checks pass.
+
+
+### Computed data-port writes (2026-10-29)
+
+Forwarded, inverted and computed DataInPort/DataOutPort write goals now use the
+shared symbolic signal evaluator in mixed parallel/scan networks. Mux and
+one-hot sources retain their route and read-enable conditions. Hierarchical
+input bindings and resolved enable-port goals use the same driver discovery.
+Logical controlling history remains separate for each requested port, including
+partial and X writes; concrete evaluation must satisfy that logical goal before
+hardware state or controlling fill is committed. Constants can satisfy a goal
+without an unnecessary physical update.
+
+Explicit scan-driven DataInPort writes retain controlling-register update
+obligations even when their requested value is unchanged (IEEE 1687-2014
+§7.9.14(a), p.173). Inactive mux branches do not force disconnected registers to
+update. Controller tracing caches each bit's guarded dependencies; it combines
+conditions for shared controllers rather than enumerating reconvergent paths.
+Logic-cone tracing remains conservative about required scan controllers; this
+is not universal vendor qualification of every combinational model.
+
+AccessTogether activity follows selected physical sources and output enables.
+A literal selector and a masked logic operand cannot count as an update event.
+Logic activity uses alternative values and knownness for physically updated drivers through
+the existing symbolic evaluator, preserving shared-reference correlations.
+Each distinct logic output has an independent witness so grouped outputs do not
+need a single hypothetical input that changes them all simultaneously. Existing
+pin, frame and solver limits remain; dependency/activity traversal and witness
+construction also have explicit work bounds. No global shortest-pattern claim
+is made.
+
+The 26 self-constructed cases in
+`tests/src/pattern/test_mixed_port_writes.py` cover these paths, hierarchy,
+contradictory/reserved goals, failed-output preservation, grouped updates,
+TAP replay, one-hot padding and enabling, 128-bit outputs and a 64-level
+reconvergent logic graph. Every successful case checks source/flattened-ICL and
+generated-PDL fixed points. Native scheduler tests inspect physical storage,
+mandatory unchanged-value scan updates, independent controlling fills and
+rollback. Independent review found masked-source activity, inactive-branch
+requirements, shared logic witnesses, missing unknown-to-known activity and repeated
+dependency traversal defects;
+each was reproduced by a failing test before repair.
+
+The 64-level reconvergent source/flat/generated replay check completed in
+0.15 seconds with 59040 KiB peak RSS on WSL2, g++ 16.2.1 `-O2`, Z3 4.13.3.
+Command: `/usr/bin/time -v python3 tests/src/pattern/test_mixed_port_writes.py
+build/icl-pattern-generation MixedPortWrites.test_reconvergent_controller_dependencies_are_not_enumerated`.
+The earlier 128-bit replay check took 0.24 seconds / 60116 KiB; raw evidence is
+in `build/mixed-port-reconvergent-scale.log` and `build/mixed-port-scale.log`.
+These are complete replay-test timings, not standalone generation throughput.
+No new Tessent certificate is claimed for this increment.
+
+Final full dynamic/static `make check` passed with exit 0
+(`build/mixed-port-regression-verified.log`), including all 31 directional and
+seven legacy offline vendor standards and the full editor corpus. Native
+scheduler tests plus 26 mixed-port, 13 primary-group, 15 mixed-I/O and nine
+data-resource cases passed Clang ASan/UBSan/LeakSanitizer with leak detection
+enabled (`build/mixed-port-sanitizer-final.log`). Google formatting, changed-source
+naming and whitespace checks pass; independent review has no remaining findings.

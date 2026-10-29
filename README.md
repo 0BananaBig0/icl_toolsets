@@ -466,11 +466,13 @@ repeated source insertions, or changes to Tcl substitution order. See
 Mixed DataRegister access can alternate primary-input and scan frames, including
 single-TAP networks and primary-output reads. The shared scheduler preserves
 pending observations and reservations, verifies concrete state transitions, and
-retains required scan-controller updates. Two mixed-I/O cases have forward
+retains required scan-controller updates. Forwarded, inverted and computed data-port
+writes use the same scheduler, including mux/logic/one-hot sources and supported
+`AccessTogether` groups; see [data-port writes](docs/pattern-generation.md#computed-data-port-writes-2026-10-29). Two mixed-I/O cases have forward
 Tessent fixed-point certificates; see [support and limits](docs/pattern-generation.md#mixed-parallel-and-serial-frames-2026-10-29).
 
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
-general forwarded/computed-port writes in mixed networks, vector one-hot scan paths, resource
+vector one-hot scan paths, resource
 reservation types beyond scan/data storage and data ports, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Single-TAP shadow registers with phase-qualified capture, shift and
