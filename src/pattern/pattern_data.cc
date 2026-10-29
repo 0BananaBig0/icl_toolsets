@@ -230,20 +230,21 @@ const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
           addresses_->Resolve(node.name, AddressOperation::kRead));
       continue;
     }
-    if (node.kind == "OneHotDataGroup") {
+    if (node.kind == "OneHotDataGroup" || node.kind == "OneHotScanGroup") {
       for (const auto& nested : node.one_hot_sources) {
         pending.insert(pending.end(), nested.bits.begin(), nested.bits.end());
       }
       continue;
     }
-    if (node.kind == "DataOutPort") {
+    if (node.kind == "DataOutPort" || node.kind == "ScanOutPort") {
       const auto enable = node.inputs.find("Enable");
       if (enable != node.inputs.end()) {
         conditions.push_back({nullptr, {}, enable->second.at(0)});
         continue;
       }
     }
-    if (node.kind == "DataOutPort" || node.model == ModelKind::kAlias) {
+    if (node.kind == "DataOutPort" || node.kind == "ScanOutPort" ||
+        node.model == ModelKind::kAlias) {
       const auto input = node.inputs.find("Source");
       if (input != node.inputs.end()) {
         pending.insert(pending.end(), input->second.begin(),
@@ -253,7 +254,7 @@ const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
     }
     throw std::runtime_error(node.origin +
                              ": one-hot Port execution requires a uniformly "
-                             "enabled DataOutPort path or addressed register");
+                             "enabled output-port path or addressed register");
   }
   if (conditions.empty()) {
     throw std::runtime_error("one-hot contributor has no selection condition");

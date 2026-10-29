@@ -8,6 +8,26 @@ command/reference manuals for behavior the standard does not explicitly resolve.
 Ask the user if a material ambiguity remains. External implementations supply
 algorithm and test ideas; they do not establish language semantics.
 
+## Netlist representation and flattening references (2026-10-29)
+
+The following sources were inspected for architecture, not used as ICL semantic
+authorities. No upstream implementation was copied or made a build dependency.
+
+| Reference | Inspected mechanism | Application to this repository |
+| --- | --- | --- |
+| [Icarus Verilog netlist.h](https://github.com/steveicarus/iverilog/blob/master/netlist.h), `Link`, `NetPins`, `NetObj`, `Nexus` | Typed pins and object identity are separate from a connectivity junction; direction and attached links are explicit. | Keep `NetlistNode`, `BitReference` and scope identity separate from state and scheduling. A declaration name alone is not a connection. |
+| [Verilator V3Inline.cpp](https://github.com/verilator/verilator/blob/master/src/V3Inline.cpp), module/cell graph and inlining | Reparent/rename scopes and remap cloned declarations; avoid cloning a module's last instance to reduce peak memory. | Retain one shared parsed module AST and elaborate instance-specific node/reference IDs. Preserve original hierarchy metadata when serializing; do not duplicate parser trees at every hierarchy level. |
+| `hcstest` commit `096317243d3aa16b02c92a5191ddc674854b7346`, `verilog-parser/verilator-parser/OneBitHierNetlist.h`, `OneBitNetlist.h`, `VerilogNetlistToStdCellNetlist.cpp` | AST visitor distinguishes module definitions, instances and per-bit port assignments. Flat conversion indexes instance/port/bit connections and keeps multiple output contributors. | Preserve bit direction, instance identity and every one-hot return contributor through flattening. Model ICL registers behaviorally as requested, without importing gate-level internal circuitry. |
+
+The two upstream files were downloaded from their master branches on the review
+date. SHA-256: Icarus `netlist.h`
+`756c83584b55101ec7f6c1c3c21b1205780029044eff9e5904a50c48e1e43f84`;
+Verilator `V3Inline.cpp`
+`baf19cb89ceb77a636935bf145959813f99519c12b4892b3d1f34605e24c1dce`.
+The local hcstest checkout was read only. This source review confirms the fit of
+the existing representation; it does not establish support for every model or
+cross-tool equivalence.
+
 ## Honza255/icl_parser
 
 Reviewed the cached checkout at commit

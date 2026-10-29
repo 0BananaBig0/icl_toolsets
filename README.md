@@ -419,6 +419,13 @@ Shared-address write banks use address groups to avoid searching write-order
 permutations; already-satisfied values share the required controller update.
 Mixed primary-drive/scan transactions remain unfinished.
 
+Scalar `OneHotScanGroup` returns also work on standalone and single-TAP scan
+networks, including nested groups and inverted returns. Scheduling requires one
+known-enabled contributor and holds the other contributors disabled; inactive
+nested groups may be zero-hot. Independent write-only `iMerge` calls can combine
+multiple apply groups while retaining each call's apply order. These additions
+have local replay/regression coverage; they are not new Tessent certificates.
+
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
@@ -452,7 +459,7 @@ repeated source insertions, or changes to Tcl substitution order. See
 [local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
 This is an experimental retargeter. Multi-TAP/shared-chain and shadow-register
-scheduling, mixed primary/scan transactions, OneHotScanGroup execution, resource
+scheduling, mixed primary/scan transactions, vector one-hot scan paths, resource
 reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Fresh Tessent 2026.2 runs qualify the three reservation probes and

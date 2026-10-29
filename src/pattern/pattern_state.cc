@@ -110,9 +110,9 @@ class SignalEvaluator {
         continue;
       }
       std::set<Key> dependencies;
-      const bool serial = key.second || node.kind == "ScanMux" ||
-                          node.kind == "ScanInPort" ||
-                          node.kind == "ScanOutPort";
+      const bool serial =
+          key.second || node.kind == "ScanMux" || node.kind == "ScanInPort" ||
+          node.kind == "ScanOutPort" || node.kind == "OneHotScanGroup";
       const auto add = [&](const BitReference& bit, bool mode) {
         if (bit.node != kMissing) {
           dependencies.emplace(bit.node, mode);
@@ -129,7 +129,7 @@ class SignalEvaluator {
         }
       }
       for (const auto& source : node.one_hot_sources) {
-        for (const auto& bit : source.bits) add(bit, false);
+        for (const auto& bit : source.bits) add(bit, serial);
         for (const auto& condition : one_hot_.Resolve(source)) {
           add(condition.enable, false);
           if (condition.signals) {
@@ -185,8 +185,9 @@ class SignalEvaluator {
                            return Read(bit);
                          }));
     }
-    const bool serial = key.second || node.kind == "ScanMux" ||
-                        node.kind == "ScanInPort" || node.kind == "ScanOutPort";
+    const bool serial =
+        key.second || node.kind == "ScanMux" || node.kind == "ScanInPort" ||
+        node.kind == "ScanOutPort" || node.kind == "OneHotScanGroup";
     std::string value = unknown;
     if (node.model == ModelKind::kMux) {
       const auto selected = Bits(node.inputs.at("SelectedBy"));
@@ -213,10 +214,6 @@ class SignalEvaluator {
         }
       }
     } else if (node.model == ModelKind::kGroup) {
-      if (node.kind != "OneHotDataGroup") {
-        throw std::runtime_error(node.origin +
-                                 ": one-hot scan execution is not implemented");
-      }
       size_t selected = 0;
       bool uncertain = false;
       for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
@@ -230,7 +227,7 @@ class SignalEvaluator {
         ++selected;
         value.clear();
         for (size_t bit = 0; bit < node.Width(); ++bit) {
-          value += Read(node.OneHotSourceBit(source, bit));
+          value += Read(node.OneHotSourceBit(source, bit), serial);
         }
       }
       if (selected != 1 || uncertain) value = unknown;

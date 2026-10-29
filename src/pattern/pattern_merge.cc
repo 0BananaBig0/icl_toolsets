@@ -44,8 +44,13 @@ class Merger {
     // Partial/alias writes and stateful calls keep their original
     // fill/barriers.
     try {
-      for (size_t i = 0; i + 1 < stream.size(); ++i) {
-        const auto& op = stream[i];
+      bool pending = false;
+      for (const auto& op : stream) {
+        if (op.command == "iApply") {
+          if (!pending || !op.arguments.empty()) return false;
+          pending = false;
+          continue;
+        }
         if (op.command != "iWrite" || op.arguments.size() != 2) return false;
         const auto target = ResolvePdlTarget(netlist_, op.arguments[0]);
         const auto& node = netlist_.nodes.at(target.declaration);
@@ -55,6 +60,7 @@ class Merger {
           return false;
         }
         targets.insert(target.declaration);
+        pending = true;
       }
     } catch (const std::runtime_error&) {
       // Let normal scheduling report invalid operands with their source
@@ -102,13 +108,27 @@ class Merger {
     ++position_;
 
     std::set<size_t> occupied;
-    std::vector<Operation> batch;
-    Operation apply;
+    std::vector<std::vector<Operation>> batch;
     const auto flush = [&] {
       if (batch.empty()) return;
-      result.insert(result.end(), std::make_move_iterator(batch.begin()),
-                    std::make_move_iterator(batch.end()));
-      result.push_back(std::move(apply));
+      std::vector<std::pair<size_t, size_t>> active;
+      for (size_t i = 0; i < batch.size(); ++i) active.emplace_back(i, 0);
+      // IEEE 7.9.18(i): preserve each call's apply order. Retire exhausted
+      // streams so unequal lengths do not cause repeated empty scans.
+      while (!active.empty()) {
+        std::vector<std::pair<size_t, size_t>> next;
+        Operation apply;
+        for (auto [id, position] : active) {
+          auto& stream = batch[id];
+          while (stream[position].command != "iApply") {
+            result.push_back(std::move(stream[position++]));
+          }
+          apply = std::move(stream[position++]);
+          if (position != stream.size()) next.emplace_back(id, position);
+        }
+        result.push_back(std::move(apply));
+        active = std::move(next);
+      }
       batch.clear();
       occupied.clear();
     };
@@ -125,10 +145,7 @@ class Merger {
         flush();
       }
       occupied.insert(targets.begin(), targets.end());
-      apply = std::move(stream.back());
-      stream.pop_back();
-      batch.insert(batch.end(), std::make_move_iterator(stream.begin()),
-                   std::make_move_iterator(stream.end()));
+      batch.push_back(std::move(stream));
     }
     flush();
     return result;

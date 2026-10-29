@@ -147,7 +147,7 @@ void TapExecution::Trace(
   std::vector<std::pair<BitReference, char>> pending{{output, selected}};
   std::map<std::pair<size_t, int64_t>, char> visited;
   while (!pending.empty()) {
-    const auto [bit, gate] = pending.back();
+    auto [bit, gate] = pending.back();
     pending.pop_back();
     if (gate == '0' || bit.node == kMissing) {
       continue;
@@ -162,6 +162,12 @@ void TapExecution::Trace(
     }
     visited[key] = gate;
     const auto& node = netlist_.nodes.at(bit.node);
+    if (!all) {
+      const auto enable = node.inputs.find("Enable");
+      if (enable != node.inputs.end()) {
+        gate = And(gate, state_.Read(enable->second.at(0)));
+      }
+    }
     const size_t offset =
         node.left >= node.right ? node.left - bit.index : bit.index - node.left;
     if (node.kind == "ScanRegister") {

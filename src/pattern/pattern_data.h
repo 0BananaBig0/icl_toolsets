@@ -37,7 +37,7 @@ class DataReadRoutes {
   std::map<std::pair<size_t, int64_t>, std::set<size_t>> storage;
 };
 // Resolves selection separately from observed data, including addressed
-// Register/Instance contributors and forwarded DataOutPorts.
+// Register/Instance contributors and forwarded data/scan output ports.
 class OneHotReadResolver {
  public:
   explicit OneHotReadResolver(const Netlist& netlist) : netlist_(netlist) {}

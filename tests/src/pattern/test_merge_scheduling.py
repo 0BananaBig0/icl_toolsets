@@ -83,8 +83,7 @@ class MergeScheduling(unittest.TestCase):
         self.assertGreater(output.index('inside'), output.index('iApply'))
 
     def test_barriers_partial_values_and_apply_order(self):
-        cases = [('iWrite a 5; iApply; iWrite a 6; iApply', 3),
-                 ('iWrite a 5; iApply -together', 2),
+        cases = [('iWrite a 5; iApply -together', 2),
                  ('iWrite a 5; iApply; iRead a 5; iApply', 3),
                  ('iWrite a[0] 1; iApply', 2),
                  ('iWrite a 0bXX01; iApply', 2)]
@@ -92,6 +91,28 @@ class MergeScheduling(unittest.TestCase):
             with self.subTest(first=first):
                 output = self.generate(self.program(first, 'iWrite b 10; iApply'))
                 self.assertEqual(len(self.groups(output)), count)
+
+    def test_multi_apply_calls_preserve_each_sequence(self):
+        text = self.program('iWrite a 5; iApply; iWrite a 6; iApply',
+                            'iWrite b 10; iApply; iWrite b 11; iApply; iWrite b 12; iApply')
+        output = self.generate(text, '--debug')
+        self.assertEqual(self.groups(output),
+                         [{'a': 5, 'b': 10}, {'a': 6, 'b': 11}, {'a': 6, 'b': 12}])
+        self.run_tool('--icl', 'source.icl', '--pdl', 'result.pdl', '--output', 'replay.pdl')
+        self.assertEqual(output, (self.root / 'replay.pdl').read_text())
+        self.run_tool('--icl', 'debug/MergeNetwork.icl', '--pdl', 'source.pdl',
+                       '--output', 'flat/result.pdl', '--debug')
+        self.assertEqual(output, (self.root / 'flat/result.pdl').read_text())
+        self.assertEqual((self.root / 'debug/MergeNetwork.icl').read_bytes(),
+                         (self.root / 'flat/debug/MergeNetwork.icl').read_bytes())
+
+    def test_multi_apply_conflicts_and_empty_applies_are_barriers(self):
+        output = self.generate(self.program('iWrite a 5; iApply; iWrite b 6; iApply',
+                                           'iWrite b 10; iApply; iWrite a 11; iApply'))
+        self.assertEqual(len(self.groups(output)), 4)
+        output = self.generate(self.program('iWrite a 5; iApply; iApply',
+                                           'iWrite b 10; iApply'))
+        self.assertEqual(len(self.groups(output)), 3)
 
     def test_idle_barrier_on_tap(self):
         fixture = ROOT / 'tests/cases/ours/pattern_generation/access_link'
@@ -130,11 +151,16 @@ class MergeScheduling(unittest.TestCase):
     def test_combined_failure_uses_fresh_serial_state(self):
         source = (FIXTURE / 'local_reset.icl').read_text().replace("ResetValue 1'b1", "ResetValue 1'b0")
         (self.root / 'source.icl').write_text(source)
-        text = self.program('iWrite a.value 5; iApply', 'iWrite reset 1; iApply')
-        output = self.generate(text)
-        serial = text.replace('iMerge -begin\n', '').replace('iMerge -end\n', '')
-        self.assertEqual(output, self.generate(serial))
-        self.assertEqual(len(self.groups(output)), 2)
+        cases = [('iWrite a.value 5; iApply', 'iWrite reset 1; iApply', 2),
+                 ('iWrite a.value 5; iApply; iWrite a.value 6; iApply',
+                  'iWrite reset 0; iApply; iWrite reset 1; iApply', 4)]
+        for first, second, count in cases:
+            with self.subTest(applies=count):
+                text = self.program(first, second)
+                output = self.generate(text)
+                serial = text.replace('iMerge -begin\n', '').replace('iMerge -end\n', '')
+                self.assertEqual(output, self.generate(serial))
+                self.assertEqual(len(self.groups(output)), count)
 
     def test_many_calls(self):
         count = 256

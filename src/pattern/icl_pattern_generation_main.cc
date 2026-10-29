@@ -433,14 +433,15 @@ int main(int argc, char** argv) {
            "sequence;\n"
            "                       preserve procedure definitions\n"
            "Current scheduling: ordinary single SI/SO, scan registers, muxes,\n"
-           "logic-controlled paths and local resets; literal "
+           "logic/one-hot paths and local resets; literal "
            "iWrite/iApply/iState.\n"
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"
            "Single-TAP IR/DR scans and nonzero iRunLoop TCK counts require\n"
            "explicit iReset. iRunLoop -sck/-time, multi-TAP, shadow\n"
-           "register transactions, merges and free-running clocks remain "
-           "unsupported.\n";
+           "register transactions and free-running clocks remain unsupported.\n"
+           "Independent full-register write-only iMerge calls can combine "
+           "ordered apply groups.\n";
     return 0;
   }
   if (argc == 2 && std::string(argv[1]) == "--version") {

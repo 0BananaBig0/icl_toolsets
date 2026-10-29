@@ -1,6 +1,8 @@
 # icl-pattern-generation: requirements and proposed design
 
-Status: implementation started, 2026-10-25. The executable is not implemented.
+Historical design, started 2026-10-25. The executable now exists; current support
+and outstanding work are tracked in [the generator guide](../../pattern-generation.md)
+and [model coverage](../../pattern-model-coverage.md).
 This records the requested behavior and separates it from proposed engineering
 choices. After the user's instruction to proceed, the implementation plan records
 the working assumptions for the semantic choices below; they do not reduce the

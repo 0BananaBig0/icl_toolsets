@@ -1,0 +1,8 @@
+iProcsForModule OneHotTop
+iReset
+iWrite branches.a.data 9
+iWrite branches.b.data 6
+iApply
+iRead branches.a.data 9
+iRead branches.b.data 6
+iApply

@@ -284,10 +284,6 @@ SymbolicValue SymbolicNetwork::Compute(size_t id) {
     }
     result = Select(defined, result, unknown);
   } else if (node.model == ModelKind::kGroup) {
-    if (node.kind != "OneHotDataGroup") {
-      throw std::runtime_error(
-          node.origin + ": symbolic one-hot scan execution is not implemented");
-    }
     auto found = context_.bool_val(false), uncertain = context_.bool_val(false);
     for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
       const auto enabled = OneHotActive(node.one_hot_sources[source]);

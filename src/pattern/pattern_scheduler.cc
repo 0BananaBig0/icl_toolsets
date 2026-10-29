@@ -62,7 +62,8 @@ std::string Decode(const z3::model& model, const SymbolicValue& value) {
 
 class ScanScheduler::Impl {
  public:
-  explicit Impl(const Netlist& netlist) : netlist_(netlist), state_(netlist) {
+  explicit Impl(const Netlist& netlist)
+      : netlist_(netlist), state_(netlist), one_hot_(netlist) {
     if (netlist.taps.size() > 1) {
       throw std::runtime_error("multiple TAP scheduling is not implemented");
     }
@@ -1241,15 +1242,17 @@ class ScanScheduler::Impl {
           sources.emplace_back(
               node.choices[c].source.at(Offset(node, current.index)), c);
         }
+      } else if (node.kind == "OneHotScanGroup") {
+        for (size_t c = 0; c < node.one_hot_sources.size(); ++c) {
+          sources.emplace_back(
+              node.OneHotSourceBit(c, Offset(node, current.index)), c);
+        }
       } else if (node.inputs.count("Source")) {
         sources.emplace_back(
             node.inputs.at("Source").at(Offset(node, current.index)), kMissing);
       } else if (node.kind == "ScanInPort" && node.scope == 0 &&
                  node.Width() == 1) {
         graph_[id].input = true;
-      } else if (node.model == ModelKind::kGroup) {
-        throw std::runtime_error(
-            node.origin + ": one-hot serial scheduling is not implemented");
       }
       // Allocate edges on the expanded pass after source identities exist.
       source_edges_[id] = sources;
@@ -1363,6 +1366,14 @@ class ScanScheduler::Impl {
   }
   z3::expr Match(SymbolicNetwork& values, const NetlistNode& node,
                  size_t choice) {
+    if (node.kind == "OneHotScanGroup") {
+      auto match = context_.bool_val(true);
+      for (size_t i = 0; i < node.one_hot_sources.size(); ++i) {
+        match = match && Known(values.OneHotActive(node.one_hot_sources[i]),
+                               i == choice);
+      }
+      return match;
+    }
     auto match = context_.bool_val(false);
     for (const auto& code : node.choices.at(choice).codes) {
       auto term = context_.bool_val(true);
@@ -1375,6 +1386,35 @@ class ScanScheduler::Impl {
       match = match || term;
     }
     return match;
+  }
+  bool Match(const NetworkState& values, const NetlistNode& node,
+             size_t choice) {
+    if (node.kind == "OneHotScanGroup") {
+      for (size_t i = 0; i < node.one_hot_sources.size(); ++i) {
+        char active = '0';
+        for (const auto& condition :
+             one_hot_.Resolve(node.one_hot_sources[i])) {
+          const char bit = values.Read(condition.enable);
+          active = active == '1' || bit == '1'   ? '1'
+                   : active == 'x' || bit == 'x' ? 'x'
+                                                 : '0';
+        }
+        if (active != (i == choice ? '1' : '0')) return false;
+      }
+      return true;
+    }
+    for (const auto& code : node.choices.at(choice).codes) {
+      bool match = true;
+      for (size_t bit = 0; bit < code.data.size(); ++bit) {
+        if (code.data[bit] != 'x' &&
+            values.Read(node.inputs.at("SelectedBy").at(bit)) !=
+                code.data[bit]) {
+          match = false;
+        }
+      }
+      if (match) return true;
+    }
+    return false;
   }
   struct CaptureComparison {
     BitReference output;
@@ -1452,8 +1492,7 @@ class ScanScheduler::Impl {
       }
     }
   }
-  std::optional<std::set<size_t>> ActivePath(
-      const NetworkState& snapshot) const {
+  std::optional<std::set<size_t>> ActivePath(const NetworkState& snapshot) {
     if (roots_.size() != 1) return std::nullopt;
     std::set<size_t> active;
     size_t vertex = roots_.front();
@@ -1470,20 +1509,8 @@ class ScanScheduler::Impl {
       size_t selected = kMissing;
       for (size_t e = 0; e < current.edges.size(); ++e) {
         const auto& edge = current.edges[e];
-        bool matches = edge.choice == kMissing;
-        if (!matches) {
-          for (const auto& code : node.choices.at(edge.choice).codes) {
-            bool equal = true;
-            for (size_t bit = 0; bit < code.data.size(); ++bit) {
-              if (code.data[bit] != 'x' &&
-                  snapshot.Read(node.inputs.at("SelectedBy").at(bit)) !=
-                      code.data[bit]) {
-                equal = false;
-              }
-            }
-            matches = matches || equal;
-          }
-        }
+        const bool matches =
+            edge.choice == kMissing || Match(snapshot, node, edge.choice);
         if (matches) {
           if (selected != kMissing) return std::nullopt;
           selected = e;
@@ -2637,20 +2664,8 @@ class ScanScheduler::Impl {
       size_t selected = kMissing;
       for (size_t e = 0; e < current.edges.size(); ++e) {
         const auto& edge = current.edges[e];
-        bool active = edge.choice == kMissing;
-        if (!active) {
-          for (const auto& code : node.choices.at(edge.choice).codes) {
-            bool matches = true;
-            for (size_t i = 0; i < code.data.size(); ++i) {
-              if (code.data[i] != 'x' &&
-                  replay->Read(node.inputs.at("SelectedBy").at(i)) !=
-                      code.data[i]) {
-                matches = false;
-              }
-            }
-            active = active || matches;
-          }
-        }
+        const bool active =
+            edge.choice == kMissing || Match(*replay, node, edge.choice);
         if (active) {
           if (selected != kMissing) {
             throw std::runtime_error("ambiguous replay scan path");
@@ -2769,6 +2784,7 @@ class ScanScheduler::Impl {
   }
   const Netlist& netlist_;
   NetworkState state_;
+  OneHotReadResolver one_hot_;
   const TapRuntimeModel* tap_ = nullptr;
   std::unique_ptr<TapExecution> execution_;
   std::unique_ptr<DataReadRoutes> data_read_routes_, scan_read_routes_;

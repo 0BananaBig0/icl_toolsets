@@ -221,8 +221,9 @@ OneHotDataGroup accepts Port contributors whose DataOutPort paths have uniform
 explicit enables, including forwarding ports. Exactly one known-enabled
 contributor selects its data; zero, multiple or uncertain enables produce X.
 Addressed register/instance contributors and routed reads are supported on the
-primary-input path described below. OneHotScanGroup, primary-port AccessTogether
-groups and mixed scan/parallel scheduling remain unsupported and report errors.
+primary-input path described below. Scalar OneHotScanGroup execution is supported
+by the serial backend described below. Primary-port AccessTogether groups and
+mixed scan/parallel scheduling remain unsupported and report errors.
 No new grammar or AST is introduced.
 
 This path is bounded to 256 primary input vectors and 4096 total input bits,
@@ -433,7 +434,7 @@ broader syntax support and never execute PDL.
 
 The backend accepts one SI/SO boundary and at most one TAP. It rejects
 multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
-OneHotScanGroup transactions, feedback reset scheduling,
+vector OneHotScanGroup transactions, feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing shadow-register effects or independently gated
 interface events are outside the current complete-scan model; inability to
@@ -494,10 +495,12 @@ Parallel”, also describes serial fallback and recursive merging.
 
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
-PDL parser. It combines consecutive calls only when each contains a single
-plain apply with fully known, full-width direct ScanRegister writes, and their
-register sets do not overlap. It does not merge across outside apply boundaries.
-Multi-apply calls, aliases, partial/X writes, reads, notes within calls, state
+PDL parser. It combines consecutive calls when each contains one or more
+plain applies with fully known, full-width direct ScanRegister writes, and their
+register sets over the entire calls do not overlap. It merges one apply group
+from each active call per round, preserving every call's apply order, and removes
+exhausted calls from subsequent rounds. It does not merge across outside apply
+boundaries. Empty applies, aliases, partial/X writes, reads, notes within calls, state
 changes, `-together`, and clock waits retain their serial barriers. Nested blocks
 are processed recursively. Calls containing resource commands remain serialized.
 
@@ -1335,3 +1338,65 @@ Fresh Tessent runs, installation, RTL simulation and strict authored-code
 coverage were not rerun; certified patterns were checked offline. Mixed
 primary/scan access, multiple controllers/shared outputs and the other remaining
 capabilities listed above are unchanged.
+
+### One-hot serial paths and multi-apply merges (2026-10-29)
+
+Scalar `OneHotScanGroup` paths now execute on standalone SI/SO networks and
+single-TAP networks. IEEE 1687-2014 §6.4.14, printed pp. 127–128, requires exactly
+one active contributor on the active scan path and permits zero-hot inactive
+subgroups. The existing contributor resolver now follows ScanOutPort enables and
+nested groups. Symbolic route selection requires one known-active contributor and
+all others known-inactive. Concrete replay uses shift storage for serial data,
+including inversion. TAP path tracing respects output enables instead of clocking
+disabled branches through fallback selection. Explicit interface controls still
+take precedence; structural ownership discovery still includes every branch.
+
+Self-constructed inputs are under
+`tests/cases/ours/pattern_generation/one_hot_scan/`. Seven CLI cases cover nested
+writes/reads, inverted returns, unknown/conflicting enables, incompatible together
+groups, reservations, a TAP wrapper and 32 distributed returns. Native symbolic
+tests exhaust all 27 combinations of three ternary enables against an independent
+truth table and deliberately distinguish shift from held register values. Positive
+cases exercise original/flat ICL and generated-PDL replay; standalone cases also
+compare the serialized ICL byte-for-byte. Failed generation preserves old outputs.
+
+Merge normalization now combines disjoint write-only calls containing multiple
+applies, preserving each call's apply order (IEEE §7.9.18(i), printed p. 178).
+Whole-call target conflicts, empty applies and opaque effects retain barriers.
+Emission retires exhausted streams, so unequal stream lengths take work linear
+in the total operation count after target lookup. The existing scheduler and
+fresh-state serial fallback remain responsible for validating the combined
+sequence. The new unequal-length example reduces five applies to three without
+changing either procedure's order. Eleven merge CLI tests pass, including replay,
+conflict and barrier tests and the existing 256-call example. This remains a
+heuristic and does not establish global optimality or arbitrary merge support.
+
+Verification:
+
+- Full `make check BISON=/usr/bin/bison -j4` passed with
+  `ICL_REF_DIR=/tmp/icl-reference-honza-20261021` and the existing reference venv
+  on PATH. Dynamic/static new tests, 334/334 grammar rules, 119/119 scanner rules,
+  both editors and all 21 directional/seven legacy offline vendor standards passed.
+  Final log, including the reviewer's late-failure rollback case:
+  `build/pattern-completion-regression-reviewed.log`.
+- Clang ASan/UBSan and LeakSanitizer passed the seven one-hot CLI tests, eleven
+  merge CLI tests and native symbolic/state tests. The sandbox's ptrace boundary
+  prevented leak checks on the first attempt; successful runs were outside that
+  boundary with `ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1`.
+- Independent review found no Important/Critical issues in either change and
+  independently verified late combined-merge failure falls back to fresh serial
+  execution. Google formatting and changed-production-source naming checks passed.
+- A 4,945-byte, 32-contributor input took 0.76 s for the complete Python test,
+  including original, flat and generated-PDL runs; peak RSS was 76,264 KiB.
+  Command: `/usr/bin/time -v python3 tests/src/pattern/test_one_hot_scan_scheduling.py
+  build/icl-pattern-generation OneHotScan.test_many_distributed_returns` (the
+  recorded equivalent harness additionally prints input bytes). Environment:
+  GCC 16.2.1 `-O2`, Z3 4.13.3, Linux/WSL2. Evidence: `build/one-hot-scale.log`.
+  Concurrent regression makes this a scale observation, not a speedup claim.
+
+Wide one-hot groups still incur quadratic selection-constraint work; only the
+32-contributor scale above was measured. Vector/multiple-output paths, mixed
+primary/scan execution, multiple TAPs, shadow/independently gated events, feedback,
+system-clock/time waits, additional reservation types and general source reset
+rewriting remain acceptance work. No fresh Tessent certification, RTL simulation,
+installation or strict authored-code coverage measurement was performed here.

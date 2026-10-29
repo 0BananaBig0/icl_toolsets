@@ -101,6 +101,62 @@ Module Ports {
     }
   }
 }
+void TestOneHotScanValues() {
+  pattern::Design design;
+  design.AddIcl("scan-values.icl", R"(
+Module ScanValues {
+  ScanInPort si;
+  DataInPort ea; DataInPort eb; DataInPort ec;
+  ScanRegister a { ScanInSource si; CaptureSource 1'b0; }
+  ScanRegister b { ScanInSource si; CaptureSource 1'b1; }
+  ScanOutPort pa { Source a; Enable ea; }
+  ScanOutPort pb { Source b; Enable eb; }
+  ScanOutPort pc { Source si; Enable ec; }
+  OneHotScanGroup inner { Port pa; Port pb; }
+  ScanOutPort forwarded { Source inner; }
+  OneHotScanGroup outer { Port ~forwarded; Port pc; }
+  ScanOutPort so { Source outer; }
+})");
+  const auto netlist = pattern::Elaborate(design, "ScanValues");
+  z3::context context;
+  for (char ea : std::string("01x")) {
+    for (char eb : std::string("01x")) {
+      for (char ec : std::string("01x")) {
+        pattern::NetworkState native(netlist);
+        std::map<size_t, pattern::SymbolicValue> assignments;
+        for (const auto& [name, value] : std::map<std::string, std::string>{
+                 {"si", "0"}, {"ea", {ea}}, {"eb", {eb}}, {"ec", {ec}}}) {
+          const auto id = netlist.node_ids.at(name);
+          native.Drive(id, value);
+          assignments.emplace(id,
+                              pattern::SymbolicValue::Literal(context, value));
+        }
+        const auto a = netlist.node_ids.at("a"), b = netlist.node_ids.at("b");
+        native.Assume(a, "1");
+        native.Assume(b, "0");
+        native.Clock({{a, {'1', '0', '0', '1'}}, {b, {'1', '0', '0', '1'}}},
+                     true);
+        assignments.emplace(a, pattern::SymbolicValue::Literal(context, "0"));
+        assignments.emplace(b, pattern::SymbolicValue::Literal(context, "1"));
+        const std::string expected = ea == '1' && eb == '0' && ec == '0'   ? "1"
+                                     : ea == '0' && eb == '1' && ec == '0' ? "0"
+                                     : ea == '0' && eb == '0' && ec == '1'
+                                         ? "0"
+                                         : "x";
+        const auto id = netlist.node_ids.at("so");
+        Require(native.Value(id) == expected,
+                "nested one-hot scan uses shift state and exclusive enables");
+        pattern::SymbolicNetwork symbolic(netlist, context, assignments);
+        const auto value = symbolic.Value(id);
+        const auto want = pattern::SymbolicValue::Literal(context, expected);
+        z3::solver solver(context);
+        solver.add(value.bits != want.bits || value.known != want.known);
+        Require(solver.check() == z3::unsat,
+                "symbolic nested one-hot scan truth table");
+      }
+    }
+  }
+}
 void TestJustification() {
   pattern::Design design;
   design.AddIcl("justify.icl", R"(
@@ -198,6 +254,7 @@ int main() {
   try {
     TestTernaryAgreement();
     TestOneHotPortValues();
+    TestOneHotScanValues();
     TestJustification();
     TestPdlOperands();
     std::cout << "pattern symbolic tests passed\n";
