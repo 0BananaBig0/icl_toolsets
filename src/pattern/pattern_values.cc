@@ -11,7 +11,9 @@
 namespace pattern {
 bool IsReservableResource(const NetlistNode& node) {
   return node.kind == "ScanRegister" || node.kind == "DataRegister" ||
-         node.kind == "DataInPort" || node.kind == "DataOutPort";
+         node.kind == "DataInPort" || node.kind == "DataOutPort" ||
+         node.kind == "AddressPort" || node.kind == "ReadEnPort" ||
+         node.kind == "WriteEnPort";
 }
 namespace {
 constexpr size_t kMaxBits = 1024 * 1024;

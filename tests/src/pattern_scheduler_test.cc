@@ -268,6 +268,56 @@ Module PortGoals {
   Require(scheduler.Value("out") == "01010110",
           "failed port writes preserve logical controlling history");
 }
+void TestParallelControlReservations() {
+  for (bool serial : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("control-resources.icl", std::string(R"(
+Module Child { ReadEnPort re; }
+Module ControlResources {
+  ReadEnPort re;
+  Instance child Of Child { InputPort re = re; }
+  Alias inverted = ~child.re;
+)") +
+                                               (serial ? R"(
+  ScanInPort si;
+  ScanRegister sr { ScanInSource si; ResetValue 1'b0; }
+  ScanOutPort so { Source sr; }
+)"
+                                                       : "") +
+                                               "}");
+    const auto netlist = pattern::Elaborate(design, "ControlResources");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const size_t child = netlist.node_ids.at("child.re");
+    scheduler.Apply({{"iWrite", {"child.re", "0"}, "control:1", {}}});
+    scheduler.Apply({{"iWrite", {"inverted", "0"}, "control:2", {}}}, false,
+                    {{child, "0"}});
+    Require(scheduler.Value("child.re") == "1" && scheduler.Value("re") == "1",
+            "explicit alias write replaces child ownership on actual source");
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"re", "0"}, "control:3", {}}}, false,
+                      {{child, "1"}});
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("re") == "1",
+            "failed implicit child change preserves physical state");
+    rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"child.re", "0"}, "control:4", {}}}, false,
+                      {{child, "1"}}, false);
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("child.re") == "1",
+            "automatic writes cannot replace child ownership");
+    scheduler.Apply({{"iWrite", {"child.re", "0"}, "control:5", {}}}, false,
+                    {{child, "1"}});
+    Require(scheduler.Value("re") == "0",
+            "explicit replacement succeeds after failed planning");
+  }
+}
 void TestResetDependencyScale() {
   // Reverse declaration order is the worst case for repeatedly scanning all
   // registers to discover the next reset dependency.
@@ -1358,6 +1408,7 @@ int main() {
     TestPrimaryObservationOfScanStorage();
     TestPrimaryAccessTogether();
     TestMixedPortGoals();
+    TestParallelControlReservations();
     TestResetDependencyScale();
     TestGreedyRollback();
     TestAddressedRollback();

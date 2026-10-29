@@ -214,6 +214,34 @@ work proportional to operations apart from target lookup and set operations.
   Measure the same 64-call workload, document apply-count reduction without a
   global optimum claim, update README/support docs, commit/push and continue.
 
+## Task 11: Parallel control-port reservations
+
+IEEE 1687-2014 §7.9.19(a,b,d,e), pp.178–179, covers port ownership, whole-instance
+membership and inherited ownership. AddressPort/ReadEnPort/WriteEnPort already
+have shared value and scheduling models; extend resource classification rather
+than add a second ownership mechanism. Reuse masks, original logical targets,
+shared symbolic constraints, concrete replay and atomic publication. Serial,
+clock and other control types remain separate model work.
+
+Files: `src/pattern/pattern_values.cc`, `pattern_resources.cc`,
+`pattern_scheduler.cc`; new `tests/src/pattern/test_parallel_control_reservations.py`;
+Makefile, native scheduler tests and support docs if affected.
+
+- [x] Run seven initial tests covering address/enable constraints in primary and
+  mixed backends, inverted child ports, implicit parent changes, explicit child
+  replacement, instance membership, masks/aliases, return/inherited/reset
+  lifetimes and 64 forwarded enables. Confirm rejection of direct takes and
+  silent omission from instance takes (15 RED subcases). Successful cases must
+  preserve original/flat/generated fixed points and failures preserve outputs.
+- [x] Extend shared reservable-resource classification/diagnostics. If mapped
+  child enable writes lose logical explicit replacement in `DesiredPreserved`,
+  reproduce then retain the original logical assignment while enforcing the
+  actual source goal. Do not waive preservation on mapped ports. Keep work
+  proportional to assignments/target bits and existing dependency/solver bounds.
+- [x] Run focused resource/scheduler tests, full dynamic/static regression,
+  leak-enabled sanitizers, style/naming, 64-port scale and independent review.
+  Record evidence and remaining types; update docs, commit/push and continue.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -333,3 +361,15 @@ probe is retained. Initial regression failed the omitted-expected read case on
 a stale static binary; the final full rebuild/run passes. The 64-call/128-read
 example drops from 128 applies to two; three-replay timing 0.27s / 60288 KiB.
 No global optimality or new vendor certificate is claimed.
+
+
+Task 11 passed full dynamic/static make check (exit0,
+`build/parallel-control-regression.log`), 31 directional/seven legacy standards,
+full editor corpus, native scheduler and9/9/34 CLI suites under ASan/UBSan/LSan
+with leaks enabled (`build/parallel-control-sanitizer.log`). Naming/style/diff
+checks pass. Independent review confirmed scalar/partial parent-protection holes;
+original logical per-bit assignments fix both, with RED/GREEN cases and actual
+state/rollback checks. Initial invalid wire-inversion/data-input bindings were
+corrected against IEEE6.4.6.25(c)/26(d), without relaxing AddressResolver.
+64 enable ports/three replays:0.16s/58848KiB. No new vendor certificate or broader
+serial-control/clock/lifecycle support is claimed.

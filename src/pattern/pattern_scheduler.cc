@@ -683,20 +683,43 @@ class ScanScheduler::Impl {
  private:
   std::map<size_t, std::string> DesiredPreserved(
       const std::map<size_t, std::string>& preserved,
-      const std::map<size_t, std::string>& goals,
-      const std::set<size_t>& explicit_goals,
-      const std::map<size_t, std::string>& end_goals,
-      bool explicit_writes) const {
+      const std::map<size_t, std::string>& end_goals, bool explicit_writes,
+      const std::vector<Operation>& operations) {
     auto desired = preserved;
-    for (auto& [id, value] : desired) {
+    for (const auto& [id, value] : preserved) {
       const auto& node = netlist_.nodes.at(id);
       if (!IsReservableResource(node) || value.size() != node.Width() ||
           value.find_first_not_of("01x") != std::string::npos) {
         throw std::runtime_error("invalid reserved resource value");
       }
-      if (explicit_writes && explicit_goals.count(id)) {
-        value = Masked(goals.at(id), value);
+    }
+    // Physical goals may include mapped child enables. Only original logical
+    // assignments may replace taken bits; a child write is not a parent write.
+    if (explicit_writes && !preserved.empty()) {
+      for (const auto& operation : operations) {
+        if (operation.command != "iWrite") continue;
+        const auto target =
+            ResolvePdlTarget(netlist_, operation.arguments.at(0));
+        if (std::none_of(
+                target.bits.begin(), target.bits.end(),
+                [&](const auto& bit) { return desired.count(bit.node); })) {
+          continue;
+        }
+        const auto bits =
+            PdlDataValue(context_, netlist_, target, operation.arguments.at(1));
+        for (size_t i = 0; i < bits.size(); ++i) {
+          const auto& ref = target.bits[i];
+          if (!desired.count(ref.node) || bits[i] == 'x') continue;
+          auto& value = desired.at(ref.node).at(
+              Offset(netlist_.nodes[ref.node], ref.index));
+          if (value != 'x') {
+            value = ref.inverted ? (bits[i] == '1' ? '0' : '1') : bits[i];
+          }
+        }
       }
+    }
+    for (const auto& [id, value] : desired) {
+      const auto& node = netlist_.nodes.at(id);
       const auto defaults = end_goals.find(id);
       if (defaults != end_goals.end()) {
         for (size_t i = 0; i < value.size(); ++i) {
@@ -944,8 +967,8 @@ class ScanScheduler::Impl {
     const auto end_goals = EndGoals(operations);
     std::set<size_t> explicit_goals;
     for (const auto& [id, goal] : goals) explicit_goals.insert(id);
-    const auto desired_preserved = DesiredPreserved(
-        preserved, goals, explicit_goals, end_goals, explicit_writes);
+    const auto desired_preserved =
+        DesiredPreserved(preserved, end_goals, explicit_writes, operations);
     const auto started = std::chrono::steady_clock::now();
     const size_t limit = data_plan.order.empty() ? 1 : kMaxSteps;
     for (size_t horizon = 1; horizon <= limit; ++horizon) {
@@ -2844,8 +2867,8 @@ class ScanScheduler::Impl {
       return netlist_.nodes[a].name < netlist_.nodes[b].name;
     });
     CheckScanConnectivity(required);
-    const auto desired_preserved = DesiredPreserved(
-        preserved, goals, explicit_goals, end_goals, explicit_writes);
+    const auto desired_preserved =
+        DesiredPreserved(preserved, end_goals, explicit_writes, operations);
     if (allow_greedy && !mixed && !events && goals.size() >= 4 && !together &&
         groups.empty() && end_states_.empty() && expected.empty() &&
         data_reads.empty()) {

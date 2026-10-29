@@ -355,18 +355,19 @@ cannot plan use the existing bounded solver. It does not guarantee globally
 shortest patterns. See [scheduling behavior and limits](docs/pattern-generation.md#dependency-guided-scheduling).
 
 `iMerge` blocks are flattened into the same output stream. Compatible calls
-containing disjoint, fully specified ScanRegister writes can share applies
-by apply depth, preserving each call's order. Other supported calls retain serial
-order, including reads, waits and partial writes; nested merges are supported. The tool validates each result
+containing disjoint full ScanRegister reads and known full-register writes can
+share applies by apply depth, preserving each call's order. Other supported calls
+retain serial order, including partial targets, waits and resource commands; nested merges are supported. The tool validates each result
 through the existing scheduler and concrete replay, and retries serial execution
 if a combined schedule fails. `iTake`/`iRelease` protect individual ScanRegister,
-DataRegister and DataInPort/DataOutPort bits assigned by an applied write or
+DataRegister, DataInPort/DataOutPort and parallel address/read-enable/write-enable
+port bits assigned by an applied write or
 supported `iState` assumptions, including indexed and alias resources, instance storage ownership and nested-call lifetime handling.
 A partial release leaves other taken bits protected. Tessent's default-instance
 `iTake` and `-persistent` option are supported within the ordered input stream.
 An explicit `iReset` or `iReset -sync` clears existing resource ownership after
 the hardware reset; use a new `iTake` to reserve resources again. Calls containing
-reservations remain serialized. Other control/clock-port reservations and
+reservations remain serialized. Other serial-control/clock-port reservations and
 cross-pattern-set lifecycles remain unsupported; see [resource limits](docs/pattern-generation.md#resource-reservations).
 
 For an ordinary scan network:
@@ -478,7 +479,7 @@ See [merge behavior](docs/pattern-generation.md#merge-scheduling).
 
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
 vector one-hot scan paths, resource
-reservation types beyond scan/data storage and data ports, system clocks, unrestricted local-reset
+reservation types beyond scan/data storage, data ports and parallel control ports, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Single-TAP shadow registers with phase-qualified capture, shift and
 update controls now use event scheduling and full concrete replay, including
