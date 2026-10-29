@@ -26,7 +26,7 @@ class ResourceReservations {
   void Prune(size_t id);
   const Netlist& netlist_;
   std::map<std::string, size_t> scopes_;
-  std::vector<std::vector<size_t>> registers_;
+  std::vector<std::vector<size_t>> resources_;
   std::vector<std::string> calls_;
   std::vector<std::map<size_t, std::string>> owners_{1};
   std::map<size_t, std::vector<size_t>> counts_;

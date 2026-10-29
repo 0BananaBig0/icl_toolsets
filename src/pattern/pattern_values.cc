@@ -9,6 +9,10 @@
 #include "pdl/pdl_document.h"
 
 namespace pattern {
+bool IsReservableResource(const NetlistNode& node) {
+  return node.kind == "ScanRegister" || node.kind == "DataRegister" ||
+         node.kind == "DataInPort" || node.kind == "DataOutPort";
+}
 namespace {
 constexpr size_t kMaxBits = 1024 * 1024;
 int64_t Index(const std::string& text) {

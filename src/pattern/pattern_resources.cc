@@ -8,13 +8,13 @@
 #include "pattern/pattern_values.h"
 namespace pattern {
 ResourceReservations::ResourceReservations(const Netlist& netlist)
-    : netlist_(netlist), registers_(netlist.scopes.size()) {
+    : netlist_(netlist), resources_(netlist.scopes.size()) {
   for (size_t i = 0; i < netlist.scopes.size(); ++i) {
     scopes_.emplace(netlist.scopes[i].path, i);
   }
   for (size_t i = 0; i < netlist.nodes.size(); ++i) {
     const auto& node = netlist.nodes[i];
-    if (node.kind == "ScanRegister") registers_.at(node.scope).push_back(i);
+    if (IsReservableResource(node)) resources_.at(node.scope).push_back(i);
   }
 }
 void ResourceReservations::Reset() {
@@ -64,9 +64,11 @@ std::map<size_t, std::string> ResourceReservations::Targets(
   if (scope == scopes_.end()) {
     for (const auto& bit : ResolvePdlTarget(netlist_, name).bits) {
       if (bit.node >= netlist_.nodes.size() ||
-          netlist_.nodes[bit.node].kind != "ScanRegister") {
+          !IsReservableResource(netlist_.nodes[bit.node])) {
         throw std::runtime_error(
-            "resource reservation requires a ScanRegister: " + name);
+            "resource reservation requires a ScanRegister, DataRegister or "
+            "data port: " +
+            name);
       }
       const auto& node = netlist_.nodes[bit.node];
       auto [entry, inserted] = result.try_emplace(bit.node, node.Width(), '0');
@@ -79,7 +81,7 @@ std::map<size_t, std::string> ResourceReservations::Targets(
   while (!pending.empty()) {
     const auto id = pending.back();
     pending.pop_back();
-    for (size_t reg : registers_[id]) {
+    for (size_t reg : resources_[id]) {
       result.emplace(reg, std::string(netlist_.nodes[reg].Width(), '1'));
     }
     const auto& children = netlist_.scopes[id].children;

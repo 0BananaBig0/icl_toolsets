@@ -349,7 +349,7 @@ For write-only batches in larger networks, a dependency-guided planner groups
 reachable reset/selector controls before accessing their targets. It can handle
 deep SIB chains beyond the bounded solver's 32-scan horizon and retain open
 paths for reuse. Each scan still passes concrete replay; explicit user writes,
-including partial writes, retain their requested values. Protected ScanRegister bits
+including partial writes, retain their requested values. Protected resource bits
 remain fixed unless that apply explicitly requests a new value. Cases the heuristic
 cannot plan use the existing bounded solver. It does not guarantee globally
 shortest patterns. See [scheduling behavior and limits](docs/pattern-generation.md#dependency-guided-scheduling).
@@ -359,14 +359,14 @@ containing disjoint, fully specified ScanRegister writes can share applies
 by apply depth, preserving each call's order. Other supported calls retain serial
 order, including reads, waits and partial writes; nested merges are supported. The tool validates each result
 through the existing scheduler and concrete replay, and retries serial execution
-if a combined schedule fails. `iTake`/`iRelease` protect individual ScanRegister
-bits assigned by an applied write or `iState`, including indexed and alias
-resources, instance storage ownership and nested-call lifetime handling.
+if a combined schedule fails. `iTake`/`iRelease` protect individual ScanRegister,
+DataRegister and DataInPort/DataOutPort bits assigned by an applied write or
+supported `iState` assumptions, including indexed and alias resources, instance storage ownership and nested-call lifetime handling.
 A partial release leaves other taken bits protected. Tessent's default-instance
 `iTake` and `-persistent` option are supported within the ordered input stream.
 An explicit `iReset` or `iReset -sync` clears existing resource ownership after
 the hardware reset; use a new `iTake` to reserve resources again. Calls containing
-reservations remain serialized. Port reservations and
+reservations remain serialized. Other control/clock-port reservations and
 cross-pattern-set lifecycles remain unsupported; see [resource limits](docs/pattern-generation.md#resource-reservations).
 
 For an ordinary scan network:
@@ -464,7 +464,7 @@ repeated source insertions, or changes to Tcl substitution order. See
 
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
 mixed primary/scan transactions, vector one-hot scan paths, resource
-reservation types beyond ScanRegisters, system clocks, unrestricted local-reset
+reservation types beyond scan/data storage and data ports, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Single-TAP shadow registers with phase-qualified capture, shift and
 update controls now use event scheduling and full concrete replay, including

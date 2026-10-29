@@ -277,6 +277,52 @@ Module Control {
   Require(rejected && scheduler.Value("out") == "1",
           "unimplemented whole-alias port access must not be ignored");
 }
+void TestDataReservationRollback() {
+  for (bool serial : {false, true}) {
+    const std::string family =
+        serial ? "scan_data_registers" : "data_registers";
+    std::ifstream file("tests/cases/ours/pattern_generation/" + family +
+                       "/selectable.icl");
+    pattern::Design design;
+    design.AddIcl("data-resource.icl",
+                  std::string(std::istreambuf_iterator<char>(file), {}));
+    const auto netlist =
+        pattern::Elaborate(design, serial ? "ScanData" : "SelectableData");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Apply({{"iWrite", {"value", "5"}, "data-resource:1", {}}});
+    const auto driver = serial ? "bus" : "data";
+    const auto before = scheduler.Value(driver);
+    const std::map<size_t, std::string> held{
+        {netlist.node_ids.at("value"), "0101"}};
+    std::vector<pattern::Operation> indirect{
+        {"iWrite", {driver, serial ? "25" : "9"}, "data-resource:2", {}}};
+    if (!serial)
+      indirect.push_back({"iWrite", {"enable", "1"}, "data-resource:3", {}});
+    for (bool automatic : {false, true}) {
+      bool rejected = false;
+      try {
+        scheduler.Apply(
+            automatic ? std::vector<pattern::Operation>{{"iWrite",
+                                                         {"value", "9"},
+                                                         "data-resource:4",
+                                                         {}}}
+                      : indirect,
+            false, held, !automatic);
+      } catch (const std::exception& error) {
+        rejected = std::string(error.what()).find("reserved value") !=
+                   std::string::npos;
+      }
+      Require(rejected && scheduler.Value("value") == "0101" &&
+                  scheduler.Value(driver) == before,
+              "data resource failure must preserve hardware and driver state");
+    }
+    scheduler.Apply({{"iWrite", {"value", "9"}, "data-resource:5", {}}}, false,
+                    held);
+    Require(scheduler.Value("value") == "1001",
+            "explicit data replacement works after failed preservation trials");
+  }
+}
 void TestPrimaryLimits() {
   pattern::Design design;
   design.AddIcl("wide-primary.icl", R"(
@@ -1074,6 +1120,7 @@ int main() {
     TestPrimaryWrites();
     TestPrimaryLimits();
     TestPrimaryControllingState();
+    TestDataReservationRollback();
     TestHiddenScanState();
     TestTapScheduling(false, false, false);
     TestTapScheduling(true, false, false);

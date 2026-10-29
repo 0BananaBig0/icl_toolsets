@@ -95,6 +95,33 @@ tests/src/pattern/test_resource_reservations.py; new
   empirical behavior without claiming broader lifecycle or vendor coverage;
   commit/push and continue remaining requirements.
 
+## Task 6: Data resource reservations across both scheduling backends
+
+Scope: DataRegister and DataInPort/DataOutPort ownership, including slices,
+aliases and instance membership, under the same assignment-driven protection
+as ScanRegisters (IEEE §7.9.19–20). Continue rejecting unsupported clock/control
+port lifetime semantics explicitly. Reuse existing state and symbolic models;
+do not introduce a second ownership system.
+
+Files: pattern_resources.h/.cc and pattern_scheduler.cc; new
+ tests/src/pattern/test_data_resource_reservations.py; Makefile and support docs.
+
+- [x] Add failing primary/scan DataRegister and primary-data-port tests:
+  blocked implicit changes, allowed explicit replacement, release/retake,
+  slice/alias and instance ownership, nested lifetime, end-state conflict,
+  reset clearing, reads without invented hardware state, atomic failure and
+  original/flat/generated replay. Include a shared-address bank to exercise
+  preserved data across prerequisite scans and measure bounded larger inputs.
+- [x] Extend reservation target/member classification to DataRegister and data
+  ports. Share desired protected-value validation and end-state conflict checks
+  between primary and serial scheduling. Pass protection through the primary
+  solver, constrain every frame, and verify it during concrete replay. Access
+  ScanStep loads only for ScanRegisters; data registers update through existing
+  model events. Preserve explicit old-to-requested transition rules.
+- [x] Run the focused suite, complete dynamic/static regression, leak-enabled
+  sanitizers and independent review. Document supported data resources and
+  remaining control/clock/lifecycle limitations; commit/push before continuing.
+
 ## Remaining completion work (not yet completed)
 
 - Mixed primary/scan scheduling and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -154,3 +181,14 @@ blocking issue and additionally checked local/persistent post-reset retakes.
 Vendor observations are scoped to ordinary takes; other lifetime variants have
 local coverage and are not individually vendor-certified. No broader lifecycle
 or other remaining requirements are marked complete.
+
+
+Task 6 passed full dynamic/static `make check` (exit 0,
+`build/data-resources-regression-reviewed.log`), all nine new data-resource
+cases, all 34 original reservation cases and native scheduler tests under
+Clang ASan/UBSan/LeakSanitizer. Independent review found a stale protected-value
+handoff between address batches; full/partial 32-register replacement tests
+failed first, then passed after the fix. Formatting, naming and whitespace
+checks pass. Source/flat/generated replay and failed-output protection are
+covered; no additional vendor certification is claimed. See
+[data-resource evidence](../../pattern-generation.md#data-resource-reservations-2026-10-29).

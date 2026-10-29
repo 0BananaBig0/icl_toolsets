@@ -680,6 +680,49 @@ class ScanScheduler::Impl {
   }
 
  private:
+  std::map<size_t, std::string> DesiredPreserved(
+      const std::map<size_t, std::string>& preserved,
+      const std::map<size_t, std::string>& goals,
+      const std::set<size_t>& explicit_goals,
+      const std::map<size_t, std::string>& end_goals,
+      bool explicit_writes) const {
+    auto desired = preserved;
+    for (auto& [id, value] : desired) {
+      const auto& node = netlist_.nodes.at(id);
+      if (!IsReservableResource(node) || value.size() != node.Width() ||
+          value.find_first_not_of("01x") != std::string::npos) {
+        throw std::runtime_error("invalid reserved resource value");
+      }
+      if (explicit_writes && explicit_goals.count(id)) {
+        value = Masked(goals.at(id), value);
+      }
+      const auto defaults = end_goals.find(id);
+      if (defaults != end_goals.end()) {
+        for (size_t i = 0; i < value.size(); ++i) {
+          if (value[i] != 'x' && defaults->second[i] != 'x' &&
+              defaults->second[i] != value[i]) {
+            throw std::runtime_error(
+                node.origin + ": iApplyEndState conflicts with reserved " +
+                node.name);
+          }
+        }
+      }
+    }
+    return desired;
+  }
+  void ConstrainPreserved(z3::optimize& solver, SymbolicNetwork& state,
+                          const std::map<size_t, std::string>& preserved,
+                          const std::map<size_t, std::string>& desired,
+                          std::map<size_t, z3::expr>& changed) {
+    for (const auto& [id, previous] : preserved) {
+      const auto old = SymbolicValue::Literal(context_, previous);
+      const auto wanted = SymbolicValue::Literal(context_, desired.at(id));
+      const auto value = state.Value(id);
+      solver.add((!changed.at(id) && Matches(value, old)) ||
+                 Matches(value, wanted));
+      changed.at(id) = changed.at(id) || Matches(value, wanted);
+    }
+  }
   void CheckPreserved(const NetworkState& state,
                       std::map<size_t, std::string>& held,
                       const std::map<size_t, std::string>& desired) const {
@@ -756,7 +799,8 @@ class ScanScheduler::Impl {
     return false;
   }
   std::vector<ScanStep> SolvePrimaryWrites(
-      const std::vector<Operation>& operations, bool together) {
+      const std::vector<Operation>& operations, bool together,
+      const std::map<size_t, std::string>& preserved, bool explicit_writes) {
     const auto& data_plan = state_.DataRegisters();
     std::map<size_t, std::string> goals;
     std::map<size_t, std::map<int64_t, char>> reads;
@@ -889,6 +933,10 @@ class ScanScheduler::Impl {
           "primary-input scheduler resource limit exceeded");
     }
     const auto end_goals = EndGoals(operations);
+    std::set<size_t> explicit_goals;
+    for (const auto& [id, goal] : goals) explicit_goals.insert(id);
+    const auto desired_preserved = DesiredPreserved(
+        preserved, goals, explicit_goals, end_goals, explicit_writes);
     const auto started = std::chrono::steady_clock::now();
     const size_t limit = data_plan.order.empty() ? 1 : kMaxSteps;
     for (size_t horizon = 1; horizon <= limit; ++horizon) {
@@ -902,6 +950,10 @@ class ScanScheduler::Impl {
       z3::params parameters(context_);
       parameters.set("timeout", 2000U);
       solver.set(parameters);
+      std::map<size_t, z3::expr> reserved_changed;
+      for (const auto& [id, value] : preserved) {
+        reserved_changed.emplace(id, context_.bool_val(false));
+      }
       Values state, fills;
       for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
         if (netlist_.nodes[id].model == ModelKind::kRegister ||
@@ -1095,6 +1147,8 @@ class ScanScheduler::Impl {
           }
         }
         simultaneous = simultaneous || (complete && all_reads);
+        ConstrainPreserved(solver, values, preserved, desired_preserved,
+                           reserved_changed);
         frame.state = next;
         frame.fill = fills;
         frames.push_back(std::move(frame));
@@ -1128,6 +1182,7 @@ class ScanScheduler::Impl {
       }
       const auto model = solver.get_model();
       NetworkState replay(state_);
+      auto replayed_preserved = preserved;
       auto fill = fill_;
       std::vector<ScanStep> steps;
       for (const auto& frame : frames) {
@@ -1142,6 +1197,7 @@ class ScanScheduler::Impl {
           step.writes.emplace(netlist_.nodes[id].name, bits);
         }
         if (!driven.empty()) replay.ApplyInputs(driven);
+        CheckPreserved(replay, replayed_preserved, desired_preserved);
         Values concrete;
         for (const auto& [id, value] : frame.state) {
           concrete.emplace(id,
@@ -1631,6 +1687,7 @@ class ScanScheduler::Impl {
       trial.execution_ = std::make_unique<TapExecution>(*execution_);
     }
     std::vector<ScanStep> steps;
+    auto held = preserved;
     for (auto& [code, members] : batches) {
       if (std::chrono::steady_clock::now() - started >
               std::chrono::seconds(15) ||
@@ -1648,8 +1705,11 @@ class ScanScheduler::Impl {
             {"iWrite", {node.name, "0b" + goals.at(id)}, node.origin, {}});
       }
       try {
-        auto scans = trial.Solve(operations, false, kMaxSteps, {}, false,
-                                 preserved, explicit_writes);
+        auto scans = trial.Solve(operations, false, kMaxSteps, {}, false, held,
+                                 explicit_writes);
+        for (auto& [id, value] : held) {
+          value = Masked(trial.state_.Value(id), value);
+        }
         steps.insert(steps.end(), std::make_move_iterator(scans.begin()),
                      std::make_move_iterator(scans.end()));
       } catch (const ScheduleLimit&) {
@@ -2119,7 +2179,8 @@ class ScanScheduler::Impl {
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     if (roots_.empty() && registers_.empty() && !tap_) {
-      return SolvePrimaryWrites(operations, together);
+      return SolvePrimaryWrites(operations, together, preserved,
+                                explicit_writes);
     }
     if (tap_ && !tap_ready_) {
       throw std::runtime_error(
@@ -2347,28 +2408,8 @@ class ScanScheduler::Impl {
                                  netlist_.nodes[id].name);
       }
     }
-    auto desired_preserved = preserved;
-    for (auto& [id, value] : desired_preserved) {
-      const auto& node = netlist_.nodes.at(id);
-      if (node.kind != "ScanRegister" || value.size() != node.Width() ||
-          value.find_first_not_of("01x") != std::string::npos) {
-        throw std::runtime_error("invalid reserved ScanRegister value");
-      }
-      if (explicit_writes && explicit_goals.count(id)) {
-        value = Masked(goals.at(id), value);
-      }
-      const auto defaults = end_goals.find(id);
-      if (defaults != end_goals.end()) {
-        for (size_t i = 0; i < value.size(); ++i) {
-          if (value[i] != 'x' && defaults->second[i] != 'x' &&
-              defaults->second[i] != value[i]) {
-            throw std::runtime_error(
-                node.origin + ": iApplyEndState conflicts with reserved " +
-                node.name);
-          }
-        }
-      }
-    }
+    const auto desired_preserved = DesiredPreserved(
+        preserved, goals, explicit_goals, end_goals, explicit_writes);
     if (allow_greedy && !events && goals.size() >= 4 && !together &&
         groups.empty() && end_states_.empty() && expected.empty() &&
         data_reads.empty()) {
@@ -2664,21 +2705,20 @@ class ScanScheduler::Impl {
           if (touched.count(id)) touched.at(id) = touched.at(id) || enabled;
         }
         for (const auto& [id, previous] : preserved) {
+          if (!frame.loads.count(id)) continue;
           const auto old = SymbolicValue::Literal(context_, previous);
           const auto wanted =
               SymbolicValue::Literal(context_, desired_preserved.at(id));
-          const auto changed = reserved_changed.at(id);
-          const auto legal = [&](const SymbolicValue& value) {
-            return (!changed && Matches(value, old)) || Matches(value, wanted);
-          };
           const auto active = frame.active.count(id) ? frame.active.at(id)
                                                      : context_.bool_val(false);
-          solver.add(z3::implies(active, legal(frame.loads.at(id))));
-          solver.add(legal(next.at(id)));
-          reserved_changed.at(id) =
-              reserved_changed.at(id) || Matches(next.at(id), wanted);
+          const auto& load = frame.loads.at(id);
+          solver.add(z3::implies(
+              active, (!reserved_changed.at(id) && Matches(load, old)) ||
+                          Matches(load, wanted)));
         }
         SymbolicNetwork after(netlist_, context_, next, global_resets_);
+        ConstrainPreserved(solver, after, preserved, desired_preserved,
+                           reserved_changed);
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           auto complete = context_.bool_val(true);
