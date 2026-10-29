@@ -1,9 +1,34 @@
 # Pattern generation
 
 `icl-pattern-generation` is an experimental executable. It currently expands
-PDL procedures and Tcl computations and schedules single-input,
-single-output scan networks, including single-TAP instruction/data scans. It is
+PDL procedures and Tcl computations and schedules single-output scan paths,
+including indexed vector inputs and single-TAP instruction/data scans. It also
+schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
+
+## Current verification
+
+As of implementation commit `5335925` (2026-10-30), full dynamic/static
+`make -j2 --jobserver-style=pipe check` passed, including the Vim/Neovim corpus
+checks, 1,916 ICL regression cases and 2,180 conformance cases. All 334 parser
+and 119 scanner rules were exercised across 2,504 ICL files. Five optional ANTLR
+integration tests were skipped because `ICL_REF_DIR` was unset. Rule coverage
+does not establish full handwritten line/branch coverage; the strict coverage
+gate remains unmet in the last recorded measurement.
+
+The latest focused ASan/UBSan/LeakSanitizer run covered the native scheduler,
+seven indexed-input cases and seven existing one-hot cases, with leak detection
+enabled. See [indexed-input evidence](#indexed-scan-inputs-2026-10-30) for the
+commands, logs, review fix and measured scale. This did not rerun installation,
+RTL simulation or strict authored-code coverage.
+
+Ordinary regression passes 37 directional and seven legacy Tessent standards
+offline. The [latest six directional certificates](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30)
+cover three specific TAP fixtures. Indexed vector-input cases have local replay
+coverage and no vendor certificate. The
+[model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
+tracks shared/multiple outputs and TAPs, general events/clocks, remaining
+reservations, reset rewriting and broader qualification as unfinished work.
 
 ## Vendor round-trip acceptance
 
@@ -11,7 +36,8 @@ The [directional qualification harness](tessent-goldens.md) accepts either local
 flat output re-exported unchanged by Tessent, or Tessent source output replayed
 unchanged by the local generator. Compare ordered apply groups, allowing
 independent writes inside a group to reorder. Independent source schedules need
-not match. Stored directional pin/vector, TAP, reservation and reset standards pass offline.
+not match. Stored directional pin/vector, TAP, reservation, reset, DataRegister,
+computed-port, control-ownership and merged-observation standards pass offline.
 The concrete scheduler test also covers writing a selected TDR while closing its
 SIB on the same update, then reopening before the next target write.
 

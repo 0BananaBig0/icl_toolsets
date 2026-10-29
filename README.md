@@ -416,7 +416,7 @@ DataRegister writes, cascades, and reads routed to DataOutPorts through forwardi
 DataMuxes and OneHotDataGroups. Shared address buses use separate applies as needed.
 Read comparisons do not set register contents. Reads preserve the storage they
 observe, including while resolving output enables. Generated PDL and flattened
-ICL are checked by replay; see the [DataRegister example and limits](docs/pattern-generation.md#data-register-access).
+ICL are checked by replay; see the [DataRegister example and limits](docs/pattern-generation.md#dataregister-access).
 The serial and single-TAP backends also support scan-driven selectable/addressed
 DataRegister writes and reads captured through ScanRegisters. Capture uses the
 value before the same scan's Update; a read and write can share that scan.
@@ -426,9 +426,8 @@ permutations; already-satisfied values share the required controller update.
 Scalar `OneHotScanGroup` returns also work on standalone and single-TAP scan
 networks, including nested groups and inverted returns. Scheduling requires one
 known-enabled contributor and holds the other contributors disabled; inactive
-nested groups may be zero-hot. Independent write-only `iMerge` calls can combine
-multiple apply groups while retaining each call's apply order. These additions
-have local replay/regression coverage; they are not new Tessent certificates.
+nested groups may be zero-hot. These one-hot paths have local replay/regression
+coverage; they are not new Tessent certificates.
 
 A single scan chain can use indexed bits of a vector `ScanInPort`, including
 mux-selected or inverted inputs and one lane of a vector `OneHotScanGroup`.
@@ -438,7 +437,7 @@ event handling; simultaneous vector return lanes remain unfinished.
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
-The generator's [verification record](docs/pattern-generation.md#primary-input-verification-2026-10-27)
+The generator's [verification record](docs/pattern-generation.md#current-verification)
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
 

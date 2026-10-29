@@ -1,17 +1,21 @@
 # Project requirements
 
 These are the acceptance targets for **icl_toolsets**, not a claim that every
-target has been met. The installed executables are `icl-format`, `icl-lsp`, `pdl-format` and
-`pdl-lsp`. See [verification and limits](icl-verification.md) for dated evidence
+target has been met. The repository provides `icl-format`, `icl-lsp`, `pdl-format`,
+`pdl-lsp` and the experimental `icl-pattern-generation`. See
+[language-tool verification and limits](icl-verification.md) for dated evidence
 and [corpus deduplication](../tests/cases/CORPUS_DEDUPLICATION.md) for the later
 corpus audit. The [historical record](history/requirements-legacy.md) preserves
 the original requests and implementation history.
 
-The requested `icl-pattern-generation` executable is a separate, partially implemented
-extension. Its [requirements and design draft](superpowers/specs/2026-10-25-icl-pattern-generation-design.md)
+`icl-pattern-generation` remains a partially implemented retargeter. Its
+[requirements and design](superpowers/specs/2026-10-25-icl-pattern-generation-design.md)
 records ordered overrides, netlist elaboration, configuration scheduling,
 local-reset rewriting and round-trip acceptance tests. It does not change the
-execution-free contract of the formatters or language servers.
+execution-free contract of the formatters or language servers. Use the
+[current model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
+and [generator verification record](pattern-generation.md#current-verification)
+to distinguish implemented behavior from remaining acceptance work.
 
 Generator vendor acceptance uses either directional round trip with identical
 ordered `iApply` groups: local output re-exported by Tessent, or Tessent's source
@@ -198,7 +202,7 @@ as atomic behavioral units; internal flip-flop or gate wiring is not required.
   CodeGraph outputs or generated stress data. Hand-maintained scripts and the
   explicitly requested vendor/example test inputs and provenance are maintained
   source material. Distribution-only generated files stay outside Git.
-- **D3 — Installation:** install all four commands with a configurable prefix,
+- **D3 — Installation:** install all five commands with a configurable prefix,
   defaulting to `$HOME/.local`, record installed paths and support uninstall.
   For runtime releases, execute installation commands and verify the installed
   programs, then print the coc.nvim `icl` and `pdl` server entries, each supplying
@@ -207,7 +211,7 @@ as atomic behavioral units; internal flip-flop or gate wiring is not required.
   the tested LSP setup from the optional CLI adapter's unverified end-to-end
   behavior.
 - **D4 — Documentation and license:** use `icl_toolsets` for repository identity
-  and retain the four documented executable names. The root README
+  and retain the five documented executable names. The root README
   must explain features, limitations, installation and use for customers.
   Developer guides and project requirements belong in `docs/`; fixture
   provenance/licenses may stay beside their inputs. Keep the MIT project

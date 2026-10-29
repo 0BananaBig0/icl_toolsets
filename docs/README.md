@@ -11,7 +11,8 @@ usage, editor setup, supported features and practical limitations.
 | [Pattern-generation user guide](pattern-generation.md) | Build, command support, runnable serial/TAP/alias examples, replay checks, output safety and remaining requirements. |
 | [Pattern-generation design](superpowers/specs/2026-10-25-icl-pattern-generation-design.md) | Complete requested scope and architecture; implementation in progress; executable has serial and single-TAP backends. |
 | [Pattern-generation model coverage](pattern-model-coverage.md) | Current model/runtime/scheduler support, remaining gaps and dated implementation evidence. |
-| [Tessent oracle verification](tessent-oracle.md) | Current vendor rerun, blocked comparison evidence, BSDL contract, corpus accounting and local-reset input routing. |
+| [Tessent-qualified standards](tessent-goldens.md) | Current directional acceptance policy, certified cases, formatter/testbench qualification and offline checks. |
+| [Tessent oracle history](tessent-oracle.md) | Earlier independent-source comparisons, BSDL contract, corpus accounting and retained remote evidence. |
 | [Combined language/editor audit](combined-language-audit.md) | Sequential ICL/PDL block revalidation, upstream comparison, highlighting fix and verification. |
 | [PDL tools](pdl-tools.md) | Separate Tcl/PDL architecture, static dependency build, analysis limits and verification. |
 | [PDL block review](pdl-block-review.md) | IEEE clauses 7–8, PDL fixtures, upstream comparison and syntax-review evidence. |
@@ -66,13 +67,16 @@ The `superpowers/specs/` and `superpowers/plans/` directories retain task-specif
 designs and execution records. A plan describes intended work; use its recorded
 checks and the verification reports to determine what was actually verified.
 
-For current generator evidence, start with the latest dated sections in
-[pattern-generation.md](pattern-generation.md). They distinguish complete
-functional regression, focused sanitizer checks, installation checks and the
-still-failing strict coverage gate. Historical component milestones do not
-establish full retargeting or Tessent equivalence.
+For current generator evidence, start with the
+[verification summary](pattern-generation.md#current-verification) and
+[model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work).
+They distinguish local regression, sanitizer coverage, vendor certificates and
+remaining requirements. Indexed vector inputs are locally tested; the latest
+vendor qualification covers computed ports, child-enable ownership and merged
+observations. Neither establishes complete retargeting or hardware timing.
 
-The latest [Tessent comparison](tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
-records two differing TAP operation traces, not an equivalence pass. The same
-guide documents the `test_icl_toolsets/test_<topic>` remote layout, modeled on
-`test_Local_Reset`, and preservation of earlier experiment evidence.
+The [earlier Tessent comparisons](tessent-oracle.md#prefixed-layout-rerun-2026-10-27)
+retain differing independent-source traces under their original comparison policy.
+Current acceptance uses the [directional ordered-apply policy](tessent-goldens.md).
+Remote experiments retain the `test_icl_toolsets/test_<topic>` layout, modeled on
+`test_Local_Reset`; earlier inputs and results remain evidence.
