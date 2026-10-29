@@ -389,9 +389,10 @@ uses five TMS-high cycles even when TRST exists. The scheduler selects IR/DR
 transactions and checks each result through concrete controller/event replay.
 `iApply -together` requires all queued writes to update on one TCK cycle;
 prerequisite scans may precede that cycle. It does not require reads to occur
-together. An ICL alias marked `AccessTogether` requires its register group to
-be accessed in one scan. Nested aliases and slices retain that constraint;
-unrelated queued accesses can use separate scans. Alias `iApplyEndState` supplies
+together. An ICL alias marked `AccessTogether` requires its supported members
+to share one scan or parallel-port operation. This includes direct primary-input
+writes and primary-output observations. Nested aliases and slices retain the
+whole-group constraint; unrelated accesses can use separate operations. Alias `iApplyEndState` supplies
 a default for supported ScanRegister, DataRegister or primary-input bits. Explicit writes
 override it for one apply; the next apply or end of the input sequence restores
 the default. A SIB can close in the update that writes its selected TDR. See the

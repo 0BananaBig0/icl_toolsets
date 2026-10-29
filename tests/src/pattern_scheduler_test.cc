@@ -174,6 +174,58 @@ void TestPrimaryObservationOfScanStorage() {
   Require(observed && replay.Value("data") == "1001",
           "scan update follows observation");
 }
+void TestPrimaryAccessTogether() {
+  for (bool serial : {false, true}) {
+    pattern::Design design;
+    const std::string scan = serial ? R"(
+  ScanInPort si;
+  ScanRegister sr { ScanInSource si; ResetValue 1'b0; }
+  ScanOutPort so { Source sr; }
+)"
+                                    : "";
+    design.AddIcl("primary-groups.icl", "Module PrimaryGroups {" + scan + R"(
+  DataInPort data[3:0]; DataInPort enable;
+  DataRegister value[3:0] {
+    WriteDataSource data; WriteEnSource enable; ResetValue 4'b0;
+  }
+  DataOutPort observed[3:0] { Source value; }
+  DataOutPort inverted[3:0] { Source ~value; }
+  Alias pair[4:0] = enable, value { AccessTogether; }
+  Alias reads[7:0] = observed, inverted { AccessTogether; }
+})");
+    const auto netlist = pattern::Elaborate(design, "PrimaryGroups");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const auto first =
+        scheduler.Apply({{"iWrite", {"pair[3:0]", "9"}, "group:1", {}}});
+    Require(first.size() == 1 && first[0].together &&
+                first[0].writes.at("data") == "1001" &&
+                first[0].writes.at("enable") == "1" &&
+                scheduler.Value("value") == "1001",
+            "grouped primary drive updates actual data storage in one event");
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"pair", "0x13"}, "group:2", {}}}, false,
+                      {{netlist.node_ids.at("data"), "1001"}});
+    } catch (const std::exception& error) {
+      rejected =
+          std::string(error.what()).find("reserved data") != std::string::npos;
+    }
+    Require(rejected && scheduler.Value("data") == "1001" &&
+                scheduler.Value("value") == "1001" &&
+                scheduler.Value("enable") == "1",
+            "failed primary groups preserve driver and storage state");
+    scheduler.Apply({{"iWrite", {"pair", "0x13"}, "group:3", {}}});
+    const auto read =
+        scheduler.Apply({{"iRead", {"reads", "0x3c"}, "group:4", {}}});
+    Require(read.size() == 1 && read[0].writes.empty() &&
+                read[0].expected.at("observed") == "0011" &&
+                read[0].expected.at("inverted") == "1100" &&
+                scheduler.Value("observed") == "0011" &&
+                scheduler.Value("inverted") == "1100",
+            "grouped output comparisons observe actual storage together");
+  }
+}
 void TestResetDependencyScale() {
   // Reverse declaration order is the worst case for repeatedly scanning all
   // registers to discover the next reset dependency.
@@ -423,15 +475,13 @@ Module Control {
   scheduler.Apply({{"iWrite", {"out", "0bX"}, "control:4", {}}});
   Require(scheduler.Value("out") == "1",
           "output controlling state survives writes to upstream pins");
-  bool rejected = false;
-  try {
-    scheduler.Apply({{"iWrite", {"paired[1]", "0"}, "control:5", {}}});
-  } catch (const std::exception& error) {
-    rejected =
-        std::string(error.what()).find("AccessTogether") != std::string::npos;
-  }
-  Require(rejected && scheduler.Value("out") == "1",
-          "unimplemented whole-alias port access must not be ignored");
+  const auto grouped =
+      scheduler.Apply({{"iWrite", {"paired[1]", "0"}, "control:5", {}}});
+  Require(grouped.size() == 1 && grouped[0].together &&
+              grouped[0].writes.at("data") == "0" &&
+              grouped[0].writes.at("enable") == "1" &&
+              scheduler.Value("out") == "0",
+          "partial alias writes access the whole primary group in one event");
 }
 void TestDataReservationRollback() {
   for (bool serial : {false, true}) {
@@ -978,8 +1028,9 @@ Module Network {
   try {
     scheduler.Apply({{"iWrite", {"invalid[1]", "1"}, "unsupported:1", {}}});
   } catch (const std::exception& error) {
-    rejected = std::string(error.what()).find("requires register members") !=
-               std::string::npos;
+    rejected =
+        std::string(error.what()).find("requires accessible registers") !=
+        std::string::npos;
   }
   Require(rejected && scheduler.Value("gate") == "0",
           "unsupported full group members cannot be hidden behind a slice");
@@ -1268,6 +1319,7 @@ int main() {
     TestMixedReadRoutes();
     TestMixedIoPhases();
     TestPrimaryObservationOfScanStorage();
+    TestPrimaryAccessTogether();
     TestResetDependencyScale();
     TestGreedyRollback();
     TestAddressedRollback();

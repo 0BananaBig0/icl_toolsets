@@ -2183,10 +2183,10 @@ class ScanScheduler::Impl {
   }
   std::pair<std::vector<size_t>, size_t> MixedPrimaryInputs(
       const std::vector<Operation>& operations,
-      const std::map<size_t, std::string>& end_goals) {
+      const std::map<size_t, std::string>& end_goals,
+      std::set<size_t> requested_pins) {
     std::vector<size_t> pins;
     size_t pin_bits = 0;
-    std::set<size_t> requested_pins;
     for (const auto& operation : operations) {
       if (operation.command != "iWrite" || operation.arguments.empty()) {
         continue;
@@ -2236,7 +2236,13 @@ class ScanScheduler::Impl {
       bool explicit_writes = true, bool events = false) {
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
-    if (roots_.empty() && registers_.empty() && !tap_) {
+    if (roots_.empty() && registers_.empty() && !tap_ &&
+        std::none_of(
+            operations.begin(), operations.end(), [&](const auto& operation) {
+              return !operation.arguments.empty() &&
+                     !ResolvePdlTarget(netlist_, operation.arguments[0])
+                          .access_together.empty();
+            })) {
       return SolvePrimaryWrites(operations, together, preserved,
                                 explicit_writes);
     }
@@ -2267,7 +2273,7 @@ class ScanScheduler::Impl {
     }
     std::map<size_t, std::string> goals, expected;
     std::map<size_t, std::map<int64_t, char>> data_reads;
-    std::set<size_t> required;
+    std::set<size_t> required, group_pins;
     struct AccessGroup {
       bool read = false;
       std::set<size_t> members, requested;
@@ -2299,14 +2305,19 @@ class ScanScheduler::Impl {
             for (const auto& bit : full.bits) {
               if (bit.node == kMissing ||
                   (netlist_.nodes.at(bit.node).kind != "ScanRegister" &&
-                   !data_plan.writes.count(bit.node))) {
+                   !data_plan.writes.count(bit.node) &&
+                   !(read ? netlist_.nodes.at(bit.node).kind == "DataOutPort"
+                          : PrimaryInput(netlist_.nodes.at(bit.node))))) {
                 throw std::runtime_error(
                     "AccessTogether " + netlist_.nodes[alias].name +
-                    " requires register members in the serial backend");
+                    " requires accessible registers or primary ports");
               }
               group.members.insert(bit.node);
-              if (data_plan.writes.count(bit.node)) {
+              if (data_plan.writes.count(bit.node) ||
+                  netlist_.nodes[bit.node].kind == "DataOutPort") {
                 if (read) data_reads[bit.node].emplace(bit.index, 'x');
+              } else if (PrimaryInput(netlist_.nodes[bit.node])) {
+                group_pins.insert(bit.node);
               } else {
                 required.insert(bit.node);
               }
@@ -2404,7 +2415,8 @@ class ScanScheduler::Impl {
         }
       }
     }
-    const auto [pins, pin_bits] = MixedPrimaryInputs(operations, end_goals);
+    const auto [pins, pin_bits] =
+        MixedPrimaryInputs(operations, end_goals, group_pins);
     mixed = !pins.empty();
     if (routes) {
       for (const auto& [id, bits] : data_reads) {

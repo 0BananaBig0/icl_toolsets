@@ -222,8 +222,9 @@ explicit enables, including forwarding ports. Exactly one known-enabled
 contributor selects its data; zero, multiple or uncertain enables produce X.
 Addressed register/instance contributors and routed reads are supported on the
 primary-input path described below. Scalar OneHotScanGroup execution is supported
-by the serial backend described below. Primary-port AccessTogether groups remain
-unsupported. Mixed DataRegister/primary-input/scan transactions use the shared
+by the serial backend described below. Direct primary-input write groups and
+primary-output read groups use the same AccessTogether checks as registers.
+Mixed DataRegister/primary-input/scan transactions use the shared
 frame scheduler described in the mixed-I/O section below.
 No new grammar or AST is introduced.
 
@@ -378,12 +379,13 @@ broader syntax support and never execute PDL.
   checked in concrete replay and retained in generated PDL. Mutually exclusive
   paths cannot satisfy it; a bounded search failure does not prove general
   hardware unreachability.
-- `AccessTogether` on a referenced ICL Alias keeps its full supported register group
+- `AccessTogether` on a referenced ICL Alias keeps its full supported group
   in a single operation, including nested aliases and partial references.
   Writes require simultaneous updates after reset release; reads compare their
   requested bits together after any prerequisite scans. Unrelated accesses may
-  use separate scans. ScanRegister and writable DataRegister members are supported;
-  unsupported port members are rejected.
+  use separate operations. ScanRegister and writable DataRegister members, direct
+  primary-input writes, and primary-output reads are supported. General
+  forwarded/computed write members remain unsupported.
   Flattened ICL preserves the marker; emitted common updates use
   `iApply -together`.
 - Alias `iApplyEndState` follows IEEE 1687-2014 6.5.2(h): known, consistent
@@ -1099,8 +1101,9 @@ Independent review found incorrect output controlling-state initialization.
 A failing regression reproduced an all-X write incorrectly emitting no pin
 stimulation. The fix preserves controlling history separately, and the new
 case checks both initial state and later upstream changes. An additional
-partial AccessTogether port-alias regression first failed and now explicitly
-rejects unsupported whole-group access. Existing elaboration already rejects
+partial AccessTogether port-alias regression initially enforced explicit rejection
+of unsupported whole-group access. The later primary-group extension replaces
+that rejection with a native whole-group update assertion. Existing elaboration already rejects
 an addressed-instance bypass; no redundant validation was added.
 
 `make coverage BISON=/usr/bin/bison -j4` completed its tests but failed the
@@ -1626,8 +1629,9 @@ observations. Both frame kinds share hardware/controlling state, resource masks,
 read completion and required scan-controller updates. This follows IEEE §5.16.1
 (printed p.54), §6.4.9 (p.119) and §7.9.14(a) (p.173). Existing primary-only and
 serial-only paths remain available. General forwarded/computed-port writes in a
-mixed network, primary-port AccessTogether aliases, and multiple scan outputs or
-TAPs still require additional implementation.
+mixed network and multiple scan outputs or TAPs still require additional
+implementation. The following increment adds direct primary-port AccessTogether
+groups.
 
 Parallel comparisons use read-only frames; pin drives are separate events. The
 expected value is never treated as known hardware. Pending observations retain
@@ -1676,3 +1680,46 @@ data-resource, 34 reservation and four hidden-event cases passed Clang
 ASan/UBSan/LeakSanitizer with leak detection enabled
 (`build/mixed-io-sanitizer-final.log`). Google formatting, changed-source naming
 and whitespace checks also pass.
+
+### Primary-port AccessTogether (2026-10-29)
+
+IEEE 1687-2014 §6.5.2(i), printed p.137, permits a common parallel-port operation
+as well as a common scan. Direct primary input members and DataRegister writes
+can now share an update; DataOutPort members can share a parallel observation.
+Primary-only grouped operations use the existing joint scheduler so their group
+constraints and concrete replay are identical to those in mixed networks. The
+ordinary primary-only fast path remains available for ungrouped operations.
+Nested/inverted/sliced aliases keep obligations for the entire marked group.
+Unsupported forwarded/computed write members still fail explicitly.
+
+Unrequested group controls remain selectable: a partial write to the data portion
+of an `enable,value` alias can drive its implicit enable high in the same event.
+Reservations and end-state requirements remain hard constraints. Pin-value
+preferences retain controlling values when other requirements permit. Independent
+review reproduced an initial error that made these preferences hard goals; the
+partial-enable case failed before the fix and now succeeds in primary-only and
+serial designs. An old native test that required all primary groups to be rejected
+now checks both actual pin drives and the resulting output value.
+
+The 13 self-constructed cases in
+`tests/src/pattern/test_primary_access_together.py` cover direct and partial
+writes/reads, implicit controls, nested aliases, inverted slices, common
+DataRegister updates, reservations, end states, incompatible groups, TAP scans
+before/after a parallel group, and source/flat/generated fixed points. Native
+checks inspect actual storage and driver values, simultaneous observations and
+rollback after protected-state conflicts. No new vendor certification is claimed.
+
+The existing 256-vector/4096-bit and temporal-work bounds remain. On WSL2,
+g++ 16.2.1 `-O2`, Z3 4.13.3, the 64-primary-pin source/flat/generated replay test
+completed in 0.18 seconds with 56764 KiB peak RSS. Command:
+`/usr/bin/time -v python3 tests/src/pattern/test_primary_access_together.py
+build/icl-pattern-generation PrimaryAccessTogether.test_group_with_64_primary_members`.
+Evidence: `build/primary-access-scale-reviewed.log`. This is a bounded case
+measurement, not a shortest-pattern or general performance claim.
+
+Final full dynamic/static regression passed (exit 0,
+`build/primary-access-regression-reviewed.log`), including 31 directional and seven
+legacy vendor standards. Native scheduler tests and all 13 primary-group, 15 mixed
+and nine data-reservation cases passed Clang ASan/UBSan/LeakSanitizer with leaks
+enabled (`build/primary-access-sanitizer-reviewed.log`). Formatting, naming and
+whitespace checks pass.

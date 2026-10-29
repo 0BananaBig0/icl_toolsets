@@ -144,9 +144,31 @@ modeled as interchangeable or simultaneously applied without evidence.
   review, full dynamic/static regression and leak-enabled sanitizers. Record
   vendor evidence separately from local coverage and update support docs.
 
+## Task 8: Primary-port AccessTogether groups
+
+IEEE 1687-2014 §6.5.2(i), printed p.137, requires a common scan operation or
+parallel-port update. Extend the existing group constraints and concrete replay;
+no second scheduler or relaxation of simultaneous access. Ungrouped primary and
+serial fast paths remain. The inherited 256-vector/4096-bit and temporal-work
+bounds cover planning; measure 64 primary members with original/flat/generated
+replays. Forwarded/computed write targets remain a separate pending requirement.
+
+- [x] Add failing primary-only/mixed CLI tests for direct primary members,
+  partial aliases and implicit member access, inverted/sliced nested groups,
+  DataRegister common updates, incompatible scan/parallel groups, simultaneous
+  output observations, reservations, failed-output protection and fixed points.
+  Add native resulting-state and rollback assertions.
+- [x] Route primary-only AccessTogether operations through the joint solver;
+  recognize supported direct-primary write and output-read members, include
+  implicit group pins in planning, and preserve group obligations on emitted
+  operations. Keep state, resource and read-order checks shared.
+- [x] Run focused tests, a representative scale measurement, independent review,
+  full dynamic/static regression, leak-enabled sanitizers and Google checks.
+  Update support documentation, commit/push, and continue remaining requirements.
+
 ## Remaining completion work (not yet completed)
 
-- General forwarded/computed mixed-port writes, primary-port AccessTogether, and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
+- General forwarded/computed mixed-port writes and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
 - General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
@@ -227,3 +249,15 @@ fresh Tessent forward certificates qualify the mixed fixtures; reverse apply
 comparisons remain failures and no reverse standards were recorded. Independent
 review findings were reproduced and fixed, with actual-state and TAP rollback
 coverage. No broader model completeness or shortest-pattern guarantee is claimed.
+
+
+Task 8 passed full dynamic/static `make check` (exit 0,
+`build/primary-access-regression-reviewed.log`), 31 directional and seven legacy
+offline vendor standards, and native plus 13 primary-group, 15 mixed-I/O and nine
+data-reservation cases under ASan/UBSan/LeakSanitizer (`detect_leaks=1`).
+Independent review found overly strict implicit-pin goals; a new partial-alias
+case reproduced the failure before the fix. The initial full regression failed
+an obsolete unsupported-feature assertion; the replacement verifies actual whole-
+group drives and output state, and the final full run passed. Google formatting,
+changed-source clang-tidy and whitespace checks pass. No new vendor certification
+or completion of the remaining model requirements is claimed.
