@@ -1,0 +1,7 @@
+iProcsForModule SliceTop
+iReset
+iTake core.gate
+iWrite core.gate[1] 1
+iApply
+iWrite core.target 5
+iApply

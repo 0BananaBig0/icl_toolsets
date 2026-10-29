@@ -211,7 +211,7 @@ std::string Generate(
         const std::vector<pattern::Operation> group(operations.begin() + index,
                                                     operations.begin() + end);
         const auto prerequisites = scheduler.ResetPrerequisites(
-            group, reservations.Values(), reservations.UnwrittenRegisters());
+            group, reservations.Values(), reservations.UnwrittenBits());
         if (!prerequisites.empty() && !pending.empty()) {
           throw std::runtime_error(
               "local-reset insertion would flush pending user operations");

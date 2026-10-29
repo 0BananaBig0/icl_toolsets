@@ -38,6 +38,16 @@ Files: src/pattern/pattern_merge.cc; tests/src/pattern/test_merge_scheduling.py.
 - [x] Keep the scheduler's existing replay and fresh-state serial fallback. Do not cross apply boundaries outside an iMerge or reorder opaque effects.
 - [x] Run focused merge regression, scale checks, sanitizers, complete regression and independent review; document the supported scope.
 
+## Task 3: Bit-level ScanRegister reservations
+
+Files: pattern_resources.h/.cc, pattern_scheduler.h/.cc and icl_pattern_generation_main.cc under src/pattern; tests/src/pattern/test_resource_reservations.py, tests/src/pattern_scheduler_test.cc; resource fixtures and tests/src/pattern/probe_resource_slices.tcl.
+
+- [x] Reproduce the unsupported indexed/alias take and the incorrect whole-register lock after an explicit partial write. Tessent 2026.2 probes: high-bit take succeeds, low-bit take blocks access, partial release succeeds, inverted alias succeeds, and taking the full register followed by a high-bit-only write leaves the low bit available.
+- [x] Resolve aliases/slices with ResolvePdlTarget and store physical per-bit ownership, preserving inherited/persistent ownership and scoped release. Use per-node masks/counters rather than one allocation per bit. Protect only explicitly assigned taken bits.
+- [x] Extend existing symbolic constraints and concrete replay to masked preserved values. Keep unprotected bits free; preserve old-to-requested transitions on protected bits; apply the same masks in greedy planning, idle replay, end states and reset prerequisites.
+- [x] Emit partial reset-control writes when other bits of that register are taken but unwritten, so inserted source commands cannot create new reservations. Re-execute rewritten text and retain failed-output protection.
+- [x] Test ascending/inverted/concatenated aliases, overlapping ownership, partial release, iState, reset rewriting, greedy paths, TAP/flat/generated replay and larger vectors. Run full regression, leak-enabled sanitizers and independent review; document normative rules separately from vendor observations.
+
 ## Remaining completion work (not yet completed)
 
 - Mixed primary/scan scheduling and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -62,3 +72,15 @@ See [implementation evidence](../../pattern-generation.md#one-hot-serial-paths-a
 No fresh vendor certification, installation or strict coverage run was performed.
 The user authorized committing and pushing this verified increment. The remaining
 requirements above are still open and execution continues after publication.
+
+
+Task 3 passed the final full dynamic/static `make check` (exit 0):
+`build/resource-slices-regression-reviewed.log`. All 31 reservation cases and
+native scheduler tests also pass Clang ASan/UBSan/LeakSanitizer with leak checks
+enabled. Independent review found and verified the fix for unknown unwritten
+reset bits; no findings remain. Google formatting, changed-source clang-tidy and
+diff whitespace checks pass. Five fresh Tessent probes establish bit semantics,
+but are not certified round-trip goldens; their ungated hidden TAP storage
+exposes an additional outstanding event-model limitation. See
+[bit-level evidence](../../pattern-generation.md#bit-level-reservations-2026-10-29).
+The remaining completion work above is still required, not marked complete.

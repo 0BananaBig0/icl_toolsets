@@ -32,6 +32,18 @@ z3::expr Known(const SymbolicValue& value, bool one) {
   return value.known == value.bits.ctx().bv_val(1, 1) &&
          value.bits == value.bits.ctx().bv_val(one ? 1 : 0, 1);
 }
+// Unknown bits in a reservation are unprotected, not required unknown state.
+z3::expr Matches(const SymbolicValue& value, const SymbolicValue& mask) {
+  return (value.known & mask.known) == mask.known &&
+         (value.bits & mask.known) == mask.bits;
+}
+std::string Masked(const std::string& value, const std::string& mask) {
+  auto result = mask;
+  for (size_t i = 0; i < mask.size(); ++i) {
+    if (mask[i] != 'x') result[i] = value.at(i);
+  }
+  return result;
+}
 SymbolicValue Choose(const z3::expr& choice, const SymbolicValue& a,
                      const SymbolicValue& b) {
   return {z3::ite(choice, a.bits, b.bits), z3::ite(choice, a.known, b.known)};
@@ -487,7 +499,7 @@ class ScanScheduler::Impl {
   std::vector<std::vector<Operation>> ResetPrerequisites(
       const std::vector<Operation>& operations,
       const std::map<size_t, std::string>& preserved,
-      const std::set<size_t>& unwritten) {
+      const std::map<size_t, std::string>& unwritten) {
     auto targets = ResetTargets(operations);
     std::set<size_t> controls;
     std::vector<size_t> pending(targets.begin(), targets.end());
@@ -513,7 +525,7 @@ class ScanScheduler::Impl {
     size_t total_bits = 0;
     for (const auto& [name, id] : netlist_.node_ids) {
       const auto& node = netlist_.nodes[id];
-      if (controls.count(id) && !unwritten.count(id)) {
+      if (controls.count(id)) {
         if (node.kind != "ScanRegister" ||
             (tap_ && id == tap_->instruction_register)) {
           throw std::runtime_error(
@@ -525,19 +537,25 @@ class ScanScheduler::Impl {
         }
         const auto bits =
             context_.bv_const(("reset_" + name).c_str(), node.Width());
-        const auto known =
+        auto known =
             SymbolicValue::Literal(context_, std::string(node.Width(), '1'))
                 .bits;
+        const auto previous =
+            SymbolicValue::Literal(context_, state_.Value(id));
+        const auto frozen = unwritten.find(id);
+        if (frozen != unwritten.end()) {
+          const auto mask = SymbolicValue::Literal(context_, frozen->second);
+          known = (known & ~mask.bits) | (previous.known & mask.bits);
+          solver.add((bits & mask.bits) == (previous.bits & mask.bits));
+        }
         const SymbolicValue value{bits, known};
         assignments.emplace(id, value);
         choices.emplace(id, value);
         const auto held = preserved.find(id);
         if (held != preserved.end()) {
-          solver.add(bits ==
-                     SymbolicValue::Literal(context_, held->second).bits);
+          solver.add(
+              Matches(value, SymbolicValue::Literal(context_, held->second)));
         }
-        const auto previous =
-            SymbolicValue::Literal(context_, state_.Value(id));
         changes =
             changes + z3::ite(bits == previous.bits && previous.known == known,
                               context_.int_val(0), context_.int_val(1));
@@ -569,7 +587,7 @@ class ScanScheduler::Impl {
               "\n  reserved " + netlist_.nodes.at(id).name + " = " + value;
         }
       }
-      for (size_t id : unwritten) {
+      for (const auto& [id, mask] : unwritten) {
         if (controls.count(id)) {
           message +=
               "\n  taken-but-unwritten resource " + netlist_.nodes.at(id).name;
@@ -591,8 +609,35 @@ class ScanScheduler::Impl {
       }
       depth[id] = level;
       const auto& node = netlist_.nodes[id];
-      layers[level].push_back(
-          {"iWrite", {node.name, "0b" + bits}, node.origin, {}});
+      const auto frozen = unwritten.find(id);
+      if (frozen == unwritten.end()) {
+        layers[level].push_back(
+            {"iWrite", {node.name, "0b" + bits}, node.origin, {}});
+      } else {
+        // Do not turn a taken-but-unwritten bit into a protected assignment.
+        for (size_t begin = 0; begin < bits.size();) {
+          if (frozen->second[begin] == '1') {
+            ++begin;
+            continue;
+          }
+          size_t end = begin + 1;
+          while (end < bits.size() && frozen->second[end] == '0') ++end;
+          const auto index = [&](size_t offset) {
+            return node.left + (node.left <= node.right
+                                    ? static_cast<int64_t>(offset)
+                                    : -static_cast<int64_t>(offset));
+          };
+          std::string name = node.name + "[" + std::to_string(index(begin));
+          if (end > begin + 1) name += ":" + std::to_string(index(end - 1));
+          name += "]";
+          layers[level].push_back(
+              {"iWrite",
+               {name, "0b" + bits.substr(begin, end - begin)},
+               node.origin,
+               {}});
+          begin = end;
+        }
+      }
     }
     std::vector<std::vector<Operation>> groups;
     for (auto& [level, group] : layers) {
@@ -623,7 +668,7 @@ class ScanScheduler::Impl {
                       std::map<size_t, std::string>& held,
                       const std::map<size_t, std::string>& desired) const {
     for (auto& [id, previous] : held) {
-      const auto actual = state.Value(id);
+      const auto actual = Masked(state.Value(id), previous);
       if (actual != previous && actual != desired.at(id)) {
         throw std::runtime_error("concrete replay changed reserved resource " +
                                  netlist_.nodes.at(id).name);
@@ -1666,7 +1711,8 @@ class ScanScheduler::Impl {
         const auto held = SymbolicValue::Literal(context_, preserved.at(id));
         const auto desired =
             SymbolicValue::Literal(context_, desired_preserved.at(id));
-        solver.add(load == held.bits || load == desired.bits);
+        solver.add((load & held.known) == held.bits ||
+                   (load & desired.known) == desired.bits);
       } else {
         solver.add((load & ~allowed.bits) == (fill.bits & ~allowed.bits));
       }
@@ -1769,9 +1815,12 @@ class ScanScheduler::Impl {
               load[bit] = desired[bit];
             }
           }
-          // A protected register may only take the original explicit value,
-          // including its non-control bits, during prerequisite configuration.
-          if (preserved.count(id)) load = desired;
+          if (preserved.count(id)) {
+            const auto& mask = preserved.at(id);
+            for (size_t bit = 0; bit < mask.size(); ++bit) {
+              if (mask[bit] != 'x') load[bit] = desired[bit];
+            }
+          }
           if (satisfied) continue;
           ++pending;
           if (writable(id)) {
@@ -1786,7 +1835,9 @@ class ScanScheduler::Impl {
       try {
         auto scans = trial.Solve(next, ready && together, tap_ ? 2 : 1, fixed,
                                  false, held, explicit_writes);
-        for (auto& [id, value] : held) value = trial.state_.Value(id);
+        for (auto& [id, value] : held) {
+          value = Masked(trial.state_.Value(id), value);
+        }
         steps.insert(steps.end(), std::make_move_iterator(scans.begin()),
                      std::make_move_iterator(scans.end()));
       } catch (const ScheduleLimit&) {
@@ -2114,14 +2165,17 @@ class ScanScheduler::Impl {
     for (auto& [id, value] : desired_preserved) {
       const auto& node = netlist_.nodes.at(id);
       if (node.kind != "ScanRegister" || value.size() != node.Width() ||
-          value.find_first_not_of("01") != std::string::npos) {
+          value.find_first_not_of("01x") != std::string::npos) {
         throw std::runtime_error("invalid reserved ScanRegister value");
       }
-      if (explicit_writes && explicit_goals.count(id)) value = goals.at(id);
+      if (explicit_writes && explicit_goals.count(id)) {
+        value = Masked(goals.at(id), value);
+      }
       const auto defaults = end_goals.find(id);
       if (defaults != end_goals.end()) {
         for (size_t i = 0; i < value.size(); ++i) {
-          if (defaults->second[i] != 'x' && defaults->second[i] != value[i]) {
+          if (value[i] != 'x' && defaults->second[i] != 'x' &&
+              defaults->second[i] != value[i]) {
             throw std::runtime_error(
                 node.origin + ": iApplyEndState conflicts with reserved " +
                 node.name);
@@ -2407,16 +2461,14 @@ class ScanScheduler::Impl {
               SymbolicValue::Literal(context_, desired_preserved.at(id));
           const auto changed = reserved_changed.at(id);
           const auto legal = [&](const SymbolicValue& value) {
-            return value.known == wanted.known &&
-                   ((!changed && value.bits == old.bits) ||
-                    value.bits == wanted.bits);
+            return (!changed && Matches(value, old)) || Matches(value, wanted);
           };
           const auto active = frame.active.count(id) ? frame.active.at(id)
                                                      : context_.bool_val(false);
           solver.add(z3::implies(active, legal(frame.loads.at(id))));
           solver.add(legal(next.at(id)));
           reserved_changed.at(id) =
-              reserved_changed.at(id) || next.at(id).bits == wanted.bits;
+              reserved_changed.at(id) || Matches(next.at(id), wanted);
         }
         SymbolicNetwork after(netlist_, context_, next, global_resets_);
         size_t group_index = 0;
@@ -2819,7 +2871,7 @@ std::vector<ScanStep> ScanScheduler::Apply(
 std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved,
-    const std::set<size_t>& unwritten) {
+    const std::map<size_t, std::string>& unwritten) {
   return impl_->ResetPrerequisites(operations, preserved, unwritten);
 }
 void ScanScheduler::CheckLocalResets(

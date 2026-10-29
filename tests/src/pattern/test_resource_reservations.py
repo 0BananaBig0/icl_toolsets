@@ -80,6 +80,178 @@ class Reservations(unittest.TestCase):
         self.assertIn('iWrite gate 0b11', output)
         self.assertNotIn('iWrite gate 0b01', output)
 
+    def test_partial_write_only_protects_explicitly_written_bits(self):
+        output = self.generate('iTake gate; iWrite gate[1] 1; iApply; '
+                               'iWrite target 5; iApply')
+        self.assertIn('iWrite gate 0b11', output)
+
+    def test_slice_and_alias_reservations(self):
+        path = self.root / 'source.icl'
+        path.write_text(path.read_text().replace(
+            'Alias gate_alias[1:0] = gate;',
+            'Alias gate_alias[1:0] = gate; Alias inverted_high = ~gate[1];'))
+        for take, write in (('gate[1]', 'iWrite gate 2'),
+                            ('gate_alias[1]', 'iWrite gate 2'),
+                            ('inverted_high', 'iWrite inverted_high 0')):
+            with self.subTest(take=take):
+                output = self.generate(f'iTake {take}; {write}; iApply; '
+                                       'iWrite target 5; iApply')
+                self.assertIn('iWrite gate 0b11', output)
+        error = self.generate('iTake gate_alias[0]; iWrite gate 0; iApply; '
+                              'iWrite target 5; iApply', ok=False)
+        self.assertIn('reserved gate', error)
+
+    def test_partial_release_and_overlapping_ownership(self):
+        prefix = 'iTake gate; iWrite gate 0; iApply; '
+        output = self.generate(prefix + 'iRelease gate_alias[0]; iWrite target 5; iApply')
+        self.assertIn('iWrite gate 0b01', output)
+        output = self.generate('iProc own {} {iTake gate[0]; iWrite gate 0; iApply}\n'
+                               'iTake gate[1]; iWrite gate[1] 1; iApply; iCall own; '
+                               'iWrite target 5; iApply')
+        self.assertIn('iWrite target 0b0101', output)
+        # Returning from the child must not release an overlapping parent take.
+        error = self.generate('iProc own {} {iTake gate_alias[0]; iWrite gate 0; iApply}\n'
+                              'iTake gate[0]; iWrite gate 0; iApply; iCall own; '
+                              'iWrite target 5; iApply', ok=False)
+        self.assertIn('reserved gate', error)
+
+    def test_reversed_concatenated_aliases_and_ascending_register(self):
+        path = self.root / 'source.icl'
+        path.write_text(path.read_text().replace(
+            'Alias gate_alias[1:0] = gate;',
+            'Alias reversed[0:1] = gate[0], ~gate[1]; '
+            'Alias duplicate[1:0] = gate[1], gate[1];'))
+        for take, write in (('reversed[1]', 'iWrite reversed[1] 0'),
+                            ('duplicate', 'iWrite gate[1] 1')):
+            with self.subTest(take=take):
+                output = self.generate(f'iTake {take}; {write}; iApply; '
+                                       'iWrite target 5; iApply')
+                self.assertIn('iWrite gate 0b11', output)
+        path.write_text(path.read_text().replace('gate[1:0]', 'gate[0:1]')
+                        .replace('SelectedBy gate[0]', 'SelectedBy gate[1]')
+                        .replace('ScanInSource gate[0]', 'ScanInSource gate[1]')
+                        .replace("1'b0: gate[0]", "1'b0: gate[1]"))
+        output = self.generate('iTake gate[0]; iWrite gate[0] 1; iApply; '
+                               'iWrite target 5; iApply')
+        self.assertIn('iWrite gate 0b11', output)
+
+    def test_masked_assumptions_and_unknown_writes(self):
+        output = self.generate('iTake gate; iState gate[1] 1; '
+                               'iWrite target 5; iApply')
+        self.assertIn('iWrite gate 0b11', output)
+        output = self.generate('iTake gate[0]; iState gate 0bX1; '
+                               'iWrite target 5; iApply')
+        self.assertIn('iWrite gate 0b01', output)
+        output = self.generate('iTake gate[1]; iWrite gate 0b1X; iApply; '
+                               'iWrite target 5; iApply')
+        self.assertIn('iWrite gate 0b11', output)
+        self.assertIn('unknown', self.generate('iTake gate[1]; iState gate 0bX0', ok=False))
+
+    def test_masked_reset_rewrite_and_replay(self):
+        source = (FIXTURE / 'synthetic_reset.icl').read_text().replace(
+            "ScanRegister reset { ScanInSource si; ResetValue 1'b1; }",
+            "ScanRegister reset[1:0] { ScanInSource si; ResetValue 2'b01; }")
+        source = source.replace('= reset;', '= reset[0];').replace(
+            'ScanInSource reset;', 'ScanInSource reset[0];').replace(
+            'SelectedBy reset {', 'SelectedBy reset[0] {')
+        (self.root / 'source.icl').write_text(source)
+        for take in ('iTake reset[1];', 'iTake reset[1]; iWrite reset[1] 0; iApply;',
+                     'iState reset[1] 0bX; iTake reset[1];'):
+            with self.subTest(take=take):
+                body = take + 'iWrite a.value 5; iApply; iWrite b 6; iApply'
+                output = self.generate(body, extra=('--local_reset', 'reset.pdl', '--debug'))
+                reset = (self.root / 'reset.pdl').read_text()
+                if 'iWrite' not in take:
+                    self.assertIn('iWrite {reset[0]} 0b0', reset)
+                    self.assertNotIn('iWrite reset 0b', reset)
+                for icl, pdl in [('source.icl', 'reset.pdl'),
+                                 ('source.icl', 'result.pdl'),
+                                 ('debug/ResourceNetwork.icl', 'source.pdl')]:
+                    result = subprocess.run([str(BIN), '--icl', icl, '--pdl', pdl,
+                                             '--output', 'replay.pdl'], cwd=self.root,
+                                            text=True, capture_output=True, timeout=40)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(output, (self.root / 'replay.pdl').read_text())
+
+    def test_reset_preamble_splits_ascending_ranges(self):
+        source = (FIXTURE / 'synthetic_reset.icl').read_text().replace(
+            "ScanRegister reset { ScanInSource si; ResetValue 1'b1; }",
+            "ScanRegister reset[0:7] { ScanInSource si; ResetValue 8'b1; }")
+        source = source.replace('= reset;', '= reset[7];').replace(
+            'ScanInSource reset;', 'ScanInSource reset[7];').replace(
+            'SelectedBy reset {', 'SelectedBy reset[7] {')
+        (self.root / 'source.icl').write_text(source)
+        body = ('iTake reset[0]; iTake reset[3]; iTake reset[6]; '
+                'iWrite a.value 5; iApply; iWrite b 6; iApply')
+        output = self.generate(body, extra=('--local_reset', 'reset.pdl'))
+        reset = (self.root / 'reset.pdl').read_text()
+        for target, value in (('reset[1:2]', '00'), ('reset[4:5]', '00'), ('reset[7]', '0')):
+            self.assertIn(f'iWrite {{{target}}} 0b{value}', reset)
+        result = subprocess.run([str(BIN), '--icl', 'source.icl', '--pdl', 'reset.pdl',
+                                 '--output', 'replay.pdl'], cwd=self.root,
+                                text=True, capture_output=True, timeout=40)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(output, (self.root / 'replay.pdl').read_text())
+
+    def test_end_state_restoration_only_conflicts_with_protected_bits(self):
+        path = self.root / 'source.icl'
+        path.write_text(path.read_text().replace(
+            'Alias gate_alias[1:0] = gate;',
+            "Alias idle = gate[0] { iApplyEndState 1'b0; }"))
+        output = self.generate('iTake gate[1]; iWrite gate 3; iApply')
+        self.assertIn('iWrite gate 0b10', output)
+        error = self.generate('iTake gate[0]; iWrite gate 3; iApply', ok=False)
+        self.assertIn('iApplyEndState conflicts with reserved', error)
+
+    def test_tap_slice_reservations_and_fixed_points(self):
+        # The vendor probe uses an ungated hidden target. Our TAP scheduler
+        # currently requires off-path storage to be gated; use the existing
+        # gated vendor fixture to isolate bit ownership from that limitation.
+        source_icl = (FIXTURE / 'vendor.icl').read_text().replace(
+            'LogicSignal leaf_select',
+            'Alias inverted_high = ~gate[1]; LogicSignal leaf_select')
+        (self.root / 'source.icl').write_text(source_icl)
+        bsdl = FIXTURE.parent / 'access_link/simple.bsdl'
+        for name in ('slice_high', 'slice_low', 'slice_release', 'slice_alias',
+                     'slice_partial_write'):
+            with self.subTest(name=name):
+                source = (FIXTURE / f'{name}.pdl').read_text().replace(
+                    'SliceTop', 'ResourceAccessTop').replace('core.target', 'core.leaf.value')
+                (self.root / 'source.pdl').write_text(source)
+                inputs = ['--icl', 'source.icl', '--bsdl', 'AccessProbe', str(bsdl)]
+                result = subprocess.run([str(BIN), *inputs, '--pdl', 'source.pdl',
+                                         '--output', 'result.pdl', '--debug'], cwd=self.root,
+                                        text=True, capture_output=True, timeout=40)
+                self.assertEqual(result.returncode == 0, name != 'slice_low', result.stdout + result.stderr)
+                if name == 'slice_low':
+                    self.assertIn('reserved core.gate', result.stdout)
+                    continue
+                output = (self.root / 'result.pdl').read_text()
+                for icl, pdl in [('source.icl', 'result.pdl'),
+                                 ('debug/ResourceAccessTop.icl', 'source.pdl')]:
+                    replay = subprocess.run([str(BIN), '--icl', icl, '--pdl', pdl,
+                                             '--bsdl', 'AccessProbe', str(bsdl),
+                                             '--output', 'replay.pdl'], cwd=self.root,
+                                            text=True, capture_output=True, timeout=40)
+                    self.assertEqual(replay.returncode, 0, replay.stdout + replay.stderr)
+                    self.assertEqual(output, (self.root / 'replay.pdl').read_text())
+
+    def test_large_masked_register_and_greedy_scheduling(self):
+        source = (FIXTURE / 'network.icl').read_text()
+        source = source.replace("[1:0]", "[255:0]").replace("2'b00", "256'b0")
+        padding = ''.join(f"ScanRegister pad{i} {{ ScanInSource si; ResetValue 1'b0; }}\n"
+                          for i in range(32))
+        source = source[:source.rfind('}')] + padding + '}\n'
+        (self.root / 'source.icl').write_text(source)
+        body = ('iTake gate; iTake gate[255:1]; iWrite gate[255:1] 1; iApply; '
+                'iRelease gate[0]; iWrite target 5; iApply')
+        start = time.monotonic()
+        output = self.generate(body)
+        self.assertIn('iWrite gate 0b' + '0' * 254 + '11', output)
+        self.assertIn('iWrite target 0b0101', output)
+        print(f'masked reservation: width=256 registers=34 bytes={len(source)+len(body)} '
+              f'seconds={time.monotonic()-start:.3f}')
+
     def test_reset_requires_release(self):
         error = self.generate('iTake gate; iWrite gate 0; iApply; iReset', ok=False)
         self.assertIn('written reservations', error)
@@ -285,7 +457,7 @@ class Reservations(unittest.TestCase):
             self.assertEqual(output, (self.root / dest).read_text())
 
     def test_unsupported_resource_forms(self):
-        for target in ('missing', 'si', 'gate_alias', 'gate[0]', 'gate -invalid'):
+        for target in ('missing', 'si', 'gate[2]', 'gate -invalid'):
             with self.subTest(target=target):
                 self.generate(f'iTake {target}\niWrite target 5\niApply\n', ok=False)
 

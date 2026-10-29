@@ -205,6 +205,45 @@ void TestReservationRollback() {
         "explicit source update replaces a reservation after failed trials");
   }
 }
+void TestMaskedReservationRollback() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/resources/network.icl");
+  const std::string source(std::istreambuf_iterator<char>(file), {});
+  for (size_t padding : {0U, 32U}) {
+    auto expanded = source;
+    for (size_t i = 0; i < padding; ++i) {
+      expanded.insert(expanded.rfind('}'),
+                      "ScanRegister pad" + std::to_string(i) +
+                          " { ScanInSource si; ResetValue 1'b0; }\n");
+    }
+    pattern::Design design;
+    design.AddIcl("masked-resource.icl", expanded);
+    const auto netlist = pattern::Elaborate(design, "ResourceNetwork");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const size_t gate = netlist.node_ids.at("gate");
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"target", "5"}, "masked:1", {}}}, false,
+                      {{gate, "x0"}});
+    } catch (const std::exception& error) {
+      rejected =
+          std::string(error.what()).find("reserved gate") != std::string::npos;
+    }
+    Require(rejected && scheduler.Value("gate") == "00" &&
+                scheduler.Value("target") == "0000",
+            "masked reservation failure must preserve hardware state");
+    scheduler.Apply({{"iWrite", {"target", "5"}, "masked:2", {}}}, false,
+                    {{gate, "0x"}});
+    Require(scheduler.Value("gate").at(0) == '0' &&
+                scheduler.Value("target") == "0101",
+            "unprotected selector can change after failed masked trial");
+    scheduler.Apply({{"iWrite", {"gate[1]", "1"}, "masked:3", {}}}, false,
+                    {{gate, "0x"}});
+    Require(scheduler.Value("gate").at(0) == '1',
+            "explicit protected bit update must remain permitted");
+  }
+}
 void TestPrimaryControllingState() {
   pattern::Design design;
   design.AddIcl("primary-control.icl", R"(
@@ -970,6 +1009,7 @@ int main() {
     TestGreedyRollback();
     TestAddressedRollback();
     TestReservationRollback();
+    TestMaskedReservationRollback();
     TestPrimaryWrites();
     TestPrimaryLimits();
     TestPrimaryControllingState();

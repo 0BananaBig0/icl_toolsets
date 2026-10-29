@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_resources.h"
 
+#include <algorithm>
 #include <stdexcept>
 
 #include "pattern/pattern_values.h"
@@ -23,36 +24,59 @@ void ResourceReservations::Enter(const std::vector<std::string>& call_stack) {
     ++common;
   }
   while (owners_.size() > common + 1) {
-    for (size_t id : owners_.back()) {
-      if (--counts_.at(id) == 0) {
-        counts_.erase(id);
-        values_.erase(id);
+    for (const auto& [id, mask] : owners_.back()) {
+      auto& counts = counts_.at(id);
+      for (size_t i = 0; i < mask.size(); ++i) {
+        if (mask[i] == '1') --counts[i];
       }
+      Prune(id);
     }
     owners_.pop_back();
   }
   owners_.resize(call_stack.size() + 1);
   calls_ = call_stack;
 }
-std::set<size_t> ResourceReservations::Targets(const std::string& name) const {
-  const auto node = netlist_.node_ids.find(name);
-  if (node != netlist_.node_ids.end()) {
-    if (netlist_.nodes[node->second].kind == "ScanRegister") {
-      return {node->second};
+void ResourceReservations::Prune(size_t id) {
+  const auto& counts = counts_.at(id);
+  const auto value = values_.find(id);
+  if (value != values_.end()) {
+    for (size_t i = 0; i < counts.size(); ++i) {
+      if (!counts[i]) value->second[i] = 'x';
     }
-    throw std::runtime_error("resource reservation requires a ScanRegister: " +
-                             name);
+    if (value->second.find_first_not_of('x') == std::string::npos) {
+      values_.erase(value);
+    }
   }
+  if (std::all_of(counts.begin(), counts.end(),
+                  [](size_t count) { return count == 0; })) {
+    counts_.erase(id);
+  }
+}
+std::map<size_t, std::string> ResourceReservations::Targets(
+    const std::string& name) const {
+  std::map<size_t, std::string> result;
   const auto scope = scopes_.find(name);
   if (scope == scopes_.end()) {
-    throw std::runtime_error("unknown or unsupported resource " + name);
+    for (const auto& bit : ResolvePdlTarget(netlist_, name).bits) {
+      if (bit.node >= netlist_.nodes.size() ||
+          netlist_.nodes[bit.node].kind != "ScanRegister") {
+        throw std::runtime_error(
+            "resource reservation requires a ScanRegister: " + name);
+      }
+      const auto& node = netlist_.nodes[bit.node];
+      auto [entry, inserted] = result.try_emplace(bit.node, node.Width(), '0');
+      entry->second.at(node.left >= node.right ? node.left - bit.index
+                                               : bit.index - node.left) = '1';
+    }
+    return result;
   }
-  std::set<size_t> result;
   std::vector<size_t> pending{scope->second};
   while (!pending.empty()) {
     const auto id = pending.back();
     pending.pop_back();
-    result.insert(registers_[id].begin(), registers_[id].end());
+    for (size_t reg : registers_[id]) {
+      result.emplace(reg, std::string(netlist_.nodes[reg].Width(), '1'));
+    }
     const auto& children = netlist_.scopes[id].children;
     pending.insert(pending.end(), children.begin(), children.end());
   }
@@ -67,44 +91,83 @@ void ResourceReservations::Change(const Operation& operation) {
       (operation.command == "iRelease" && args[0].empty())) {
     throw std::runtime_error("invalid resource reservation arguments");
   }
-  for (size_t id : Targets(operation.arguments[0])) {
+  for (const auto& [id, mask] : Targets(operation.arguments[0])) {
     if (operation.command == "iTake") {
       auto& owner = persistent ? owners_.front() : owners_.back();
-      if (owner.insert(id).second) ++counts_[id];
-    } else {
+      auto [entry, inserted] = owner.try_emplace(id, mask.size(), '0');
+      auto [count, added] = counts_.try_emplace(id, mask.size(), 0);
+      for (size_t i = 0; i < mask.size(); ++i) {
+        if (mask[i] == '1' && entry->second[i] == '0') {
+          entry->second[i] = '1';
+          ++count->second[i];
+        }
+      }
+    } else if (counts_.count(id)) {
       // Explicit release propagates to inherited owners; return does not.
-      for (auto& owner : owners_) owner.erase(id);
-      counts_.erase(id);
-      values_.erase(id);
+      for (auto& owner : owners_) {
+        const auto entry = owner.find(id);
+        if (entry == owner.end()) continue;
+        for (size_t i = 0; i < mask.size(); ++i) {
+          if (mask[i] == '1' && entry->second[i] == '1') {
+            entry->second[i] = '0';
+            --counts_.at(id)[i];
+          }
+        }
+        if (entry->second.find('1') == std::string::npos) owner.erase(entry);
+      }
+      Prune(id);
     }
   }
 }
 void ResourceReservations::Assigned(const std::vector<Operation>& operations,
                                     const ScanScheduler& scheduler) {
   if (counts_.empty()) return;
-  std::set<size_t> written;
+  std::map<size_t, std::string> written;
   for (const auto& operation : operations) {
     if (operation.command != "iWrite" && operation.command != "iState") {
       continue;
     }
     for (const auto& bit :
          ResolvePdlTarget(netlist_, operation.arguments.at(0)).bits) {
-      if (counts_.count(bit.node)) written.insert(bit.node);
+      const auto found = counts_.find(bit.node);
+      if (found == counts_.end()) continue;
+      const auto& node = netlist_.nodes[bit.node];
+      const size_t offset = node.left >= node.right ? node.left - bit.index
+                                                    : bit.index - node.left;
+      if (found->second.at(offset)) {
+        auto [entry, inserted] =
+            written.try_emplace(bit.node, node.Width(), '0');
+        entry->second[offset] = '1';
+      }
     }
   }
-  for (size_t id : written) {
+  for (const auto& [id, mask] : written) {
     const auto& name = netlist_.nodes[id].name;
     const auto value = scheduler.Value(name);
-    if (value.find_first_not_of("01") != std::string::npos) {
-      throw std::runtime_error("applied reserved resource is unknown: " + name);
+    auto [entry, inserted] = values_.try_emplace(id, mask.size(), 'x');
+    for (size_t i = 0; i < mask.size(); ++i) {
+      if (mask[i] != '1') continue;
+      if (value[i] != '0' && value[i] != '1') {
+        throw std::runtime_error("applied reserved resource is unknown: " +
+                                 name);
+      }
+      entry->second[i] = value[i];
     }
-    values_.insert_or_assign(id, value);
   }
 }
-std::set<size_t> ResourceReservations::UnwrittenRegisters() const {
-  std::set<size_t> result;
-  for (const auto& [id, count] : counts_) {
-    if (!values_.count(id)) result.insert(id);
+std::map<size_t, std::string> ResourceReservations::UnwrittenBits() const {
+  std::map<size_t, std::string> result;
+  for (const auto& [id, counts] : counts_) {
+    std::string mask(counts.size(), '0');
+    const auto value = values_.find(id);
+    for (size_t i = 0; i < counts.size(); ++i) {
+      if (counts[i] && (value == values_.end() || value->second[i] == 'x')) {
+        mask[i] = '1';
+      }
+    }
+    if (mask.find('1') != std::string::npos) {
+      result.emplace(id, std::move(mask));
+    }
   }
   return result;
 }
@@ -115,10 +178,17 @@ void ResourceReservations::CheckAutomaticWrites(
     if (operation.command != "iWrite") continue;
     for (const auto& bit :
          ResolvePdlTarget(netlist_, operation.arguments.at(0)).bits) {
-      if (counts_.count(bit.node) && !values_.count(bit.node)) {
+      const auto found = counts_.find(bit.node);
+      if (found == counts_.end()) continue;
+      const auto& node = netlist_.nodes[bit.node];
+      const size_t offset = node.left >= node.right ? node.left - bit.index
+                                                    : bit.index - node.left;
+      const auto value = values_.find(bit.node);
+      if (found->second.at(offset) &&
+          (value == values_.end() || value->second[offset] == 'x')) {
         throw std::runtime_error(
             "local-reset insertion would lock taken-but-unwritten resource " +
-            netlist_.nodes.at(bit.node).name);
+            node.name);
       }
     }
   }

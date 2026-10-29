@@ -349,20 +349,21 @@ For write-only batches in larger networks, a dependency-guided planner groups
 reachable reset/selector controls before accessing their targets. It can handle
 deep SIB chains beyond the bounded solver's 32-scan horizon and retain open
 paths for reuse. Each scan still passes concrete replay; explicit user writes,
-including partial writes, retain their requested values. Protected ScanRegisters
+including partial writes, retain their requested values. Protected ScanRegister bits
 remain fixed unless that apply explicitly requests a new value. Cases the heuristic
 cannot plan use the existing bounded solver. It does not guarantee globally
 shortest patterns. See [scheduling behavior and limits](docs/pattern-generation.md#dependency-guided-scheduling).
 
 `iMerge` blocks are flattened into the same output stream. Compatible calls
-containing one apply of disjoint, fully specified ScanRegister writes can share
-that apply. Other supported calls retain serial order, including reads, waits
-and partial writes; nested merges are supported. The tool validates each result
+containing disjoint, fully specified ScanRegister writes can share applies
+by apply depth, preserving each call's order. Other supported calls retain serial
+order, including reads, waits and partial writes; nested merges are supported. The tool validates each result
 through the existing scheduler and concrete replay, and retries serial execution
-if a combined schedule fails. `iTake`/`iRelease` protect ScanRegister values
-assigned by an applied write or `iState`, with instance storage ownership and
-nested-call lifetime handling. Tessent's default-instance `iTake` and
-`-persistent` option are supported within the ordered input stream.
+if a combined schedule fails. `iTake`/`iRelease` protect individual ScanRegister
+bits assigned by an applied write or `iState`, including indexed and alias
+resources, instance storage ownership and nested-call lifetime handling.
+A partial release leaves other taken bits protected. Tessent's default-instance
+`iTake` and `-persistent` option are supported within the ordered input stream.
 Calls containing reservations remain serialized. Port reservations and
 cross-pattern-set lifecycles remain unsupported; see [resource limits](docs/pattern-generation.md#resource-reservations).
 
@@ -451,7 +452,8 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 
 The reset-only output releases prerequisite TDRs in dependency order and groups
 independent releases under one `iApply`. It chooses release paths that respect
-resource reservations, including taken-but-unwritten controls. It does not insert
+resource reservations, including taken-but-unwritten bits of a control register.
+Inserted partial writes avoid acquiring new reservations. It does not insert
 SIB-opening commands.
 Before publishing it, the tool re-executes the rewritten PDL and verifies the
 operation sequence. It rejects cases that need edits inside procedures, unsafe

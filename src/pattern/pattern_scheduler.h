@@ -30,6 +30,7 @@ class ScanScheduler {
   explicit ScanScheduler(const Netlist& netlist);
   ~ScanScheduler();
   void Reset(bool synchronous = false);
+  // Preserved values use 'x' for unprotected bits, '0'/'1' for held bits.
   void Idle(uint64_t cycles,
             const std::map<size_t, std::string>& preserved = {});
   void Assume(const std::string& target, const std::string& bits);
@@ -39,10 +40,11 @@ class ScanScheduler {
       bool explicit_writes = true);
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
+  // Unwritten masks use '1' for taken bits that must not be assigned.
   std::vector<std::vector<Operation>> ResetPrerequisites(
       const std::vector<Operation>& operations,
       const std::map<size_t, std::string>& preserved = {},
-      const std::set<size_t>& unwritten = {});
+      const std::map<size_t, std::string>& unwritten = {});
   void CheckLocalResets(const std::vector<Operation>& operations) const;
 
  private:
