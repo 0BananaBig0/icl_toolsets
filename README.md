@@ -415,6 +415,8 @@ ICL are checked by replay; see the [DataRegister example and limits](docs/patter
 The serial and single-TAP backends also support scan-driven selectable/addressed
 DataRegister writes and reads captured through ScanRegisters. Capture uses the
 value before the same scan's Update; a read and write can share that scan.
+Shared-address write banks use address groups to avoid searching write-order
+permutations; already-satisfied values share the required controller update.
 Mixed primary-drive/scan transactions remain unfinished.
 
 `iState` can record numeric assumptions for scan registers and top-level

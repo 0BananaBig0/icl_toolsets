@@ -287,9 +287,20 @@ The temporal model limits horizon × (netlist nodes + input bits) to 262144, wit
 2 seconds per solver invocation and 15 seconds across horizons. Exhaustion reports
 a limit, not proven unreachability. Cyclic/self-referential data updates, callbacks,
 mixed primary-drive/scan transactions and DataRegister reservations are not yet
-supported. The serial backend retains its bounded temporal solver rather than
-the scan-only large-network greedy path; its structural limits do not guarantee
-successful scheduling of every network below those limits. Control events must have definite activation unless reset dominates.
+supported. Ordinary write-only groups of at least four addressed data goals on
+one physical scan-driven address vector use deterministic address batches.
+Already-satisfied goals join the first necessary batch, or one controller update
+if all are satisfied. Same-address members can share a scan; partial/X goals use
+the fill from before any batch. Reads, AccessTogether, -together, end-state
+obligations and unrelated address buses retain joint temporal solving.
+
+Each batch reuses the existing solver and concrete replay on speculative state.
+All final goals must hold before state, controlling fills and TAP execution are
+published; a bounded infeasible ordering falls back to joint solving. Explicit
+solver timeout/resource exceptions remain errors rather than unlimited retries.
+Batch planning checks a 15-second attempt budget and a 262144 accumulated
+scan/structure work limit between batches; each solver retains its existing
+bounds. Structural limits do not guarantee scheduling of every smaller network. Control events must have definite activation unless reset dominates.
 
 The focused suite is `tests/src/pattern/test_data_register_scheduling.py`; it is
 included in dynamic/static and coverage recipes. Native tests check address
@@ -1262,8 +1273,8 @@ registers on one eight-bit scan bus. GCC 16.2.1 `-O2`, Linux 6.18.33.2 WSL2,
  build/scan-data-eight.pdl --debug` measured 1.95 s and 62,032 KiB peak RSS,
 producing eight scans. The instrumented run stopped at the limit after 2.54 s /
 488,932 KiB. This establishes a small tested scale, not maximum throughput or
-optimality. Larger shared-address scheduling needs a dependency-aware heuristic
-before claiming scalable retargeting for such banks.
+optimality. This historical timeout is resolved by the address-batching change below;
+its measurements and supported topology remain narrower than general retargeting.
 
 Evidence: `build/scan-data-regression-published.log`,
 `build/scan-data-review-{red,green}.log`,
@@ -1274,3 +1285,53 @@ and RTL simulation were not rerun. Mixed primary/scan transactions, multi-TAP
 and shared-output scheduling, OneHotScanGroup, callbacks/feedback, shadow events,
 system-clock waits, broader reservations and general local-reset rewriting
 remain separate unfinished capabilities.
+
+### Shared-address scheduling verification (2026-10-29)
+
+The eight-register sanitizer timeout above is resolved without changing solver
+limits or disabling sanitizers. Six additional CLI cases cover 64 registers,
+partial/reordered goals, already-satisfied goals, simultaneous independent lanes,
+different physical address buses, reservations and infeasible -together requests.
+A cross-address cascade checks successful fallback to joint solving and all
+replay forms. A native reset-dependency case checks failed speculation rollback
+and subsequent reuse of unchanged controlling fills.
+
+Independent review confirmed the rollback and successful-fallback cases, and
+identified no additional important correctness issues. The already-satisfied-goal
+regression was reproduced before fixing it: eight unnecessary scans became one
+required controller update, both with no changed data and with one changed target.
+
+Final complete `make check` exited 0, including dynamic/static 25-case scan data
+suites, all 334 grammar alternatives/119 scanner rules, 21 directional and seven
+legacy Tessent standards, and Vim/Neovim corpora (38,656 ICL / 824 PDL each).
+All 25 scan data cases and native scheduler tests passed ASan/UBSan/LeakSanitizer
+outside the ptrace sandbox. Formatting and changed-source naming checks passed.
+No sanitizer cases were excluded in this phase.
+
+Full CLI measurements with GCC 16.2.1 `-O2`, Linux 6.18.33.2 WSL2:
+
+| Bank | ICL bytes | Applies | Wall time | Peak RSS |
+|---|---:|---:|---:|---:|
+| Eight registers, before address batching | 925 | 8 | 1.95 s | 62,032 KiB |
+| Same eight-register input, after (two runs) | 925 | 8 | 0.10–0.12 s | 73,644–75,960 KiB |
+| 64 registers, reversed partial writes | 4,509 | 64 | 1.52 s | 77,212 KiB |
+
+Measured with `/usr/bin/time -v build/icl-pattern-generation --icl INPUT.icl
+--pdl INPUT.pdl --output RESULT.pdl --debug`; the eight-register source is
+`tests/cases/ours/pattern_generation/scan_data_registers/addressed_eight.*`.
+The 64-register input is constructed by
+`test_large_addressed_bank_and_partial_reordered_goals` from that fixture.
+Other checks overlapped some measurements; these show tested scale and a runtime
+reduction on this shared-bus workload, not global optimality or a universal speedup.
+The earlier 64-register implementation reached its solver limit before producing
+a pattern.
+
+Evidence: `build/addressed-scheduling-regression-final.log`,
+`build/addressed-scheduling-sanitizer-{cli,native}-final.log`,
+`build/addressed-eight-after{,-repeat}.log`,
+`build/addressed-sixty-four-measurement.log`, and the
+[implementation plan](superpowers/plans/2026-10-29-addressed-scheduling.md).
+Fresh Tessent runs, installation, RTL simulation and strict authored-code
+coverage were not rerun; certified patterns were checked offline. Mixed
+primary/scan access, multiple controllers/shared outputs and the other remaining
+capabilities listed above are unchanged.

@@ -1494,6 +1494,90 @@ class ScanScheduler::Impl {
     }
     return active;
   }
+  std::optional<std::vector<ScanStep>> TryAddressedWrites(
+      const std::map<size_t, std::string>& goals,
+      const std::map<size_t, std::string>& preserved, bool explicit_writes) {
+    const auto& data = state_.DataRegisters();
+    const std::vector<BitReference>* address = nullptr;
+    std::map<std::string, std::vector<size_t>> batches;
+    std::vector<size_t> satisfied;
+    for (const auto& [id, goal] : goals) {
+      const auto access = data.writes.find(id);
+      if (access == data.writes.end() || !access->second.signals) {
+        return std::nullopt;
+      }
+      const auto& signals = *access->second.signals;
+      if (!address) address = &signals;
+      if (signals.size() != address->size()) return std::nullopt;
+      for (size_t bit = 0; bit < signals.size(); ++bit) {
+        const auto& a = signals[bit];
+        const auto& b = address->at(bit);
+        if (a.node == kMissing ||
+            netlist_.nodes[a.node].kind != "ScanRegister" || a.node != b.node ||
+            a.index != b.index || a.inverted != b.inverted ||
+            a.virtual_signal != b.virtual_signal) {
+          return std::nullopt;
+        }
+      }
+      auto code = access->second.value.data;
+      code.insert(0, signals.size() - code.size(), '0');
+      if (state_.Value(id) == goal) {
+        satisfied.push_back(id);
+      } else {
+        batches[code].push_back(id);
+      }
+    }
+    // Already-satisfied data still requires its controllers' UpdateEn, but
+    // not a separate address transaction. Include it in the first batch.
+    auto& first = batches.empty() ? batches[""] : batches.begin()->second;
+    first.insert(first.end(), satisfied.begin(), satisfied.end());
+    // One physical address bus cannot issue different address codes on the
+    // same update. Avoid searching permutations of these necessary batches.
+    const auto started = std::chrono::steady_clock::now();
+    Impl trial(netlist_);
+    trial.state_.Restore(state_);
+    trial.fill_ = fill_;
+    trial.global_resets_ = global_resets_;
+    trial.tap_ready_ = tap_ready_;
+    if (execution_) {
+      trial.execution_ = std::make_unique<TapExecution>(*execution_);
+    }
+    std::vector<ScanStep> steps;
+    for (auto& [code, members] : batches) {
+      if (std::chrono::steady_clock::now() - started >
+              std::chrono::seconds(15) ||
+          steps.size() * (graph_.size() + data.order.size()) > 262144) {
+        return std::nullopt;
+      }
+      std::sort(members.begin(), members.end(), [&](size_t a, size_t b) {
+        return netlist_.nodes[a].name < netlist_.nodes[b].name;
+      });
+      std::vector<Operation> operations;
+      for (size_t id : members) {
+        const auto& node = netlist_.nodes[id];
+        // Goals include the original slice/X fill, before any prerequisite.
+        operations.push_back(
+            {"iWrite", {node.name, "0b" + goals.at(id)}, node.origin, {}});
+      }
+      try {
+        auto scans = trial.Solve(operations, false, kMaxSteps, {}, false,
+                                 preserved, explicit_writes);
+        steps.insert(steps.end(), std::make_move_iterator(scans.begin()),
+                     std::make_move_iterator(scans.end()));
+      } catch (const ScheduleLimit&) {
+        return std::nullopt;
+      }
+    }
+    // Cross-address reset/control dependencies may invalidate earlier goals.
+    // Only publish a complete replayed candidate; otherwise use joint solving.
+    for (const auto& [id, goal] : goals) {
+      if (trial.state_.Value(id) != goal) return std::nullopt;
+    }
+    state_.Restore(trial.state_);
+    fill_ = std::move(trial.fill_);
+    execution_ = std::move(trial.execution_);
+    return steps;
+  }
   std::optional<std::vector<ScanStep>> TryGreedy(
       const std::vector<Operation>& operations,
       const std::map<size_t, std::string>& goals,
@@ -2017,6 +2101,11 @@ class ScanScheduler::Impl {
           }
         }
       }
+    }
+    if (allow_greedy && goals.size() >= 4 && !together && groups.empty() &&
+        end_states_.empty() && expected.empty() && data_reads.empty()) {
+      auto planned = TryAddressedWrites(goals, preserved, explicit_writes);
+      if (planned) return std::move(*planned);
     }
     if (allow_greedy && data_plan.order.empty() && end_states_.empty() &&
         registers_.size() >= 32 && expected.empty() && data_reads.empty()) {

@@ -51,6 +51,88 @@ class ScanDataRegisters(unittest.TestCase):
             self.assertIn(f'iWrite bus 0b{(128 | (address << 4) | (address + 1)):08b}', text)
         self.replay(text)
 
+    def test_large_addressed_bank_and_partial_reordered_goals(self):
+        count = 64
+        self.icl = self.root / 'large_bank.icl'
+        source = (FIXTURES / 'addressed_eight.icl').read_text()
+        source = source.replace('bus[7:0]', 'bus[10:0]').replace("8'b0", "11'b0")
+        source = source.replace('bus[6:4]', 'bus[9:4]').replace('bus[7]', 'bus[10]')
+        source = source.replace('address[2:0]', 'address[5:0]')
+        begin = source.index('    DataRegister r0')
+        end = source.index('\n  }', begin)
+        source = source[:begin] + ''.join(
+            f"    DataRegister r{i}[3:0] {{ AddressValue {i}; ResetValue 4'b0; }}\n"
+            for i in range(count)) + source[end:]
+        self.icl.write_text(source)
+        writes = ''.join(f'iWrite bank.r{i}[2:0] 3\n' for i in reversed(range(count)))
+        text = self.run_tool('iReset\n' + writes + 'iApply\n', extra=('--debug',))
+        self.assertEqual(text.count('iApply\n'), count)
+        for address in range(count):
+            self.assertIn(f'iWrite bus 0b{(1024 | (address << 4) | 3):011b}', text)
+        self.replay(text)
+        ascending = ''.join(f'iWrite bank.r{i}[2:0] 3\n' for i in range(count))
+        self.assertEqual(text, self.run_tool('iReset\n' + ascending + 'iApply\n',
+                                           output='ascending.pdl'))
+
+    def test_large_bank_together_and_reservations_remain_atomic(self):
+        self.icl = FIXTURES / 'addressed_eight.icl'
+        source = (FIXTURES / 'addressed_eight.pdl').read_text().split('iReset\n')[1]
+        for prefix, suffix in (('iReset\n', ' -together'),
+                               ('iReset\niTake bus\niWrite bus 0\niApply\n', '')):
+            with self.subTest(suffix=suffix):
+                (self.root / 'result.pdl').write_text('existing output\n')
+                self.run_tool(prefix + source.replace('iApply', 'iApply' + suffix), ok=False)
+                self.assertEqual((self.root / 'result.pdl').read_text(), 'existing output\n')
+
+    def test_different_address_buses_remain_parallel(self):
+        self.icl = self.root / 'two_buses.icl'
+        self.icl.write_text("""Module ScanData {
+  ScanInPort si;
+  ScanRegister ab[5:0] { ScanInSource si; ResetValue 6'b0; }
+  ScanRegister bb[5:0] { ScanInSource ab[0]; ResetValue 6'b0; }
+  Instance a Of Bank { InputPort address = ab[4]; InputPort we = ab[5]; InputPort data = ab[3:0]; }
+  Instance b Of Bank { InputPort address = bb[4]; InputPort we = bb[5]; InputPort data = bb[3:0]; }
+  ScanOutPort so { Source bb[0]; }
+}
+Module Bank {
+  AddressPort address; WriteEnPort we; DataInPort data[3:0];
+  OneHotDataGroup group[3:0] {
+    DataRegister r0[3:0] { AddressValue 0; ResetValue 4'b0; }
+    DataRegister r1[3:0] { AddressValue 1; ResetValue 4'b0; }
+  }
+}""")
+        text = self.run_tool('iReset\niWrite a.r0 1\niWrite a.r1 2\n'
+                             'iWrite b.r0 3\niWrite b.r1 4\niApply\n', extra=('--debug',))
+        self.assertEqual(text.count('iApply\n'), 2)
+        self.replay(text)
+
+    def test_satisfied_bank_goals_share_controller_update(self):
+        self.icl = FIXTURES / 'addressed_eight.icl'
+        for changed in (False, True):
+            with self.subTest(changed=changed):
+                writes = ''.join(f'iWrite bank.r{i} {3 if changed and i == 4 else 0}\n'
+                                 for i in range(8))
+                text = self.run_tool('iReset\n' + writes + 'iApply\n', extra=('--debug',))
+                self.assertEqual(text.count('iApply\n'), 1)
+                self.assertIn('iWrite bus ', text)
+                self.replay(text)
+
+    def test_addressed_cascade_uses_joint_fallback(self):
+        self.icl = FIXTURES / 'addressed_cascade.icl'
+        text = self.run_tool('iReset\niWrite a.r0 1\niWrite a.r1 3\n'
+                             'iWrite b.r0 1\niWrite b.r1 2\niApply\n', extra=('--debug',))
+        self.assertEqual(text.count('iApply\n'), 3)
+        self.replay(text)
+
+    def test_same_address_independent_lanes_share_scan(self):
+        self.icl = FIXTURES / 'addressed_parallel.icl'
+        text = self.run_tool('iReset\niWrite a.r0 15\niWrite a.r0 1\niWrite a.r1 2\n'
+                             'iWrite b.r0 3\niWrite b.r1 4\niApply\n', extra=('--debug',))
+        self.assertEqual(text.count('iApply\n'), 2)
+        self.assertIn('iWrite bus 0b01001110001', text)
+        self.assertIn('iWrite bus 0b11010010010', text)
+        self.replay(text)
+
     def test_addressed_writes(self):
         self.icl = self.root / 'addressed.icl'
         self.icl.write_text("""Module ScanData {

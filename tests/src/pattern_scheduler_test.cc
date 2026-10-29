@@ -91,6 +91,41 @@ Module GreedyRollback {
           scheduler.Value("child.target") == "0101",
       "greedy reset prerequisite precedes target update and preserves fill");
 }
+void TestAddressedRollback() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/scan_data_registers/"
+      "addressed_eight.icl");
+  const std::string source((std::istreambuf_iterator<char>(file)), {});
+  pattern::Design design;
+  design.AddIcl("addressed-rollback.icl", source);
+  auto netlist = pattern::Elaborate(design, "ScanData");
+  // The last address invalidates the first goal: per-batch success alone
+  // cannot publish this speculative sequence.
+  netlist.nodes[netlist.node_ids.at("bank.r0")].reset =
+      pattern::BitReference{netlist.node_ids.at("bank.r3"), 0};
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto initial = scheduler.Value("bank.r0");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"bank.r0", "1"}, "rollback:1", {}},
+                     {"iWrite", {"bank.r1", "2"}, "rollback:2", {}},
+                     {"iWrite", {"bank.r2", "3"}, "rollback:3", {}},
+                     {"iWrite", {"bank.r3", "1"}, "rollback:4", {}}});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("bus") == "00000000" &&
+              scheduler.Value("bank.r0") == initial &&
+              scheduler.Value("bank.r1") == "0000" &&
+              scheduler.Value("bank.r2") == "0000" &&
+              scheduler.Value("bank.r3") == "0000",
+          "failed address ordering must not publish intermediate state");
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"bank.r0", "1"}, "rollback:5", {}}});
+  Require(steps.size() == 1 && scheduler.Value("bank.r0") == "0001",
+          "failed addressed speculation must preserve controlling fill");
+}
 void TestPrimaryWrites() {
   pattern::Design design;
   design.AddIcl("primary.icl", R"(
@@ -933,6 +968,7 @@ int main() {
   try {
     TestResetDependencyScale();
     TestGreedyRollback();
+    TestAddressedRollback();
     TestReservationRollback();
     TestPrimaryWrites();
     TestPrimaryLimits();
