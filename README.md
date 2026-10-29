@@ -477,6 +477,11 @@ Independent full ScanRegister reads and known full-register writes inside an
 apply order is preserved; conflicts and stateful commands retain serial handling.
 See [merge behavior](docs/pattern-generation.md#merge-scheduling).
 
+Three further TAP cases covering computed-port writes, child-enable ownership,
+and merged observations are certified in both directions with Tessent 2026.2.
+The offline suite contains 37 directional standards; see
+[qualification scope](docs/tessent-goldens.md#port-control-and-merge-qualification-2026-10-30).
+
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
 vector one-hot scan paths, resource
 reservation types beyond scan/data storage, data ports and parallel control ports, system clocks, unrestricted local-reset

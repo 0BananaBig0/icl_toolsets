@@ -1,0 +1,23 @@
+iPDLLevel 1
+iProcsForModule PortControlTop
+iProc first {} {
+  iRead core.a 0
+  iWrite core.a 5
+  iApply
+  iRead core.a 5
+  iWrite core.a 6
+  iApply
+}
+iProc second {} {
+  iRead core.b 0
+  iWrite core.b 10
+  iApply
+  iRead core.b 10
+  iWrite core.b 11
+  iApply
+}
+iReset
+iMerge -begin
+iCall first
+iCall second
+iMerge -end

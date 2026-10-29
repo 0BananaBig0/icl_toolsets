@@ -1,0 +1,308 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "port_control_merge",
+    "top": "PortControlTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/port_control_merge/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/port_control_merge/merge.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/port_control_merge/network.icl": "b683a1e14f3d75d0f4d6de530439b5e1f81e3eed15301a626136616910a95242",
+    "tests/cases/ours/pattern_generation/port_control_merge/merge.pdl": "757679e45707eb2f3288f4d906dbb55724179b6f8ac01e39dabd4b6074b74a4d",
+    "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+  },
+  "job": {
+    "id": "port_control_merge",
+    "top": "PortControlTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/port_control_merge/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/port_control_merge/merge.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+    "bsdl_entity": "AccessProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "b683a1e14f3d75d0f4d6de530439b5e1f81e3eed15301a626136616910a95242",
+      "source_0.pdl": "757679e45707eb2f3288f4d906dbb55724179b6f8ac01e39dabd4b6074b74a4d",
+      "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
+      "run.tcl": "116f88a2f6627db82bd9426b71fbcf5d721b9761eca6cfed3d659e685569b5a2"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/port_control_merge/network.icl": "b683a1e14f3d75d0f4d6de530439b5e1f81e3eed15301a626136616910a95242",
+      "tests/cases/ours/pattern_generation/port_control_merge/merge.pdl": "757679e45707eb2f3288f4d906dbb55724179b6f8ac01e39dabd4b6074b74a4d",
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.679580661933869,
+    "outcome": "ok",
+    "result_sha256": "b2dd00a1c9aae6966b5731f5bc195e4438fc548d58cbc5a0b80205de6f508e00",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "PortControlTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.a",
+            0,
+            "1"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.a",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "0"
+          ],
+          [
+            "core.b",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "core.a",
+            0,
+            "0"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "0"
+          ],
+          [
+            "core.a",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "0"
+          ],
+          [
+            "core.b",
+            2,
+            "0"
+          ],
+          [
+            "core.b",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.a",
+            0,
+            "0"
+          ],
+          [
+            "core.a",
+            1,
+            "1"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.a",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            0,
+            "1"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "0"
+          ],
+          [
+            "core.b",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "core.a",
+            0,
+            "1"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.a",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "0"
+          ],
+          [
+            "core.b",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "c0cfbdc4f578dc952f93ebf5c3ad2d280e2bfcba851097c4b58a0c67eed49052",
+  "vendor_console_sha256": "4a25bad7716b7f691229a4d37d17673fb69401a84018937248c423b1ca52c422",
+  "artifacts": {
+    "flat.pdl": "beb9780e1f1fdf2a4de976bd00ac880d9d6dc356a2bc32dbd685a82acc4477f9",
+    "vendor.pdl": "b2dd00a1c9aae6966b5731f5bc195e4438fc548d58cbc5a0b80205de6f508e00"
+  }
+}

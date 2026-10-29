@@ -1,0 +1,8 @@
+iProcsForModule PortControlTop
+iReset
+iWrite core.mirrored 6
+iApply
+iRead core.a 9
+iApply
+iWrite core.mirrored 3
+iApply

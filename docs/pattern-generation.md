@@ -1871,3 +1871,15 @@ Clang ASan/UBSan/LeakSanitizer with `detect_leaks=1`
 (`build/parallel-control-sanitizer.log`). Google formatting, changed-source
 naming and whitespace checks pass. Independent review confirmed the scalar and
 partial-parent fixes against the rebuilt executable and has no remaining finding.
+
+
+### Port/control/merge vendor qualification (2026-10-30)
+
+Three shared TAP fixtures now have six fresh Tessent 2026.2 directional
+certificates: inverted scan-backed DataOutPort writes, reserved child WriteEnPort
+replacement/release, and merged two-round observations/writes. All forward and
+reverse ordered-apply comparisons pass without comparator changes. The source,
+flat-ICL and generated-PDL replay test is included in both dynamic/static suites.
+This raises directional offline standards from 31 to 37. See
+[exact scope and retained evidence](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30);
+broader model support and vendor qualification remain unfinished.

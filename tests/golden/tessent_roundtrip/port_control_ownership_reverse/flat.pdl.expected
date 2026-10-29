@@ -1,0 +1,15 @@
+iPDLLevel 0
+iProcsForModule PortControlTop
+iReset
+iWrite tap.INSTRUCTION 0b0100
+iRead tap.INSTRUCTION 0b0001
+iApply
+iWrite core.a 0b0000
+iWrite core.b 0b0000
+iApply
+iWrite core.a 0b0001
+iWrite core.b 0b0000
+iApply
+iWrite core.a 0b0010
+iWrite core.b 0b0000
+iApply

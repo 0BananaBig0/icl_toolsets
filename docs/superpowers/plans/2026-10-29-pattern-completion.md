@@ -242,6 +242,27 @@ Makefile, native scheduler tests and support docs if affected.
   leak-enabled sanitizers, style/naming, 64-port scale and independent review.
   Record evidence and remaining types; update docs, commit/push and continue.
 
+## Task 12: Qualify computed ports, ownership and merge observations with Tessent
+
+Reuse `tests/tessent_roundtrip.py` and `tests/tessent_oracle.py`, retaining strict
+ordered-apply comparison and immutable certificates. Author one shared TAP
+fixture and three PDL cases under `tests/cases/ours/pattern_generation/port_control_merge/`;
+reuse the existing AccessProbe BSDL. Source inputs are self-constructed; vendor
+exports enter Git only through explicit successful certification. Remote jobs
+run serially inside the user's authorized `test_icl_toolsets/test_port_control_merge/`.
+
+- [x] Prepare both directions for computed-port writes, reserved child-enable
+  replacement and two merged read/write streams. Validate source locally before
+  using Tessent. The initial fixture's invalid ResetSource syntax was caught and
+  corrected to the existing implicit-reset model before remote execution.
+- [x] Run all six jobs on Tessent 2026.2, retrieve complete evidence, and certify
+  each passing direction to a new snapshot. Retain/report failures without
+  weakening comparison or claiming universal behavioral equivalence.
+- [x] Register successful standards in ordinary offline regression; verify source,
+  flat ICL and generated PDL with the shared tools. Run full dynamic/static
+  regression and review the recorded evidence; update documentation and commit/push.
+  Outstanding model requirements remain listed below for subsequent work.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -373,3 +394,19 @@ state/rollback checks. Initial invalid wire-inversion/data-input bindings were
 corrected against IEEE6.4.6.25(c)/26(d), without relaxing AddressResolver.
 64 enable ports/three replays:0.16s/58848KiB. No new vendor certificate or broader
 serial-control/clock/lifecycle support is claimed.
+
+Task 12 passed full dynamic/static `make -j2 check` (exit 0,
+`build/port-control-vendor-regression-final.log`), including 37 directional and
+seven legacy offline standards, 1,916 ICL regression cases, 2,180 conformance
+cases and the Vim/Neovim corpus checks. All 334 parser and 119 scanner rules
+were reached across 2,501 ICL files. Five optional ANTLR integration tests were
+skipped because `ICL_REF_DIR` was unset; this run does not establish that
+independent comparison. The three new fixtures pass source/flat/generated
+replay under ASan/UBSan/LeakSanitizer with `detect_leaks=1`
+(`build/port-control-vendor-sanitizer-final.log`). An extra sanitizer invocation
+initially selected an obsolete binary and encountered the sandbox's LSan
+restriction; the final run uses `build/local-reset-sanitize/icl-pattern-generation`
+outside that restriction without disabling leaks. Independent review checked
+all six certificates against staged inputs, hashes and vendor logs and found no
+actionable issue. Whitespace checks pass. These are fixture-specific certificates,
+not completion of the remaining model requirements.

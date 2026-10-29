@@ -267,6 +267,48 @@
       "expected": "ok",
       "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
       "bsdl_entity": "AccessProbe"
+    },
+    {
+      "id": "port_control_computed",
+      "top": "PortControlTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/port_control_merge/network.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/port_control_merge/computed.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "port_control_ownership",
+      "top": "PortControlTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/port_control_merge/network.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/port_control_merge/ownership.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "port_control_merge",
+      "top": "PortControlTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/port_control_merge/network.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/port_control_merge/merge.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/access_link/simple.bsdl",
+      "bsdl_entity": "AccessProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

@@ -1,0 +1,10 @@
+iProcsForModule PortControlTop
+iReset
+iTake core.child.we
+iWrite core.child.we 0
+iApply
+iWrite core.child.we 1
+iApply
+iRelease core.child.we
+iWrite core.a 2
+iApply

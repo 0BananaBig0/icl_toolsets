@@ -57,11 +57,12 @@ TAP/SIB fixture to verify this transition and reopening before a later write.
 Schema-3 snapshots under `tests/golden/tessent_roundtrip/` preserve the direction,
 comparison policy, original source hashes, staged inputs/scripts, raw vendor
 export, local output, binary/version provenance and compared trace. Ordinary
-checks never refresh them. Sixteen directional standards cover nine source cases:
-three scalar/vector probes and four SIB/reservation probes in both directions,
-plus transitive-reset release and TAP end-state restoration in the forward direction. The original six pin
-standards retain their earlier hash-verified evidence. The nine TAP/reset
-standards come from fresh Tessent Shell 2026.2 runs described below.
+checks never refresh them. Thirty-seven directional standards cover 21 source cases (20 forward and 17
+reverse). They include pin/vector cases, TAP/SIB and reset reservations, data
+registers, shadow storage, mixed I/O, computed ports, control ownership and
+merged observations. The dated sections below distinguish each qualification's
+scope and failures; the most recent six standards are described in
+[port/control/merge qualification](#port-control-and-merge-qualification-2026-10-30).
 
 ## TAP and reset qualification, 2026-10-28
 
@@ -486,3 +487,51 @@ host. Certified bundle inputs and exports are in the same remote project's
 `mixed-io-forward/` and `mixed-io-reverse/` directories, with local copies under
 `build/test_mixed_io/`. Only passing forward evidence was recorded as immutable
 schema-3 standards. This run did not simulate RTL or refresh formatter certificates.
+
+
+## Port, control and merge qualification, 2026-10-30
+
+All three new self-constructed cases pass both directional ordered-apply fixed
+points with Tessent Shell 2026.2. They share the small `PortControlTop` TAP
+network under `tests/cases/ours/pattern_generation/port_control_merge/` and reuse
+AccessProbe BSDL; they are not copied vendor designs.
+
+| Case | Behavior exercised | Forward | Reverse |
+| --- | --- | --- | --- |
+| `port_control_computed` | Inverted DataOutPort writes backed by scan storage and an intervening observation | Certified | Certified |
+| `port_control_ownership` | Applied take/write on a child WriteEnPort, explicit replacement and release | Certified | Certified |
+| `port_control_merge` | Two independent procedures with read/write requirements at two apply depths | Certified | Certified |
+
+The forward input is the local **flat PDL**, and reverse input is the original
+source PDL. All six exports completed successfully; all six certifications
+passed the unchanged bit-resolved, ordered-apply comparison. No boundary,
+comparison, reset or instruction was deleted to obtain a match. Initial local
+fixture preparation caught invalid ResetSource syntax; it was corrected to the
+existing implicit-reset model before running vendor jobs.
+
+Remote scripts, staged inputs, logs and exports remain in:
+
+```text
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_port_control_merge/run_2026_10_30/port-control-merge-forward-valid/
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_port_control_merge/run_2026_10_30/port-control-merge-reverse-valid/
+```
+
+Retrieved evidence is `build/port-control-merge-{forward,reverse}-evidence`;
+certification output is `build/port-control-merge-certification.log`.
+Immutable standards are the six `port_control_*_{forward,reverse}` directories
+under `tests/golden/tessent_roundtrip/`. Their hashes, vendor traces and local
+idempotency are checked offline. The added dynamic/static
+`tests/src/pattern/test_port_control_merge.py` separately checks source versus
+flattened ICL, repeated flat serialization and generated-PDL replay.
+
+These standards qualify these source/model combinations. They do not qualify
+all logic gates, arbitrary control networks, multi-TAP execution, clock timing,
+RTL simulation, formatter output or the entire input corpus.
+
+Full `make -j2 check` passed after registration (exit 0,
+`build/port-control-vendor-regression-final.log`), including both generator
+variants and the Vim/Neovim corpus checks. Five optional ANTLR integration tests
+were skipped because `ICL_REF_DIR` was unset. The three new fixtures also pass
+ASan/UBSan/LeakSanitizer with leak detection enabled
+(`build/port-control-vendor-sanitizer-final.log`). Independent evidence review
+found no actionable issue in the six certificates.
