@@ -500,12 +500,13 @@ Parallel”, also describes serial fallback and recursive merging.
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
 PDL parser. It combines consecutive calls when each contains one or more
-plain applies with fully known, full-width direct ScanRegister writes, and their
-register sets over the entire calls do not overlap. It merges one apply group
+plain applies with full-width direct ScanRegister reads and fully known,
+full-width direct ScanRegister writes, and their register sets over the entire
+calls do not overlap. Reads may use X masks or omit expected data. It merges one apply group
 from each active call per round, preserving every call's apply order, and removes
 exhausted calls from subsequent rounds. It does not merge across outside apply
-boundaries. Empty applies, aliases, partial/X writes, reads, notes within calls, state
-changes, `-together`, and clock waits retain their serial barriers. Nested blocks
+boundaries. Empty applies, aliases, partial reads/writes, X writes, notes within
+calls, state changes, `-together`, and clock waits retain their serial barriers. Nested blocks
 are processed recursively. Calls containing resource commands remain serialized.
 
 The combined stream uses the existing scheduler and concrete replay. A failed
@@ -1781,3 +1782,39 @@ scheduler tests plus 26 mixed-port, 13 primary-group, 15 mixed-I/O and nine
 data-resource cases passed Clang ASan/UBSan/LeakSanitizer with leak detection
 enabled (`build/mixed-port-sanitizer-final.log`). Google formatting, changed-source
 naming and whitespace checks pass; independent review has no remaining findings.
+
+
+### Merged observations (2026-10-29)
+
+Independent full ScanRegister observations now participate in the existing
+apply-depth merge pass, alongside known full-register writes. Reads include
+masked comparisons and omitted expected values. Expected values remain
+observations; they never become assumed hardware or controlling assignments.
+A common target set across each entire call prevents read/write overlap between
+concurrent calls. Notes, resource operations, partial targets, X writes,
+explicit together options, waits and empty applies retain their conservative
+barriers. Each call's apply order is preserved, as IEEE 1687-2014 §7.9.18(e,h,i),
+pp.177–178 requires. Failed joint scheduling retries serially from fresh state.
+
+`tests/src/pattern/test_merge_observations.py` adds ten self-constructed tests
+covering read/write and read-only batching, masks and no-expected reads,
+conflicts, barriers, unequal call lengths, reset-conflict serial fallback,
+source/flat/generated replay and 64 independent two-apply calls. Existing
+write-merge tests retain their ordering, ownership and failure checks. The
+64-call input produces two applies rather than the prior 128, with 128 read
+observations preserved. On WSL2, g++16.2.1 `-O2`, Z3 4.13.3, its complete
+three-replay test took 0.27 seconds / 60288 KiB peak RSS for 8905 source bytes:
+`/usr/bin/time -v python3 tests/src/pattern/test_merge_observations.py
+build/icl-pattern-generation MergeObservations.test_many_read_write_calls`
+(`build/merge-observations-scale.log`). This measures the specified case,
+not global optimality or arbitrary merge support. No new vendor certificate
+is claimed.
+
+Final full dynamic/static `make check` passed (exit 0,
+`build/merge-observations-regression-final.log`), including 31 directional and
+seven legacy offline vendor standards and the editor corpus. Native scheduler
+plus all ten new and eleven existing merge cases passed Clang ASan/UBSan/
+LeakSanitizer with `detect_leaks=1`
+(`build/merge-observations-sanitizer-final.log`). Style, naming, whitespace and
+independent review pass. An initial run used a stale static binary for the new
+omitted-expected read case and failed; the final rebuild/run passes that case.

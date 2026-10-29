@@ -51,12 +51,21 @@ class Merger {
           pending = false;
           continue;
         }
-        if (op.command != "iWrite" || op.arguments.size() != 2) return false;
+        const bool read = op.command == "iRead";
+        if ((!read && op.command != "iWrite") ||
+            (op.arguments.size() != 2 && !(read && op.arguments.size() == 1))) {
+          return false;
+        }
         const auto target = ResolvePdlTarget(netlist_, op.arguments[0]);
         const auto& node = netlist_.nodes.at(target.declaration);
-        if (node.kind != "ScanRegister" || target.bits.size() != node.Width() ||
-            PdlDataValue(context_, netlist_, target, op.arguments[1])
-                    .find('x') != std::string::npos) {
+        if (node.kind != "ScanRegister" || target.bits.size() != node.Width()) {
+          return false;
+        }
+        const auto bits =
+            op.arguments.size() == 1
+                ? std::string(node.Width(), 'x')
+                : PdlDataValue(context_, netlist_, target, op.arguments[1]);
+        if (!read && bits.find('x') != std::string::npos) {
           return false;
         }
         targets.insert(target.declaration);

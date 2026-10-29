@@ -471,6 +471,11 @@ writes use the same scheduler, including mux/logic/one-hot sources and supported
 `AccessTogether` groups; see [data-port writes](docs/pattern-generation.md#computed-data-port-writes-2026-10-29). Two mixed-I/O cases have forward
 Tessent fixed-point certificates; see [support and limits](docs/pattern-generation.md#mixed-parallel-and-serial-frames-2026-10-29).
 
+Independent full ScanRegister reads and known full-register writes inside an
+`iMerge` can share apply groups, including multi-apply procedures. Each procedure's
+apply order is preserved; conflicts and stateful commands retain serial handling.
+See [merge behavior](docs/pattern-generation.md#merge-scheduling).
+
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
 vector one-hot scan paths, resource
 reservation types beyond scan/data storage and data ports, system clocks, unrestricted local-reset

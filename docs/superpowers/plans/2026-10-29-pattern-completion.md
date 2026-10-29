@@ -188,6 +188,32 @@ primary-only writes. General time/clock/callback models remain separate work.
   naming/style, scale checks and independent review. Record limits and evidence,
   commit/push, and continue remaining requirements.
 
+## Task 10: Merge independent observations with write streams
+
+IEEE 1687-2014 §7.9.18(e,h,i), pp.177–178, uses shared controlling/expected state,
+requires each call's apply order, and permits serialization for conflicts.
+Extend `Merger::Batchable` in `src/pattern/pattern_merge.cc` to accept full direct
+ScanRegister reads (including X masks and omitted expected data) alongside full known writes. Keep a common
+occupied-register set across each entire call. Existing scheduler/replay and
+fresh-state serial fallback retain ownership and event semantics; do not add a
+second merge engine or enumerate interleavings. Other target kinds and barriers
+remain conservative. Ordered-set checks and retiring exhausted streams retain
+work proportional to operations apart from target lookup and set operations.
+
+- [x] Add `tests/src/pattern/test_merge_observations.py` with literal expected
+  two-round read/write groups, read-only batching, masks, same-target conflicts,
+  note/resource/partial-read barriers, unequal streams and 64 two-apply calls.
+  Five cases must fail the current serialization behavior; positive results must
+  pass source/flat/generated replay. Record baseline count (128 applies).
+- [x] Allow `iRead` in `Batchable`, validate its target/value with shared helpers,
+  and retain the X prohibition for writes only. Adjust the obsolete read-barrier
+  expectation in `test_merge_scheduling.py`; wire the new suite into both dynamic
+  and static Makefile checks. Preserve all other conservative barriers.
+- [x] Run both merge suites and native scheduler checks, full dynamic/static
+  regression, leak-enabled sanitizers, Google style/naming and independent review.
+  Measure the same 64-call workload, document apply-count reduction without a
+  global optimum claim, update README/support docs, commit/push and continue.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -295,3 +321,15 @@ checks pass. Independent review findings were reproduced and repaired, including
 knownness activity and reconvergent controller dependencies; no findings remain.
 The 64-level graph replay takes 0.15s / 59040 KiB. No new vendor certification or
 completion of the broader remaining model requirements is claimed.
+
+
+Task 10 passed final full dynamic/static `make check` (exit 0,
+`build/merge-observations-regression-final.log`), 31 directional/seven legacy
+standards and full editor corpus. Native scheduler plus ten new and eleven
+existing merge cases pass Clang ASan/UBSan/LeakSanitizer with leaks enabled
+(`build/merge-observations-sanitizer-final.log`). Google style/naming/whitespace
+checks pass; independent review has no findings and its reset-conflict fallback
+probe is retained. Initial regression failed the omitted-expected read case on
+a stale static binary; the final full rebuild/run passes. The 64-call/128-read
+example drops from 128 applies to two; three-replay timing 0.27s / 60288 KiB.
+No global optimality or new vendor certificate is claimed.

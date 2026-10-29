@@ -84,7 +84,7 @@ class MergeScheduling(unittest.TestCase):
 
     def test_barriers_partial_values_and_apply_order(self):
         cases = [('iWrite a 5; iApply -together', 2),
-                 ('iWrite a 5; iApply; iRead a 5; iApply', 3),
+                 ('iWrite a 5; iApply; iRead a 5; iApply', 2),
                  ('iWrite a[0] 1; iApply', 2),
                  ('iWrite a 0bXX01; iApply', 2)]
         for first, count in cases:
