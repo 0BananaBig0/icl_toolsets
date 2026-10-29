@@ -252,9 +252,58 @@ class Reservations(unittest.TestCase):
         print(f'masked reservation: width=256 registers=34 bytes={len(source)+len(body)} '
               f'seconds={time.monotonic()-start:.3f}')
 
-    def test_reset_requires_release(self):
-        error = self.generate('iTake gate; iWrite gate 0; iApply; iReset', ok=False)
-        self.assertIn('written reservations', error)
+    def test_explicit_reset_releases_written_and_unwritten_ownership(self):
+        for target in ('gate', 'gate_alias', 'gate[0]'):
+            for persistent in ('', ' -persistent'):
+                for assigned in ('', 'iWrite gate 0; iApply;'):
+                    with self.subTest(target=target, persistent=persistent, assigned=assigned):
+                        prefix = f'iTake {target}{persistent}; {assigned} iReset; '
+                        output = self.generate(prefix + 'iWrite gate 0; iApply; iWrite target 5; iApply')
+                        self.assertIn('iWrite target 0b0101', output)
+                        self.assertEqual(output.count('iReset'), 2)
+                        error = self.generate(prefix + 'iTake gate; iWrite gate 0; iApply; '
+                                              'iWrite target 5; iApply', ok=False)
+                        self.assertIn('reserved gate', error)
+                        self.assertEqual((self.root / 'result.pdl').read_text(), output)
+
+    def test_reset_in_nested_call_clears_inherited_ownership_and_replays(self):
+        body = ('iProc clear {} {iReset}\n'
+                'iProc own {} {iTake gate -persistent; iWrite gate 0; iApply; '
+                'iCall clear; iWrite gate 0; iApply}\n'
+                'iTake gate_alias; iCall own; iWrite target 5; iApply\n')
+        output = self.generate(body, extra=('--debug', '--local_reset', 'reset.pdl'))
+        reset = (self.root / 'reset.pdl').read_text()
+        self.assertIn('iProc clear {} {iReset}', reset)
+        for icl, pdl in (('source.icl', 'result.pdl'), ('source.icl', 'reset.pdl'),
+                         ('debug/ResourceNetwork.icl', 'source.pdl')):
+            result = subprocess.run([str(BIN), '--icl', icl, '--pdl', pdl,
+                                     '--output', 'replay.pdl'], cwd=self.root,
+                                    text=True, capture_output=True, timeout=40)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(output, (self.root / 'replay.pdl').read_text())
+
+    def test_tap_reset_releases_ownership_for_both_reset_sequences(self):
+        (self.root / 'source.icl').write_bytes((FIXTURE / 'slices.icl').read_bytes())
+        context = ('--bsdl', 'AccessProbe', FIXTURE.parent / 'access_link/simple.bsdl')
+        for reset in ('iReset', 'iReset -sync'):
+            for index, value in ((0, 0), (1, 1)):
+                with self.subTest(reset=reset, index=index):
+                    body = (f'iTake core.gate[{index}]; iWrite core.gate[{index}] {value}; '
+                            f'iApply; {reset}; iWrite core.gate 0; iApply; '
+                            'iWrite core.target 5; iApply')
+                    output = self.generate(body, extra=context, binding='SliceTop')
+                    self.assertIn('iWrite core.target 0b0101', output)
+                    result = subprocess.run([str(BIN), '--icl', 'source.icl', *map(str, context),
+                                             '--pdl', 'result.pdl', '--output', 'replay.pdl'],
+                                            cwd=self.root, text=True, capture_output=True, timeout=40)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertEqual(output, (self.root / 'replay.pdl').read_text())
+
+    def test_reset_still_rejects_unapplied_actions(self):
+        (self.root / 'result.pdl').write_text('previous output')
+        error = self.generate('iTake gate; iWrite gate 0; iReset', ok=False)
+        self.assertIn('unapplied', error)
+        self.assertEqual((self.root / 'result.pdl').read_text(), 'previous output')
 
     def test_persistent_survives_calls_until_release(self):
         definitions = ('iProc own {} {iTake gate -persistent; iWrite gate 0; iApply}\n'

@@ -17,6 +17,11 @@ ResourceReservations::ResourceReservations(const Netlist& netlist)
     if (node.kind == "ScanRegister") registers_.at(node.scope).push_back(i);
   }
 }
+void ResourceReservations::Reset() {
+  for (auto& owner : owners_) owner.clear();
+  counts_.clear();
+  values_.clear();
+}
 void ResourceReservations::Enter(const std::vector<std::string>& call_stack) {
   size_t common = 0;
   while (common < calls_.size() && common < call_stack.size() &&

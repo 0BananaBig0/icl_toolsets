@@ -67,6 +67,34 @@ tests/src/pattern/test_hidden_scan_events.py; existing resource probe fixtures.
 - [x] Reuse interface bindings to derive effective events; compute all affected register states from one event snapshot. Carry unknown state without inferring captured data from expected comparisons. Keep full-register state replay equality and per-clock reservation checks.
 - [x] Measure representative larger gated and hidden networks; retain the fast path and fail with a resource-limit diagnostic when bounded event planning is not proved. Run focused checks, full regression, sanitizers and independent review; record any remaining model restrictions explicitly.
 
+## Task 5: Explicit reset releases resource reservations
+
+IEEE §7.9.9 resets controlling/expected state; §7.9.19 restricts retargeter
+changes to taken resources. Tessent v2023.4 describes global reset and persistent
+ownership across pattern sets only when no initial reset occurs. Twelve fresh
+Tessent 2026.2 probes establish the remaining ordering detail: explicit async or
+sync iReset is allowed after a taken/write, and a subsequent write does not
+reacquire protection without a new iTake. Treat clearing ownership as observed
+Tessent behavior where IEEE does not explicitly specify the interaction.
+
+Files: src/pattern/pattern_resources.h/.cc, icl_pattern_generation_main.cc;
+tests/src/pattern/test_resource_reservations.py; new
+ tests/src/pattern/probe_reset_reservations.tcl; user/model docs.
+
+- [x] Add failing tests for written and unwritten ownership across iReset,
+  async/sync TAP reset, slice/alias/persistent takes, nested calls, explicit
+  retake, pending-operation rejection, original/flat/generated and reset-only
+  replay. A low selector written to zero after reset must remain free unless
+  explicitly retaken; retaking it must still reject target access atomically.
+- [x] Add ResourceReservations::Reset(), clearing owner masks, counters and
+  protected values while retaining the active call-stack shape. Invoke only
+  after scheduler.Reset succeeds. Keep unapplied-operation rejection and
+  physical reset replay unchanged.
+- [x] Run focused resource/native tests, full dynamic/static regression,
+  leak-enabled sanitizers, formatting/naming and independent review. Record
+  empirical behavior without claiming broader lifecycle or vendor coverage;
+  commit/push and continue remaining requirements.
+
 ## Remaining completion work (not yet completed)
 
 - Mixed primary/scan scheduling and shared/multiple outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -116,3 +144,13 @@ in 2.89 s / 131484 KiB. Original joint planning timed out on those wide cases.
 Final additional native coverage exercises protected hidden storage rollback and
 reset for both 4-bit joint and 32-bit greedy paths. Current event restrictions
 and the remaining requirements are retained in the generator/model guides.
+
+
+Task 5 passed `make check` dynamic/static regression (exit 0,
+`build/reset-ownership-regression.log`) and all 34 resource tests under Clang
+ASan/UBSan/LeakSanitizer (`detect_leaks=1`, 43.288 s). Google formatting,
+changed-source naming and whitespace checks pass. Independent review found no
+blocking issue and additionally checked local/persistent post-reset retakes.
+Vendor observations are scoped to ordinary takes; other lifetime variants have
+local coverage and are not individually vendor-certified. No broader lifecycle
+or other remaining requirements are marked complete.

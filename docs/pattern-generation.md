@@ -584,8 +584,10 @@ the original resource commands and is separately re-executed before publication.
 
 Large write-only applies can use dependency-guided scheduling with reservations;
 reads and incompatible prerequisite configurations use the bounded solver.
-`iReset` with active protected values reports an explicit unsupported error;
-release first. TCK waits must preserve protected values. Full resource/model support and
+`iReset` and `iReset -sync` clear resource ownership and protected values after
+the physical reset succeeds. A subsequent write alone does not reacquire an old
+take; a new `iTake` is required. Pending actions still make reset invalid.
+TCK waits must preserve protected values. Full resource/model support and
 broader scheduling scale qualification remain outstanding requirements.
 
 Fixtures: `tests/cases/ours/pattern_generation/resources/`; regression:
@@ -1536,3 +1538,46 @@ patterns (5.82 s combined, 709,260 KiB). This is a tested workload and bounded
 failure, not a maximum throughput or global-optimality claim. Evidence:
 `build/hidden-scale-final.log`, `build/hidden-sanitizer-{cli,native,symbolic}.log`.
 Installation, RTL simulation and strict authored-code coverage were not rerun.
+
+
+### Explicit reset and resource ownership (2026-10-29)
+
+The prior unconditional rejection of reset after a reserved write is removed.
+IEEE 1687-2014 §7.9.9 (printed p. 164) resets controlling/expected state and
+§7.9.19 (pp. 178–179) constrains retargeter changes to taken resources; their
+interaction with ownership is not explicit. Tessent Shell Reference Manual
+v2023.4, `iReset` (`Command_Ireset_id2ca32290.html`) describes a global reset;
+`iTake` (`Command_Itake_idd8a68c5f.html`) describes persistent ownership carrying
+between pattern sets when initial reset is suppressed.
+
+Fresh Tessent 2026.2 observations resolve ordinary ownership: eight low/high-bit,
+zero/one, asynchronous/synchronous cases allow explicit reset after applied
+reserved writes. Four additional asynchronous cases write again after reset;
+the low-bit-zero case can subsequently open the selector for target access,
+showing that reset clears the prior take, rather than only its protected value.
+The reusable probe is `tests/src/pattern/probe_reset_reservations.tcl`; evidence
+is under remote `test_icl_toolsets/test_reset_reservations/run_2026_10_29_initial/`
+and locally under ignored `build/reset-reservations-evidence/`. These are
+behavior probes, not newly certified directional golden snapshots.
+
+The implementation applies the same reset lifecycle to normal and persistent
+takes, slices, aliases and inherited ownership. Owner frames remain aligned with
+the active call stack so returning from a procedure still releases only its
+current local takes. Clearing occurs only after physical reset succeeds. Existing
+transaction replay and output staging remain unchanged. Direct vendor evidence
+above concerns ordinary takes; persistent clearing and synchronous post-reset
+reacquisition are covered locally, not individually vendor-certified.
+
+The resource suite now contains 34 tests, including reset followed by writes,
+retaking and blocked access, nested calls, async/sync TAP reset, unapplied-action
+rejection and original/flat/generated/reset-only replay. No broader pattern-set
+lifecycle, port reservation or live-hardware execution support is implied.
+
+
+Verification: full dynamic/static `make check BISON=/usr/bin/bison -j4` passed
+with the reference checkout and venv (`build/reset-ownership-regression.log`),
+including 34 resource tests per linkage and existing language/editor/vendor
+checks. All 34 resource tests also passed Clang ASan/UBSan/LeakSanitizer with
+`detect_leaks=1` outside the ptrace sandbox (43.288 s). Naming/format checks and
+independent review passed; the reviewer also checked local and persistent
+retakes after a nested reset. Installation and strict coverage were not rerun.

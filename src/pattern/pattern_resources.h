@@ -12,6 +12,7 @@ namespace pattern {
 class ResourceReservations {
  public:
   explicit ResourceReservations(const Netlist& netlist);
+  void Reset();
   void Enter(const std::vector<std::string>& call_stack);
   void Change(const Operation& operation);
   void CheckAutomaticWrites(const std::vector<Operation>& operations) const;

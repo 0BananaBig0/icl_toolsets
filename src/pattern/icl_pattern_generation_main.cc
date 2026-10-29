@@ -271,17 +271,13 @@ std::string Generate(
         if (steps.empty()) result += "iApply\n";
         pending.clear();
       } else if (operation.command == "iReset") {
-        if (!reservations.Values().empty()) {
-          throw std::runtime_error(
-              "iReset with written reservations is not "
-              "implemented; release resources first");
-        }
         if (!pending.empty()) {
           throw std::runtime_error(
               "iReset with pending actions requires queued-state integration");
         }
         const bool synchronous = !operation.arguments.empty();
         scheduler.Reset(synchronous);
+        reservations.Reset();
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iRunLoop") {
         if (!pending.empty()) {

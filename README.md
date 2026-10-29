@@ -364,7 +364,9 @@ bits assigned by an applied write or `iState`, including indexed and alias
 resources, instance storage ownership and nested-call lifetime handling.
 A partial release leaves other taken bits protected. Tessent's default-instance
 `iTake` and `-persistent` option are supported within the ordered input stream.
-Calls containing reservations remain serialized. Port reservations and
+An explicit `iReset` or `iReset -sync` clears existing resource ownership after
+the hardware reset; use a new `iTake` to reserve resources again. Calls containing
+reservations remain serialized. Port reservations and
 cross-pattern-set lifecycles remain unsupported; see [resource limits](docs/pattern-generation.md#resource-reservations).
 
 For an ordinary scan network:
