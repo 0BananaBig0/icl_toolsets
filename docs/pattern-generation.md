@@ -2423,3 +2423,50 @@ the user interruption and are not complete coverage evidence.
 
 The required 100% line/90% raw-branch acceptance remains unfinished. This wiring
 fix and the successful instrumented tests do not establish that acceptance.
+
+## Source archive and Rocky Linux 8 qualification (2026-11-13)
+
+The source archive builds with BISON=false, FLEX=false and no static Tcl
+archive. Temporary local dynamic and static installations pass all five version
+checks, installed PDL formatter/LSP checks, original/flat/generated pattern
+identity, intended reset-target writes, reset-pattern replay identity and
+reset-source idempotence. Uninstall preserves an unrelated sentinel and removes
+installed headers. Local logs are build/source-distribution-reset-reviewed.log
+(exit0,44.110s) and build/static-installation-reviewed.log (exit0).
+The ICL LSP lifecycle suite separately passes all62 checks for the static install.
+
+Actual target qualification used Rocky Linux8.10 x86_64, GCC Toolset15.2.1,
+GNU Make4.4.1, CMake3.26.5, Python3.8.16, system Tcl8.6.8 and pinned Z3 4.13.3.
+Prerequisites, source builds, installations and test output stay under
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_platform/run_2026_11_13_01.
+Dependency builds used two jobs. Archive SHA256 values:
+- GNU Make4.4.1: dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3.
+- Z3 4.13.3: f59c9cf600ea57fb64ffeffbffd0f2d2b896854f339e846f48f069d23bc14ba0.
+- Tested source archive: b279287fbd2d7da3f435237dc499fb77c0af8ffcaa9927657e72bf6c36a80ab8.
+
+From that extracted archive, make -j2 dynamic BISON=false FLEX=false
+TCL_STATIC_LIB=/does/not/exist Z3_PREFIX=<isolated-prefix>/deps/z3 succeeded.
+The manifest installer/uninstaller and both native dynamic and transferred static
+binaries passed the installed-tool checks above and both62-check ICL LSP runs.
+Static ELF files have no interpreter; dynamic dependencies all resolve.
+The Python launcher initially selected an EDA-bundled Tcl library. A second run
+prepended the system library directories and used Python's actual binary path;
+ldd confirmed /usr/lib64/libtcl8.6.so for all three Tcl-linked commands. Installed
+checks and all26 generator CLI suites pass in that matching-header/runtime
+environment: build/rocky-system-tcl-qualification.log and .exit (0).
+The default EDA runtime also passed all26 suites
+(build/rocky-generator-regression.log and .exit,0).
+
+Qualification exposed one test-harness portability issue: Python3.8 lacks
+Path.hardlink_to. The equivalent os.link test passed locally and was copied into
+the extracted remote test tree before both complete CLI runs. No product source
+was patched there. An earlier archive trial used an incorrect original/reset
+byte-equality assertion; its failure is retained, superseded by the intended-write
+and reset replay checks. build/rocky-source-qualification-final.log records all
+installation successes followed by the original Python API failure; it is not
+a passing whole-run log.
+
+This qualifies the generator implementation through eecab17 and the described
+build/install paths. It does not qualify the subsequently developed computed-port
+merge extension, a remote static-Tcl source build, or every Linux distribution.
+Strict coverage and remaining model requirements are still open.

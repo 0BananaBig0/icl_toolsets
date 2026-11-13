@@ -640,12 +640,12 @@ pinned Z3 release only inside test_icl_toolsets/test_platform or /tmp. Reuse the
 verified local Z3 tarball hash. No personal installation or editor configuration
 changes. Bound dependency builds to two parallel jobs.
 
-- [ ] Prepare isolated prerequisites and retain versions, archive hashes and
+- [x] Prepare isolated prerequisites and retain versions, archive hashes and
   commands. Build the actual source archive on Rocky8 with Bison/Flex disabled.
-- [ ] Install all five commands into a temporary prefix; run installed formatter,
+- [x] Install all five commands into a temporary prefix; run installed formatter,
   LSP and pattern original/flat/generated/reset-rewrite checks. Verify uninstall
   preserves unrelated files. Repeat local dynamic/static installation checks.
-- [ ] Run static release binaries on the actual Rocky8 host and inspect dependency
+- [x] Run static release binaries on the actual Rocky8 host and inspect dependency
   behavior. Rebuild/fix genuine compatibility failures, preserve matching Tcl
   headers/libraries, and record the precise tested toolchain and remaining limits.
 
@@ -917,3 +917,12 @@ tests, seven coverage-reader tests and the full instrumented test sequence.
 The strict gate remains failed at95.8% lines/61.4% raw branches; the final
 checkbox stays open. See
 [coverage evidence](../../pattern-generation.md#complete-generator-coverage-invocation-2026-11-13).
+
+Task26 passed source-archive build and local dynamic/static installation,
+Rocky8 native dynamic and transferred-static installation checks, and all26
+generator CLI suites under both the host EDA runtime and matching system
+Tcl8.6.8. Python3.8's missing Path.hardlink_to was repaired with os.link.
+See [platform evidence](../../pattern-generation.md#source-archive-and-rocky-linux-8-qualification-2026-11-13).
+Task25 coverage acceptance and the broader model requirements remain unfinished.
+
+Task27 follows the [computed-port merge plan](2026-11-13-computed-port-merges.md).

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Generator CLI and original/flat/generated replay contracts."""
+import os
 import pathlib
 import subprocess
 import sys
@@ -462,7 +463,7 @@ Module Network {
         source = (self.root / "source.pdl").read_bytes()
         self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--output", "source.pdl", ok=False)
         self.assertEqual(source, (self.root / "source.pdl").read_bytes())
-        (self.root / "link.pdl").hardlink_to(self.root / "source.pdl")
+        os.link(self.root / "source.pdl", self.root / "link.pdl")
         self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--log", "link.pdl", ok=False)
         self.assertEqual(source, (self.root / "source.pdl").read_bytes())
         (self.root / "bad.pdl").write_text("iWrite missing 1; iApply\n")
