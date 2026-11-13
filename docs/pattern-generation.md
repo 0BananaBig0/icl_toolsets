@@ -1,14 +1,15 @@
 # Pattern generation
 
 `icl-pattern-generation` is an experimental executable. It currently expands
-PDL procedures and Tcl computations and schedules single-output scan paths,
-including indexed vector inputs and single-TAP instruction/data scans. It also
+PDL procedures and Tcl computations and schedules single-path scans,
+including shared output observations, indexed vector inputs and single-TAP
+instruction/data scans. It also
 schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
 
 ## Current verification
 
-As of implementation commit `5335925` (2026-10-30), full dynamic/static
+On 2026-11-13, after adding shared scan-output observations, full dynamic/static
 `make -j2 --jobserver-style=pipe check` passed, including the Vim/Neovim corpus
 checks, 1,916 ICL regression cases and 2,180 conformance cases. All 334 parser
 and 119 scanner rules were exercised across 2,504 ICL files. Five optional ANTLR
@@ -16,18 +17,18 @@ integration tests were skipped because `ICL_REF_DIR` was unset. Rule coverage
 does not establish full handwritten line/branch coverage; the strict coverage
 gate remains unmet in the last recorded measurement.
 
-The latest focused ASan/UBSan/LeakSanitizer run covered the native scheduler,
-seven indexed-input cases and seven existing one-hot cases, with leak detection
-enabled. See [indexed-input evidence](#indexed-scan-inputs-2026-10-30) for the
-commands, logs, review fix and measured scale. This did not rerun installation,
+The latest focused ASan/UBSan/LeakSanitizer run covered the native scheduler and
+five shared-output cases, with leak detection enabled. See
+[shared-output evidence](#shared-scan-output-observations-2026-11-13) for the
+commands, logs, review and measured scale. This did not rerun installation,
 RTL simulation or strict authored-code coverage.
 
 Ordinary regression passes 37 directional and seven legacy Tessent standards
 offline. The [latest six directional certificates](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30)
-cover three specific TAP fixtures. Indexed vector-input cases have local replay
+cover three specific TAP fixtures. Indexed vector-input and shared-output cases have local replay
 coverage and no vendor certificate. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
-tracks shared/multiple outputs and TAPs, general events/clocks, remaining
+tracks distinct scan paths and multiple TAPs, general events/clocks, remaining
 reservations, reset rewriting and broader qualification as unfinished work.
 
 ## Vendor round-trip acceptance
@@ -462,10 +463,13 @@ broader syntax support and never execute PDL.
   Native idle replay includes any explicitly enabled storage events; it does
   not infer BIST completion or live hardware readback.
 
-The backend accepts one scalar scan-output boundary and at most one TAP. A
-single path may use an indexed vector input and an indexed one-hot return lane.
+The backend accepts one physical scan path and at most one TAP. Multiple scalar
+or vector output bits may observe that path through transparent forwarding,
+including inversion. The first sorted output identifies the transaction; all
+declared controls are still checked. A path may use an indexed vector input
+and an indexed one-hot return lane.
 It rejects
-multiple TAPs, multiple outputs/shared chains, intermediate serial taps,
+multiple TAPs, distinct scan-output paths/shared chains, intermediate serial taps,
 simultaneous vector OneHotScanGroup lanes, feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
@@ -1958,3 +1962,49 @@ seven existing one-hot cases passed ASan/UBSan/LeakSanitizer with leaks enabled
 (`build/vector-input-sanitizer-final.log`). Formatting, changed-source naming and
 whitespace checks pass. Independent review exposed the declared-control bypass;
 its retained test reproduced the failure before the guard fix and passed afterward.
+
+## Shared scan-output observations (2026-11-13)
+
+Direct, inverted, vector and hierarchical ScanOutPort observations of the same
+physical serial path now share one transaction. The scheduler resolves
+transparent forwarding in graph dependency order and keeps the first sorted
+output endpoint. It stops equivalence at storage, selection or an Enable;
+separate gated paths are not treated as interchangeable. All original graph
+vertices remain available to declared-control validation. Existing concrete
+capture/shift/update replay, read comparisons and reservation rollback are reused.
+
+Five CLI tests in `tests/src/pattern/test_shared_scan_outputs.py` use
+self-constructed inputs and check source/flat/generated-PDL fixed points,
+shared muxes, width/direction, and preservation of prior outputs on failure.
+The native scheduler test independently checks actual register/output state,
+serial comparisons and protected-write rollback. Positive CLI/native cases
+failed on the former multiple-output rejection before the implementation.
+Independent review found no correctness issue; its stale support-description
+finding was corrected. Additional reviewer probes retained declared controls
+reachable through a discarded observation and rejected distinct selector paths.
+
+Fresh `make -j2 --jobserver-style=pipe check` passed (exit 0,
+`build/shared-output-regression.log`), including dynamic/static generator tests,
+1,916 ICL regression cases, 2,180 conformance cases, 37 directional and seven
+legacy offline Tessent standards, and Vim/Neovim integration. All 334 grammar
+and 119 scanner rules were reached; five optional ANTLR checks were skipped.
+`make formatcheck`, changed-source clang-tidy and `git diff --check` passed.
+
+The native scheduler and all five new CLI tests passed Clang ASan/UBSan/LSan
+with `ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1` using the rebuilt
+`build/local-reset-sanitize/` binaries. Logs:
+`build/shared-output-sanitizer-{build,native,cli}.log`. Initial sandbox runs
+failed because LeakSanitizer cannot run under ptrace; successful runs used the
+approved outside-sandbox execution with leak checking retained.
+
+The 257-output, 64-storage-bit input is 10,015 bytes; its three replay forms
+took 0.154 s. The complete five-test measurement took 0.67 s and 59,756 KiB peak
+RSS with GCC 16.2.1 `-O2` on Linux 6.18.33.2 WSL2. Command:
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' python3 tests/src/pattern/test_shared_scan_outputs.py build/icl-pattern-generation`.
+Log: `build/shared-output-scale.log`. The additional graph pass uses O(V+E)
+work/storage, with O(R log R) root deduplication for R output bits. These are
+scope measurements, not a speedup or global optimality claim.
+
+Distinct scan chains, overlapping intermediate taps and multiple TAPs still
+need event-aware shared-state scheduling. No new vendor qualification,
+installation, RTL simulation or strict authored-coverage measurement was run.

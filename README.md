@@ -429,6 +429,11 @@ known-enabled contributor and holds the other contributors disabled; inactive
 nested groups may be zero-hot. These one-hot paths have local replay/regression
 coverage; they are not new Tessent certificates.
 
+A single physical scan path may be observed by several direct, inverted or
+hierarchically forwarded `ScanOutPort` bits. Equivalent observations reuse one
+scan transaction; distinct chains and independently enabled outputs still require
+additional event scheduling.
+
 A single scan chain can use indexed bits of a vector `ScanInPort`, including
 mux-selected or inverted inputs and one lane of a vector `OneHotScanGroup`.
 Replay preserves the other input bits. Declared scan controls require supported

@@ -138,6 +138,27 @@ class ScanScheduler::Impl {
              std::make_pair(netlist.nodes[right.node].name, right.index);
     });
     if (roots_.size() > 1) {
+      // Forwarded observations of one path do not create extra clock events.
+      std::vector<size_t> paths(graph_.size());
+      for (size_t id : order_) {
+        const auto& vertex = graph_[id];
+        paths[id] = id;
+        if (vertex.bit.node != kMissing && vertex.edges.size() == 1 &&
+            vertex.edges.front().choice == kMissing) {
+          const auto& node = netlist.nodes[vertex.bit.node];
+          if (node.kind != "ScanRegister" && !node.inputs.count("Enable")) {
+            paths[id] = paths[vertex.edges.front().next];
+          }
+        }
+      }
+      std::set<size_t> observed;
+      roots_.erase(std::remove_if(roots_.begin(), roots_.end(),
+                                  [&](size_t root) {
+                                    return !observed.insert(paths[root]).second;
+                                  }),
+                   roots_.end());
+    }
+    if (roots_.size() > 1) {
       throw std::runtime_error(
           "multiple scan outputs require shared-control transaction "
           "scheduling");

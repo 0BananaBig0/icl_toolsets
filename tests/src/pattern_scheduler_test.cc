@@ -19,6 +19,41 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestSharedScanOutputs() {
+  pattern::Design design;
+  design.AddIcl("shared-outputs.icl", R"(
+Module SharedTop {
+  ScanInPort si;
+  ScanRegister data[3:0] { ScanInSource si; ResetValue 4'b0; }
+  ScanOutPort a { Source ~data[0]; }
+  ScanOutPort b { Source data[0]; }
+})");
+  const auto netlist = pattern::Elaborate(design, "SharedTop");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto first = scheduler.Apply({{"iWrite", {"data", "9"}, "write", {}}});
+  Require(first.size() == 1 && first[0].output == "a" &&
+              first[0].serial == "1001" && first[0].loads.size() == 1 &&
+              scheduler.Value("data") == "1001" &&
+              scheduler.Value("a") == "0" && scheduler.Value("b") == "1",
+          "shared outputs clock their common storage once");
+  const auto second = scheduler.Apply({{"iRead", {"data", "9"}, "read", {}},
+                                       {"iWrite", {"data", "6"}, "write", {}}});
+  Require(second.size() == 1 && second[0].serial_expected == "0110" &&
+              scheduler.Value("data") == "0110" &&
+              scheduler.Value("a") == "1" && scheduler.Value("b") == "0",
+          "inverted shared observation preserves physical readback and writes");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"data", "9"}, "reserved", {}}}, false,
+                    {{netlist.node_ids.at("data"), "0110"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("data") == "0110" &&
+              scheduler.Value("a") == "1" && scheduler.Value("b") == "0",
+          "shared-output reservation failure rolls back all observations");
+}
 void TestVectorScanInputs() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/vector_scan_inputs/network.icl");
@@ -1448,6 +1483,7 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestSharedScanOutputs();
     TestVectorScanInputs();
     TestMixedReadRoutes();
     TestMixedIoPhases();

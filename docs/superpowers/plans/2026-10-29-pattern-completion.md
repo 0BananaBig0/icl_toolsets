@@ -301,6 +301,31 @@ The retained disabled-child test failed before this fix and now passes; the
 reset-only child remains supported. Initial 64-bit fixture preparation also
 corrected a mismatched 4-bit ResetValue before accepting its RED result.
 
+## Task 14: Shared observations of one serial path
+
+Continue the approved inline work in the current checkout (the preceding
+addressed-scheduling plan records master authorization). Several ScanOutPort
+bits may observe the same physical path, including inverted forwarding. They
+do not create additional storage or clock events. Coalesce only transparent
+single-edge output/forwarding vertices that converge before any register,
+selector or enable; retain the first sorted output as the serial endpoint.
+Distinct paths still require shared-event planning and remain open below.
+
+Files: `src/pattern/pattern_scheduler.cc`, existing native scheduler tests,
+`tests/src/pattern/test_shared_scan_outputs.py`, Makefile and support docs.
+
+- [x] Add native and CLI tests for duplicate/inverted/vector/hierarchical
+  outputs, shared mux paths, actual state and readback, source/flat/generated
+  replay, reservations and rollback. Distinct or gated paths must still fail
+  without replacing prior output. Confirm positive tests fail before editing.
+- [x] Derive transparent path identity in existing graph order, once per
+  vertex/edge; coalesce equivalent roots without dropping graph vertices or
+  controls. Preserve replay, bounds and stable endpoint selection. Expected:
+  focused tests pass, including a 256-output/64-bit scale case.
+- [x] Run full dynamic/static regression, leak-enabled sanitizers, style and
+  naming checks, and independent review. Record measured scale and limits;
+  update current ledgers without marking distinct-chain/TAP work complete.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
