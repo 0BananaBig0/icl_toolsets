@@ -24,6 +24,8 @@ class BuildGraph(unittest.TestCase):
             self.assertIn('tests/src/pattern/test_hidden_client_events.py', scripts)
             self.assertIn('tests/src/pattern/test_compound_reset_sources.py', scripts)
             self.assertIn('tests/src/pattern/test_merge_primary_inputs.py', scripts)
+            self.assertIn('tests/src/pattern/test_merge_computed_ports.py', scripts)
+            self.assertIn('tests/src/pattern/test_argument_reset_sources.py', scripts)
             self.assertEqual(len(scripts), len(set(scripts)))
             suites.append(scripts)
         self.assertEqual(suites[0], suites[1])

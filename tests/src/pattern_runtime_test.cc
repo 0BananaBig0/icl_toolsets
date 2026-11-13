@@ -348,6 +348,21 @@ void TestResetScope() {
       top.operations().size() == 1 && top.operations()[0].command == "iReset",
       "top-module reset is independent of the current target prefix");
 }
+void TestVectorSourceActions() {
+  auto design = MakeDesign();
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist, true);
+  const std::string source =
+      "iPDLLevel 1\nset index 0\niWrite reg[$index] [iReset; expr 1]\niApply\n";
+  runtime.Execute("vectors.pdl", source);
+  runtime.Finish();
+  const auto actions = runtime.SourceActions();
+  const auto begin = source.find("[$index]");
+  Require(
+      actions.size() == 1 && actions[0].begin == 1 &&
+          actions[0].vector_brackets == std::vector<size_t>{begin, begin + 7},
+      "source metadata distinguishes vector brackets from argument scripts");
+}
 void TestCompoundSourceActions() {
   auto design = MakeDesign();
   const auto netlist = pattern::Elaborate(design, "Top");
@@ -397,7 +412,7 @@ int main() {
         TestGeneratedBodies, TestDynamicBinding, TestDynamicOptions,
         TestDynamicLevel, TestMergeScope, TestAllTargetArguments,
         TestEndOfStream, TestInstanceParameters, TestParameterNamedArgs,
-        TestResetScope, TestCompoundSourceActions}) {
+        TestResetScope, TestVectorSourceActions, TestCompoundSourceActions}) {
     try {
       test();
     } catch (const std::exception& error) {

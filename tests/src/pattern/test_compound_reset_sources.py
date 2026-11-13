@@ -114,7 +114,8 @@ class CompoundResetSources(unittest.TestCase):
         self.check(head + body, expected)
 
     def test_unrepairable_entry_preserves_artifacts(self):
-        for body in ("iWrite a.value [iReset; expr 3]\niApply\n",):
+        for body in ("iProcsForModule Network\niProc bad {} {iReset; iWrite a.value 3; iApply}\n"
+                     "iReset\niCall bad\n",):
             with self.subTest(body=body):
                 (self.root / "source.pdl").write_text("iPDLLevel 1\n" + body)
                 for path in ("out.pdl", "reset.pdl"):

@@ -489,13 +489,29 @@ int main(int argc, char** argv) {
     runtime.Finish();
     const auto pdl = GenerateMerged(network.netlist, runtime.operations());
     if (!options.local_reset.empty()) {
-      const auto rewrite = [&](bool whole_commands) {
+      const auto rewrite = [&](bool whole_commands, bool after_arguments) {
         std::string rewritten_source;
         ResetEdits edits;
         std::vector<pattern::Operation> expected;
         const auto actions = runtime.SourceActions(whole_commands);
         Generate(network.netlist, runtime.operations(), &actions, &edits,
                  &expected);
+        if (after_arguments) {
+          for (auto& [key, text] : edits) {
+            if (text.empty()) continue;
+            // Evaluate original words once before releases, in caller scope.
+            text =
+                Command({"apply", Command({"args", text + "uplevel 1 $args"})});
+            text.back() = ' ';
+          }
+          for (const auto& action : actions) {
+            const auto edit = edits.find({action.source, action.offset});
+            if (edit == edits.end() || edit->second.empty()) continue;
+            for (const auto position : action.vector_brackets) {
+              edits.emplace(std::make_pair(action.source, position), "\\");
+            }
+          }
+        }
         for (size_t source = 0; source < sources.size(); ++source) {
           size_t offset = 0;
           for (auto it = edits.lower_bound({source, 0});
@@ -530,10 +546,14 @@ int main(int argc, char** argv) {
         return rewritten_source;
       };
       try {
-        local_reset = rewrite(true);
+        local_reset = rewrite(true, false);
       } catch (const std::runtime_error&) {
         // Internal loop resets can require the original literal-site repair.
-        local_reset = rewrite(false);
+        try {
+          local_reset = rewrite(false, false);
+        } catch (const std::runtime_error&) {
+          local_reset = rewrite(false, true);
+        }
       }
     }
 

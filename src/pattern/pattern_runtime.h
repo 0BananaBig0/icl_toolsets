@@ -15,6 +15,8 @@ struct Netlist;
 struct SourceAction {
   size_t source = 0, offset = 0, begin = 0, end = 0;
   std::string prefix;
+  // Source positions requiring vector-literal protection in Tcl wrappers.
+  std::vector<size_t> vector_brackets;
 };
 struct Operation {
   std::string command;

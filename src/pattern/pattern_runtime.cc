@@ -268,9 +268,9 @@ class Runtime::Impl {
       self.CloseScope();
       if (id >= 0 && self.trace_source_ && self.frames_.size() == 1) {
         const auto& site = self.sites_[static_cast<size_t>(id)];
-        self.compound_ =
-            SourceAction{site.source, site.range.begin, self.operations_.size(),
-                         0, self.frames_.back().prefix};
+        self.compound_ = SourceAction{
+            site.source, site.range.begin,           self.operations_.size(),
+            0,           self.frames_.back().prefix, {}};
       }
       return TCL_OK;
     } catch (const std::exception& error) {
@@ -319,8 +319,19 @@ class Runtime::Impl {
       SourceAction action;
       if (record) {
         action = {site ? site->source : std::numeric_limits<size_t>::max(),
-                  site ? site->range.begin : 0, self.operations_.size(), 0,
-                  self.frames_.back().prefix};
+                  site ? site->range.begin : 0,
+                  self.operations_.size(),
+                  0,
+                  self.frames_.back().prefix,
+                  {}};
+        if (site) {
+          for (const auto& word : site->command->words) {
+            for (const auto& range : word.vector_ranges) {
+              action.vector_brackets.push_back(range.begin);
+              action.vector_brackets.push_back(range.end - 1);
+            }
+          }
+        }
       }
       self.Command(arguments, origin, site ? &*site : nullptr);
       if (record) {

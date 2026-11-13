@@ -522,15 +522,20 @@ prefix and whole executed operation span. Overlapping compound/merge spans
 use the earliest caller site, including merges continued across files. The
 rewriter first tries whole-command prerequisites, then original literal sites
 from fresh state when internal resets require releases inside a loop. There are
-at most two candidates, using the same scheduler and solver bounds.
+at most three candidates, using the same scheduler and solver bounds. If both
+early-insertion candidates fail, a Tcl apply/uplevel wrapper evaluates the
+original command words once, releases prerequisites, then executes that command
+in its caller scope. This repairs argument substitutions that reset state before
+a write or call. Parsed PDL vector ranges remain literal while their variable
+indices and real Tcl substitutions retain their original evaluation order.
+Wrappers introduce no persistent helper commands or procedure-body edits.
 After patching the source, a fresh runtime executes the actual
 rewritten text and compares its ordered commands and resolved arguments with
 the planned stream. All analysis and replay must succeed before publication.
 
 Remaining limits: a procedure that reasserts reset internally and then needs
 another release cannot always be repaired from its caller without changing the
-procedure. Cases that neither caller-boundary strategy can repair, including
-effectful word substitutions that reset state after the insertion site, remain
+procedure. Cases that none of these caller-site strategies can repair remain
 rejected. Unresolved
 reset sources, forwarding cycles, feedback scheduling and unsupported controller
 models remain errors. Reset solving is bounded to 4096 control bits and two
@@ -2516,3 +2521,40 @@ with 143 for the final budget fix and is not completion evidence.
 No new vendor certificate, current strict-coverage pass or Rocky8 qualification
 of this extension is claimed. Broader timing/resource optimization and the
 remaining event models are still open.
+
+## Reset releases after argument evaluation (2026-11-13)
+
+When main-level iWrite/iCall arguments execute iReset, the third source-rewrite
+candidate now evaluates those arguments once before inserting reset releases.
+It uses Tcl apply/uplevel and the existing parser's vector ranges, preserving
+caller scope, argument ordering, literal values, vector indices and procedure
+bytes. Repeated sites share one textual insertion. Fresh execution still must
+match the planned ordered operations before outputs are published.
+
+Twelve CLI cases cover whole/sliced/quoted/vector-variable targets, expanded
+arguments, calls, multiple side effects, prefixes, loops, nested substitutions,
+immutable-procedure failure and 64 iterations. Each successful case checks
+original/flat input, rewritten-source idempotence and both pattern fixed points.
+The 64-iteration, 168-byte PDL case took 7.773 s for five generator invocations
+(g++16.2.1 -O2, local Linux host, concurrent verification jobs); this is a scale
+measurement, not a speedup claim. Native tracing verifies vector ranges exclude
+actual command substitutions.
+
+Full dynamic/static make check passed: build/argument-reset-regression-final.log
+and .exit (0), all28 generator CLI suites, native tests, 40 directional and seven
+legacy vendor standards, 334 parser/119 scanner rules across 2,507 ICL files,
+and six Vim/Neovim tests. Five optional ANTLR tests remain skipped.
+Leak-enabled ASan/UBSan/LSan passed the native runtime, new12 cases, existing25
+generator cases and12 compound-reset cases; see
+build/argument-reset-sanitizer-{native,cli,existing}.log and .exit (0).
+Formatting, naming, whitespace and independent review passed. Review exposed
+PDL vector brackets being interpreted as Tcl substitutions; failing bit/slice/
+variable-index cases preceded the parser-metadata fix. The initial full run
+was stopped with143 for that repair and is not completion evidence.
+
+Tessent2026.2 accepted and exported generated wrappers for whole-register and
+sliced writes, including the reset followed by root/branch releases and the
+intended value3. Evidence is build/argument-reset-vendor/{whole,slice} and remote
+test_icl_toolsets/test_argument_reset/run_2026_11_13_01. This checks Tcl acceptance
+and export; it adds no directional equivalence certificate. Current strict
+coverage and later-change Rocky8 qualification remain unverified.

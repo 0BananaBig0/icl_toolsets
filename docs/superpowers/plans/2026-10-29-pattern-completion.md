@@ -933,3 +933,12 @@ under leak-enabled sanitizers, style/naming/whitespace and independent review.
 The addressed one-hot ownership and shared analysis-budget findings were fixed
 before final verification. See
 [computed-port merge evidence](../../pattern-generation.md#merged-connected-and-computed-ports-2026-11-13).
+
+## Task 28: Reset releases after argument evaluation
+
+Completed [the focused plan](2026-11-13-argument-reset-sources.md). All three
+source candidates retain fresh-runtime ordered-operation validation. New12CLI
+cases, native metadata checks, full dynamic/static regression, leak-enabled
+sanitizers, style/naming and independent review pass. Tessent2026.2 accepts and
+exports whole/sliced generated wrappers; no additional equivalence certificate
+is claimed. Immutable internal reassertions and other recorded limits remain.

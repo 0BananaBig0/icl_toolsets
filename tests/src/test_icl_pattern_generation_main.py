@@ -328,17 +328,15 @@ Module Network {
         self.assertIn("iCall bad", failure.stdout)
         self.assertEqual((self.root / "reset.pdl").read_text(), "previous artifact\n")
 
-    def test_local_reset_rejects_unfaithful_source_insertion(self):
+    def test_local_reset_repairs_argument_resets(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset/nested.icl"
-        for source in (
-                "iPDLLevel 1\niWrite a.value [iReset; expr 3]\niApply\n",):
-            with self.subTest(source=source):
-                (self.root / "source.pdl").write_text(source)
-                (self.root / "reset.pdl").write_text("previous artifact\n")
-                failure = self.run_tool("--icl", fixture, "--pdl", "source.pdl",
-                                        "--local_reset", "reset.pdl", ok=False)
-                self.assertIn("local-reset", failure.stdout)
-                self.assertEqual((self.root / "reset.pdl").read_text(), "previous artifact\n")
+        source = "iPDLLevel 1\niWrite a.value [iReset; expr 3]\niApply\n"
+        (self.root / "source.pdl").write_text(source)
+        self.run_tool("--icl", fixture, "--pdl", "source.pdl",
+                      "--local_reset", "reset.pdl")
+        rewritten = (self.root / "reset.pdl").read_text()
+        self.assertIn("apply ", rewritten)
+        self.assertIn("iWrite a.value [iReset; expr 3]", rewritten)
 
     def test_local_reset_nested_access_together(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset"
