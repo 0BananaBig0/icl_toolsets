@@ -7,7 +7,7 @@
 #include "pattern/pattern_tap.h"
 
 namespace pattern {
-// Observed pin events execute all TAPs sharing that clock. The immutable
+// Observed pin events execute the TAPs driven by those clocks. The immutable
 // netlist must outlive the executor. This is hardware replay, not pattern
 // scheduling.
 class TapExecution {
@@ -32,10 +32,13 @@ class TapExecution {
   void ApplyInputs(const std::map<size_t, std::string>& values);
   void RisingEdge(const std::string& clock);
   void FallingEdge(const std::string& clock);
+  // One observed logical edge across equivalent, unconnected root TCK ports.
+  void RisingEdge(const std::set<size_t>& clocks);
+  void FallingEdge(const std::set<size_t>& clocks);
   std::string Value(const std::string& path, bool scan = false) const;
 
  private:
-  void Edge(const std::string& clock, bool rising);
+  void Edge(const std::set<size_t>& clock_ids, bool rising);
   void GlobalReset();
   void Synchronize(const std::string& name);
   void Trace(BitReference output, char selected, std::map<size_t, char>* active,

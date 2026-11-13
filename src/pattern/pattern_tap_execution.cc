@@ -319,13 +319,25 @@ std::map<size_t, ScanControl> TapExecution::Controls(
   }
   return result;
 }
-void TapExecution::Edge(const std::string& clock, bool rising) {
-  const size_t clock_id = netlist_.node_ids.at(clock);
-  if (netlist_.nodes.at(clock_id).kind != "TCKPort") {
-    throw std::runtime_error("TAP edge requires a TCKPort");
+void TapExecution::Edge(const std::set<size_t>& clock_ids, bool rising) {
+  for (size_t id : clock_ids) {
+    const auto& node = netlist_.nodes.at(id);
+    if (node.kind != "TCKPort") {
+      throw std::runtime_error("TAP edge requires a TCKPort");
+    }
+    if (node.scope != 0 || node.Width() != 1 || node.inputs.count("Source")) {
+      throw std::runtime_error(
+          "TAP edge requires unconnected scalar root TCK ports");
+    }
   }
-  // The API reports an observed external edge, establishing both levels.
-  state_.Drive(clock_id, rising ? "0" : "1");
+  if (std::none_of(
+          netlist_.taps.begin(), netlist_.taps.end(), [&](const auto& entry) {
+            return clock_ids.count(entry.second.pins.at("tap_scan_clock"));
+          })) {
+    throw std::runtime_error("clock does not drive any TAP");
+  }
+  // Sample child clocks only after every equivalent root reaches each level.
+  for (size_t id : clock_ids) state_.Drive(id, rising ? "0" : "1");
   std::map<std::pair<size_t, int64_t>, char> clocks;
   for (const auto& [reg, interfaces] : register_ports_) {
     for (const auto& ports : interfaces) {
@@ -340,7 +352,7 @@ void TapExecution::Edge(const std::string& clock, bool rising) {
       }
     }
   }
-  state_.Drive(clock_id, rising ? "1" : "0");
+  for (size_t id : clock_ids) state_.Drive(id, rising ? "1" : "0");
   for (auto& [pin, before] : clocks) {
     const char after = state_.Read({pin.first, pin.second});
     const char from = rising ? '0' : '1', to = rising ? '1' : '0';
@@ -355,7 +367,7 @@ void TapExecution::Edge(const std::string& clock, bool rising) {
   std::map<size_t, ScanControl> controls;
   std::vector<std::pair<std::string, TapActions>> changed;
   for (const auto& [name, tap] : netlist_.taps) {
-    if (tap.pins.at("tap_scan_clock") != clock_id) {
+    if (!clock_ids.count(tap.pins.at("tap_scan_clock"))) {
       continue;
     }
     auto& controller = controllers_.at(name);
@@ -365,9 +377,6 @@ void TapExecution::Edge(const std::string& clock, bool rising) {
                      state_.Value(tap.pins.at("tap_scan_in")).at(0))
                : controller.FallingEdge();
     changed.emplace_back(name, actions);
-  }
-  if (changed.empty()) {
-    throw std::runtime_error("clock does not drive any TAP");
   }
   // Cross-interface controls must observe the same edge for every TAP.
   for (const auto& [name, actions] : changed) {
@@ -393,6 +402,16 @@ void TapExecution::Edge(const std::string& clock, bool rising) {
   }
   state_.Reset();
 }
-void TapExecution::RisingEdge(const std::string& clock) { Edge(clock, true); }
-void TapExecution::FallingEdge(const std::string& clock) { Edge(clock, false); }
+void TapExecution::RisingEdge(const std::string& clock) {
+  Edge({netlist_.node_ids.at(clock)}, true);
+}
+void TapExecution::FallingEdge(const std::string& clock) {
+  Edge({netlist_.node_ids.at(clock)}, false);
+}
+void TapExecution::RisingEdge(const std::set<size_t>& clocks) {
+  Edge(clocks, true);
+}
+void TapExecution::FallingEdge(const std::set<size_t>& clocks) {
+  Edge(clocks, false);
+}
 }  // namespace pattern

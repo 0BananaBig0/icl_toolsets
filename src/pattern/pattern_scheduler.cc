@@ -96,9 +96,6 @@ class ScanScheduler::Impl {
     if (!netlist.taps.empty()) {
       tap_ = &netlist.taps.begin()->second;
       for (const auto& [name, tap] : netlist.taps) {
-        if (tap.pins.at("tap_scan_clock") != tap_->pins.at("tap_scan_clock")) {
-          throw std::runtime_error("multiple TAPs require the same TCK port");
-        }
         instruction_registers_.emplace(tap.instruction_register, &tap);
         for (const auto& [role, id] : tap.pins) tap_pins_.insert(id);
         for (const auto& [reg, id] : tap.data_registers) {
@@ -196,6 +193,10 @@ class ScanScheduler::Impl {
     }
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
+      if (tap_ && node.scope == 0 && node.kind == "TCKPort" &&
+          !node.inputs.count("Source")) {
+        tap_clocks_.insert(id);
+      }
       if (node.model == ModelKind::kRegister || node.kind == "DataInPort" ||
           node.kind == "DataOutPort" || ParallelControl(node) ||
           PrimaryInput(node)) {
@@ -538,10 +539,9 @@ class ScanScheduler::Impl {
       pins.emplace(tap.pins.at("tap_scan_in"), "0");
     }
     run->Drive(pins);
-    const auto& clock = netlist_.nodes.at(tap_->pins.at("tap_scan_clock")).name;
-    run->RisingEdge(clock);
+    run->RisingEdge(tap_clocks_);
     if (check) check(run->State());
-    run->FallingEdge(clock);
+    run->FallingEdge(tap_clocks_);
     if (check) check(run->State());
   }
   void Reset(bool synchronous) {
@@ -2695,9 +2695,10 @@ class ScanScheduler::Impl {
             id, BooleanValue(!ir && context_.bool_val(role == phase)));
       }
     }
-    pins.insert_or_assign(
-        tap_->pins.at("tap_scan_clock"),
-        SymbolicValue::Literal(context_, phase == "update" ? "0" : "1"));
+    for (size_t id : tap_clocks_) {
+      pins.insert_or_assign(
+          id, SymbolicValue::Literal(context_, phase == "update" ? "0" : "1"));
+    }
     return pins;
   }
   Events ControlEvents(z3::optimize& solver, const Values& state,
@@ -2713,9 +2714,11 @@ class ScanScheduler::Impl {
       auto pins = EventPins(state, frame, phase);
       SymbolicNetwork after(netlist_, context_, pins, global_resets_);
       if (tap_) {
-        pins.insert_or_assign(
-            tap_->pins.at("tap_scan_clock"),
-            SymbolicValue::Literal(context_, phase == "update" ? "1" : "0"));
+        for (size_t id : tap_clocks_) {
+          pins.insert_or_assign(
+              id,
+              SymbolicValue::Literal(context_, phase == "update" ? "1" : "0"));
+        }
       } else {
         for (const auto& [id, bits] : ClientPins(phase, true)) {
           pins.insert_or_assign(id, SymbolicValue::Literal(context_, bits));
@@ -4744,7 +4747,7 @@ class ScanScheduler::Impl {
   OneHotReadResolver one_hot_;
   const TapRuntimeModel* tap_ = nullptr;
   std::map<size_t, const TapRuntimeModel*> instruction_registers_;
-  std::set<size_t> tap_data_registers_, tap_pins_;
+  std::set<size_t> tap_data_registers_, tap_pins_, tap_clocks_;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
   bool parallel_chains_ = false;

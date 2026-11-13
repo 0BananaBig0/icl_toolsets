@@ -7,7 +7,7 @@ import unittest
 import test_tap_pdl_replay as helpers
 
 
-def network(widths=(4, 7), ir_widths=(4, 5), shared_tms=False):
+def network(widths=(4, 7), ir_widths=(4, 5), shared_tms=False, separate_clocks=False):
     source = """Module TapCell {
  Parameter W = 4;
  ScanInPort si; ScanOutPort so { Source value[0]; }
@@ -36,6 +36,8 @@ Module MultiTapTop {
  }}
 """
         model = template.replace('AccessProbe', 'Probe' + suffix)
+        if separate_clocks:
+            model = model.replace('TCK', 'TCK' + suffix)
         for pin in ('TDI', 'TDO', 'TMS', 'TRST'):
             if pin != 'TMS' or not shared_tms:
                 model = model.replace(pin, pin + suffix)
@@ -63,8 +65,8 @@ class MultipleTaps(unittest.TestCase):
             self.inputs += ['--bsdl', 'Probe' + str(lane), str(bsdl)]
         return pdl
 
-    def replay(self, body, widths=(4, 7), ir_widths=(4, 5), shared_tms=False):
-        source, models = network(widths, ir_widths, shared_tms)
+    def replay(self, body, widths=(4, 7), ir_widths=(4, 5), shared_tms=False, separate_clocks=False):
+        source, models = network(widths, ir_widths, shared_tms, separate_clocks)
         pdl = self.prepare(source, models, len(widths), body)
         output = self.run_tool(pdl, extra=('--debug',))
         self.assertEqual(output, self.run_tool(self.root / 'result.pdl', 'replay.pdl'))
@@ -136,14 +138,63 @@ class MultipleTaps(unittest.TestCase):
                 self.assertIn('explicit reset connectivity' if implicit else 'explicit iReset', error)
                 self.assertEqual((self.root / 'result.pdl').read_text(), 'previous output\n')
 
-    def test_distinct_clock_roots_are_rejected(self):
-        source, models = network()
-        first, second = models.split('entity Probe1', 1)
-        models = first + 'entity Probe1' + second.replace('TCK', 'TCK1')
-        pdl = self.prepare(source, models, 2, 'iReset; iWrite c0.value 9; iApply;\n')
-        (self.root / 'result.pdl').write_text('previous output\n')
-        self.assertIn('same TCK port', self.run_tool(pdl, ok=False))
-        self.assertEqual((self.root / 'result.pdl').read_text(), 'previous output\n')
+    def test_distinct_equivalent_clock_roots_share_one_phase(self):
+        for synchronous in (False, True):
+            with self.subTest(synchronous=synchronous):
+                reset = 'iReset -sync' if synchronous else 'iReset'
+                self.replay(reset + '; iWrite c0.value 9; iWrite c1.value 85; iApply -together; '
+                            'iRunLoop 3; iRead c0.value 9; iRead c1.value 85; iApply;\n',
+                            separate_clocks=True)
+
+    def test_single_tap_instrument_uses_an_additional_clock_root(self):
+        source, models = network((4,), (4,))
+        source = source.replace('Module MultiTapTop {', 'Module MultiTapTop { TCKPort extra_clock;')
+        source = source.replace('InputPort reset = TRST0;',
+                                'InputPort reset = TRST0; InputPort clock = extra_clock;')
+        pdl = self.prepare(source, models, 1,
+                           'iReset; iWrite c0.value 9; iApply; iRunLoop 2; iRead c0.value 9; iApply;\n')
+        text = self.run_tool(pdl, extra=('--debug',))
+        self.assertEqual(text, self.run_tool(self.root / 'result.pdl', 'replay.pdl'))
+        self.assertEqual(text, self.run_tool(pdl, 'flat.pdl',
+                                            inputs=['--icl', 'debug/MultiTapTop.icl']))
+
+    def test_additional_clock_root_retains_gate_qualification(self):
+        for gate in ('1', '0', 'x', 'inverted'):
+            with self.subTest(gate=gate):
+                source, models = network((4,), (4,))
+                source = source.replace('Module MultiTapTop {',
+                                        'Module MultiTapTop { TCKPort extra_clock; '
+                                        + f"LogicSignal gate {{ 1'b{gate if gate != 'inverted' else '1'}; }} "
+                                        + "DataMux gated SelectedBy gate { 1'b0: 1'b0; 1'b1: extra_clock; }")
+                clock = '~extra_clock' if gate == 'inverted' else 'gated'
+                source = source.replace('InputPort reset = TRST0;',
+                                        f'InputPort reset = TRST0; InputPort clock = {clock};')
+                pdl = self.prepare(source, models, 1, 'iReset; iWrite c0.value 9; iApply;\n')
+                if gate == '1':
+                    text = self.run_tool(pdl, extra=('--debug',))
+                    self.assertEqual(text, self.run_tool(self.root / 'result.pdl', 'replay.pdl'))
+                    self.assertEqual(text, self.run_tool(pdl, 'flat.pdl',
+                                                        inputs=['--icl', 'debug/MultiTapTop.icl']))
+                else:
+                    (self.root / 'result.pdl').write_text('previous output\n')
+                    error = self.run_tool(pdl, ok=False)
+                    if gate == 'inverted':
+                        self.assertIn('inverted child TCK phase', error)
+                    self.assertEqual((self.root / 'result.pdl').read_text(), 'previous output\n')
+
+    def test_equivalent_root_scale(self):
+        for count in (4, 16):
+            with self.subTest(count=count):
+                widths = tuple(4 + lane % 5 for lane in range(count))
+                ir_widths = tuple(4 + lane % 3 for lane in range(count))
+                body = 'iReset; ' + ''.join(f'iWrite c{lane}.value {lane % 15 + 1}; '
+                                            for lane in range(count)) + 'iApply -together;\n'
+                started = time.monotonic()
+                text = self.replay(body, widths, ir_widths, separate_clocks=True)
+                source, models = network(widths, ir_widths, separate_clocks=True)
+                print(f'equivalent TCK scale: roots={count}, model_bytes={len(source) + len(models)}, '
+                      f'output_bytes={len(text)}, four_replays_seconds={time.monotonic() - started:.6f}',
+                      flush=True)
 
     def test_mixed_trst_availability_uses_common_reset_clocks(self):
         source, models = network()

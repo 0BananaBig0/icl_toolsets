@@ -529,7 +529,7 @@ int main(int argc, char** argv) {
            "Current scheduling: standalone client chains, common-phase TAP "
            "scans,\n"
            "mixed data access, logic/one-hot paths and local resets.\n"
-           "Multiple TAPs require shared TCK, disjoint lanes and explicit "
+           "Multiple TAPs require equivalent TCKs, disjoint lanes and explicit "
            "reset paths.\n"
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"

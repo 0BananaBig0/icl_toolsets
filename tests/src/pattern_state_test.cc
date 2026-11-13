@@ -626,7 +626,8 @@ Module AccessTop {
           "bypasses them");
 }
 
-void TestSharedTapEdge(bool producer_first, const std::string& control) {
+void TestSharedTapEdge(bool producer_first, const std::string& control,
+                       bool separate_clocks = false) {
   const std::string producer = producer_first ? "a_source" : "z_source";
   pattern::Design design;
   design.AddIcl("shared_edge.icl", R"(
@@ -662,10 +663,14 @@ Module SharedEdge {
   for (const std::string suffix : {"A", "B"}) {
     auto bsdl =
         ReadFile("tests/cases/ours/pattern_generation/access_link/simple.bsdl");
-    for (const std::string token :
-         {"AccessProbe", "TDI", "TDO", "TMS", "TRST"}) {
+    std::vector<std::string> tokens{"AccessProbe", "TDI", "TDO", "TMS", "TRST"};
+    if (separate_clocks) tokens.push_back("TCK");
+    for (const auto& token : tokens) {
       const auto replacement =
-          token == "AccessProbe" ? "Probe" + suffix : token + suffix;
+          token == "AccessProbe" ? "Probe" + suffix
+          : token == "TCK"
+              ? ((suffix == "A") == producer_first ? "TCK_A" : "TCK_Z")
+              : token + suffix;
       size_t at = 0;
       while ((at = bsdl.find(token, at)) != std::string::npos) {
         bsdl.replace(at, token.size(), replacement);
@@ -691,8 +696,20 @@ Module SharedEdge {
       engine->Drive("TMSB", std::string(1, tms));
       engine->Drive("TDIA", std::string(1, tdi));
       engine->Drive("TDIB", std::string(1, tdi));
-      engine->RisingEdge("TCK");
-      engine->FallingEdge("TCK");
+      const std::vector<std::string> clocks =
+          separate_clocks ? std::vector<std::string>{"TCK_A", "TCK_Z"}
+                          : std::vector<std::string>{"TCK"};
+      if (separate_clocks) {
+        const auto& netlist =
+            engine == &run ? network.netlist : restored.netlist;
+        std::set<size_t> ids;
+        for (const auto& clock : clocks) ids.insert(netlist.node_ids.at(clock));
+        engine->RisingEdge(ids);
+        engine->FallingEdge(ids);
+      } else {
+        engine->RisingEdge("TCK");
+        engine->FallingEdge("TCK");
+      }
     }
     for (const auto* cell : {"producer.r", "sink.r"}) {
       Require(run.Value(cell) == copy.Value(cell) &&
@@ -725,11 +742,139 @@ Module SharedEdge {
     for (size_t i = 0; i < 1000; ++i) cycle('0');
     Require(run.Value("producer.r") == "0" && run.Value("sink.r") == "0",
             "shared idle edges preserve both held registers");
-    std::cout << "shared TAP replay: taps=2 cycles=1000 forms=2 seconds="
+    std::cout << "shared TAP replay: taps=2 roots=" << (separate_clocks ? 2 : 1)
+              << " cycles=1000 forms=2 seconds="
               << std::chrono::duration<double>(
                      std::chrono::steady_clock::now() - started)
                      .count()
               << '\n';
+  }
+}
+
+void TestEquivalentClockBatch() {
+  const std::string fixture =
+      "tests/cases/ours/pattern_generation/multiple_taps/";
+  auto source = ReadFile(fixture + "multiple_explicit.icl");
+  auto models = ReadFile(fixture + "models.bsdl");
+  size_t at = models.find("entity ProbeB");
+  Require(at != std::string::npos, "second TAP model exists");
+  while ((at = models.find("TCK", at)) != std::string::npos) {
+    models.replace(at, 3, "TCKB");
+    at += 4;
+  }
+  const auto replace = [&](const std::string& from, const std::string& to) {
+    const auto position = source.find(from);
+    Require(position != std::string::npos, "clock fixture substitution exists");
+    source.replace(position, from.size(), to);
+  };
+  replace("Module TapCell {",
+          "Module TapCell { DataInPort observed[3:0]; DataOutPort q[3:0] { "
+          "Source value; }");
+  replace("ScanInSource si; ResetValue",
+          "ScanInSource si; CaptureSource observed; ResetValue");
+  replace("Module MultiTapTop {", "Module MultiTapTop { TCKPort extra;");
+  replace("InputPort reset = TRSTA;",
+          "InputPort reset = TRSTA; InputPort clock = extra; InputPort "
+          "observed = b.q;");
+  replace("InputPort reset = TRSTB;",
+          "InputPort reset = TRSTB; InputPort observed = a.q;");
+  pattern::Design design;
+  design.AddIcl("clock-batch.icl", source);
+  for (const std::string entity : {"ProbeA", "ProbeB"}) {
+    design.AddBsdl("models.bsdl", models, entity);
+  }
+  const auto netlist =
+      pattern::ElaborateTapNetwork(design, "MultiTapTop").netlist;
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat.icl", pattern::SerializeIcl(netlist));
+  const auto flat =
+      pattern::ElaborateTapNetwork(flat_design, "MultiTapTop").netlist;
+  for (const auto* model : {&netlist, &flat}) {
+    const auto id = [&](const std::string& name) {
+      return model->node_ids.at(name);
+    };
+    pattern::TapExecution run(*model);
+    run.Drive({{id("TRSTA"), "0"}, {id("TRSTB"), "0"}});
+    run.Drive({{id("TRSTA"), "1"}, {id("TRSTB"), "1"}});
+    const std::vector<std::set<size_t>> invalid{
+        {},
+        {id("extra")},
+        {id("TCK"), id("TDIA")},
+        {id("TCK"), id("a.clock")},
+        {id("TCK"), model->nodes.size()}};
+    for (const auto& clocks : invalid) {
+      for (bool rising : {false, true}) {
+        const pattern::NetworkState before(run.State());
+        bool rejected = false;
+        try {
+          if (rising)
+            run.RisingEdge(clocks);
+          else
+            run.FallingEdge(clocks);
+        } catch (const std::exception&) {
+          rejected = true;
+        }
+        Require(rejected && run.State().SameState(before),
+                "invalid clock batch leaves the entire state unchanged");
+      }
+    }
+    const auto single_cycle = [&](char tms, char tdi = '0') {
+      run.Drive({{id("TMSA"), std::string(1, tms)},
+                 {id("TDIA"), std::string(1, tdi)}});
+      run.RisingEdge("TCK");
+      run.FallingEdge("TCK");
+    };
+    single_cycle('0');
+    for (char tms : std::string("1100")) single_cycle(tms);
+    for (size_t tick = 0; tick < 4; ++tick) {
+      single_cycle(tick == 3 ? '1' : '0', std::string("1100")[tick]);
+    }
+    single_cycle('1');
+    single_cycle('0');
+    Require(run.Value("tapA.INSTRUCTION") == "0011" &&
+                run.Value("tapB.INSTRUCTION") == "0010" &&
+                run.Value("extra") == "x",
+            "singleton edges advance only the observed TAP and clock");
+    const std::set<size_t> clocks{id("TCK"), id("TCKB"), id("extra")};
+    const auto cycle = [&](char tms, char a = '0', char b = '0') {
+      run.Drive({{id("TMSA"), std::string(1, tms)},
+                 {id("TMSB"), std::string(1, tms)},
+                 {id("TDIA"), std::string(1, a)},
+                 {id("TDIB"), std::string(1, b)}});
+      run.RisingEdge(clocks);
+      run.FallingEdge(clocks);
+    };
+    for (size_t tick = 0; tick < 5; ++tick) cycle('1');
+    cycle('0');
+    Require(run.Value("tapA.INSTRUCTION") == "0010" &&
+                run.Value("tapB.INSTRUCTION") == "0010" &&
+                run.Value("extra") == "0",
+            "batch reset clocks include extra roots without their own TAP");
+    for (char tms : std::string("1100")) cycle(tms);
+    for (size_t tick = 0; tick < 4; ++tick) {
+      const char bit = std::string("1100")[tick];
+      cycle(tick == 3 ? '1' : '0', bit, bit);
+    }
+    cycle('1');
+    cycle('0');
+    for (char tms : std::string("100")) cycle(tms);
+    for (size_t tick = 0; tick < 4; ++tick) {
+      cycle(tick == 3 ? '1' : '0', std::string("1010")[tick],
+            std::string("0101")[tick]);
+    }
+    Require(run.Value("a.value") == "0000" && run.Value("b.value") == "0000" &&
+                run.Value("a.value", true) == "0101" &&
+                run.Value("b.value", true) == "1010",
+            "equivalent roots shift separate lanes before the common update");
+    cycle('1');
+    Require(run.Value("a.value") == "0101" && run.Value("b.value") == "1010",
+            "one batch updates both held values including the extra-root "
+            "instrument");
+    cycle('0');
+    for (char tms : std::string("100")) cycle(tms);
+    Require(run.Value("a.value", true) == "1010" &&
+                run.Value("b.value", true) == "0101",
+            "cross-root captures sample the old shared held state");
   }
 }
 
@@ -806,9 +951,12 @@ void TestLongChain() {
 }  // namespace
 int main() {
   try {
+    TestEquivalentClockBatch();
     for (const auto* control : {"capture", "shift", "update"}) {
       TestSharedTapEdge(true, control);
       TestSharedTapEdge(false, control);
+      TestSharedTapEdge(true, control, true);
+      TestSharedTapEdge(false, control, true);
     }
     TestFeedbackResetSnapshots();
     TestControllingEventHistory();

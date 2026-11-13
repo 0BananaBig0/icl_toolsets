@@ -9,21 +9,21 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, common-phase multiple-TAP scheduling passed the complete
-make -j2 --jobserver-style=pipe check command, with exit 0 recorded in
-build/multiple-tap-confirmed-full.log/.exit. This includes all 40 generator CLI
-suites under dynamic/static builds, native tests, 51 directional and seven legacy
-Tessent standards, all 334 parser and 119 scanner rules across 2,523 ICL files,
-and six Vim/Neovim tests (178.774s). Full wall time was941.461s. Five optional
+On 2026-11-14, equivalent-TCK-root scheduling passed the complete
+make -j2 --jobserver-style=pipe check command, with exit0 recorded in
+build/equivalent-tck-final-full.log/.exit. This includes all40 generator CLI
+suites under dynamic/static builds, native tests,51 directional and seven legacy
+Tessent standards, all334 parser and119 scanner rules across2523 ICL files,
+and six Vim/Neovim tests (178.636s). Full wall time was1047.081s. Five optional
 ANTLR integration tests were skipped because ICL_REF_DIR was unset.
 
 Leak-enabled ASan/UBSan checks passed for native state/TAP/scheduler/flatten,
-main33, TAP9, hidden-event4, multiple-TAP functional18, end-state11 and mixed-I/O15
-methods. The instrumented19-method multiple-TAP run also passes4-TAP scale but
-fails its16/32-TAP scale subcases at the unchanged2s solver budget; the failed
-run is retained and is not counted as a full sanitizer-suite pass. Optimized
-scale cases pass. Formatting, naming and independent review pass. See
-[the scope and evidence](#common-phase-multiple-taps-2026-11-14).
+main33, TAP9, hidden-event4, multiple-TAP functional20, end-state11 and mixed-I/O15
+methods. Both scale methods are excluded from the20-method functional sanitizer
+run: Task48’s instrumented16/32-TAP cases reached the unchanged2s solver budget.
+The complete optimized22-method suite passes, including its scale cases.
+Formatting, naming and independent source/evidence reviews pass. See
+[the scope and evidence](#equivalent-tck-root-snapshots-2026-11-14).
 
 Strict authored-code coverage remains unmet. A fresh complete instrumented run
 including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
@@ -3429,3 +3429,44 @@ build/multiple-tap-loading-probe-evidence.
 Independent TAP phases, distinct equivalent TCK roots, shared intermediate
 serial storage and general implicit multiple-TAP reset ownership remain required.
 Strict coverage and Rocky8 qualification still predate this implementation.
+
+
+### Equivalent TCK root snapshots (2026-11-14)
+
+Common-phase TAP scheduling now supports distinct top-level TCKPort roots.
+IEEE1687-2014 §6.4.6.17(a) defines those ports as equivalent with the same polarity.
+Every unconnected root participates, including an extra root connected to an
+instrument clock but not named by any TAP BSDL. Each logical edge stages all old
+root levels, samples child clocks, stages all new levels, publishes every affected
+TAP control, and clocks shared storage once. The native single-root edge API
+continues to advance only controllers driven by that root.
+
+Actual child-clock qualification remains required. Disabled or unknown gates do
+not acquire manufactured edges, and unsupported inverted child phases retain their
+diagnostic. Batch inputs must be scalar, unconnected top-level TCKPorts and affect
+at least one TAP; invalid input is rejected before state changes. Independent
+TMS phases, shared serial storage and implicit multi-TAP reset ownership remain
+separate requirements.
+
+The22-method CLI suite covers original, flat and regenerated PDL, unequal lane
+widths, extra roots, reset and idle, gates and atomic output preservation. Native
+checks reverse root/controller names for forwarded capture/shift/update controls,
+verify cross-root capture from old held state and a single common update, and
+check singleton and invalid-batch behavior. Independent source review is clean.
+With local GCC16.2.1, four forms for4/16 roots take0.536/3.540s, using6919/26497
+model bytes. The entire22-method run takes23.41s and78112KiB maximum RSS. Native
+1000-cycle two-form replay takes0.0382814s with one root and0.0381881s with two;
+the complete native run takes0.20s and23168KiB. These are measured bounds for
+these inputs, with unchanged solver budgets, rather than a speedup claim.
+
+Focused evidence: build/equivalent-tck-reviewed-native.log/.exit0 and
+build/equivalent-tck-reviewed-cli.log/.exit0; naming and formatting pass.
+Leak-enabled native state/TAP/scheduler/flatten and main33/TAP9/hidden4/
+functional20/end11/mixed15 checks pass in build/equivalent-tck-final-sanitizer-*.
+The20-method sanitizer run excludes both optimized scale methods; Task48’s
+known instrumented solver-budget limits remain. Full integration passes in
+build/equivalent-tck-final-full.log/.exit0:40 dynamic/static suites,51 directional/
+seven legacy goldens,2523 ICL334/119 rules and editor6 in178.636s. Full wall time
+is1047.081s; the five optional ANTLR tests remain skipped.
+Strict coverage, vendor certification and Rocky8 qualification have not been
+refreshed for this change.

@@ -1277,3 +1277,19 @@ instruction setup is measured. Independent phases, overlapping storage,
 separate equivalent clock roots and general implicit reset ownership remain
 required follow-up work. Strict coverage and later Rocky8 qualification remain
 open. Task49's equivalent-root design is reviewed separately.
+
+
+## Task49: Equivalent TCK root snapshots
+
+Completed [the focused plan](2026-11-14-equivalent-tck-snapshots.md). The equivalent
+TCK rule covers distinct physical root ports, including roots without a BSDL TAP.
+Batch old/new levels before controller/control snapshots and one shared state
+clock. Preserve singleton observed-edge semantics and actual child gate behavior.
+Focused native and22-method CLI tests pass, with4/16-root measurements and clean
+independent source review. Leak-enabled native4/main33/TAP9/hidden4/functional20/
+end11/mixed15 checks pass; both optimized scale methods are excluded from the20
+functional sanitizer methods. Full integration passes in
+build/equivalent-tck-final-full.log/.exit0 (1047.081s):40 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in178.636s.
+The five optional ANTLR tests remain skipped.
+Independent phases, shared serial storage and implicit reset ownership remain open.
