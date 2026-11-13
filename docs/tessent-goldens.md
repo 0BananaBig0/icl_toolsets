@@ -567,3 +567,18 @@ retrieved as build/multiple-client-groups-reverse-evidence. The local certificat
 and all43 offline directions passed in build/multiple-client-groups-certificate.log
 and build/multiple-client-groups-goldens.log. This qualifies the saved two-client,
 two-chain-per-client fixture only; broader model equivalence remains unverified.
+
+## ShiftEn-only clients (2026-11-13)
+
+The reverse shift_enable_clients certificate passes unchanged ordered-apply
+comparison and local fixed-point replay. All44 directional standards now pass
+(20forward/24reverse across28cases), plus seven legacy standards.
+
+Manifest: tests/cases/ours/pattern_generation/shift_enable_clients_cases.json.
+Snapshot: tests/golden/tessent_roundtrip/shift_enable_clients-reverse.
+Tessent2026.2 evidence: test_icl_toolsets/test_shift_enable_clients/
+run_2026_11_13_01/shift-enable-clients-reverse-bundle on the authorized host,
+retrieved as build/shift-enable-clients-reverse-evidence. Certification and
+offline checks are recorded in build/shift-enable-clients-certificate.log and
+build/shift-enable-clients-goldens.log. Only the saved two-client fixture is
+certified; general event-model equivalence remains unverified.

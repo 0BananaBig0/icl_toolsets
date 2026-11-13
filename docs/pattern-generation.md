@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the selected chain-group checkpoint passed full dynamic/static
-make -j2 --jobserver-style=pipe check, including all 30 generator CLI suites,
-native tests, 43 directional and seven legacy Tessent standards, and six
+On 2026-11-13, the ShiftEn-only client checkpoint passed full dynamic/static
+make -j2 --jobserver-style=pipe check, including all 31 generator CLI suites,
+native tests, 44 directional and seven legacy Tessent standards, and six
 Vim/Neovim checks. All 334 parser and 119 scanner rules were exercised across
-2,511 ICL files. Five optional ANTLR integration tests were skipped because
-ICL_REF_DIR was unset. The complete log and exit 0 record are
-build/multiple-client-groups-regression.log and .exit.
+2,512 ICL files. Five optional ANTLR integration tests were skipped because
+ICL_REF_DIR was unset. The complete log and exit0 record are
+build/shift-enable-clients-regression.log and .exit.
 
-The native scheduler, 11 new group cases, 17 existing multiple-client cases and
-nine simultaneous-chain cases passed ASan/UBSan/LeakSanitizer with detect_leaks=1.
+The native scheduler, 11 new ShiftEn-only cases, 17 existing multiple-client
+cases and 11 chain-group cases passed ASan/UBSan/LeakSanitizer with detect_leaks=1.
 Formatting, naming, whitespace and independent review passed. See
-[chain-group evidence](#selected-client-chain-groups-2026-11-13) for behavior,
+[ShiftEn-only evidence](#shiften-only-client-selection-2026-11-13) for behavior,
 vendor evidence, commands and scale measurements.
 
 Strict authored-code coverage remains unmet: the last complete measurement
@@ -2665,3 +2665,51 @@ and .exit(0): all30 generator suites, native tests,43directional/seven legacy
 standards,334parser/119scanner rules over2,511ICL files and six editor checks
 (192.033s). Five optional ANTLR tests remain skipped. Strict authored-code
 coverage and Rocky8 qualification of later changes remain outstanding.
+
+## ShiftEn-only client selection (2026-11-13)
+
+Standalone clients may omit SelectPort when they have ShiftEnPort, as allowed
+by IEEE1687-2014 §6.4.16(e)(2). For multiple clients, the scheduler uses ShiftEn
+membership where no explicit SelectPort exists and proves unique selection.
+An enable shared with an explicit-select client retains every owner: selecting
+that client cannot silently disable a pin it needs or accidentally enable a
+ShiftEn-only peer. Uniqueness is independent of the current phase.
+
+Symbolic and concrete execution assert these ShiftEn pins only during shifting;
+capture, update and idle drive them low. Missing SelectPort uses the existing
+active-path selection semantics (§6.4.6.11). Explicit-select clients keep their
+existing behavior. Route pairing, shared storage, reset settlement and named
+chain groups reuse the same scheduler and event implementation.
+
+Eleven CLI cases cover independent clients, named groups, mixed control types,
+ascending/inverted lanes, shared enables, shared storage/output, reset
+prerequisites, reservations, together failures and16-client scale. Every
+successful case checks original/flat/generated replay. Native checks verify
+physical serial lanes and capture masks, inactive storage, idle pins and
+reservation rollback. The original nine-case suite failed seven positive cases
+at the SelectPort-only restriction; the two negative cases already passed.
+
+Focused native/new11/existing17-client/11-group/eight-hidden checks pass;
+see build/shift-enable-clients-{native,green,existing}.log and .exit(0).
+Formatting, naming, whitespace, Makefile registration and independent source
+review pass. Tessent2026.2 accepted/exported the two-client fixture; its reverse
+certificate and all44 offline directional standards pass. Evidence is
+build/shift-enable-clients-reverse-evidence and remote
+test_shift_enable_clients/run_2026_11_13_01/shift-enable-clients-reverse-bundle.
+This certifies that fixture, not every shared-enable/reset/event model.
+
+Leak-enabled ASan/UBSan/LSan passed native scheduler checks, the11 new cases
+and existing17-client/11-group cases
+(build/shift-enable-clients-sanitizer-{native,cli,existing}.log/.exit,0).
+The16-client/3,528-byte ICL workload took2.713s for three replay forms,
+wall2.77s, peak69,012KiB on the local Linux host (g++16.2.1 -O2, concurrent
+validation). Reproduce with /usr/bin/time -f 'wall=%e seconds max_rss=%M KiB'
+python3 tests/src/pattern/test_shift_enable_clients.py build/icl-pattern-generation
+ShiftEnableClients.test_client_scale. The earlier focused run measured2.103s;
+these are workload measurements, not a claimed speedup.
+
+Full dynamic/static make check passed in build/shift-enable-clients-regression.log
+and .exit(0), including all31 generator suites,44directions/seven legacy standards,
+334parser/119scanner rules over2,512ICL files and six editor checks(196.777s).
+Five optional ANTLR checks remain skipped. Strict authored-code coverage and
+Rocky8 qualification of later changes remain outstanding.

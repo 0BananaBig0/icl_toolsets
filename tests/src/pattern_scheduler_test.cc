@@ -340,6 +340,50 @@ Module GroupedClients {
           "an unreserved route control can restore declared chain pairing");
 }
 
+void TestShiftEnableClients() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/shift_enable_clients.icl";
+  std::ifstream input(path);
+  Require(input.good(), "read ShiftEn client fixture");
+  const std::string source((std::istreambuf_iterator<char>(input)), {});
+  pattern::Design design;
+  design.AddIcl(path, source);
+  const auto netlist = pattern::Elaborate(design, "Chains");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto first =
+      scheduler.Apply({{"iWrite", {"c0.value", "9"}, "first", {}}});
+  Require(first.size() == 1 && first[0].input == "si[0]" &&
+              first[0].serial == "1001" &&
+              scheduler.Value("c0.value") == "1001" &&
+              scheduler.Value("c1.value") == "0000" &&
+              scheduler.Value("shift") == "00" && scheduler.Value("si") == "x1",
+          "ShiftEn client writes one path and returns both enables to idle");
+  const auto second =
+      scheduler.Apply({{"iWrite", {"c1.value", "6"}, "second", {}}});
+  Require(second.size() == 1 && second[0].input == "si[1]" &&
+              second[0].serial == "0110" &&
+              scheduler.Value("c0.value") == "1001" &&
+              scheduler.Value("c1.value") == "0110" &&
+              scheduler.Value("shift") == "00" && scheduler.Value("ck") == "0",
+          "other ShiftEn client preserves inactive hardware state");
+  const auto read = scheduler.Apply({{"iRead", {"c0.value", "9"}, "read", {}}});
+  Require(read.size() == 1 && read[0].serial_expected == "1001" &&
+              scheduler.Value("c0.value") == "1001" &&
+              scheduler.Value("c1.value") == "0110",
+          "ShiftEn-only capture returns held data before common update");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"c0.value", "3"}, "reserved", {}}}, false,
+                    {{netlist.node_ids.at("c0.value"), "1001"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("c0.value") == "1001" &&
+              scheduler.Value("c1.value") == "0110" &&
+              scheduler.Value("shift") == "00",
+          "failed ShiftEn transaction restores storage and idle phase pins");
+}
 void TestMultipleClientSelection() {
   const std::string path =
       "tests/cases/ours/pattern_generation/multiple_clients.icl";
@@ -1929,6 +1973,7 @@ int main() {
     TestEnabledScanOutputs();
     TestClientScanControls();
     TestMultipleClientChainGroups();
+    TestShiftEnableClients();
     TestMultipleClientSelection();
     TestSimultaneousScanChains();
     TestHiddenClientEvents();

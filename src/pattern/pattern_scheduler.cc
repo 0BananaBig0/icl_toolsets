@@ -118,7 +118,7 @@ class ScanScheduler::Impl {
           const auto& kind = netlist.nodes.at(port.node).kind;
           if (kind == "SelectPort") {
             clients_.back().push_back(key);
-            client_selectors_[key].push_back(id);
+            client_selectors_[key];
           }
         }
         const auto add_route = [&](const std::vector<BitReference>& ports) {
@@ -138,8 +138,22 @@ class ScanScheduler::Impl {
           for (const auto& chain : client->chains) add_route(chain.ports);
         }
         if (clients_.back().empty()) {
-          throw std::runtime_error(
-              "multiple clients require explicit SelectPort controls");
+          for (const auto& port : client->ports) {
+            if (netlist.nodes.at(port.node).kind == "ShiftEnPort") {
+              const Key key{port.node, port.index};
+              clients_.back().push_back(key);
+              client_selectors_[key];
+            }
+          }
+        }
+      }
+      // A fallback ShiftEn may also belong to a client with explicit selects.
+      for (size_t id = 0; id < clients.size(); ++id) {
+        for (const auto& port : clients[id]->ports) {
+          const auto selector = client_selectors_.find({port.node, port.index});
+          if (selector != client_selectors_.end()) {
+            selector->second.push_back(id);
+          }
         }
       }
     }
@@ -1811,10 +1825,15 @@ class ScanScheduler::Impl {
               .c_str()));
     }
   }
-  void ClientSelections(Values* pins, const Frame& frame) {
+  void ClientSelections(Values* pins, const Frame& frame,
+                        const std::string& phase) {
     for (const auto& [key, clients] : client_selectors_) {
       auto active = context_.bool_val(false);
       for (size_t id : clients) active = active || frame.clients.at(id);
+      if (netlist_.nodes.at(key.first).kind == "ShiftEnPort" &&
+          phase != "shift") {
+        active = context_.bool_val(false);
+      }
       const auto bit = BooleanValue(active);
       auto& value = pins->at(key.first);
       const auto& node = netlist_.nodes.at(key.first);
@@ -1838,7 +1857,15 @@ class ScanScheduler::Impl {
                                 context_.int_val(0));
         auto enabled = context_.bool_val(true);
         for (const auto& [node, index] : clients_[i]) {
-          enabled = enabled && Known(values.Read({node, index}), true);
+          if (netlist_.nodes.at(node).kind == "ShiftEnPort") {
+            auto selected = context_.bool_val(false);
+            for (size_t client : client_selectors_.at({node, index})) {
+              selected = selected || frame.clients.at(client);
+            }
+            enabled = enabled && selected;
+          } else {
+            enabled = enabled && Known(values.Read({node, index}), true);
+          }
         }
         solver.add(z3::implies(
             frame.parallel ? !*frame.parallel : context_.bool_val(true),
@@ -2324,8 +2351,11 @@ class ScanScheduler::Impl {
         const int64_t index = node.left + (node.left <= node.right ? 1 : -1) *
                                               static_cast<int64_t>(offset);
         const auto selected = selections.find({id, index});
-        bits[offset] = selected == selections.end() ? (active ? '1' : '0')
-                                                    : selected->second;
+        bits[offset] =
+            selected == selections.end()
+                ? (active ? '1' : '0')
+                : (role == "shift" && phase != "shift" ? '0'
+                                                       : selected->second);
       }
       pins.emplace(id, std::move(bits));
     }
@@ -2346,7 +2376,7 @@ class ScanScheduler::Impl {
         }
         pins.insert_or_assign(id, std::move(value));
       }
-      ClientSelections(&pins, frame);
+      ClientSelections(&pins, frame, phase);
       return pins;
     }
     const auto ir = Known(*frame.instruction, true);
@@ -2380,7 +2410,7 @@ class ScanScheduler::Impl {
           pins.insert_or_assign(id, SymbolicValue::Literal(context_, bits));
         }
       }
-      if (!tap_) ClientSelections(&pins, frame);
+      if (!tap_) ClientSelections(&pins, frame, phase);
       SymbolicNetwork before(netlist_, context_, pins, global_resets_);
       for (size_t id : registers_) {
         if (tap_ && id == tap_->instruction_register) continue;

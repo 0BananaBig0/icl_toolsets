@@ -1,0 +1,270 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "shift_enable_clients",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/shift_enable_clients.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/shift_enable_clients.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/shift_enable_clients.icl": "df2a1a4c876208a5fb72a76df7a3fbd233c2fa006cca9514b3c63799001a7f63",
+    "tests/cases/ours/pattern_generation/shift_enable_clients.pdl": "21f118cbac4ad85bf9c92ca65c468a0d9cd9ea0a456aa3108a44f601335b9710"
+  },
+  "job": {
+    "id": "shift_enable_clients",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/shift_enable_clients.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/shift_enable_clients.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "df2a1a4c876208a5fb72a76df7a3fbd233c2fa006cca9514b3c63799001a7f63",
+      "source_0.pdl": "21f118cbac4ad85bf9c92ca65c468a0d9cd9ea0a456aa3108a44f601335b9710",
+      "run.tcl": "da3df043ab9065068e4a7a43d656d7d3b1d36432c5f2923f04900bd0198349a3"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/shift_enable_clients.icl": "df2a1a4c876208a5fb72a76df7a3fbd233c2fa006cca9514b3c63799001a7f63",
+      "tests/cases/ours/pattern_generation/shift_enable_clients.pdl": "21f118cbac4ad85bf9c92ca65c468a0d9cd9ea0a456aa3108a44f601335b9710"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.78019255399704,
+    "outcome": "ok",
+    "result_sha256": "74eb22446a213783b769d3be4d0e90cd6d82947db2c135c105157dec55ac1ad4",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "Chains",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "c1.value",
+            0,
+            "0"
+          ],
+          [
+            "c1.value",
+            1,
+            "1"
+          ],
+          [
+            "c1.value",
+            2,
+            "1"
+          ],
+          [
+            "c1.value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c1.value",
+            0,
+            "0"
+          ],
+          [
+            "c1.value",
+            1,
+            "0"
+          ],
+          [
+            "c1.value",
+            2,
+            "0"
+          ],
+          [
+            "c1.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c0.value",
+            0,
+            "1"
+          ],
+          [
+            "c0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c0.value",
+            0,
+            "0"
+          ],
+          [
+            "c0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c1.value",
+            0,
+            "0"
+          ],
+          [
+            "c1.value",
+            1,
+            "1"
+          ],
+          [
+            "c1.value",
+            2,
+            "1"
+          ],
+          [
+            "c1.value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c1.value",
+            0,
+            "0"
+          ],
+          [
+            "c1.value",
+            1,
+            "1"
+          ],
+          [
+            "c1.value",
+            2,
+            "1"
+          ],
+          [
+            "c1.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c0.value",
+            0,
+            "1"
+          ],
+          [
+            "c0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c0.value",
+            0,
+            "1"
+          ],
+          [
+            "c0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0.value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "65d4c3610718b299c39d62905e042d8837ac10eb201fd6f46242dcbfd49531eb",
+  "vendor_console_sha256": "8cd2bf886a788c04863bb57fa10c483899f2ecac783f5cabd9f9e0a241711f2b",
+  "artifacts": {
+    "flat.pdl": "9cb1a267a8b58cbaa50b6b6800732493ca1c0a85f1911b45ba64a6fc83212cef",
+    "vendor.pdl": "74eb22446a213783b769d3be4d0e90cd6d82947db2c135c105157dec55ac1ad4"
+  }
+}

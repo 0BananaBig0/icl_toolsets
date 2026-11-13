@@ -651,7 +651,7 @@ changes. Bound dependency builds to two parallel jobs.
 
 ## Remaining completion work (not yet completed)
 
-- ShiftEn-only client selection, multiple TAPs and intermediate storage taps: extend common-state event planning beyond the independently selected clients and named-chain groups completed in Tasks29–30.
+- Multiple TAPs and intermediate storage taps: extend common-state event planning beyond selected clients, named-chain groups and ShiftEn-only selection completed in Tasks29–31.
 - General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
@@ -966,3 +966,13 @@ lane/state assertions pass. Full dynamic/static regression, leak-enabled
 native/new11/old17/old9 sanitizers, naming/style and independent review pass.
 One reverse Tessent certificate brings the offline total to43directions plus
 seven legacy standards. The guide records exact evidence and limits.
+
+## Task 31: ShiftEn-only client selection
+
+Completed [the focused plan](2026-11-13-shift-enable-clients.md).
+Clients without SelectPort use ShiftEn membership, with all-owner uniqueness
+constraints and phase-qualified symbolic/concrete pins. Eleven CLI cases and
+native lane/state/rollback checks pass. Full dynamic/static regression,
+leak-enabled native/new11/old17/old11 sanitizers, naming/style and independent
+review pass. One reverse Tessent certificate brings the offline total to44
+directions plus seven legacy standards. See the guide for exact evidence.

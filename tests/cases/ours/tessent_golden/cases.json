@@ -381,6 +381,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "shift_enable_clients",
+      "top": "Chains",
+      "icl": [
+        "tests/cases/ours/pattern_generation/shift_enable_clients.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/shift_enable_clients.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

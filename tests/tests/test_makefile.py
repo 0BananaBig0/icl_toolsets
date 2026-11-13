@@ -28,6 +28,7 @@ class BuildGraph(unittest.TestCase):
             self.assertIn('tests/src/pattern/test_argument_reset_sources.py', scripts)
             self.assertIn('tests/src/pattern/test_multiple_client_interfaces.py', scripts)
             self.assertIn('tests/src/pattern/test_multiple_client_chain_groups.py', scripts)
+            self.assertIn('tests/src/pattern/test_shift_enable_clients.py', scripts)
             self.assertEqual(len(scripts), len(set(scripts)))
             suites.append(scripts)
         self.assertEqual(suites[0], suites[1])
