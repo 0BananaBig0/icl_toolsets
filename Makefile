@@ -1091,6 +1091,7 @@ pattern-generation-check: $(PATTERN_GENERATOR)
 	python3 tests/src/pattern/test_client_scan_controls.py $(PATTERN_GENERATOR)
 	python3 tests/src/pattern/test_simultaneous_scan_chains.py $(PATTERN_GENERATOR)
 	python3 tests/src/pattern/test_hidden_client_events.py $(PATTERN_GENERATOR)
+	python3 tests/src/pattern/test_compound_reset_sources.py $(PATTERN_GENERATOR)
 pattern-generation-static-check: $(PATTERN_GENERATOR_STATIC)
 	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR_STATIC)
 	python3 tests/src/pattern/test_dependency_scheduling.py $(PATTERN_GENERATOR_STATIC)
@@ -1115,6 +1116,7 @@ pattern-generation-static-check: $(PATTERN_GENERATOR_STATIC)
 	python3 tests/src/pattern/test_client_scan_controls.py $(PATTERN_GENERATOR_STATIC)
 	python3 tests/src/pattern/test_simultaneous_scan_chains.py $(PATTERN_GENERATOR_STATIC)
 	python3 tests/src/pattern/test_hidden_client_events.py $(PATTERN_GENERATOR_STATIC)
+	python3 tests/src/pattern/test_compound_reset_sources.py $(PATTERN_GENERATOR_STATIC)
 
 $(BUILD_DIR)/pattern_scheduler_test-static: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3 check-tcl-static
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi

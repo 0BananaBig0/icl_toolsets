@@ -11,7 +11,7 @@
 
 namespace pattern {
 struct Netlist;
-// One executed main write/call/merge, including its nested operations.
+// One executed main command, including its nested operations.
 struct SourceAction {
   size_t source = 0, offset = 0, begin = 0, end = 0;
   std::string prefix;
@@ -37,7 +37,7 @@ class Runtime {
   void Finish();
   const std::vector<Operation>& operations() const;
   const std::vector<std::string>& warnings() const;
-  const std::vector<SourceAction>& SourceActions() const;
+  std::vector<SourceAction> SourceActions(bool whole_commands = false) const;
 
  private:
   class Impl;

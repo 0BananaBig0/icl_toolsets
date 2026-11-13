@@ -490,8 +490,8 @@ schedule them is not proof of hardware unreachability.
 ### Local-reset output
 
 `--local_reset PATH` preserves source text, including procedure definitions, and
-inserts reset-control writes before main-level writes, calls or whole merge
-blocks. Releases are never inserted between a merge's begin/end markers. Multiple PDL
+inserts reset-control writes before main-level writes, calls, Tcl compounds or
+whole merge blocks. Releases are never inserted between a merge's begin/end markers. Multiple PDL
 files are combined in command-line order, with separators that preserve commands
 after continued EOF comments. When no release is needed, a single input is
 preserved byte-for-byte.
@@ -517,15 +517,21 @@ and original source command, preserving existing output artifacts. The same
 Source tracing belongs to the existing PDL runtime; reset planning shares the
 scan scheduler's netlist, concrete state and symbolic model. Insertions are
 hoisted before whole pending queues so an added `iApply` cannot flush a user
-write early. After patching the source, a fresh runtime executes the actual
+write early. Main loops, conditionals and dynamic commands retain their entry
+prefix and whole executed operation span. Overlapping compound/merge spans
+use the earliest caller site, including merges continued across files. The
+rewriter first tries whole-command prerequisites, then original literal sites
+from fresh state when internal resets require releases inside a loop. There are
+at most two candidates, using the same scheduler and solver bounds.
+After patching the source, a fresh runtime executes the actual
 rewritten text and compares its ordered commands and resolved arguments with
 the planned stream. All analysis and replay must succeed before publication.
 
 Remaining limits: a procedure that reasserts reset internally and then needs
 another release cannot always be repaired from its caller without changing the
-procedure. Repeated source sites needing different preambles, insertions that
-split a repeated pending queue, nonliteral/procedure-body insertion sites, and
-effectful substitutions that change execution order are rejected. Unresolved
+procedure. Cases that neither caller-boundary strategy can repair, including
+effectful word substitutions that reset state after the insertion site, remain
+rejected. Unresolved
 reset sources, forwarding cycles, feedback scheduling and unsupported controller
 models remain errors. Reset solving is bounded to 4096 control bits and two
 seconds per solver query; a limit is not proof of unreachability. These are
@@ -2295,3 +2301,38 @@ and seven legacy standards, all parser/scanner rules over 2,507 ICL files and
 the editor corpus. Five optional ANTLR checks remain skipped. Google formatting,
 changed-source naming and whitespace checks pass. No new Tessent certificate
 is claimed for masked merge writes.
+
+
+### Main Tcl command reset prerequisites (2026-11-13)
+
+Source tracing now records complete main Tcl commands alongside literal PDL
+sites. Hoisting releases before loops and conditionals keeps repeated pending
+writes together, preserves the entry prefix and leaves procedure text intact.
+Overlapping merge/compound spans are combined, including a loop that closes a
+previously opened merge. Literal-site fallback retains existing repairs inside
+loops that reset on each iteration. Both candidates run from fresh state and
+must reproduce the exact expected operation order before publication.
+
+Native span assertions and twelve CLI cases cover repeated queues, changing
+prefixes, nested conditionals, dynamic/eval commands, comments, cross-file
+merges, early return/break/continue, procedure preservation, literal fallback,
+failed-output protection and original/flat/generated/reset-source fixed points.
+Independent review's merge-boundary case failed before its overlap fix.
+The source-action pass uses ordered maps and visits each erased action once;
+it does not enumerate loop interleavings. General feedback resets and source
+transformations beyond these verified insertion strategies remain open.
+
+The 256-iteration input is 96 PDL bytes; four replay/rewrite runs completed in
+about 0.24 s. Twelve focused cases took about 4.2 s in the ordinary build. Native
+runtime and twelve new plus 25 existing CLI cases pass ASan/UBSan/LeakSanitizer
+with leak detection enabled. Formatting/naming/whitespace checks pass, and the
+bounded review of the overlap fix found no remaining findings. No new vendor
+certificate or general source-transformation completeness is claimed.
+
+The reviewed full dynamic/static `make check` passed with exit 0
+(`build/compound-reset-regression-reviewed.log` and `.exit`), including 40
+directional/seven legacy standards, all parser/scanner rules over 2,507 ICL
+files and editor corpus checks. Five optional ANTLR checks remain skipped.
+The final twelve-case measurement took 4.35 s / 59,556 KiB; the 256-iteration
+case took 0.263 s for four runs. The initial full run was stopped for the review
+fix and is superseded by this result.

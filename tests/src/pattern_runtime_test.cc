@@ -348,6 +348,45 @@ void TestResetScope() {
       top.operations().size() == 1 && top.operations()[0].command == "iReset",
       "top-module reset is independent of the current target prefix");
 }
+void TestCompoundSourceActions() {
+  auto design = MakeDesign();
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist, true);
+  const std::string source =
+      "iPDLLevel 1\niProcsForModule Top\n"
+      "iProc put {v} {iWrite reg $v; iApply}\niPrefix a\n"
+      "foreach target {a b} {iPrefix $target; iWrite reg 3}\niApply\n";
+  runtime.Execute("loop.pdl", source);
+  const auto literal = runtime.SourceActions();
+  const auto whole = runtime.SourceActions(true);
+  Require(literal.size() == 2 && whole.size() == 1 && whole[0].source == 0 &&
+              whole[0].offset == source.find("foreach") &&
+              whole[0].begin == 0 && whole[0].end == 2 &&
+              whole[0].prefix == "a",
+          "whole command captures entry prefix and all repeated writes");
+  runtime.Execute("merge-start.pdl",
+                  "iPrefix -\nif {1} {iMerge -begin; iCall put 4}\n");
+  runtime.Execute("merge-end.pdl", "iCall put 5; iMerge -end\n");
+  runtime.Execute("return.pdl",
+                  "if {1} {iWrite reg 6; iApply; return}; iWrite absent 0\n");
+  runtime.Finish();
+  const auto actions = runtime.SourceActions(true);
+  Require(actions.size() == 3 && actions[1].source == 1 &&
+              actions[1].begin == 3 && actions[1].end == 9 &&
+              actions[2].source == 3 && actions[2].begin == 9 &&
+              actions[2].end == 11 && runtime.operations().size() == 11,
+          "compound spans retain cross-file merges and top-level return");
+  pattern::Runtime overlap(design, netlist, true);
+  const std::string crossing =
+      "iMerge -begin\nforeach v {1 2} {if {$v == 1} {iMerge -end}; "
+      "iWrite reg $v}\niApply\n";
+  overlap.Execute("crossing.pdl", crossing);
+  overlap.Finish();
+  const auto combined = overlap.SourceActions(true);
+  Require(combined.size() == 1 && combined[0].offset == 0 &&
+              combined[0].begin == 0 && combined[0].end == 4,
+          "overlapping merge and compound spans use the earliest caller site");
+}
 }  // namespace
 int main() {
   int failures = 0;
@@ -358,7 +397,7 @@ int main() {
         TestGeneratedBodies, TestDynamicBinding, TestDynamicOptions,
         TestDynamicLevel, TestMergeScope, TestAllTargetArguments,
         TestEndOfStream, TestInstanceParameters, TestParameterNamedArgs,
-        TestResetScope}) {
+        TestResetScope, TestCompoundSourceActions}) {
     try {
       test();
     } catch (const std::exception& error) {

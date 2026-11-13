@@ -330,9 +330,7 @@ Module Network {
     def test_local_reset_rejects_unfaithful_source_insertion(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/local_reset/nested.icl"
         for source in (
-                "iPDLLevel 1\niReset\nforeach v {1 2} { iWrite a.value $v }\niApply\n",
-                "iPDLLevel 1\niReset\nforeach v {a b} { iPrefix $v; iWrite value 3 }\niApply\n",
-                "iPDLLevel 1\niWrite a.value [iReset; expr 3]\niApply\n"):
+                "iPDLLevel 1\niWrite a.value [iReset; expr 3]\niApply\n",):
             with self.subTest(source=source):
                 (self.root / "source.pdl").write_text(source)
                 (self.root / "reset.pdl").write_text("previous artifact\n")

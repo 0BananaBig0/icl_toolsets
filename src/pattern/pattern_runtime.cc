@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <optional>
@@ -60,6 +61,8 @@ class Runtime::Impl {
     }
     Tcl_CreateObjCommand(interpreter_.get(), "::icl_pattern_dispatch", Dispatch,
                          this, nullptr);
+    Tcl_CreateObjCommand(interpreter_.get(), "::icl_pattern_scope", Scope, this,
+                         nullptr);
     frames_.push_back({});
     if (netlist) {
       module_parameters_ = netlist->module_parameters;
@@ -93,6 +96,7 @@ class Runtime::Impl {
     const int result =
         Tcl_EvalEx(interpreter_.get(), script.data(),
                    static_cast<int>(script.size()), TCL_EVAL_GLOBAL);
+    CloseScope();
     if (result != TCL_OK) {
       failed_ = true;
       throw std::runtime_error(path + ": " +
@@ -123,7 +127,35 @@ class Runtime::Impl {
 
   const std::vector<Operation>& operations() const { return operations_; }
   const std::vector<std::string>& warnings() const { return warnings_; }
-  const std::vector<SourceAction>& SourceActions() const { return actions_; }
+  std::vector<SourceAction> SourceActions(bool whole_commands) const {
+    if (!whole_commands) return actions_;
+    std::map<size_t, SourceAction> starts;
+    for (const auto& action : actions_) {
+      if (action.end > action.begin) starts.emplace(action.begin, action);
+    }
+    for (auto action : compounds_) {
+      if (action.end == action.begin) continue;
+      auto next = starts.lower_bound(action.begin);
+      if (next != starts.begin()) {
+        const auto previous = std::prev(next);
+        if (previous->second.end > action.begin) {
+          const size_t end = std::max(action.end, previous->second.end);
+          action = previous->second;
+          action.end = end;
+          starts.erase(previous);
+        }
+      }
+      while (next != starts.end() && next->first < action.end) {
+        // A merge opened inside this command may end in a later source file.
+        action.end = std::max(action.end, next->second.end);
+        next = starts.erase(next);
+      }
+      starts.emplace(action.begin, std::move(action));
+    }
+    std::vector<SourceAction> result;
+    for (const auto& [begin, action] : starts) result.push_back(action);
+    return result;
+  }
 
  private:
   struct Site {
@@ -160,13 +192,15 @@ class Runtime::Impl {
       std::string text;
     };
     std::map<size_t, Edit> edits;
-    std::function<void(const std::vector<pdl::Command>&, bool)> visit;
-    visit = [&](const auto& commands, bool procedure) {
+    std::function<void(const std::vector<pdl::Command>&, bool, bool)> visit;
+    visit = [&](const auto& commands, bool procedure, bool top) {
       for (const auto& command : commands) {
         if (command.words.empty()) continue;
         const auto& first = command.words.front();
         const auto name = CommandName(first.value);
-        if (first.literal && !first.expanded && pdl::FindCommandSpec(name)) {
+        const bool is_pdl =
+            first.literal && !first.expanded && pdl::FindCommandSpec(name);
+        if (is_pdl) {
           const size_t id = sites_.size();
           sites_.push_back(
               {path, document, command.range, &command,
@@ -181,14 +215,25 @@ class Runtime::Impl {
               edits.insert_or_assign(range.end - 1, Edit{range.end - 1, "\\"});
             }
           }
+        } else if (top && trace_source_ &&
+                   source != std::numeric_limits<size_t>::max()) {
+          const size_t id = sites_.size();
+          sites_.push_back({path, document, command.range, &command, source});
+          edits.emplace(
+              first.range.begin,
+              Edit{first.range.begin,
+                   "::icl_pattern_scope " + std::to_string(id) + ";\n"});
+          const size_t end = command.words.back().range.end;
+          edits.emplace(end, Edit{end, "\n::icl_pattern_scope -1;"});
         }
         for (const auto& word : command.words) {
-          visit(word.script, procedure || name == "proc" || name == "iProc");
-          visit(word.substitutions, procedure);
+          visit(word.script, procedure || name == "proc" || name == "iProc",
+                false);
+          visit(word.substitutions, procedure, false);
         }
       }
     };
-    visit(document->commands(), false);
+    visit(document->commands(), false, true);
     std::string result;
     size_t begin = 0;
     for (const auto& entry : edits) {
@@ -199,6 +244,39 @@ class Runtime::Impl {
     }
     result.append(document->source(), begin, std::string::npos);
     return result;
+  }
+
+  void CloseScope() {
+    if (!compound_) return;
+    compound_->end = operations_.size();
+    compounds_.push_back(std::move(*compound_));
+    compound_.reset();
+  }
+
+  static int Scope(void* data, Tcl_Interp* interpreter, int count,
+                   Tcl_Obj* const values[]) {
+    auto& self = *static_cast<Impl*>(data);
+    Tcl_WideInt id = -2;
+    if (count != 2 ||
+        Tcl_GetWideIntFromObj(interpreter, values[1], &id) != TCL_OK ||
+        id < -1 || (id >= 0 && static_cast<size_t>(id) >= self.sites_.size())) {
+      Tcl_SetObjResult(interpreter,
+                       Tcl_NewStringObj("invalid PDL compound identity", -1));
+      return TCL_ERROR;
+    }
+    try {
+      self.CloseScope();
+      if (id >= 0 && self.trace_source_ && self.frames_.size() == 1) {
+        const auto& site = self.sites_[static_cast<size_t>(id)];
+        self.compound_ =
+            SourceAction{site.source, site.range.begin, self.operations_.size(),
+                         0, self.frames_.back().prefix};
+      }
+      return TCL_OK;
+    } catch (const std::exception& error) {
+      Tcl_SetObjResult(interpreter, Tcl_NewStringObj(error.what(), -1));
+      return TCL_ERROR;
+    }
   }
 
   static int Dispatch(void* data, Tcl_Interp* interpreter, int count,
@@ -296,7 +374,8 @@ class Runtime::Impl {
     }
     try {
       const auto name = CommandName(Tcl_GetString(values[0]));
-      if (name == "icl_pattern_dispatch" || pdl::FindCommandSpec(name)) {
+      if (name == "icl_pattern_dispatch" || name == "icl_pattern_scope" ||
+          pdl::FindCommandSpec(name)) {
         return TCL_OK;
       }
     } catch (...) {
@@ -647,6 +726,8 @@ class Runtime::Impl {
   bool trace_source_ = false;
   size_t source_count_ = 0;
   std::vector<SourceAction> actions_;
+  std::vector<SourceAction> compounds_;
+  std::optional<SourceAction> compound_;
   std::optional<size_t> main_merge_action_;
   const Design& design_;
   std::map<std::string, const InstanceScope*> instance_scopes_;
@@ -685,8 +766,8 @@ void Runtime::Finish() { impl_->Finish(); }
 const std::vector<Operation>& Runtime::operations() const {
   return impl_->operations();
 }
-const std::vector<SourceAction>& Runtime::SourceActions() const {
-  return impl_->SourceActions();
+std::vector<SourceAction> Runtime::SourceActions(bool whole_commands) const {
+  return impl_->SourceActions(whole_commands);
 }
 const std::vector<std::string>& Runtime::warnings() const {
   return impl_->warnings();

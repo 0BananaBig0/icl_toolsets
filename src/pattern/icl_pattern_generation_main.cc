@@ -434,16 +434,15 @@ int main(int argc, char** argv) {
            "  --local_reset PATH   Insert reset releases into the main "
            "sequence;\n"
            "                       preserve procedure definitions\n"
-           "Current scheduling: ordinary single SI/SO, scan registers, muxes,\n"
-           "logic/one-hot paths and local resets; literal "
-           "iWrite/iApply/iState.\n"
+           "Current scheduling: standalone client chains, single-TAP scans,\n"
+           "mixed data access, logic/one-hot paths and local resets.\n"
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"
            "Single-TAP IR/DR scans and nonzero iRunLoop TCK counts require\n"
-           "explicit iReset. iRunLoop -sck/-time, multi-TAP, shadow\n"
-           "register transactions and free-running clocks remain unsupported.\n"
-           "Independent full-register write-only iMerge calls can combine "
-           "ordered apply groups.\n";
+           "explicit iReset. iRunLoop -sck/-time, multi-TAP and general\n"
+           "serial-derived or free-running clock events remain unsupported.\n"
+           "Independent ScanRegister iMerge calls can combine ordered apply\n"
+           "groups, including reads, slices, aliases and masked writes.\n";
     return 0;
   }
   if (argc == 2 && std::string(argv[1]) == "--version") {
@@ -489,41 +488,54 @@ int main(int argc, char** argv) {
     runtime.Finish();
     const auto pdl = GenerateMerged(network.netlist, runtime.operations());
     if (!options.local_reset.empty()) {
-      ResetEdits edits;
-      std::vector<pattern::Operation> expected;
-      Generate(network.netlist, runtime.operations(), &runtime.SourceActions(),
-               &edits, &expected);
-      for (size_t source = 0; source < sources.size(); ++source) {
-        size_t offset = 0;
-        for (auto it = edits.lower_bound({source, 0});
-             it != edits.end() && it->first.first == source; ++it) {
-          const size_t position = it->first.second;
-          if (position < offset || position > sources[source].size()) {
-            throw std::runtime_error("invalid local-reset source range");
+      const auto rewrite = [&](bool whole_commands) {
+        std::string rewritten_source;
+        ResetEdits edits;
+        std::vector<pattern::Operation> expected;
+        const auto actions = runtime.SourceActions(whole_commands);
+        Generate(network.netlist, runtime.operations(), &actions, &edits,
+                 &expected);
+        for (size_t source = 0; source < sources.size(); ++source) {
+          size_t offset = 0;
+          for (auto it = edits.lower_bound({source, 0});
+               it != edits.end() && it->first.first == source; ++it) {
+            const size_t position = it->first.second;
+            if (position < offset || position > sources[source].size()) {
+              throw std::runtime_error("invalid local-reset source range");
+            }
+            rewritten_source.append(sources[source], offset, position - offset);
+            rewritten_source += it->second;
+            offset = position;
           }
-          local_reset.append(sources[source], offset, position - offset);
-          local_reset += it->second;
-          offset = position;
+          rewritten_source.append(sources[source], offset, std::string::npos);
+          // Separate file evaluation boundaries, including a continued EOF
+          // comment.
+          if (source + 1 < sources.size()) rewritten_source += "\n\n";
         }
-        local_reset.append(sources[source], offset, std::string::npos);
-        // Separate file evaluation boundaries, including a continued EOF
-        // comment.
-        if (source + 1 < sources.size()) local_reset += "\n\n";
-      }
-      pattern::Runtime verified(design, network.netlist);
-      verified.Execute(options.local_reset, local_reset);
-      verified.Finish();
-      const auto& actual = verified.operations();
-      if (actual.size() != expected.size() ||
-          !std::equal(actual.begin(), actual.end(), expected.begin(),
-                      [](const auto& a, const auto& b) {
-                        return a.command == b.command &&
-                               a.arguments == b.arguments;
-                      })) {
-        throw std::runtime_error(
-            "local-reset insertion changes source execution order or targets");
+        pattern::Runtime verified(design, network.netlist);
+        verified.Execute(options.local_reset, rewritten_source);
+        verified.Finish();
+        const auto& actual = verified.operations();
+        if (actual.size() != expected.size() ||
+            !std::equal(actual.begin(), actual.end(), expected.begin(),
+                        [](const auto& a, const auto& b) {
+                          return a.command == b.command &&
+                                 a.arguments == b.arguments;
+                        })) {
+          throw std::runtime_error(
+              "local-reset insertion changes source execution order or "
+              "targets");
+        }
+        return rewritten_source;
+      };
+      try {
+        local_reset = rewrite(true);
+      } catch (const std::runtime_error&) {
+        // Internal loop resets can require the original literal-site repair.
+        local_reset = rewrite(false);
       }
     }
+
     for (const auto& warning : design.warnings()) messages += warning + "\n";
     for (const auto& warning : runtime.warnings()) messages += warning + "\n";
     // All parsing, execution, scheduling and replay finish before publication.

@@ -544,15 +544,67 @@ This is an implementation choice under the existing autonomous authorization.
 Files: pattern_runtime.cc/.h; tests/src/pattern_runtime_test.cc; new
  tests/src/pattern/test_compound_reset_sources.py; Makefile; support docs.
 
-- [ ] Add RED whole-loop/prefix/conditional/queue tests, native source-span
+- [x] Add RED whole-loop/prefix/conditional/queue tests, native source-span
   assertions, procedure preservation, merged/multi-file cases and output safety.
   Check generated/flat/reset-source replay and rewrite fixed points.
-- [ ] Record complete main-command actions in existing instrumentation. Keep
+- [x] Record complete main-command actions in existing instrumentation. Keep
   ordinary PDL sites, procedure execution, Tcl control flow and safe interpreter
   validation unchanged; retain original text and final operation-order checking.
-- [ ] Verify focused runtime/CLI, full dynamic/static checks, leak-enabled
+- [x] Verify focused runtime/CLI, full dynamic/static checks, leak-enabled
   sanitizers, style/naming, representative loop scale and independent review.
   Document repairable scope and remaining caller-only rewrite requirements.
+
+## Task 23: Merge independent DataRegister access streams
+
+Extend the existing physical-register occupancy classification to DataRegisters
+as well as ScanRegisters. Reuse ordinary primary/scan/mixed data scheduling,
+read obligations, partial-write controlling fill and fresh-state serial fallback.
+Shared address/data/enable signals remain scheduler constraints; they are not
+independent storage ownership. Keep all existing opaque/resource/timing and
+AccessTogether barriers. This increment does not add computed-port target
+batching, whose underlying physical ownership needs separate analysis.
+
+Alternatives: leave all data calls serialized (misses existing common-frame
+capability), add another merger (duplicates ordering/state), or extend the
+current supported-register classification. Choose the latter under the existing
+autonomous scope. Target 64 independent two-apply calls, with constant-width
+registers and existing bounded solver/planner behavior; no optimality claim.
+
+Files: pattern_merge.cc; new tests/src/pattern/test_merge_data_registers.py;
+Makefile and support records. Reuse existing merge/data fixtures and test helpers.
+
+- [ ] Add RED tests for independent primary/serial/mixed registers, read/write
+  apply order, partial/aliased/X targets, shared bus constraints, conflicts,
+  resource barriers, fallback/failure safety and representative scale.
+- [ ] Extend physical-register classification only; retain validation, whole-
+  register occupancy, source order, common scheduler and concrete replay.
+- [ ] Verify source/flat/generated fixed points, focused merge/data tests, full
+  dynamic/static regression, leak-enabled sanitizers, style/naming and independent
+  review. Record measurements and remaining broader merge requirements.
+
+## Task 24: Merge direct primary-input access streams
+
+Reuse the same whole-object ownership pass for unconnected top-level DataInPort,
+AddressPort, ReadEnPort and WriteEnPort targets. Alias slices resolve to those
+physical inputs before classification. Retain a barrier for connected child
+ports and computed outputs until their underlying ownership is resolved; never
+classify a forwarding port as independent from its source. Shared scheduling
+still checks reads, register effects, reservations and final controlling state.
+
+Use the existing reservable-kind classifier plus explicit top/input/unconnected
+checks, with no new dependency graph or scheduler. Expected scale: 64 two-apply
+calls, constant-width ports; measure replay and retain ordered-set complexity.
+Files: pattern_merge.cc; new tests/src/pattern/test_merge_primary_inputs.py;
+Makefile and current support records.
+
+- [ ] Add RED cases for direct/aliased/masked primary writes, physical conflicts,
+  primary control ports, mixed register streams, connected-child barriers,
+  invalid operands/output safety and representative scale.
+- [ ] Extend Batchable only for actual unconnected primary input storage. Keep
+  shared operand validation, per-call ordering, opaque/resource barriers and
+  fresh-state fallback; do not admit DataOutPort or connected input targets.
+- [ ] Run focused and full dynamic/static checks, leak-enabled sanitizer replay,
+  style/naming, scale and independent review; update limits accurately.
 
 ## Remaining completion work (not yet completed)
 
@@ -786,3 +838,13 @@ merge suites (20 + 11 cases) passed ASan/UBSan/LeakSanitizer with leaks enabled;
 formatting/naming/whitespace and independent review passed. The full regression
 also verifies the committed Task20 implementation. See
 [masked-write evidence](../../pattern-generation.md#masked-and-aliased-merge-writes-2026-11-13).
+
+Task 22 passed reviewed full dynamic/static `make -j2 --jobserver-style=pipe
+check` (exit 0, `build/compound-reset-regression-reviewed.log` and `.exit`),
+including 40 directional/seven legacy standards, native tests, all parser/scanner
+rules over 2,507 ICL files and editor corpus checks. Five optional ANTLR checks
+remain skipped. Native runtime, twelve compound-source and 25 existing CLI
+cases passed leak-enabled ASan/UBSan/LeakSanitizer. Formatting/naming/whitespace
+and independent review passed; the merge-overlap finding was reproduced before
+its fix. The earlier full run was stopped with143 for that fix and is not final
+evidence. See [compound-source evidence](../../pattern-generation.md#main-tcl-command-reset-prerequisites-2026-11-13).

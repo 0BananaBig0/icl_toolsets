@@ -468,7 +468,7 @@ System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
 | `--output PATH` | Write generated PDL; defaults to `out/<top>.pdl`. |
 | `--debug` | Also write `debug/<top>.icl` beside the output, including TAP/BSDL metadata for replay. |
 | `--log PATH` | Copy stdout diagnostics to a file. |
-| `--local_reset PATH` | Write source PDL with transitive local-reset releases before main-level writes, calls or whole merge blocks; preserve procedure definitions and combine ordered input files. |
+| `--local_reset PATH` | Write source PDL with transitive local-reset releases before main-level writes, calls, Tcl compounds or whole merge blocks; preserve procedure definitions and combine ordered input files. |
 
 The reset-only output releases prerequisite TDRs in dependency order and groups
 independent releases under one `iApply`. It chooses release paths that respect
@@ -476,8 +476,9 @@ resource reservations, including taken-but-unwritten bits of a control register.
 Inserted partial writes avoid acquiring new reservations. It does not insert
 SIB-opening commands.
 Before publishing it, the tool re-executes the rewritten PDL and verifies the
-operation sequence. It rejects cases that need edits inside procedures, unsafe
-repeated source insertions, or changes to Tcl substitution order. See
+operation sequence. Whole-loop prerequisites preserve repeated pending writes
+and entry prefixes; literal-site fallback retains repairable internal-reset loops.
+Cases requiring procedure edits or changed substitution order still reject. See
 [local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
 Mixed DataRegister access can alternate primary-input and scan frames, including
