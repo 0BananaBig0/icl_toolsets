@@ -441,6 +441,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "data_reset_release",
+      "top": "DataResetProbe",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_reset_probe.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/data_reset_release.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

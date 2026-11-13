@@ -736,14 +736,15 @@ class ScanScheduler::Impl {
     size_t total_bits = 0;
     for (const auto& [name, id] : netlist_.node_ids) {
       const auto& node = netlist_.nodes[id];
-      if (controls.count(id) && node.kind == "DataRegister") {
+      if (controls.count(id) && node.kind == "DataRegister" &&
+          !state_.DataRegisters().writes.count(id)) {
         assignments.emplace(id,
                             SymbolicValue::Literal(context_, state_.Value(id)));
       } else if (controls.count(id)) {
-        if (node.kind != "ScanRegister" ||
+        if ((node.kind != "ScanRegister" && node.kind != "DataRegister") ||
             (tap_ && id == tap_->instruction_register)) {
           throw std::runtime_error(
-              "local-reset control is not a writable TDR: " + name);
+              "local-reset control is not a writable register: " + name);
         }
         total_bits += node.Width();
         if (total_bits > 4096) {
@@ -774,7 +775,7 @@ class ScanScheduler::Impl {
             changes + z3::ite(bits == previous.bits && previous.known == known,
                               context_.int_val(0), context_.int_val(1));
         const auto fill = SymbolicValue::Literal(context_, fill_.at(id));
-        tie_breaks.push_back(z3::bv2int(bits ^ fill.bits, false));
+        tie_breaks.push_back(bits ^ fill.bits);
       } else if (node.model == ModelKind::kRegister || state_.IsDriven(id)) {
         assignments.emplace(id,
                             SymbolicValue::Literal(context_, state_.Value(id)));
@@ -796,7 +797,7 @@ class ScanScheduler::Impl {
                 "this write/call"
               : "local-reset solver limit; release feasibility not proved";
       for (size_t id : controls) {
-        if (netlist_.nodes[id].kind == "DataRegister") {
+        if (netlist_.nodes[id].kind == "DataRegister" && !choices.count(id)) {
           message += "\n  fixed DataRegister reset control " +
                      netlist_.nodes[id].name + " = " + state_.Value(id);
         }

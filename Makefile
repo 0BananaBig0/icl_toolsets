@@ -1097,6 +1097,7 @@ python3 tests/src/pattern/test_data_register_state.py $1
 python3 tests/src/pattern/test_data_reset_dependencies.py $1
 python3 tests/src/pattern/test_queued_state.py $1
 python3 tests/src/pattern/test_observation_state.py $1
+python3 tests/src/pattern/test_data_reset_releases.py $1
 python3 tests/src/pattern/test_hidden_client_events.py $1
 python3 tests/src/pattern/test_compound_reset_sources.py $1
 python3 tests/src/pattern/test_argument_reset_sources.py $1

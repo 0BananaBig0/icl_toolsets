@@ -1244,15 +1244,58 @@ void TestDataResetDependencies() {
   Require(scheduler.ResetPrerequisites(write).empty(),
           "already released DataRegister controls need no repair write");
   scheduler.Assume("release", "0");
-  bool blocked = false;
-  try {
-    scheduler.ResetPrerequisites(write);
-  } catch (const std::runtime_error& error) {
-    blocked =
-        std::string(error.what()).find("DataRegister") != std::string::npos;
+  const auto releases = scheduler.ResetPrerequisites(write);
+  Require(releases.size() == 1 && releases.front().size() == 1 &&
+              releases.front().front().arguments ==
+                  std::vector<std::string>{"release", "0b1"} &&
+              scheduler.Value("release") == "0",
+          "data release planning returns a write without changing hardware");
+  scheduler.Apply(releases.front());
+  Require(
+      scheduler.Value("release") == "1",
+      "planned data reset release executes through its declared write path");
+  scheduler.Apply(write);
+  Require(scheduler.Value("c.value") == "1001",
+          "released scan storage receives the requested value");
+}
+void TestDataResetReleaseReplay() {
+  for (bool scan_driven : {false, true}) {
+    const std::string file_name = "data_reset_release_replay.icl";
+    std::ifstream file("tests/cases/ours/pattern_generation/" + file_name);
+    pattern::Design design;
+    design.AddIcl(file_name,
+                  std::string(std::istreambuf_iterator<char>(file), {}));
+    const auto netlist = pattern::Elaborate(
+        design, scan_driven ? "DataResetReleaseScan" : "DataResetReleaseMixed");
+    const std::vector<pattern::Operation> write{
+        {"iWrite", {"c.value", "9"}, "test", {}}};
+    for (bool rewritten : {false, true}) {
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Reset();
+      if (rewritten) {
+        for (const auto& group : scheduler.ResetPrerequisites(write)) {
+          scheduler.Apply(group);
+        }
+      }
+      scheduler.Apply(write);
+      Require(scheduler.Value("c.value") == "1001" &&
+                  scheduler.Value(scan_driven ? "release" : "d.release") == "1",
+              "original and reset-rewritten schedules release and load target");
+      if (scan_driven) {
+        const std::string expected = rewritten ? "1" : "0";
+        Require(
+            scheduler.Value("data") == expected &&
+                scheduler.Value("enable") == expected,
+            "explicit data release establishes scan-source controlling fill");
+      } else {
+        Require(scheduler.Value("gate") == "1",
+                "mixed ancestor release retains the earlier scan control");
+      }
+      scheduler.Apply({{"iWrite", {"c.value", "0bx"}, "test", {}}});
+      Require(scheduler.Value("c.value") == "1001",
+              "target controlling fill survives either release schedule");
+    }
   }
-  Require(blocked && scheduler.Value("release") == "0",
-          "automatic data control repair retains its explicit boundary");
 }
 void TestDataReservationRollback() {
   for (bool serial : {false, true}) {
@@ -2097,6 +2140,7 @@ int main() {
   try {
     TestDataResetCallbacks();
     TestDataResetDependencies();
+    TestDataResetReleaseReplay();
     TestOneHotSharedAnalysisBudget();
     TestMergeAnalysisBudget();
     TestSharedScanOutputs();

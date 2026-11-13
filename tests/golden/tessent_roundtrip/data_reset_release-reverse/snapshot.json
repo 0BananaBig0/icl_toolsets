@@ -1,0 +1,190 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "data_reset_release",
+    "top": "DataResetProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_reset_probe.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_reset_release.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/data_reset_probe.icl": "017f548b3112f6c2b89cfa8d7bd361c7e57b5df5ab9610427e9279d43e7731cd",
+    "tests/cases/ours/pattern_generation/data_reset_release.pdl": "955fc183d41f13b987d54869bcf1631031cecf4407a3665fee02104cd68ef45d"
+  },
+  "job": {
+    "id": "data_reset_release",
+    "top": "DataResetProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_reset_probe.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_reset_release.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "017f548b3112f6c2b89cfa8d7bd361c7e57b5df5ab9610427e9279d43e7731cd",
+      "source_0.pdl": "955fc183d41f13b987d54869bcf1631031cecf4407a3665fee02104cd68ef45d",
+      "run.tcl": "ac31134d1037d146d50d2e9a350613d41dda4e0d58a3e96bbe5555aa15f0fd25"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_reset_probe.icl": "017f548b3112f6c2b89cfa8d7bd361c7e57b5df5ab9610427e9279d43e7731cd",
+      "tests/cases/ours/pattern_generation/data_reset_release.pdl": "955fc183d41f13b987d54869bcf1631031cecf4407a3665fee02104cd68ef45d"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.629935760051012,
+    "outcome": "ok",
+    "result_sha256": "371c548751b2f5a0ccf1ed9e5bbd0303bf34c96bbbc019d0f208db7a7e93a1c1",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "DataResetProbe",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "1"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "6d26a286347a738277749cc3c26966a3dcb15873398a1d0054a0d6d9f3558060",
+  "vendor_console_sha256": "ad22ec483a51a8a64f577045f2d9c103e4f4135b0d6196e8ac7301daf1937b87",
+  "artifacts": {
+    "flat.pdl": "2e40b9d146197619f44785b251f130595d88115df169d704dfed8317774c419c",
+    "vendor.pdl": "371c548751b2f5a0ccf1ed9e5bbd0303bf34c96bbbc019d0f208db7a7e93a1c1"
+  }
+}

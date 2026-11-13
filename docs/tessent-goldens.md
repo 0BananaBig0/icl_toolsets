@@ -659,3 +659,28 @@ Remote evidence is under
 /data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_queued_state/run_2026_11_13_01,
 in queued-state-probe-bundle, queued-state-forward-bundle and
 queued-state-observed-forward-bundle respectively.
+
+## DataRegister reset-release artifact (2026-11-13)
+
+The local-reset artifact tests/cases/ours/pattern_generation/data_reset_release.pdl
+is generated from data_reset_release_request.pdl using data_reset_probe.icl.
+A CLI test reproduces the artifact byte-for-byte, preserving the configure
+procedure and inserting the release in the caller.
+
+Tessent2026.2 accepts the forward generated output but adds a known-reset read
+comparison to the first target scan. Exact forward comparison therefore fails
+in build/data-reset-release-certificate.log/.exit(1); that evidence remains in
+build/data-reset-release-forward-evidence. The comparison policy is unchanged.
+
+A fresh reverse run starting from the generated local-reset artifact passes
+unchanged local replay of the vendor export:
+build/data-reset-release-reverse-evidence and
+build/data-reset-release-reverse-certificate.log/.exit(0).
+Snapshot: tests/golden/tessent_roundtrip/data_reset_release-reverse.
+Coverage becomes49directions (21forward/28reverse),33cases,plus seven legacy
+standards. This qualifies the recorded reset-mux artifact, not every reset
+rewrite or direct DataRegister-to-ResetPort connection.
+
+Remote evidence is under
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_data_reset_releases/run_2026_11_13_01,
+in data-reset-release-forward-bundle and data-reset-release-reverse-bundle.

@@ -439,3 +439,12 @@ may describe TAP instruction storage while default hardware assumptions remain
 prohibited. State-only input does not trigger final end-state transactions.
 Hardware-dependent getters retain the static-generation diagnostic. This does
 not claim an interactive observation database or vendor flag compatibility.
+
+### DataRegister reset-release planning (2026-11-13)
+
+Declared writable DataRegisters participate in the existing reset-release
+candidate solve and dependency layers. Read-only controls remain fixed; all
+selected releases must pass the existing write-path scheduler, reservation
+checks and fresh source replay. Candidate selection retains bounded planning
+rather than claiming reachability completeness. Original and reset-rewritten
+sources may have different legal schedules and controlling fill.

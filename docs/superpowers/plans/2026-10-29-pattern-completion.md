@@ -1045,3 +1045,14 @@ independent review pass. Stored vendor standards remain48directions/seven
 legacy cases; no new history-flag portability claim is made.
 Hardware-dependent getters retain their static-generation diagnostic.
 Task38 addresses automatic DataRegister reset releases.
+
+Task38 extends automatic reset releases to writable DataRegisters, preserves
+unsigned reset-choice ranking with a native bit-vector objective, and retains
+concrete validation of each selected payload. Full dynamic/static38suite checks
+pass in build/data-reset-releases-final-full.log/.exit(0), including49directional
+and seven legacy vendor standards,2,517ICL files covering334/119rules, and six
+editor tests. New14CLI/native and affected suites pass leak-enabled sanitizers;
+formatting/naming and independent review pass. The initial duplicate-fixture,
+solver-limit and sandbox-sanitizer failures are retained with corrected evidence
+in [the focused plan](2026-11-13-data-reset-releases.md). Strict coverage and
+remaining model requirements are still open.

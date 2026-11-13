@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, observation-history forwarding passed the complete
+On 2026-11-13, automatic DataRegister reset releases passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/observation-state-full.log/.exit. This includes all37 generator CLI suites
-under dynamic/static builds, native tests,48 directional and seven legacy
-Tessent standards, all334 parser and119 scanner rules across2,516 ICL files,
-and six Vim/Neovim tests (190.833s). Five optional ANTLR integration tests were
+build/data-reset-releases-final-full.log/.exit. This includes all38 generator CLI
+suites under dynamic/static builds, native tests,49 directional and seven legacy
+Tessent standards, all334 parser and119 scanner rules across2,517 ICL files,
+and six Vim/Neovim tests (186.241s). Five optional ANTLR integration tests were
 skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native state,new13 history,
-DataRegister-state11,end-state11 andqueued-state15 CLI methods.
+Leak-enabled ASan/UBSan checks passed for native scheduler,new14 reset-release,
+reservation35,argument12,reset-dependency13 andqueued-state15 CLI methods.
 Formatting, naming, whitespace and independent review passed.
-See [observation-history verification](#observation-history-state-forwarding-2026-11-13).
+See [reset-release verification](#automatic-dataregister-reset-releases-2026-11-13).
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -2972,3 +2972,48 @@ build/observation-state-full.log/.exit(0):37generator suites,48directional/seven
 legacy standards,2,516ICL files covering334/119parser/scanner rules, and six
 editor tests in190.833s. Five optional ANTLR checks remain skipped. Strict
 authored coverage and later-change Rocky8 qualification remain open.
+
+## Automatic DataRegister reset releases (2026-11-13)
+
+Local-reset rewriting can now choose DataRegister reset controls with declared
+write paths. It reuses the existing symbolic reset solve, preservation masks
+and dependency layers, then emits ordinary iWrite/iApply releases outside
+unchanged procedure bodies. Read-only data controls remain fixed. Existing
+scheduling and concrete replay must implement each chosen payload; a declared
+write path does not guarantee every payload is feasible.
+
+Scan and data ancestors are released in dependency order. Reserved controls,
+taken-but-unwritten bits and reserved upstream write enables retain their
+constraints. Disabled or incompatible data paths fail atomically. Existing
+solver/traversal limits remain; failure within those limits is not proof of
+physical unreachability.
+
+An original source and its local-reset rewrite need not produce the same scan
+schedule: explicit release commands add boundaries and establish controlling
+fill. Both sources retain their own original/flat/generated replay checks.
+Native assertions independently check reset release, the target value9,
+different scan-source fill and subsequent X-write retention.
+
+Fourteen CLI methods and native checks pass, including unsigned reset-choice
+ordering. The reset objective keeps its XOR distance as a bit vector, preserving
+unsigned ranking while avoiding a conversion that exceeded the unchanged solver
+limit under sanitizers. The same64/256-bit cases (458/460ICL bytes, six runs each)
+measured0.643s/4.880s before and0.487s/3.729s after on local Linux g++16.2.1 -O2.
+Paired total wall/RSS were6.19s/64900KiB and4.84s/64724KiB. These single paired
+measurements do not establish a universal speedup or a4096-bit runtime guarantee.
+See build/data-reset-releases-{baseline,bv}-benchmark.log/.exit(0).
+
+The14CLI cases and native/reservation/argument/reset-dependency/queued-state
+suites pass ASan/UBSan with leak detection in the host environment. The first
+full run failed a duplicate-module audit; the fixtures now share one definition
+and the corrected audit passes. A stale native fixture filename was corrected.
+An initial sanitizer run was blocked by sandbox tracing; the host rerun retained
+leak detection. Failure logs and the detailed evidence are retained in the
+[implementation plan](superpowers/plans/2026-11-13-data-reset-releases.md).
+
+The generated reset-mux artifact passes reverse Tessent certification; the
+forward comparison failed after Tessent added an implicit read. See the
+[vendor record](tessent-goldens.md#dataregister-reset-release-artifact-2026-11-13).
+Full dynamic/static regression passes in build/data-reset-releases-final-full.log/.exit(0):
+38generator suites,49directional/seven legacy standards,2,517ICL files covering
+334/119parser/scanner rules, and six editor tests in186.241s.

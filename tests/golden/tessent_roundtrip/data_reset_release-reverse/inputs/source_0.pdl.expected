@@ -1,0 +1,9 @@
+iPDLLevel 1
+iProcsForModule DataResetProbe
+iProc configure {v} { iWrite c.value $v; iApply }
+iReset
+iWrite release 0b1
+iApply
+iCall configure 9
+iRead c.value 9
+iApply
