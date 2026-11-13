@@ -384,7 +384,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
-| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint ScanRegister calls, including slices/aliases/X masks, by apply depth, with serial fallback. |
+| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint ScanRegister/DataRegister calls, including slices/aliases/X masks, by apply depth, with serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. Tessent default-instance and persistent takes are supported within the input stream; other clock/serial-control-port reservations remain unsupported. |
 | System-clock commands | Execution/scheduling remains unfinished and reports an error. |
 | Hardware readback commands | Static generation cannot supply live device observations. |
@@ -549,7 +549,7 @@ Parallel”, also describes serial fallback and recursive merging.
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
 PDL parser. It combines consecutive calls when each contains one or more
-plain applies with ScanRegister reads and writes (including slices, aliases and
+plain applies with ScanRegister/DataRegister reads and writes (including slices, aliases and
 X masks), and their register sets over the entire calls do not overlap. Aliases
 occupy every resolved physical register; even disjoint slices of one register
 retain serial order to preserve controlling fill. Reads may use
@@ -2336,3 +2336,41 @@ files and editor corpus checks. Five optional ANTLR checks remain skipped.
 The final twelve-case measurement took 4.35 s / 59,556 KiB; the 256-iteration
 case took 0.263 s for four runs. The initial full run was stopped for the review
 fix and is superseded by this result.
+
+
+### Merged DataRegister streams (2026-11-13)
+
+Independent DataRegister access streams now use the existing merge pass,
+including slices, inverted aliases and masked writes. Primary, serial, mixed
+and addressed access still use the common scheduler. Shared buses and enable
+requirements may require multiple physical frames within a merged apply;
+primary observations occur before pin changes that perform writes. Failed
+joint scheduling still retries serially from fresh state.
+
+All calls share controlling and expected state. IEEE 1687 §7.9.18 permits
+unreserved values to change through interleaving; final state follows the merged
+sequence rather than the original serial order. Per-call apply order remains
+fixed. Resource commands retain their serialization barriers. A reset-dependent
+regression checks the actual post-merge data value and verifies that a reserved
+variant retains its serial result. Physical overlap and AccessTogether/opaque/
+resource/timing barriers retain their prior handling.
+
+Thirteen new cases cover primary/serial/mixed/addressed access, ordered
+observations and writes, masks/aliases, shared buses, reset-conflict fallback,
+physical conflicts and failed-output safety. The original 31 merge, 20 primary
+data and 25 serial-data cases pass. Leak-enabled ASan/UBSan/LeakSanitizer checks
+pass for all new cases, including the review's final-state probe. Independent
+review found no actionable issue. The 64-register, two-apply-call workload has
+4,578 PDL bytes and takes about 2.3 s for three replay forms, producing two
+applies. The prior serial path exceeded the test's 60-second deadline; no
+precise speedup ratio is claimed. Twelve cases before the added final-state
+probe took 4.36 s / 115,424 KiB.
+
+Computed-output and connected-port ownership, timing/resource optimization and
+broader vendor qualification remain open. No new vendor certificate is claimed.
+
+Full dynamic/static `make check` passed with exit 0
+(`build/merge-data-regression.log` and `.exit`), including all thirteen new cases,
+40 directional/seven legacy standards, all parser/scanner rules over 2,507 ICL
+files and editor corpus checks. Five optional ANTLR checks remain skipped.
+Google formatting, changed-source naming and whitespace checks pass.

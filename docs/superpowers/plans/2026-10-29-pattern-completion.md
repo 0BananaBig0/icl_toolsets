@@ -573,12 +573,12 @@ registers and existing bounded solver/planner behavior; no optimality claim.
 Files: pattern_merge.cc; new tests/src/pattern/test_merge_data_registers.py;
 Makefile and support records. Reuse existing merge/data fixtures and test helpers.
 
-- [ ] Add RED tests for independent primary/serial/mixed registers, read/write
+- [x] Add RED tests for independent primary/serial/mixed registers, read/write
   apply order, partial/aliased/X targets, shared bus constraints, conflicts,
   resource barriers, fallback/failure safety and representative scale.
-- [ ] Extend physical-register classification only; retain validation, whole-
+- [x] Extend physical-register classification only; retain validation, whole-
   register occupancy, source order, common scheduler and concrete replay.
-- [ ] Verify source/flat/generated fixed points, focused merge/data tests, full
+- [x] Verify source/flat/generated fixed points, focused merge/data tests, full
   dynamic/static regression, leak-enabled sanitizers, style/naming and independent
   review. Record measurements and remaining broader merge requirements.
 
@@ -605,6 +605,47 @@ Makefile and current support records.
   fresh-state fallback; do not admit DataOutPort or connected input targets.
 - [ ] Run focused and full dynamic/static checks, leak-enabled sanitizer replay,
   style/naming, scale and independent review; update limits accurately.
+
+## Task 25: Use the complete generator suite in strict coverage
+
+The coverage recipe currently runs only six generator CLI suites while dynamic
+and static checks run the growing complete list. Reuse one ordered recipe/list
+for all three binaries so current tests reach the authored-code coverage gate.
+Keep 100% line/90% raw-branch thresholds and the existing native/editor coverage;
+missing coverage remains an acceptance failure, never a reason to lower limits.
+
+Files: Makefile; tests/test_makefile.py for dry-run command-set equivalence;
+coverage evidence and remaining-gap ledger. A shared Make recipe removes duplicate
+lists without changing suite order or dropping exit failures. Do not override
+the generator executable variable in a recursive make, which would relink the
+coverage binary using ordinary objects.
+
+- [ ] Reproduce missing coverage suites with a dry-run test that compares the
+  actual planned generator invocations for dynamic/static/coverage builds.
+- [ ] Share the generator suite recipe, keeping all existing suites and native
+  checks; verify command-set/order equality and first-failure propagation.
+- [ ] Run instrumented tests and the unchanged strict gate, retain the report,
+  address uncovered reachable authored paths and record residual platform or
+  tool constraints honestly. A run below thresholds is unfinished acceptance.
+
+## Task 26: Source distribution, installation and Rocky Linux 8 qualification
+
+Use the existing source archive and manifest-based installers in isolated local
+and remote prefixes. The authorized lianghuaxiao host is Rocky Linux8.10 with
+GCC8.5/default Make4.2.1, installed GCC Toolset15, CMake3.26.5 and Tcl8.6.8.
+Use the installed C++17 toolset; build the required newer GNU Make and the already
+pinned Z3 release only inside test_icl_toolsets/test_platform or /tmp. Reuse the
+verified local Z3 tarball hash. No personal installation or editor configuration
+changes. Bound dependency builds to two parallel jobs.
+
+- [ ] Prepare isolated prerequisites and retain versions, archive hashes and
+  commands. Build the actual source archive on Rocky8 with Bison/Flex disabled.
+- [ ] Install all five commands into a temporary prefix; run installed formatter,
+  LSP and pattern original/flat/generated/reset-rewrite checks. Verify uninstall
+  preserves unrelated files. Repeat local dynamic/static installation checks.
+- [ ] Run static release binaries on the actual Rocky8 host and inspect dependency
+  behavior. Rebuild/fix genuine compatibility failures, preserve matching Tcl
+  headers/libraries, and record the precise tested toolchain and remaining limits.
 
 ## Remaining completion work (not yet completed)
 
@@ -848,3 +889,14 @@ cases passed leak-enabled ASan/UBSan/LeakSanitizer. Formatting/naming/whitespace
 and independent review passed; the merge-overlap finding was reproduced before
 its fix. The earlier full run was stopped with143 for that fix and is not final
 evidence. See [compound-source evidence](../../pattern-generation.md#main-tcl-command-reset-prerequisites-2026-11-13).
+
+Task 23 passed full dynamic/static `make check` (exit 0,
+`build/merge-data-regression.log` and `.exit`), including thirteen new data-merge
+cases, 40 directional/seven legacy standards, native tests, all parser/scanner
+rules over 2,507 ICL files and the editor corpus. Five optional ANTLR checks
+remain skipped. All new cases passed leak-enabled sanitizers (initial twelve
+plus the added final-state/revised fallback checks); existing merge and data
+suites, style/naming/whitespace and independent review pass. The reviewed reset
+interleaving follows IEEE7.9.18 common-state semantics, verified with explicit
+post-merge reads and a reserved serial variant. See
+[data-merge evidence](../../pattern-generation.md#merged-dataregister-streams-2026-11-13).

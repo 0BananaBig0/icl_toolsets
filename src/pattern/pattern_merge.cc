@@ -61,7 +61,8 @@ class Merger {
         }
         for (const auto& bit : target.bits) {
           if (bit.node >= netlist_.nodes.size() ||
-              netlist_.nodes[bit.node].kind != "ScanRegister") {
+              (netlist_.nodes[bit.node].kind != "ScanRegister" &&
+               netlist_.nodes[bit.node].kind != "DataRegister")) {
             return false;
           }
           targets.insert(bit.node);

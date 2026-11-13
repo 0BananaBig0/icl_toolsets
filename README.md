@@ -355,7 +355,8 @@ cannot plan use the existing bounded solver. It does not guarantee globally
 shortest patterns. See [scheduling behavior and limits](docs/pattern-generation.md#dependency-guided-scheduling).
 
 `iMerge` blocks are flattened into the same output stream. Compatible calls
-containing reads and writes of disjoint ScanRegisters (including slices, aliases and X masks) can
+containing reads and writes of disjoint ScanRegisters or DataRegisters (including slices,
+aliases and X masks) can
 share applies by apply depth, preserving each call's order. Other supported calls
 retain serial order, including AccessTogether aliases, waits and resource commands; nested merges are supported. The tool validates each result
 through the existing scheduler and concrete replay, and retries serial execution
@@ -489,7 +490,8 @@ writes use the same scheduler, including mux/logic/one-hot sources and supported
 `AccessTogether` groups; see [data-port writes](docs/pattern-generation.md#computed-data-port-writes-2026-10-29). Two mixed-I/O cases have forward
 Tessent fixed-point certificates; see [support and limits](docs/pattern-generation.md#mixed-parallel-and-serial-frames-2026-10-29).
 
-Independent ScanRegister reads and writes, including slices, aliases and X masks, inside an
+Independent ScanRegister/DataRegister reads and writes, including slices, aliases
+and X masks, inside an
 `iMerge` can share apply groups, including multi-apply procedures. Each procedure's
 apply order is preserved; conflicts and stateful commands retain serial handling.
 See [merge behavior](docs/pattern-generation.md#merge-scheduling).
