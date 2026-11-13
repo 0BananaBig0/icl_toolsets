@@ -485,3 +485,11 @@ means never observed under §7.9.22(c), with specified binary/hex/decimal forms.
 Use the specific miscompare-history rule(h), despite the introductory expected-
 value wording. Live readback, status and interface/chain history remain open.
 See the focused plan for tests and retained limits.
+
+
+Standalone TCK idle increment (2026-11-13): literal waits reuse common network
+clock/reset events without requiring a TAP or implicit reset. Explicit selects
+are retained. Selection-dependent omitted controls require a proven route and
+known-active sourced/driven interface selects; broader ancestor selection stays
+open. Per-transition reservations, atomic failures and existing bounded fixed
+point acceleration apply. System clocks/time and multiple TAPs remain required.

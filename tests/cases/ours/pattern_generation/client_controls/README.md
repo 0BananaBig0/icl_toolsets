@@ -14,3 +14,11 @@ so it is excluded from this manifest and has no qualification certificate.
 The synthetic state-model regression in `test_client_scan_controls.py` retains
 that connection to detect symbolic/concrete phase disagreement; it does not
 establish that the connection is valid IEEE ICL.
+
+
+`idle_cases.json` adds a self-constructed §7.9.17 case with3- and5-TCK waits
+between accesses. Its explicit initial read matches the known reset capture.
+A fresh Tessent2026.2 forward certificate passes unchanged ordered-apply
+comparison. The earlier write-only initial apply failed exact comparison because
+the vendor added that read; both runs remain in the build evidence. This fixture
+qualifies ordinary standalone waits, not arbitrary hidden events or clock gates.

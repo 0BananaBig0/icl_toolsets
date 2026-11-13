@@ -1564,6 +1564,276 @@ void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
   Require(rejected && scheduler.Value("core.r") == previous,
           "failed scheduling preserves committed hardware state");
 }
+std::string StandaloneIdleSource(bool implicit_select) {
+  std::string source = R"(
+Module Cell {
+  ScanInPort si; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+  ScanRegister r[2:0] {
+    ScanInSource si; CaptureSource r[1:0], r[2]; ResetValue 0;
+  }
+  ScanOutPort so { Source r[0]; }
+  ScanInterface client { Port si; Port so; Port ce; Port se; Port ue; Port ck; }
+}
+Module Top {
+  ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+  UpdateEnPort ue; TCKPort ck;
+  Instance core Of Cell {
+    InputPort si = si; InputPort ce = 1'b1; InputPort se = 1'b0;
+    InputPort ue = 1'b1; InputPort ck = ck;
+  }
+  ScanOutPort so { Source core.so; }
+  ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port ck; }
+}
+)";
+  if (!implicit_select) {
+    source.insert(source.find("CaptureEnPort ce"), "SelectPort sel; ");
+    source.insert(source.find("Port ce;", source.find("ScanInterface")),
+                  "Port sel; ");
+    source.insert(source.find("InputPort ce"), "InputPort sel = sel; ");
+  }
+  return source;
+}
+
+void TestStandaloneIdle() {
+  for (bool controls : {false, true}) {
+    pattern::Design design;
+    std::string source =
+        "Module Top { ScanInPort si; ScanRegister r[3:0] { ScanInSource si; } "
+        "ScanOutPort so { Source r[0]; } DataInPort data; DataInPort enable; "
+        "DataRegister stored { WriteDataSource data; WriteEnSource enable; } ";
+    if (controls) {
+      source +=
+          "SelectPort sel; CaptureEnPort ce; ShiftEnPort se; "
+          "UpdateEnPort ue; TCKPort ck[2:0]; "
+          "DataOutPort clock_seen { Source ck[1]; } "
+          "ScanInterface client { Port si; Port so; Port sel; Port ce; "
+          "Port se; Port ue; Port ck[1]; }";
+    }
+    design.AddIcl("standalone-idle.icl", source + "}");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("data", "1");
+    scheduler.Assume("enable", "1");
+    scheduler.Assume("stored", "0");
+    scheduler.Idle(0);
+    scheduler.Idle(std::numeric_limits<uint64_t>::max());
+    Require(scheduler.Value("r") == "xxxx",
+            "standalone waits neither require nor invent reset");
+    Require(scheduler.Value("stored") == "0",
+            "idle normalization does not invent a primary DataRegister write");
+    scheduler.Assume("r", "1001");
+    if (controls) scheduler.Assume("sel", "0");
+    scheduler.Idle(3);
+    Require(
+        scheduler.Value("r") == "1001",
+        "idle protocol enables do not capture/shift/update ordinary storage");
+    if (controls) {
+      Require(scheduler.Value("sel") == "0", "idle retains explicit selection");
+      Require(scheduler.Value("ck") == "x0x",
+              "idle preserves unowned vector clock bits");
+      bool rejected = false;
+      try {
+        scheduler.Idle(1, {{netlist.node_ids.at("clock_seen"), "0"}});
+      } catch (const std::exception& error) {
+        rejected = std::string(error.what()).find("reserved resource") !=
+                   std::string::npos;
+      }
+      Require(rejected && scheduler.Value("clock_seen") == "0",
+              "transient reservation violations roll back even if a full cycle "
+              "returns low");
+    }
+  }
+
+  pattern::Design design;
+  design.AddIcl("periodic-idle.icl", StandaloneIdleSource(false));
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("sel", "1");
+  scheduler.Assume("core.r", "100");
+  const size_t id = netlist.node_ids.at("core.r");
+  bool rejected = false;
+  try {
+    scheduler.Idle(1, {{id, "100"}});
+  } catch (const std::exception& error) {
+    rejected = std::string(error.what()).find("reserved resource core.r") !=
+               std::string::npos;
+  }
+  Require(rejected && scheduler.Value("core.r") == "100",
+          "failed standalone idle preserves committed state");
+  scheduler.Idle(1);
+  Require(scheduler.Value("core.r") == "001",
+          "constant child controls capture on rising and update on falling");
+  scheduler.Idle(2);
+  Require(scheduler.Value("core.r") == "100",
+          "changing idle state is not skipped");
+  rejected = false;
+  try {
+    scheduler.Idle(std::numeric_limits<uint64_t>::max());
+  } catch (const std::exception& error) {
+    rejected =
+        std::string(error.what()).find("resource limit") != std::string::npos;
+  }
+  Require(rejected && scheduler.Value("core.r") == "100",
+          "nonconverging standalone idle rolls back");
+  scheduler.Assume("sel", "0");
+  scheduler.Idle(2);
+  Require(scheduler.Value("core.r") == "100",
+          "explicitly disabled child ignores constant capture/update");
+  scheduler.Assume("sel", "x");
+  scheduler.Idle(1);
+  Require(scheduler.Value("core.r") == "xxx",
+          "explicit unknown selection is not replaced by an inferred one");
+}
+
+void TestStandaloneIdleImplicitSelection() {
+  for (const std::string select : {"1", "0", "x"}) {
+    pattern::Design design;
+    design.AddIcl("implicit-idle.icl", StandaloneIdleSource(true));
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume("sel", select);
+    scheduler.Assume("core.r", "100");
+    bool rejected = false;
+    try {
+      scheduler.Idle(1);
+    } catch (const std::exception& error) {
+      rejected = std::string(error.what()).find("implicit selection") !=
+                 std::string::npos;
+    }
+    Require(
+        select == "1" ? !rejected && scheduler.Value("core.r") == "001"
+                      : rejected && scheduler.Value("core.r") == "100",
+        "implicit idle selection needs a proved route and active ancestors");
+  }
+  auto source = StandaloneIdleSource(true);
+  const std::string output = "ScanOutPort so { Source core.so; }";
+  source.replace(source.find(output), output.size(), R"(
+  DataInPort choose;
+  ScanMux route SelectedBy choose { 1'b0: si; 1'b1: core.so; }
+  ScanOutPort so { Source route; }
+)");
+  pattern::Design design;
+  design.AddIcl("bypassed-idle.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("sel", "1");
+  scheduler.Assume("choose", "0");
+  scheduler.Assume("core.r", "100");
+  scheduler.Idle(1);
+  Require(scheduler.Value("core.r") == "100",
+          "omitted selection does not activate a mux-disconnected register");
+  scheduler.Assume("choose", "1");
+  scheduler.Idle(1);
+  Require(scheduler.Value("core.r") == "001",
+          "omitted selection follows the current connected route");
+}
+
+void TestStandaloneIdleResetEdges() {
+  for (bool falling : {false, true}) {
+    auto source = StandaloneIdleSource(false);
+    source.insert(source.find("ScanInPort si;"), "ResetPort rst; ");
+    source.insert(source.find("ScanOutPort so"),
+                  "DataOutPort q[2:0] { Source r; } ");
+    source.insert(source.find("InputPort si"),
+                  falling ? "InputPort rst = ~ck; " : "InputPort rst = ck; ");
+    const std::string output = "ScanOutPort so { Source core.so; }";
+    source.replace(source.find(output), output.size(), R"(
+  Instance observer Of Observer {
+    InputPort si = core.so; InputPort data = core.q;
+    InputPort sel = 1'b1; InputPort ce = 1'b1; InputPort se = 1'b0;
+    InputPort ue = 1'b1; InputPort ck = ck;
+  }
+  ScanOutPort so { Source observer.so; }
+)");
+    source += R"(
+Module Observer {
+  ScanInPort si; DataInPort data[2:0]; SelectPort sel;
+  CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+  ScanRegister r[2:0] { ScanInSource si; CaptureSource data; }
+  ScanOutPort so { Source r[0]; }
+  ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port ck; }
+}
+)";
+    pattern::Design design;
+    design.AddIcl("idle-reset-edge.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume("sel", "1");
+    scheduler.Assume("core.r", "100");
+    scheduler.Assume("observer.r", "000");
+    scheduler.Idle(1);
+    // A rising reset clears held storage, not the bits captured before reset.
+    Require(scheduler.Value("core.r") == (falling ? "000" : "001") &&
+                scheduler.Value("observer.r") == (falling ? "000" : "100"),
+            ("idle reset edges retain capture snapshot and reset priority: "
+             "falling=" +
+             std::to_string(falling) + " core=" + scheduler.Value("core.r") +
+             " observer=" + scheduler.Value("observer.r"))
+                .c_str());
+  }
+}
+
+void TestStandaloneIdleClockGates() {
+  for (const std::string enabled : {"0", "1", "x"}) {
+    auto source = StandaloneIdleSource(false);
+    source.insert(
+        source.find("Module Top {") + std::string("Module Top {").size(),
+        " DataInPort enabled; ClockMux gated SelectedBy enabled "
+        "{ 1'b0: 1'b0; 1'b1: ck; } ");
+    const std::string binding = "InputPort ck = ck;";
+    source.replace(source.find(binding), binding.size(),
+                   "InputPort ck = gated;");
+    pattern::Design design;
+    design.AddIcl("idle-clock-gate.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume("sel", "1");
+    scheduler.Assume("enabled", enabled);
+    scheduler.Assume("core.r", "100");
+    scheduler.Idle(1);
+    Require(scheduler.Value("core.r") == (enabled == "0"   ? "100"
+                                          : enabled == "1" ? "001"
+                                                           : "xxx"),
+            "idle evaluates actual known/unknown child clock transitions");
+  }
+}
+
+void TestStandaloneIdleDataFill() {
+  auto source = StandaloneIdleSource(false);
+  source.insert(
+      source.find("Module Top {") + std::string("Module Top {").size(),
+      R"(
+  DataInPort data; DataInPort enabled;
+  DataRegister stored {
+    WriteDataSource data; WriteEnSource enabled; ResetValue 0;
+  }
+)");
+  pattern::Design design;
+  design.AddIcl("idle-data-fill.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("sel", "1");
+  scheduler.Assume("core.r", "100");
+  scheduler.Assume("data", "1");
+  scheduler.Assume("enabled", "1");
+  scheduler.Idle(1);
+  Require(
+      scheduler.Value("stored") == "1" && scheduler.Value("core.r") == "001",
+      "standalone falling update settles scan and enabled data storage");
+  scheduler.Assume("data", "0");
+  scheduler.Assume("enabled", "0");
+  scheduler.Apply({{"iWrite", {"stored", "0bx"}, "idle-data-fill.pdl", {}}});
+  Require(
+      scheduler.Value("stored") == "1",
+      "standalone data update becomes retained controlling fill for X writes");
+}
+
 void TestChangingIdleState() {
   const std::string directory =
       "tests/cases/ours/pattern_generation/access_link/";
@@ -2179,6 +2449,11 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestStandaloneIdle();
+    TestStandaloneIdleImplicitSelection();
+    TestStandaloneIdleResetEdges();
+    TestStandaloneIdleClockGates();
+    TestStandaloneIdleDataFill();
     TestDataResetCallbacks();
     TestDataResetDependencies();
     TestDataResetReleaseReplay();

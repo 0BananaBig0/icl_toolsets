@@ -1,0 +1,21 @@
+iProcsForModule ClientTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite value[3:0] 0b1001
+   iRead  value[3:0] 0b0000
+   iApply
+
+   iRunLoop 3 -tck
+   iWrite value[3:0] 0b0110
+   iRead  value[3:0] 0b1001
+   iApply
+
+   iRunLoop 5 -tck
+   iWrite value[3:0] 0b0110
+   iRead  value[3:0] 0b0110
+   iApply
+
+
+}

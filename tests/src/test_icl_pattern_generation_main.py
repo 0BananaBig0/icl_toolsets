@@ -598,8 +598,8 @@ Module Network {
                 self.assertIn(message, result.stdout)
                 self.assertFalse((self.root / "failed.pdl").exists())
         (self.root / "source.pdl").write_text("iRunLoop 1\n")
-        result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", ok=False)
-        self.assertIn("single TAP", result.stdout)
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl")
+        self.assertIn("iRunLoop 1 -tck\n", (self.root / "out/Network.pdl").read_text())
 
     def test_input_aliases_and_failure_publication(self):
         source = (self.root / "source.pdl").read_bytes()

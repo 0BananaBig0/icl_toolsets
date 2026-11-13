@@ -1,0 +1,13 @@
+iPDLLevel 1
+iProcsForModule ClientTop
+iReset
+iWrite value 9
+iRead value 0
+iApply
+iRunLoop 3
+iRead value 9
+iWrite value 6
+iApply
+iRunLoop 5 -tck
+iRead value 6
+iApply

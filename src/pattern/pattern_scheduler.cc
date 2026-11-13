@@ -305,6 +305,9 @@ class ScanScheduler::Impl {
         const auto role = roles.find(node.kind);
         if (role == roles.end()) continue;
         bound_controls.insert(port.node);
+        if (node.kind == "SelectPort") {
+          idle_selects_.insert({port.node, port.index});
+        }
         AddControl(port);
         client_controls_ = true;
         if (node.kind == "TCKPort") {
@@ -588,20 +591,105 @@ class ScanScheduler::Impl {
     global_resets_ = "00";
     state_.Reset();
   }
+  void ClientIdleCycle(NetworkState* state,
+                       const std::function<void(const NetworkState&)>& check) {
+    const std::vector<TapExecution::InterfacePorts> empty;
+    for (bool rising : {true, false}) {
+      std::map<Key, char> clocks;
+      for (const auto& pin : client_clocks_) {
+        clocks.emplace(pin, state->Read({pin.first, pin.second}));
+      }
+      for (const auto& [id, role] : client_pins_) {
+        if (role != "clock") continue;
+        auto bits = state->Value(id);
+        for (size_t offset : client_pin_bits_.at(id)) {
+          bits[offset] = rising ? '1' : '0';
+        }
+        state->Drive(id, bits);
+      }
+      for (auto& [pin, before] : clocks) {
+        const char after = state->Read({pin.first, pin.second});
+        const char from = rising ? '0' : '1', to = rising ? '1' : '0';
+        if (before == to && after == from) {
+          throw std::runtime_error(
+              "inverted client TCK phase is not supported");
+        }
+        before = before == to || after == from   ? '0'
+                 : before == from && after == to ? '1'
+                                                 : 'x';
+      }
+      check(*state);
+      std::map<size_t, ScanControl> controls;
+      std::optional<std::set<size_t>> active;
+      for (size_t id : registers_) {
+        const auto found = register_ports_.find(id);
+        const auto& ports =
+            found == register_ports_.end() ? empty : found->second;
+        const auto off = EffectiveScanControl(netlist_, *state, ports,
+                                              {'0', '0', '0', '0'}, clocks);
+        const auto on = EffectiveScanControl(netlist_, *state, ports,
+                                             {'0', '0', '0', '1'}, clocks);
+        if (off.capture == on.capture && off.shift == on.shift &&
+            off.update == on.update) {
+          controls.emplace(id, off);
+          continue;
+        }
+        if (!active) {
+          active = ActivePath(*state);
+          bool selected = active.has_value();
+          for (const auto& [port, index] : idle_selects_) {
+            const auto& node = netlist_.nodes.at(port);
+            if (node.inputs.count("Source") || state->IsDriven(port)) {
+              selected = selected && state->Read({port, index}) == '1';
+            }
+          }
+          if (!selected) {
+            throw std::runtime_error(
+                "standalone idle implicit selection requires one proven route "
+                "and known-active explicit interface selects");
+          }
+        }
+        controls.emplace(id, active->count(id) ? on : off);
+      }
+      state->Clock(controls, rising);
+      check(*state);
+    }
+  }
+
   void Idle(uint64_t cycles, const std::map<size_t, std::string>& preserved) {
     if (cycles == 0) return;
-    if (!tap_ || !tap_ready_) {
+    if (tap_ && !tap_ready_) {
       throw std::runtime_error(
           "TCK idle replay requires a single TAP and explicit iReset");
     }
-    auto run = std::make_unique<TapExecution>(*execution_);
-    run->TakeResetEvents();
-    run->TakeControlEvents();
+    auto run =
+        execution_ ? std::make_unique<TapExecution>(*execution_) : nullptr;
+    auto standalone = run ? nullptr : std::make_unique<NetworkState>(state_);
+    if (run) {
+      run->TakeResetEvents();
+      run->TakeControlEvents();
+    } else {
+      standalone->TakeResetEvents();
+      standalone->TakeControlEvents();
+    }
+    const auto snapshot = [&]() -> const NetworkState& {
+      return run ? run->State() : *standalone;
+    };
     auto fill = fill_;
     auto held = preserved;
     const auto check = [&](const NetworkState& state) {
       CheckPreserved(state, held, preserved);
     };
+    if (standalone) {
+      for (const auto& [id, role] : client_pins_) {
+        if (role == "select") continue;
+        auto bits = standalone->Value(id);
+        for (size_t offset : client_pin_bits_.at(id)) bits[offset] = '0';
+        standalone->Drive(id, bits);
+      }
+      standalone->Reset();
+      check(*standalone);
+    }
     size_t work = netlist_.nodes.size();
     for (const auto& node : netlist_.nodes) work += node.Width();
     const size_t limit = std::min<size_t>(
@@ -614,9 +702,15 @@ class ScanScheduler::Impl {
         throw std::runtime_error(
             "TCK idle replay resource limit before a stable state");
       }
-      const NetworkState previous(run->State());
-      Cycle(run.get(), '0', '0', check);
-      for (size_t id : run->TakeResetEvents()) {
+      const NetworkState previous(snapshot());
+      if (run) {
+        Cycle(run.get(), '0', '0', check);
+      } else {
+        ClientIdleCycle(standalone.get(), check);
+      }
+      const auto resets =
+          run ? run->TakeResetEvents() : standalone->TakeResetEvents();
+      for (size_t id : resets) {
         const auto& node = netlist_.nodes[id];
         if (node.kind == "ScanRegister") {
           fill[id] = initial_fill_.at(id);
@@ -626,16 +720,18 @@ class ScanScheduler::Impl {
           }
         }
       }
-      for (const auto& [id, event] : run->TakeControlEvents()) {
+      const auto events =
+          run ? run->TakeControlEvents() : standalone->TakeControlEvents();
+      for (const auto& [id, event] : events) {
         if (netlist_.nodes[id].kind == "DataRegister") {
           fill[id] = event ? *event : initial_fill_.at(id);
         }
       }
-      // Every cycle starts/ends in known Run-Test/Idle with the same inputs.
+      // Every cycle starts/ends at the same idle protocol levels.
       // An identical complete state is a fixed point for all remaining cycles.
-      if (run->State().SameState(previous)) break;
+      if (snapshot().SameState(previous)) break;
     }
-    state_.Restore(run->State());
+    state_.Restore(snapshot());
     execution_ = std::move(run);
     fill_ = std::move(fill);
   }
@@ -4562,6 +4658,7 @@ class ScanScheduler::Impl {
   std::map<size_t, std::string> client_pins_;
   std::map<size_t, std::set<size_t>> client_pin_bits_;
   std::set<Key> client_clocks_;
+  std::set<Key> idle_selects_;
   std::map<size_t, std::vector<TapExecution::InterfacePorts>> register_ports_;
   std::unique_ptr<DataReadRoutes> data_read_routes_, scan_read_routes_,
       mixed_read_routes_;

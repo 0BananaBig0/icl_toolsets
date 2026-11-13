@@ -1,0 +1,245 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "standalone_idle",
+    "top": "ClientTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/client_controls/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/client_controls/idle_access.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/client_controls/network.icl": "d85d82a11fa0894c428db1fe1bc4e64c728843acd395d5bce483847326fb56d7",
+    "tests/cases/ours/pattern_generation/client_controls/idle_access.pdl": "5f751f4d408c796f66ba9ce9b78731cec7f4f00a8cdf79febc2ee43fcdacd849"
+  },
+  "job": {
+    "id": "standalone_idle",
+    "top": "ClientTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/client_controls/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/client_controls/idle_access.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "d85d82a11fa0894c428db1fe1bc4e64c728843acd395d5bce483847326fb56d7",
+      "source_0.pdl": "5f751f4d408c796f66ba9ce9b78731cec7f4f00a8cdf79febc2ee43fcdacd849",
+      "run.tcl": "b401e80e6a1512a6e7133d25c3026c729a177a6d8a9f0a1c2fc4b335cb003114",
+      "ours.pdl": "3c4fb38d4fbbc309ffa6b04ebb575af7240e04513dee7c70ad90e42fb5b3a7a8"
+    },
+    "generator_command": [
+      "/tmp/icl-standalone-idle-build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/build/standalone-idle-observed-forward-prepared/test_standalone_idle/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/build/standalone-idle-observed-forward-prepared/test_standalone_idle/source_0.pdl",
+      "--top_module",
+      "ClientTop",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/build/standalone-idle-observed-forward-prepared/test_standalone_idle/ours.pdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.11517425201600417,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/client_controls/network.icl": "d85d82a11fa0894c428db1fe1bc4e64c728843acd395d5bce483847326fb56d7",
+      "tests/cases/ours/pattern_generation/client_controls/idle_access.pdl": "5f751f4d408c796f66ba9ce9b78731cec7f4f00a8cdf79febc2ee43fcdacd849"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.580993019975722,
+    "outcome": "ok",
+    "result_sha256": "c227f7b7c19c261897d6dbaa5de592f196226c283116087642df6b43ec538dcf",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ClientTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "value",
+            0,
+            "1"
+          ],
+          [
+            "value",
+            1,
+            "0"
+          ],
+          [
+            "value",
+            2,
+            "0"
+          ],
+          [
+            "value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "0"
+          ],
+          [
+            "value",
+            2,
+            "0"
+          ],
+          [
+            "value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iRunLoop",
+        "3",
+        "-tck"
+      ],
+      {
+        "writes": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "1"
+          ],
+          [
+            "value",
+            2,
+            "1"
+          ],
+          [
+            "value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "value",
+            0,
+            "1"
+          ],
+          [
+            "value",
+            1,
+            "0"
+          ],
+          [
+            "value",
+            2,
+            "0"
+          ],
+          [
+            "value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iRunLoop",
+        "5",
+        "-tck"
+      ],
+      {
+        "writes": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "1"
+          ],
+          [
+            "value",
+            2,
+            "1"
+          ],
+          [
+            "value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "1"
+          ],
+          [
+            "value",
+            2,
+            "1"
+          ],
+          [
+            "value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "0581b4a34b983fef8453ffbb32258f7a1e156a6153fa32fe1fe01b0d883eea9e",
+  "vendor_console_sha256": "fef0b13f397d48fbd4f45004b29162914d17ba1e980340e1e0c56662e90c75c6",
+  "artifacts": {
+    "flat.pdl": "3c4fb38d4fbbc309ffa6b04ebb575af7240e04513dee7c70ad90e42fb5b3a7a8",
+    "vendor.pdl": "c227f7b7c19c261897d6dbaa5de592f196226c283116087642df6b43ec538dcf"
+  }
+}

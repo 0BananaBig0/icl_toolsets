@@ -9,27 +9,27 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, explicit observation-history getters passed the complete
-make -j2 --jobserver-style=pipe check command, with exit 0 recorded in
-build/observation-getters-final-full.log/.exit. This includes all 39 generator
-CLI suites under dynamic/static builds, native tests, 50 directional and seven
-legacy Tessent standards, all 334 parser and 119 scanner rules across 2,519 ICL
-files, and six Vim/Neovim tests (180.590s). Five optional ANTLR integration tests
-were skipped because ICL_REF_DIR was unset.
+On 2026-11-14, standalone TCK waits passed the complete
+make -j2 --jobserver-style=pipe check command, with exit0 recorded in
+build/standalone-idle-reviewed-full.log/.exit. This includes all39 generator CLI
+suites under dynamic/static builds, native tests,51 directional and seven legacy
+Tessent standards, all334 parser and119 scanner rules across2,519 ICL files,
+and six Vim/Neovim tests (178.871s). Five optional ANTLR integration tests were
+skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native runtime/flatten tests and
-observation-state (20), queued-state (15), argument-reset (12) and compound-reset
-(12) CLI methods. Fresh instrumented runtime/flatten builds and tests, formatting,
-naming, whitespace and scale checks passed. The independent review's decimal
-conversion issue has a failing-then-passing regression and uses Tcl's C API.
-See [observation-getter verification](#explicit-observation-history-getters-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native scheduler tests and main31,
+client-control18, hidden-client8 and multiple-client17 CLI methods. Formatting,
+naming, whitespace, scale and independent review passed. A fresh Tessent2026.2
+forward certificate covers the explicit standalone-wait fixture. The original
+vendor comparison failure and obsolete CLI-contract failure remain recorded.
+See [standalone-wait verification](#standalone-tck-idle-replay-2026-11-13).
 
 Strict authored-code coverage remains unmet. The complete Task39 instrumented
 run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
 tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
 24,055/38,965 raw branches (61.7%), against required 100%/90%.
-This measurement predates Tasks40–43; it is not a coverage result for the current
-connection-validation and observation-getter changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
+This measurement predates Tasks40–44; it is not a coverage result for the current
+connection-validation, observation-getter and standalone-wait changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
 Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
@@ -386,7 +386,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
 | `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default/`-LastWrittenValue` updates overlapping queued write/compare values. `-LastReadValue`/`-LastMiscompareValue` supply observation history and are forwarded without hardware changes. No device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
-| `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
+| `iRunLoop` | Literal TCK waits on standalone clients or a reset single TAP; zero count is a no-op. |
 | `iNote` | Retain literal notes in generated PDL. |
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
@@ -465,7 +465,8 @@ broader syntax support and never execute PDL.
 - Source-attributed failures and invocation stacks. Structural disconnection,
   unsupported behavior and bounded solver exhaustion are distinct errors.
 - Literal TCK `iRunLoop` counts (IEEE 1687-2014 §7.9.17, printed pp. 175–176)
-  on a single TAP after explicit reset. `iRunLoop COUNT` defaults to TCK;
+  on standalone clients or a single TAP after explicit reset. Standalone clients
+  need no TAP or initial reset. `iRunLoop COUNT` defaults to TCK;
   `COUNT -tck` and `-tck COUNT` are accepted and emitted as decimal
   `COUNT -tck`. Counts must fit an unsigned 64-bit integer and contain no X.
   Queued reads/writes must first be applied. Zero cycles need no TAP or reset.
@@ -830,7 +831,7 @@ Developer obligations remain in the [design](superpowers/specs/2026-10-25-icl-pa
 pattern-equivalence result has been established.
 
 TCK idle replay stops simulating once the complete network state repeats on
-consecutive Run-Test/Idle cycles with identical inputs; generated PDL still
+consecutive idle cycles with identical inputs; generated PDL still
 contains the full requested count. Changing states are replayed up to a bound
 of 4,096 cycles, reduced for large networks, and a 15-second deadline checked
 between cycles.
@@ -3201,3 +3202,40 @@ rules, and six editor tests in 180.590s. Five optional ANTLR tests were skipped.
 Evidence is retained under build/observation-getters-final-sanitizer-* and
 build/observation-getters-instrumented-*, all with matching exit 0 files. See
 [the focused plan](superpowers/plans/2026-11-13-explicit-observation-getters.md).
+
+
+### Standalone TCK idle replay (2026-11-13)
+
+Literal TCK waits now replay standalone client clocks through the shared network
+state. Idle drives owned capture/shift/update and clock pins low while preserving
+SelectPort assumptions and unowned vector bits. Each clock edge uses actual
+child clock gates and controls; hidden capture/update, reset and DataRegister
+fill events retain their existing ordering. Idle normalization does not invent
+a primary-port write. A wait creates no new observation-history value.
+
+Missing selection is inferred only when the controls mask it, or when one scan
+route is proven and every explicitly sourced/driven interface select is known
+active. This deliberately rejects some valid selectively enabled networks;
+ancestor-aware general selection remains required. Explicit selection and
+unknown clock gates retain their modeled values. Inverted child clock phases
+remain unsupported. Reservations are checked at transitions, and failure rolls
+back hardware state, fill and output publication.
+
+The existing complete-state fixed point accelerates stable waits, including
+UINT64_MAX counts; changing states retain the cycle/work/time bounds. The
+65536-bit stable case passed three replay forms in1.440s in the final focused
+17-method CLI run (6.786s total). This measures the existing bounded algorithm,
+not an unbounded periodic-state accelerator. The later eighteenth method replays
+the vendor fixture. Native tests cover transient reservations, reset edges,
+unknown gates, mux-hidden storage and DataRegister fill after clocked writes.
+
+Tessent2026.2 exact forward certification covers the explicit client fixture
+with waits of3 and5 TCK cycles between accesses. The first comparison failed
+because Tessent emitted an extra initial reset-value read; its evidence is
+preserved. A fresh fixture explicitly requests that read and passes the unchanged
+comparator. This does not certify arbitrary hidden-event or clock-gate models.
+System clocks, absolute time, multiple TAPs and external instrument behavior
+remain separate requirements. Full integration checks passed on2026-11-14:
+all39 dynamic/static suites,51directional/seven legacy standards,2519ICL files
+and six editor tests in178.871s. Evidence: build/standalone-idle-reviewed-full.log
+and .exit(0), plus standalone-idle-final-sanitizer-all.exit(0).

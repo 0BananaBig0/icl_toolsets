@@ -71,6 +71,117 @@ class ClientScanControls(unittest.TestCase):
 '''
         return child + parent
 
+    def idle_network(self):
+        source = self.nested("1'b1")
+        source = source.replace('ScanInSource si; ResetValue',
+                                'ScanInSource si; CaptureSource value[2:0], value[3]; ResetValue')
+        source = source.replace('InputPort ce = ce;', "InputPort ce = 1'b1;")
+        source = source.replace('InputPort se = se;', "InputPort se = 1'b0;")
+        source = source.replace('InputPort ue = ue;', "InputPort ue = 1'b1;")
+        source = source.replace('ScanOutPort so { Source value[0]; }',
+                                'ScanOutPort so { Source value[0]; } DataOutPort q[3:0] { Source value; }')
+        source = source.replace('ScanOutPort so { Source child.so; }',
+                                'ScanOutPort so { Source child.so; } DataOutPort observed[3:0] { Source child.q; }')
+        return source
+
+    def test_idle_without_tap_or_implicit_reset(self):
+        for source in (NETWORK, NETWORK.replace(INTERFACE, ''),
+                       NETWORK.replace(INTERFACE, '').replace(PORTS, 'ScanInPort si;')):
+            with self.subTest(source=source):
+                body = ('iPDLLevel 1; iRunLoop 2; '
+                        'iState value 9 -LastReadValue; iRunLoop 0x100000000 -tck; '
+                        'iNote [iGetReadData value -dec];\n')
+                output = self.replay(source, body)
+                self.assertIn(b'iRunLoop 2 -tck', output)
+                self.assertIn(b'iRunLoop 4294967296 -tck', output)
+                self.assertIn(b'iNote 9', output)
+                self.assertNotIn(b'iReset', output)
+                self.assertNotIn(b'iApply', output)
+
+    def test_idle_actual_child_capture_and_update(self):
+        body = ('iReset; iState child.value 8; iRunLoop 1; '
+                'iRead observed 1; iApply; iRunLoop 2; iRead observed 4; iApply;\n')
+        output = self.replay(self.idle_network(), body)
+        self.assertEqual(output.count(b'iRunLoop'), 2)
+        self.assertIn(b'iRead observed 0b0001', output)
+        self.assertIn(b'iRead observed 0b0100', output)
+
+    def test_idle_known_and_unknown_clock_gates(self):
+        source = self.idle_network().replace('DataInPort enable;', '''DataInPort enable;
+  ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }''')
+        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated;')
+        body = ('iReset; iState enable 0; iState child.value 8; iRunLoop 2; '
+                'iRead observed 8; iApply; iState enable 1; iRunLoop 1; '
+                'iRead observed 1; iApply;\n')
+        self.replay(source, body)
+        self.replay(source, 'iReset; iState enable 0bX; iState child.value 8; '
+                    'iRunLoop 1;\n')
+
+    def test_idle_failures_preserve_pattern_and_debug(self):
+        cases = (
+            (self.idle_network(),
+             'iReset; iTake child.value; iState child.value 8; iRunLoop 1;',
+             'reserved'),
+            (self.idle_network().replace('InputPort ck = ck;', 'InputPort ck = ~ck;'),
+             'iReset; iState child.value 8; iRunLoop 1;', 'inverted'),
+            (self.idle_network(),
+             'iReset; iState child.value 8; iRunLoop 18446744073709551615;',
+             'resource limit'),
+        )
+        for source, body, message in cases:
+            with self.subTest(message=message):
+                icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+                icl.write_text(source)
+                pdl.write_text(body)
+                output, debug = self.root / 'result.pdl', self.root / 'debug/ClientTop.icl'
+                debug.parent.mkdir(exist_ok=True)
+                output.write_bytes(b'previous pattern\n')
+                debug.write_bytes(b'previous debug\n')
+                error = self.run_tool(icl, pdl, ok=False)
+                self.assertIn(message, error)
+                self.assertEqual(output.read_bytes(), b'previous pattern\n')
+                self.assertEqual(debug.read_bytes(), b'previous debug\n')
+
+    def test_idle_implicit_selection_guard_and_masked_controls(self):
+        source = self.idle_network().replace('SelectPort sel;', '', 1)
+        source = source.replace('Port sel;', '', 1)
+        source = source.replace("InputPort sel = 1'b1;", '')
+        extra = (' SelectPort other;\n ScanInterface second { Port si; Port so; '
+                 'Port other; Port ce; Port se; Port ue; Port ck; }\n')
+        source = source[:source.rfind('}')] + extra + '}\n'
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(source)
+        body = ('iReset; iState sel 1; iState other 0; iState child.value 8; '
+                'iRunLoop 1;')
+        pdl.write_text(body)
+        (self.root / 'result.pdl').write_bytes(b'previous pattern\n')
+        error = self.run_tool(icl, pdl, ok=False)
+        self.assertIn('implicit selection', error)
+        self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous pattern\n')
+        masked = source.replace("InputPort ce = 1'b1;", "InputPort ce = 1'b0;")
+        masked = masked.replace("InputPort ue = 1'b1;", "InputPort ue = 1'b0;")
+        self.replay(masked, body + ' iRead observed 8; iApply;\n')
+
+    def test_idle_reset_source_replay(self):
+        self.replay(NETWORK, PDL.replace('iRead value 9;', 'iRunLoop 3; iRead value 9;'),
+                    reset=True)
+
+    def test_idle_vendor_fixture_replay(self):
+        case = ROOT / 'tests/cases/ours/pattern_generation/client_controls'
+        output = self.replay((case / 'network.icl').read_text(),
+                             (case / 'idle_access.pdl').read_text())
+        self.assertEqual(output.count(b'iRunLoop'), 2)
+        self.assertEqual(output.count(b'iApply'), 3)
+
+    def test_idle_stable_scale(self):
+        source = NETWORK.replace('value[3:0]', 'value[65535:0]').replace("4'b0", "0")
+        body = 'iRunLoop 18446744073709551615;\n'
+        start = time.monotonic()
+        out = self.replay(source, body)
+        self.assertIn(b'iRunLoop 18446744073709551615 -tck', out)
+        print(f'standalone idle: 65536 storage bits, UINT64_MAX cycles, '
+              f'three replays {time.monotonic() - start:.3f}s')
+
     def test_explicit_and_inferred_clients(self):
         for source in (NETWORK, NETWORK.replace(INTERFACE, '')):
             output = self.replay(source, reset=True)

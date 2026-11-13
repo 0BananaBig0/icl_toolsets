@@ -736,3 +736,23 @@ The initial run omitted mandatory scan-interface controls; its local/child-port
 ICL71 failures are preserved in build/alias-consumer-probe-evidence and do not
 establish alias rejection. Existing50directional/seven legacy standards remain
 unchanged.
+
+
+## Standalone TCK waits (2026-11-13)
+
+`standalone_idle/forward` passes exact ordered-apply comparison with Tessent2026.2.
+The certificate is in tests/golden/tessent_roundtrip/standalone_idle-forward.
+It covers3- and5-cycle waits between explicit standalone-client accesses.
+The source explicitly reads the reset value during its initial write/apply.
+Coverage becomes51directions (22forward/29reverse),35cases, plus seven legacy
+standards. No reverse certificate or general clock-gate equivalence is claimed.
+
+The first vendor run passed execution but failed exact comparison because its
+initial apply added a reset-value read absent from local input. Retained evidence:
+build/standalone-idle-forward-evidence and standalone-idle-vendor-record.log/.exit(2).
+The corrected fixture was freshly prepared and run; no comparator was changed.
+Its evidence is build/standalone-idle-observed-forward-evidence and
+standalone-idle-observed-vendor-record.log/.exit(0). Remote source is
+lianghuaxiao@192.168.6.20:/tmp/icl-standalone-idle-20261113/
+standalone-idle-observed-forward-prepared. Vendor execution logs and exit0
+are retained locally as standalone-idle-observed-vendor-run.log/.exit.

@@ -1,0 +1,12 @@
+{
+  "cases": [
+    {
+      "id": "standalone_idle",
+      "top": "ClientTop",
+      "icl": ["tests/cases/ours/pattern_generation/client_controls/network.icl"],
+      "pdl": ["tests/cases/ours/pattern_generation/client_controls/idle_access.pdl"],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

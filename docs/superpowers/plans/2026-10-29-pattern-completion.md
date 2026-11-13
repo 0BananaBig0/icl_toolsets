@@ -1157,3 +1157,23 @@ Live readback, status/interface history, strict coverage, later-change Rocky8
 qualification and the remaining event/clock/model requirements stay open.
 Task44 investigates standalone TCK idle execution; design review must settle
 implicit selection before implementation.
+
+
+## Task44: Standalone TCK idle replay
+
+Completed [the focused plan](2026-11-13-standalone-idle.md). Literal waits use
+shared per-edge clock/reset/fill semantics without requiring a TAP or implicit
+reset. Explicit selection and unowned pin bits are preserved. Missing selection
+requires a proven route and known-active defined selects unless controls mask it;
+general ancestor inference remains required. Transient reservations and atomic
+failures retain state/publication safety. One fresh forward Tessent fixture is
+certified, after preserving an earlier comparison failure.
+
+Final full regression passed on2026-11-14:39dynamic/static suites,51directional/
+seven legacy standards,2519ICL files covering334/119rules, and editor6in178.871s.
+Evidence: build/standalone-idle-reviewed-full.log/.exit(0). Native/four CLI leak
+sanitizers, style/naming, scale and independent product/certificate review pass.
+The first full run's obsolete no-TAP rejection assertion was corrected; its
+exit2 evidence remains. Task45 addresses aliases bypassing the child-output
+connection boundary. Strict coverage, later Rocky8 qualification and broader
+event/clock/model requirements remain open.
