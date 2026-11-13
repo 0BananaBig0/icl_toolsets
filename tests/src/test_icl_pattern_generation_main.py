@@ -138,6 +138,56 @@ class Generator(unittest.TestCase):
                 self.assertEqual((self.root / "reset.pdl").read_text(), "preserve reset\n")
                 self.assertEqual(debug.read_text(), "preserve debug\n")
 
+    def test_scan_output_rightmost_round_trips(self):
+        for bounds, bit in (("[3:0]", 0), ("[0:3]", 3)):
+            for inversion in ("", "~"):
+                with self.subTest(bounds=bounds, inversion=inversion):
+                    (self.root / "source.icl").write_text(
+                        f"Module ScanOutput {{ ScanInPort si; ScanRegister r{bounds} "
+                        "{ ScanInSource si; CaptureSource r; ResetValue 0; } "
+                        f"ScanOutPort so {{ Source {inversion}r[{bit}]; }} "
+                        "DataOutPort middle { Source r[2]; } }\n")
+                    (self.root / "source.pdl").write_text(
+                        "iProcsForModule ScanOutput\niReset\niWrite r[2] 1\niApply\n"
+                        "iRead r[2] 1\niApply\n")
+                    self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                  "--output", "result.pdl", "--debug")
+                    expected = (self.root / "result.pdl").read_bytes()
+                    self.assertIn(b"iWrite r ", expected)
+                    flat = self.root / "debug/ScanOutput.icl"
+                    self.run_tool("--icl", flat, "--pdl", "source.pdl",
+                                  "--output", "flat/result.pdl", "--debug")
+                    self.assertEqual((self.root / "flat/result.pdl").read_bytes(), expected)
+                    self.assertEqual((self.root / "flat/debug/ScanOutput.icl").read_bytes(),
+                                     flat.read_bytes())
+                    self.run_tool("--icl", "source.icl", "--pdl", "result.pdl",
+                                  "--output", "again.pdl")
+                    self.assertEqual((self.root / "again.pdl").read_bytes(), expected)
+
+    def test_invalid_scan_output_preserves_outputs(self):
+        cases = (("[3:0]", "", "r[2]"), ("[0:3]", "", "~r[0]"),
+                 ("[3:0]", "[3:0]", "r"), ("[0:3]", "[1:0]", "r[2:3]"),
+                 ("[3:0]", "[1:0]", "r[0], r[2]"))
+        (self.root / "source.pdl").write_text("iProcsForModule ScanOutput\niNote source\n")
+        for bounds, output_bounds, source in cases:
+            with self.subTest(bounds=bounds, source=source):
+                (self.root / "source.icl").write_text(
+                    f"Module ScanOutput {{ ScanInPort si; ScanRegister r{bounds} "
+                    "{ ScanInSource si; } "
+                    f"ScanOutPort so{output_bounds} {{ Source {source}; }} }}\n")
+                debug = self.root / "debug/ScanOutput.icl"
+                debug.parent.mkdir(exist_ok=True)
+                artifacts = (self.root / "result.pdl", self.root / "reset.pdl", debug)
+                for artifact in artifacts:
+                    artifact.write_text("preserve " + artifact.name + "\n")
+                result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                       "--output", "result.pdl", "--local_reset", "reset.pdl",
+                                       "--debug", ok=False)
+                self.assertIn("source.icl:", result.stdout)
+                self.assertIn("ScanOutPort Source must use the rightmost bit of r", result.stdout)
+                for artifact in artifacts:
+                    self.assertEqual(artifact.read_text(), "preserve " + artifact.name + "\n")
+
     def test_tap_round_trips(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
         for name in ("simple.icl", "simple.bsdl"):

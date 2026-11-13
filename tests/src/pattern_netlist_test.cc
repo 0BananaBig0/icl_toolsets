@@ -560,6 +560,50 @@ void TestInvertedUnsizedSources() {
               bits[2].constant == 'x' && bits[3].constant == '1',
           "unsized X source retains contextual padding");
 }
+void TestScanOutputBits() {
+  pattern::Design valid;
+  valid.AddIcl("scan_output.icl", R"(
+Module M {
+  ScanInPort si;
+  ScanRegister descending[3:0] { ScanInSource si; }
+  ScanRegister ascending[0:3] { ScanInSource descending; }
+  ScanRegister scalar { ScanInSource ascending; }
+  ScanOutPort outputs[2:0] { Source descending[0], ~ascending[3], scalar; }
+  ScanOutPort enabled { Source descending[0]; Enable descending[2]; }
+  DataOutPort middle { Source ascending[2]; }
+}
+)");
+  const auto netlist = pattern::Elaborate(valid, "M");
+  const auto& bits = netlist.NodeAt("outputs").inputs.at("Source");
+  Require(bits.size() == 3 && bits[0].index == 0 && bits[1].index == 3 &&
+              bits[1].inverted && bits[2].node == netlist.node_ids.at("scalar"),
+          "ScanOutPort preserves declared rightmost bits and inversion");
+  Require(netlist.NodeAt("middle").inputs.at("Source")[0].index == 2 &&
+              netlist.NodeAt("enabled").inputs.at("Enable")[0].index == 2,
+          "data and enable sources may use intermediate register bits");
+
+  const std::pair<std::string, std::string> cases[] = {
+      {"[3:0]", "ScanOutPort so { Source r[2]; }"},
+      {"[0:3]", "ScanOutPort so { Source ~r[0]; }"},
+      {"[3:0]", "ScanOutPort so[3:0] { Source r; }"},
+      {"[0:3]", "ScanOutPort so[1:0] { Source r[2:3]; }"},
+      {"[3:0]", "ScanOutPort so[1:0] { Source r[0], r[2]; }"}};
+  for (const auto& test : cases) {
+    pattern::Design invalid;
+    invalid.AddIcl("bad_scan_output.icl",
+                   "Module M { ScanInPort si; ScanRegister r" + test.first +
+                       " { ScanInSource si; } " + test.second + " }");
+    Fails([&] { pattern::Elaborate(invalid, "M"); },
+          "ScanOutPort Source must use the rightmost bit of r");
+  }
+  pattern::Design bare;
+  bare.AddIcl(
+      "bare_scan_output.icl",
+      "Module M { ScanInPort si; ScanRegister r[3:0] { ScanInSource si; } "
+      "ScanOutPort so { Source r; } }");
+  Fails([&] { pattern::Elaborate(bare, "M"); }, "width");
+}
+
 void TestImplicitScanBit() {
   pattern::Design design;
   design.AddIcl("bare_scan.icl", R"(
@@ -988,6 +1032,7 @@ int main() {
                           TestUnsizedSources,
                           TestInvertedUnsizedSources,
                           TestImplicitScanBit,
+                          TestScanOutputBits,
                           TestEnumAndPhysicalScanNames,
                           TestPerBitGraph,
                           TestOverrideTypes,

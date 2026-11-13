@@ -1026,6 +1026,17 @@ class Elaborator {
             }
           }
         }
+        if (node.kind == "ScanOutPort" && node.inputs.count("Source")) {
+          for (const auto& bit : node.inputs.at("Source")) {
+            if (bit.node == std::numeric_limits<size_t>::max()) continue;
+            const auto& source = netlist_.nodes[bit.node];
+            if (source.kind == "ScanRegister" && bit.index != source.right) {
+              throw std::runtime_error(
+                  "ScanOutPort Source must use the rightmost bit of " +
+                  source.name);
+            }
+          }
+        }
         if (node.model == ModelKind::kRegister) CheckRegister(node);
         if (node.model == ModelKind::kMux) ConnectMux(&node);
         if (node.model == ModelKind::kLogic) {

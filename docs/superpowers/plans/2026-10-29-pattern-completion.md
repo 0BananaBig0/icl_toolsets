@@ -1107,3 +1107,17 @@ and six editor tests in177.025s. Earlier failures/interruption remain recorded.
 Further source-kind and alias-consumer rules, strict coverage and the broader
 model requirements remain open. Task41 addresses direct ScanOutPort register
 source indices under the explicit rightmost-bit rule.
+
+## Task41: Direct ScanOutPort register source validation
+
+Completed [the focused plan](2026-11-13-scan-output-validation.md). Direct
+ScanRegister sources use their declared rightmost bit; elaboration rejects
+other taps before scheduling. Ascending/inverted/scalar sources, ordinary width
+rules, and middle-bit data/Enable/PDL accesses retain their contracts.
+
+Full39suite dynamic/static regression, leak-enabled native/main29/shared9/
+group11 checks, format/naming, paired scale checks and independent review pass.
+Evidence: build/scan-output-final-full.log/.exit(0),50 directional/seven legacy
+standards,2,519 ICL files covering334/119 rules,editor6in177.787s. Other source-kind
+and alias-consumer checks remain required. Task42 applies the specific deep-alias
+consumer rule with its wording conflict and vendor evidence documented.

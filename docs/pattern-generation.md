@@ -9,25 +9,25 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, direct hierarchical connection validation passed the complete
+On 2026-11-13, direct ScanOutPort source validation passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/connection-hierarchy-final-full.log/.exit. This includes all39 generator
-CLI suites under dynamic/static builds, native tests,50 directional and seven
-legacy Tessent standards, all334 parser and119 scanner rules across2,519 ICL
-files, and six Vim/Neovim tests (177.025s). Five optional ANTLR integration tests
-were skipped because ICL_REF_DIR was unset.
+build/scan-output-final-full.log/.exit. This includes all39 generator CLI
+suites under dynamic/static builds, native tests,50 directional and seven legacy
+Tessent standards, all334 parser and119 scanner rules across2,519 ICL files,
+and six Vim/Neovim tests (177.787s). Five optional ANTLR integration tests were
+skipped because ICL_REF_DIR was unset.
 
-A fresh leak-enabled ASan/UBSan build passed native netlist tests and six CLI
-suites: main27, multiple-client17, named-group11, ShiftEn11, port-reservation8
-and data-reset13 methods. Formatting, naming, whitespace and independent review
-passed. See [hierarchy verification](#direct-hierarchical-connections-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native netlist tests and main29,
+shared-output9 and named-group11 CLI methods. Formatting, naming, whitespace,
+scale checks and independent review passed. See
+[ScanOutPort verification](#direct-scanoutport-register-sources-2026-11-13).
 
 Strict authored-code coverage remains unmet. The complete Task39 instrumented
 run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
 tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
 24,055/38,965 raw branches (61.7%), against required 100%/90%.
-This measurement predates Task40; it is not a coverage result for the current
-hierarchy change. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
+This measurement predates Tasks40–41; it is not a coverage result for the current
+connection-validation changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
 Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
@@ -3091,3 +3091,22 @@ suites per build,50 directional/seven legacy standards,2,519 ICL files covering
 334/119 parser/scanner rules, and six editor tests in177.025s. No new vendor
 certificate is claimed. See the
 [implementation plan](superpowers/plans/2026-11-13-connection-hierarchy.md).
+
+## Direct ScanOutPort register sources (2026-11-13)
+
+A ScanOutPort Source that directly names a ScanRegister must use its declared
+rightmost bit, under IEEE1687 §6.4.6.2(b). Elaboration now checks this before
+scheduling, including ascending declarations, ranges and concatenations.
+Inversion and scalar registers remain supported. Bare vector references retain
+normal width rules; only ScanInSource has the implicit-rightmost permission.
+DataOutPort, Enable and PDL may still refer to intermediate register bits.
+Alias and mux traversal are outside this direct check.
+
+Native netlist and29CLI methods pass, including original/flat/generated replay
+and preservation of pattern/reset/debug artifacts on invalid inputs. Independent
+source review, formatting/naming and the existing5000-instance/wide benchmark
+pass. Leak-enabled ASan/UBSan checks pass for native netlist, main29,
+shared-output9 and named-group11 tests. Full regression passes in
+build/scan-output-final-full.log/.exit(0):39 generator suites per build,
+50 directional/seven legacy standards,2,519 ICL files covering334/119 rules,
+and six editor tests in177.787s. See [the focused plan](superpowers/plans/2026-11-13-scan-output-validation.md).
