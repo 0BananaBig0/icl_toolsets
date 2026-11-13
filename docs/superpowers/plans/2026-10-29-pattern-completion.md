@@ -1016,3 +1016,17 @@ One new reverse certificate and a freshly recertified mixed forward snapshot
 bring offline coverage to47directions plus seven legacy standards.
 General per-edge events, feedback, strict coverage and broader requirements
 remain open. Task36 integrates pending-access state assumptions.
+
+## Task36: State assumptions with queued accesses
+
+Completed [the focused plan](2026-11-13-queued-state.md). Default assumptions
+update overlapping queued controlling/expected values without adding device
+operations. Reset rewriting previews each state-bearing access group on copied
+scheduler/reservation state; later groups retain independent repair.
+Fifteen new CLI methods, copied TAP/fill native checks, complete36suite
+dynamic/static regression, leak-enabled native/new15/main25/resource35/
+argument12/reset13 checks, style/naming and independent review pass.
+A forward generated-output certificate brings offline coverage to48directions
+plus seven legacy standards. Tessent rejects original pending-state input;
+the guide preserves this limitation and the earlier empty-apply comparison
+failure. Observation-history forwarding is next; broader requirements remain.

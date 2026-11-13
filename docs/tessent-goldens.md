@@ -634,3 +634,28 @@ order. The unchanged ordered-apply comparator passes the new vendor export
 (build/data-reset-mixed-certificate.log/.exit0). The old snapshot remains in
 Git history and build/data-reset-mixed-old-certificate; it was not used to
 certify the new ordering.
+
+## Queued state assumptions (2026-11-13)
+
+The original pending-iState probes are rejected by Tessent2026.2, which reports
+pending iWrite/iRead targets; LastReadValue is unsupported as well. These results
+do not determine the normative controlling/expected overwrite semantics.
+
+The first generated forward fixture was accepted, but Tessent omitted an empty
+iApply boundary. Exact ordered-apply comparison failed; no certificate was
+installed. Evidence remains in build/queued-state-forward-evidence and
+build/queued-state-certificate.log/.exit(1).
+
+The revised fixture includes an observation in both apply groups. Its generated
+PDL passes fresh vendor execution and unchanged comparison in
+build/queued-state-observed-forward-evidence and
+build/queued-state-observed-certificate.log/.exit(0).
+Snapshot: tests/golden/tessent_roundtrip/queued_state-forward.
+This qualifies that generated output, not vendor acceptance of original pending
+state input. Directional coverage becomes48 (21forward/27reverse),32cases,
+plus seven legacy standards.
+
+Remote evidence is under
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_queued_state/run_2026_11_13_01,
+in queued-state-probe-bundle, queued-state-forward-bundle and
+queued-state-observed-forward-bundle respectively.

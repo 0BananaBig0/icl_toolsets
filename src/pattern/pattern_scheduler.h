@@ -33,6 +33,7 @@ struct ScanStep {
 class ScanScheduler {
  public:
   explicit ScanScheduler(const Netlist& netlist);
+  ScanScheduler(const ScanScheduler& other);
   ~ScanScheduler();
   void Reset(bool synchronous = false);
   // Preserved values use 'x' for unprotected bits, '0'/'1' for held bits.

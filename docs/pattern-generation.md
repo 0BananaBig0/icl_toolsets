@@ -9,23 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the mixed storage reset checkpoint passed all35 generator
-CLI suites under dynamic and static builds, native tests,47 directional and
-seven legacy Tessent standards, and parser/scanner checks across2,516 ICL files
-(all334 parser and119 scanner rules). Five optional ANTLR integration tests
-were skipped because ICL_REF_DIR was unset.
+On 2026-11-13, the queued-state checkpoint passed the complete
+make -j2 --jobserver-style=pipe check command, with exit0 recorded in
+build/queued-state-full.log/.exit. This includes all36 generator CLI suites
+under dynamic/static builds, native tests,48 directional and seven legacy
+Tessent standards, all334 parser and119 scanner rules across2,516 ICL files,
+and six Vim/Neovim tests (182.910s). Five optional ANTLR integration tests were
+skipped because ICL_REF_DIR was unset.
 
-The full command's final editor target initially failed because Neovim inherited
-Vim's runtime directory. After isolating VIM/VIMRUNTIME in the test harness,
-all six editor tests passed (181.358s). The original command retains exit2 in
-build/data-reset-durable-full.log/.exit; the corrected editor rerun has exit0
-in build/data-reset-editor-isolated.log/.exit. These records together cover the
-required checks; the original command is not reported as exit0.
-
-Native state/scheduler,25main,12argument-reset and13new reset-dependency CLI
-tests passed leak-enabled ASan/UBSan. Formatting, naming, whitespace and
-independent source/certificate review passed. See
-[mixed storage reset verification](#mixed-storage-reset-dependencies-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native scheduling,new15 queued-state,
+main25,resource35,argument-reset12 and reset-dependency13 CLI methods.
+Formatting, naming, whitespace and independent source/certificate review passed.
+See [queued-state verification](#state-assumptions-with-queued-accesses-2026-11-13).
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -383,7 +378,7 @@ atomic failures and source/flat/generated-PDL replay.
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
-| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default or `-LastWrittenValue`; no device transaction. |
+| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default or `-LastWrittenValue`; overlapping queued write/compare values follow the assumption; no device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
@@ -2795,7 +2790,7 @@ Tessent2026.2 accepted both saved fixtures, with reverse certificates retained.
 See [vendor evidence](tessent-goldens.md#all-port-reservations-and-dataregister-state-2026-11-13).
 At this checkpoint DataRegister-controlled scan resets hit a scan-only reset
 dependency boundary, subsequently addressed by Task35 below.
-Observation-history iState flags, queued-state integration, iScan/iClock,
+Observation-history iState flags, iScan/iClock,
 system-clock/time waits and broader pattern-set ownership remain unfinished.
 Final native state/scheduler tests and11CLI methods pass ASan/UBSan/
 LeakSanitizer with detect_leaks=1, recorded in build/access-state-sanitizer-
@@ -2875,6 +2870,63 @@ build/data-reset-sanitizer-state.log/.exit(0). The final13 CLI methods and12
 argument-reset methods pass in build/data-reset-representable-{final-cli,
 arguments}.log/.exit(0); the final64/128 chain measurements are0.228s/0.385s.
 The47direction offline check, formatting and naming records also have exit0.
-The full dynamic/static and corrected editor evidence is described above.
+Task35's full command retained exit2 in build/data-reset-durable-full.log/.exit
+solely for its final editor target: Neovim inherited Vim's runtime directory.
+The corrected harness clears VIM/VIMRUNTIME; all six editor tests passed in
+181.358s in build/data-reset-editor-isolated.log/.exit(0). Those two records
+together cover Task35's required checks; the original command was not exit0.
 Interrupted earlier runs and superseded failures remain recorded, not counted
 as passes. Strict coverage and later-change Rocky8 qualification remain open.
+
+## State assumptions with queued accesses (2026-11-13)
+
+Default iState and -LastWrittenValue now work between queued iWrite/iRead and
+iApply. Under IEEE1687 §7.9.11 and §7.9.22(d), they overwrite the controlling
+and expected values of overlapping target bits. For example:
+
+```tcl
+iWrite value 5
+iRead value 5
+iState value 9
+iApply
+```
+
+The pending write and comparison use9. The assumption itself emits no device
+operation and does not create an apply. Aliases and slices match by resolved
+bit identity, including inversion; a connected output is a distinct expected
+state target. Unrelated queued bits remain unchanged. Unknown assumption bits
+clear previous queued values instead of resurrecting an older write. A later
+explicit write still replaces the corresponding pending value.
+
+Local-reset rewriting previews state-bearing access groups with copied hardware,
+controlling fill, TAP execution and reservation state. It omits a release
+preamble only when the group passes strict checks. Later groups can still
+receive required releases. Previews do not restore the final end state or
+mutate live execution. State-free caller transformations retain their existing
+limits. Observation-history flags and real hardware readback remain unfinished.
+
+The pending-reference index visits overwritten references once and materializes
+operands at apply. Work is amortized over queued references and state bits with
+ordered-map lookup factors. The isolated15-method check took2.44s wall time and
+91,404KiB peak RSS on local Linux g++16.2.1 -O2. Three replay forms for1,024 and
+4,096 write/state pairs (33,552 and134,160PDL bytes) took0.124s/0.219s.
+A64-register,16-group input (3,435ICL and323PDL bytes) took0.141s normally and
+0.469s with reset rewriting. These measurements are scale evidence, not a
+speedup claim. Records: build/queued-state-final-focused.log/.exit(0).
+
+Tessent2026.2 rejects original pending-iState input, so input compatibility is
+not claimed. A generated-output fixture with an observation at each apply
+passes exact forward certification. The earlier empty-apply fixture was
+accepted but lost that boundary in the vendor export and failed comparison;
+its evidence remains preserved. See the [vendor record](tessent-goldens.md#queued-state-assumptions-2026-11-13).
+Integrated15-method replay passes in build/queued-state-integrated-focused.log/
+.exit(0). Leak-enabled ASan/UBSan checks pass for native scheduling,new15,main25,
+resource35,argument12 and reset13 CLI methods in build/queued-state-sanitizer-*
+logs with matching exit0 files. The incorrectly named initial main invocation
+retains exit2; build/queued-state-sanitizer-main.log/.exit(0) is the corrected
+run. Formatting, naming and independent source/certificate review pass.
+Complete dynamic/static regression passes in build/queued-state-full.log/.exit(0):
+36generator suites,48directions/seven legacy standards,2,516ICL files covering
+334/119parser/scanner rules, and six editor tests in182.910s. Five optional ANTLR
+checks remain skipped. Strict authored coverage and later-change Rocky8
+qualification remain open.

@@ -359,6 +359,18 @@ class ScanScheduler::Impl {
     }
   }
 
+  Impl(const Impl& other) : Impl(other.netlist_) {
+    state_.Restore(other.state_);
+    fill_ = other.fill_;
+    global_resets_ = other.global_resets_;
+    tap_ready_ = other.tap_ready_;
+    control_masks_ = other.control_masks_;
+    data_control_masks_ = other.data_control_masks_;
+    control_seen_ = other.control_seen_;
+    if (other.execution_) {
+      execution_ = std::make_unique<TapExecution>(*other.execution_);
+    }
+  }
   BitReference EndStateSource(BitReference bit) const {
     std::set<Key> visited;
     while (bit.node != kMissing) {
@@ -4470,6 +4482,8 @@ class ScanScheduler::Impl {
 };
 ScanScheduler::ScanScheduler(const Netlist& netlist)
     : impl_(std::make_unique<Impl>(netlist)) {}
+ScanScheduler::ScanScheduler(const ScanScheduler& other)
+    : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
 void ScanScheduler::Reset(bool synchronous) { impl_->Reset(synchronous); }
 void ScanScheduler::Idle(uint64_t cycles,

@@ -12,6 +12,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "pattern/pattern_flatten.h"
@@ -140,17 +141,81 @@ void ValidateResetSources(const pattern::Netlist& netlist) {
     verified.insert(path.begin(), path.end());
   }
 }
+class QueuedAccesses {
+ public:
+  bool Empty() const { return operations_.empty(); }
+  void Clear() {
+    operations_.clear();
+    values_.clear();
+    references_.clear();
+  }
+  void Add(const pattern::Operation& operation,
+           const pattern::PdlTarget& target, std::string bits) {
+    const size_t index = operations_.size();
+    operations_.push_back(operation);
+    values_.push_back(std::move(bits));
+    for (size_t i = 0; i < target.bits.size(); ++i) {
+      const auto& bit = target.bits[i];
+      references_[{bit.node, bit.index, operation.command == "iRead"}]
+          .push_back({index, i, bit.inverted});
+    }
+  }
+  void Assume(const pattern::PdlTarget& target, const std::string& bits) {
+    for (size_t i = 0; i < target.bits.size(); ++i) {
+      const auto& bit = target.bits[i];
+      const char value = Invert(bits[i], bit.inverted);
+      for (bool read : {false, true}) {
+        const auto found = references_.find({bit.node, bit.index, read});
+        if (found == references_.end()) continue;
+        auto& references = found->second;
+        const auto last = references.back();
+        // Retire overwritten references once, avoiding repeated queue scans.
+        for (const auto& ref : references) {
+          values_[ref.operation][ref.offset] = 'x';
+        }
+        values_[last.operation][last.offset] = Invert(value, last.inverted);
+        references.assign(1, last);
+      }
+    }
+  }
+  const std::vector<pattern::Operation>& Operations() {
+    for (size_t i = 0; i < operations_.size(); ++i) {
+      operations_[i].arguments.resize(2);
+      operations_[i].arguments[1] = "0b" + values_[i];
+    }
+    return operations_;
+  }
+
+ private:
+  struct Reference {
+    size_t operation, offset;
+    bool inverted;
+  };
+  static char Invert(char bit, bool inverted) {
+    return inverted && bit != 'x' ? (bit == '1' ? '0' : '1') : bit;
+  }
+  std::vector<pattern::Operation> operations_;
+  std::vector<std::string> values_;
+  std::map<std::tuple<size_t, int64_t, bool>, std::vector<Reference>>
+      references_;
+};
 using ResetEdits = std::map<std::pair<size_t, size_t>, std::string>;
 std::string Generate(
     const pattern::Netlist& netlist,
     const std::vector<pattern::Operation>& operations,
     const std::vector<pattern::SourceAction>* actions = nullptr,
     ResetEdits* edits = nullptr,
-    std::vector<pattern::Operation>* rewritten = nullptr) {
-  pattern::ScanScheduler scheduler(netlist);
-  pattern::ResourceReservations reservations(netlist);
+    std::vector<pattern::Operation>* rewritten = nullptr,
+    const pattern::ScanScheduler* initial = nullptr,
+    const pattern::ResourceReservations* initial_reservations = nullptr,
+    bool finalize = true) {
+  pattern::ScanScheduler scheduler = initial ? pattern::ScanScheduler(*initial)
+                                             : pattern::ScanScheduler(netlist);
+  pattern::ResourceReservations reservations =
+      initial_reservations ? *initial_reservations
+                           : pattern::ResourceReservations(netlist);
   z3::context context;
-  std::vector<pattern::Operation> pending;
+  QueuedAccesses pending;
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
   const auto append_steps = [&](const std::vector<pattern::ScanStep>& steps) {
@@ -210,9 +275,27 @@ std::string Generate(
         }
         const std::vector<pattern::Operation> group(operations.begin() + index,
                                                     operations.begin() + end);
-        const auto prerequisites = scheduler.ResetPrerequisites(
-            group, reservations.Values(), reservations.UnwrittenBits());
-        if (!prerequisites.empty() && !pending.empty()) {
+        bool ready = false;
+        const auto contains = [&](const std::string& command) {
+          return std::any_of(group.begin(), group.end(), [&](const auto& op) {
+            return op.command == command;
+          });
+        };
+        if (contains("iState") && (contains("iWrite") || contains("iRead"))) {
+          try {
+            ResetEdits strict;
+            Generate(netlist, group, nullptr, &strict, nullptr, &scheduler,
+                     &reservations, false);
+            ready = true;
+          } catch (const std::runtime_error&) {
+            // A failed preview leaves the live state for prerequisite planning.
+          }
+        }
+        const auto prerequisites =
+            ready ? std::vector<std::vector<pattern::Operation>>{}
+                  : scheduler.ResetPrerequisites(group, reservations.Values(),
+                                                 reservations.UnwrittenBits());
+        if (!prerequisites.empty() && !pending.Empty()) {
           throw std::runtime_error(
               "local-reset insertion would flush pending user operations");
         }
@@ -261,32 +344,33 @@ std::string Generate(
             pattern::ResolvePdlTarget(netlist, operation.arguments.at(0));
         pattern::ValidatePdlAccessTarget(netlist, target,
                                          operation.command == "iRead");
-        if (operation.arguments.size() == 2) {
-          pattern::PdlDataValue(context, netlist, target,
-                                operation.arguments.at(1));
-        }
-        pending.push_back(operation);
+        const auto bits = operation.arguments.size() == 2
+                              ? pattern::PdlDataValue(context, netlist, target,
+                                                      operation.arguments.at(1))
+                              : std::string(target.bits.size(), 'x');
+        pending.Add(operation, target, bits);
       } else if (operation.command == "iApply") {
         const bool together =
             operation.arguments == std::vector<std::string>{"-together"};
         if (!operation.arguments.empty() && !together) {
           throw std::runtime_error("unsupported iApply option");
         }
-        if (edits) scheduler.CheckLocalResets(pending);
+        const auto& accesses = pending.Operations();
+        if (edits) scheduler.CheckLocalResets(accesses);
         const auto steps =
-            scheduler.Apply(pending, together, reservations.Values());
-        reservations.Assigned(pending, scheduler);
+            scheduler.Apply(accesses, together, reservations.Values());
+        reservations.Assigned(accesses, scheduler);
         append_steps(steps);
         if (steps.empty()) result += "iApply\n";
-        pending.clear();
+        pending.Clear();
       } else if (operation.command == "iReset") {
         const bool synchronous = !operation.arguments.empty();
         scheduler.Reset(synchronous);
         reservations.Reset();
-        pending.clear();
+        pending.Clear();
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iRunLoop") {
-        if (!pending.empty()) {
+        if (!pending.Empty()) {
           throw std::runtime_error("iRunLoop has unapplied operations");
         }
         const auto& args = operation.arguments;
@@ -315,10 +399,6 @@ std::string Generate(
         scheduler.Idle(cycles, reservations.Values());
         result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
       } else if (operation.command == "iState") {
-        if (!pending.empty()) {
-          throw std::runtime_error(
-              "iState with pending actions requires queued-state integration");
-        }
         if (operation.arguments.size() == 3 &&
             operation.arguments[2] != "-LastWrittenValue") {
           throw std::runtime_error(
@@ -329,6 +409,7 @@ std::string Generate(
         const auto bits = pattern::PdlNumber(context, operation.arguments.at(1),
                                              target.bits.size());
         scheduler.Assume(name, bits);
+        pending.Assume(target, bits);
         reservations.Assigned({operation}, scheduler);
         result += Command({"iState", name, "0b" + bits});
       } else if (operation.command == "iTake" ||
@@ -355,8 +436,8 @@ std::string Generate(
       throw std::runtime_error(message);
     }
   }
-  if (!pending.empty()) throw std::runtime_error("unapplied PDL operations");
-  if (!operations.empty()) {
+  if (!pending.Empty()) throw std::runtime_error("unapplied PDL operations");
+  if (finalize && !operations.empty()) {
     try {
       append_steps(scheduler.Apply({}, false, reservations.Values(), false));
     } catch (const std::exception& error) {

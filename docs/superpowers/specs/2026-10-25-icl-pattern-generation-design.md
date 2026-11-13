@@ -419,3 +419,13 @@ An independent design-only builder check identified initial state, mandatory
 model coverage and top-level Tcl preservation as additional planning gaps. The
 proposals above address them explicitly. That check did not validate an
 implementation or establish conformance.
+
+### Queued default state integration (2026-11-13)
+
+Default iState/-LastWrittenValue overwrites overlapping queued controlling and
+expected values by resolved bit identity (§7.9.11, §7.9.22d). It neither flushes
+the queue nor introduces a device operation. Connected output targets retain
+distinct expected state. Reset-source previews copy scheduler/reservations and
+skip stream-final end-state restoration; later groups retain independent repair.
+Observation-history flags and hardware readback remain separate requirements.
+The queued-state plan and guide record verification and vendor scope.

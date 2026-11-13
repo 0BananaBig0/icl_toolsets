@@ -429,6 +429,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "queued_state",
+      "top": "DataStateSnapshot",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_register_state.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/queued_state.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

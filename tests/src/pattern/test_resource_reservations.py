@@ -344,11 +344,9 @@ class Reservations(unittest.TestCase):
         output = self.generate('iTake gate; iWrite gate 2; iApply; iState gate[0] 1; '
                                'iWrite target 5; iApply')
         self.assertIn('iWrite gate 0b11', output)
-        for body, message in (
-                ('iTake gate; iState gate 0bXX', 'unknown'),
-                ('iTake gate; iWrite gate 0; iState gate 1; iApply', 'pending')):
-            with self.subTest(body=body):
-                self.assertIn(message, self.generate(body, ok=False))
+        self.assertIn('unknown', self.generate('iTake gate; iState gate 0bXX', ok=False))
+        output = self.generate('iTake gate; iWrite gate 0; iState gate 1; iApply')
+        self.assertIn('iWrite gate 0b01', output)
 
     def test_persistent_assumption_across_files_and_fixed_points(self):
         prefix = ('iProc own {} {iTake gate -persistent; iState gate 0}\n'

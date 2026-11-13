@@ -1444,6 +1444,19 @@ void TestTapScheduling(bool synchronous, bool no_trst, bool implicit) {
           "hand-derived IJTAG_ON opcode and DR serial data");
   Require(scheduler.Value("core.r") == "01011001",
           "native TAP replay writes target");
+  pattern::ScanScheduler copied(scheduler);
+  const auto copied_steps =
+      copied.Apply({{"iWrite", {"core.r", "0bx"}, "copy-fill", {}}});
+  Require(copied_steps.size() == 1 && copied.Value("core.r") == "01011001",
+          "scheduler copy retains TAP instruction, reset state and controlling "
+          "fill");
+  copied.Apply({{"iWrite", {"core.r", "0xa6"}, "copy-write", {}}});
+  Require(copied.Value("core.r") == "10100110" &&
+              scheduler.Value("core.r") == "01011001",
+          "copied scheduler writes do not change original storage");
+  copied.Reset();
+  Require(scheduler.Value("core.r") == "01011001",
+          "copied scheduler reset leaves original TAP and storage unchanged");
   scheduler.Idle(std::numeric_limits<uint64_t>::max());
   Require(scheduler.Value("core.r") == "01011001",
           "idle keeps stable instrument state");
