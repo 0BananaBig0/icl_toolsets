@@ -489,6 +489,32 @@ void TestUnsizedSources() {
               netlist.NodeAt("unknown").inputs.at("Source")[0].constant == 'x',
           "context sizing may discard leading zero or unknown digits");
 }
+void TestInvertedUnsizedSources() {
+  for (const auto& source : {"~0", "~'h0", "~'bx", "~$P"}) {
+    pattern::Design design;
+    design.AddIcl("inverted-unsized.icl",
+                  "Module M { Parameter P = 0; DataOutPort q[3:0] { Source " +
+                      std::string(source) + "; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "unsized");
+  }
+  pattern::Design doubled;
+  doubled.AddIcl("double-inversion.icl",
+                 "Module M { DataRegister d { WriteDataSource 1'b1; "
+                 "WriteEnSource ~~0; } }");
+  Fails([&] { pattern::Elaborate(doubled, "M"); }, "unsized");
+  pattern::Design design;
+  design.AddIcl("sized-inversion.icl",
+                "Module M { Parameter P = 4'h0; DataOutPort q[3:0] { Source "
+                "~$P; } DataOutPort x[3:0] { Source 1'b1, 'bx, 1'b1; } }");
+  const auto netlist = pattern::Elaborate(design, "M");
+  for (const auto& bit : netlist.NodeAt("q").inputs.at("Source")) {
+    Require(bit.constant == '1', "sized parameter source inversion");
+  }
+  const auto& bits = netlist.NodeAt("x").inputs.at("Source");
+  Require(bits[0].constant == '1' && bits[1].constant == 'x' &&
+              bits[2].constant == 'x' && bits[3].constant == '1',
+          "unsized X source retains contextual padding");
+}
 void TestImplicitScanBit() {
   pattern::Design design;
   design.AddIcl("bare_scan.icl", R"(
@@ -914,6 +940,7 @@ int main() {
                           TestMuxAndEnum,
                           TestConnectionErrors,
                           TestUnsizedSources,
+                          TestInvertedUnsizedSources,
                           TestImplicitScanBit,
                           TestEnumAndPhysicalScanNames,
                           TestPerBitGraph,

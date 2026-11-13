@@ -976,3 +976,13 @@ native lane/state/rollback checks pass. Full dynamic/static regression,
 leak-enabled native/new11/old17/old11 sanitizers, naming/style and independent
 review pass. One reverse Tessent certificate brings the offline total to44
 directions plus seven legacy standards. See the guide for exact evidence.
+
+## Task 32: Unsized literal inversion validation
+
+Completed [the focused plan](2026-11-13-source-literal-validation.md).
+Shared constant/signal boundaries enforce explicit normative6.3.12(m) before
+contextual sizing, including even inversion counts. The guide records the
+conflicting6.3.11 example and Tessent2026.2 acceptance; vendor rejection agreement
+is not claimed. Eight CLI and native cases, full dynamic/static regression,
+leak-enabled sanitizers, naming/style and independent review pass.
+Broader source-kind/hierarchy validation remains open.

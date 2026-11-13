@@ -91,6 +91,23 @@ void TestConstants() {
       Constant("128'h1").data != std::string(127, '0') + "1" ||
       Constant("$width * 2").AsInteger() != 16)
     throw std::runtime_error("ICL constant evaluation mismatch");
+  for (const auto& expression :
+       {"~0", "~'h0", "~'bx", "~$width", "1'b0, 0, 3'b000"}) {
+    bool failed = false;
+    try {
+      Constant(expression, 4);
+    } catch (const std::runtime_error&) {
+      failed = true;
+    }
+    if (!failed) {
+      throw std::runtime_error("accepted illegal unsized element: " +
+                               std::string(expression));
+    }
+  }
+  if (Constant("~$value", 4).data != "1000" ||
+      Constant("1'b1, 'bx, 1'b1", 4).data != "1xx1") {
+    throw std::runtime_error("sized parameter inversion or X padding changed");
+  }
   for (const auto& expression : {"$value, $width", "$width'h1FF", "1 / 0"}) {
     bool failed = false;
     try {

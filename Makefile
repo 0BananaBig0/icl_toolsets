@@ -1091,6 +1091,7 @@ python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
 python3 tests/src/pattern/test_multiple_client_interfaces.py $1
 python3 tests/src/pattern/test_multiple_client_chain_groups.py $1
 python3 tests/src/pattern/test_shift_enable_clients.py $1
+python3 tests/src/pattern/test_source_literals.py $1
 python3 tests/src/pattern/test_hidden_client_events.py $1
 python3 tests/src/pattern/test_compound_reset_sources.py $1
 python3 tests/src/pattern/test_argument_reset_sources.py $1

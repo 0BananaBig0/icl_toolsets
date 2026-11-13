@@ -9,19 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the ShiftEn-only client checkpoint passed full dynamic/static
-make -j2 --jobserver-style=pipe check, including all 31 generator CLI suites,
+On 2026-11-13, the literal-validation checkpoint passed full dynamic/static
+make -j2 --jobserver-style=pipe check, including all 32 generator CLI suites,
 native tests, 44 directional and seven legacy Tessent standards, and six
 Vim/Neovim checks. All 334 parser and 119 scanner rules were exercised across
 2,512 ICL files. Five optional ANTLR integration tests were skipped because
 ICL_REF_DIR was unset. The complete log and exit0 record are
-build/shift-enable-clients-regression.log and .exit.
+build/source-literals-regression.log and .exit.
 
-The native scheduler, 11 new ShiftEn-only cases, 17 existing multiple-client
-cases and 11 chain-group cases passed ASan/UBSan/LeakSanitizer with detect_leaks=1.
-Formatting, naming, whitespace and independent review passed. See
-[ShiftEn-only evidence](#shiften-only-client-selection-2026-11-13) for behavior,
-vendor evidence, commands and scale measurements.
+Native expression/netlist tests and eight literal CLI cases passed
+ASan/UBSan/LeakSanitizer with detect_leaks=1. Formatting, naming, whitespace and
+independent review passed. See [literal validation](#unsized-literal-inversion-validation-2026-11-13)
+for the normative rule, conflicting example and Tessent compatibility difference.
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -2713,3 +2712,46 @@ and .exit(0), including all31 generator suites,44directions/seven legacy standar
 334parser/119scanner rules over2,512ICL files and six editor checks(196.777s).
 Five optional ANTLR checks remain skipped. Strict authored-code coverage and
 Rocky8 qualification of later changes remain outstanding.
+
+## Unsized literal inversion validation (2026-11-13)
+
+The constant evaluator and signal resolver reject inverted unsized operands
+before contextual sizing. This includes unsized parameter substitutions and
+double inversions in WriteEnSource. Sized literals/parameters, signal inversion,
+sized/signal double inversion and legal unsized X/zero padding retain their
+behavior. Output publication remains atomic on rejection.
+
+The chosen rule is IEEE1687-2014 §6.3.12(m), which explicitly prohibits inversion
+of unsized elements. There is conflicting text: §6.3.11's known-width example
+uses 1'b0, ~0, 5'h1a and describes its contextual inversion. Under the approved
+standard-first policy, the explicit normative prohibition takes precedence.
+
+This differs from Tessent2026.2: the vendor accepts unsized ResetValue and
+DataOutPort Source inversions, their sized controls, and that exact ten-bit
+concatenation example. Five corrected probes returned0 and exported PDL.
+Evidence is build/source-literals-vendor-selected-evidence, with remote inputs
+and logs under test_source_literals/run_2026_11_13_01/
+source-literals-probe-selected. These are acceptance probes, not rejection
+agreement or additional directional certificates. Initial probes used an
+unsupported -batch argument or omitted mandatory scan controls; their failures
+are retained separately and excluded from this evidence.
+
+Eight CLI cases and native expression/netlist tests check the literal contexts,
+parameters, source connections, mux branches, X padding, zero available padding,
+double inversions and output preservation. The original contextual cases
+reproduced acceptance of forbidden operands. Review found the double-inversion
+parity bypass, reproduced in build/source-literals-double-red.log, before the
+operator-presence fix. Reviewed focused checks pass in
+build/source-literals-reviewed-{native,green}.log and
+build/source-literals-reviewed-focused.exit(0). Native and eight CLI cases
+passed ASan/UBSan/LeakSanitizer with detect_leaks=1
+(build/source-literals-sanitizer-{native,cli}.log/.exit,0).
+Formatting, naming and independent review pass. Validation adds constant work
+per literal segment; existing bit limits and allocation/sizing behavior remain.
+Broader source-kind and hierarchy validation remains unfinished.
+
+Full dynamic/static make check passed in build/source-literals-regression.log
+and .exit(0): all32 generator suites,44directions/seven legacy standards,
+334parser/119scanner rules over2,512ICL files and six editor checks(208.212s).
+Five optional ANTLR tests remain skipped. This change does not complete the
+strict coverage gate, later-change Rocky8 qualification or source-kind audit.

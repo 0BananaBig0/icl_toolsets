@@ -209,6 +209,9 @@ Constant EvaluateConstant(
                            tokens, first, last, [&](const std::string& name) {
                              return parameter(name).AsInteger();
                            }))};
+    if (invert && !part.sized) {
+      throw std::runtime_error("unsized ICL element cannot be inverted");
+    }
     if (!parts.empty() && part.is_string != parts.front().is_string) {
       throw std::runtime_error("cannot concatenate ICL strings and numbers");
     }

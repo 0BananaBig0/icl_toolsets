@@ -1462,6 +1462,7 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
     size_t end = first;
     while (end < expression.end && tokens[end].text != ",") ++end;
     Segment segment;
+    const bool has_inversion = tokens[first].text == "~";
     while (first < end && tokens[first].text == "~") {
       segment.inverted = !segment.inverted;
       ++first;
@@ -1510,6 +1511,9 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
       segment.value = Value({expression.scope, first, end});
       if (segment.value.is_string) {
         throw std::runtime_error("string used as signal");
+      }
+      if (has_inversion && !segment.value.sized) {
+        throw std::runtime_error("unsized signal element cannot be inverted");
       }
       if (segment.value.sized) {
         known += segment.value.data.size();
