@@ -384,7 +384,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
-| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint register accesses and unconnected primary-input writes, including slices/aliases/X masks, by apply depth, with serial fallback. |
+| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. Tessent default-instance and persistent takes are supported within the input stream; other clock/serial-control-port reservations remain unsupported. |
 | System-clock commands | Execution/scheduling remains unfinished and reports an error. |
 | Hardware readback commands | Static generation cannot supply live device observations. |
@@ -549,11 +549,14 @@ Parallel”, also describes serial fallback and recursive merging.
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
 PDL parser. It combines consecutive calls when each contains one or more
-plain applies with ScanRegister/DataRegister reads and writes or unconnected
-primary-input writes (including slices, aliases and X masks), and their physical
-object sets over the entire calls do not overlap. Aliases occupy every resolved
-physical register/port; even disjoint slices of one object retain serial order
-to preserve controlling fill. Reads may use
+plain applies with ScanRegister/DataRegister reads and writes or data/control-port
+accesses (including slices, aliases and X masks), and their owned dependency sets
+over the entire calls do not overlap. Ownership includes logical controlling
+history and all reachable combinational inputs, stopping at registers and
+unconnected primary inputs. Mux branches/selectors, one-hot contributors and
+implicit address/read-enable selection are included. Shared inactive branches
+may conservatively prevent batching. Aliases occupy every resolved object; even
+disjoint slices of one object retain serial order to preserve controlling fill. Reads may use
 X masks or omit expected data. It merges one apply group
 from each active call per round, preserving every call's apply order, and removes
 exhausted calls from subsequent rounds. It does not merge across outside apply
@@ -566,6 +569,10 @@ attempt is discarded and retried serially with a fresh scheduler; artifacts are
 published only after success. This is a conservative heuristic, not a proof of
 the globally shortest pattern. A shared apply may still need multiple scans.
 The merge pass uses ordered-set conflict checks, not interleaving enumeration.
+Dependency references are charged before enqueueing against a shared 4,194,304
+visit budget, including implicit one-hot selection traversal. Exhaustion retains
+serial scheduling. Visited sets avoid revisiting nodes within a call; cached
+one-hot selections avoid repeating completed selection walks.
 
 Regression input is under `tests/cases/ours/pattern_generation/merge/`; the
 runner is `tests/src/pattern/test_merge_scheduling.py`. It checks source/flat
@@ -2470,3 +2477,42 @@ This qualifies the generator implementation through eecab17 and the described
 build/install paths. It does not qualify the subsequently developed computed-port
 merge extension, a remote static-Tcl source build, or every Linux distribution.
 Strict coverage and remaining model requirements are still open.
+
+## Merged connected and computed ports (2026-11-13)
+
+Connected data inputs and computed outputs now participate in ordered iMerge
+batching. Each call owns its logical targets and reachable combinational
+dependencies, stopping at physical storage and primary inputs. This covers
+output enables, mux/logic operands, one-hot contributors and their implicit
+address/read-enable controls. Shared dependencies retain serial order, including
+inactive branches that a more selective optimizer might prove independent.
+Resource and timing barriers, logical controlling history and fresh-state
+serial fallback remain in force.
+
+Dependency enqueueing and implicit one-hot selection share a 4,194,304-reference
+analysis budget. Exhaustion preserves the serial operations. Existing one-hot
+resolver callers retain their per-source limit; cached selections require no
+new traversal. The native test checks small-budget exhaustion, cache/default
+behavior and 1,024 calls through a 4,096-bit port, with exact fallback operand/call
+order. The latter analysis took 0.079 s in the focused run.
+
+Twelve new CLI cases cover connected/inverted/aliased ports, masks, ordered
+reads/writes, shared drivers, logic/mux/enables, ordinary/addressed one-hot
+contributors, constants, resource barriers, failure publication and 64 independent
+two-apply calls. The 64-call case emits two applies instead of 128; source/flat/
+generated replay took 0.756 s (wall 0.82 s, peak 72,472 KiB) with g++ 16.2.1 -O2 on the
+local Linux host. This measures the stated workload, not a global optimum.
+
+Full dynamic/static make check passed (build/merge-computed-regression-final.log
+and .exit,0), including all 27 generator CLI suites, native tests, existing vendor
+standards, all 334 parser/119 scanner rules over 2,507 ICL files and Vim/Neovim
+checks. Five optional ANTLR integration tests remain skipped. The 12 new CLI cases
+and native scheduler tests pass ASan/UBSan/LeakSanitizer with detect_leaks=1
+(build/merge-computed-sanitizer-final-{cli,native}.log). Formatting, naming,
+whitespace and independent review pass. Review's addressed one-hot and aggregate
+budget findings were reproduced before repair. The initial full run was stopped
+with 143 for the final budget fix and is not completion evidence.
+
+No new vendor certificate, current strict-coverage pass or Rocky8 qualification
+of this extension is claimed. Broader timing/resource optimization and the
+remaining event models are still open.

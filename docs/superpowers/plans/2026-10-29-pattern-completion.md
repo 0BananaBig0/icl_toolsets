@@ -926,3 +926,10 @@ See [platform evidence](../../pattern-generation.md#source-archive-and-rocky-lin
 Task25 coverage acceptance and the broader model requirements remain unfinished.
 
 Task27 follows the [computed-port merge plan](2026-11-13-computed-port-merges.md).
+
+Task27 passed the reviewed full dynamic/static regression (exit0,
+build/merge-computed-regression-final.log),12 new CLI cases and native tests
+under leak-enabled sanitizers, style/naming/whitespace and independent review.
+The addressed one-hot ownership and shared analysis-budget findings were fixed
+before final verification. See
+[computed-port merge evidence](../../pattern-generation.md#merged-connected-and-computed-ports-2026-11-13).

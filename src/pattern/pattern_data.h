@@ -42,11 +42,14 @@ class DataReadRoutes {
 // Register/Instance contributors and forwarded data/scan output ports.
 class OneHotReadResolver {
  public:
-  explicit OneHotReadResolver(const Netlist& netlist) : netlist_(netlist) {}
+  // A shared traversal budget, when supplied, must outlive the resolver.
+  explicit OneHotReadResolver(const Netlist& netlist, size_t* budget = nullptr)
+      : netlist_(netlist), budget_(budget) {}
   const std::vector<AddressRequirement>& Resolve(const OneHotSource& source);
 
  private:
   const Netlist& netlist_;
+  size_t* budget_;
   std::unique_ptr<AddressResolver> addresses_;
   std::map<const OneHotSource*, std::vector<AddressRequirement>> cache_;
 };

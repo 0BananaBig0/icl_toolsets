@@ -3,11 +3,13 @@
 #include "pattern/pattern_merge.h"
 
 #include <algorithm>
+#include <limits>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
+#include "pattern/pattern_data.h"
 #include "pattern/pattern_values.h"
 
 namespace pattern {
@@ -16,7 +18,10 @@ class Merger {
  public:
   Merger(const Netlist& netlist, const std::vector<Operation>& operations,
          bool combine)
-      : netlist_(netlist), operations_(operations), combine_(combine) {}
+      : netlist_(netlist),
+        operations_(operations),
+        combine_(combine),
+        one_hot_(netlist, &remaining_) {}
 
   std::vector<Operation> Run() {
     std::vector<Operation> result;
@@ -33,6 +38,51 @@ class Merger {
     auto merged = Block();
     result.insert(result.end(), std::make_move_iterator(merged.begin()),
                   std::make_move_iterator(merged.end()));
+  }
+
+  bool CollectOwners(size_t root, std::set<size_t>& targets) {
+    if (!remaining_) return false;
+    --remaining_;
+    std::vector<size_t> pending{root};
+    while (!pending.empty()) {
+      const auto id = pending.back();
+      pending.pop_back();
+      if (id == std::numeric_limits<size_t>::max() ||
+          !targets.insert(id).second) {
+        continue;
+      }
+      const auto& node = netlist_.nodes.at(id);
+      if (node.model == ModelKind::kRegister ||
+          (IsInputPort(node.kind) && node.scope == 0 &&
+           !node.inputs.count("Source"))) {
+        continue;
+      }
+      const auto append = [&](const std::vector<BitReference>& bits) {
+        if (bits.size() > remaining_) return false;
+        remaining_ -= bits.size();
+        for (const auto& bit : bits) pending.push_back(bit.node);
+        return true;
+      };
+      for (const auto& [name, bits] : node.inputs) {
+        if (!append(bits)) return false;
+      }
+      for (const auto& choice : node.choices) {
+        if (!append(choice.source)) return false;
+      }
+      for (const auto& source : node.one_hot_sources) {
+        if (!append(source.bits)) return false;
+        for (const auto& condition : one_hot_.Resolve(source)) {
+          if (!remaining_) return false;
+          --remaining_;
+          pending.push_back(condition.enable.node);
+          if (condition.signals && !append(*condition.signals)) return false;
+        }
+      }
+      for (const auto& term : node.logic) {
+        if (!append(term.signals)) return false;
+      }
+    }
+    return true;
   }
 
   bool Batchable(const std::vector<Operation>& stream,
@@ -59,17 +109,9 @@ class Merger {
         if (!target.access_together.empty()) {
           return false;
         }
+        ValidatePdlAccessTarget(netlist_, target, read);
         for (const auto& bit : target.bits) {
-          if (bit.node >= netlist_.nodes.size()) return false;
-          const auto& node = netlist_.nodes[bit.node];
-          const bool primary = IsReservableResource(node) &&
-                               IsInputPort(node.kind) && node.scope == 0 &&
-                               !node.inputs.count("Source");
-          if (node.kind != "ScanRegister" && node.kind != "DataRegister" &&
-              !primary) {
-            return false;
-          }
-          targets.insert(bit.node);
+          if (!CollectOwners(bit.node, targets)) return false;
         }
         if (op.arguments.size() == 2) {
           PdlDataValue(context_, netlist_, target, op.arguments[1]);
@@ -169,6 +211,9 @@ class Merger {
   const std::vector<Operation>& operations_;
   bool combine_;
   size_t position_ = 0;
+  // Exhausted analysis retains the existing serial schedule.
+  size_t remaining_ = 4 * 1024 * 1024;
+  OneHotReadResolver one_hot_;
   z3::context context_;
 };
 }  // namespace

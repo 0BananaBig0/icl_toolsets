@@ -1069,6 +1069,7 @@ python3 tests/src/pattern/test_merge_scheduling.py $1
 python3 tests/src/pattern/test_merge_observations.py $1
 python3 tests/src/pattern/test_merge_data_registers.py $1
 python3 tests/src/pattern/test_merge_primary_inputs.py $1
+python3 tests/src/pattern/test_merge_computed_ports.py $1
 python3 tests/src/pattern/test_resource_reservations.py $1
 python3 tests/src/pattern/test_data_resource_reservations.py $1
 python3 tests/src/pattern/test_parallel_control_reservations.py $1

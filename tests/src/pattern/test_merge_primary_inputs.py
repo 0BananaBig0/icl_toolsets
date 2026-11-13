@@ -66,7 +66,7 @@ class MergePrimaryInputs(unittest.TestCase):
         self.assertIn('iWrite r 0b1011', output)
         self.replay(output)
 
-    def test_connected_inputs_and_output_targets_remain_barriers(self):
+    def test_connected_inputs_and_outputs_sharing_a_driver_keep_order(self):
         source = 'Module Child { DataInPort input[3:0]; }\n' + SOURCE.replace('Module MergeNetwork {', '''Module MergeNetwork {
  Instance child Of Child { InputPort input = a; }
  DataOutPort observed[3:0] { Source a; }

@@ -22,21 +22,22 @@ No new dependency or optimizer framework. The expected small/medium workload is
 tens to hundreds of calls; measure 64 independent port streams and a shared
 dependency case. This is greedy optimization, not a global-minimum guarantee.
 
-Files: src/pattern/pattern_merge.cc; shared Make generator suite;
-tests/src/pattern/test_merge_computed_ports.py; existing primary-merge test name
+Files: src/pattern/pattern_merge.cc and pattern_data.{cc,h} shared traversal budget; shared Make generator suite;
+tests/src/pattern/test_merge_computed_ports.py; native scheduler budget test; CLI help;
+existing primary-merge test name
 if its unchanged overlap assertion needs a clearer description; generator guide
 and coverage ledger.
 
 ## Steps
 
-- [ ] Reproduce serial-only behavior with independent connected/output-port
+- [x] Reproduce serial-only behavior with independent connected/output-port
   tests. Cover aliases/masks, repeated apply order, shared sources, mux/logic/
   one-hot dependencies, output enables, reads, constants, invalid operands,
   resource barriers and output preservation. Replay source, flat ICL and output.
-- [ ] Extend ownership traversal using the existing netlist edges and validation.
+- [x] Extend ownership traversal using the existing netlist edges and validation.
   Keep unsupported operations as barriers and bounded-work fallback explicit.
   Run focused new and existing merge/port suites.
-- [ ] Measure representative scale; run relevant native/full dynamic/static
+- [x] Measure representative scale; run relevant native/full dynamic/static
   regression and leak-enabled sanitizers, style/naming and independent review.
   Record exact results and conservative ownership limits. Do not claim this
   completes timing/resource optimization or the outstanding model requirements.

@@ -208,17 +208,24 @@ const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
     const OneHotSource& source) {
   const auto cached = cache_.find(&source);
   if (cached != cache_.end()) return cached->second;
-  std::vector<BitReference> pending = source.bits;
+  std::vector<BitReference> pending;
   std::set<size_t> visited;
   std::vector<AddressRequirement> conditions;
   size_t remaining = 4 * 1024 * 1024;
-  while (!pending.empty()) {
-    const auto ref = pending.back();
-    pending.pop_back();
-    if (!remaining--) {
+  const auto append = [&](const std::vector<BitReference>& bits) {
+    if (bits.size() > remaining || (budget_ && bits.size() > *budget_)) {
+      if (budget_) *budget_ = 0;
       throw std::runtime_error(
           "one-hot read dependency resource limit exceeded");
     }
+    remaining -= bits.size();
+    if (budget_) *budget_ -= bits.size();
+    pending.insert(pending.end(), bits.begin(), bits.end());
+  };
+  append(source.bits);
+  while (!pending.empty()) {
+    const auto ref = pending.back();
+    pending.pop_back();
     if (ref.node == std::numeric_limits<size_t>::max()) {
       throw std::runtime_error("one-hot contributor has no selectable source");
     }
@@ -232,7 +239,7 @@ const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
     }
     if (node.kind == "OneHotDataGroup" || node.kind == "OneHotScanGroup") {
       for (const auto& nested : node.one_hot_sources) {
-        pending.insert(pending.end(), nested.bits.begin(), nested.bits.end());
+        append(nested.bits);
       }
       continue;
     }
@@ -247,8 +254,7 @@ const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
         node.model == ModelKind::kAlias) {
       const auto input = node.inputs.find("Source");
       if (input != node.inputs.end()) {
-        pending.insert(pending.end(), input->second.begin(),
-                       input->second.end());
+        append(input->second);
         continue;
       }
     }

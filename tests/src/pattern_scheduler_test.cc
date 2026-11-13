@@ -13,11 +13,87 @@
 #include "pattern/pattern_data.h"
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_flatten.h"
+#include "pattern/pattern_merge.h"
 #include "pattern/pattern_tap.h"
 
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestOneHotSharedAnalysisBudget() {
+  pattern::Design design;
+  design.AddIcl("one-hot-budget.icl", R"(
+Module Driver {
+  DataInPort data[4095:0]; DataInPort enable;
+  DataOutPort terminal[4095:0] { Source data; Enable enable; }
+  DataOutPort forwarded[4095:0] { Source terminal; }
+}
+Module OneHotBudget {
+  DataInPort data[4095:0]; DataInPort enable;
+  Instance driver Of Driver { InputPort data = data; InputPort enable = enable; }
+  OneHotDataGroup group { Port driver.forwarded[0]; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "OneHotBudget");
+  const auto& source = netlist.NodeAt("group").one_hot_sources.at(0);
+  size_t budget = 8;
+  pattern::OneHotReadResolver bounded(netlist, &budget);
+  bool limited = false;
+  try {
+    bounded.Resolve(source);
+  } catch (const std::runtime_error& error) {
+    limited =
+        std::string(error.what()).find("resource limit") != std::string::npos;
+  }
+  Require(limited && budget == 0,
+          "implicit one-hot traversal consumes the shared budget");
+  budget = 8192;
+  pattern::OneHotReadResolver cached(netlist, &budget);
+  Require(cached.Resolve(source).size() == 1 && budget < 8192,
+          "successful selection charges dependency traversal");
+  budget = 0;
+  Require(cached.Resolve(source).size() == 1,
+          "cached selection needs no new traversal budget");
+  pattern::OneHotReadResolver ordinary(netlist);
+  Require(ordinary.Resolve(source).size() == 1,
+          "ordinary callers retain the per-source budget");
+}
+void TestMergeAnalysisBudget() {
+  pattern::Design design;
+  design.AddIcl("merge-budget.icl", R"(
+Module MergeBudget {
+  DataOutPort wide[4095:0] { Source 4096'b0; }
+  DataInPort a; DataInPort b;
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "MergeBudget");
+  std::vector<pattern::Operation> operations{
+      {"iMerge", {"-begin"}, "test:1", {}}};
+  for (size_t i = 0; i < 1024; ++i) {
+    const std::vector<std::string> call{"wide" + std::to_string(i)};
+    operations.push_back({"iWrite", {"wide", "0"}, "test:1", call});
+    operations.push_back({"iApply", {}, "test:1", call});
+  }
+  for (const std::string name : {"a", "b"}) {
+    operations.push_back({"iWrite", {name, "1"}, "test:1", {name}});
+    operations.push_back({"iApply", {}, "test:1", {name}});
+  }
+  operations.push_back({"iMerge", {"-end"}, "test:1", {}});
+  const auto start = std::chrono::steady_clock::now();
+  const auto result = pattern::MergeOperations(netlist, operations, true);
+  Require(result.size() + 2 == operations.size(),
+          "exhausted merge analysis preserves the serial operations");
+  for (size_t i = 0; i < result.size(); ++i) {
+    Require(result[i].command == operations[i + 1].command &&
+                result[i].arguments == operations[i + 1].arguments &&
+                result[i].call_stack == operations[i + 1].call_stack,
+            "analysis fallback retains operands and call ownership");
+  }
+  std::cout << "merge budget: 1024 calls over a 4096-bit port, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
 }
 void TestSharedScanOutputs() {
   pattern::Design design;
@@ -1710,6 +1786,8 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestOneHotSharedAnalysisBudget();
+    TestMergeAnalysisBudget();
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
     TestClientScanControls();

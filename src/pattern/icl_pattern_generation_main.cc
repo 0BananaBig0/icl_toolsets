@@ -441,7 +441,8 @@ int main(int argc, char** argv) {
            "Single-TAP IR/DR scans and nonzero iRunLoop TCK counts require\n"
            "explicit iReset. iRunLoop -sck/-time, multi-TAP and general\n"
            "serial-derived or free-running clock events remain unsupported.\n"
-           "Independent register and primary-input iMerge calls can combine\n"
+           "Independent register and data/control-port iMerge calls can "
+           "combine\n"
            "ordered applies, including reads, slices, aliases and masks.\n";
     return 0;
   }
