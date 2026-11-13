@@ -509,16 +509,50 @@ barriers, normal operand validation, shared scheduling and fresh-state fallback.
 No dependency or alternate merge engine is needed; conflict lookup remains
 ordered-set based and batch traversal linear in operations.
 
-- [ ] Add RED tests for partial/X/alias writes, inherited fill and last-write
+- [x] Add RED tests for partial/X/alias writes, inherited fill and last-write
   order within a call, observations across apply depth, physical alias conflicts,
   fresh-state fallback, failure publication and 64-call scale. Update prior
   conservative expectations to the newly supported behavior.
-- [ ] Remove only the full-direct-known-write restriction once resolved physical
+- [x] Remove only the full-direct-known-write restriction once resolved physical
   target bits all name ScanRegisters. Parse operands as before and retain the
   shared scheduler's fill semantics, replay and barriers.
-- [ ] Verify both merge suites, full dynamic/static regression, leak-enabled
+- [x] Verify both merge suites, full dynamic/static regression, leak-enabled
   sanitizer replay, style/naming, scale and independent review. Retain broader
   target/event optimization requirements separately.
+
+## Task 22: Whole-command reset prerequisites for main Tcl compounds
+
+Retain the existing source-preserving rewriter and trace complete top-level Tcl
+commands as caller actions. Hoist release prerequisites before a main loop or
+conditional, capturing its entry prefix and the whole executed operation span.
+Retain literal-site actions as a fresh-state fallback for already repairable
+loop bodies that reset internally. Verify either rewritten result against the
+expected operation stream before publication. Procedure definitions remain
+byte-for-byte intact. This handles repairable
+compound sites without inserting an apply between queued writes on successive
+iterations. Word-substitution resets and internal reset reassertions still need
+separate classification; they must never silently change execution order.
+
+Approaches considered: rewriting loop bodies changes repeated execution;
+separately evaluating each top-level command changes Tcl return semantics;
+marking command entry/exit in the existing instrumentation preserves Tcl's
+normal evaluator and needs no new parser. Use the latter only when source tracing
+is requested. Close an outstanding command at file evaluation completion, and
+retain whole-merge spans if a compound starts a merge continued by later source.
+This is an implementation choice under the existing autonomous authorization.
+
+Files: pattern_runtime.cc/.h; tests/src/pattern_runtime_test.cc; new
+ tests/src/pattern/test_compound_reset_sources.py; Makefile; support docs.
+
+- [ ] Add RED whole-loop/prefix/conditional/queue tests, native source-span
+  assertions, procedure preservation, merged/multi-file cases and output safety.
+  Check generated/flat/reset-source replay and rewrite fixed points.
+- [ ] Record complete main-command actions in existing instrumentation. Keep
+  ordinary PDL sites, procedure execution, Tcl control flow and safe interpreter
+  validation unchanged; retain original text and final operation-order checking.
+- [ ] Verify focused runtime/CLI, full dynamic/static checks, leak-enabled
+  sanitizers, style/naming, representative loop scale and independent review.
+  Document repairable scope and remaining caller-only rewrite requirements.
 
 ## Remaining completion work (not yet completed)
 
@@ -743,3 +777,12 @@ scheduler, eight hidden-client and four TAP-shadow CLI cases passed
 ASan/UBSan/LeakSanitizer with leaks enabled. Google formatting/naming/whitespace
 and independent source/certificate review passed after the primary-enable
 proof fix. See [hidden-client evidence](../../pattern-generation.md#hidden-standalone-client-events-2026-11-13).
+
+Task 21 passed full dynamic/static `make -j2 --jobserver-style=pipe check`
+(exit 0, `build/merge-masked-regression.log` and `.exit`), including 40 directional/
+seven legacy standards, native tests, all grammar/scanner rules over 2,507 ICL
+files and the editor corpus. Five optional ANTLR checks remain skipped. Both
+merge suites (20 + 11 cases) passed ASan/UBSan/LeakSanitizer with leaks enabled;
+formatting/naming/whitespace and independent review passed. The full regression
+also verifies the committed Task20 implementation. See
+[masked-write evidence](../../pattern-generation.md#masked-and-aliased-merge-writes-2026-11-13).

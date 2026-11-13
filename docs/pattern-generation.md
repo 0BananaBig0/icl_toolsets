@@ -384,7 +384,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
-| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint full-register calls by apply depth, with serial fallback. |
+| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint ScanRegister calls, including slices/aliases/X masks, by apply depth, with serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. Tessent default-instance and persistent takes are supported within the input stream; other clock/serial-control-port reservations remain unsupported. |
 | System-clock commands | Execution/scheduling remains unfinished and reports an error. |
 | Hardware readback commands | Static generation cannot supply live device observations. |
@@ -543,14 +543,14 @@ Parallel”, also describes serial fallback and recursive merging.
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
 PDL parser. It combines consecutive calls when each contains one or more
-plain applies with ScanRegister reads (including slices and aliases) and fully known,
-full-width direct ScanRegister writes, and their register sets over the entire
-calls do not overlap. Read aliases occupy every resolved physical register;
-even disjoint read slices of one register retain serial order. Reads may use
+plain applies with ScanRegister reads and writes (including slices, aliases and
+X masks), and their register sets over the entire calls do not overlap. Aliases
+occupy every resolved physical register; even disjoint slices of one register
+retain serial order to preserve controlling fill. Reads may use
 X masks or omit expected data. It merges one apply group
 from each active call per round, preserving every call's apply order, and removes
 exhausted calls from subsequent rounds. It does not merge across outside apply
-boundaries. Empty applies, AccessTogether aliases, alias/partial writes, X writes, notes within
+boundaries. Empty applies, AccessTogether aliases, notes within
 calls, state changes, `-together`, and clock waits retain their serial barriers. Nested blocks
 are processed recursively. Calls containing resource commands remain serialized.
 
@@ -2030,7 +2030,8 @@ enumerations and expected-data masks. Each call occupies every underlying
 physical register for its entire stream, so aliases and separate slices of one
 register cannot bypass conflict ordering. AccessTogether aliases remain barriers
 because their implicit members can extend beyond the requested bits. Partial,
-alias and X writes retain their existing controlling-fill barriers.
+alias and X writes retained controlling-fill barriers at this stage; the later
+[masked-write update](#masked-and-aliased-merge-writes-2026-11-13) extends batching.
 
 Six positive subcases first failed the conservative serialization behavior;
 all 13 observation tests now pass, including source/flat/generated replay,
@@ -2266,3 +2267,31 @@ eight hidden-client and four TAP-shadow cases passed leak-enabled ASan/UBSan/
 LeakSanitizer. Formatting/naming/whitespace and independent source/certificate
 review passed. The earlier full run used a stale static binary and is superseded
 by the reviewed run.
+
+
+### Masked and aliased merge writes (2026-11-13)
+
+The existing apply-depth merge pass now accepts ScanRegister slices, aliases and
+X-masked writes. Each call owns every physical register it touches for its entire
+stream, including controlling fill; disjoint slices of the same register remain
+serialized. Each call keeps its apply order and last-write behavior. AccessTogether,
+resource, wait, empty-apply and opaque-effect barriers remain in force. Joint
+scheduling still uses concrete replay and retries serially from fresh state when
+necessary. This adds no alternate scheduling engine or dependency.
+
+Twenty observation/write cases and eleven ordering cases cover inverted/nested/
+ascending aliases, partial and all-X operands, inherited fill, repeated writes,
+reset-conflict fallback and failed-output protection across original, flattened
+and generated replay. All 31 cases passed ASan/UBSan/LeakSanitizer with leaks
+enabled. Independent review found no actionable issue. The 64-call, two-apply
+masked case (9,299 source bytes) took 0.204 s for three replay forms; the full
+20-case suite took 3.62 s / 60,264 KiB. This is a measurement, not a speedup or
+global-optimality claim. Broader target kinds and event/resource optimization
+remain open.
+
+Full dynamic/static `make check` passed with exit 0
+(`build/merge-masked-regression.log`, recorded in `.exit`), including 40 directional
+and seven legacy standards, all parser/scanner rules over 2,507 ICL files and
+the editor corpus. Five optional ANTLR checks remain skipped. Google formatting,
+changed-source naming and whitespace checks pass. No new Tessent certificate
+is claimed for masked merge writes.
