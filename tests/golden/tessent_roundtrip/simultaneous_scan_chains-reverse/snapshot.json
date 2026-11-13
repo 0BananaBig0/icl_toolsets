@@ -1,0 +1,281 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "simultaneous_scan_chains",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/simultaneous_chains/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/simultaneous_chains/access.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/simultaneous_chains/network.icl": "cdc65bcc31081da77b92d434d9c2804a86d38a24e0e97b2cc73171d014b1b99a",
+    "tests/cases/ours/pattern_generation/simultaneous_chains/access.pdl": "0d49b9b31ea7b02a94d3ad18493a5ac63d3d4d7d16197fcb48423283b15af123"
+  },
+  "job": {
+    "id": "simultaneous_scan_chains",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/simultaneous_chains/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/simultaneous_chains/access.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "cdc65bcc31081da77b92d434d9c2804a86d38a24e0e97b2cc73171d014b1b99a",
+      "source_0.pdl": "0d49b9b31ea7b02a94d3ad18493a5ac63d3d4d7d16197fcb48423283b15af123",
+      "run.tcl": "da3df043ab9065068e4a7a43d656d7d3b1d36432c5f2923f04900bd0198349a3"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/simultaneous_chains/network.icl": "cdc65bcc31081da77b92d434d9c2804a86d38a24e0e97b2cc73171d014b1b99a",
+      "tests/cases/ours/pattern_generation/simultaneous_chains/access.pdl": "0d49b9b31ea7b02a94d3ad18493a5ac63d3d4d7d16197fcb48423283b15af123"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.6299672410823405,
+    "outcome": "ok",
+    "result_sha256": "2b4c964c074ab11bf36ddfbf951330ed7309dd8b4ae602252508750c43737cf9",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "Chains",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "a",
+            0,
+            "1"
+          ],
+          [
+            "a",
+            1,
+            "0"
+          ],
+          [
+            "a",
+            2,
+            "0"
+          ],
+          [
+            "a",
+            3,
+            "1"
+          ],
+          [
+            "b",
+            0,
+            "0"
+          ],
+          [
+            "b",
+            1,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "a",
+            0,
+            "0"
+          ],
+          [
+            "a",
+            1,
+            "0"
+          ],
+          [
+            "a",
+            2,
+            "0"
+          ],
+          [
+            "a",
+            3,
+            "0"
+          ],
+          [
+            "b",
+            0,
+            "0"
+          ],
+          [
+            "b",
+            1,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "a",
+            0,
+            "0"
+          ],
+          [
+            "a",
+            1,
+            "1"
+          ],
+          [
+            "a",
+            2,
+            "1"
+          ],
+          [
+            "a",
+            3,
+            "0"
+          ],
+          [
+            "b",
+            0,
+            "1"
+          ],
+          [
+            "b",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "a",
+            0,
+            "1"
+          ],
+          [
+            "a",
+            1,
+            "0"
+          ],
+          [
+            "a",
+            2,
+            "0"
+          ],
+          [
+            "a",
+            3,
+            "1"
+          ],
+          [
+            "b",
+            0,
+            "0"
+          ],
+          [
+            "b",
+            1,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "a",
+            0,
+            "0"
+          ],
+          [
+            "a",
+            1,
+            "1"
+          ],
+          [
+            "a",
+            2,
+            "1"
+          ],
+          [
+            "a",
+            3,
+            "0"
+          ],
+          [
+            "b",
+            0,
+            "1"
+          ],
+          [
+            "b",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "a",
+            0,
+            "0"
+          ],
+          [
+            "a",
+            1,
+            "1"
+          ],
+          [
+            "a",
+            2,
+            "1"
+          ],
+          [
+            "a",
+            3,
+            "0"
+          ],
+          [
+            "b",
+            0,
+            "1"
+          ],
+          [
+            "b",
+            1,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "10b30b9f220422a2b3bf8fedf5978e16920fd4084983d3eaea0a5692a60fd5e2",
+  "vendor_console_sha256": "8161b23acd556a1da43a8ec1925596b18a44ab0e8444e0602a523bf369fb7565",
+  "artifacts": {
+    "flat.pdl": "b474953be31ab2a78dafeca3d0e76e5f9dcacd0bcee1254637c085f9250a230f",
+    "vendor.pdl": "2b4c964c074ab11bf36ddfbf951330ed7309dd8b4ae602252508750c43737cf9"
+  }
+}

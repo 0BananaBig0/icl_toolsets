@@ -1,0 +1,6 @@
+iPDLLevel 1
+iProcsForModule Chains
+iReset
+iRead a 0; iRead b 0; iWrite a 9; iWrite b 2; iApply -together
+iRead a 9; iRead b 2; iWrite a 6; iWrite b 1; iApply -together
+iRead a 6; iRead b 1; iApply -together

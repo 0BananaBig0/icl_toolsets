@@ -14,9 +14,14 @@
 #include "pattern/pattern_runtime.h"
 
 namespace pattern {
+struct ScanLane {
+  std::string input, output, serial, serial_expected;
+};
 struct ScanStep {
   bool instruction = false, together = false;
   std::string input, output, serial, serial_expected;
+  // Simultaneous chains use lanes; scalar fields remain empty for those steps.
+  std::vector<ScanLane> lanes;
   std::map<std::string, std::string> loads;
   std::map<std::string, std::string> writes, expected;
 };

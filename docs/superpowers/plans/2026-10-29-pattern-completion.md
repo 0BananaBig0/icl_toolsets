@@ -459,17 +459,44 @@ Expose lane metadata without changing existing single-lane ScanStep fields.
 Use graph-order path lengths to optimize actual simultaneous clock count.
 Bound graph processing by existing limits, avoiding per-chain graph scans.
 
-- [ ] Add failing native and CLI tests for unequal widths, indexed input/output
+- [x] Add failing native and CLI tests for unequal widths, indexed input/output
   lanes, inverted paths, gated observations, cross-chain SIB prerequisites,
   shared primary/scan controls, grouped access, partial writes and reservations.
   Include shared-input/storage rejection, output safety, actual input/register
   state and source/flat/generated fixed points.
-- [ ] Reuse serial graph ownership and common-state constraints; implement
+- [x] Reuse serial graph ownership and common-state constraints; implement
   simultaneous concrete replay and per-lane metadata. Prove constant-path
   phase equivalence and retain independent state/replay checks.
-- [ ] Measure representative many-lane inputs; run focused/full dynamic/static
+- [x] Measure representative many-lane inputs; run focused/full dynamic/static
   tests, leak-enabled sanitizers, Google checks and independent review. Update
   support records and continue shared/overlapping path and controller work.
+
+## Task 20: Hidden storage events on standalone clients
+
+Extend the existing TAP capture/shift/update unroll to standalone clients,
+including the disjoint simultaneous chains from Task19. Keep held and shift
+storage separate and reuse EffectiveScanControl in independent replay. Derive
+which primary scan-input bits are driven and each selected chain's length from
+the same selected-route graph; pad shorter streams with zero, matching concrete
+replay. Preserve unused bits and retain the last driven input across frames.
+Bound symbolic event work by clocks × modeled storage/input width and the
+existing solver timeout; retain the proved complete-scan fast path.
+
+This step handles hidden storage with phase-stable controls. Serial-derived or
+otherwise phase-varying event sequences still need the general event work; do
+not label those complete or reinterpret failures as hardware unreachability.
+
+- [ ] Add RED native/CLI cases for hidden capture/shift/update, disabled capture,
+  hidden unknown values, resource preservation and rollback, indexed inputs,
+  and unequal simultaneous chains. Verify actual hidden state as well as
+  source/flat/generated replay; preserve outputs for unknown/blocked controls.
+- [ ] Reuse the event equivalence probe and bounded unroll for clients. Derive
+  per-input selection and path lengths without per-input graph scans. Replay
+  actual client events, publish only visible writes, and compare all storage.
+  Keep clock/pin histories consistent across frames and input padding explicit.
+- [ ] Measure representative larger hidden storage and the work-limit failure;
+  run focused/full dynamic/static checks, leak-enabled sanitizers, Google checks
+  and independent review. Record remaining event/model requirements.
 
 ## Remaining completion work (not yet completed)
 
@@ -674,3 +701,14 @@ found no remaining issues after the parallel-frame phase fix. The64-register
 case took0.167s for three replay forms; full10case suite4.56s/60504KiB. Only
 reverse Tessent ordered-apply equivalence certified; see
 [client evidence](../../pattern-generation.md#standalone-client-scan-controls-2026-11-13).
+
+Task 19 passed full dynamic/static `make -j2 --jobserver-style=pipe check`
+(exit 0, `build/simultaneous-chains-regression.log`), including the native and
+nine CLI cases, seven legacy vendor standards, all 334 parser/119 scanner rules
+over 2,506 ICL files and editor corpus checks. The full run checked 38 directional
+standards; the separately added certificate passed all 39 offline standards
+(`build/simultaneous-chains-certificates.log`). Five optional ANTLR checks remain
+skipped. Native scheduler and nine CLI cases passed ASan/UBSan/LeakSanitizer with
+leaks enabled. Google style/naming/whitespace and independent source/certificate
+review passed. See [simultaneous-chain evidence](../../pattern-generation.md#simultaneous-independent-client-chains-2026-11-13).
+Task 20 and the remaining model/qualification requirements stay open.

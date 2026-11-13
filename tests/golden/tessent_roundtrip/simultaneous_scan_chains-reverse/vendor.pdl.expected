@@ -1,0 +1,25 @@
+iProcsForModule Chains
+
+iProc oracle {} {
+
+   iReset
+   iWrite a[3:0] 0b1001
+   iRead  a[3:0] 0b0000
+   iWrite b[1:0] 0b10
+   iRead  b[1:0] 0b00
+   iApply
+
+   iWrite a[3:0] 0b0110
+   iRead  a[3:0] 0b1001
+   iWrite b[1:0] 0b01
+   iRead  b[1:0] 0b10
+   iApply
+
+   iWrite a[3:0] 0b0110
+   iRead  a[3:0] 0b0110
+   iWrite b[1:0] 0b01
+   iRead  b[1:0] 0b01
+   iApply
+
+
+}

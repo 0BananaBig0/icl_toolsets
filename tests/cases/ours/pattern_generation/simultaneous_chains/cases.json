@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "simultaneous_scan_chains",
+      "top": "Chains",
+      "icl": [
+        "tests/cases/ours/pattern_generation/simultaneous_chains/network.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/simultaneous_chains/access.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

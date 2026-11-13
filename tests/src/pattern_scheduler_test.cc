@@ -170,6 +170,58 @@ Module ClientTop {
               vector_scheduler.Value("ck") == "xx0x",
           "client phases drive only the interface's indexed control lanes");
 }
+void TestSimultaneousScanChains() {
+  pattern::Design design;
+  design.AddIcl("simultaneous.icl", R"(
+Module Chains {
+  ScanInPort si[3:0];
+  ScanRegister a[3:0] { ScanInSource si[3]; CaptureSource a; ResetValue 4'b0; }
+  ScanRegister b[1:0] { ScanInSource si[1]; CaptureSource b; ResetValue 2'b0; }
+  ScanOutPort so[5:4] { Source a[0], b[0]; }
+  SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+  ScanInterface client {
+    Chain first { Port si[3]; Port so[5]; }
+    Chain second { Port si[1]; Port so[4]; }
+    Port sel; Port ce; Port se; Port ue; Port ck;
+  }
+})");
+  const auto netlist = pattern::Elaborate(design, "Chains");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto first = scheduler.Apply({{"iWrite", {"a", "9"}, "write", {}},
+                                      {"iWrite", {"b", "2"}, "write", {}}},
+                                     true);
+  Require(first.size() == 1 && first[0].lanes.size() == 2 &&
+              first[0].serial.empty() && first[0].lanes[0].input == "si[1]" &&
+              first[0].lanes[0].serial == "0001" &&
+              first[0].lanes[1].input == "si[3]" &&
+              first[0].lanes[1].serial == "1001" &&
+              scheduler.Value("a") == "1001" && scheduler.Value("b") == "10" &&
+              scheduler.Value("si") == "1x1x",
+          "unequal chains shift together with leading padding and intact "
+          "unused pins");
+  const auto second = scheduler.Apply({{"iRead", {"a", "9"}, "read", {}},
+                                       {"iRead", {"b", "2"}, "read", {}},
+                                       {"iWrite", {"a", "6"}, "write", {}},
+                                       {"iWrite", {"b", "1"}, "write", {}}},
+                                      true);
+  Require(second.size() == 1 && second[0].lanes[0].serial_expected == "01xx" &&
+              second[0].lanes[1].serial_expected == "1001" &&
+              scheduler.Value("a") == "0110" && scheduler.Value("b") == "01" &&
+              scheduler.Value("ck") == "0" && scheduler.Value("ue") == "0",
+          "parallel chain readback precedes the shared update and pads "
+          "comparisons");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"a", "9"}, "reserved", {}}}, false,
+                    {{netlist.node_ids.at("a"), "0110"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("a") == "0110" &&
+              scheduler.Value("b") == "01" && scheduler.Value("ck") == "0",
+          "failed simultaneous access rolls back both chains");
+}
 void TestVectorScanInputs() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/vector_scan_inputs/network.icl");
@@ -1602,6 +1654,7 @@ int main() {
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
     TestClientScanControls();
+    TestSimultaneousScanChains();
     TestVectorScanInputs();
     TestMixedReadRoutes();
     TestMixedIoPhases();

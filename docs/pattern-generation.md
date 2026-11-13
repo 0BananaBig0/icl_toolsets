@@ -24,7 +24,7 @@ and nine shared-output cases, with leak detection enabled. See
 commands, logs, review and measured scale. This did not rerun installation,
 RTL simulation or strict authored-code coverage.
 
-Ordinary regression passes 38 directional and seven legacy Tessent standards
+Ordinary regression passes 39 directional and seven legacy Tessent standards
 offline. The [latest six directional certificates](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30)
 cover three specific TAP fixtures. Indexed vector-input and shared-output cases have local replay
 coverage and no vendor certificate. The
@@ -468,7 +468,8 @@ broader syntax support and never execute PDL.
   Native idle replay includes any explicitly enabled storage events; it does
   not infer BIST completion or live hardware readback.
 
-The backend accepts one physical scan path and at most one TAP. Multiple scalar
+The backend accepts one physical scan path and at most one TAP, or disjoint
+named chains in one standalone client interface. Multiple scalar
 or vector output bits may observe that path through transparent forwarding,
 including inversion. Equivalent ungated observations use the first sorted
 output; gated alternatives retain their enables and require a known-enabled
@@ -478,8 +479,8 @@ interfaces support bound select/capture/shift/update/clock controls when their
 events match the selected complete scan. Unbound vector control lanes retain
 their state, and parallel input frames do not pulse scan controls.
 It rejects
-multiple TAPs, distinct scan-output paths/shared chains, intermediate serial taps,
-simultaneous vector OneHotScanGroup lanes, feedback reset scheduling,
+multiple TAPs, shared scan-input/storage paths, intermediate serial taps,
+feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
 interface events are outside the current complete-scan model; inability to
@@ -2182,3 +2183,42 @@ LeakSanitizer with leak detection enabled. Style/naming/whitespace and independe
 source/certificate review passed. The64-register,3806-byte case took0.167s for
 three replays; all10CLI cases took4.56s with60504KiB peak RSS. These measurements
 do not establish broader event-model completeness.
+
+
+### Simultaneous independent client chains (2026-11-13)
+
+A standalone client may contain multiple named `Chain` SI/SO pairs. The scheduler
+clocks their disjoint paths together, captures and updates once, and shifts for
+the longest selected path. Shorter chains receive leading input padding and
+trailing X comparison masks. Vector ports retain unused lanes, and unlisted
+outputs cannot replace the declared chain outputs. Each path must reach its
+declared input; shared storage/inputs and multiple controllers still require
+the remaining event-scheduling work.
+
+Native state assertions and nine CLI cases cover unequal lengths, inversion,
+indexed lanes, declared-output enables, cross-chain and primary-control
+prerequisites, grouped access, aliases, reservations, rollback and
+source/flat/generated replay. Independent review additionally checked
+cross-chain reset assertion/release and impossible simultaneous reset/write
+goals, with no Important or Critical finding. New ownership and path-length
+passes are O(V+E); the inherited graph builder still scans accumulated edges
+per output. Constructor-only probes through 4,096 one-bit lanes took about 0.32 s.
+The 64-lane, 7,230-byte case took 0.154 s for three replay forms; the full nine-case
+suite took 1.35 s / 73,968 KiB. No overall linear-time or speedup claim is made.
+
+Tessent 2026.2 exported the fixture in both directions. Reverse ordered-apply
+equivalence certified; forward equivalence failed because Tessent omitted
+`-together`. The unchanged comparator rejects that option difference. The new
+reverse certificate raises the offline total to 39 directions. Evidence:
+`test_icl_toolsets/test_simultaneous_chains/run_2026_11_13_01` and local
+`build/simultaneous-chains-{forward,reverse}-evidence`.
+
+Verification: full dynamic/static `make check` passed
+(`build/simultaneous-chains-regression.log`), including native scheduler and
+nine CLI cases, all grammar/scanner rules over 2,506 ICL files and the editor
+corpus. Five optional ANTLR checks were skipped. The full run checked 38
+directional standards; after adding the new certificate, all 39 passed the
+separate offline check. Native and CLI ASan/UBSan/LeakSanitizer checks passed
+with leak detection enabled. Google formatting/naming/whitespace and independent
+source/certificate review passed. Broader shared-path/controller events remain
+unfinished.

@@ -100,6 +100,27 @@ class ScanScheduler::Impl {
       execution_ = std::make_unique<TapExecution>(netlist);
       state_.Restore(execution_->State());
     }
+    const auto interfaces = EffectiveScanInterfaces(netlist);
+    std::map<Key, Key> chain_inputs;
+    for (const auto& binding : interfaces) {
+      if (binding.scope != 0 ||
+          binding.interface.kind != ScanInterfaceKind::kClient ||
+          binding.interface.chains.size() < 2) {
+        continue;
+      }
+      parallel_chains_ = true;
+      for (const auto& chain : binding.interface.chains) {
+        Key input, output;
+        for (const auto& port : chain.ports) {
+          if (netlist.nodes[port.node].kind == "ScanInPort") {
+            input = {port.node, port.index};
+          } else {
+            output = {port.node, port.index};
+          }
+        }
+        chain_inputs.emplace(output, input);
+      }
+    }
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
       if (node.model == ModelKind::kRegister || node.kind == "DataInPort" ||
@@ -122,7 +143,9 @@ class ScanScheduler::Impl {
       if (node.kind == "ScanOutPort" && node.scope == 0) {
         for (int64_t index = node.left;;
              index += node.left <= node.right ? 1 : -1) {
-          roots_.push_back(Add({id, index}));
+          if (!parallel_chains_ || chain_inputs.count({id, index})) {
+            roots_.push_back(Add({id, index}));
+          }
           if (index == node.right) break;
         }
       }
@@ -137,7 +160,13 @@ class ScanScheduler::Impl {
       return std::make_pair(netlist.nodes[left.node].name, left.index) <
              std::make_pair(netlist.nodes[right.node].name, right.index);
     });
-    if (roots_.size() > 1) {
+    if (parallel_chains_) {
+      if (tap_) {
+        throw std::runtime_error(
+            "multiple TAP chains require event scheduling");
+      }
+      CheckIndependentChains(chain_inputs);
+    } else if (roots_.size() > 1) {
       // Forwarded observations of one path do not create extra clock events.
       std::vector<size_t> paths(graph_.size()), physical(graph_.size());
       for (size_t id : order_) {
@@ -200,7 +229,6 @@ class ScanScheduler::Impl {
         serial_scopes.insert(netlist.nodes.at(vertex.bit.node).scope);
       }
     }
-    const auto interfaces = EffectiveScanInterfaces(netlist);
     std::set<size_t> bound_controls;
     size_t top_clients = 0;
     const std::map<std::string, std::string> roles = {
@@ -251,6 +279,32 @@ class ScanScheduler::Impl {
     }
     if (client_controls_) {
       register_ports_ = TapExecution(netlist).RegisterInterfaces();
+    }
+  }
+
+  void CheckIndependentChains(const std::map<Key, Key>& inputs) const {
+    std::vector<size_t> owner(graph_.size(), kMissing);
+    for (size_t root : roots_) owner[root] = root;
+    for (auto it = order_.rbegin(); it != order_.rend(); ++it) {
+      const size_t id = *it;
+      if (owner[id] == kMissing) continue;
+      const auto& vertex = graph_[id];
+      if (vertex.input) {
+        const auto& output = graph_[owner[id]].bit;
+        if (inputs.at({output.node, output.index}) !=
+            Key{vertex.bit.node, vertex.bit.index}) {
+          throw std::runtime_error(
+              "scan chain does not reach its declared input");
+        }
+      }
+      for (const auto& edge : vertex.edges) {
+        if (owner[edge.next] != kMissing && owner[edge.next] != owner[id]) {
+          throw std::runtime_error(
+              "shared scan inputs or storage require overlapping-event "
+              "scheduling");
+        }
+        owner[edge.next] = owner[id];
+      }
     }
   }
 
@@ -1657,16 +1711,18 @@ class ScanScheduler::Impl {
     std::vector<CaptureComparison> comparisons;
     std::optional<SymbolicValue> instruction;
     std::optional<z3::expr> parallel;
+    std::optional<z3::expr> clocks;
     std::map<size_t, z3::expr> drives;
     std::map<size_t, z3::expr> active, read;
     std::vector<z3::expr> selected;
   };
   void SelectScan(z3::optimize& solver, SymbolicNetwork& values, size_t time,
                   Frame& frame) {
-    std::vector<z3::expr> viable, observed;
+    std::vector<z3::expr> viable, observed, lengths;
     for (size_t i = 0; i < graph_.size(); ++i) {
       viable.push_back(context_.bool_val(false));
       observed.push_back(context_.bool_val(false));
+      if (parallel_chains_) lengths.push_back(context_.int_val(0));
     }
     std::vector<std::vector<z3::expr>> gates(graph_.size());
     for (size_t id : order_) {
@@ -1680,9 +1736,15 @@ class ScanScheduler::Impl {
                         edge.choice);
         gates[id].push_back(gate);
         viable[id] = viable[id] || (gate && viable[edge.next]);
+        if (parallel_chains_) {
+          lengths[id] = z3::ite(gate, lengths[edge.next], lengths[id]);
+        }
       }
       if (vertex.bit.node != kMissing) {
         const auto& node = netlist_.nodes.at(vertex.bit.node);
+        if (parallel_chains_ && node.kind == "ScanRegister") {
+          lengths[id] = lengths[id] + context_.int_val(node.Width());
+        }
         const auto enable = node.inputs.find("Enable");
         if (enable != node.inputs.end()) {
           viable[id] =
@@ -1706,10 +1768,18 @@ class ScanScheduler::Impl {
       count =
           count + z3::ite(selected, context_.int_val(1), context_.int_val(0));
     }
-    solver.add(count == (frame.parallel
-                             ? z3::ite(*frame.parallel, context_.int_val(0),
-                                       context_.int_val(1))
-                             : context_.int_val(1)));
+    const auto chains = context_.int_val(parallel_chains_ ? roots_.size() : 1);
+    solver.add(count == (frame.parallel ? z3::ite(*frame.parallel,
+                                                  context_.int_val(0), chains)
+                                        : chains));
+    if (parallel_chains_) {
+      auto clocks = context_.int_val(0);
+      for (size_t i = 0; i < roots_.size(); ++i) {
+        clocks = z3::ite(frame.selected[i] && lengths[roots_[i]] > clocks,
+                         lengths[roots_[i]], clocks);
+      }
+      frame.clocks = clocks;
+    }
     for (auto it = order_.rbegin(); it != order_.rend(); ++it) {
       const size_t id = *it;
       const auto& vertex = graph_[id];
@@ -1726,6 +1796,15 @@ class ScanScheduler::Impl {
         observed[vertex.edges[e].next] =
             observed[vertex.edges[e].next] || (observed[id] && gates[id][e]);
       }
+    }
+    if (!parallel_chains_) {
+      auto clocks = context_.int_val(0);
+      for (const auto& [id, active] : frame.active) {
+        clocks = clocks + z3::ite(active,
+                                  context_.int_val(netlist_.nodes[id].Width()),
+                                  context_.int_val(0));
+      }
+      frame.clocks = clocks;
     }
   }
   std::optional<std::set<size_t>> ActivePath(const NetworkState& snapshot) {
@@ -3176,10 +3255,6 @@ class ScanScheduler::Impl {
                            value);
           }
           next.insert_or_assign(id, value);
-          cycles =
-              cycles + z3::ite(active,
-                               context_.int_val(static_cast<int>(node.Width())),
-                               context_.int_val(0));
           const auto desired = SymbolicValue::Literal(context_, fill_.at(id));
           changes = changes + z3::ite(active && loaded != desired.bits,
                                       context_.int_val(1), context_.int_val(0));
@@ -3194,6 +3269,7 @@ class ScanScheduler::Impl {
                               : Known(values.Read(*node.reset), false)));
           }
         }
+        cycles = cycles + *frame.clocks;
         if (events) {
           next = ScanEvents(solver, state, frame, &shifts, time, maximum);
         }
@@ -3705,11 +3781,13 @@ class ScanScheduler::Impl {
         CheckPreserved(state, preserved, desired_preserved);
       };
     }
-    size_t root = kMissing;
+    std::vector<size_t> roots;
     for (size_t i = 0; i < frame.selected.size(); ++i) {
-      if (model.eval(frame.selected[i], true).is_true()) root = roots_[i];
+      if (model.eval(frame.selected[i], true).is_true()) {
+        roots.push_back(roots_[i]);
+      }
     }
-    if (root == kMissing) {
+    if (roots.empty()) {
       throw std::runtime_error("solver selected no serial output");
     }
     ScanStep step;
@@ -3722,45 +3800,6 @@ class ScanScheduler::Impl {
       step.instruction = Decode(model, *frame.instruction) == "1";
       replay->Drive(tap_->ir_select, step.instruction ? "1" : "0");
     }
-    const auto endpoint = [&](BitReference bit) {
-      const auto& node = netlist_.nodes.at(bit.node);
-      return node.name +
-             (node.indexed ? "[" + std::to_string(bit.index) + "]" : "");
-    };
-    step.output = endpoint(graph_[root].bit);
-    std::vector<std::pair<size_t, bool>> registers;
-    bool inverted = false;
-    size_t vertex = root;
-    while (!graph_[vertex].input) {
-      const auto& current = graph_[vertex];
-      if (current.bit.node == kMissing) {
-        throw std::runtime_error("solver chose disconnected serial input");
-      }
-      const auto& node = netlist_.nodes.at(current.bit.node);
-      if (node.kind == "ScanRegister") {
-        registers.emplace_back(current.bit.node, inverted);
-      }
-      size_t selected = kMissing;
-      for (size_t e = 0; e < current.edges.size(); ++e) {
-        const auto& edge = current.edges[e];
-        const bool active =
-            edge.choice == kMissing || Match(*replay, node, edge.choice);
-        if (active) {
-          if (selected != kMissing) {
-            throw std::runtime_error("ambiguous replay scan path");
-          }
-          selected = e;
-        }
-      }
-      if (selected == kMissing) {
-        throw std::runtime_error("unknown or disconnected replay scan path");
-      }
-      inverted = inverted != current.edges[selected].inverted;
-      vertex = current.edges[selected].next;
-    }
-    const auto input_bit = graph_[vertex].bit;
-    const size_t input = input_bit.node;
-    step.input = endpoint(input_bit);
     std::map<size_t, std::string> capture_expected;
     for (const auto& item : frame.comparisons) {
       if (!model.eval(item.selected, true).is_true()) continue;
@@ -3773,35 +3812,92 @@ class ScanScheduler::Impl {
       }
     }
     std::map<size_t, ScanControl> controls;
-    for (const auto& [id, suffix] : registers) {
-      const auto bits = Decode(model, frame.loads.at(id));
-      step.loads.emplace(netlist_.nodes[id].name, bits);
-      for (auto it = bits.rbegin(); it != bits.rend(); ++it) {
-        step.serial += inverted != suffix ? (*it == '1' ? '0' : '1') : *it;
-      }
-      std::string compare(bits.size(), 'x');
-      if (frame.read.count(id) &&
-          model.eval(frame.read.at(id), true).is_true()) {
-        compare = expected.at(id);
-        step.expected.emplace(netlist_.nodes[id].name, compare);
-      } else if (step.instruction && implicit_instruction) {
-        compare = tap_->bsdl.capture;
-        step.expected.emplace(netlist_.nodes[id].name, compare);
-      }
-      const auto captured = capture_expected.find(id);
-      if (captured != capture_expected.end()) {
-        for (size_t bit = 0; bit < compare.size(); ++bit) {
-          if (captured->second[bit] != 'x') {
-            compare[bit] = captured->second[bit];
+    std::vector<std::pair<BitReference, ScanLane>> lanes;
+    size_t clocks = 0;
+    for (size_t root : roots) {
+      ScanLane lane;
+      const auto endpoint = [&](BitReference bit) {
+        const auto& node = netlist_.nodes.at(bit.node);
+        return node.name +
+               (node.indexed ? "[" + std::to_string(bit.index) + "]" : "");
+      };
+      lane.output = endpoint(graph_[root].bit);
+      std::vector<std::pair<size_t, bool>> registers;
+      bool inverted = false;
+      size_t vertex = root;
+      while (!graph_[vertex].input) {
+        const auto& current = graph_[vertex];
+        if (current.bit.node == kMissing) {
+          throw std::runtime_error("solver chose disconnected serial input");
+        }
+        const auto& node = netlist_.nodes.at(current.bit.node);
+        if (node.kind == "ScanRegister") {
+          registers.emplace_back(current.bit.node, inverted);
+        }
+        size_t selected = kMissing;
+        for (size_t e = 0; e < current.edges.size(); ++e) {
+          const auto& edge = current.edges[e];
+          const bool active =
+              edge.choice == kMissing || Match(*replay, node, edge.choice);
+          if (active) {
+            if (selected != kMissing) {
+              throw std::runtime_error("ambiguous replay scan path");
+            }
+            selected = e;
           }
         }
-        step.expected.insert_or_assign(netlist_.nodes[id].name, compare);
+        if (selected == kMissing) {
+          throw std::runtime_error("unknown or disconnected replay scan path");
+        }
+        inverted = inverted != current.edges[selected].inverted;
+        vertex = current.edges[selected].next;
       }
-      for (auto it = compare.rbegin(); it != compare.rend(); ++it) {
-        step.serial_expected +=
-            suffix && *it != 'x' ? (*it == '1' ? '0' : '1') : *it;
+      const auto input_bit = graph_[vertex].bit;
+      lane.input = endpoint(input_bit);
+      for (const auto& [id, suffix] : registers) {
+        const auto bits = Decode(model, frame.loads.at(id));
+        step.loads.emplace(netlist_.nodes[id].name, bits);
+        for (auto it = bits.rbegin(); it != bits.rend(); ++it) {
+          lane.serial += inverted != suffix ? (*it == '1' ? '0' : '1') : *it;
+        }
+        std::string compare(bits.size(), 'x');
+        if (frame.read.count(id) &&
+            model.eval(frame.read.at(id), true).is_true()) {
+          compare = expected.at(id);
+          step.expected.emplace(netlist_.nodes[id].name, compare);
+        } else if (step.instruction && implicit_instruction) {
+          compare = tap_->bsdl.capture;
+          step.expected.emplace(netlist_.nodes[id].name, compare);
+        }
+        const auto captured = capture_expected.find(id);
+        if (captured != capture_expected.end()) {
+          for (size_t bit = 0; bit < compare.size(); ++bit) {
+            if (captured->second[bit] != 'x') {
+              compare[bit] = captured->second[bit];
+            }
+          }
+          step.expected.insert_or_assign(netlist_.nodes[id].name, compare);
+        }
+        for (auto it = compare.rbegin(); it != compare.rend(); ++it) {
+          lane.serial_expected +=
+              suffix && *it != 'x' ? (*it == '1' ? '0' : '1') : *it;
+        }
+        controls[id] = {'1', '0', '0', '1'};
       }
-      controls[id] = {'1', '0', '0', '1'};
+      clocks = std::max(clocks, lane.serial.size());
+      lanes.emplace_back(input_bit, std::move(lane));
+    }
+    for (auto& [input, lane] : lanes) {
+      lane.serial.insert(0, clocks - lane.serial.size(), '0');
+      lane.serial_expected.append(clocks - lane.serial_expected.size(), 'x');
+      if (lanes.size() == 1) {
+        step.input = lane.input;
+        step.output = lane.output;
+        step.serial = lane.serial;
+        step.serial_expected = lane.serial_expected;
+      } else {
+        step.lanes.push_back(lane);
+      }
     }
     std::set<size_t> writable;
     if (tap_replay) {
@@ -3830,12 +3926,15 @@ class ScanScheduler::Impl {
       replay->Clock(controls, true);
       if (check) check(*replay);
       for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
-      auto input_bits = replay->Value(input);
-      const size_t input_offset =
-          Offset(netlist_.nodes.at(input), input_bit.index);
-      for (char bit : step.serial) {
-        input_bits.at(input_offset) = bit;
-        replay->Drive(input, input_bits);
+      for (size_t tick = 0; tick < clocks; ++tick) {
+        std::map<size_t, std::string> inputs;
+        for (const auto& [input, lane] : lanes) {
+          auto [entry, inserted] = inputs.try_emplace(input.node);
+          if (inserted) entry->second = replay->Value(input.node);
+          entry->second.at(Offset(netlist_.nodes.at(input.node), input.index)) =
+              lane.serial[tick];
+        }
+        for (const auto& [input, bits] : inputs) replay->Drive(input, bits);
         if (client_controls_) {
           controls = ClientControls(replay, active, "shift");
         }
@@ -3889,6 +3988,7 @@ class ScanScheduler::Impl {
   const TapRuntimeModel* tap_ = nullptr;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
+  bool parallel_chains_ = false;
   std::map<size_t, std::string> client_pins_;
   std::map<size_t, std::set<size_t>> client_pin_bits_;
   std::set<Key> client_clocks_;
