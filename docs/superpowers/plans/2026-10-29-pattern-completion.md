@@ -1030,3 +1030,18 @@ A forward generated-output certificate brings offline coverage to48directions
 plus seven legacy standards. Tessent rejects original pending-state input;
 the guide preserves this limitation and the earlier empty-apply comparison
 failure. Observation-history forwarding is next; broader requirements remain.
+
+## Task37: Static observation-history forwarding
+
+Completed [the focused plan](2026-11-13-observation-state.md). Both history flags
+retain ordered target/value/flag output without changing hardware, pending
+accesses or reservations. Shared state-point validation permits IR history
+while retaining the controller-owned hardware-assumption restriction.
+State-only input no longer creates an end-state restoration transaction.
+
+Thirteen new CLI methods, native state,new13/state11/end-state11/queued15
+leak-enabled checks, full37suite dynamic/static regression, style/naming and
+independent review pass. Stored vendor standards remain48directions/seven
+legacy cases; no new history-flag portability claim is made.
+Hardware-dependent getters retain their static-generation diagnostic.
+Task38 addresses automatic DataRegister reset releases.

@@ -116,9 +116,9 @@ Module Chains {
 """
         self.replay(source, 'iReset; iState release 1; iWrite c.value 9; iApply; iRead c.value 9; iApply;\n')
 
-    def test_observation_history_and_output_state_remain_rejected(self):
-        for target, suffix in (('value', ' -LastReadValue'), ('value', ' -LastMiscompareValue'), ('q', '')):
-            self.reject(BASE, f'iState {target} 9{suffix};\n')
+    def test_output_state_remains_rejected(self):
+        for suffix in ('', ' -LastReadValue', ' -LastMiscompareValue'):
+            self.reject(BASE, f'iState q 9{suffix};\n')
 
     def test_wide_state_scale(self):
         width = 16384

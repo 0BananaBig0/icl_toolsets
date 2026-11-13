@@ -250,7 +250,7 @@ class SignalEvaluator {
   std::set<Key> visiting_;
 };
 
-void ValidateStateAssumption(const Netlist& netlist, size_t id) {
+void ValidateStateTarget(const Netlist& netlist, size_t id) {
   const auto& node = netlist.nodes.at(id);
   if (node.model != ModelKind::kRegister &&
       !(node.model == ModelKind::kPort && node.scope == 0 &&
@@ -261,6 +261,10 @@ void ValidateStateAssumption(const Netlist& netlist, size_t id) {
                              " requires a ScanRegister/DataRegister or "
                              "top-level DataInPort/SelectPort");
   }
+}
+
+void ValidateStateAssumption(const Netlist& netlist, size_t id) {
+  ValidateStateTarget(netlist, id);
   for (const auto& [name, tap] : netlist.taps) {
     if (id == tap.instruction_register) {
       throw std::runtime_error(

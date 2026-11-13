@@ -20,6 +20,7 @@
 #include "pattern/pattern_resources.h"
 #include "pattern/pattern_runtime.h"
 #include "pattern/pattern_scheduler.h"
+#include "pattern/pattern_state.h"
 #include "pattern/pattern_tap.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -399,19 +400,24 @@ std::string Generate(
         scheduler.Idle(cycles, reservations.Values());
         result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
       } else if (operation.command == "iState") {
-        if (operation.arguments.size() == 3 &&
-            operation.arguments[2] != "-LastWrittenValue") {
-          throw std::runtime_error(
-              "readback iState options require observation-state integration");
-        }
+        const bool controlling = operation.arguments.size() != 3 ||
+                                 operation.arguments[2] == "-LastWrittenValue";
         const auto& name = operation.arguments.at(0);
         const auto target = pattern::ResolvePdlTarget(netlist, name);
         const auto bits = pattern::PdlNumber(context, operation.arguments.at(1),
                                              target.bits.size());
-        scheduler.Assume(name, bits);
-        pending.Assume(target, bits);
-        reservations.Assigned({operation}, scheduler);
-        result += Command({"iState", name, "0b" + bits});
+        if (controlling) {
+          scheduler.Assume(name, bits);
+          pending.Assume(target, bits);
+          reservations.Assigned({operation}, scheduler);
+          result += Command({"iState", name, "0b" + bits});
+        } else {
+          for (const auto& bit : target.bits) {
+            pattern::ValidateStateTarget(netlist, bit.node);
+          }
+          result +=
+              Command({"iState", name, "0b" + bits, operation.arguments[2]});
+        }
       } else if (operation.command == "iTake" ||
                  operation.command == "iRelease") {
         reservations.Change(operation);
@@ -437,7 +443,12 @@ std::string Generate(
     }
   }
   if (!pending.Empty()) throw std::runtime_error("unapplied PDL operations");
-  if (finalize && !operations.empty()) {
+  const bool had_transaction = std::any_of(
+      operations.begin(), operations.end(), [](const auto& operation) {
+        return operation.command == "iApply" || operation.command == "iReset" ||
+               operation.command == "iRunLoop";
+      });
+  if (finalize && had_transaction) {
     try {
       append_steps(scheduler.Apply({}, false, reservations.Values(), false));
     } catch (const std::exception& error) {

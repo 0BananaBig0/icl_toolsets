@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the queued-state checkpoint passed the complete
+On 2026-11-13, observation-history forwarding passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/queued-state-full.log/.exit. This includes all36 generator CLI suites
+build/observation-state-full.log/.exit. This includes all37 generator CLI suites
 under dynamic/static builds, native tests,48 directional and seven legacy
 Tessent standards, all334 parser and119 scanner rules across2,516 ICL files,
-and six Vim/Neovim tests (182.910s). Five optional ANTLR integration tests were
+and six Vim/Neovim tests (190.833s). Five optional ANTLR integration tests were
 skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native scheduling,new15 queued-state,
-main25,resource35,argument-reset12 and reset-dependency13 CLI methods.
-Formatting, naming, whitespace and independent source/certificate review passed.
-See [queued-state verification](#state-assumptions-with-queued-accesses-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native state,new13 history,
+DataRegister-state11,end-state11 andqueued-state15 CLI methods.
+Formatting, naming, whitespace and independent review passed.
+See [observation-history verification](#observation-history-state-forwarding-2026-11-13).
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -378,7 +378,7 @@ atomic failures and source/flat/generated-PDL replay.
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
-| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default or `-LastWrittenValue`; overlapping queued write/compare values follow the assumption; no device transaction. |
+| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default/`-LastWrittenValue` updates overlapping queued write/compare values. `-LastReadValue`/`-LastMiscompareValue` are forwarded as history only. No device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
@@ -2790,7 +2790,7 @@ Tessent2026.2 accepted both saved fixtures, with reverse certificates retained.
 See [vendor evidence](tessent-goldens.md#all-port-reservations-and-dataregister-state-2026-11-13).
 At this checkpoint DataRegister-controlled scan resets hit a scan-only reset
 dependency boundary, subsequently addressed by Task35 below.
-Observation-history iState flags, iScan/iClock,
+At that checkpoint, observation-history iState flags, iScan/iClock,
 system-clock/time waits and broader pattern-set ownership remain unfinished.
 Final native state/scheduler tests and11CLI methods pass ASan/UBSan/
 LeakSanitizer with detect_leaks=1, recorded in build/access-state-sanitizer-
@@ -2903,7 +2903,8 @@ controlling fill, TAP execution and reservation state. It omits a release
 preamble only when the group passes strict checks. Later groups can still
 receive required releases. Previews do not restore the final end state or
 mutate live execution. State-free caller transformations retain their existing
-limits. Observation-history flags and real hardware readback remain unfinished.
+limits. Observation-history forwarding is covered below; live hardware readback remains
+unavailable during static generation.
 
 The pending-reference index visits overwritten references once and materializes
 operands at apply. Work is amortized over queued references and state bits with
@@ -2930,3 +2931,44 @@ Complete dynamic/static regression passes in build/queued-state-full.log/.exit(0
 334/119parser/scanner rules, and six editor tests in182.910s. Five optional ANTLR
 checks remain skipped. Strict authored coverage and later-change Rocky8
 qualification remain open.
+
+## Observation-history state forwarding (2026-11-13)
+
+The generator accepts iState -LastReadValue and -LastMiscompareValue on valid
+state points, preserving the numeric value, target and explicit flag in ordered
+output. Under IEEE1687 §7.9.22(g–i), these statements describe history. They do
+not change hardware assumptions, controlling fill, pending read/write values,
+or taken-resource protection. A historical gate value does not release a reset
+or prevent a required automatic gate write.
+
+Shared state-point validation accepts registers and supported top-level
+DataInPort/SelectPort targets, with aliases and slices. History may describe
+controller-owned instruction storage because it does not change TAP state;
+default/-LastWrittenValue assumptions on that storage remain rejected.
+
+A file containing only state statements creates no device transaction, including
+when iApplyEndState is declared. Final restoration requires a preceding iApply,
+iReset or iRunLoop. This also fixes the earlier default-state-only case that
+could emit an unintended write/apply solely to restore an end-state directive.
+
+This is static forwarding of supplied history. iGetReadData, iGetMiscompares
+and iGetStatus still report that hardware readback is unavailable; expected
+comparison data is never substituted for an observation. Tessent2026.2 rejects
+the history flag in the recorded probe, so vendor portability is not claimed.
+
+Thirteen new CLI methods cover both flags, pending accesses, scan/data/control
+state, aliases/prefixes, merge order, reservations, reset rewriting, TAP
+instruction history and atomic rejection. The isolated run passed in2.338s;
+4,096history statements (140,800PDL bytes) completed three replay forms in0.194s
+on local Linux g++16.2.1 -O2. Forwarding is linear in resolved bits and output
+size; no additional history database or repeated prior-operation scans are used.
+Reproduce with tests/src/pattern/test_observation_state.py.
+
+Isolated native state,new13,DataRegister-state11,end-state11 andqueued-state15
+checks pass ASan/UBSan with leak detection enabled in
+build/observation-state-sanitizer-*.log/.exit(0). Formatting, naming and independent
+review pass. Complete dynamic/static regression passes in
+build/observation-state-full.log/.exit(0):37generator suites,48directional/seven
+legacy standards,2,516ICL files covering334/119parser/scanner rules, and six
+editor tests in190.833s. Five optional ANTLR checks remain skipped. Strict
+authored coverage and later-change Rocky8 qualification remain open.

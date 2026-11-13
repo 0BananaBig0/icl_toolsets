@@ -429,3 +429,13 @@ distinct expected state. Reset-source previews copy scheduler/reservations and
 skip stream-final end-state restoration; later groups retain independent repair.
 Observation-history flags and hardware readback remain separate requirements.
 The queued-state plan and guide record verification and vendor scope.
+
+### Static observation-state forwarding (2026-11-13)
+
+iState -LastReadValue/-LastMiscompareValue retains ordered supplied history in
+generated output without changing hardware, controlling/expected queued values,
+or reservation assignment. The shared state-target contract applies; history
+may describe TAP instruction storage while default hardware assumptions remain
+prohibited. State-only input does not trigger final end-state transactions.
+Hardware-dependent getters retain the static-generation diagnostic. This does
+not claim an interactive observation database or vendor flag compatibility.

@@ -18,7 +18,9 @@ struct ScanControl {
 };
 class SignalEvaluator;
 struct DataRegisterPlan;
-// Supported iState targets; excludes controller-owned instruction storage.
+// State points accepted by iState, including observation history.
+void ValidateStateTarget(const Netlist& netlist, size_t node);
+// Hardware assumptions exclude controller-owned instruction storage.
 void ValidateStateAssumption(const Netlist& netlist, size_t node);
 // Netlist must outlive this state and remain immutable. Values are MSB/leftmost
 // first, independent of numeric index direction. No initial reset is assumed.
