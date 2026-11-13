@@ -118,6 +118,7 @@ class Elaborator {
     }
     AddTopPorts();
     Connect();
+    CheckAliasConsumers();
     if (!RestoreFlatOrigins(&netlist_)) InferResets();
     ConnectAddressedRegisters();
     ValidateInterfaces();
@@ -1046,6 +1047,48 @@ class Elaborator {
       } catch (const std::exception& error) {
         throw std::runtime_error(node.origin + ": " + node.name + ": " +
                                  error.what());
+      }
+    }
+  }
+
+  void CheckAliasConsumers() const {
+    std::vector<bool> pdl_only(netlist_.nodes.size());
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.model != ModelKind::kAlias) continue;
+      for (const auto& bit : node.inputs.at("Source")) {
+        if (bit.node == std::numeric_limits<size_t>::max()) continue;
+        const auto scope = netlist_.nodes[bit.node].scope;
+        if (scope != node.scope &&
+            netlist_.scopes[scope].parent != node.scope) {
+          pdl_only[id] = true;
+          break;
+        }
+      }
+    }
+    if (std::find(pdl_only.begin(), pdl_only.end(), true) == pdl_only.end()) {
+      return;
+    }
+    for (const auto& node : netlist_.nodes) {
+      const auto check = [&](const std::vector<BitReference>& bits) {
+        for (const auto& bit : bits) {
+          if (bit.node != std::numeric_limits<size_t>::max() &&
+              pdl_only[bit.node]) {
+            throw std::runtime_error(
+                node.origin + ": " + node.name + ": multi-level alias " +
+                netlist_.nodes[bit.node].name + " is only available to PDL");
+          }
+        }
+      };
+      for (const auto& input : node.inputs) check(input.second);
+      for (const auto& choice : node.choices) check(choice.source);
+      for (const auto& instruction : node.logic) check(instruction.signals);
+      for (const auto& source : node.one_hot_sources) check(source.bits);
+      if (node.scan_interface) {
+        check(node.scan_interface->ports);
+        for (const auto& chain : node.scan_interface->chains) {
+          check(chain.ports);
+        }
       }
     }
   }

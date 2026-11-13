@@ -1121,3 +1121,19 @@ Evidence: build/scan-output-final-full.log/.exit(0),50 directional/seven legacy
 standards,2,519 ICL files covering334/119 rules,editor6in177.787s. Other source-kind
 and alias-consumer checks remain required. Task42 applies the specific deep-alias
 consumer rule with its wording conflict and vendor evidence documented.
+
+## Task42: Deep alias consumer validation
+
+Completed [the focused plan](2026-11-13-deep-alias-consumers.md). The specific
+§6.5.2(g) restriction rejects ICL consumers of aliases containing two or more
+instance levels, including wrappers and local-only slices of mixed aliases.
+PDL targets, local alias chains and immediate-child output aliases remain
+supported. The conflicting general prose and observational vendor evidence are
+recorded; immediate-child rules remain separate acceptance work.
+
+Full39suite dynamic/static regression, leak-enabled native/main31/end-state11/
+merge-observation20 checks, formatting/naming, scale checks and independent
+review pass. Evidence: build/deep-alias-final-full.log/.exit(0),50directional/
+seven legacy standards,2,519ICL files covering334/119rules,editor6in177.360s.
+Task43 addresses getters evaluated from explicit observation-history assumptions;
+live readback and other remaining model requirements remain open.

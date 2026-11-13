@@ -708,3 +708,31 @@ Corrected remote evidence is under
 in feedback-reset-port-reverse-bundle; local evidence is in
 build/feedback-reset-port-reverse-evidence. This certificate covers this fixture,
 not arbitrary serial-dependent reset events.
+
+## Alias consumer probes (2026-11-13)
+
+These Tessent2026.2 probes investigate ICL acceptance; they add no directional
+equivalence certificate. The corrected controls produce the following results:
+
+| Alias source | Direct DataOutPort consumer | Wrapper Alias consumer |
+|---|---|---|
+| Local register | Accepted | Accepted |
+| Immediate-child output port | Accepted | Accepted |
+| Immediate-child register | ICL57-1 rejection | ICL57-1 rejection at wrapper definition |
+| Two-level output port | ICL57-1 rejection | ICL57-1 rejection at wrapper definition |
+| Two-level register | ICL57-1 rejection | ICL57-1 rejection at wrapper definition |
+
+A mixed local/two-level alias is also rejected when the hardware consumer uses
+only its local slice. The local implementation applies the specific §6.5.2(g)
+two-level restriction, including Alias consumers. Its conflict with the broader
+§6.3.10.5 prose is recorded; immediate-child rules are not closed by this change.
+
+Local logs/hashed inputs/results are in build/alias-consumer-controls-evidence,
+from lianghuaxiao@192.168.6.20:/tmp/icl-alias-consumers-controls-20261113.
+The existing tests/tessent_oracle.py harness runs all11 cases serially. Its
+observational all-expected-ok baseline yields exit1: four accepted and seven
+rejected cases. That exit is retained rather than relabeled as a passing suite.
+The initial run omitted mandatory scan-interface controls; its local/child-port
+ICL71 failures are preserved in build/alias-consumer-probe-evidence and do not
+establish alias rejection. Existing50directional/seven legacy standards remain
+unchanged.

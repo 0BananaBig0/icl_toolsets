@@ -156,8 +156,13 @@ illegal connections and nonterminating elaboration with an instance chain.
 Direct hierarchical hardware references must name child output ports. Reuse the
 parser's existing immediate-child depth rule and the shared resolver for port
 direction/type validation. Alias definitions retain their separate deep-target
-syntax; PDL resolution remains independent. Broader source-kind and alias-use
-rules remain required beyond this direct-connection check.
+syntax; PDL resolution remains independent. For an alias definition containing
+a reference through two or more instance levels, apply the specific normative
+§6.5.2(g) restriction to every ICL consumer, including other Alias definitions.
+This takes precedence over the broader wrapper allowance in §6.3.10.5 prose;
+document that conflict and supporting vendor observations. Local alias chains
+and PDL deep targets remain supported. Other source-kind and immediate-child
+alias-use rules remain required.
 
 Resolve implied connections while hierarchy is available, before flattening.
 Use a documented per-port/per-model rule table from Tessent, with explicit

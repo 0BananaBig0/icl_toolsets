@@ -534,6 +534,64 @@ void TestConnectionHierarchy() {
           "must name an output port");
   }
 }
+void TestDeepAliasConsumers() {
+  std::ifstream input(
+      "tests/cases/ours/pattern_generation/connection_hierarchy.icl");
+  std::string source;
+  Require(input.good() && toolsets::ReadTextStream(input, &source),
+          "read deep alias fixture");
+  for (const std::string extra :
+       {"DataOutPort bad[3:0] { Source deep; }",
+        "DataOutPort bad[3:0] { Source ~deep_port[0:3]; }",
+        "Alias wrapper[3:0] = deep;", "LogicSignal bad { deep[0] == 1'b0; }",
+        "DataMux bad SelectedBy deep[0] { 1'b0: 0; 1'b1: 1; }",
+        "DataMux bad[3:0] SelectedBy 1'b0 { 1'b0: deep_port; 1'b1: 0; }",
+        "ScanRegister bad[3:0] { ScanInSource si; CaptureSource deep; }",
+        "OneHotDataGroup bad[3:0] { Port deep_port; }",
+        "ScanInterface bad { Port deep[0]; }",
+        "ScanInterface bad { Chain c { Port deep[0]; } }",
+        "Instance sink Of ConnectionHierarchyLeaf { InputPort si = middle.so;"
+        "InputPort data = deep; InputPort rst = rst; }",
+        "Alias mixed[7:0] = child.q, middle.leaf.value;"
+        "DataOutPort bad[3:0] { Source mixed[7:4]; }"}) {
+    for (bool forward : {false, true}) {
+      auto invalid_source = source;
+      invalid_source.insert(forward ? invalid_source.find("  Alias deep[")
+                                    : invalid_source.rfind('}'),
+                            extra);
+      pattern::Design invalid;
+      invalid.AddIcl("deep_alias.icl", invalid_source);
+      Fails([&] { pattern::Elaborate(invalid, "ConnectionHierarchy"); },
+            "multi-level alias");
+    }
+  }
+
+  const size_t aliases = 5000;
+  std::string extra = "Alias a0[3:0] = child.q;";
+  for (size_t i = 1; i < aliases; ++i) {
+    extra += "Alias a" + std::to_string(i) + "[3:0] = a" +
+             std::to_string(i - 1) + ";";
+  }
+  extra += "DataOutPort alias_output[3:0] { Source a4999; }";
+  source.insert(source.rfind('}'), extra);
+  const auto start = std::chrono::steady_clock::now();
+  pattern::Design valid;
+  valid.AddIcl("local_alias_chain.icl", source);
+  const auto netlist = pattern::Elaborate(valid, "ConnectionHierarchy");
+  Require(netlist.NodeAt("alias_output").inputs.at("Source")[0].node ==
+              netlist.node_ids.at("a4999"),
+          "local alias chains and child outputs remain hardware connections");
+  Require(netlist.NodeAt("deep").inputs.at("Source")[0].node ==
+              netlist.node_ids.at("middle.leaf.value"),
+          "unconsumed deep alias remains available to PDL");
+  std::cout << "Alias chain: " << aliases << " aliases, " << source.size()
+            << " bytes, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+
 void TestInvertedUnsizedSources() {
   for (const auto& source : {"~0", "~'h0", "~'bx", "~$P"}) {
     pattern::Design design;
@@ -1029,6 +1087,7 @@ int main() {
                           TestMuxAndEnum,
                           TestConnectionErrors,
                           TestConnectionHierarchy,
+                          TestDeepAliasConsumers,
                           TestUnsizedSources,
                           TestInvertedUnsizedSources,
                           TestImplicitScanBit,

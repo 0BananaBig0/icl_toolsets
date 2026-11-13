@@ -138,6 +138,56 @@ class Generator(unittest.TestCase):
                 self.assertEqual((self.root / "reset.pdl").read_text(), "preserve reset\n")
                 self.assertEqual(debug.read_text(), "preserve debug\n")
 
+    def test_local_and_child_output_alias_chains_round_trip(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
+        source = fixture.read_text()
+        position = source.rfind("}")
+        source = source[:position] + (
+            "Alias first[3:0] = child.q; Alias second[3:0] = first;\n"
+            "DataOutPort via_alias[3:0] { Source second; }\n") + source[position:]
+        (self.root / "source.icl").write_text(source)
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule ConnectionHierarchy\niReset\niWrite child.value 5\niApply\n"
+            "iRead second 5\niRead via_alias 5\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "result.pdl", "--debug")
+        expected = (self.root / "result.pdl").read_bytes()
+        self.assertIn(b"iWrite child.value 0b0101", expected)
+        flat = self.root / "debug/ConnectionHierarchy.icl"
+        self.run_tool("--icl", flat, "--pdl", "source.pdl",
+                      "--output", "flat/result.pdl", "--debug")
+        self.assertEqual((self.root / "flat/result.pdl").read_bytes(), expected)
+        self.assertEqual((self.root / "flat/debug/ConnectionHierarchy.icl").read_bytes(),
+                         flat.read_bytes())
+        self.run_tool("--icl", "source.icl", "--pdl", "result.pdl", "--output", "again.pdl")
+        self.assertEqual((self.root / "again.pdl").read_bytes(), expected)
+
+    def test_deep_alias_consumers_preserve_outputs(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
+        source = fixture.read_text()
+        (self.root / "source.pdl").write_text("iProcsForModule ConnectionHierarchy\niNote alias\n")
+        for extra in ("DataOutPort bad[3:0] { Source deep; }",
+                      "DataOutPort bad[3:0] { Source deep_port; }",
+                      "Alias wrapper[3:0] = deep;",
+                      "Alias mixed[7:0] = child.q, middle.leaf.value; "
+                      "DataOutPort bad[3:0] { Source mixed[7:4]; }"):
+            for forward in (False, True):
+                with self.subTest(extra=extra, forward=forward):
+                    position = source.index("  Alias deep[") if forward else source.rfind("}")
+                    (self.root / "source.icl").write_text(source[:position] + extra + source[position:])
+                    debug = self.root / "debug/ConnectionHierarchy.icl"
+                    debug.parent.mkdir(exist_ok=True)
+                    artifacts = (self.root / "result.pdl", self.root / "reset.pdl", debug)
+                    for artifact in artifacts:
+                        artifact.write_text("preserve " + artifact.name + "\n")
+                    result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                           "--output", "result.pdl", "--local_reset", "reset.pdl",
+                                           "--debug", ok=False)
+                    self.assertIn("source.icl:", result.stdout)
+                    self.assertIn("multi-level alias", result.stdout)
+                    for artifact in artifacts:
+                        self.assertEqual(artifact.read_text(), "preserve " + artifact.name + "\n")
+
     def test_scan_output_rightmost_round_trips(self):
         for bounds, bit in (("[3:0]", 0), ("[0:3]", 3)):
             for inversion in ("", "~"):

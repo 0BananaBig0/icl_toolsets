@@ -9,24 +9,24 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, direct ScanOutPort source validation passed the complete
+On 2026-11-13, deep-alias consumer validation passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/scan-output-final-full.log/.exit. This includes all39 generator CLI
+build/deep-alias-final-full.log/.exit. This includes all39 generator CLI
 suites under dynamic/static builds, native tests,50 directional and seven legacy
 Tessent standards, all334 parser and119 scanner rules across2,519 ICL files,
-and six Vim/Neovim tests (177.787s). Five optional ANTLR integration tests were
+and six Vim/Neovim tests (177.360s). Five optional ANTLR integration tests were
 skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native netlist tests and main29,
-shared-output9 and named-group11 CLI methods. Formatting, naming, whitespace,
-scale checks and independent review passed. See
-[ScanOutPort verification](#direct-scanoutport-register-sources-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native netlist tests and main31,
+apply-end-state11 and merge-observation20 CLI methods. Formatting, naming,
+whitespace, scale checks and independent review passed. See
+[deep-alias verification](#deep-alias-consumers-2026-11-13).
 
 Strict authored-code coverage remains unmet. The complete Task39 instrumented
 run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
 tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
 24,055/38,965 raw branches (61.7%), against required 100%/90%.
-This measurement predates Tasks40–41; it is not a coverage result for the current
+This measurement predates Tasks40–42; it is not a coverage result for the current
 connection-validation changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
 Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
@@ -3110,3 +3110,31 @@ shared-output9 and named-group11 tests. Full regression passes in
 build/scan-output-final-full.log/.exit(0):39 generator suites per build,
 50 directional/seven legacy standards,2,519 ICL files covering334/119 rules,
 and six editor tests in177.787s. See [the focused plan](superpowers/plans/2026-11-13-scan-output-validation.md).
+
+## Deep alias consumers (2026-11-13)
+
+Aliases whose definitions contain a reference through two or more instance
+levels remain available to PDL but cannot be used by another ICL construct,
+including an Alias definition. The restriction applies to the whole alias name,
+even when a consumer selects only a local portion of a mixed alias. Local alias
+chains and immediate-child output aliases retain their behavior.
+
+This follows the specific normative IEEE1687 §6.5.2(g) rule. The broader prose
+in §6.3.10.5 allows alias wrappers; the implementation gives the specific rule
+precedence and records that wording conflict. Tessent2026.2 rejects the tested
+deep-alias wrappers and accepts local and immediate-child output wrappers.
+See [the observational vendor evidence](tessent-goldens.md#alias-consumer-probes-2026-11-13).
+Immediate-child register/port restrictions and other source-kind rules remain
+separate requirements.
+
+The check runs after all connections are resolved and before flat-origin
+restoration. Native tests cover each resolved consumer collection and both
+declaration orders;31CLI methods pass, including original/flat/generated
+replay and atomic artifact preservation. A5000-alias local chain and existing
+wide benchmarks pass; format/naming and independent review pass. Leak-enabled
+ASan/UBSan checks pass for native netlist, main31, apply-end-state11 and
+merge-observation20 tests. Full regression passes in
+build/deep-alias-final-full.log/.exit(0):39 generator suites per build,
+50 directional/seven legacy standards,2,519 ICL files covering334/119 rules,
+and six editor tests in177.360s. See
+[the focused plan](superpowers/plans/2026-11-13-deep-alias-consumers.md).
