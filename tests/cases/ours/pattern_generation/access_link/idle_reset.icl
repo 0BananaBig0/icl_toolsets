@@ -42,6 +42,7 @@ Module Trigger {
     ScanInSource si;
     CaptureSource 8'b00000001;
   }
+  DataOutPort q[7:0] { Source r; }
   ScanMux mux SelectedBy mode {
     1'b0 : r[0];
     1'b1 : si;
@@ -74,6 +75,7 @@ Module Gate {
     ResetValue 8'b00000000;
     CaptureSource 8'b00000001;
   }
+  DataOutPort q[7:0] { Source r; }
   ScanMux mux SelectedBy mode {
     1'b0 : r[0];
     1'b1 : si;
@@ -94,21 +96,21 @@ Module Gate {
 Module AccessTop {
   Instance trigger Of Trigger {
     InputPort mode = tap.long_setup;
-    InputPort select = trigger.r[1];
-    InputPort capture = trigger.r[1];
+    InputPort select = trigger.q[1];
+    InputPort capture = trigger.q[1];
     InputPort shift = 1'b0;
-    InputPort update = trigger.r[1];
+    InputPort update = trigger.q[1];
   }
   Instance gate Of Gate {
     InputPort mode = tap.long_setup;
-    InputPort select = trigger.r[1];
-    InputPort capture = trigger.r[1];
+    InputPort select = trigger.q[1];
+    InputPort capture = trigger.q[1];
     InputPort shift = 1'b0;
-    InputPort update = trigger.r[1];
-    InputPort rst = trigger.r[0];
+    InputPort update = trigger.q[1];
+    InputPort rst = trigger.q[0];
   }
   Instance core Of AccessInstrument {
-    InputPort rst = gate.r[0];
+    InputPort rst = gate.q[0];
     InputPort mode = tap.long_setup;
   }
   AccessLink tap Of STD_1149_1_2001 {

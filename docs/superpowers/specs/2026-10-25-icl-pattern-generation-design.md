@@ -153,6 +153,12 @@ sources, polarity, capture/shift/update behavior, defaults, access interfaces,
 resource reservations and source origins. Reject unresolved modules/parameters,
 illegal connections and nonterminating elaboration with an instance chain.
 
+Direct hierarchical hardware references must name child output ports. Reuse the
+parser's existing immediate-child depth rule and the shared resolver for port
+direction/type validation. Alias definitions retain their separate deep-target
+syntax; PDL resolution remains independent. Broader source-kind and alias-use
+rules remain required beyond this direct-connection check.
+
 Resolve implied connections while hierarchy is available, before flattening.
 Use a documented per-port/per-model rule table from Tessent, with explicit
 connections taking precedence and ambiguity diagnosed. One generic

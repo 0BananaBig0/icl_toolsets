@@ -147,7 +147,8 @@ class Compiler {
       const auto source = netlist_.ExpressionAt(node_.scope, expression.span);
       if (op == "reference") {
         term.operation = LogicOperation::kSignal;
-        term.signals = netlist_.Resolve(source, 0, false, remaining_bits_);
+        term.signals = netlist_.Resolve(source, 0, ReferenceUse::kConnection,
+                                        remaining_bits_);
         for (const auto& bit : term.signals) {
           if (bit.node == std::numeric_limits<size_t>::max()) continue;
           const auto& target = netlist_.nodes[bit.node];

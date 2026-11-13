@@ -654,7 +654,7 @@ class Elaborator {
         --expression.end;
         source.bits = netlist_.Resolve(
             expression, node->kind == "OneHotScanGroup" ? node->Width() : 0,
-            false, one_hot_bits_remaining_);
+            ReferenceUse::kConnection, one_hot_bits_remaining_);
         one_hot_bits_remaining_ -= source.bits.size();
       } else if (keyword == "Instance" || keyword == "DataRegister") {
         const auto name = Path(
@@ -1016,9 +1016,13 @@ class Elaborator {
               }
               node.inputs.emplace(name, std::move(bits));
             } else {
-              node.inputs.emplace(name,
-                                  netlist_.Resolve(property.second, width,
-                                                   name == "ScanInSource"));
+              const auto use =
+                  name == "ScanInSource" ? ReferenceUse::kScanInput
+                  : node.model == ModelKind::kAlias && name == "Source"
+                      ? ReferenceUse::kAlias
+                      : ReferenceUse::kConnection;
+              node.inputs.emplace(
+                  name, netlist_.Resolve(property.second, width, use));
             }
           }
         }
@@ -1491,8 +1495,9 @@ Constant Netlist::Value(const Expression& expression, size_t width) const {
 }
 
 std::vector<BitReference> Netlist::Resolve(const Expression& expression,
-                                           size_t width, bool scan_input,
+                                           size_t width, ReferenceUse use,
                                            size_t max_bits) const {
+  const bool scan_input = use == ReferenceUse::kScanInput;
   max_bits = std::min(max_bits, kMaxWidth);
   const auto& tokens = SourceTokens(*this, expression.scope);
   const auto& scope = scopes.at(expression.scope);
@@ -1529,6 +1534,13 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
           source.model == ModelKind::kAccessLink ||
           source.kind == "PortGroup") {
         throw std::runtime_error(source.name + " is not a data signal or wire");
+      }
+      if (use != ReferenceUse::kAlias && source.scope != expression.scope &&
+          (source.model != ModelKind::kPort || IsInputPort(source.kind))) {
+        throw std::runtime_error(
+            scope.definition.Location(tokens[expression.begin].begin) +
+            ": hierarchical signal " + source.name +
+            " must name an output port");
       }
       const auto range =
           scan_input && first == end && source.kind == "ScanRegister"

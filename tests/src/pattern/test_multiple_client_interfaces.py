@@ -10,6 +10,7 @@ CELL = """Module Cell {
   ScanInPort si; SelectPort sel;
   ScanRegister value[$W-1:0] { ScanInSource si; CaptureSource value; ResetValue 0; }
   ScanOutPort so { Source value[0]; }
+  DataOutPort q[$W-1:0] { Source value; }
 }
 """
 
@@ -82,7 +83,7 @@ iRead c.value 6; iApply
         source = network().replace('SelectPort sel;',
                                    'SelectPort sel; ResetPort rst { ActivePolarity 0; }')
         source = source.replace('Instance c1 Of Cell {',
-                                'Instance c1 Of Cell { InputPort rst = c0.value[0];')
+                                'Instance c1 Of Cell { InputPort rst = c0.q[0];')
         output = self.replay(source, 'iReset; iWrite c1.value 9; iApply; iRead c1.value 9; iApply\n')
         self.assertIn(b'iWrite c0.value 0b0001', output)
 
@@ -101,9 +102,9 @@ iRead c.value 6; iApply
 
     def test_transient_selection_reset_precedes_hidden_capture(self):
         source = (helpers.ROOT / 'tests/cases/ours/pattern_generation/multiple_client_reset_capture.icl').read_text()
-        source = source.replace('InputPort d = c0.value', 'InputPort d = c1.value')
+        source = source.replace('InputPort d = c0.q', 'InputPort d = c1.q')
         source = source.replace('  ScanInPort si[1:0];',
-                                '  LogicSignal reset_b { sel[1] & c0.value[0]; }\n  ScanInPort si[1:0];')
+                                '  LogicSignal reset_b { sel[1] & c0.q[0]; }\n  ScanInPort si[1:0];')
         source = source.replace("InputPort rst = 1'b0", 'InputPort rst = reset_b')
         self.replay(source, 'iReset; iWrite c1.value 6; iApply; iWrite c0.value 9; iApply; '
                     'iWrite c1.value 3; iApply\n')
@@ -117,7 +118,7 @@ iRead c.value 6; iApply
 }
 """ + source.replace('Module Chains {', """Module Chains {
  DataInPort bus[3:0]; DataInPort enable;
- LogicSignal reset_d { sel[1] & c0.value[0]; }
+ LogicSignal reset_d { sel[1] & c0.q[0]; }
  Instance d Of DataCell { InputPort d = bus; InputPort en = enable; InputPort rst = reset_d; }
  DataOutPort q[3:0] { Source d.q; }
 """)

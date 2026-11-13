@@ -80,7 +80,7 @@ class ShiftEnableClients(unittest.TestCase):
         source = network().replace('ShiftEnPort se;',
                                    'ShiftEnPort se; ResetPort rst { ActivePolarity 0; }')
         source = source.replace('Instance c1 Of Cell {',
-                                'Instance c1 Of Cell { InputPort rst = c0.value[0];')
+                                'Instance c1 Of Cell { InputPort rst = c0.q[0];')
         self.replay(source, 'iReset; iWrite c1.value 9; iApply; iRead c1.value 9; iApply;\n')
 
     def test_shared_storage_and_shared_output(self):

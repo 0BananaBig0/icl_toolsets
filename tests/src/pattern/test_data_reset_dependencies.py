@@ -182,7 +182,9 @@ Module Chains {
         self.replay(source, 'iState reset 0; iState a.value 1; iState b.value 9; iWrite reset 1; iApply;\n')
 
     def test_unreleased_self_feedback_write_is_bounded(self):
-        source = BASE.replace('InputPort rst = release;', 'InputPort rst = c.value[0];')
+        source = BASE.replace('InputPort rst = release;', 'InputPort rst = c.q[0];')
+        source = source.replace('ScanOutPort so { Source value[0]; }',
+                                'ScanOutPort so { Source value[0]; } DataOutPort q[3:0] { Source value; }')
         icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
         icl.write_text(source)
         pdl.write_text('iReset; iWrite c.value 9; iApply;\n')

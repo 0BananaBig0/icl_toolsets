@@ -1090,3 +1090,20 @@ is14,385/14,971 lines(96.1%) and24,055/38,965 raw branches(61.7%). The strict
 gate still fails; its checkbox above stays open. Retained malformed-token,
 invariant and compiler-cleanup paths were not forced through fabricated inputs.
 See [the bounded follow-up and exact evidence](2026-11-13-expression-coverage.md).
+
+## Task40: Direct hierarchical connection validation
+
+Completed [the focused plan](2026-11-13-connection-hierarchy.md). Ordinary
+hierarchical hardware references require output ports; the existing parser
+retains the immediate-child depth rule. Alias definitions and deep PDL targets
+retain their separate semantics. Synthetic wiring now uses explicit output
+ports without changing PDL targets or reset assertions.
+
+Full39suite dynamic/static regression, fresh leak-enabled native/six CLI
+sanitizers, formatting/naming, scale checks and independent review pass.
+Final evidence: build/connection-hierarchy-final-full.log/.exit(0),50 directional
+and seven legacy standards,2,519 ICL files covering334/119 parser/scanner rules,
+and six editor tests in177.025s. Earlier failures/interruption remain recorded.
+Further source-kind and alias-consumer rules, strict coverage and the broader
+model requirements remain open. Task41 addresses direct ScanOutPort register
+source indices under the explicit rightmost-bit rule.

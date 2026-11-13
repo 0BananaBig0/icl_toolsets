@@ -9,25 +9,25 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, register reset feedback and mux consensus passed the complete
+On 2026-11-13, direct hierarchical connection validation passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/feedback-final-full.log/.exit. This includes all39 generator CLI
-suites under dynamic/static builds, native tests,50 directional and seven legacy
-Tessent standards, all334 parser and119 scanner rules across2,518 ICL files,
-and six Vim/Neovim tests (179.205s). Five optional ANTLR integration tests were
-skipped because ICL_REF_DIR was unset.
+build/connection-hierarchy-final-full.log/.exit. This includes all39 generator
+CLI suites under dynamic/static builds, native tests,50 directional and seven
+legacy Tessent standards, all334 parser and119 scanner rules across2,519 ICL
+files, and six Vim/Neovim tests (177.025s). Five optional ANTLR integration tests
+were skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native scheduler/state/symbolic tests
-and eight CLI suites: feedback10, reset-release14, reservation35, argument12,
-reset-dependency13, queued-state15, data-scheduling20 and hidden-client8 methods.
-Formatting, naming, whitespace and independent review passed.
-See [feedback verification](#register-reset-feedback-2026-11-13).
+A fresh leak-enabled ASan/UBSan build passed native netlist tests and six CLI
+suites: main27, multiple-client17, named-group11, ShiftEn11, port-reservation8
+and data-reset13 methods. Formatting, naming, whitespace and independent review
+passed. See [hierarchy verification](#direct-hierarchical-connections-2026-11-13).
 
 Strict authored-code coverage remains unmet. The complete Task39 instrumented
 run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
 tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
 24,055/38,965 raw branches (61.7%), against required 100%/90%.
-See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
+This measurement predates Task40; it is not a coverage result for the current
+hierarchy change. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
 Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
@@ -3066,3 +3066,28 @@ Full dynamic/static regression passes in build/feedback-final-full.log/.exit(0):
 2,518 ICL files covering all 334 parser and 119 scanner rules, and six editor
 tests in 179.205s. Five optional ANTLR tests remain skipped. See the
 [implementation plan](superpowers/plans/2026-11-13-feedback-resets.md).
+
+## Direct hierarchical connections (2026-11-13)
+
+Direct ICL hardware connections now require a hierarchical reference to name
+an output port. A child register, logic signal, alias or input port must not be
+used as an instance output. This applies through the shared resolver to bindings,
+mux inputs/selectors and logic expressions. The parser already limits ordinary
+connections to immediate child instances under IEEE1687 §6.3.10.5; its existing
+depth diagnostic is retained.
+
+Alias definitions retain deep register/port references, and PDL still accesses
+deep targets. Original, flat-ICL and generated-PDL replay preserve those targets.
+Sibling output bindings, control outputs and inverted slices remain supported.
+Invalid inputs are rejected before replacing output artifacts. Further
+signal-kind checks and restrictions on later ICL use of deep aliases remain
+outstanding requirements.
+
+Native netlist tests and27 main CLI methods pass. A fresh leak-enabled sanitizer
+build passes native netlist, main27, multiple-client17, named-group11, ShiftEn11,
+port-reservation8 and data-reset13 tests. Full dynamic/static regression passes
+in build/connection-hierarchy-final-full.log/.exit(0), including39 generator
+suites per build,50 directional/seven legacy standards,2,519 ICL files covering
+334/119 parser/scanner rules, and six editor tests in177.025s. No new vendor
+certificate is claimed. See the
+[implementation plan](superpowers/plans/2026-11-13-connection-hierarchy.md).

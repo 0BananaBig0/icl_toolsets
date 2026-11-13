@@ -489,6 +489,51 @@ void TestUnsizedSources() {
               netlist.NodeAt("unknown").inputs.at("Source")[0].constant == 'x',
           "context sizing may discard leading zero or unknown digits");
 }
+
+void TestConnectionHierarchy() {
+  std::ifstream input(
+      "tests/cases/ours/pattern_generation/connection_hierarchy.icl");
+  std::string source;
+  Require(input.good() && toolsets::ReadTextStream(input, &source),
+          "read connection hierarchy fixture");
+  pattern::Design valid;
+  valid.AddIcl("hierarchy.icl", source);
+  const auto netlist = pattern::Elaborate(valid, "ConnectionHierarchy");
+  Require(netlist.NodeAt("middle.si").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("child.so") &&
+              netlist.NodeAt("child.rst").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("middle.reset_out"),
+          "sibling output bindings use their parent's scope");
+  const auto& reversed = netlist.NodeAt("reversed").inputs.at("Source");
+  Require(reversed.size() == 2 && reversed[0].inverted &&
+              reversed[1].inverted && reversed[0].index == 1 &&
+              reversed[1].index == 0 &&
+              reversed[0].node == netlist.node_ids.at("child.q"),
+          "child output slices retain bit order and inversion");
+  Require(netlist.NodeAt("deep").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("middle.leaf.value") &&
+              netlist.NodeAt("deep_port").inputs.at("Source")[0].node ==
+                  netlist.node_ids.at("middle.leaf.q"),
+          "alias definitions retain deep register and port references");
+  for (const std::string extra :
+       {"DataOutPort bad[3:0] { Source child.value; }",
+        "DataOutPort bad { Source child.flag; }",
+        "DataOutPort bad[3:0] { Source child.local; }",
+        "DataOutPort bad[3:0] { Source child.data; }",
+        "LogicSignal bad { child.value[0] == 1'b0; }",
+        "DataMux bad SelectedBy child.value[0] { 1'b0: 0; 1'b1: 1; }",
+        "DataMux bad[3:0] SelectedBy 1'b0 { 1'b0: child.value; 1'b1: 0; }",
+        "ScanRegister bad { ScanInSource child.value; }",
+        "Instance sink Of ConnectionHierarchyLeaf { InputPort si = child.so;"
+        "InputPort data = child.value; InputPort rst = rst; }"}) {
+    auto invalid_source = source;
+    invalid_source.insert(invalid_source.rfind('}'), extra);
+    pattern::Design invalid;
+    invalid.AddIcl("invalid_hierarchy.icl", invalid_source);
+    Fails([&] { pattern::Elaborate(invalid, "ConnectionHierarchy"); },
+          "must name an output port");
+  }
+}
 void TestInvertedUnsizedSources() {
   for (const auto& source : {"~0", "~'h0", "~'bx", "~$P"}) {
     pattern::Design design;
@@ -939,6 +984,7 @@ int main() {
                           TestResetInference,
                           TestMuxAndEnum,
                           TestConnectionErrors,
+                          TestConnectionHierarchy,
                           TestUnsizedSources,
                           TestInvertedUnsizedSources,
                           TestImplicitScanBit,

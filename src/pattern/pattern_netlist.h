@@ -154,6 +154,8 @@ struct TapRuntimeModel : TapDatapathNodes {
   std::map<std::string, size_t> controls;
 };
 
+enum class ReferenceUse { kConnection, kScanInput, kAlias };
+
 struct Netlist {
   std::string top_module;
   std::map<std::string, std::set<std::string>> module_parameters;
@@ -165,9 +167,10 @@ struct Netlist {
   int64_t Integer(const Expression& expression) const;
   Constant Value(const Expression& expression, size_t width = 0) const;
   Expression ExpressionAt(size_t scope, icl::SourceSpan span) const;
-  std::vector<BitReference> Resolve(const Expression& expression,
-                                    size_t width = 0, bool scan_input = false,
-                                    size_t max_bits = 1024 * 1024) const;
+  std::vector<BitReference> Resolve(
+      const Expression& expression, size_t width = 0,
+      ReferenceUse use = ReferenceUse::kConnection,
+      size_t max_bits = 1024 * 1024) const;
 };
 
 // Disjoint selector cubes not covered by any mux code; work is bounded.

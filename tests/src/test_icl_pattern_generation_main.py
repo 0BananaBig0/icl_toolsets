@@ -94,6 +94,50 @@ class Generator(unittest.TestCase):
                     self.assertIn("cannot justify", failure.stdout)
                     self.assertEqual((self.root / "result.pdl").read_bytes(), original)
 
+    def test_deep_alias_and_pdl_targets_round_trip(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
+        (self.root / "source.icl").write_bytes(fixture.read_bytes())
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule ConnectionHierarchy\niReset\niWrite deep 5\niApply\n"
+            "iRead deep_port 5\niRead middle.leaf.value 5\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "result.pdl", "--debug")
+        expected = (self.root / "result.pdl").read_bytes()
+        self.assertIn(b"iWrite middle.leaf.value 0b0101", expected)
+        flat = self.root / "debug/ConnectionHierarchy.icl"
+        self.run_tool("--icl", flat, "--pdl", "source.pdl",
+                      "--output", "flat/result.pdl", "--debug")
+        self.assertEqual((self.root / "flat/result.pdl").read_bytes(), expected)
+        self.assertEqual((self.root / "flat/debug/ConnectionHierarchy.icl").read_bytes(),
+                         flat.read_bytes())
+        self.run_tool("--icl", "source.icl", "--pdl", "result.pdl", "--output", "again.pdl")
+        self.assertEqual((self.root / "again.pdl").read_bytes(), expected)
+
+    def test_invalid_direct_hierarchy_preserves_outputs(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
+        source = fixture.read_text()
+        (self.root / "source.pdl").write_text("iProcsForModule ConnectionHierarchy\niNote hierarchy\n")
+        for target in ("child.value", "child.local", "child.data", "middle.leaf.q"):
+            with self.subTest(target=target):
+                position = source.rfind("}")
+                invalid = source[:position] + f"DataOutPort bad[3:0] {{ Source {target}; }}\n" + source[position:]
+                (self.root / "source.icl").write_text(invalid)
+                (self.root / "result.pdl").write_text("preserve pattern\n")
+                (self.root / "reset.pdl").write_text("preserve reset\n")
+                debug = self.root / "debug/ConnectionHierarchy.icl"
+                debug.parent.mkdir(exist_ok=True)
+                debug.write_text("preserve debug\n")
+                result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                       "--output", "result.pdl", "--local_reset", "reset.pdl",
+                                       "--debug", ok=False)
+                self.assertIn("source.icl:", result.stdout)
+                self.assertIn("multi-level hierarchy is allowed only in Alias"
+                              if target == "middle.leaf.q" else "must name an output port",
+                              result.stdout)
+                self.assertEqual((self.root / "result.pdl").read_text(), "preserve pattern\n")
+                self.assertEqual((self.root / "reset.pdl").read_text(), "preserve reset\n")
+                self.assertEqual(debug.read_text(), "preserve debug\n")
+
     def test_tap_round_trips(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/access_link"
         for name in ("simple.icl", "simple.bsdl"):

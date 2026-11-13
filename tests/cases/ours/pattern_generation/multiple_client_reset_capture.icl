@@ -10,9 +10,10 @@ Module MultipleResetCell {
   ScanInPort si; SelectPort sel; ResetPort rst;
   ScanRegister value[$W-1:0] { ScanInSource si; CaptureSource value; ResetValue 0; }
   ScanOutPort so { Source value[0]; }
+  DataOutPort q[$W-1:0] { Source value; }
 }
 Module Chains {
- Instance h Of MultipleResetHidden { InputPort si = si[1]; InputPort sel = sel[1]; InputPort ce = ce; InputPort se = 1'b0; InputPort ue = ue; InputPort ck = ck; InputPort d = c0.value; }
+ Instance h Of MultipleResetHidden { InputPort si = si[1]; InputPort sel = sel[1]; InputPort ce = ce; InputPort se = 1'b0; InputPort ue = ue; InputPort ck = ck; InputPort d = c0.q; }
 
   ScanInPort si[1:0]; SelectPort sel[1:0];
   CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
