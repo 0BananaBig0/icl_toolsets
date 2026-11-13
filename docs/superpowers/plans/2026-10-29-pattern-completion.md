@@ -1199,3 +1199,36 @@ The100%/90% gate, later-change Rocky8 qualification and broader model requiremen
 remain open. Clock research confirms shared logical TCK cycles within one
 network; legal selection gating must remain distinct from arbitrary independent
 phase/frequency behavior. It does not close multi-TAP or system-clock work.
+
+
+## Task46: Refresh Rocky Linux8 qualification
+
+Repeat Task26's source-archive and installed-tool checks for473bc9e, using the
+existing pinned remote Make/Z3 dependencies read-only. Source archive SHA256:
+cccf17efc3aebc19e3d185ee9d7c3e440a04a89870893b4887877b3255705805.
+The previous test_platform output tree is untracked but not ignored inside the
+parent repository. Use the explicitly authorized /tmp/icl-platform-473bc9e-20261114
+for new builds/results instead of modifying that repository's external exclude
+file. Retain fetched evidence under build/qualification-473bc9e.
+
+- [x] Build the actual archive on Rocky8 with Bison/Flex disabled, GCC Toolset15,
+  Make4.4.1, Tcl8.6.8 and Z3 4.13.3. Run the39 current generator CLI suites using
+  Python3.8.16's actual binary and system Tcl libraries, plus relevant natives.
+- [x] Install all five native dynamic commands into an isolated prefix, reuse
+  existing installed-tool/LSP checks, and verify manifest uninstall preserves an
+  unrelated file. Check transferred local static executables on the actual host
+  through the same isolated installer and generator suites. Do not claim a remote
+  static source build or alter personal configuration.
+- [x] Record versions, archive hashes, commands, results and remaining limits.
+  Strict coverage and unfinished model work remain separate requirements.
+
+All16 recorded exit statuses are0. Dynamic and transferred-static generator
+checks each pass39 suites/514 tests; installed ICL LSP checks each pass62.
+Native netlist/runtime/flatten and installed PDL/generator/reset replay checks
+pass. ldd confirms system Tcl8.6 for all three linked commands. No archive patches
+or personal installation changes were needed. Local fetched evidence:
+build/qualification-473bc9e/remote-evidence. The guide records exact versions,
+hashes, commands and limits. The exact invocation is retained in
+build/qualification-473bc9e/commands.log. Independent evidence review passes,
+including byte comparison of3775 archived tracked files against473bc9e.
+Task47's later concrete TAP replay change is outside this qualification.

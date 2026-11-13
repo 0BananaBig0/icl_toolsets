@@ -32,8 +32,10 @@ the final strict gate failed with make exit 2. Reports are preserved under
 build/alias-boundary-full-coverage.log/.exit. The later help-only wording change
 does not alter the measured runtime logic. No coverage threshold was weakened.
 
-Rocky8 qualification covers the implementation
-through eecab17. These results do not establish complete retargeting, arbitrary
+Rocky8 source/dynamic and transferred-static qualification covers the implementation
+through473bc9e, with39 CLI suites (514 tests) passing per build on2026-11-14.
+See [the exact platform scope](#rocky-linux-8-refresh-2026-11-14).
+These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
 records the remaining acceptance work.
@@ -3277,3 +3279,62 @@ Style/naming and independent review pass. Full integration passed with exit 0:
 and six editor tests in178.257s. Fresh instrumented tests complete, but the strict
 coverage gate fails at96.2% lines/62.0% raw branches. The final help-only correction
 has dynamic/static smoke verification. Evidence uses build/alias-boundary-*.
+
+### Rocky Linux 8 refresh (2026-11-14)
+
+The source archive from473bc9e builds unchanged on Rocky Linux8.10 x86_64 with
+GCC Toolset15.2.1, Make4.4.1, Python3.8.16, system Tcl8.6.8 and pinned Z3 4.13.3.
+Bison/Flex are disabled and no static Tcl archive is supplied. The archive has
+SHA256 cccf17efc3aebc19e3d185ee9d7c3e440a04a89870893b4887877b3255705805;
+the transferred local static-binary archive has
+SHA256 786f21a67ec89ad8dc2af595c28c8c2bf7ba3d500f6b00b2c46690743b4d7a3f.
+Both hashes were verified after transfer. No extracted source/test file needed
+patching. This extends the dated qualification above through Tasks27–45,
+including the final standalone-wait help correction.
+Independent review also confirms that all3775 tracked files in the source
+archive match their Git blobs at473bc9e; only the expected generated parser,
+scanner and .prebuilt files are additional.
+
+The remote run is retained at /tmp/icl-platform-473bc9e-20261114. It reuses the
+previous run's Make/Z3 dependencies read-only, with isolated dynamic/static
+install prefixes and scratch directories. The actual Python executable is
+/data/eda/mentor/calibre_2016/aok_cal_2026.1_17.11/pkgs/icv_python/asp/bin/python3;
+its directory follows Make/GCC in PATH. LD_LIBRARY_PATH begins with
+/usr/lib64:/lib64, then the GCC and Python library directories. This avoids the
+EDA Python wrapper's Tcl override. ldd records system /usr/lib64/libtcl8.6.so
+for all three Tcl-linked dynamic commands.
+
+The core source commands, from the extracted archive, are:
+
+```sh
+make -j2 --jobserver-style=pipe dynamic BISON=false FLEX=false \
+  TCL_STATIC_LIB=/does/not/exist Z3_PREFIX=<previous-run>/deps/z3
+make -j2 --jobserver-style=pipe pattern-netlist-check pattern-runtime-check \
+  pattern-flatten-check BISON=false FLEX=false \
+  TCL_STATIC_LIB=/does/not/exist Z3_PREFIX=<previous-run>/deps/z3
+make pattern-generation-check BISON=false FLEX=false \
+  TCL_STATIC_LIB=/does/not/exist Z3_PREFIX=<previous-run>/deps/z3
+```
+
+All39 dynamic CLI suites pass (514 tests), as do all39 suites using the
+transferred static generator. Both isolated five-command installations pass
+version, PDL formatter/LSP, original/flat/generated pattern and reset-artifact
+replay checks through tests/tests/test_source_distribution.py's existing
+check_installed_tools helper. Both installed ICL LSP runs pass62 checks.
+Manifest uninstall removes the installed commands/headers and preserves an
+unrelated sentinel file in each prefix. All five static ELF files lack an
+interpreter. The static installer and static CLI target use make -o for each
+transferred build/<command>-static executable; no remote static source build
+is claimed.
+
+All16 exit files, including the aggregate qualification.exit, are0. Local
+evidence is retained in build/qualification-473bc9e/remote-evidence, including
+environment.log, archives-check.log, dynamic-libraries.log, static-elf.log and
+the separate build/install/uninstall/native/CLI logs. Source distribution
+creation passed in build/qualification-473bc9e-dist.log/.exit(0). Personal
+installations and editor configuration were not changed. This is platform and
+installer evidence, not another remote full make check, a new Tessent certificate,
+or qualification of later source changes. Strict coverage and unfinished model
+requirements remain open.
+The exact submitted command body is retained in
+build/qualification-473bc9e/commands.log. Independent evidence review passed.
