@@ -35,7 +35,7 @@ case and report resource limits without claiming unreachability.
   controls. Verify original/flat/generated replay and atomic failures.
 - [x] Extend frame selection, client pins, input constraints and concrete replay
   through existing helpers; keep existing single-client results unchanged.
-- [ ] Run focused dynamic/static tests, full regression, leak-enabled sanitizers,
+- [x] Run focused dynamic/static tests, full regression, leak-enabled sanitizers,
   style/naming and independent review. Probe Tessent where supported, record
   the exact evidence, and update the model/requirement ledger.
 

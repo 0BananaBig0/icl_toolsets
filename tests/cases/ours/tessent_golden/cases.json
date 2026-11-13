@@ -369,6 +369,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "multiple_client_chain_groups",
+      "top": "Chains",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_client_chain_groups.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_client_chain_groups.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

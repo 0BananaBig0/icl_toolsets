@@ -552,3 +552,18 @@ test_icl_toolsets/test_multiple_clients/run_2026_11_13_01/
 multiple-client-reverse-final-bundle and locally under
 build/multiple-client-reverse-final-evidence. Recorded snapshots are
 multiple_clients_separate-reverse and multiple_clients_shared-reverse.
+
+## Selected multi-client chain groups (2026-11-13)
+
+The reverse multiple_client_chain_groups case passes unchanged ordered-apply
+comparison and local fixed-point replay. The current total is43 directional
+standards (20forward/23reverse across27cases) plus seven legacy standards.
+
+Manifest: tests/cases/ours/pattern_generation/multiple_client_chain_groups_cases.json.
+Frozen snapshot: tests/golden/tessent_roundtrip/multiple_client_chain_groups-reverse.
+Tessent2026.2 evidence: test_icl_toolsets/test_multiple_client_groups/
+run_2026_11_13_01/multiple-client-groups-reverse-bundle on the authorized host,
+retrieved as build/multiple-client-groups-reverse-evidence. The local certificate
+and all43 offline directions passed in build/multiple-client-groups-certificate.log
+and build/multiple-client-groups-goldens.log. This qualifies the saved two-client,
+two-chain-per-client fixture only; broader model equivalence remains unverified.

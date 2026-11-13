@@ -9,19 +9,19 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the multiple-client checkpoint passed full dynamic/static
-make -j2 --jobserver-style=pipe check, including all 29 generator CLI suites,
-native tests, 42 directional and seven legacy Tessent standards, and six
+On 2026-11-13, the selected chain-group checkpoint passed full dynamic/static
+make -j2 --jobserver-style=pipe check, including all 30 generator CLI suites,
+native tests, 43 directional and seven legacy Tessent standards, and six
 Vim/Neovim checks. All 334 parser and 119 scanner rules were exercised across
-2,510 ICL files. Five optional ANTLR integration tests were skipped because
+2,511 ICL files. Five optional ANTLR integration tests were skipped because
 ICL_REF_DIR was unset. The complete log and exit 0 record are
-build/multiple-client-regression-complete.log and .exit.
+build/multiple-client-groups-regression.log and .exit.
 
-The native scheduler, 17 new client cases, nine existing simultaneous-chain
-cases and eight hidden-client cases passed ASan/UBSan/LeakSanitizer with
-detect_leaks=1. Formatting, naming, whitespace and independent review passed.
-See [client-interface evidence](#independently-selected-client-interfaces-2026-11-13)
-for behavior, vendor evidence, commands and scale measurements.
+The native scheduler, 11 new group cases, 17 existing multiple-client cases and
+nine simultaneous-chain cases passed ASan/UBSan/LeakSanitizer with detect_leaks=1.
+Formatting, naming, whitespace and independent review passed. See
+[chain-group evidence](#selected-client-chain-groups-2026-11-13) for behavior,
+vendor evidence, commands and scale measurements.
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -467,8 +467,9 @@ broader syntax support and never execute PDL.
   Native idle replay includes any explicitly enabled storage events; it does
   not infer BIST completion or live hardware readback.
 
-The backend accepts one physical scan path and at most one TAP, or disjoint
-named chains in one standalone client interface. Multiple scalar
+The backend accepts one physical scan path and at most one TAP, or standalone
+client interfaces selected one at a time, each with one path or disjoint named
+chains. Multiple scalar
 or vector output bits may observe that path through transparent forwarding,
 including inversion. Equivalent ungated observations use the first sorted
 output; gated alternatives retain their enables and require a known-enabled
@@ -479,7 +480,7 @@ path proves complete-scan equivalence; bounded event planning also tracks hidden
 capture/shift/update storage when that proof does not hold. Unbound vector control lanes retain
 their state, and parallel input frames do not pulse scan controls.
 It rejects
-multiple TAPs, shared scan-input/storage paths, intermediate serial taps,
+multiple TAPs, overlapping paths within a selected chain group, intermediate serial taps,
 feedback reset scheduling,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
@@ -2611,3 +2612,56 @@ and .exit,0). Naming, formatting, whitespace and independent review passed.
 Earlier runs failed the duplicate-fixture and central-manifest checks; another
 was stopped for the required data-fill helper extraction. They are retained
 as failure evidence, not counted as passing runs.
+
+## Selected client chain groups (2026-11-13)
+
+A selected standalone client may now contain several named chains. All chains
+in that group capture, shift and update together, with padding for unequal
+lengths; other clients remain disabled. Groups may have different chain counts,
+and named groups may coexist with ordinary single-pair clients. Different
+clients can share hardware storage or physical outputs. Each active output
+must reach its own declared input; merely reaching another input of the same
+group is insufficient. Repeated Chain ports within one interface remain invalid.
+
+The scheduler reuses the existing route DAG, events and concrete replay. For
+multi-chain groups, one symbolic input tag per vertex enforces declared SI/SO
+pairing through active edges. Constraints grow with vertices, edges and route
+declarations, without enumerating paths. Ordinary single-pair clients retain
+their original constraints: applying tags to them regressed the 16-client
+workload into its solver limit during development, so that unnecessary cost
+was removed before installation.
+
+Eleven CLI cases cover unequal chains, mixed group sizes, ordinary clients,
+inversions, aliases, reservations, shared storage/outputs, reset prerequisites,
+together obligations, wrong pairings, disabled outputs and failure publication.
+Native assertions check SI/SO streams, padded comparisons, inactive storage and
+rollback. A reserved swapped route fails; an unreserved routing control may be
+repaired. Every successful CLI case checks original/flat/generated replay.
+
+The 8-client, 16-chain, 3,580-byte ICL case took 3.649 s for three replay forms,
+wall 3.70 s, peak 65,512 KiB on the local Linux host (g++16.2.1 -O2, concurrent
+validation jobs). Reproduce with /usr/bin/time -f 'wall=%e seconds max_rss=%M KiB'
+python3 tests/src/pattern/test_multiple_client_chain_groups.py
+build/icl-pattern-generation MultipleClientChains.test_group_scale.
+This is a workload measurement, not a speedup claim.
+
+Tessent2026.2 exported the four-register/two-group fixture. Its reverse
+certificate brings the offline total to43 directions over27 cases plus seven
+legacy standards. Evidence is build/multiple-client-groups-reverse-evidence and
+remote test_multiple_client_groups/run_2026_11_13_01/
+multiple-client-groups-reverse-bundle. The certificate covers that fixture;
+general shared-storage/reset/event equivalence remains unverified.
+
+Native and eleven CLI checks passed (build/multiple-client-groups-native-reviewed
+and -installed-cli.log). The initial native assertion omitted a reservation and
+incorrectly forbade a legal route repair; its failing installed.exit is retained,
+not counted as passing evidence. Native/new11/old17-client/old9-chain checks
+passed leak-enabled ASan/UBSan/LSan
+(build/multiple-client-groups-sanitizer-{native,cli,existing}.log and .exit,0).
+Naming, formatting, whitespace and independent source/certificate review passed.
+
+Full dynamic/static make check passed in build/multiple-client-groups-regression.log
+and .exit(0): all30 generator suites, native tests,43directional/seven legacy
+standards,334parser/119scanner rules over2,511ICL files and six editor checks
+(192.033s). Five optional ANTLR tests remain skipped. Strict authored-code
+coverage and Rocky8 qualification of later changes remain outstanding.

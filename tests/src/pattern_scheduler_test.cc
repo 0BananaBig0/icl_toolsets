@@ -246,6 +246,100 @@ Module ClientTop {
               vector_scheduler.Value("ck") == "xx0x",
           "client phases drive only the interface's indexed control lanes");
 }
+void TestMultipleClientChainGroups() {
+  pattern::Design design;
+  design.AddIcl("client-groups.icl", R"(
+Module GroupCell {
+ Parameter W = 4;
+ ScanInPort si; SelectPort sel;
+ ScanRegister value[$W-1:0] { ScanInSource si; CaptureSource value; ResetValue 0; }
+ ScanOutPort so { Source value[0]; }
+}
+Module GroupedClients {
+ ScanInPort si[3:0]; SelectPort sel[1:0]; DataInPort route;
+ CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanMux first SelectedBy route { 1'b0: si[0]; 1'b1: si[1]; }
+ ScanMux second SelectedBy route { 1'b0: si[1]; 1'b1: si[0]; }
+ Instance a Of GroupCell { InputPort si = first; InputPort sel = sel[0]; }
+ Instance b Of GroupCell { Parameter W = 2; InputPort si = second; InputPort sel = sel[0]; }
+ Instance c Of GroupCell { InputPort si = si[2]; InputPort sel = sel[1]; }
+ Instance d Of GroupCell { Parameter W = 2; InputPort si = si[3]; InputPort sel = sel[1]; }
+ ScanOutPort so[3:0] { Source d.so, c.so, b.so, a.so; }
+ ScanInterface left {
+  Chain first { Port si[0]; Port so[0]; }
+  Chain second { Port si[1]; Port so[1]; }
+  Port sel[0]; Port ce; Port se; Port ue; Port ck;
+ }
+ ScanInterface right {
+  Chain first { Port si[2]; Port so[2]; }
+  Chain second { Port si[3]; Port so[3]; }
+  Port sel[1]; Port ce; Port se; Port ue; Port ck;
+ }
+})");
+  const auto netlist = pattern::Elaborate(design, "GroupedClients");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Apply({{"iWrite", {"route", "0"}, "route", {}}});
+  const auto first =
+      scheduler.Apply({{"iWrite", {"a.value", "9"}, "first", {}},
+                       {"iWrite", {"b.value", "2"}, "first", {}}},
+                      true);
+  Require(first.size() == 1 && first[0].lanes.size() == 2 &&
+              first[0].lanes[0].input == "si[0]" &&
+              first[0].lanes[0].serial == "1001" &&
+              first[0].lanes[1].input == "si[1]" &&
+              first[0].lanes[1].serial == "0001" &&
+              scheduler.Value("si") == "xx11" && scheduler.Value("sel") == "01",
+          "selected group's unequal chains share four shifts and preserve "
+          "unused lanes");
+  const auto second =
+      scheduler.Apply({{"iWrite", {"c.value", "6"}, "second", {}},
+                       {"iWrite", {"d.value", "1"}, "second", {}}},
+                      true);
+  Require(second.size() == 1 && second[0].lanes.size() == 2 &&
+              second[0].lanes[0].input == "si[2]" &&
+              second[0].lanes[0].serial == "0110" &&
+              second[0].lanes[1].input == "si[3]" &&
+              second[0].lanes[1].serial == "0010" &&
+              scheduler.Value("a.value") == "1001" &&
+              scheduler.Value("b.value") == "10" &&
+              scheduler.Value("si") == "0011" && scheduler.Value("sel") == "10",
+          "other client clocks its own group and retains previous storage");
+  const auto third =
+      scheduler.Apply({{"iRead", {"a.value", "9"}, "read", {}},
+                       {"iRead", {"b.value", "2"}, "read", {}},
+                       {"iWrite", {"a.value", "3"}, "write", {}},
+                       {"iWrite", {"b.value", "1"}, "write", {}}},
+                      true);
+  Require(
+      third.size() == 1 && third[0].lanes.size() == 2 &&
+          third[0].lanes[0].serial_expected == "1001" &&
+          third[0].lanes[1].serial_expected == "01xx" &&
+          scheduler.Value("c.value") == "0110" &&
+          scheduler.Value("d.value") == "01",
+      "group captures old values with trailing don't-care comparison padding");
+  scheduler.Apply({{"iWrite", {"route", "1"}, "swap inputs", {}}});
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"a.value", "4"}, "wrong pair", {}}}, false,
+                    {{netlist.node_ids.at("route"), "1"}});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("a.value") == "0011" &&
+              scheduler.Value("b.value") == "01" &&
+              scheduler.Value("sel") == "01" &&
+              scheduler.Value("route") == "1" &&
+              scheduler.Value("si") == "0000",
+          "disjoint but wrongly paired routes fail without changing pins or "
+          "storage");
+  scheduler.Apply({{"iWrite", {"a.value", "4"}, "free route", {}}});
+  Require(scheduler.Value("route") == "0" &&
+              scheduler.Value("a.value") == "0100" &&
+              scheduler.Value("b.value") == "01",
+          "an unreserved route control can restore declared chain pairing");
+}
+
 void TestMultipleClientSelection() {
   const std::string path =
       "tests/cases/ours/pattern_generation/multiple_clients.icl";
@@ -1834,6 +1928,7 @@ int main() {
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
     TestClientScanControls();
+    TestMultipleClientChainGroups();
     TestMultipleClientSelection();
     TestSimultaneousScanChains();
     TestHiddenClientEvents();

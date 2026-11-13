@@ -651,7 +651,7 @@ changes. Bound dependency builds to two parallel jobs.
 
 ## Remaining completion work (not yet completed)
 
-- Multi-client named-chain groups, ShiftEn-only client selection, multiple TAPs and intermediate storage taps: extend common-state event planning beyond the independently selected single-pair clients completed in Task29.
+- ShiftEn-only client selection, multiple TAPs and intermediate storage taps: extend common-state event planning beyond the independently selected clients and named-chain groups completed in Tasks29–30.
 - General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
@@ -955,3 +955,14 @@ reverse certificates bring the offline total to42 directions plus seven legacy
 standards. The guide records exact evidence and remaining limits. Task30 will
 add named-chain groups to selectable clients; its tests remain outside this
 checkpoint.
+
+## Task 30: Named chain groups on selected clients
+
+Completed [the focused plan](2026-11-13-multiple-client-chain-groups.md).
+Selected clients enable all their chains with declared SI/SO pairing and common
+events. Shared hardware state, output sharing across clients, padding and route
+repair remain checked through concrete replay. Eleven CLI cases and native
+lane/state assertions pass. Full dynamic/static regression, leak-enabled
+native/new11/old17/old9 sanitizers, naming/style and independent review pass.
+One reverse Tessent certificate brings the offline total to43directions plus
+seven legacy standards. The guide records exact evidence and limits.

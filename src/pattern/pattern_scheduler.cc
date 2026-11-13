@@ -110,21 +110,32 @@ class ScanScheduler::Impl {
     }
     if (clients.size() > 1) {
       for (const auto* client : clients) {
-        if (!client->chains.empty()) {
-          throw std::runtime_error(
-              "multiple clients with named chains require grouped scheduling");
-        }
         const size_t id = clients_.size();
         clients_.emplace_back();
+        client_route_counts_.push_back(0);
         for (const auto& port : client->ports) {
           const Key key{port.node, port.index};
           const auto& kind = netlist.nodes.at(port.node).kind;
-          if (kind == "ScanInPort") client_inputs_[key].push_back(id);
-          if (kind == "ScanOutPort") client_outputs_[key].push_back(id);
           if (kind == "SelectPort") {
             clients_.back().push_back(key);
             client_selectors_[key].push_back(id);
           }
+        }
+        const auto add_route = [&](const std::vector<BitReference>& ports) {
+          Key input, output;
+          for (const auto& port : ports) {
+            const auto& kind = netlist.nodes.at(port.node).kind;
+            if (kind == "ScanInPort") input = {port.node, port.index};
+            if (kind == "ScanOutPort") output = {port.node, port.index};
+          }
+          client_routes_[output].emplace_back(id, input);
+          client_inputs_[input].push_back(id);
+          ++client_route_counts_.back();
+        };
+        if (client->chains.empty()) {
+          add_route(client->ports);
+        } else {
+          for (const auto& chain : client->chains) add_route(chain.ports);
         }
         if (clients_.back().empty()) {
           throw std::runtime_error(
@@ -134,7 +145,7 @@ class ScanScheduler::Impl {
     }
     std::map<Key, Key> chain_inputs;
     for (const auto& binding : interfaces) {
-      if (binding.scope != 0 ||
+      if (!clients_.empty() || binding.scope != 0 ||
           binding.interface.kind != ScanInterfaceKind::kClient ||
           binding.interface.chains.size() < 2) {
         continue;
@@ -175,7 +186,7 @@ class ScanScheduler::Impl {
         for (int64_t index = node.left;;
              index += node.left <= node.right ? 1 : -1) {
           if ((!parallel_chains_ || chain_inputs.count({id, index})) &&
-              (clients_.empty() || client_outputs_.count({id, index}))) {
+              (clients_.empty() || client_routes_.count({id, index}))) {
             roots_.push_back(Add({id, index}));
           }
           if (index == node.right) break;
@@ -1838,8 +1849,19 @@ class ScanScheduler::Impl {
                                          context_.int_val(1))
                                : context_.int_val(1)));
     }
-    std::vector<z3::expr> viable, observed, lengths, input_lengths;
+    const bool paired_inputs =
+        std::any_of(client_route_counts_.begin(), client_route_counts_.end(),
+                    [](size_t count) { return count > 1; });
+    std::vector<z3::expr> viable, observed, lengths, input_lengths, sources;
     for (size_t i = 0; i < graph_.size(); ++i) {
+      if (paired_inputs) {
+        sources.push_back(
+            graph_[i].input
+                ? context_.int_val(i)
+                : context_.int_const(("scan_input_" + std::to_string(time) +
+                                      "_" + std::to_string(i))
+                                         .c_str()));
+      }
       viable.push_back(context_.bool_val(false));
       observed.push_back(context_.bool_val(false));
       lengths.push_back(context_.int_val(0));
@@ -1885,8 +1907,17 @@ class ScanScheduler::Impl {
       if (!clients_.empty()) {
         const auto& bit = graph_[roots_[i]].bit;
         auto enabled = context_.bool_val(false);
-        for (size_t client : client_outputs_.at({bit.node, bit.index})) {
+        for (const auto& [client, input] :
+             client_routes_.at({bit.node, bit.index})) {
           enabled = enabled || frame.clients.at(client);
+          if (paired_inputs) {
+            const auto found = ids_.find(input);
+            const auto source = found == ids_.end()
+                                    ? context_.int_val(-1)
+                                    : context_.int_val(found->second);
+            solver.add(z3::implies(frame.clients.at(client),
+                                   sources[roots_[i]] == source));
+          }
         }
         solver.add(selected == enabled);
       }
@@ -1896,7 +1927,15 @@ class ScanScheduler::Impl {
       count =
           count + z3::ite(selected, context_.int_val(1), context_.int_val(0));
     }
-    const auto chains = context_.int_val(parallel_chains_ ? roots_.size() : 1);
+    auto chains = context_.int_val(parallel_chains_ ? roots_.size() : 1);
+    if (paired_inputs) {
+      chains = context_.int_val(0);
+      for (size_t i = 0; i < clients_.size(); ++i) {
+        chains = chains + z3::ite(frame.clients.at(i),
+                                  context_.int_val(client_route_counts_[i]),
+                                  context_.int_val(0));
+      }
+    }
     solver.add(count == (frame.parallel ? z3::ite(*frame.parallel,
                                                   context_.int_val(0), chains)
                                         : chains));
@@ -1913,7 +1952,7 @@ class ScanScheduler::Impl {
         const Key key{vertex.bit.node, vertex.bit.index};
         frame.inputs.emplace(key,
                              std::make_pair(observed[id], input_lengths[id]));
-        if (!clients_.empty()) {
+        if (!clients_.empty() && !paired_inputs) {
           auto allowed = context_.bool_val(false);
           const auto clients = client_inputs_.find(key);
           if (clients != client_inputs_.end()) {
@@ -1934,6 +1973,10 @@ class ScanScheduler::Impl {
         }
       }
       for (size_t e = 0; e < vertex.edges.size(); ++e) {
+        if (paired_inputs) {
+          solver.add(z3::implies(observed[id] && gates[id][e],
+                                 sources[id] == sources[vertex.edges[e].next]));
+        }
         input_lengths[vertex.edges[e].next] =
             z3::ite(observed[id] && gates[id][e], input_lengths[id],
                     input_lengths[vertex.edges[e].next]);
@@ -4216,8 +4259,9 @@ class ScanScheduler::Impl {
   bool parallel_chains_ = false;
   size_t client_reset_passes_ = 0, client_reset_work_ = 0;
   std::vector<std::vector<Key>> clients_;
-  std::map<Key, std::vector<size_t>> client_inputs_, client_outputs_,
-      client_selectors_;
+  std::vector<size_t> client_route_counts_;
+  std::map<Key, std::vector<size_t>> client_selectors_, client_inputs_;
+  std::map<Key, std::vector<std::pair<size_t, Key>>> client_routes_;
   std::map<size_t, std::string> client_pins_;
   std::map<size_t, std::set<size_t>> client_pin_bits_;
   std::set<Key> client_clocks_;

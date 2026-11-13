@@ -1,0 +1,350 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "multiple_client_chain_groups",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/multiple_client_chain_groups.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/multiple_client_chain_groups.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/multiple_client_chain_groups.icl": "b87627b071e513f33cbf04655af101423d2ef20f36c2d42a3449b153536a88b8",
+    "tests/cases/ours/pattern_generation/multiple_client_chain_groups.pdl": "12cb9e1cdec035710d6d7d05a3ff1a0cf5838c4ae76be2fbfd3b5593c1990765"
+  },
+  "job": {
+    "id": "multiple_client_chain_groups",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/multiple_client_chain_groups.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/multiple_client_chain_groups.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "b87627b071e513f33cbf04655af101423d2ef20f36c2d42a3449b153536a88b8",
+      "source_0.pdl": "12cb9e1cdec035710d6d7d05a3ff1a0cf5838c4ae76be2fbfd3b5593c1990765",
+      "run.tcl": "da3df043ab9065068e4a7a43d656d7d3b1d36432c5f2923f04900bd0198349a3"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/multiple_client_chain_groups.icl": "b87627b071e513f33cbf04655af101423d2ef20f36c2d42a3449b153536a88b8",
+      "tests/cases/ours/pattern_generation/multiple_client_chain_groups.pdl": "12cb9e1cdec035710d6d7d05a3ff1a0cf5838c4ae76be2fbfd3b5593c1990765"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.629378071054816,
+    "outcome": "ok",
+    "result_sha256": "5463db9cdfade1ccbd9278477126754e74d7d00d4c8ded9cdc218bc9661a5372",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "Chains",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "c0_0.value",
+            0,
+            "1"
+          ],
+          [
+            "c0_0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            3,
+            "1"
+          ],
+          [
+            "c0_1.value",
+            0,
+            "0"
+          ],
+          [
+            "c0_1.value",
+            1,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c0_0.value",
+            0,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            3,
+            "0"
+          ],
+          [
+            "c0_1.value",
+            0,
+            "0"
+          ],
+          [
+            "c0_1.value",
+            1,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c1_0.value",
+            0,
+            "0"
+          ],
+          [
+            "c1_0.value",
+            1,
+            "1"
+          ],
+          [
+            "c1_0.value",
+            2,
+            "1"
+          ],
+          [
+            "c1_0.value",
+            3,
+            "0"
+          ],
+          [
+            "c1_1.value",
+            0,
+            "1"
+          ],
+          [
+            "c1_1.value",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c1_0.value",
+            0,
+            "0"
+          ],
+          [
+            "c1_0.value",
+            1,
+            "0"
+          ],
+          [
+            "c1_0.value",
+            2,
+            "0"
+          ],
+          [
+            "c1_0.value",
+            3,
+            "0"
+          ],
+          [
+            "c1_1.value",
+            0,
+            "0"
+          ],
+          [
+            "c1_1.value",
+            1,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c0_0.value",
+            0,
+            "1"
+          ],
+          [
+            "c0_0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            3,
+            "1"
+          ],
+          [
+            "c0_1.value",
+            0,
+            "0"
+          ],
+          [
+            "c0_1.value",
+            1,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c0_0.value",
+            0,
+            "1"
+          ],
+          [
+            "c0_0.value",
+            1,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            2,
+            "0"
+          ],
+          [
+            "c0_0.value",
+            3,
+            "1"
+          ],
+          [
+            "c0_1.value",
+            0,
+            "0"
+          ],
+          [
+            "c0_1.value",
+            1,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c1_0.value",
+            0,
+            "0"
+          ],
+          [
+            "c1_0.value",
+            1,
+            "1"
+          ],
+          [
+            "c1_0.value",
+            2,
+            "1"
+          ],
+          [
+            "c1_0.value",
+            3,
+            "0"
+          ],
+          [
+            "c1_1.value",
+            0,
+            "1"
+          ],
+          [
+            "c1_1.value",
+            1,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c1_0.value",
+            0,
+            "0"
+          ],
+          [
+            "c1_0.value",
+            1,
+            "1"
+          ],
+          [
+            "c1_0.value",
+            2,
+            "1"
+          ],
+          [
+            "c1_0.value",
+            3,
+            "0"
+          ],
+          [
+            "c1_1.value",
+            0,
+            "1"
+          ],
+          [
+            "c1_1.value",
+            1,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "87b6e73a59d58c3cbecf115c15f02a29c7877e4060c7b78bf89127459f296e9d",
+  "vendor_console_sha256": "0a3263ae086dc561c0d64f8507766b79531fb7482aaf06f5ff3dbdebb2ba5104",
+  "artifacts": {
+    "flat.pdl": "ddc0efbc84d6c484fe5299c1f11bdc93998bb6cd797c587c9e144b986ad6df05",
+    "vendor.pdl": "5463db9cdfade1ccbd9278477126754e74d7d00d4c8ded9cdc218bc9661a5372"
+  }
+}

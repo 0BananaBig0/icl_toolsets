@@ -1,0 +1,23 @@
+iPDLLevel 0
+iProcsForModule Chains
+iReset
+iWrite c0_0.value 0b1001
+iWrite c0_1.value 0b10
+iRead c0_0.value 0b0000
+iRead c0_1.value 0b00
+iApply
+iWrite c1_0.value 0b0110
+iWrite c1_1.value 0b01
+iRead c1_0.value 0b0000
+iRead c1_1.value 0b00
+iApply
+iWrite c0_0.value 0b1001
+iWrite c0_1.value 0b10
+iRead c0_0.value 0b1001
+iRead c0_1.value 0b10
+iApply
+iWrite c1_0.value 0b0110
+iWrite c1_1.value 0b01
+iRead c1_0.value 0b0110
+iRead c1_1.value 0b01
+iApply
