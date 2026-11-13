@@ -384,7 +384,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
-| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint ScanRegister/DataRegister calls, including slices/aliases/X masks, by apply depth, with serial fallback. |
+| `iMerge` | Flatten nested blocks; order direct notes first; batch compatible disjoint register accesses and unconnected primary-input writes, including slices/aliases/X masks, by apply depth, with serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. Tessent default-instance and persistent takes are supported within the input stream; other clock/serial-control-port reservations remain unsupported. |
 | System-clock commands | Execution/scheduling remains unfinished and reports an error. |
 | Hardware readback commands | Static generation cannot supply live device observations. |
@@ -549,10 +549,11 @@ Parallel”, also describes serial fallback and recursive merging.
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
 PDL parser. It combines consecutive calls when each contains one or more
-plain applies with ScanRegister/DataRegister reads and writes (including slices, aliases and
-X masks), and their register sets over the entire calls do not overlap. Aliases
-occupy every resolved physical register; even disjoint slices of one register
-retain serial order to preserve controlling fill. Reads may use
+plain applies with ScanRegister/DataRegister reads and writes or unconnected
+primary-input writes (including slices, aliases and X masks), and their physical
+object sets over the entire calls do not overlap. Aliases occupy every resolved
+physical register/port; even disjoint slices of one object retain serial order
+to preserve controlling fill. Reads may use
 X masks or omit expected data. It merges one apply group
 from each active call per round, preserving every call's apply order, and removes
 exhausted calls from subsequent rounds. It does not merge across outside apply
@@ -2374,3 +2375,29 @@ Full dynamic/static `make check` passed with exit 0
 40 directional/seven legacy standards, all parser/scanner rules over 2,507 ICL
 files and editor corpus checks. Five optional ANTLR checks remain skipped.
 Google formatting, changed-source naming and whitespace checks pass.
+
+
+### Merged direct primary-input writes (2026-11-13)
+
+Unconnected top-level DataInPort, AddressPort, ReadEnPort and WriteEnPort writes
+now share the existing merge pass. Aliases and slices retain whole-port ownership
+so controlling fill cannot interleave across calls. Connected child inputs and
+DataOutPort targets retain serial barriers; their names do not establish physical
+independence from upstream storage. Reads of input ports still reject through
+normal operand validation before any output is published.
+
+Eight new cases cover direct/aliased/masked writes, apply order, same-port slice
+conflicts, primary controls, mixed scan/input streams, connected/output barriers,
+resource handling and failed-output protection. All eight pass leak-enabled
+ASan/UBSan/LeakSanitizer; existing 44 merge cases also pass. Independent review
+found no actionable issue and additionally checked input-read rejection and
+concatenated alias overlap. The 64-port/two-apply-call case has 4,834 PDL bytes
+and takes 0.512 s for three replay forms; all eight cases took 1.60 s / 69,564 KiB.
+Style/naming/whitespace checks pass. Computed/connected-port ownership, broader
+timing/resource optimization and vendor qualification remain open.
+
+Full dynamic/static `make check` passed with exit 0
+(`build/merge-primary-regression.log` and `.exit`), including 40 directional/seven
+legacy standards, all parser/scanner rules over 2,507 ICL files and editor corpus
+checks. Five optional ANTLR checks remain skipped. Broader model, optimization
+and coverage requirements remain open.

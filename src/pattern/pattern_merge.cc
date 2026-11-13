@@ -41,7 +41,7 @@ class Merger {
         !stream.back().arguments.empty()) {
       return false;
     }
-    // Each stream owns whole physical registers, including controlling fill.
+    // Each stream owns whole physical objects, including controlling fill.
     try {
       bool pending = false;
       for (const auto& op : stream) {
@@ -60,9 +60,13 @@ class Merger {
           return false;
         }
         for (const auto& bit : target.bits) {
-          if (bit.node >= netlist_.nodes.size() ||
-              (netlist_.nodes[bit.node].kind != "ScanRegister" &&
-               netlist_.nodes[bit.node].kind != "DataRegister")) {
+          if (bit.node >= netlist_.nodes.size()) return false;
+          const auto& node = netlist_.nodes[bit.node];
+          const bool primary = IsReservableResource(node) &&
+                               IsInputPort(node.kind) && node.scope == 0 &&
+                               !node.inputs.count("Source");
+          if (node.kind != "ScanRegister" && node.kind != "DataRegister" &&
+              !primary) {
             return false;
           }
           targets.insert(bit.node);

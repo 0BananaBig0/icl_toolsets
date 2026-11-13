@@ -597,13 +597,13 @@ calls, constant-width ports; measure replay and retain ordered-set complexity.
 Files: pattern_merge.cc; new tests/src/pattern/test_merge_primary_inputs.py;
 Makefile and current support records.
 
-- [ ] Add RED cases for direct/aliased/masked primary writes, physical conflicts,
+- [x] Add RED cases for direct/aliased/masked primary writes, physical conflicts,
   primary control ports, mixed register streams, connected-child barriers,
   invalid operands/output safety and representative scale.
-- [ ] Extend Batchable only for actual unconnected primary input storage. Keep
+- [x] Extend Batchable only for actual unconnected primary input storage. Keep
   shared operand validation, per-call ordering, opaque/resource barriers and
   fresh-state fallback; do not admit DataOutPort or connected input targets.
-- [ ] Run focused and full dynamic/static checks, leak-enabled sanitizer replay,
+- [x] Run focused and full dynamic/static checks, leak-enabled sanitizer replay,
   style/naming, scale and independent review; update limits accurately.
 
 ## Task 25: Use the complete generator suite in strict coverage
@@ -614,7 +614,7 @@ for all three binaries so current tests reach the authored-code coverage gate.
 Keep 100% line/90% raw-branch thresholds and the existing native/editor coverage;
 missing coverage remains an acceptance failure, never a reason to lower limits.
 
-Files: Makefile; tests/test_makefile.py for dry-run command-set equivalence;
+Files: Makefile; existing tests/tests/test_makefile.py for dry-run command-set equivalence;
 coverage evidence and remaining-gap ledger. A shared Make recipe removes duplicate
 lists without changing suite order or dropping exit failures. Do not override
 the generator executable variable in a recursive make, which would relink the
@@ -900,3 +900,12 @@ suites, style/naming/whitespace and independent review pass. The reviewed reset
 interleaving follows IEEE7.9.18 common-state semantics, verified with explicit
 post-merge reads and a reserved serial variant. See
 [data-merge evidence](../../pattern-generation.md#merged-dataregister-streams-2026-11-13).
+
+Task 24 passed full dynamic/static `make check` (exit 0,
+`build/merge-primary-regression.log` and `.exit`), including eight primary-merge
+cases, 40 directional/seven legacy standards, native tests, all parser/scanner
+rules over 2,507 ICL files and editor corpus checks. Five optional ANTLR checks
+remain skipped. Eight new cases passed ASan/UBSan/LeakSanitizer with leaks
+enabled; all44 existing merge cases, formatting/naming/whitespace and independent
+review pass. No new vendor certificate is claimed. See
+[primary-merge evidence](../../pattern-generation.md#merged-direct-primary-input-writes-2026-11-13).
