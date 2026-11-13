@@ -532,12 +532,14 @@ Parallel”, also describes serial fallback and recursive merging.
 `pattern_merge.cc` consumes the existing Runtime operation stream. Call-stack
 invocation identities distinguish repeated calls without introducing another
 PDL parser. It combines consecutive calls when each contains one or more
-plain applies with full-width direct ScanRegister reads and fully known,
+plain applies with ScanRegister reads (including slices and aliases) and fully known,
 full-width direct ScanRegister writes, and their register sets over the entire
-calls do not overlap. Reads may use X masks or omit expected data. It merges one apply group
+calls do not overlap. Read aliases occupy every resolved physical register;
+even disjoint read slices of one register retain serial order. Reads may use
+X masks or omit expected data. It merges one apply group
 from each active call per round, preserving every call's apply order, and removes
 exhausted calls from subsequent rounds. It does not merge across outside apply
-boundaries. Empty applies, aliases, partial reads/writes, X writes, notes within
+boundaries. Empty applies, AccessTogether aliases, alias/partial writes, X writes, notes within
 calls, state changes, `-together`, and clock waits retain their serial barriers. Nested blocks
 are processed recursively. Calls containing resource commands remain serialized.
 
@@ -2008,3 +2010,36 @@ scope measurements, not a speedup or global optimality claim.
 Distinct scan chains, overlapping intermediate taps and multiple TAPs still
 need event-aware shared-state scheduling. No new vendor qualification,
 installation, RTL simulation or strict authored-coverage measurement was run.
+
+## Sliced and aliased merge observations (2026-11-13)
+
+`iMerge` now batches sliced and aliased ScanRegister reads with independent
+full known register writes. Target resolution preserves inversion, bit order,
+enumerations and expected-data masks. Each call occupies every underlying
+physical register for its entire stream, so aliases and separate slices of one
+register cannot bypass conflict ordering. AccessTogether aliases remain barriers
+because their implicit members can extend beyond the requested bits. Partial,
+alias and X writes retain their existing controlling-fill barriers.
+
+Six positive subcases first failed the conservative serialization behavior;
+all 13 observation tests now pass, including source/flat/generated replay,
+unequal streams, resource barriers, rollback and alias conflicts. The independent
+review found no actionable issue and additionally verified enum/concatenated
+aliases, nested group membership and invalid-input output preservation.
+
+Full dynamic/static `make -j2 --jobserver-style=pipe check` passed (exit 0,
+`build/merge-slices-regression.log`), retaining 1,916 ICL cases, 2,180 conformance
+cases, complete grammar/scanner rule hits, 37 directional/seven legacy offline
+vendor standards and editor integration. Five optional ANTLR checks were skipped.
+The 13-case observation suite passed ASan/UBSan/LSan with leak detection enabled
+(`build/merge-slices-sanitizer.log`); original merge tests, Google formatting,
+changed-source clang-tidy and whitespace checks also passed.
+
+The 64-call, two-apply-per-call workload (9,801 ICL+PDL bytes, 128 storage bits)
+now emits two applies instead of the baseline 128. Three replay forms took
+0.185 s; the complete 13-case suite took 2.32 s and 58,244 KiB peak RSS under
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' python3 tests/src/pattern/test_merge_observations.py build/icl-pattern-generation`
+(GCC 16.2.1 `-O2`, Linux 6.18.33.2 WSL2;
+`build/merge-slices-scale.log`). This is an apply-count reduction, not a measured
+runtime speedup or a global optimization claim. No new vendor certificate,
+installation or strict authored-coverage measurement was made for this change.

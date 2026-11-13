@@ -41,8 +41,7 @@ class Merger {
         !stream.back().arguments.empty()) {
       return false;
     }
-    // Partial/alias writes and stateful calls keep their original
-    // fill/barriers.
+    // Reads occupy physical registers; partial writes keep their fill barriers.
     try {
       bool pending = false;
       for (const auto& op : stream) {
@@ -58,17 +57,25 @@ class Merger {
         }
         const auto target = ResolvePdlTarget(netlist_, op.arguments[0]);
         const auto& node = netlist_.nodes.at(target.declaration);
-        if (node.kind != "ScanRegister" || target.bits.size() != node.Width()) {
+        if (!target.access_together.empty() ||
+            (!read && (node.kind != "ScanRegister" ||
+                       target.bits.size() != node.Width()))) {
           return false;
+        }
+        for (const auto& bit : target.bits) {
+          if (bit.node >= netlist_.nodes.size() ||
+              netlist_.nodes[bit.node].kind != "ScanRegister") {
+            return false;
+          }
+          targets.insert(bit.node);
         }
         const auto bits =
             op.arguments.size() == 1
-                ? std::string(node.Width(), 'x')
+                ? std::string(target.bits.size(), 'x')
                 : PdlDataValue(context_, netlist_, target, op.arguments[1]);
         if (!read && bits.find('x') != std::string::npos) {
           return false;
         }
-        targets.insert(target.declaration);
         pending = true;
       }
     } catch (const std::runtime_error&) {

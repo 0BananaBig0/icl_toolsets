@@ -67,10 +67,52 @@ class MergeObservations(unittest.TestCase):
         self.assertIn('iWrite b 0b1010', output)
         self.replay(output)
 
-    def test_partial_reads_remain_conservative_barriers(self):
+    def test_partial_reads_merge_with_independent_writes(self):
         output = self.generate(self.program('iRead a[0] 0; iApply',
                                             'iWrite b 10; iApply'), '--debug')
-        self.assertEqual(len(self.groups(output)), 2)
+        self.assertEqual(len(self.groups(output)), 1)
+        self.assertIn('iRead a 0bxxx0', output)
+        self.replay(output)
+
+    def test_aliased_observations_use_physical_registers(self):
+        source = (helpers.FIXTURE / 'network.icl').read_text()
+        source = source.replace('Module MergeNetwork {', '''Module MergeNetwork {
+  Alias reversed[0:3] = ~a[0], ~a[1], ~a[2], ~a[3];
+  Alias nested[1:0] = reversed[0:1];
+''')
+        (self.root / 'source.icl').write_text(source)
+        for first in ('iRead nested 3; iApply',
+                      'iRead reversed; iApply',
+                      'iRead reversed[3:0] 15; iApply'):
+            with self.subTest(first=first):
+                output = self.generate(self.program(first, 'iWrite b 10; iApply'), '--debug')
+                self.assertEqual(len(self.groups(output)), 1)
+                self.assertIn('iRead a ', output)
+                self.replay(output)
+
+    def test_alias_conflicts_and_access_together_keep_order(self):
+        source = (helpers.FIXTURE / 'network.icl').read_text()
+        source = source.replace('Module MergeNetwork {', '''Module MergeNetwork {
+  Alias both[1:0] = a[0], b[0];
+  Alias grouped[1:0] = a[0], b[0] { AccessTogether; }
+''')
+        (self.root / 'source.icl').write_text(source)
+        for first, second in (
+                ('iRead both 0; iApply', 'iWrite b 10; iApply'),
+                ('iRead a[0] 0; iApply', 'iRead a[3] 0; iApply'),
+                ('iRead grouped[0] 0; iApply', 'iWrite a 5; iApply')):
+            with self.subTest(first=first, second=second):
+                output = self.generate(self.program(first, second), '--debug')
+                self.assertEqual(len(self.groups(output)), 2)
+                self.replay(output)
+
+    def test_partial_read_streams_keep_each_apply_order(self):
+        output = self.generate(self.program(
+            'iRead a[0] 0; iApply; iRead a[3]; iApply',
+            'iWrite b 10; iApply; iWrite b 11; iApply'), '--debug')
+        self.assertEqual(self.groups(output), [{'a': 0, 'b': 10}, {'a': 0, 'b': 11}])
+        self.assertIn('iRead a 0bxxx0', output.split('iApply\n')[0])
+        self.assertIn('iRead a 0bxxxx', output.split('iApply\n')[1])
         self.replay(output)
 
     def test_notes_and_resource_ownership_remain_barriers(self):
@@ -104,15 +146,16 @@ class MergeObservations(unittest.TestCase):
         serial = text.replace('iMerge -begin\n', '').replace('iMerge -end\n', '')
         self.assertEqual(output, self.generate(serial))
 
-    def test_many_read_write_calls(self):
+    def test_many_sliced_read_write_calls(self):
         count = 64
         source = 'Module MergeNetwork { ScanInPort si;\n'
         text = 'iPDLLevel 1\niProcsForModule MergeNetwork\niReset\n'
         for i in range(count):
             previous = f'r{i - 1}' if i else 'si'
-            source += f"ScanRegister r{i} {{ ScanInSource {previous}; ResetValue 1'b0; }}\n"
-            text += f'iProc p{i} {{}} {{ iRead r{i} 0; iWrite r{i} 1; iApply; iRead r{i} 1; iApply }}\n'
-        source += f'ScanOutPort so {{ Source r{count - 1}; }}\n}}\n'
+            previous = f'{previous}[0]' if i else previous
+            source += f"ScanRegister r{i}[1:0] {{ ScanInSource {previous}; ResetValue 2'b0; }}\n"
+            text += f'iProc p{i} {{}} {{ iRead r{i}[0] 0; iWrite r{i} 1; iApply; iRead r{i}[0] 1; iApply }}\n'
+        source += f'ScanOutPort so {{ Source r{count - 1}[0]; }}\n}}\n'
         text += 'iMerge -begin\n' + ''.join(f'iCall p{i}\n' for i in range(count)) + 'iMerge -end\n'
         (self.root / 'source.icl').write_text(source)
         start = time.monotonic()

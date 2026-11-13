@@ -326,6 +326,29 @@ Files: `src/pattern/pattern_scheduler.cc`, existing native scheduler tests,
   naming checks, and independent review. Record measured scale and limits;
   update current ledgers without marking distinct-chain/TAP work complete.
 
+## Task 15: Merge sliced and aliased scan observations
+
+Read slices and aliases do not assign controlling fill. Resolve them through
+the existing PDL target mapper and conservatively occupy every underlying
+ScanRegister for the whole call, retaining conflict ordering even for distinct
+bits of one register. Keep AccessTogether aliases, partial/alias/X writes and
+non-scan reads as barriers. Reuse shared value parsing, scheduling/replay and
+fresh-state fallback. This closes an observation batching gap without changing
+write-fill or resource semantics. Target resolution is linear in target bits
+apart from existing alias traversal and ordered-set insertions.
+
+Files: `src/pattern/pattern_merge.cc`, existing
+`tests/src/pattern/test_merge_observations.py`, support docs.
+
+- [x] Add RED cases for slices, inverted/nested/concatenated aliases, no-value
+  reads, multi-apply order and 64 independent two-apply sliced observations;
+  preserve physical-register conflict ordering and AccessTogether barriers.
+- [x] Classify read targets by resolved physical ScanRegister bits; retain
+  existing write restrictions and metadata. Expected: focused merge suites and
+  source/flat/generated replay pass, with the 64-call workload using two applies.
+- [x] Run full dynamic/static regression, focused leak-enabled sanitizers,
+  style/naming and independent review; record bounds, results and remaining work.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
