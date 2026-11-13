@@ -9,18 +9,23 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the reservation/state checkpoint passed full dynamic/static
-make -j2 --jobserver-style=pipe check, including all34 generator CLI suites,
-native tests,46 directional and seven legacy Tessent standards, and six
-Vim/Neovim checks (191.518s). All334 parser and119 scanner rules were exercised
-across2,513 ICL files. Five optional ANTLR integration tests were skipped because
-ICL_REF_DIR was unset. The complete log and exit0 record are
-build/access-state-regression.log and .exit.
+On 2026-11-13, the mixed storage reset checkpoint passed all35 generator
+CLI suites under dynamic and static builds, native tests,47 directional and
+seven legacy Tessent standards, and parser/scanner checks across2,516 ICL files
+(all334 parser and119 scanner rules). Five optional ANTLR integration tests
+were skipped because ICL_REF_DIR was unset.
 
-Native state/scheduler tests and11state CLI cases passed ASan/UBSan/
-LeakSanitizer with detect_leaks=1 on the final source. Reservation native/new8/
-old35 CLI leak checks also passed. Formatting, naming, whitespace and independent
-source/certificate review passed. See [reservation and state verification](#all-port-reservations-and-dataregister-state-2026-11-13).
+The full command's final editor target initially failed because Neovim inherited
+Vim's runtime directory. After isolating VIM/VIMRUNTIME in the test harness,
+all six editor tests passed (181.358s). The original command retains exit2 in
+build/data-reset-durable-full.log/.exit; the corrected editor rerun has exit0
+in build/data-reset-editor-isolated.log/.exit. These records together cover the
+required checks; the original command is not reported as exit0.
+
+Native state/scheduler,25main,12argument-reset and13new reset-dependency CLI
+tests passed leak-enabled ASan/UBSan. Formatting, naming, whitespace and
+independent source/certificate review passed. See
+[mixed storage reset verification](#mixed-storage-reset-dependencies-2026-11-13).
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -378,12 +383,12 @@ atomic failures and source/flat/generated-PDL replay.
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
-| `iState` | Numeric assumptions for scan registers and top-level DataInPort/SelectPort pins, including aliases and slices; default or `-LastWrittenValue`; no device transaction. |
+| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default or `-LastWrittenValue`; no device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
-| `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. Tessent default-instance and persistent takes are supported within the input stream; other clock/serial-control-port reservations remain unsupported. |
+| `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | Execution/scheduling remains unfinished and reports an error. |
 | Hardware readback commands | Static generation cannot supply live device observations. |
 
@@ -2788,8 +2793,8 @@ DataState.test_wide_state_scale.
 
 Tessent2026.2 accepted both saved fixtures, with reverse certificates retained.
 See [vendor evidence](tessent-goldens.md#all-port-reservations-and-dataregister-state-2026-11-13).
-DataRegister-controlled scan resets still hit the scheduler's scan-only reset
-dependency boundary; the CLI test records this limitation explicitly.
+At this checkpoint DataRegister-controlled scan resets hit a scan-only reset
+dependency boundary, subsequently addressed by Task35 below.
 Observation-history iState flags, queued-state integration, iScan/iClock,
 system-clock/time waits and broader pattern-set ownership remain unfinished.
 Final native state/scheduler tests and11CLI methods pass ASan/UBSan/
@@ -2805,3 +2810,71 @@ seven legacy standards,334parser/119scanner rules over2,513ICL files and six
 editor checks(191.518s). Five optional ANTLR checks remain skipped.
 The two earlier stopped reservation full runs do not count as completed checks.
 Strict authored-code coverage and later-change Rocky8 qualification remain open.
+
+
+## Mixed storage reset dependencies (2026-11-13)
+
+Reset ordering now includes ScanRegister and DataRegister storage in one acyclic
+graph, separate from data write/address/enable ordering. Source-cone discovery
+includes one-hot contributors and their selection conditions. Snapshot passes
+preserve transient assertions before capture, after scan update and after data
+update; convergence stops early only when simplified symbolic expressions are
+identical. Actual cycles retain the feedback diagnostic.
+
+Native replay records the last known controlling event per register: a known
+write payload or an asserted reset. Unknown writes/resets do not replace that
+history, and an unchanged reset still counts. Event-free assumptions do not
+create events. Copies and rollback retain history; frame and idle boundaries
+drain it, including the authoritative TAP execution. Hidden scan writes keep
+the existing fill policy, while resets still affect controlling fill. Data
+updates use the existing phase events, excluding the TAP instruction scan.
+
+Local-reset prerequisite and greedy planning include held DataRegister state.
+Automatic repair through a DataRegister write path remains unsupported and is
+diagnosed when a fixed data control prevents release. Requested scan loads keep
+implicit fill until their reset is known inactive, allowing prerequisite scans
+to release the reset before the requested write. A known asserted reset makes
+an omitted payload irrelevant only in the backend without hidden events.
+The solver constrains reset-sensitive loads to representable updates or proven
+no-effect payloads, with concrete replay retaining the final check. These
+capture/final-frame predicates do not establish arbitrary per-edge support.
+Likewise, a scan payload
+that differs from implicit fill but cannot be represented by a valid emitted
+iWrite either fails the bounded schedule search or reports that raw scan output
+is required during concrete replay. This is a serialization limit,
+not proof that no physical schedule exists. Feedback and general per-edge
+event solving remain open.
+
+Thirteen CLI methods exercise original/flat/generated replay, mixed cascades,
+transient reset history, one-hot forwarding, actual-cycle rejection, greedy
+planning with read-only data storage and preserved output on rejection.
+Native tests check actual storage, scan events, controlling fill, event-free
+state, copying and TAP history draining. Independent review reproduced and
+closed transient settlement, one-hot dependency, TAP phase, greedy-state and
+local-reset prerequisite payload defects; the corresponding failing logs remain under build/data-reset-*.
+
+The 64- and128-register alternating reset chains (4,509 and8,706ICL bytes)
+completed three replay forms in0.212s and0.398s in
+build/data-reset-final-cli.log/.exit(0), on the local Linux g++16.2.1 -O2 build.
+Reproduce with python3 tests/src/pattern/test_data_reset_dependencies.py
+build/icl-pattern-generation DataResetDependencies.test_mixed_reset_chain_scale.
+Before expression simplification and proved fixed-point termination, the128
+case exceeded45s (build/data-reset-scale.log); concurrent checks make those
+runs unsuitable for a precise speedup ratio. Existing traversal and expanded
+reset-work budgets remain enforced.
+
+A DataRegister-selected reset mux passes Tessent2026.2 reverse certification.
+Direct DataRegister-to-ResetPort wiring is rejected by Tessent ICL65-1; local
+semantic fixtures accepting that form do not establish vendor portability or
+complete source-kind validation. See the [probe record](tessent-goldens.md#mixed-storage-reset-dependencies-2026-11-13).
+
+Final sanitizer evidence is build/data-reset-durable-sanitizer-{native,main,
+arguments,cli}.log/.exit(0), with ASAN_OPTIONS=detect_leaks=1 and
+UBSAN_OPTIONS=halt_on_error=1. The unchanged native state source also passes in
+build/data-reset-sanitizer-state.log/.exit(0). The final13 CLI methods and12
+argument-reset methods pass in build/data-reset-representable-{final-cli,
+arguments}.log/.exit(0); the final64/128 chain measurements are0.228s/0.385s.
+The47direction offline check, formatting and naming records also have exit0.
+The full dynamic/static and corrected editor evidence is described above.
+Interrupted earlier runs and superseded failures remain recorded, not counted
+as passes. Strict coverage and later-change Rocky8 qualification remain open.

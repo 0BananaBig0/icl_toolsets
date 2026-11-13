@@ -101,7 +101,7 @@ Module Chains {
         output = self.replay(source, 'iState enable 0; iState reset 1; iState s.value 9; iState d.value 9; iRead q 9; iApply;\n')
         self.assertNotIn(b"iWrite", output)
 
-    def test_data_reset_dependency_reports_current_boundary(self):
+    def test_data_state_releases_serial_reset(self):
         source = """Module Child {
  ScanInPort si; ResetPort rst { ActivePolarity 0; }
  ScanRegister value[3:0] { ScanInSource si; CaptureSource value; ResetValue 0; }
@@ -114,8 +114,7 @@ Module Chains {
  ScanOutPort so { Source c.so; }
 }
 """
-        message = self.reject(source, 'iReset; iState release 1; iWrite c.value 9; iApply;\n')
-        self.assertIn('feedback reset scheduling requires fixed-point constraints', message)
+        self.replay(source, 'iReset; iState release 1; iWrite c.value 9; iApply; iRead c.value 9; iApply;\n')
 
     def test_observation_history_and_output_state_remain_rejected(self):
         for target, suffix in (('value', ' -LastReadValue'), ('value', ' -LastMiscompareValue'), ('q', '')):

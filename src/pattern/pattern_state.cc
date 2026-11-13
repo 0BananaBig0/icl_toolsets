@@ -297,11 +297,17 @@ bool NetworkState::SameState(const NetworkState& state) const {
          shift_ == state.shift_ && driven_ == state.driven_ &&
          updated_ == state.updated_ && global_reset_ == state.global_reset_ &&
          async_reset_ == state.async_reset_ &&
-         reset_events_ == state.reset_events_;
+         reset_events_ == state.reset_events_ &&
+         control_events_ == state.control_events_;
 }
 std::set<size_t> NetworkState::TakeResetEvents() {
   std::set<size_t> events;
   events.swap(reset_events_);
+  return events;
+}
+NetworkState::ControlEvents NetworkState::TakeControlEvents() {
+  ControlEvents events;
+  events.swap(control_events_);
   return events;
 }
 void NetworkState::Restore(const NetworkState& state) {
@@ -313,6 +319,7 @@ void NetworkState::Restore(const NetworkState& state) {
   driven_ = state.driven_;
   updated_ = state.updated_;
   reset_events_ = state.reset_events_;
+  control_events_ = state.control_events_;
   global_reset_ = state.global_reset_;
   async_reset_ = state.async_reset_;
 }
@@ -383,11 +390,18 @@ void NetworkState::UpdateDataRegisters(char event) {
     const auto& activation = plan.writes.at(id);
     SignalEvaluator values(*this);
     const char enabled = And(event, values.Active(activation));
-    auto next = Choose(enabled, values.Bits(node.inputs.at("WriteDataSource")),
-                       update_[id]);
+    const auto load = values.Bits(node.inputs.at("WriteDataSource"));
+    const char reset = node.reset ? values.Read(*node.reset) : '0';
+    auto next = Choose(enabled, load, update_[id]);
+    if (enabled == '1' && reset == '0' && load.find('x') == std::string::npos) {
+      control_events_[id] = load;
+    }
     if (node.reset) {
-      next = Choose(values.Read(*node.reset),
-                    node.constants.at("ResetValue").data, next);
+      if (reset == '1') {
+        reset_events_.insert(id);
+        control_events_[id] = std::nullopt;
+      }
+      next = Choose(reset, node.constants.at("ResetValue").data, next);
     }
     update_[id] = std::move(next);
   }
@@ -415,6 +429,7 @@ void NetworkState::ClockRegisters(const std::map<size_t, ScanControl>& controls,
                                   bool rising) {
   SignalEvaluator values(*this);
   std::map<size_t, std::string> next_shift, next_update;
+  ControlEvents events;
   std::set<size_t> updated;
   for (const auto& [id, control] : controls) {
     const auto& node = netlist_.nodes.at(id);
@@ -451,11 +466,18 @@ void NetworkState::ClockRegisters(const std::map<size_t, ScanControl>& controls,
       }
       next_shift.emplace(id, std::move(next));
     } else {
-      auto next =
-          Choose(And(control.select, control.update), shift_[id], update_[id]);
+      const char enabled = And(control.select, control.update);
+      const char reset = node.reset ? values.Read(*node.reset) : '0';
+      auto next = Choose(enabled, shift_[id], update_[id]);
+      if (enabled == '1' && reset == '0' &&
+          shift_[id].find('x') == std::string::npos) {
+        events[id] = shift_[id];
+      }
       if (node.reset) {
-        const char reset = values.Read(*node.reset);
-        if (reset == '1') reset_events_.insert(id);
+        if (reset == '1') {
+          reset_events_.insert(id);
+          events[id] = std::nullopt;
+        }
         next = Choose(reset, node.constants.at("ResetValue").data, next);
       }
       next_update.emplace(id, std::move(next));
@@ -473,6 +495,7 @@ void NetworkState::ClockRegisters(const std::map<size_t, ScanControl>& controls,
     }
   }
   updated_ = std::move(updated);
+  for (auto& [id, event] : events) control_events_[id] = std::move(event);
   for (auto& [id, value] : next_shift) {
     shift_[id] = std::move(value);
   }
@@ -494,7 +517,10 @@ void NetworkState::Reset() {
         continue;
       }
       const char reset = values.Read(*node.reset);
-      if (reset == '1') reset_events_.insert(id);
+      if (reset == '1') {
+        reset_events_.insert(id);
+        control_events_[id] = std::nullopt;
+      }
       const auto value =
           Choose(reset, node.constants.at("ResetValue").data, update_[id]);
       if (value != update_[id]) {

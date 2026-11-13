@@ -16,6 +16,9 @@ class TapExecution {
       std::map<std::string, std::set<std::pair<size_t, int64_t>>>;
   const NetworkState& State() const { return state_; }
   std::set<size_t> TakeResetEvents() { return state_.TakeResetEvents(); }
+  NetworkState::ControlEvents TakeControlEvents() {
+    return state_.TakeControlEvents();
+  }
   const std::map<size_t, std::vector<InterfacePorts>>& RegisterInterfaces()
       const {
     return register_ports_;

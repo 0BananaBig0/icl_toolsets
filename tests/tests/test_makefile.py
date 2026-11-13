@@ -32,6 +32,7 @@ class BuildGraph(unittest.TestCase):
             self.assertIn('tests/src/pattern/test_source_literals.py', scripts)
             self.assertIn('tests/src/pattern/test_port_reservations.py', scripts)
             self.assertIn('tests/src/pattern/test_data_register_state.py', scripts)
+            self.assertIn('tests/src/pattern/test_data_reset_dependencies.py', scripts)
             self.assertEqual(len(scripts), len(set(scripts)))
             suites.append(scripts)
         self.assertEqual(suites[0], suites[1])

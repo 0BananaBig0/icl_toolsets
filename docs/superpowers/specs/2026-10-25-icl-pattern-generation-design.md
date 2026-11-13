@@ -229,6 +229,15 @@ provably unreachable state from unsupported behavior and solver exhaustion.
 Shared apply groups require compatible values and simultaneous accessibility.
 Preserve intentionally requested resets and their effects on other registers.
 
+Task35 implements one bounded acyclic reset graph across scan/data storage,
+with simultaneous snapshot settlement and last-known write/reset history.
+Reset-only ordering stays separate from data write dependencies. One-hot reset
+sources include contributor and selection conditions. Held DataRegister controls
+participate in prerequisite/greedy models; automatically writing those controls
+and arbitrary feedback remain outside this implemented subset. Emission still
+requires a representable register operation: payloads with effects that cannot
+be expressed as iWrite/iRead need the remaining raw-scan output work.
+
 Expand `iMerge` into dependent operation streams and optimize compatible work
 jointly; do not emit a separate merge artifact. Preserve required apply/clock/
 read/reset/resource barriers. IEEE requires an empty apply queue on merge entry;

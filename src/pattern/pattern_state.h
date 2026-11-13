@@ -5,6 +5,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -23,6 +24,7 @@ void ValidateStateAssumption(const Netlist& netlist, size_t node);
 // first, independent of numeric index direction. No initial reset is assumed.
 class NetworkState {
  public:
+  using ControlEvents = std::map<size_t, std::optional<std::string>>;
   explicit NetworkState(const Netlist& netlist);
   void Drive(size_t node, const std::string& value);
   // Update the assumed snapshot without clock edges or reset propagation.
@@ -39,6 +41,9 @@ class NetworkState {
   bool SameState(const NetworkState& state) const;
   // Drain known reset assertions, including pulses during reset propagation.
   std::set<size_t> TakeResetEvents();
+  // Last definite event per storage: known write payload or nullopt for reset.
+  // Unknown writes/resets do not replace two-state controlling history.
+  ControlEvents TakeControlEvents();
   bool IsDriven(size_t node) const;
   void SetGlobalReset(char synchronous, char asynchronous);
   // Controller-owned state, not a user write or an implicit initialization.
@@ -56,6 +61,7 @@ class NetworkState {
   std::vector<std::string> update_, shift_, driven_;
   std::set<size_t> updated_;
   std::set<size_t> reset_events_;
+  ControlEvents control_events_;
   char global_reset_ = 'x', async_reset_ = 'x';
 };
 }  // namespace pattern

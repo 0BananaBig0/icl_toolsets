@@ -1,0 +1,14 @@
+iPDLLevel 1
+iProcsForModule DataResetProbe
+iReset
+iState enable 0
+iState release 1
+iWrite c.value 9
+iApply
+iRead c.value 9
+iApply
+iWrite data 0
+iWrite enable 1
+iApply
+iRead c.value 0
+iApply

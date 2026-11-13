@@ -1,0 +1,24 @@
+iProcsForModule DataResetProbe
+
+iProc oracle {} {
+
+   iReset
+   iState enable 0b0
+   iState release 0b1
+   iWrite c.value[3:0] 0b1001
+   iRead  c.value[3:0] 0b0000
+   iApply
+
+   iWrite c.value[3:0] 0b1001
+   iRead  c.value[3:0] 0b1001
+   iApply
+
+   iWrite data 0b0
+   iWrite enable 0b1
+   iApply
+
+   iRead  c.value[3:0] 0b0000
+   iApply
+
+
+}

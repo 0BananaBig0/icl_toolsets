@@ -1,0 +1,232 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "data_reset_probe",
+    "top": "DataResetProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_reset_probe.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_reset_probe.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/data_reset_probe.icl": "017f548b3112f6c2b89cfa8d7bd361c7e57b5df5ab9610427e9279d43e7731cd",
+    "tests/cases/ours/pattern_generation/data_reset_probe.pdl": "8ce0ad576f3500a1645fb1448cf19c134457fb8af09eac1e989d1dd5d8c0a876"
+  },
+  "job": {
+    "id": "data_reset_probe",
+    "top": "DataResetProbe",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_reset_probe.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_reset_probe.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "017f548b3112f6c2b89cfa8d7bd361c7e57b5df5ab9610427e9279d43e7731cd",
+      "source_0.pdl": "8ce0ad576f3500a1645fb1448cf19c134457fb8af09eac1e989d1dd5d8c0a876",
+      "run.tcl": "ac31134d1037d146d50d2e9a350613d41dda4e0d58a3e96bbe5555aa15f0fd25"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_reset_probe.icl": "017f548b3112f6c2b89cfa8d7bd361c7e57b5df5ab9610427e9279d43e7731cd",
+      "tests/cases/ours/pattern_generation/data_reset_probe.pdl": "8ce0ad576f3500a1645fb1448cf19c134457fb8af09eac1e989d1dd5d8c0a876"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.780207863077521,
+    "outcome": "ok",
+    "result_sha256": "d5a4f945a991325e55af3ef5583bcc5e7c22541ac7802c7068bddb4ef83af3bf",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "DataResetProbe",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "iState": [
+          [
+            "enable",
+            0,
+            "0"
+          ],
+          [
+            "release",
+            0,
+            "1"
+          ]
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "data",
+            0,
+            "0"
+          ],
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "b37318aee95d9eeaf4d732f272fdb0703c2a181e9023a41e8ab859135db192e2",
+  "vendor_console_sha256": "9b077e756619a94d5dd253d1da5c97c0a85b445186b2334571c56e5b91ef83ec",
+  "artifacts": {
+    "flat.pdl": "2e93c7122bd7a623fd941399152975921d55a10b56a5c853318e0e8b054ba700",
+    "vendor.pdl": "d5a4f945a991325e55af3ef5583bcc5e7c22541ac7802c7068bddb4ef83af3bf"
+  }
+}

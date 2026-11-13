@@ -74,6 +74,71 @@ Module Events {
           "flat reset semantics replay");
 }
 
+void TestControllingEventHistory() {
+  pattern::Design design;
+  design.AddIcl("control-history.icl", R"(
+Module History {
+ ScanInPort si; DataInPort data[3:0]; DataInPort enable; ResetPort rst;
+ ScanRegister scan[3:0] { ScanInSource si; ResetValue 0; }
+ DataRegister value[3:0] { WriteDataSource data; WriteEnSource enable; ResetValue 0; }
+})");
+  const auto netlist = pattern::Elaborate(design, "History");
+  pattern::NetworkState state(netlist);
+  const auto value = netlist.node_ids.at("value");
+  const auto scan = netlist.node_ids.at("scan");
+  const auto reset = netlist.node_ids.at("rst");
+  const auto data = netlist.node_ids.at("data");
+  state.Drive(reset, "0");
+  state.Drive(data, "0110");
+  state.Drive(netlist.node_ids.at("enable"), "1");
+  state.ApplyInputs({});
+  state.Drive(reset, "x");
+  state.Reset();
+  Require(
+      state.Value(value) == "0xx0" && state.TakeControlEvents().at(value) ==
+                                          std::optional<std::string>("0110"),
+      "unknown reset changes hardware without erasing last known write");
+  Require(state.TakeControlEvents().empty(), "history drains once");
+  state.Drive(reset, "1");
+  state.Reset();
+  Require(!state.TakeControlEvents().at(value),
+          "known reset records even unchanged reset bits");
+  state.Reset();
+  state.Drive(reset, "0");
+  state.ApplyInputs({});
+  auto events = state.TakeControlEvents();
+  Require(events.at(value) == std::optional<std::string>("0110") &&
+              !events.at(scan),
+          "data write supersedes its earlier reset, retaining unrelated reset");
+  state.ApplyInputs({});
+  state.Drive(reset, "1");
+  state.Reset();
+  Require(!state.TakeControlEvents().at(value),
+          "later reset supersedes a known write");
+  state.Reset();
+  state.Drive(reset, "0");
+  state.Drive(data, "xxxx");
+  state.ApplyInputs({});
+  Require(state.Value(value) == "xxxx" && !state.TakeControlEvents().at(value),
+          "unknown hardware writes do not erase controlling reset history");
+  state.Assume(value, "1001");
+  state.SetRegister(scan, "1010", "0101");
+  Require(state.TakeControlEvents().empty(),
+          "assumptions and controller synchronization emit no hardware event");
+  state.Clock({{scan, {'0', '0', '1', '1'}}}, false);
+  Require(
+      state.TakeControlEvents().at(scan) == std::optional<std::string>("1010"),
+      "known scan update payload is available to planned-write consumers");
+  state.Drive(reset, "1");
+  state.Reset();
+  const pattern::NetworkState snapshot(state);
+  state.TakeControlEvents();
+  Require(!state.SameState(snapshot),
+          "pending history participates in snapshot equality");
+  state.Restore(snapshot);
+  Require(state.SameState(snapshot) && !state.TakeControlEvents().at(value),
+          "rollback restores pending controlling events");
+}
 void TestDataRegisterStateSnapshot() {
   pattern::Design design;
   design.AddIcl("data-state.icl", R"(
@@ -482,7 +547,16 @@ Module AccessTop {
   cycle('1');
   Require(run.Value("core.r") == (clock_off ? "xxxxxxxx" : "01011001"),
           "TAP falling UpdateDR updates selected child register");
+  const auto events = run.TakeControlEvents();
+  copy.TakeControlEvents();
+  if (!clock_off) {
+    Require(events.at(network.netlist.node_ids.at("core.r")) ==
+                std::optional<std::string>("01011001"),
+            "TAP exposes its authoritative known-write event");
+  }
   cycle('0');
+  Require(run.TakeControlEvents().empty() && copy.TakeControlEvents().empty(),
+          "the following idle frame does not resurrect drained TAP events");
   for (char tms : std::string("1100")) cycle(tms);
   const std::string bypass_instruction = "0010";  // IJTAG_OFF = 0100.
   for (size_t i = 0; i < bypass_instruction.size(); ++i) {
@@ -572,6 +646,7 @@ void TestLongChain() {
 }  // namespace
 int main() {
   try {
+    TestControllingEventHistory();
     TestLogicEvaluation();
     TestPinSnapshot();
     TestResetReleaseOrdering();

@@ -39,24 +39,24 @@
       "source_0.pdl": "0e0356616cc05c0523ac62ca4237fe064d62d261aee50edbb0e41e927a288fc0",
       "model.bsdl": "4082d5af78dfd0e5abad2aba337795affb04db9cf072b9c3a13ac8154b3c95c8",
       "run.tcl": "87fbce440493878861d2eca771754eb20fd1e7661512853eb1dd39bd9ae4abd2",
-      "ours.pdl": "f493d1fda6df5db89848201627b079d66e33e0ba5b59e424e2f388822f3c524f"
+      "ours.pdl": "02db1837f543fbfc4d0ad483b504e10ebe1e8ddf20558425c2177a84e431e3e6"
     },
     "generator_command": [
       "/home/banana/cpp_workspace/icl-format/build/icl-pattern-generation",
       "--icl",
-      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/design_0.icl",
+      "/home/banana/cpp_workspace/icl-format/build/data-reset-mixed-forward-bundle/test_mixed_scan_data/design_0.icl",
       "--pdl",
-      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/source_0.pdl",
+      "/home/banana/cpp_workspace/icl-format/build/data-reset-mixed-forward-bundle/test_mixed_scan_data/source_0.pdl",
       "--top_module",
       "MixedScanDataProbe",
       "--output",
-      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/ours.pdl",
+      "/home/banana/cpp_workspace/icl-format/build/data-reset-mixed-forward-bundle/test_mixed_scan_data/ours.pdl",
       "--bsdl",
       "AccessProbe",
-      "/home/banana/cpp_workspace/icl-format/build/mixed-io-forward/test_mixed_scan_data/model.bsdl"
+      "/home/banana/cpp_workspace/icl-format/build/data-reset-mixed-forward-bundle/test_mixed_scan_data/model.bsdl"
     ],
     "generator_exit": 0,
-    "generator_seconds": 0.21496509306598455,
+    "generator_seconds": 0.2151168659911491,
     "tessent_pdl_inputs": [
       "ours.pdl"
     ],
@@ -75,9 +75,9 @@
       "tessent.log"
     ],
     "exit_code": 0,
-    "seconds": 6.879748526029289,
+    "seconds": 6.829720163717866,
     "outcome": "ok",
-    "result_sha256": "e2ee888b03162001a93356c8b190cf9fb10451dce5d01e6e852b8e0071da45a6",
+    "result_sha256": "3067cf33cef0c397786b5711fb439e85b3b63e6538c72d27148a54233839c015",
     "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
     "expectation_met": true
   },
@@ -87,19 +87,6 @@
       [
         "iReset"
       ],
-      {
-        "writes": [
-          [
-            "enable",
-            0,
-            "1"
-          ]
-        ],
-        "reads": [],
-        "apply": [
-          "iApply"
-        ]
-      },
       {
         "writes": [
           [
@@ -145,6 +132,19 @@
             "0"
           ]
         ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
         "apply": [
           "iApply"
         ]
@@ -235,10 +235,10 @@
       }
     ]
   },
-  "binary_sha256": "896dd68efeabd92f0988ae2ce95214b07b1925a1133c030fe0b6ae4e39b0c637",
-  "vendor_console_sha256": "1d2ea3542666154d563752523880fa2d48f7aa668c3a91c4b85a431c5ef53a60",
+  "binary_sha256": "18ad7717b81b0d89f0d7e53cbc66054bf0bf31cd78a9a20ef22c302d7fe9ee90",
+  "vendor_console_sha256": "ade4a81ce602fbd484dde93d80d998e58510a04a9818ed9d06960cbba9e6d926",
   "artifacts": {
-    "flat.pdl": "f493d1fda6df5db89848201627b079d66e33e0ba5b59e424e2f388822f3c524f",
-    "vendor.pdl": "e2ee888b03162001a93356c8b190cf9fb10451dce5d01e6e852b8e0071da45a6"
+    "flat.pdl": "02db1837f543fbfc4d0ad483b504e10ebe1e8ddf20558425c2177a84e431e3e6",
+    "vendor.pdl": "3067cf33cef0c397786b5711fb439e85b3b63e6538c72d27148a54233839c015"
   }
 }

@@ -1187,6 +1187,73 @@ Module Control {
               scheduler.Value("out") == "0",
           "partial alias writes access the whole primary group in one event");
 }
+void TestDataResetCallbacks() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/data_reset_callbacks.icl");
+  pattern::Design design;
+  design.AddIcl("data-reset-callbacks.icl",
+                std::string(std::istreambuf_iterator<char>(file), {}));
+  const auto netlist = pattern::Elaborate(design, "DataResetCallbacks");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("a.value", "0");
+  scheduler.Assume("b.value", "1001");
+  scheduler.Assume("d.value", "0");
+  scheduler.Assume("z", "0");
+  const auto steps = scheduler.Apply({{"iRead", {"b.value", "9"}, "test", {}}});
+  Require(scheduler.Value("a.value") == "1" &&
+              scheduler.Value("b.value") == "0000" &&
+              scheduler.Value("d.value") == "0" && scheduler.Value("z") == "1",
+          "post-update mixed reset passes preserve transient assertions");
+  Require(
+      steps.size() == 1 && !steps.front().writes.count("b.value") &&
+          steps.front().expected.at("b.value") == "1001",
+      "capture precedes callback reset and overwritten writes are not emitted");
+  scheduler.Apply({{"iWrite", {"b.value", "0bx"}, "test", {}}});
+  Require(scheduler.Value("b.value") == "0000",
+          "post-write reset controls the next X-filled scan");
+}
+void TestDataResetDependencies() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/data_reset_dependencies.icl");
+  pattern::Design design;
+  design.AddIcl("data-reset.icl",
+                std::string(std::istreambuf_iterator<char>(file), {}));
+  const auto netlist = pattern::Elaborate(design, "DataResetNetwork");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Apply({{"iWrite", {"data", "1"}, "test", {}},
+                   {"iWrite", {"enable", "1"}, "test", {}}});
+  scheduler.Apply({{"iWrite", {"enable", "0"}, "test", {}}});
+  scheduler.Apply({{"iWrite", {"c.value", "9"}, "test", {}}});
+  Require(
+      scheduler.Value("release") == "1" && scheduler.Value("c.value") == "1001",
+      "primary DataRegister release permits scan updates");
+  scheduler.Apply({{"iWrite", {"data", "0"}, "test", {}},
+                   {"iWrite", {"enable", "1"}, "test", {}}});
+  Require(
+      scheduler.Value("release") == "0" && scheduler.Value("c.value") == "0000",
+      "DataRegister update propagates reset into scan storage");
+  scheduler.Apply({{"iWrite", {"data", "1"}, "test", {}}});
+  scheduler.Apply({{"iWrite", {"enable", "0"}, "test", {}}});
+  scheduler.Apply({{"iWrite", {"c.value", "0bx"}, "test", {}}});
+  Require(scheduler.Value("c.value") == "0000",
+          "reset controlling fill does not resurrect the old scan value");
+  const std::vector<pattern::Operation> write{
+      {"iWrite", {"c.value", "9"}, "test", {}}};
+  Require(scheduler.ResetPrerequisites(write).empty(),
+          "already released DataRegister controls need no repair write");
+  scheduler.Assume("release", "0");
+  bool blocked = false;
+  try {
+    scheduler.ResetPrerequisites(write);
+  } catch (const std::runtime_error& error) {
+    blocked =
+        std::string(error.what()).find("DataRegister") != std::string::npos;
+  }
+  Require(blocked && scheduler.Value("release") == "0",
+          "automatic data control repair retains its explicit boundary");
+}
 void TestDataReservationRollback() {
   for (bool serial : {false, true}) {
     const std::string family =
@@ -2015,6 +2082,8 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestDataResetCallbacks();
+    TestDataResetDependencies();
     TestOneHotSharedAnalysisBudget();
     TestMergeAnalysisBudget();
     TestSharedScanOutputs();

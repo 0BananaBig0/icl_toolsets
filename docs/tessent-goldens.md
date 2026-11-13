@@ -602,3 +602,35 @@ build/data-register-state-certificate-evidence. The initial state acceptance
 probe used the oracle harness and is retained separately; certification uses
 the round-trip harness. These fixtures do not certify arbitrary clocks, reset
 dependencies or observation-history commands.
+
+## Mixed storage reset dependencies (2026-11-13)
+
+The data_reset_probe reverse certificate preserves ordered apply groups and
+local replay for a DataRegister-selected DataMux gating a ResetPort. The stored
+snapshot is tests/golden/tessent_roundtrip/data_reset_probe-reverse; its subset
+manifest is tests/cases/ours/pattern_generation/data_reset_probe_cases.json.
+The total is47directions (20forward/27reverse across31cases), plus seven legacy
+standards. This certifies the saved mux fixture, not arbitrary reset graphs.
+
+Tessent2026.2 passed the final bundle under authorized remote
+test_icl_toolsets/test_data_reset_dependencies/run_2026_11_13_01/
+data-reset-mux-final-bundle. Retrieved evidence is
+build/data-reset-mux-final-evidence; certification is recorded in
+build/data-reset-certificate.log/.exit(0).
+
+Two earlier failed probes remain separate: data-reset-certificate-bundle used
+a direct DataRegister-to-ResetPort connection, rejected at elaboration as
+ICL65-1; data-reset-mux-certificate-bundle used a legal mux but invalid
+iState rst stimulus on a ResetPort. The final fixture uses iReset and a mux
+between the inherited reset and a constant, without that invalid state command.
+Neither failed probe is counted as acceptance or equivalence evidence.
+
+The existing mixed_scan_data forward certificate was refreshed using fresh
+Tessent evidence in data-reset-mixed-forward-bundle under the same remote run
+directory, retrieved as build/data-reset-mixed-forward-evidence. Excluding
+instruction-only scans from DataRegister updates permits the preparatory IR
+scan before the enable write; the requested data writes/reads retain their
+order. The unchanged ordered-apply comparator passes the new vendor export
+(build/data-reset-mixed-certificate.log/.exit0). The old snapshot remains in
+Git history and build/data-reset-mixed-old-certificate; it was not used to
+certify the new ordering.

@@ -53,6 +53,9 @@ class Plugin(unittest.TestCase):
                        ICL_PDL_RESULT=str(temp / 'result'), ICL_PDL_PLUG=str(plug or ''),
                        ICL_PDL_FALLBACK_FIRST='1' if fallback_first else '',
                        NVIM_LOG_FILE=str(temp / 'nvim.log'))
+            # A parent Vim must not select its runtime for Neovim.
+            env.pop('VIM', None)
+            env.pop('VIMRUNTIME', None)
             run = subprocess.run([executable, '-Nu', 'NONE', '-n', '-i', 'NONE',
                                   '-es', '-S', str(SCRIPT)],
                                  env=env, capture_output=True, text=True, timeout=30)
@@ -115,6 +118,8 @@ class Corpus(unittest.TestCase):
                 env = dict(os.environ, ICL_PDL_PLUGIN=str(temp / 'plugin'),
                            ICL_PDL_TEMP=directory, ICL_PDL_LANGUAGE=language,
                            NVIM_LOG_FILE=str(temp / 'nvim.log'))
+                env.pop('VIM', None)
+                env.pop('VIMRUNTIME', None)
                 run = subprocess.run(
                     [executable, '-Nu', 'NONE', '-n', '-i', 'NONE', '-R', '-es',
                      '-S', str(SCRIPT.with_name('test_corpus.vim'))],

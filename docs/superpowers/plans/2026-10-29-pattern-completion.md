@@ -1001,3 +1001,18 @@ leak-enabled sanitizers, naming/style and independent review pass. Two reverse
 certificates bring the offline total to46directions plus seven legacy standards.
 The guide records exact evidence. DataRegister-controlled scan reset dependency
 ordering is the next task; strict coverage and broader requirements remain open.
+
+## Task35: Mixed storage reset dependencies
+
+Completed [the focused plan](2026-11-13-data-reset-dependencies.md). Reset DAGs
+include both storage kinds, snapshot settlement preserves transient assertions,
+and controlling history records actual writes/resets. Emission constraints and
+concrete replay reject unrepresentable scan payloads without claiming physical
+unreachability. Thirteen CLI methods, native checks, full dynamic/static
+generator checks, leak-enabled sanitizers and independent review pass.
+The final editor target passed after isolating inherited Vim runtime variables;
+the original full-command exit2 and corrected editor exit0 are both retained.
+One new reverse certificate and a freshly recertified mixed forward snapshot
+bring offline coverage to47directions plus seven legacy standards.
+General per-edge events, feedback, strict coverage and broader requirements
+remain open. Task36 integrates pending-access state assumptions.

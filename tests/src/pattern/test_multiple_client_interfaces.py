@@ -185,7 +185,7 @@ Module Chains {
         pdl.write_text('iReset; iWrite c511.value 1; iApply\n')
         (self.root / 'result.pdl').write_bytes(b'previous output\n')
         error = self.run_tool(icl, pdl, ok=False)
-        self.assertIn('client reset resource limit', error)
+        self.assertIn('reset resource limit', error)
         self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous output\n')
 
     def test_multiple_client_scale(self):
