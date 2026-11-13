@@ -530,9 +530,9 @@ int main(int argc, char** argv) {
            "mixed data access, logic/one-hot paths and local resets.\n"
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"
-           "Single-TAP IR/DR scans and nonzero iRunLoop TCK counts require\n"
-           "explicit iReset. iRunLoop -sck/-time, multi-TAP and general\n"
-           "serial-derived or free-running clock events remain unsupported.\n"
+           "Nonzero TAP waits and TAP scans require explicit iReset.\n"
+           "Standalone iRunLoop TCK waits need no reset. iRunLoop -sck/-time,\n"
+           "multi-TAP and general serial-derived clocks remain unsupported.\n"
            "Independent register and data/control-port iMerge calls can "
            "combine\n"
            "ordered applies, including reads, slices, aliases and masks.\n";

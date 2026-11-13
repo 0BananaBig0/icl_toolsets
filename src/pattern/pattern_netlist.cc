@@ -1053,20 +1053,37 @@ class Elaborator {
 
   void CheckAliasConsumers() const {
     std::vector<bool> pdl_only(netlist_.nodes.size());
+    std::vector<bool> alias_only(netlist_.nodes.size());
+    std::vector<std::vector<size_t>> consumers(netlist_.nodes.size());
+    std::vector<size_t> pending;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
       if (node.model != ModelKind::kAlias) continue;
       for (const auto& bit : node.inputs.at("Source")) {
         if (bit.node == std::numeric_limits<size_t>::max()) continue;
-        const auto scope = netlist_.nodes[bit.node].scope;
-        if (scope != node.scope &&
-            netlist_.scopes[scope].parent != node.scope) {
+        const auto& source = netlist_.nodes[bit.node];
+        if (source.model == ModelKind::kAlias) {
+          consumers[bit.node].push_back(id);
+        }
+        if (source.scope == node.scope) continue;
+        if (netlist_.scopes[source.scope].parent != node.scope) {
           pdl_only[id] = true;
-          break;
+        } else if (source.model != ModelKind::kPort ||
+                   IsInputPort(source.kind)) {
+          alias_only[id] = true;
         }
       }
+      if (alias_only[id]) pending.push_back(id);
     }
-    if (std::find(pdl_only.begin(), pdl_only.end(), true) == pdl_only.end()) {
+    for (size_t next = 0; next < pending.size(); ++next) {
+      for (size_t id : consumers[pending[next]]) {
+        if (alias_only[id]) continue;
+        alias_only[id] = true;
+        pending.push_back(id);
+      }
+    }
+    if (pending.empty() &&
+        std::find(pdl_only.begin(), pdl_only.end(), true) == pdl_only.end()) {
       return;
     }
     for (const auto& node : netlist_.nodes) {
@@ -1077,6 +1094,13 @@ class Elaborator {
             throw std::runtime_error(
                 node.origin + ": " + node.name + ": multi-level alias " +
                 netlist_.nodes[bit.node].name + " is only available to PDL");
+          }
+          if (bit.node != std::numeric_limits<size_t>::max() &&
+              alias_only[bit.node] && node.model != ModelKind::kAlias) {
+            throw std::runtime_error(node.origin + ": " + node.name +
+                                     ": internal-instance alias " +
+                                     netlist_.nodes[bit.node].name +
+                                     " is only available to aliases or PDL");
           }
         }
       };

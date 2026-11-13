@@ -9,27 +9,29 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, standalone TCK waits passed the complete
-make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/standalone-idle-reviewed-full.log/.exit. This includes all39 generator CLI
-suites under dynamic/static builds, native tests,51 directional and seven legacy
-Tessent standards, all334 parser and119 scanner rules across2,519 ICL files,
-and six Vim/Neovim tests (178.871s). Five optional ANTLR integration tests were
+On 2026-11-14, alias instance-boundary validation passed the complete
+make -j2 --jobserver-style=pipe check command, with exit 0 recorded in
+build/alias-boundary-final-full.log/.exit. This includes all 39 generator CLI
+suites under dynamic/static builds, native tests, 51 directional and seven legacy
+Tessent standards, all 334 parser and 119 scanner rules across 2,519 ICL files,
+and six Vim/Neovim tests (178.257s). Five optional ANTLR integration tests were
 skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native scheduler tests and main31,
-client-control18, hidden-client8 and multiple-client17 CLI methods. Formatting,
-naming, whitespace, scale and independent review passed. A fresh Tessent2026.2
-forward certificate covers the explicit standalone-wait fixture. The original
-vendor comparison failure and obsolete CLI-contract failure remain recorded.
-See [standalone-wait verification](#standalone-tck-idle-replay-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native netlist/flatten tests and
+main (33), end-state (11) and merge-observation (20) CLI methods. Formatting,
+naming, scale and independent review passed. After the full run, a help-only
+wording correction clarified that standalone waits need no reset; both rebuilt
+dynamic/static binaries passed help smoke checks. No runtime branch changed.
+See [alias-boundary verification](#alias-instance-boundaries-2026-11-14).
 
-Strict authored-code coverage remains unmet. The complete Task39 instrumented
-run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
-tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
-24,055/38,965 raw branches (61.7%), against required 100%/90%.
-This measurement predates Tasks40–44; it is not a coverage result for the current
-connection-validation, observation-getter and standalone-wait changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
+Strict authored-code coverage remains unmet. A fresh complete instrumented run
+including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
+branches (62.0%), against required 100%/90%. All instrumented tests completed;
+the final strict gate failed with make exit 2. Reports are preserved under
+.worktrees/coverage/2026-11-14-alias-boundary, with full evidence in
+build/alias-boundary-full-coverage.log/.exit. The later help-only wording change
+does not alter the measured runtime logic. No coverage threshold was weakened.
+
 Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
@@ -3239,3 +3241,39 @@ remain separate requirements. Full integration checks passed on2026-11-14:
 all39 dynamic/static suites,51directional/seven legacy standards,2519ICL files
 and six editor tests in178.871s. Evidence: build/standalone-idle-reviewed-full.log
 and .exit(0), plus standalone-idle-final-sanitizer-all.exit(0).
+
+
+### Alias instance boundaries (2026-11-14)
+
+An Alias cannot turn an internal child register, input port or internal alias
+into a hardware connection across an instance boundary. Such aliases remain
+usable by PDL and other Alias definitions; the restriction follows wrappers,
+forward declarations and slices. A hardware consumer of a mixed alias is still
+rejected when it selects only local bits, because the restriction applies to the
+alias name. Local register/input aliases and aliases of child output ports keep
+their existing hardware use. Output-port drivers are not traversed by this check.
+The stricter two-level alias rule remains unchanged.
+
+This enforces the output-port boundary already required by direct connections,
+using IEEE1687 §6.3.10.5, §6.3.12 and §6.5.2. It does not claim to settle every
+wording ambiguity in §6.5.2(f) or implement every signal-kind rule. Existing
+Tessent2026.2 probes also reject child-register hardware consumers, but reject
+wrapper Alias definitions too; the local implementation retains that documented
+standards-first difference. No new vendor certificate is claimed.
+
+Classification runs after connections resolve and before flat-origin restoration.
+An iterative reverse dependency queue marks each alias at most once, taking
+O(nodes + resolved references) time and space. Native scale cases cover256 and
+4096 restricted wrappers (6942/101454 bytes,0.001/0.022s) and a65536-bit alias;
+the existing legal5000-wrapper case still passes (0.018s). The complete native
+run took0.46s wall and118388KiB RSS on the local Linux/GCC build. These measurements
+do not claim a speed improvement over the previous implementation.
+
+The native tests and33 main CLI methods pass, including unchanged output files
+on rejection and source/flat/generated PDL-wrapper replay. Leak-enabled ASan/UBSan
+netlist/flatten tests and main33/end-state11/merge-observation20 methods pass.
+Style/naming and independent review pass. Full integration passed with exit 0:
+39 dynamic/static suites, 51 directional/seven legacy standards, 2,519 ICL files
+and six editor tests in178.257s. Fresh instrumented tests complete, but the strict
+coverage gate fails at96.2% lines/62.0% raw branches. The final help-only correction
+has dynamic/static smoke verification. Evidence uses build/alias-boundary-*.

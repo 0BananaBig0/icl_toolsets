@@ -161,8 +161,11 @@ a reference through two or more instance levels, apply the specific normative
 §6.5.2(g) restriction to every ICL consumer, including other Alias definitions.
 This takes precedence over the broader wrapper allowance in §6.3.10.5 prose;
 document that conflict and supporting vendor observations. Local alias chains
-and PDL deep targets remain supported. Other source-kind and immediate-child
-alias-use rules remain required.
+and PDL deep targets remain supported. Aliases of immediate-child internal objects
+remain available to Alias definitions and PDL, but cannot bypass the child-output
+boundary for hardware connections. Propagate that restriction through wrappers
+and slices without traversing legal output-port drivers. Broader signal-kind
+rules and ambiguities in §6.5.2(f) remain separate acceptance work.
 
 Resolve implied connections while hierarchy is available, before flattening.
 Use a documented per-port/per-model rule table from Tessent, with explicit

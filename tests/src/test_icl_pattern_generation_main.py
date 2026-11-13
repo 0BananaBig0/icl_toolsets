@@ -162,6 +162,51 @@ class Generator(unittest.TestCase):
         self.run_tool("--icl", "source.icl", "--pdl", "result.pdl", "--output", "again.pdl")
         self.assertEqual((self.root / "again.pdl").read_bytes(), expected)
 
+    def test_alias_instance_boundaries_preserve_outputs(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
+        source = fixture.read_text()
+        (self.root / "source.pdl").write_text("iProcsForModule ConnectionHierarchy\niNote alias\n")
+        for target in ("child.value", "child.data", "child.local"):
+            for wrapped in (False, True):
+                with self.subTest(target=target, wrapped=wrapped):
+                    extra = f"Alias a[3:0] = {target}; "
+                    extra += ("Alias b[3:0] = a; DataOutPort bad[3:0] { Source b; }"
+                              if wrapped else "DataOutPort bad[3:0] { Source a; }")
+                    position = source.rfind("}")
+                    (self.root / "source.icl").write_text(source[:position] + extra + source[position:])
+                    debug = self.root / "debug/ConnectionHierarchy.icl"
+                    debug.parent.mkdir(exist_ok=True)
+                    artifacts = (self.root / "result.pdl", self.root / "reset.pdl", debug)
+                    for artifact in artifacts:
+                        artifact.write_text("preserve " + artifact.name + "\n")
+                    result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                           "--output", "result.pdl", "--local_reset", "reset.pdl",
+                                           "--debug", ok=False)
+                    self.assertIn("source.icl:", result.stdout)
+                    self.assertIn("only available to aliases or PDL", result.stdout)
+                    for artifact in artifacts:
+                        self.assertEqual(artifact.read_text(), "preserve " + artifact.name + "\n")
+
+    def test_hidden_alias_wrappers_round_trip(self):
+        fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
+        source = fixture.read_text()
+        position = source.rfind("}")
+        source = source[:position] + (
+            "Alias second[3:0] = ~first[0:3]; Alias first[3:0] = child.value;\n") + source[position:]
+        (self.root / "source.icl").write_text(source)
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule ConnectionHierarchy\niReset\niWrite second 1\niApply\n"
+            "iRead child.value 7\niRead second 1\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "result.pdl", "--debug")
+        expected = (self.root / "result.pdl").read_bytes()
+        self.assertIn(b"iWrite child.value 0b0111", expected)
+        flat = self.root / "debug/ConnectionHierarchy.icl"
+        self.run_tool("--icl", flat, "--pdl", "source.pdl", "--output", "flat/result.pdl")
+        self.assertEqual((self.root / "flat/result.pdl").read_bytes(), expected)
+        self.run_tool("--icl", "source.icl", "--pdl", "result.pdl", "--output", "again.pdl")
+        self.assertEqual((self.root / "again.pdl").read_bytes(), expected)
+
     def test_deep_alias_consumers_preserve_outputs(self):
         fixture = pathlib.Path(__file__).resolve().parents[1] / "cases/ours/pattern_generation/connection_hierarchy.icl"
         source = fixture.read_text()

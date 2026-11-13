@@ -534,6 +534,87 @@ void TestConnectionHierarchy() {
           "must name an output port");
   }
 }
+void TestAliasInstanceBoundaries() {
+  std::ifstream input(
+      "tests/cases/ours/pattern_generation/connection_hierarchy.icl");
+  std::string source;
+  Require(input.good() && toolsets::ReadTextStream(input, &source),
+          "read alias boundary fixture");
+  for (const std::string target :
+       {"child.value", "child.data", "child.local"}) {
+    for (const std::string consumer :
+         {"DataOutPort bad[3:0] { Source a; }",
+          "Alias b[3:0] = a; Alias c[3:0] = ~b[0:3]; "
+          "DataOutPort bad[3:0] { Source c; }",
+          "LogicSignal bad { a[0] == 1'b0; }",
+          "DataMux bad SelectedBy a[0] { 1'b0: 0; 1'b1: 1; }",
+          "DataMux bad[3:0] SelectedBy 1'b0 { 1'b0: a; 1'b1: 0; }",
+          "ScanRegister bad[3:0] { ScanInSource si; CaptureSource a; }",
+          "Instance sink Of ConnectionHierarchyLeaf { InputPort si = middle.so;"
+          "InputPort data = a; InputPort rst = rst; }"}) {
+      for (bool forward : {false, true}) {
+        const auto alias = "Alias a[3:0] = " + target + ";";
+        auto invalid_source = source;
+        invalid_source.insert(invalid_source.rfind('}'),
+                              forward ? consumer + alias : alias + consumer);
+        pattern::Design invalid;
+        invalid.AddIcl("alias_boundary.icl", invalid_source);
+        Fails([&] { pattern::Elaborate(invalid, "ConnectionHierarchy"); },
+              "only available to aliases or PDL");
+      }
+    }
+  }
+  auto mixed = source;
+  mixed.insert(mixed.rfind('}'),
+               "Alias mixed[7:0] = child.q, child.value; "
+               "Alias slice[3:0] = mixed[7:4]; "
+               "DataOutPort bad[3:0] { Source slice; }");
+  pattern::Design invalid;
+  invalid.AddIcl("alias_slice.icl", mixed);
+  Fails([&] { pattern::Elaborate(invalid, "ConnectionHierarchy"); },
+        "only available to aliases or PDL");
+
+  for (size_t count : {size_t{256}, size_t{4096}}) {
+    auto large = source;
+    std::string aliases = "Alias a0[3:0] = child.value;";
+    for (size_t i = 1; i < count; ++i) {
+      aliases += "Alias a" + std::to_string(i) + "[3:0] = a" +
+                 std::to_string(i - 1) + ";";
+    }
+    aliases +=
+        "DataOutPort bad[3:0] { Source a" + std::to_string(count - 1) + "; }";
+    large.insert(large.rfind('}'), aliases);
+    const auto start = std::chrono::steady_clock::now();
+    pattern::Design chained;
+    chained.AddIcl("restricted_chain.icl", large);
+    Fails([&] { pattern::Elaborate(chained, "ConnectionHierarchy"); },
+          "only available to aliases or PDL");
+    std::cout << "Restricted alias chain: " << count << " aliases, "
+              << large.size() << " bytes, seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - start)
+                     .count()
+              << '\n';
+  }
+  pattern::Design wide;
+  wide.AddIcl("wide_alias.icl",
+              "Module Leaf { DataInPort d[65535:0]; } Module Wide {"
+              " Instance child Of Leaf; Alias a[65535:0] = child.d;"
+              " DataOutPort bad[65535:0] { Source a; } }");
+  Fails([&] { pattern::Elaborate(wide, "Wide"); },
+        "only available to aliases or PDL");
+
+  source.insert(source.rfind('}'),
+                "Alias wrapper[3:0] = hidden; Alias hidden[3:0] = child.value; "
+                "Alias input_wrapper[3:0] = child.data;");
+  pattern::Design valid;
+  valid.AddIcl("pdl_alias.icl", source);
+  const auto netlist = pattern::Elaborate(valid, "ConnectionHierarchy");
+  Require(netlist.NodeAt("wrapper").inputs.at("Source")[0].node ==
+              netlist.node_ids.at("hidden"),
+          "single-level hidden aliases retain wrapper definitions for PDL");
+}
+
 void TestDeepAliasConsumers() {
   std::ifstream input(
       "tests/cases/ours/pattern_generation/connection_hierarchy.icl");
@@ -1087,6 +1168,7 @@ int main() {
                           TestMuxAndEnum,
                           TestConnectionErrors,
                           TestConnectionHierarchy,
+                          TestAliasInstanceBoundaries,
                           TestDeepAliasConsumers,
                           TestUnsizedSources,
                           TestInvertedUnsizedSources,

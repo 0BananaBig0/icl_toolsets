@@ -53,7 +53,7 @@ full model coverage or Tessent equivalence.
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters evaluate fully supplied explicit history and applied reads invalidate their target bits | Complete runtime command coverage and broader real-pair generation |
-| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics | Remaining source-kind/immediate-child alias-consumer checks, and corpus specialization |
+| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics | Remaining source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain and canonical replay | Simultaneous vector scan-return lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates | Multi-TAP scheduling and remaining BSDL/private capture forms |
@@ -1264,3 +1264,17 @@ disabled clock/select/shift/update, source/call-stack errors, failed-state
 preservation, and original/flat/generated output equality. These checks do not
 establish support for arbitrary shadow events, multiple TAPs or the remaining
 retargeting requirements.
+
+
+## Fresh authored-code coverage (2026-11-14)
+
+The complete instrumented suite includes Tasks40–45 and completes its tests,
+but the strict gate fails:14,623/15,208 lines (96.2%) and24,524/39,581 raw branches
+(62.0%), against100%/90%. Evidence: build/alias-boundary-full-coverage.log/.exit(2),
+with raw reports in .worktrees/coverage/2026-11-14-alias-boundary. Earlier reports
+were preserved. Grammar-rule coverage remains a separate measure.
+
+Of15,057 untaken raw branches,10,690 are marked '(throw)' by gcov. This diagnostic
+count does not exclude exception edges or weaken the required threshold. Meaningful
+uncovered behavior and compiler-emitted edges still need separate investigation.
+No full-coverage or complete-retargeter claim is made.

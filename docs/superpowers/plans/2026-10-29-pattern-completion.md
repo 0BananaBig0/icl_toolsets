@@ -1177,3 +1177,25 @@ The first full run's obsolete no-TAP rejection assertion was corrected; its
 exit2 evidence remains. Task45 addresses aliases bypassing the child-output
 connection boundary. Strict coverage, later Rocky8 qualification and broader
 event/clock/model requirements remain open.
+
+
+## Task45: Alias instance-boundary validation
+
+Completed [the focused plan](2026-11-13-alias-instance-boundaries.md). Aliases
+cannot turn internal child objects into hardware connections; single-level
+wrappers remain available for PDL, while their hardware restriction propagates
+through wrappers/slices. Legal child-output aliases and the stricter deep-alias
+rule retain their behavior. The Tessent wrapper-definition difference is
+documented, without a new vendor certificate or complete source-kind claim.
+
+Full regression passed on2026-11-14:39dynamic/static suites,51directional/seven
+legacy standards,2519ICL334/119rules,editor6 in178.257s. Evidence:
+build/alias-boundary-final-full.log/.exit(0). Native/main33/end-state11/merge20
+leak sanitizers, style/naming, scale and independent review pass. A subsequent
+help-only correction has rebuilt dynamic/static smoke checks. Fresh complete
+instrumented tests finish, but strict coverage fails at14623/15208 lines (96.2%)
+and24524/39581 raw branches (62.0%): alias-boundary-full-coverage.exit2.
+The100%/90% gate, later-change Rocky8 qualification and broader model requirements
+remain open. Clock research confirms shared logical TCK cycles within one
+network; legal selection gating must remain distinct from arbitrary independent
+phase/frequency behavior. It does not close multi-TAP or system-clock work.
