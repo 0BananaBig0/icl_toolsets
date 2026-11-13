@@ -34,6 +34,156 @@ Module Child { DataInPort reg[7:0]; }
 )");
   return design;
 }
+void TestExplicitObservationGetters() {
+  pattern::Design design;
+  design.AddIcl("history.icl", R"(
+Module History {
+  DataRegister value[7:0]; DataRegister wide[79:0];
+  Alias inverted[7:0] = ~value;
+  Alias repeated[1:0] = value[0], value[0];
+  DataOutPort q[7:0] { Source value; }
+  Instance child Of HistoryChild;
+}
+Module HistoryChild { DataRegister value[7:0]; }
+)");
+  const auto netlist = pattern::Elaborate(design, "History");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("history.pdl", R"(iPDLLevel 1
+iState value 0xa5 -LastReadValue
+iState value 0x0c -LastMiscompareValue
+iNote [iGetReadData value]
+iNote [iGetReadData inverted -hex]
+iNote [iGetReadData value -dec]
+iNote [iGetMiscompares inverted -bin]
+iState inverted 0x33 -LastReadValue
+iState inverted 7 -LastMiscompareValue
+iNote [iGetReadData value -hex]
+iNote [iGetMiscompares value -dec]
+iState value 0bxxxxxxxx -LastReadValue
+iNote [iGetReadData value -hex]
+iState value[7:4] 10 -LastReadValue
+iNote [iGetReadData value -hex]
+iState value[1:0] 1 -LastReadValue
+iNote [iGetReadData value -hex]
+iNote [iGetReadData value -dec]
+iState value 0bxxx1x001 -LastReadValue
+iNote [iGetReadData value[4:0] -hex]
+iState value[4:0] 0bxxxxx -LastReadValue
+iNote [iGetReadData value[4:0] -hex]
+iNote [iGetReadData value[2:0] -hex]
+iNote [iGetReadData value[0] -hex]
+iState value[2:0] 0b1x1 -LastReadValue
+iNote [iGetReadData value[2:0] -hex]
+iNote [iGetReadData value[0] -hex]
+iState repeated 3 -LastReadValue
+iNote [iGetReadData repeated]
+iState wide 0xffffffffffffffffffff -LastReadValue
+iNote [iGetReadData wide -dec]
+iState wide 0 -LastReadValue
+iNote [iGetReadData wide -dec]
+iProcsForModule HistoryChild
+iProc seed {} { iState value 19 -LastReadValue; iNote [iGetReadData value -dec] }
+iProcsForModule History
+iCall child.seed
+)");
+  runtime.Execute("history-second.pdl", R"(iPrefix child
+iNote [iGetReadData value -dec]
+iPrefix -
+iNote [iGetReadData child.value -hex]
+proc expr {args} {return 77}
+iNote [iGetReadData child.value -dec]
+)");
+  runtime.Finish();
+  std::vector<std::string> notes;
+  for (const auto& op : runtime.operations()) {
+    if (op.command == "iNote") notes.push_back(op.arguments.at(0));
+    Require(op.command != "iGetReadData" && op.command != "iGetMiscompares",
+            "history getters expand to literal Tcl values");
+  }
+  Require(notes ==
+              std::vector<std::string>{
+                  "0b10100101", "0x5a", "165",
+                  "0b00001100", "0xcc", "7",
+                  "0xXX",       "0xaX", "0xax",
+                  "X",          "0x1x", "0xXX",
+                  "0xX",        "0xX",  "0xx",
+                  "0x1",        "0b11", "1208925819614629174706175",
+                  "0",          "19",   "19",
+                  "0x13",       "19"},
+          "explicit history formats, alias masks and cross-file identities");
+}
+
+void TestObservationHistoryInvalidation() {
+  pattern::Design design;
+  design.AddIcl("history.icl", R"(
+Module History {
+  DataRegister value[7:0];
+  Alias reversed[7:0] = ~value[0:7];
+  DataOutPort q[7:0] { Source value; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "History");
+  for (const std::string body :
+       {"iGetReadData value", "iState value 9 -LastReadValue; iGetReadData q",
+        "iState value 9 -LastMiscompareValue; iGetReadData value",
+        "iState value 9 -LastReadValue; iGetMiscompares value",
+        "iState value 9 -LastReadValue; iRead value; iApply; iGetReadData "
+        "value",
+        "iState value 9 -LastReadValue; iRead value 0bxxxxxxxx; iApply; "
+        "iGetReadData value",
+        "iRead value 0; iState value 9 -LastReadValue; iApply; iGetReadData "
+        "value",
+        "iState value 9 -LastReadValue; iRead reversed[0]; iApply; "
+        "iGetReadData value[7]",
+        "iState value 9 -LastMiscompareValue; iRead value 9; iApply; "
+        "iGetMiscompares value",
+        "iState value[7:4] 9 -LastReadValue; iGetReadData value",
+        "iState value 9 -LastReadValue; iGetStatus"}) {
+    pattern::Runtime runtime(design, netlist);
+    Fails([&] { runtime.Execute("unavailable.pdl", "iPDLLevel 1\n" + body); },
+          "hardware readback");
+  }
+  pattern::Runtime invalid(design, netlist);
+  Fails([&] { invalid.Execute("invalid.pdl", "iState q 3 -LastReadValue\n"); },
+        "state assumption");
+  for (const std::string target : {"missing", "value[8]"}) {
+    pattern::Runtime invalid_getter(design, netlist);
+    Fails(
+        [&] { invalid_getter.Execute("target.pdl", "iGetReadData " + target); },
+        "PDL target");
+  }
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("order.pdl", R"(iPDLLevel 1
+iState value 0xa5 -LastReadValue
+iRead value[3:0] 5
+iNote [iGetReadData value -hex]
+iApply
+iNote [iGetReadData value[7:4] -hex]
+iState value[3:0] 0bx001 -LastReadValue
+iNote [iGetReadData value -hex]
+iRead value
+iState value 0x36 -LastReadValue
+iReset
+iApply
+iNote [iGetReadData value -hex]
+iWrite value 0
+iApply
+iState value 1
+iNote [iGetReadData value -hex]
+iRead q 0
+iApply
+iNote [iGetReadData value -hex]
+)");
+  runtime.Finish();
+  std::vector<std::string> notes;
+  for (const auto& op : runtime.operations()) {
+    if (op.command == "iNote") notes.push_back(op.arguments.at(0));
+  }
+  Require(notes == std::vector<std::string>{"0xa5", "0xa", "0xax", "0x36",
+                                            "0x36", "0x36"},
+          "only applied reads invalidate supplied observation bits");
+}
+
 void TestSequentialDefinitions() {
   const auto design = MakeDesign();
   pattern::Runtime runtime(design, "Top");
@@ -405,14 +555,26 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test :
-       {TestSequentialDefinitions, TestBindingAndPrefixes,
-        TestTclAndVectorSyntax, TestErrorsAndSafety,
-        TestRuntimeValidationAndNamespaceScope, TestReturnValueAndInputStream,
-        TestGeneratedBodies, TestDynamicBinding, TestDynamicOptions,
-        TestDynamicLevel, TestMergeScope, TestAllTargetArguments,
-        TestEndOfStream, TestInstanceParameters, TestParameterNamedArgs,
-        TestResetScope, TestVectorSourceActions, TestCompoundSourceActions}) {
+  for (const auto test : {TestExplicitObservationGetters,
+                          TestObservationHistoryInvalidation,
+                          TestSequentialDefinitions,
+                          TestBindingAndPrefixes,
+                          TestTclAndVectorSyntax,
+                          TestErrorsAndSafety,
+                          TestRuntimeValidationAndNamespaceScope,
+                          TestReturnValueAndInputStream,
+                          TestGeneratedBodies,
+                          TestDynamicBinding,
+                          TestDynamicOptions,
+                          TestDynamicLevel,
+                          TestMergeScope,
+                          TestAllTargetArguments,
+                          TestEndOfStream,
+                          TestInstanceParameters,
+                          TestParameterNamedArgs,
+                          TestResetScope,
+                          TestVectorSourceActions,
+                          TestCompoundSourceActions}) {
     try {
       test();
     } catch (const std::exception& error) {

@@ -13,9 +13,12 @@
 #include <set>
 #include <stdexcept>
 #include <tuple>
+#include <unordered_map>
 #include <utility>
 
 #include "pattern/pattern_netlist.h"
+#include "pattern/pattern_state.h"
+#include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
 
 namespace pattern {
@@ -37,6 +40,7 @@ class Runtime::Impl {
        const Netlist* netlist = nullptr, bool trace_source = false)
       : trace_source_(trace_source),
         design_(design),
+        netlist_(netlist),
         top_(top),
         master_(Tcl_CreateInterp(), Tcl_DeleteInterp),
         interpreter_(Tcl_CreateSlave(master_.get(), "pattern", 1),
@@ -354,6 +358,109 @@ class Runtime::Impl {
     }
   }
 
+  using History = std::unordered_map<size_t, std::string>;
+
+  size_t HistoryOffset(const BitReference& bit) const {
+    const auto& node = netlist_->nodes.at(bit.node);
+    return node.left >= node.right ? node.left - bit.index
+                                   : bit.index - node.left;
+  }
+
+  void RememberHistory(const Operation& operation) {
+    if (!netlist_ || operation.arguments.size() != 3) return;
+    const auto& flag = operation.arguments[2];
+    if (flag != "-LastReadValue" && flag != "-LastMiscompareValue") return;
+    const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
+    for (const auto& bit : target.bits) {
+      ValidateStateTarget(*netlist_, bit.node);
+    }
+    if (!history_context_) history_context_ = std::make_unique<z3::context>();
+    const auto value = PdlNumber(*history_context_, operation.arguments[1],
+                                 target.bits.size());
+    const bool read = flag == "-LastReadValue";
+    auto& history = read ? read_history_ : miscompare_history_;
+    for (size_t i = 0; i < target.bits.size(); ++i) {
+      const auto& bit = target.bits[i];
+      auto entry = history.find(bit.node);
+      if (entry == history.end()) {
+        entry =
+            history
+                .emplace(bit.node,
+                         std::string(netlist_->nodes.at(bit.node).Width(), '?'))
+                .first;
+      }
+      char data = value[i];
+      if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
+      entry->second.at(HistoryOffset(bit)) = data;
+    }
+  }
+
+  void InvalidateReadHistory() {
+    if (!pending_ || (read_history_.empty() && miscompare_history_.empty())) {
+      return;
+    }
+    for (size_t i = pending_operation_; i < operations_.size(); ++i) {
+      const auto& operation = operations_[i];
+      if (operation.command != "iRead") continue;
+      const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
+      for (const auto& bit : target.bits) {
+        for (auto* history : {&read_history_, &miscompare_history_}) {
+          const auto entry = history->find(bit.node);
+          if (entry != history->end()) {
+            entry->second.at(HistoryOffset(bit)) = '?';
+          }
+        }
+      }
+    }
+  }
+
+  std::string HistoryValue(const std::string& name, const std::string& target,
+                           const std::string& format) {
+    const auto unavailable = [&] {
+      throw std::runtime_error(
+          name +
+          " requires hardware readback; unavailable during static generation");
+    };
+    if (!netlist_ || name == "iGetStatus") unavailable();
+    const auto resolved = ResolvePdlTarget(*netlist_, target);
+    ValidatePdlAccessTarget(*netlist_, resolved, true);
+    const bool read = name == "iGetReadData";
+    const auto& history = read ? read_history_ : miscompare_history_;
+    std::string bits;
+    bits.reserve(resolved.bits.size());
+    for (const auto& bit : resolved.bits) {
+      const auto entry = history.find(bit.node);
+      if (entry == history.end()) unavailable();
+      char data = entry->second.at(HistoryOffset(bit));
+      if (data == '?') unavailable();
+      if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
+      bits += data;
+    }
+    if (format == "-dec") {
+      if (bits.find('x') != std::string::npos) return "X";
+      if (Tcl_ExprString(interpreter_.get(), ("0b" + bits).c_str()) != TCL_OK) {
+        throw std::runtime_error(Tcl_GetStringResult(interpreter_.get()));
+      }
+      return Tcl_GetStringResult(interpreter_.get());
+    }
+    if (format != "-hex") return "0b" + bits;
+    std::string value = "0x";
+    size_t width = (bits.size() - 1) % 4 + 1;
+    for (size_t i = 0; i < bits.size(); width = 4) {
+      unsigned digit = 0;
+      size_t unknown = 0;
+      for (size_t j = 0; j < width; ++j) {
+        const char bit = bits[i++];
+        unknown += bit == 'x';
+        digit = digit * 2 + (bit == '1');
+      }
+      value += unknown == width ? 'X'
+               : unknown        ? 'x'
+                                : "0123456789abcdef"[digit];
+    }
+    return value;
+  }
+
   void EvalWords(const std::vector<std::string>& words) {
     std::vector<Tcl_Obj*> objects;
     for (const auto& word : words) {
@@ -664,9 +771,18 @@ class Runtime::Impl {
     }
     if (name == "iGetReadData" || name == "iGetMiscompares" ||
         name == "iGetStatus") {
-      throw std::runtime_error(
-          name +
-          " requires hardware readback; unavailable during static generation");
+      if (std::find(words.begin() + 1, words.end(), "-chain") != words.end()) {
+        throw std::runtime_error(name +
+                                 " requires hardware readback; unavailable "
+                                 "during static generation");
+      }
+      const auto value = HistoryValue(
+          name, words.size() > 1 ? JoinPath(prefix(), words[1]) : "",
+          words.size() > 2 ? words[2] : "");
+      Tcl_SetObjResult(
+          interpreter_.get(),
+          Tcl_NewStringObj(value.data(), static_cast<int>(value.size())));
+      return;
     }
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
     for (const auto& frame : frames_) {
@@ -713,6 +829,8 @@ class Runtime::Impl {
       if (!pending_) pending_operation_ = operations_.size();
       pending_ = true;
     }
+    if (name == "iState") RememberHistory(operation);
+    if (name == "iApply") InvalidateReadHistory();
     if (name == "iApply" || name == "iReset") pending_ = false;
     if (name == "iRunLoop" && pending_) {
       throw std::runtime_error("iRunLoop has unapplied operations");
@@ -741,6 +859,9 @@ class Runtime::Impl {
   std::optional<SourceAction> compound_;
   std::optional<size_t> main_merge_action_;
   const Design& design_;
+  const Netlist* netlist_;
+  History read_history_, miscompare_history_;
+  std::unique_ptr<z3::context> history_context_;
   std::map<std::string, const InstanceScope*> instance_scopes_;
   std::string top_;
   std::unique_ptr<Tcl_Interp, decltype(&Tcl_DeleteInterp)> master_;

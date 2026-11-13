@@ -462,7 +462,7 @@ generated output without changing hardware, controlling/expected queued values,
 or reservation assignment. The shared state-target contract applies; history
 may describe TAP instruction storage while default hardware assumptions remain
 prohibited. State-only input does not trigger final end-state transactions.
-Hardware-dependent getters retain the static-generation diagnostic. This does
+Getters requiring unsupplied/live history retain the static-generation diagnostic. This does
 not claim an interactive observation database or vendor flag compatibility.
 
 ### DataRegister reset-release planning (2026-11-13)
@@ -473,3 +473,15 @@ selected releases must pass the existing write-path scheduler, reservation
 checks and fresh source replay. Candidate selection retains bounded planning
 rather than claiming reachability completeness. Original and reset-rewritten
 sources may have different legal schedules and controlling fill.
+
+### Explicit observation-history getters (2026-11-13)
+
+Runtime evaluates iGetReadData/iGetMiscompares only when every target bit has
+explicit iState history. Resolved bit identity, slices and alias ordering apply;
+read values invert with aliases, while miscompare masks retain XOR invariance.
+Applied reads invalidate both categories for their target bits. Pending reads
+and reset-discarded reads do not manufacture or erase observations. Explicit x
+means never observed under §7.9.22(c), with specified binary/hex/decimal forms.
+Use the specific miscompare-history rule(h), despite the introductory expected-
+value wording. Live readback, status and interface/chain history remain open.
+See the focused plan for tests and retained limits.

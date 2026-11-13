@@ -9,25 +9,27 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, deep-alias consumer validation passed the complete
-make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/deep-alias-final-full.log/.exit. This includes all39 generator CLI
-suites under dynamic/static builds, native tests,50 directional and seven legacy
-Tessent standards, all334 parser and119 scanner rules across2,519 ICL files,
-and six Vim/Neovim tests (177.360s). Five optional ANTLR integration tests were
-skipped because ICL_REF_DIR was unset.
+On 2026-11-13, explicit observation-history getters passed the complete
+make -j2 --jobserver-style=pipe check command, with exit 0 recorded in
+build/observation-getters-final-full.log/.exit. This includes all 39 generator
+CLI suites under dynamic/static builds, native tests, 50 directional and seven
+legacy Tessent standards, all 334 parser and 119 scanner rules across 2,519 ICL
+files, and six Vim/Neovim tests (180.590s). Five optional ANTLR integration tests
+were skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native netlist tests and main31,
-apply-end-state11 and merge-observation20 CLI methods. Formatting, naming,
-whitespace, scale checks and independent review passed. See
-[deep-alias verification](#deep-alias-consumers-2026-11-13).
+Leak-enabled ASan/UBSan checks passed for native runtime/flatten tests and
+observation-state (20), queued-state (15), argument-reset (12) and compound-reset
+(12) CLI methods. Fresh instrumented runtime/flatten builds and tests, formatting,
+naming, whitespace and scale checks passed. The independent review's decimal
+conversion issue has a failing-then-passing regression and uses Tcl's C API.
+See [observation-getter verification](#explicit-observation-history-getters-2026-11-13).
 
 Strict authored-code coverage remains unmet. The complete Task39 instrumented
 run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
 tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
 24,055/38,965 raw branches (61.7%), against required 100%/90%.
-This measurement predates Tasks40–42; it is not a coverage result for the current
-connection-validation changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
+This measurement predates Tasks40–43; it is not a coverage result for the current
+connection-validation and observation-getter changes. See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
 Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
@@ -382,14 +384,14 @@ atomic failures and source/flat/generated-PDL replay.
 |---|---|
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
-| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default/`-LastWrittenValue` updates overlapping queued write/compare values. `-LastReadValue`/`-LastMiscompareValue` are forwarded as history only. No device transaction. |
+| `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default/`-LastWrittenValue` updates overlapping queued write/compare values. `-LastReadValue`/`-LastMiscompareValue` supply observation history and are forwarded without hardware changes. No device transaction. |
 | `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
 | `iRunLoop` | Literal TCK waits on a reset single TAP; zero count needs no TAP reset. |
 | `iNote` | Retain literal notes in generated PDL. |
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | Execution/scheduling remains unfinished and reports an error. |
-| Hardware readback commands | Static generation cannot supply live device observations. |
+| Observation getters | `iGetReadData`/`iGetMiscompares` evaluate fully supplied explicit history; applied reads invalidate their target bits. Live observations, `iGetStatus` and interface/chain history remain unavailable. |
 
 This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
@@ -2959,9 +2961,9 @@ when iApplyEndState is declared. Final restoration requires a preceding iApply,
 iReset or iRunLoop. This also fixes the earlier default-state-only case that
 could emit an unintended write/apply solely to restore an end-state directive.
 
-This is static forwarding of supplied history. iGetReadData, iGetMiscompares
-and iGetStatus still report that hardware readback is unavailable; expected
-comparison data is never substituted for an observation. Tessent2026.2 rejects
+At this Task37 checkpoint, all getters reported unavailable hardware readback.
+Task43 adds [explicit-history getters](#explicit-observation-history-getters-2026-11-13);
+expected comparison data is never substituted for an observation. Tessent2026.2 rejects
 the history flag in the recorded probe, so vendor portability is not claimed.
 
 Thirteen new CLI methods cover both flags, pending accesses, scan/data/control
@@ -3138,3 +3140,64 @@ build/deep-alias-final-full.log/.exit(0):39 generator suites per build,
 50 directional/seven legacy standards,2,519 ICL files covering334/119 rules,
 and six editor tests in177.360s. See
 [the focused plan](superpowers/plans/2026-11-13-deep-alias-consumers.md).
+
+## Explicit observation-history getters (2026-11-13)
+
+iGetReadData and iGetMiscompares can now return history explicitly supplied by
+iState -LastReadValue and -LastMiscompareValue. Every requested bit must have
+supplied history; expected comparison values and current modeled storage never
+stand in for an observation. For example:
+
+```tcl
+iPDLLevel 1
+iState value 9 -LastReadValue
+iNote [iGetReadData value -hex]
+```
+
+For a four-bit value, the note is 0x9. Getters expand to Tcl literals without
+adding hardware operations. Binary output has a 0b prefix; known hexadecimal
+digits are lowercase. An entirely x hexadecimal group becomes X, a partially
+unknown group becomes x, and decimal with any x becomes X. Known decimal
+conversion supports bignums and uses Tcl's C API, so a user-defined expr command
+cannot alter the value.
+
+Aliases, slices, prefixes and procedure calls share resolved register/port bit
+identity. Read history follows alias inversion; miscompare masks do not invert,
+because complementing both observed and expected values preserves their XOR.
+A DataOutPort remains distinct from its driving register. History assignments
+use the existing state-target contract; getters use the observable-target
+contract. The specific IEEE1687 §7.9.22(h) rule describes miscompare history;
+its introductory text instead says expected values. This implementation follows
+the specific rule and records that wording conflict.
+
+An iRead invalidates both history categories for its target bits at iApply,
+including reads with no expected value or all-X comparisons. A queued read alone
+does not invalidate history. iReset discards pending reads without erasing
+supplied observations; later empty applies cannot revisit those discarded reads.
+Subsequent explicit history restores availability. Writes, controlling-state
+assumptions and unrelated reads preserve it. Live readback, iGetStatus and
+ScanInterface/-chain history remain unavailable during static generation.
+Tessent history-flag portability remains unverified.
+
+Storage is sparse by node and bounded by existing elaborated bit limits.
+Getters visit requested bits; apply visits its pending operation range once.
+On local Linux g++ 16.2.1 -O2, three replay forms for 1,024 repeated getters,
+1,024 separate targets and a 65,536-bit value took 0.143s, 0.214s and 0.408s.
+The 20-method CLI suite took 4.259s (4.31s wall, 75,660KiB peak RSS).
+These are supported-scale measurements, not a speedup claim.
+
+The wide case exposed an existing serializer defect: an empty DataRegister
+declaration was emitted with an illegal empty body. Serialization now retains
+the semicolon form; attribute-bearing bodies are preserved. Native tests cover
+scalar, vector and nested-instance roundtrips.
+
+Focused runtime/flatten tests, all 20 observation-state CLI methods and the
+independent review correction pass. Leak-enabled runtime/flatten and observation-state (20), queued-state (15),
+argument-reset (12) and compound-reset (12) CLI checks pass. Fresh instrumented
+runtime/flatten builds and tests also pass. Complete regression passes in
+build/observation-getters-final-full.log/.exit (0): 39 suites per build, 50
+directional/seven legacy standards, 2,519 ICL files, all 334/119 grammar/scanner
+rules, and six editor tests in 180.590s. Five optional ANTLR tests were skipped.
+Evidence is retained under build/observation-getters-final-sanitizer-* and
+build/observation-getters-instrumented-*, all with matching exit 0 files. See
+[the focused plan](superpowers/plans/2026-11-13-explicit-observation-getters.md).

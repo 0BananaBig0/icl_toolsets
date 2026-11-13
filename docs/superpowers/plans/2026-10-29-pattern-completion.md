@@ -1137,3 +1137,23 @@ review pass. Evidence: build/deep-alias-final-full.log/.exit(0),50directional/
 seven legacy standards,2,519ICL files covering334/119rules,editor6in177.360s.
 Task43 addresses getters evaluated from explicit observation-history assumptions;
 live readback and other remaining model requirements remain open.
+
+
+## Task43: Explicit observation-history getters
+
+Completed [the focused plan](2026-11-13-explicit-observation-getters.md).
+iGetReadData/iGetMiscompares evaluate fully supplied iState history by resolved
+bit identity. Applied reads invalidate target bits; reset-discarded reads and
+non-read operations preserve history. Alias inversion affects read values,
+not miscompare masks. Binary/hex/decimal forms and explicit x are covered.
+An empty DataRegister serialization defect exposed by wide history replay is
+fixed; independent review's redefinable-expr issue has a RED→GREEN C API fix.
+
+Full 39-suite dynamic/static regression, native/CLI leak sanitizers, fresh
+instrumented runtime/flatten links and tests, style/naming and review pass.
+Evidence: build/observation-getters-final-full.log/.exit (0), 50 directional/
+seven legacy standards, 2,519 ICL files covering 334/119 rules, editor6 in180.590s.
+Live readback, status/interface history, strict coverage, later-change Rocky8
+qualification and the remaining event/clock/model requirements stay open.
+Task44 investigates standalone TCK idle execution; design review must settle
+implicit selection before implementation.

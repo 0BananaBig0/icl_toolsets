@@ -242,7 +242,8 @@ check-tcl-static:
 	fi
 
 $(BUILD_DIR)/pdl/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
-$(BUILD_DIR)/pattern/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
+$(BUILD_DIR)/pattern/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
+$(BUILD_DIR)/pattern/pattern_runtime.o: | check-z3
 
 $(PDL_BIN): $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pdl/pdl_format_main.o
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $^ $(TCL_LIBS) -o $@
@@ -431,7 +432,8 @@ COV_REPORT_OBJECTS += $(foreach test,$(filter %_test,$(COV_BINARIES)),\
     $(test)-$(notdir $(test)).gcno)
 
 $(COV_DIR)/pdl/pdl_document.o: CPPFLAGS += $(TCL_CFLAGS)
-$(COV_DIR)/pattern/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS)
+$(COV_DIR)/pattern/pattern_runtime.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
+$(COV_DIR)/pattern/pattern_runtime.o: | check-z3
 
 $(COV_DIR):
 	mkdir -p $(COV_DIR)
@@ -464,11 +466,11 @@ $(COV_DIR)/unittests: $(COV_UNIT)
 $(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
-$(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) -o $@
+$(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o $(COV_DIR)/pattern/pattern_values.o | check-z3
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 
-$(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) -o $@
+$(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o $(COV_DIR)/pattern/pattern_values.o | check-z3
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 $(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
@@ -853,14 +855,15 @@ $(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pa
 pattern-runtime-check: $(BUILD_DIR)/pattern_runtime_test
 	@$(BUILD_DIR)/pattern_runtime_test
 
-$(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+$(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o | check-z3
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 pattern-runtime-static-check: $(BUILD_DIR)/pattern_runtime_test-static
 	@$(BUILD_DIR)/pattern_runtime_test-static
 
-$(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
+$(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o | check-z3 check-tcl-static
+	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 
 $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/icl/format_tree.cc \
     $(SRC_DIR)/utility/json.cc $(SRC_DIR)/icl/icl_ast.h $(SRC_DIR)/icl/format_tree.h \
@@ -917,15 +920,16 @@ distclean: clean
 pattern-flatten-check: $(BUILD_DIR)/pattern_flatten_test
 	@$(BUILD_DIR)/pattern_flatten_test
 
-$(BUILD_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT)
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+$(BUILD_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o | check-z3
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 .PHONY: pattern-flatten-static-check
 pattern-flatten-static-check: $(BUILD_DIR)/pattern_flatten_test-static
 	@$(BUILD_DIR)/pattern_flatten_test-static
 
-$(BUILD_DIR)/pattern_flatten_test-static: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) | check-tcl-static
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) -o $@
+$(BUILD_DIR)/pattern_flatten_test-static: tests/src/pattern_flatten_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o | check-z3 check-tcl-static
+	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 
 .PHONY: pattern-address-check pattern-address-static-check
 pattern-address-check: $(BUILD_DIR)/pattern_address_test

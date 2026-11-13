@@ -17,6 +17,28 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestEmptyDataRegisterRoundTrip() {
+  pattern::Design design;
+  design.AddIcl("empty-register.icl", R"(
+Module Leaf { DataRegister empty[7:0]; }
+Module Top {
+  DataRegister scalar;
+  DataRegister tagged[1:0] { Attribute purpose = "history"; }
+  Instance child Of Leaf;
+}
+)");
+  const auto original = pattern::Elaborate(design, "Top");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat.icl", text);
+  const auto flat = pattern::Elaborate(flat_design, "Top");
+  Require(pattern::SerializeIcl(flat) == text &&
+              flat.NodeAt("child.empty").Width() == 8 &&
+              flat.NodeAt("scalar").Width() == 1 &&
+              flat.NodeAt("tagged").attributes.count("purpose"),
+          "empty registers retain identity and attribute bodies on replay");
+}
+
 void TestHierarchyRoundTrip() {
   pattern::Design design;
   design.AddIcl("hierarchy.icl", R"(
@@ -636,6 +658,7 @@ Module Top {
 
 int main() {
   try {
+    TestEmptyDataRegisterRoundTrip();
     TestHierarchyRoundTrip();
     TestPropertiesAndNames();
     TestInvalidMetadata();

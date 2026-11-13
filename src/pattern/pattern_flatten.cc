@@ -281,6 +281,7 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
   if (node.model == ModelKind::kMux) {
     result += " SelectedBy " + Signals(netlist, node.inputs.at("SelectedBy"));
   }
+  const size_t body_begin = result.size();
   result += " {\n" + RenderAttributes(node.attributes);
   if (internal_input) {
     const auto source = node.inputs.find("Source");
@@ -367,6 +368,10 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
         node.inputs.count("Source") && !node.properties.count("Source")) {
       result += "Source " + Signals(netlist, node.inputs.at("Source")) + ";\n";
     }
+  }
+  if (node.kind == "DataRegister" && result.size() == body_begin + 3) {
+    result.resize(body_begin);
+    return result + ";\n";
   }
   return result + "}\n";
 }
