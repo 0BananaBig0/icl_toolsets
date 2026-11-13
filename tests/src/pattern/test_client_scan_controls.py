@@ -127,14 +127,18 @@ class ClientScanControls(unittest.TestCase):
                     'iState data 0; iWrite value 9; iApply; iWrite data 1; iApply; '
                     'iRead observed 0; iApply\n')
 
-    def test_blocked_controls_preserve_output(self):
+    def test_controls_and_output_preservation(self):
         source = self.nested()
         for role in ('sel', 'ce', 'se', 'ue', 'ck'):
             for bit in ('0', 'x'):
                 with self.subTest(role=role, bit=bit):
+                    controlled = source.replace(f'InputPort {role} = {role};',
+                                                f"InputPort {role} = 1'b{bit};")
+                    if role == 'ce' and bit == '0':
+                        self.replay(controlled, PDL.replace(' value ', ' child.value '))
+                        continue
                     icl, commands = self.root / 'source.icl', self.root / 'source.pdl'
-                    icl.write_text(source.replace(f'InputPort {role} = {role};',
-                                                 f"InputPort {role} = 1'b{bit};"))
+                    icl.write_text(controlled)
                     commands.write_text(PDL.replace(' value ', ' child.value '))
                     (self.root / 'result.pdl').write_bytes(b'previous result\n')
                     self.run_tool(icl, commands, ok=False)

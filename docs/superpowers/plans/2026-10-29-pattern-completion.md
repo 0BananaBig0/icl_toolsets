@@ -486,17 +486,39 @@ This step handles hidden storage with phase-stable controls. Serial-derived or
 otherwise phase-varying event sequences still need the general event work; do
 not label those complete or reinterpret failures as hardware unreachability.
 
-- [ ] Add RED native/CLI cases for hidden capture/shift/update, disabled capture,
+- [x] Add RED native/CLI cases for hidden capture/shift/update, disabled capture,
   hidden unknown values, resource preservation and rollback, indexed inputs,
   and unequal simultaneous chains. Verify actual hidden state as well as
   source/flat/generated replay; preserve outputs for unknown/blocked controls.
-- [ ] Reuse the event equivalence probe and bounded unroll for clients. Derive
+- [x] Reuse the event equivalence probe and bounded unroll for clients. Derive
   per-input selection and path lengths without per-input graph scans. Replay
   actual client events, publish only visible writes, and compare all storage.
   Keep clock/pin histories consistent across frames and input padding explicit.
-- [ ] Measure representative larger hidden storage and the work-limit failure;
+- [x] Measure representative larger hidden storage and the work-limit failure;
   run focused/full dynamic/static checks, leak-enabled sanitizers, Google checks
   and independent review. Record remaining event/model requirements.
+
+## Task 21: Masked and aliased merge writes
+
+IEEE §7.9.18 shares controlling state across merged calls while preserving each
+call's apply order. Extend the existing Batchable target classification to
+ScanRegister write slices, aliases and X masks. Retain whole-physical-register
+occupancy across each stream so interleaving calls never share controlling fill
+for one register. Keep AccessTogether, resource, wait, empty-apply and opaque
+barriers, normal operand validation, shared scheduling and fresh-state fallback.
+No dependency or alternate merge engine is needed; conflict lookup remains
+ordered-set based and batch traversal linear in operations.
+
+- [ ] Add RED tests for partial/X/alias writes, inherited fill and last-write
+  order within a call, observations across apply depth, physical alias conflicts,
+  fresh-state fallback, failure publication and 64-call scale. Update prior
+  conservative expectations to the newly supported behavior.
+- [ ] Remove only the full-direct-known-write restriction once resolved physical
+  target bits all name ScanRegisters. Parse operands as before and retain the
+  shared scheduler's fill semantics, replay and barriers.
+- [ ] Verify both merge suites, full dynamic/static regression, leak-enabled
+  sanitizer replay, style/naming, scale and independent review. Retain broader
+  target/event optimization requirements separately.
 
 ## Remaining completion work (not yet completed)
 
@@ -711,4 +733,13 @@ standards; the separately added certificate passed all 39 offline standards
 skipped. Native scheduler and nine CLI cases passed ASan/UBSan/LeakSanitizer with
 leaks enabled. Google style/naming/whitespace and independent source/certificate
 review passed. See [simultaneous-chain evidence](../../pattern-generation.md#simultaneous-independent-client-chains-2026-11-13).
-Task 20 and the remaining model/qualification requirements stay open.
+Task 20 verification is recorded below; the remaining model/qualification requirements stay open.
+
+Task 20 completed the full dynamic/static regression
+(`build/hidden-client-regression-reviewed.log`), including 40 directional/seven
+legacy standards, all 334 parser/119 scanner rules over 2,507 ICL files and
+editor corpus checks. Five optional ANTLR checks remain skipped. Native
+scheduler, eight hidden-client and four TAP-shadow CLI cases passed
+ASan/UBSan/LeakSanitizer with leaks enabled. Google formatting/naming/whitespace
+and independent source/certificate review passed after the primary-enable
+proof fix. See [hidden-client evidence](../../pattern-generation.md#hidden-standalone-client-events-2026-11-13).

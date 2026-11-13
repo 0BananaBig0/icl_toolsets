@@ -1,0 +1,6 @@
+iPDLLevel 1
+iProcsForModule SliceInstrument
+iReset
+iRead gate 0; iWrite gate 2; iApply
+iWrite target 5; iApply
+iRead target 5; iApply

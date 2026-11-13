@@ -333,6 +333,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "hidden_client_events",
+      "top": "SliceInstrument",
+      "icl": [
+        "tests/cases/ours/pattern_generation/hidden_client/network.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/hidden_client/access.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

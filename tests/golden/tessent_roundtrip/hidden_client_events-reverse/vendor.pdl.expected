@@ -1,0 +1,27 @@
+iProcsForModule SliceInstrument
+
+iProc oracle {} {
+
+   iReset
+   iWrite gate[1:0] 0b10
+   iRead  gate[1:0] 0b00
+   iApply
+
+   iWrite gate[1:0] 0b11
+   iRead  gate[1:0] 0b10
+   iApply
+
+   iWrite gate[1:0] 0b11
+   iRead  gate[1:0] 0b11
+   iWrite target[3:0] 0b0101
+   iRead  target[3:0] 0b0000
+   iApply
+
+   iWrite gate[1:0] 0b11
+   iRead  gate[1:0] 0b11
+   iWrite target[3:0] 0b0101
+   iRead  target[3:0] 0b0101
+   iApply
+
+
+}

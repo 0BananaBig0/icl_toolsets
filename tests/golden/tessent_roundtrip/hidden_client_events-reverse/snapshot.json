@@ -1,0 +1,270 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "hidden_client_events",
+    "top": "SliceInstrument",
+    "icl": [
+      "tests/cases/ours/pattern_generation/hidden_client/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/hidden_client/access.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/hidden_client/network.icl": "0fc6d29fa0e40003483e65fdc7c6dbf2c991e9d3f193988aae4b5c5da35af3ec",
+    "tests/cases/ours/pattern_generation/hidden_client/access.pdl": "02a94fcd05964a12d28d77417e02cffb33a4be968029af784315ef7a34ec3cb0"
+  },
+  "job": {
+    "id": "hidden_client_events",
+    "top": "SliceInstrument",
+    "icl": [
+      "tests/cases/ours/pattern_generation/hidden_client/network.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/hidden_client/access.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "0fc6d29fa0e40003483e65fdc7c6dbf2c991e9d3f193988aae4b5c5da35af3ec",
+      "source_0.pdl": "02a94fcd05964a12d28d77417e02cffb33a4be968029af784315ef7a34ec3cb0",
+      "run.tcl": "8217708798ccfce4b10ed1e187d07092e1e86633a0a3931b847398c3f41aee65"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/hidden_client/network.icl": "0fc6d29fa0e40003483e65fdc7c6dbf2c991e9d3f193988aae4b5c5da35af3ec",
+      "tests/cases/ours/pattern_generation/hidden_client/access.pdl": "02a94fcd05964a12d28d77417e02cffb33a4be968029af784315ef7a34ec3cb0"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.630050761159509,
+    "outcome": "ok",
+    "result_sha256": "cf3fa3cf051d12264b5996b889780ff68853e989a3fff396c2846ba46b49af64",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "SliceInstrument",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "gate",
+            0,
+            "0"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "gate",
+            0,
+            "0"
+          ],
+          [
+            "gate",
+            1,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "gate",
+            0,
+            "1"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "gate",
+            0,
+            "0"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "gate",
+            0,
+            "1"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ],
+          [
+            "target",
+            0,
+            "1"
+          ],
+          [
+            "target",
+            1,
+            "0"
+          ],
+          [
+            "target",
+            2,
+            "1"
+          ],
+          [
+            "target",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "gate",
+            0,
+            "1"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ],
+          [
+            "target",
+            0,
+            "0"
+          ],
+          [
+            "target",
+            1,
+            "0"
+          ],
+          [
+            "target",
+            2,
+            "0"
+          ],
+          [
+            "target",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "gate",
+            0,
+            "1"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ],
+          [
+            "target",
+            0,
+            "1"
+          ],
+          [
+            "target",
+            1,
+            "0"
+          ],
+          [
+            "target",
+            2,
+            "1"
+          ],
+          [
+            "target",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "gate",
+            0,
+            "1"
+          ],
+          [
+            "gate",
+            1,
+            "1"
+          ],
+          [
+            "target",
+            0,
+            "1"
+          ],
+          [
+            "target",
+            1,
+            "0"
+          ],
+          [
+            "target",
+            2,
+            "1"
+          ],
+          [
+            "target",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "5cb7aa021900559e7f18016f47b3a7bd2cf8b2fad8db5da8856f429a0a42a7ff",
+  "vendor_console_sha256": "b4836474d6b95887f5730f4d30006ad993259fa8bdddfcd33ae2f0509e9f0444",
+  "artifacts": {
+    "flat.pdl": "03e566e336c631500201855cffd078cdc0dbc4496518797602731627ae6f6621",
+    "vendor.pdl": "cf3fa3cf051d12264b5996b889780ff68853e989a3fff396c2846ba46b49af64"
+  }
+}

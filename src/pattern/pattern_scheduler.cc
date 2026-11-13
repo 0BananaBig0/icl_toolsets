@@ -617,7 +617,7 @@ class ScanScheduler::Impl {
           if (bits[i] != 'x') fill_.at(id)[i] = bits[i];
         }
       }
-      const bool events = tap_ && NeedsScanEvents();
+      const bool events = (tap_ || client_controls_) && NeedsScanEvents();
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
                    explicit_writes, events);
     } catch (const std::exception& error) {
@@ -1714,15 +1714,17 @@ class ScanScheduler::Impl {
     std::optional<z3::expr> clocks;
     std::map<size_t, z3::expr> drives;
     std::map<size_t, z3::expr> active, read;
+    std::map<Key, std::pair<z3::expr, z3::expr>> inputs;
     std::vector<z3::expr> selected;
   };
   void SelectScan(z3::optimize& solver, SymbolicNetwork& values, size_t time,
                   Frame& frame) {
-    std::vector<z3::expr> viable, observed, lengths;
+    std::vector<z3::expr> viable, observed, lengths, input_lengths;
     for (size_t i = 0; i < graph_.size(); ++i) {
       viable.push_back(context_.bool_val(false));
       observed.push_back(context_.bool_val(false));
-      if (parallel_chains_) lengths.push_back(context_.int_val(0));
+      lengths.push_back(context_.int_val(0));
+      input_lengths.push_back(context_.int_val(0));
     }
     std::vector<std::vector<z3::expr>> gates(graph_.size());
     for (size_t id : order_) {
@@ -1736,13 +1738,11 @@ class ScanScheduler::Impl {
                         edge.choice);
         gates[id].push_back(gate);
         viable[id] = viable[id] || (gate && viable[edge.next]);
-        if (parallel_chains_) {
-          lengths[id] = z3::ite(gate, lengths[edge.next], lengths[id]);
-        }
+        lengths[id] = z3::ite(gate, lengths[edge.next], lengths[id]);
       }
       if (vertex.bit.node != kMissing) {
         const auto& node = netlist_.nodes.at(vertex.bit.node);
-        if (parallel_chains_ && node.kind == "ScanRegister") {
+        if (node.kind == "ScanRegister") {
           lengths[id] = lengths[id] + context_.int_val(node.Width());
         }
         const auto enable = node.inputs.find("Enable");
@@ -1765,6 +1765,7 @@ class ScanScheduler::Impl {
       frame.selected.push_back(selected);
       solver.add(z3::implies(selected, viable[roots_[i]]));
       observed[roots_[i]] = observed[roots_[i]] || selected;
+      input_lengths[roots_[i]] = lengths[roots_[i]];
       count =
           count + z3::ite(selected, context_.int_val(1), context_.int_val(0));
     }
@@ -1772,17 +1773,19 @@ class ScanScheduler::Impl {
     solver.add(count == (frame.parallel ? z3::ite(*frame.parallel,
                                                   context_.int_val(0), chains)
                                         : chains));
-    if (parallel_chains_) {
-      auto clocks = context_.int_val(0);
-      for (size_t i = 0; i < roots_.size(); ++i) {
-        clocks = z3::ite(frame.selected[i] && lengths[roots_[i]] > clocks,
-                         lengths[roots_[i]], clocks);
-      }
-      frame.clocks = clocks;
+    auto clocks = context_.int_val(0);
+    for (size_t i = 0; i < roots_.size(); ++i) {
+      clocks = z3::ite(frame.selected[i] && lengths[roots_[i]] > clocks,
+                       lengths[roots_[i]], clocks);
     }
+    frame.clocks = clocks;
     for (auto it = order_.rbegin(); it != order_.rend(); ++it) {
       const size_t id = *it;
       const auto& vertex = graph_[id];
+      if (vertex.input) {
+        frame.inputs.emplace(Key{vertex.bit.node, vertex.bit.index},
+                             std::make_pair(observed[id], input_lengths[id]));
+      }
       if (vertex.bit.node != kMissing &&
           netlist_.nodes.at(vertex.bit.node).kind == "ScanRegister") {
         const auto old = frame.active.find(vertex.bit.node);
@@ -1793,18 +1796,12 @@ class ScanScheduler::Impl {
         }
       }
       for (size_t e = 0; e < vertex.edges.size(); ++e) {
+        input_lengths[vertex.edges[e].next] =
+            z3::ite(observed[id] && gates[id][e], input_lengths[id],
+                    input_lengths[vertex.edges[e].next]);
         observed[vertex.edges[e].next] =
             observed[vertex.edges[e].next] || (observed[id] && gates[id][e]);
       }
-    }
-    if (!parallel_chains_) {
-      auto clocks = context_.int_val(0);
-      for (const auto& [id, active] : frame.active) {
-        clocks = clocks + z3::ite(active,
-                                  context_.int_val(netlist_.nodes[id].Width()),
-                                  context_.int_val(0));
-      }
-      frame.clocks = clocks;
     }
   }
   std::optional<std::set<size_t>> ActivePath(const NetworkState& snapshot) {
@@ -2264,7 +2261,7 @@ class ScanScheduler::Impl {
         }
       }
     }
-    if (shadows) {
+    if (shadows && tap_) {
       for (const std::string role : {"capture", "shift", "update"}) {
         result[role].emplace(tap_->instruction_register, scan && ir);
       }
@@ -2292,7 +2289,7 @@ class ScanScheduler::Impl {
     Values state;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
-      if (node.model == ModelKind::kRegister) {
+      if (node.model == ModelKind::kRegister || PrimaryInput(node)) {
         state.emplace(
             id, SymbolicValue{
                     context_.bv_const(("event_probe_" + node.name).c_str(),
@@ -2303,14 +2300,18 @@ class ScanScheduler::Impl {
       }
     }
     const auto ir = context_.bv_const("event_probe_ir", 1);
-    state.insert_or_assign(tap_->ir_select,
-                           SymbolicValue{ir, context_.bv_val(1, 1)});
     z3::optimize solver(context_);
     z3::params parameters(context_);
     parameters.set("timeout", 250U);
     solver.set(parameters);
     Frame frame;
-    frame.instruction = SymbolicValue{ir, context_.bv_val(1, 1)};
+    if (tap_) {
+      state.insert_or_assign(tap_->ir_select,
+                             SymbolicValue{ir, context_.bv_val(1, 1)});
+      frame.instruction = SymbolicValue{ir, context_.bv_val(1, 1)};
+    } else {
+      state = EventPins(state, frame, "capture");
+    }
     SymbolicNetwork values(netlist_, context_, state, global_resets_);
     SelectScan(solver, values, 0, frame);
     const auto events = ControlEvents(solver, state, frame, true);
@@ -2341,19 +2342,57 @@ class ScanScheduler::Impl {
     for (size_t root : roots_) maximum = std::max(maximum, lengths[root]);
     return maximum;
   }
+  Values SerialPins(const Values& state, const Frame& frame, size_t time,
+                    size_t tick) {
+    auto pins = EventPins(state, frame, "shift");
+    SymbolicNetwork before(netlist_, context_, pins, global_resets_);
+    for (const auto& [key, path] : frame.inputs) {
+      const auto& [active, length] = path;
+      const auto& node = netlist_.nodes[key.first];
+      const auto name = "serial_" + std::to_string(time) + "_" +
+                        std::to_string(tick) + "_" + node.name + "_" +
+                        std::to_string(key.second);
+      const SymbolicValue incoming{context_.bv_const(name.c_str(), 1),
+                                   context_.bv_val(1, 1)};
+      const auto cycle = context_.int_val(tick);
+      const auto value =
+          Choose(active && cycle < *frame.clocks,
+                 Choose(cycle < *frame.clocks - length,
+                        SymbolicValue::Literal(context_, "0"), incoming),
+                 before.Read({key.first, key.second}));
+      auto found = pins.find(key.first);
+      if (found == pins.end()) {
+        found = pins.emplace(key.first, before.Value(key.first)).first;
+      }
+      const auto width = static_cast<unsigned>(node.Width());
+      const auto shift =
+          context_.bv_val(width - 1 - Offset(node, key.second), width);
+      const auto mask = z3::shl(context_.bv_val(1, width), shift);
+      found->second = {(found->second.bits & ~mask) |
+                           z3::shl(z3::zext(value.bits, width - 1), shift),
+                       (found->second.known & ~mask) |
+                           z3::shl(z3::zext(value.known, width - 1), shift)};
+    }
+    return pins;
+  }
   Values ScanEvents(z3::optimize& solver, const Values& state,
                     const Frame& frame, Values* shifts, size_t time,
                     size_t maximum) {
     const auto events = ControlEvents(solver, state, frame, true);
     auto pins = EventPins(state, frame, "capture");
     SymbolicNetwork capture(netlist_, context_, pins, global_resets_, shifts);
+    for (const auto& [key, path] : frame.inputs) {
+      if (!pins.count(key.first)) {
+        pins.emplace(key.first, capture.Value(key.first));
+      }
+    }
     Values captured;
-    auto clocks = context_.int_val(0);
+    const auto clocks = *frame.clocks;
     for (size_t id : registers_) {
       const auto& node = netlist_.nodes[id];
       const auto found = node.inputs.find("CaptureSource");
       const auto value =
-          id == tap_->instruction_register
+          tap_ && id == tap_->instruction_register
               ? SymbolicValue::Literal(context_, tap_->bsdl.capture)
           : found != node.inputs.end()
               ? capture.Bits(found->second)
@@ -2361,22 +2400,10 @@ class ScanScheduler::Impl {
                                        std::string(node.Width(), 'x'));
       captured.emplace(
           id, Choose(events.at("capture").at(id), value, shifts->at(id)));
-      if (frame.active.count(id)) {
-        clocks =
-            clocks + z3::ite(frame.active.at(id),
-                             context_.int_val(static_cast<int>(node.Width())),
-                             context_.int_val(0));
-      }
     }
     *shifts = std::move(captured);
     for (size_t tick = 0; tick < maximum; ++tick) {
-      pins = EventPins(state, frame, "shift");
-      const auto input = context_.bv_const(
-          ("serial_" + std::to_string(time) + "_" + std::to_string(tick))
-              .c_str(),
-          1);
-      pins.insert_or_assign(tap_->pins.at("tap_scan_in"),
-                            SymbolicValue{input, context_.bv_val(1, 1)});
+      pins = SerialPins(pins, frame, time, tick);
       SymbolicNetwork values(netlist_, context_, pins, global_resets_, shifts);
       Values next;
       for (size_t id : registers_) {
@@ -2400,6 +2427,11 @@ class ScanScheduler::Impl {
       *shifts = std::move(next);
     }
     Values next = state;
+    if (!tap_) {
+      for (const auto& [key, path] : frame.inputs) {
+        next.insert_or_assign(key.first, pins.at(key.first));
+      }
+    }
     SymbolicNetwork before(netlist_, context_, state, global_resets_);
     for (size_t id : registers_) {
       const auto& node = netlist_.nodes[id];
@@ -2425,6 +2457,16 @@ class ScanScheduler::Impl {
           shifts->at(id));
     }
     return next;
+  }
+  size_t EventWorkSize() const {
+    size_t bits = netlist_.nodes.size();
+    for (const auto& node : netlist_.nodes) {
+      if (node.kind == "ScanRegister" ||
+          (node.kind == "ScanInPort" && node.scope == 0)) {
+        bits += node.Width();
+      }
+    }
+    return bits;
   }
   std::pair<std::vector<size_t>, size_t> MixedPrimaryInputs(
       const std::map<size_t, std::string>& goals,
@@ -3094,10 +3136,7 @@ class ScanScheduler::Impl {
                                desired_preserved, explicit_writes, events);
       if (planned) return std::move(*planned);
     }
-    size_t event_bits = netlist_.nodes.size();
-    if (events) {
-      for (size_t id : registers_) event_bits += netlist_.nodes[id].Width();
-    }
+    const size_t event_bits = events ? EventWorkSize() : 0;
     const auto start = std::chrono::steady_clock::now();
     for (size_t horizon = 1; horizon <= max_steps; ++horizon) {
       if (events && horizon * (maximum + 1) * event_bits > 1048576) {
@@ -3946,6 +3985,7 @@ class ScanScheduler::Impl {
       for (const auto& [id, control] : controls) {
         const auto& node = netlist_.nodes[id];
         if (control.select == '1' && control.update == '1' &&
+            step.loads.count(node.name) &&
             (!node.reset || replay->Read(*node.reset) == '0')) {
           writable.insert(id);
         }

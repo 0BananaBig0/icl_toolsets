@@ -222,6 +222,65 @@ Module Chains {
               scheduler.Value("b") == "01" && scheduler.Value("ck") == "0",
           "failed simultaneous access rolls back both chains");
 }
+void TestHiddenClientEvents() {
+  for (bool parallel : {false, true}) {
+    std::string source = R"(
+Module Hidden {
+  ScanInPort si[5:2];
+  SelectPort selected; CaptureEnPort capture; ShiftEnPort shift;
+  UpdateEnPort update; TCKPort clock;
+  ScanRegister gate[1:0] { ScanInSource si[3]; ResetValue 2'b0; }
+  ScanRegister target[3:0] {
+    ScanInSource gate[0]; CaptureSource 4'b1010; ResetValue 4'b0;
+  }
+  ScanMux route SelectedBy gate[0] { 1'b0: gate[0]; 1'b1: target[0]; }
+  ScanOutPort so { Source route; }
+  ScanInterface client {
+    Port si[3]; Port so; Port selected; Port capture; Port shift; Port update; Port clock;
+  }
+})";
+    if (parallel) {
+      const std::string ports = "Port si[3]; Port so;";
+      source.replace(source.find(ports), ports.size(), R"(
+        Chain first { Port si[3]; Port so; }
+        Chain second { Port si[2]; Port other_so; }
+      )");
+      source.insert(source.find("  ScanInterface"), R"(
+        ScanRegister other[3:0] { ScanInSource si[2]; ResetValue 4'b0; }
+        ScanOutPort other_so { Source other[0]; }
+      )");
+    }
+    pattern::Design design;
+    design.AddIcl("hidden-client.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Hidden");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"gate", "2"}, "blocked", {}}}, false,
+                      {{netlist.node_ids.at("target"), "0000"}}, false);
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("gate") == "00" &&
+                scheduler.Value("target") == "0000",
+            "hidden client reservation failure rolls back visible and hidden "
+            "storage");
+    const auto first =
+        scheduler.Apply({{"iWrite", {"gate", "2"}, "write", {}}});
+    Require(
+        first.size() == 1 && first[0].loads.count("target") == 0 &&
+            first[0].writes.count("target") == 0 &&
+            scheduler.Value("target") == (parallel ? "00xx" : "xx10") &&
+            scheduler.Value("si") == (parallel ? "xx10" : "xx1x"),
+        "hidden capture and shifts use actual serial bits including padding");
+    scheduler.Apply({{"iWrite", {"target", "5"}, "write", {}}});
+    Require(
+        scheduler.Value("target") == "0101" &&
+            scheduler.Value("clock") == "0" && scheduler.Value("update") == "0",
+        "opening the hidden path permits a visible write and idle controls");
+  }
+}
 void TestVectorScanInputs() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/vector_scan_inputs/network.icl");
@@ -1655,6 +1714,7 @@ int main() {
     TestEnabledScanOutputs();
     TestClientScanControls();
     TestSimultaneousScanChains();
+    TestHiddenClientEvents();
     TestVectorScanInputs();
     TestMixedReadRoutes();
     TestMixedIoPhases();

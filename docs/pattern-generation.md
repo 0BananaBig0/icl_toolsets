@@ -24,7 +24,7 @@ and nine shared-output cases, with leak detection enabled. See
 commands, logs, review and measured scale. This did not rerun installation,
 RTL simulation or strict authored-code coverage.
 
-Ordinary regression passes 39 directional and seven legacy Tessent standards
+Ordinary regression passes 40 directional and seven legacy Tessent standards
 offline. The [latest six directional certificates](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30)
 cover three specific TAP fixtures. Indexed vector-input and shared-output cases have local replay
 coverage and no vendor certificate. The
@@ -475,8 +475,9 @@ including inversion. Equivalent ungated observations use the first sorted
 output; gated alternatives retain their enables and require a known-enabled
 path. All declared controls are still checked. A path may use an indexed vector input
 and an indexed one-hot return lane. Explicit or inferred standalone client
-interfaces support bound select/capture/shift/update/clock controls when their
-events match the selected complete scan. Unbound vector control lanes retain
+interfaces support bound select/capture/shift/update/clock controls. The fast
+path proves complete-scan equivalence; bounded event planning also tracks hidden
+capture/shift/update storage when that proof does not hold. Unbound vector control lanes retain
 their state, and parallel input frames do not pulse scan controls.
 It rejects
 multiple TAPs, shared scan-input/storage paths, intermediate serial taps,
@@ -2222,3 +2223,46 @@ separate offline check. Native and CLI ASan/UBSan/LeakSanitizer checks passed
 with leak detection enabled. Google formatting/naming/whitespace and independent
 source/certificate review passed. Broader shared-path/controller events remain
 unfinished.
+
+
+### Hidden standalone client events (2026-11-13)
+
+Standalone clients now share the existing bounded capture/shift/update model
+with TAP scheduling. Hidden registers retain separate shift and held state;
+short scans can therefore change hidden storage without pretending that it was
+explicitly written. Concrete replay resolves actual interface controls and
+checks every register before committing state. Indexed inputs preserve unused
+lanes and unequal simultaneous chains use the same leading-zero padding in
+symbolic and concrete execution. Event work includes primary scan-input widths
+and retains the existing expression budget and solver timeout.
+
+The fast-path equivalence probe now considers schedulable primary inputs as well
+as registers. An unknown or initially disabled enable can be prepared before a
+hidden access; a reserved disabled input still blocks access. This fixes the
+independent review's vacuous-proof finding, reproduced before the fix. Known
+disabled CaptureEn is supported by retaining shift storage; unknown event
+controls still reject. General serial-derived/per-edge events remain unfinished.
+
+Native assertions check actual hidden values (`xx10` for a short single-chain
+scan versus `00xx` with longer simultaneous-chain padding), unused input lanes,
+visible writes and reservation rollback. Eight CLI cases cover resource slices,
+primary enables, suppressed capture, unknown shift, indexed/simultaneous inputs,
+original/flat/generated replay and the event-work limit. The 128-bit hidden case
+took 1.055 s for three replay forms; all eight cases took 9.38 s / 119,816 KiB.
+The 1,024-bit case rejects at the work limit.
+
+Tessent 2026.2 accepted both exports for the self-constructed hidden-client
+fixture. Only reverse ordered-apply equivalence certified; extra vendor read
+comparisons made forward comparison fail. The new certificate raises the
+offline total to 40 directions. Evidence is under
+`test_icl_toolsets/test_hidden_client/run_2026_11_13_01` and local
+`build/hidden-client-{forward,reverse}-evidence`.
+
+Verification: all reported suites in the final full dynamic/static regression
+passed (`build/hidden-client-regression-reviewed.log`), including 40 directional
+and seven legacy standards, all parser/scanner rules over 2,507 ICL files and
+the editor corpus. Five optional ANTLR checks remain skipped. Native scheduler,
+eight hidden-client and four TAP-shadow cases passed leak-enabled ASan/UBSan/
+LeakSanitizer. Formatting/naming/whitespace and independent source/certificate
+review passed. The earlier full run used a stale static binary and is superseded
+by the reviewed run.
