@@ -253,6 +253,185 @@ iCall work
 """)
         self.assertIn('iRunLoop 1 -sck root', result)
 
+    def test_override_preserves_checked_scaling(self):
+        source = """Module Ratio {
+  ClockPort ck; ToClockPort out { Source ck; FreqMultiplier 3; FreqDivider 2; }
+}
+Module Top { ClockPort root; Instance child Of Ratio { InputPort ck = root; } }
+"""
+        result = self.replay(source, """iClock child.out
+iRunLoop 3 -sck child.out
+iClockOverride child.out -freqMultiplier 6 -freqDivider 1
+iRunLoop 3 -sck child.out
+iClock child.out
+iRunLoop 3 -sck child.out
+iClockOverride child.out -freqDivider 5
+iRunLoop 3 -sck child.out
+iClock child.out
+iRunLoop 3 -sck child.out
+""")
+        waits = [line for line in result.splitlines() if line.startswith('iRunLoop')]
+        self.assertEqual(waits, [f'iRunLoop {n} -sck root' for n in (2, 2, 1, 1, 5)])
+        self.assertNotIn('iClockOverride', result)
+
+    def test_override_omissions_restore_icl_defaults(self):
+        source = """Module Ratio {
+  ClockPort ck; ToClockPort out { Source ck; FreqMultiplier 3; FreqDivider 2; }
+}
+Module Top { ClockPort root; ClockPort other;
+  Instance child Of Ratio { InputPort ck = root; }
+}"""
+        result = self.replay(source, """iClock child.out
+iClockOverride child.out -source other -freqMultiplier 6 -freqDivider 1
+iRunLoop 6 -sck child.out
+iClock child.out; iRunLoop 6 -sck child.out
+iClockOverride child.out
+iClock child.out; iRunLoop 6 -sck child.out
+""")
+        waits = [line for line in result.splitlines() if line.startswith('iRunLoop')]
+        self.assertEqual(waits, ['iRunLoop 4 -sck root', 'iRunLoop 1 -sck other',
+                                 'iRunLoop 4 -sck root'])
+
+    def test_override_versions_are_per_checked_target(self):
+        source = """Module Ratio {
+  ClockPort ck; ToClockPort out { Source ck; FreqMultiplier 3; FreqDivider 2; }
+}
+Module Top { ClockPort root;
+  Instance child Of Ratio { InputPort ck = root; }
+  ToClockPort copy { Source child.out; FreqMultiplier 2; }
+}"""
+        result = self.replay(source, """iClock child.out
+iClockOverride child.out -freqMultiplier 6 -freqDivider 1
+iClock copy
+iRunLoop 6 -sck child.out; iRunLoop 6 -sck copy
+iRunLoop 6 -sck child.out; iRunLoop 6 -sck copy
+""")
+        waits = [line for line in result.splitlines() if line.startswith('iRunLoop')]
+        self.assertEqual(waits, [f'iRunLoop {n} -sck root' for n in (4, 1, 4, 1)])
+
+    def test_override_survives_procedure_return_and_reset(self):
+        source = """Module Top { ClockPort root;
+  ToClockPort out { Source root; FreqDivider 2; }
+}"""
+        result = self.replay(source, """iProc configure {} {
+  iClockOverride out -freqMultiplier 6 -freqDivider 1
+}
+iCall configure
+iReset
+iClock out; iRunLoop 3 -sck out
+""")
+        self.assertIn('iRunLoop 1 -sck root', result)
+
+    def test_override_vector_bit_isolation(self):
+        source = """Module Stage { ClockPort ck[0:1];
+  ToClockPort out[1:0] { Source ck; FreqDivider 2; }
+}
+Module Top { ClockPort root[5:4]; ClockPort other;
+  Instance child Of Stage { InputPort ck = root; }
+}"""
+        result = self.replay(source, """iClockOverride child.out(1) -source other -freqMultiplier 3 -freqDivider 1
+iClock child.out(1); iClock child.out(0)
+iRunLoop 3 -sck child.out(1); iRunLoop 3 -sck child.out(0)
+""")
+        self.assertIn('iRunLoop 1 -sck other', result)
+        self.assertIn('iRunLoop 6 -sck root(4)', result)
+
+    def test_override_snapshot_revalidates_old_mux(self):
+        source = """Module Stage { ClockPort a; ClockPort b; DataInPort mode;
+  ClockMux mux SelectedBy mode { 1'b0: a; 1'b1: b; }
+  ToClockPort out { Source mux; FreqMultiplier 3; FreqDivider 2; }
+}
+Module Top { ClockPort first; ClockPort second; DataInPort mode;
+  Instance child Of Stage { InputPort a = first; InputPort b = second; InputPort mode = mode; }
+}"""
+        commands = """iState mode 0; iClock child.out
+iClockOverride child.out -source second -freqMultiplier 6 -freqDivider 1
+iRunLoop 3 -sck child.out
+"""
+        result = self.replay(source, commands)
+        self.assertIn('iRunLoop 2 -sck first', result)
+        self.rejected(source, commands + 'iState mode 1; iRunLoop 3 -sck child.out\n',
+                      'changed since iClock')
+        result = self.replay(source, commands + 'iState mode 1; iClock child.out; iRunLoop 3 -sck child.out\n')
+        self.assertIn('iRunLoop 1 -sck second', result)
+
+    def test_override_state_in_local_reset_preview(self):
+        source = """Module Top { ClockPort root; ToClockPort out { Source root; FreqDivider 2; }
+  ScanInPort si; ScanRegister value { ScanInSource si; ResetValue 0; }
+  ScanOutPort so { Source value; }
+}"""
+        result = self.replay(source, """iReset; iClock out
+iClockOverride out -freqMultiplier 6 -freqDivider 1
+iProc work {} {
+  iState value 1; iWrite value 0; iApply; iRunLoop 3 -sck out
+  iClock out; iRunLoop 3 -sck out
+}
+iCall work
+""")
+        self.assertIn('iRunLoop 6 -sck root', result)
+        self.assertIn('iRunLoop 1 -sck root', result)
+
+    def test_override_cycle_cannot_hide_behind_old_check(self):
+        source = """Module Stage { ClockPort ck; ToClockPort out { Source ck; } }
+Module Top { ClockPort root;
+  Instance a Of Stage { InputPort ck = root; }
+  Instance b Of Stage { InputPort ck = root; }
+}"""
+        self.rejected(source, """iClock a.out
+iClockOverride a.out -source b.out
+iClockOverride b.out -source a.out
+iRunLoop 1 -sck a.out
+""", 'cyclic system-clock')
+
+    def test_override_source_can_establish_unconnected_port(self):
+        result = self.replay('Module Top { ClockPort root; ToClockPort out; }',
+                            'iClockOverride out -source root -freqDivider 3; iClock out; iRunLoop 2 -sck out\n')
+        self.assertIn('iRunLoop 6 -sck root', result)
+        self.rejected('Module Top { ClockPort root; ToClockPort out; }',
+                      'iClockOverride out -freqDivider 3\n', 'requires a source')
+
+    def test_override_preserves_pending_queue(self):
+        source = 'Module Top { ClockPort root; ToClockPort out { Source root; } DataInPort data; }'
+        result = self.replay(source, 'iWrite data 1; iClockOverride out -freqDivider 3; iClock out; iApply; iRunLoop 2 -sck out\n')
+        self.assertLess(result.index('iClock root'), result.index('iWrite data'))
+        self.assertIn('iRunLoop 6 -sck root', result)
+        self.rejected(source, 'iWrite data 1; iClockOverride out -freqDivider 3; iClock out; iRunLoop 0 -sck out\n',
+                      'unapplied')
+
+    def test_override_invalid_arguments_are_atomic(self):
+        source = 'Module Top { ClockPort root; ToClockPort out { Source root; } DataInPort data; }'
+        for command, diagnostic in [
+            ('iClockOverride root -freqDivider 3', 'requires a ToClockPort'),
+            ('iClockOverride out -source data', 'target requires one ClockPort'),
+            ('iClockOverride out -freqDivider 0', 'positive'),
+            ('iClockOverride out -freqMultiplier 0bX', 'known'),
+            ('iClockOverride out -freqDivider 18446744073709551616', 'truncates significant bits'),
+            ('iClockOverride out -freqMultiplier -1', ''),
+            ('iClockOverride out -freqDivider 2 -freqDivider 3', ''),
+            ('iClockOverride out -unknown 3', ''),
+        ]:
+            with self.subTest(command=command):
+                self.rejected(source, command + '\n', diagnostic)
+        for definition in ['Period 10ns;', 'DifferentialInvOf root;']:
+            self.rejected('Module Top { ClockPort root; ToClockPort out { ' + definition + ' } }',
+                          'iClockOverride out -source root\n', 'oscillator/differential')
+
+    def test_override_cannot_introduce_unsafe_fanout(self):
+        source = """Module Stage { ClockPort ck; ToClockPort out { Source ck; } }
+Module Top { ClockPort root; ClockPort other;
+  Instance child Of Stage { InputPort ck = other; }
+  ToTCKPort unsupported { Source child.out; }
+}"""
+        self.rejected(source, 'iClock root; iClockOverride child.out -source root\n', 'unsupported fanout')
+
+    def test_override_uint64_factors_and_count_overflow(self):
+        source = 'Module Top { ClockPort root; ToClockPort out { Source root; } }'
+        largest = 18446744073709551615
+        result = self.replay(source, f'iClockOverride out -freqMultiplier {largest} -freqDivider {largest}; iClock out; iRunLoop {largest} -sck out\n')
+        self.assertIn(f'iRunLoop {largest} -sck root', result)
+        self.rejected(source, f'iClockOverride out -freqDivider {largest}; iClock out; iRunLoop 2 -sck out\n',
+                      'cycle count limit')
+
     def test_deep_and_wide_clock_routes(self):
         for wide in (False, True):
             with self.subTest(wide=wide):

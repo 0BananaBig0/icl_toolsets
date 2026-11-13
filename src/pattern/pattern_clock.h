@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "pattern/pattern_scheduler.h"
+#include "pattern/pattern_values.h"
 
 namespace pattern {
 // Relative clock duration only: accepted roots cannot drive modeled
@@ -19,6 +20,7 @@ namespace pattern {
 class SystemClocks {
  public:
   explicit SystemClocks(const Netlist& netlist) : netlist_(netlist) {}
+  void Override(const Operation& operation, z3::context& context);
   std::string Check(const std::string& target, const ScanScheduler& scheduler);
   std::pair<std::string, uint64_t> Wait(
       const std::string& target, uint64_t cycles,
@@ -34,16 +36,30 @@ class SystemClocks {
     Bit root;
     uint64_t multiplier = 1, divider = 1;
   };
+  struct Checked {
+    Route route;
+    size_t version = 0;
+  };
+  struct Definition {
+    size_t version = 0;
+    BitReference source;
+    uint64_t multiplier = 1, divider = 1;
+  };
+  const Definition* DefinitionAt(Bit bit, size_t version) const;
+  void CheckCycle(Bit target, BitReference source) const;
   Bit Target(const std::string& name) const;
   std::string Name(Bit bit) const;
-  Route Resolve(Bit bit, const ScanScheduler& scheduler);
-  BitReference Source(Bit bit, const ScanScheduler& scheduler);
+  Route Resolve(Bit bit, const ScanScheduler& scheduler, size_t version);
+  BitReference Source(Bit bit, const ScanScheduler& scheduler, size_t version);
   void BuildSafety();
   const Netlist& netlist_;
   bool safety_ready_ = false;
   std::set<Bit> unsafe_;
-  std::map<Bit, std::vector<Bit>> fanout_;
-  std::map<Bit, Route> checked_, routes_;
+  std::map<Bit, std::set<Bit>> fanout_;
+  size_t version_ = 0, cache_version_ = 0;
+  std::map<Bit, std::vector<Definition>> overrides_;
+  std::map<Bit, Checked> checked_;
+  std::map<Bit, Route> routes_;
   std::map<size_t, std::string> values_;
 };
 }  // namespace pattern

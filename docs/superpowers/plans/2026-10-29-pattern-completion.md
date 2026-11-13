@@ -1332,3 +1332,21 @@ five optional ANTLR tests skipped. The first full run's missing coverage-manifes
 entry is fixed for both clock.cc and inline clock.h, and7 manifest tests pass.
 Corrected hierarchical clock fixtures pass both builds and leak-enabled checks.
 No new formal vendor certificate, strict coverage or Rocky8 refresh is claimed.
+
+## Task52: System-clock override snapshots
+
+Completed [the focused plan](2026-11-14-system-clock-overrides.md). Per-bit override
+histories preserve checked durations while current reservations use current routes.
+Omitted fields restore immutable ICL defaults, and prospective cycles fail before
+publication. Flat bare ToClockPort declarations use the valid semicolon form.
+Thirty clock methods/native snapshot/reservation/rollback/state checks pass;
+4096-stage/1024-wait alternating-version benchmark takes4.32s optimized and21.4063s
+under leak checks. Independent review, naming/style and selected native/main35/
+clock30/client18/reset12 sanitizers pass. Full integration passes in
+build/clock-override-final-full.log/.exit0 (1050.603s):41 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in182.629s;
+five optional ANTLR tests skipped. Tessent2026.2 changed-defaults exports match
+root10/other35/root10/root25 waits and restore ICL defaults; the no-option probe
+is rejected. Exact evidence and the older2023.4 documentation discrepancy are
+recorded in the guide. No new formal certificate, strict coverage or platform
+refresh is claimed. Oscillators and broader clock/time/event work remain open.

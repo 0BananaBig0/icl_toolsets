@@ -34,6 +34,107 @@ uint64_t Product(uint64_t a, uint64_t b) {
   return a * b;
 }
 }  // namespace
+const SystemClocks::Definition* SystemClocks::DefinitionAt(
+    Bit bit, size_t version) const {
+  const auto found = overrides_.find(bit);
+  if (found == overrides_.end()) return nullptr;
+  const auto& history = found->second;
+  const auto next = std::upper_bound(history.begin(), history.end(), version,
+                                     [](size_t value, const Definition& entry) {
+                                       return value < entry.version;
+                                     });
+  return next == history.begin() ? nullptr : &*std::prev(next);
+}
+void SystemClocks::CheckCycle(Bit target, BitReference source) const {
+  std::vector<BitReference> pending{source};
+  std::set<Bit> visited;
+  while (!pending.empty()) {
+    const auto bit = pending.back();
+    pending.pop_back();
+    if (bit.node >= netlist_.nodes.size()) continue;
+    const Bit key{bit.node, bit.index};
+    if (key == target) throw std::runtime_error("cyclic system-clock override");
+    if (!visited.insert(key).second) continue;
+    if (const auto* definition = DefinitionAt(key, version_)) {
+      pending.push_back(definition->source);
+      continue;
+    }
+    const auto& node = netlist_.nodes[bit.node];
+    const size_t offset = Offset(node, bit.index);
+    const auto input = node.inputs.find("Source");
+    if (input != node.inputs.end()) pending.push_back(input->second.at(offset));
+    for (const auto& choice : node.choices) {
+      pending.push_back(choice.source.at(offset));
+    }
+  }
+}
+void SystemClocks::Override(const Operation& operation, z3::context& context) {
+  const auto& args = operation.arguments;
+  if (args.empty() || args.size() % 2 == 0) {
+    throw std::runtime_error("invalid iClockOverride arguments");
+  }
+  const auto target = Target(args[0]);
+  const auto& node = netlist_.nodes[target.first];
+  if (node.kind != "ToClockPort") {
+    throw std::runtime_error(
+        "iClockOverride target requires a ToClockPort bit");
+  }
+  if (node.properties.count("Period") ||
+      node.properties.count("DifferentialInvOf")) {
+    throw std::runtime_error(
+        "oscillator/differential clock override is unsupported");
+  }
+  Definition definition;
+  definition.version = version_ + 1;
+  definition.multiplier = Factor(node, "FreqMultiplier");
+  definition.divider = Factor(node, "FreqDivider");
+  const auto source = node.inputs.find("Source");
+  if (source != node.inputs.end()) {
+    definition.source = source->second.at(Offset(node, target.second));
+  }
+  std::set<std::string> options;
+  for (size_t i = 1; i < args.size(); i += 2) {
+    const auto& option = args[i];
+    if (!options.insert(option).second) {
+      throw std::runtime_error("duplicate iClockOverride option");
+    }
+    if (option == "-source") {
+      const auto bit = Target(args[i + 1]);
+      definition.source = {bit.first, bit.second};
+    } else if (option == "-freqMultiplier" || option == "-freqDivider") {
+      const auto bits = PdlNumber(context, args[i + 1], 64);
+      uint64_t value = 0;
+      for (char bit : bits) {
+        if (bit == 'x') {
+          throw std::runtime_error(
+              "clock override factor must be known and positive");
+        }
+        value = (value << 1) | (bit == '1');
+      }
+      if (!value) {
+        throw std::runtime_error("clock override factor must be positive");
+      }
+      (option == "-freqMultiplier" ? definition.multiplier
+                                   : definition.divider) = value;
+    } else {
+      throw std::runtime_error("unknown iClockOverride option: " + option);
+    }
+  }
+  if (source == node.inputs.end() && !options.count("-source")) {
+    throw std::runtime_error("clock override requires a source");
+  }
+  BuildSafety();
+  if (unsafe_.count(target)) {
+    throw std::runtime_error("clock override target has unsupported fanout: " +
+                             Name(target));
+  }
+  CheckCycle(target, definition.source);
+  overrides_[target].push_back(definition);
+  version_ = definition.version;
+  if (definition.source.node < netlist_.nodes.size()) {
+    fanout_[{definition.source.node, definition.source.index}].insert(target);
+  }
+}
 void SystemClocks::Invalidate() {
   routes_.clear();
   values_.clear();
@@ -53,7 +154,11 @@ std::string SystemClocks::Name(Bit bit) const {
   return node.name +
          (node.indexed ? "(" + std::to_string(bit.second) + ")" : "");
 }
-BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler) {
+BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler,
+                                  size_t version) {
+  if (const auto* definition = DefinitionAt(bit, version)) {
+    return definition->source;
+  }
   const auto& node = netlist_.nodes.at(bit.first);
   const size_t offset = Offset(node, bit.second);
   if (node.kind == "ClockMux") {
@@ -99,7 +204,14 @@ BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler) {
   return source->second.at(offset);
 }
 SystemClocks::Route SystemClocks::Resolve(Bit bit,
-                                          const ScanScheduler& scheduler) {
+                                          const ScanScheduler& scheduler,
+                                          size_t version) {
+  // shortcut: one cached version; expand if 4096-stage/1024-wait runs exceed
+  // 45s.
+  if (cache_version_ != version) {
+    routes_.clear();
+    cache_version_ = version;
+  }
   std::vector<Bit> path;
   std::set<Bit> active;
   Route route;
@@ -125,7 +237,7 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
       throw std::runtime_error("cyclic system-clock path");
     }
     path.push_back(bit);
-    const auto source = Source(bit, scheduler);
+    const auto source = Source(bit, scheduler, version);
     if (source.inverted || source.node >= netlist_.nodes.size()) {
       throw std::runtime_error(node.origin +
                                ": inactive or inverted system-clock path");
@@ -134,8 +246,11 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
   }
   for (auto it = path.rbegin(); it != path.rend(); ++it) {
     const auto& node = netlist_.nodes[it->first];
-    uint64_t multiplier = Factor(node, "FreqMultiplier");
-    uint64_t divider = Factor(node, "FreqDivider");
+    const auto* definition = DefinitionAt(*it, version);
+    uint64_t multiplier =
+        definition ? definition->multiplier : Factor(node, "FreqMultiplier");
+    uint64_t divider =
+        definition ? definition->divider : Factor(node, "FreqDivider");
     const auto common = std::gcd(multiplier, divider);
     multiplier /= common;
     divider /= common;
@@ -163,7 +278,7 @@ void SystemClocks::BuildSafety() {
         if (routing) {
           const Bit destination{id, Index(node, i)};
           upstream[destination].emplace_back(source.node, source.index);
-          fanout_[{source.node, source.index}].push_back(destination);
+          fanout_[{source.node, source.index}].insert(destination);
         }
         if (!routing || source.inverted) mark(source);
       }
@@ -210,13 +325,13 @@ void SystemClocks::BuildSafety() {
 std::string SystemClocks::Check(const std::string& target,
                                 const ScanScheduler& scheduler) {
   const auto bit = Target(target);
-  const auto route = Resolve(bit, scheduler);
+  const auto route = Resolve(bit, scheduler, version_);
   BuildSafety();
   if (unsafe_.count(route.root)) {
     throw std::runtime_error("system-clock root has unsupported fanout: " +
                              Name(route.root));
   }
-  checked_[bit] = route;
+  checked_[bit] = {route, version_};
   return Name(route.root);
 }
 std::pair<std::string, uint64_t> SystemClocks::Wait(
@@ -227,8 +342,8 @@ std::pair<std::string, uint64_t> SystemClocks::Wait(
   if (checked == checked_.end()) {
     throw std::runtime_error("system-clock wait requires prior iClock");
   }
-  const auto route = Resolve(bit, scheduler);
-  const auto& previous = checked->second;
+  const auto route = Resolve(bit, scheduler, checked->second.version);
+  const auto& previous = checked->second.route;
   if (route.root != previous.root || route.multiplier != previous.multiplier ||
       route.divider != previous.divider) {
     throw std::runtime_error(
@@ -251,7 +366,7 @@ std::pair<std::string, uint64_t> SystemClocks::Wait(
       for (size_t next = 0; next < pending.size(); ++next) {
         const auto current = pending[next];
         if (held.count(current) &&
-            Resolve(current, scheduler).root == route.root) {
+            Resolve(current, scheduler, version_).root == route.root) {
           throw std::runtime_error(
               "system-clock wait conflicts with held clock: " + Name(current));
         }

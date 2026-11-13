@@ -372,7 +372,8 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
       result += "Source " + Signals(netlist, node.inputs.at("Source")) + ";\n";
     }
   }
-  if (node.kind == "DataRegister" && result.size() == body_begin + 3) {
+  if ((node.kind == "DataRegister" || node.kind == "ToClockPort") &&
+      result.size() == body_begin + 3) {
     result.resize(body_begin);
     return result + ";\n";
   }

@@ -9,20 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, relative system-clock waits passed the complete
+On 2026-11-14, system-clock override snapshots passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/system-clock-confirmed-full.log/.exit. This includes all41 generator CLI
+build/clock-override-final-full.log/.exit. This includes all41 generator CLI
 suites under dynamic/static builds, native tests,51 directional and seven legacy
 Tessent standards, all334 parser and119 scanner rules across2523 ICL files,
-and six Vim/Neovim tests (179.043s). Full wall time was993.511s. Five optional
+and six Vim/Neovim tests (182.629s). Full wall time was1050.603s. Five optional
 ANTLR integration tests were skipped because ICL_REF_DIR was unset.
 
 Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
-main35, clock17, client-control18 and reset-preview12 methods. The final clock
-fixtures also passed a separate leak-enabled run after their hierarchy correction.
-Formatting, naming and independent source review pass; the review's unrelated
-held-clock finding has a failing-before/passing-after native regression. See
-[the scope and evidence](#relative-system-clock-waits-2026-11-14).
+main35, clock30, client-control18 and reset-preview12 methods. Formatting, naming
+and independent source review pass. See
+[the scope and evidence](#system-clock-override-snapshots-2026-11-14).
 The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
@@ -3591,4 +3589,48 @@ Exact submitted files/hashes, fetched logs and comparison commands/results are
 retained in build/system-clock-vendor-probe. The remote run is under the authorized
 lianghuaxiao /tmp/icl-system-clocks-20261114 directory. This is a small direct
 probe, not a new stored directional certificate or general clock equivalence.
+Strict coverage and Rocky8 qualification have not been refreshed.
+
+### System-clock override snapshots (2026-11-14)
+
+`iClockOverride` changes one scalar/indexed ToClockPort's source and positive
+frequency factors. Each omitted field returns to its original ICL default.
+Previously checked clocks retain their duration snapshot until another `iClock`;
+applied mux changes still revalidate that saved version. Current reservations
+independently follow the latest routing. Introduced cycles are rejected before
+publishing the override, including cycles through unselected ClockMux branches.
+
+Normalized output contains root checks/waits and omits resolved overrides.
+Reset-only output retains declarations and procedure text; reset and procedure
+return preserve override/check history. A formerly unconnected ToClockPort may
+receive an explicit source. Its flat declaration now uses the valid semicolon
+form, sharing the existing empty DataRegister serialization rule. Oscillator
+and differential targets, unsafe non-clock fanout, absolute-time waits and
+general clock events remain outside this increment.
+
+Thirty clock CLI methods pass through original/flat/generated/reset-only forms.
+Native tests cover current reservations versus old durations, moved roots,
+failed-cycle rollback and unchanged hardware. Eight initial override methods
+fail on the prior unsupported command. Independent source review is clean.
+The bounded single-version route cache completes4096 forwarding instances
+(219071 ICL bytes) and1024 waits alternating old/current versions in4.32s;
+the corresponding leak-enabled run takes21.4063s. The declared workload target
+remains45s, with no general speedup claim. Native scheduler/flatten/netlist and
+main35/clock30/client18/reset12 leak-enabled ASan/UBSan checks pass in
+build/clock-override-final-sanitizer-*. Full integration passes in
+build/clock-override-final-full.log/.exit0 (1050.603s):41 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules, editor6 in182.629s;
+five optional ANTLR tests skipped.
+
+A Tessent2026.2 probe changes both the source and factors before testing omitted
+fields. Its exports restore the ICL defaults and match our wait sequence:
+root10, other35, root10, root25. The source and normalized vendor exports have
+identical commands; the vendor removes redundant iClock commands from our text.
+Exact input hashes, fetched evidence and comparison.json are retained under
+build/clock-override-vendor-probe/changed-defaults. The earlier partial-factor
+probe also matches10/10/5 root waits. A separate no-option override is rejected
+by Tessent as missing an option, while the IEEE optional-field interpretation
+here restores all ICL defaults. The v2023.4 manual describes different omitted
+source/factor behavior; it must not be substituted for these measured2026.2
+results. These small probes are not formal directional certificates.
 Strict coverage and Rocky8 qualification have not been refreshed.

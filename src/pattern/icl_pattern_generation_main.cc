@@ -377,6 +377,8 @@ std::string Generate(
         reservations.Reset();
         pending.Clear();
         result += synchronous ? "iReset -sync\n" : "iReset\n";
+      } else if (operation.command == "iClockOverride") {
+        clocks.Override(operation, context);
       } else if (operation.command == "iClock") {
         result += Command(
             {"iClock", clocks.Check(operation.arguments.at(0), scheduler)});
@@ -558,9 +560,8 @@ int main(int argc, char** argv) {
            "Nonzero TAP waits and TAP scans require explicit iReset.\n"
            "Standalone iRunLoop TCK waits need no reset. iClock and -sck "
            "support\n"
-           "relative positive clock-only routes. Absolute time, clock "
-           "overrides\n"
-           "and general serial-derived clock events remain unsupported.\n"
+           "relative positive clock-only routes and versioned iClockOverride.\n"
+           "Absolute time and general clock events remain unsupported.\n"
            "Independent register and data/control-port iMerge calls can "
            "combine\n"
            "ordered applies, including reads, slices, aliases and masks.\n";

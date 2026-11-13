@@ -22,6 +22,111 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestClockOverrideSnapshots() {
+  pattern::Design design;
+  design.AddIcl("overrides.icl", R"(Module Top {
+    ClockPort first; ClockPort second;
+    ToClockPort out { Source first; FreqDivider 2; }
+    ToClockPort other { Source second; }
+    ScanInPort si; ScanRegister value { ScanInSource si; }
+    ScanOutPort so { Source value; }
+  })");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("value", "1");
+  pattern::SystemClocks clocks(netlist);
+  z3::context context;
+  const auto out = netlist.node_ids.at("out");
+  const auto other = netlist.node_ids.at("other");
+  clocks.Check("out", scheduler);
+  clocks.Override({"iClockOverride",
+                   {"out", "-source", "second", "-freqMultiplier", "3",
+                    "-freqDivider", "1"},
+                   "overrides:1",
+                   {}},
+                  context);
+  const auto old = clocks.Wait("out", 3, scheduler, {{out, "0"}});
+  Require(old.first == "first" && old.second == 6,
+          "old duration does not protect a clock moved to another root");
+  clocks.Check("second", scheduler);
+  bool rejected = false;
+  try {
+    clocks.Wait("second", 1, scheduler, {{out, "0"}});
+  } catch (const std::runtime_error& error) {
+    rejected =
+        std::string(error.what()).find("held clock") != std::string::npos;
+  }
+  Require(rejected, "new override connection protects held clock");
+  clocks.Check("out", scheduler);
+  clocks.Override({"iClockOverride",
+                   {"out", "-source", "first", "-freqDivider", "5"},
+                   "overrides:2",
+                   {}},
+                  context);
+  Require(clocks.Wait("out", 3, scheduler, {{out, "0"}}).second == 1,
+          "current routing differs from checked duration");
+  rejected = false;
+  try {
+    clocks.Wait("out", 3, scheduler, {{other, "1"}});
+  } catch (const std::runtime_error& error) {
+    rejected =
+        std::string(error.what()).find("held clock") != std::string::npos;
+  }
+  Require(rejected, "old duration still protects another current consumer");
+  clocks.Override(
+      {"iClockOverride", {"other", "-source", "out"}, "overrides:3", {}},
+      context);
+  rejected = false;
+  try {
+    clocks.Override(
+        {"iClockOverride", {"out", "-source", "other"}, "overrides:4", {}},
+        context);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("cyclic") != std::string::npos;
+  }
+  Require(rejected, "introduced current cycle rejected before use");
+  Require(clocks.Check("out", scheduler) == "first" &&
+              clocks.Wait("out", 2, scheduler).second == 10,
+          "failed override preserves the previous definition");
+  Require(scheduler.Value("value") == "1" && scheduler.Value("first") == "x" &&
+              scheduler.Value("second") == "x",
+          "override declarations and waits preserve hardware state");
+}
+void TestClockOverrideScale() {
+  std::string source =
+      "Module Stage { ClockPort ck; ToClockPort out { Source ck; } } "
+      "Module Top { ClockPort first; ClockPort second; ";
+  for (size_t i = 0; i < 4096; ++i) {
+    const auto previous = i ? "c" + std::to_string(i - 1) + ".out" : "first";
+    source += "Instance c" + std::to_string(i) +
+              " Of Stage { InputPort ck = " + previous + "; }\n";
+  }
+  source += "}";
+  pattern::Design design;
+  design.AddIcl("override-scale.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  pattern::SystemClocks clocks(netlist);
+  z3::context context;
+  clocks.Check("c4095.out", scheduler);
+  clocks.Override(
+      {"iClockOverride", {"c0.out", "-source", "second"}, "scale:1", {}},
+      context);
+  const std::map<size_t, std::string> held{
+      {netlist.node_ids.at("c4095.out"), "0"}};
+  const auto start = std::chrono::steady_clock::now();
+  for (size_t i = 0; i < 1024; ++i) {
+    const auto wait = clocks.Wait("c4095.out", 1, scheduler, held);
+    Require(wait.first == "first" && wait.second == 1,
+            "alternating duration/reservation versions preserve old wait");
+  }
+  std::cout << "clock override versions: stages=4096 waits=1024 bytes="
+            << source.size() << " seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << std::endl;
+}
 void TestRelativeSystemClocks() {
   const std::string source = R"(Module Top {
     ClockPort root[3:2]; ClockPort other;
@@ -2639,6 +2744,8 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestClockOverrideSnapshots();
+    TestClockOverrideScale();
     TestRelativeSystemClocks();
     TestMultipleTapResetSnapshot();
     TestStandaloneIdle();

@@ -59,7 +59,7 @@ full model coverage or Tessent equivalence.
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
-| Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on positive clock-only routes, ordered muxes, exact fixed-ratio scaling and root-relative replay | General implicit selection, inverted child clock phases, clock overrides/oscillators/differential routes, absolute-time waits, general clock events and external time-dependent instrument behavior |
+| Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on positive clock-only routes, ordered muxes, exact fixed-ratio scaling, versioned overrides and root-relative replay | General implicit selection, inverted child clock phases, oscillators/differential routes, absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
@@ -1310,3 +1310,20 @@ Distinct equivalent clock roots, independent TAP phases, shared serial storage
 and implicit multiple-TAP reset ownership remain required. Vendor loading
 failures provide no multiple-TAP certificate; strict coverage and Rocky8
 qualification predate this implementation.
+
+## System-clock override snapshots (2026-11-14)
+
+Per-bit version histories retain previously checked durations until another iClock;
+current reservations use current routes. Omitted source/factors return to immutable
+ICL defaults. Prospective cycles fail atomically, and non-clock fanout remains
+unsupported. Native snapshot/reservation/rollback tests and30 CLI methods pass;
+4096-stage/1024-wait alternating-version benchmark takes4.32s optimized and21.4063s
+with leak checks. Independent review, naming/style and selected native/CLI
+ASan/UBSan checks pass. Full integration passes in
+build/clock-override-final-full.log/.exit0 (1050.603s):41 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in182.629s;
+five optional ANTLR tests skipped. See
+[the guide](pattern-generation.md#system-clock-override-snapshots-2026-11-14)
+for exact evidence and measured Tessent2026.2 omitted-default/no-option differences.
+Oscillators, absolute time, general events, strict coverage and later platform
+qualification remain open.
