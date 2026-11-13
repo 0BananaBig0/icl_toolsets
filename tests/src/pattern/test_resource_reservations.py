@@ -299,11 +299,10 @@ class Reservations(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertEqual(output, (self.root / 'replay.pdl').read_text())
 
-    def test_reset_still_rejects_unapplied_actions(self):
-        (self.root / 'result.pdl').write_text('previous output')
-        error = self.generate('iTake gate; iWrite gate 0; iReset', ok=False)
-        self.assertIn('unapplied', error)
-        self.assertEqual((self.root / 'result.pdl').read_text(), 'previous output')
+    def test_reset_cancels_unapplied_assignments_and_ownership(self):
+        output = self.generate('iTake gate; iWrite gate 0; iReset; iWrite target 5; iApply')
+        self.assertNotIn('iWrite', output.split('iReset\n')[1])
+        self.assertIn('iWrite target 0b0101', output)
 
     def test_persistent_survives_calls_until_release(self):
         definitions = ('iProc own {} {iTake gate -persistent; iWrite gate 0; iApply}\n'

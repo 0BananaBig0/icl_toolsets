@@ -50,6 +50,21 @@ std::string ResizePdlBits(std::string bits, size_t width) {
   return bits;
 }
 }  // namespace
+void ValidatePdlAccessTarget(const Netlist& netlist, const PdlTarget& target,
+                             bool read) {
+  for (const auto& bit : target.bits) {
+    if (bit.node < netlist.nodes.size()) {
+      const auto& node = netlist.nodes[bit.node];
+      if (node.kind == "ScanRegister" || node.kind == "DataRegister" ||
+          node.kind == "DataOutPort" || (!read && IsReservableResource(node))) {
+        continue;
+      }
+    }
+    throw std::runtime_error(
+        "write target requires a register or data port; reads require "
+        "observable storage or outputs");
+  }
+}
 std::string PdlNumber(z3::context& context, const std::string& text,
                       size_t width) {
   if (!width || width > kMaxBits || text.size() > kMaxBits ||

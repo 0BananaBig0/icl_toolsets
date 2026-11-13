@@ -349,6 +349,37 @@ Files: `src/pattern/pattern_merge.cc`, existing
 - [x] Run full dynamic/static regression, focused leak-enabled sanitizers,
   style/naming and independent review; record bounds, results and remaining work.
 
+## Task 16: Reset cancels unapplied reads and writes
+
+IEEE 1687-2014 §7.9.9(a), p164/PDF178, resets controlling and expected state.
+Six Tessent 2026.2 probes (write/read/both, async/sync) confirm pending operations
+are discarded, not applied before or after reset. Retained script:
+`tests/src/pattern/probe_pending_reset.tcl`; remote evidence under
+`test_icl_toolsets/test_pending_reset/run_2026_11_13`, local ignored copy under
+`build/pending-reset-probe`. This observed queue rule supplements the standard.
+
+Reuse Runtime pending tracking, Generate's queue and ResourceReservations::Reset.
+Validate queued target/value spelling without scheduling canceled operations.
+Reset-only grouping treats reset as a queue boundary; ResetTargets excludes
+reads/writes canceled before apply, without dropping earlier applied accesses.
+Keep immutable procedures, call-origin diagnostics and staged output publication.
+Work is linear in operations apart from existing target/value resolution.
+
+Files: `pattern_runtime.cc`, `icl_pattern_generation_main.cc`,
+`pattern_scheduler.cc`, `pattern_values.h/.cc`, native runtime tests, existing resource tests,
+new `tests/src/pattern/test_pending_reset.py`, Makefile and support docs.
+
+- [x] Add RED tests for async/sync queues, end-of-stream reset, queues across
+  files/calls, resource release, reset-only rewrite without spurious preambles,
+  post-reset access, malformed discarded target/value and atomic publication.
+- [x] Clear runtime/generator queues at successful reset, retain immediate
+  target/value validation, and exclude canceled accesses from reset planning.
+  Expected: native/runtime, focused CLI and resource checks pass; original,
+  flat/generated and reset-only replay agree.
+- [x] Full dynamic/static regression, focused leak-enabled sanitizers,
+  style/naming and independent review; document vendor observations separately
+  from certification and retain remaining model requirements.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -509,3 +540,25 @@ clang-tidy naming and whitespace checks pass. Independent review's declared-
 control bypass was reproduced RED and repaired GREEN before the final regression.
 A 4096-bit input/64-bit register through three replay forms took 0.16s/57,700 KiB.
 No new Tessent certificate or simultaneous vector-output support is claimed.
+
+Task 14 completed in `3fa4630`. Full dynamic/static `make check`, native scheduler
+and five CLI cases under ASan/UBSan/LeakSanitizer, style/naming and independent
+review passed. The 257-output/64-bit case took 0.154 s for three replay forms.
+Distinct paths and multiple TAPs remain open. See
+[shared-output evidence](../../pattern-generation.md#shared-scan-output-observations-2026-11-13).
+
+Task 15 completed in `85745b9`. Full dynamic/static `make check`, 13 observation
+cases under ASan/UBSan/LeakSanitizer, style/naming and independent review passed.
+The 64-call sliced-read case uses two applies instead of 128; no runtime speedup
+or general optimality is claimed. See
+[merge-slice evidence](../../pattern-generation.md#sliced-and-aliased-merge-observations-2026-11-13).
+
+Task 16 passed the final full dynamic/static `make check` (exit 0,
+`build/pending-reset-regression-final.log`), native runtime/scheduler tests and
+seven reset/34 resource CLI tests under ASan/UBSan/LeakSanitizer with leak
+detection enabled. Independent review's canceled target-kind validation issue
+was reproduced RED and fixed before final verification. Style/naming/whitespace
+checks pass. Six Tessent 2026.2 probes establish queue discard for write/read/both
+and async/sync reset; these are observations, not new qualification certificates.
+See [reset-queue evidence](../../pattern-generation.md#reset-cancels-queued-accesses-2026-11-13).
+All broader remaining requirements above remain open.

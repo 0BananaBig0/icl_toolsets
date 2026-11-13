@@ -21,6 +21,9 @@ std::string PdlNumber(z3::context& context, const std::string& text,
 std::string PdlDataValue(z3::context& context, const Netlist& netlist,
                          const PdlTarget& target, const std::string& text);
 PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text);
+// Check declaration kinds without requiring a reachable hardware schedule.
+void ValidatePdlAccessTarget(const Netlist& netlist, const PdlTarget& target,
+                             bool read);
 bool IsReservableResource(const NetlistNode& node);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_VALUES_H_

@@ -205,7 +205,7 @@ std::string Generate(
           if (nested != starts.end()) end = std::max(end, nested->second->end);
           const auto& name = operations[next].command;
           if (name == "iWrite" || name == "iRead") queued = true;
-          if (name == "iApply") queued = false;
+          if (name == "iApply" || name == "iReset") queued = false;
           end = std::max(end, next + 1);
         }
         const std::vector<pattern::Operation> group(operations.begin() + index,
@@ -256,6 +256,15 @@ std::string Generate(
       }
       if (rewritten) rewritten->push_back(operation);
       if (operation.command == "iWrite" || operation.command == "iRead") {
+        // Reset may discard this queue, but malformed operands still fail.
+        const auto target =
+            pattern::ResolvePdlTarget(netlist, operation.arguments.at(0));
+        pattern::ValidatePdlAccessTarget(netlist, target,
+                                         operation.command == "iRead");
+        if (operation.arguments.size() == 2) {
+          pattern::PdlDataValue(context, netlist, target,
+                                operation.arguments.at(1));
+        }
         pending.push_back(operation);
       } else if (operation.command == "iApply") {
         const bool together =
@@ -271,13 +280,10 @@ std::string Generate(
         if (steps.empty()) result += "iApply\n";
         pending.clear();
       } else if (operation.command == "iReset") {
-        if (!pending.empty()) {
-          throw std::runtime_error(
-              "iReset with pending actions requires queued-state integration");
-        }
         const bool synchronous = !operation.arguments.empty();
         scheduler.Reset(synchronous);
         reservations.Reset();
+        pending.clear();
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iRunLoop") {
         if (!pending.empty()) {

@@ -623,7 +623,7 @@ class Runtime::Impl {
       if (!pending_) pending_operation_ = operations_.size();
       pending_ = true;
     }
-    if (name == "iApply") pending_ = false;
+    if (name == "iApply" || name == "iReset") pending_ = false;
     if (name == "iRunLoop" && pending_) {
       throw std::runtime_error("iRunLoop has unapplied operations");
     }

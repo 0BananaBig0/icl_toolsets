@@ -52,7 +52,7 @@ full model coverage or Tessent equivalence.
 
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
-| Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides | Complete runtime command coverage and broader real-pair generation |
+| Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation | Complete runtime command coverage and broader real-pair generation |
 | Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; source-located diagnostics | Full source-kind checks and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain and canonical replay | Simultaneous vector scan-return lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free top-level pin assumptions | Feedback resets, general gated events and complete vendor builtin models |

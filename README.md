@@ -366,7 +366,9 @@ supported `iState` assumptions, including indexed and alias resources, instance 
 A partial release leaves other taken bits protected. Tessent's default-instance
 `iTake` and `-persistent` option are supported within the ordered input stream.
 An explicit `iReset` or `iReset -sync` clears existing resource ownership after
-the hardware reset; use a new `iTake` to reserve resources again. Calls containing
+the hardware reset and discards queued reads/writes without applying them;
+use a new `iTake` to reserve resources again. Malformed queued targets and values
+still fail validation. Calls containing
 reservations remain serialized. Other serial-control/clock-port reservations and
 cross-pattern-set lifecycles remain unsupported; see [resource limits](docs/pattern-generation.md#resource-reservations).
 

@@ -9,7 +9,8 @@ schedules supported primary-pin and mixed primary/scan DataRegister operations. 
 
 ## Current verification
 
-On 2026-11-13, after adding shared scan-output observations, full dynamic/static
+On 2026-11-13, after adding shared scan-output observations, sliced/aliased merge
+reads and reset queue cancellation, full dynamic/static
 `make -j2 --jobserver-style=pipe check` passed, including the Vim/Neovim corpus
 checks, 1,916 ICL regression cases and 2,180 conformance cases. All 334 parser
 and 119 scanner rules were exercised across 2,504 ICL files. Five optional ANTLR
@@ -17,9 +18,9 @@ integration tests were skipped because `ICL_REF_DIR` was unset. Rule coverage
 does not establish full handwritten line/branch coverage; the strict coverage
 gate remains unmet in the last recorded measurement.
 
-The latest focused ASan/UBSan/LeakSanitizer run covered the native scheduler and
-five shared-output cases, with leak detection enabled. See
-[shared-output evidence](#shared-scan-output-observations-2026-11-13) for the
+The latest focused ASan/UBSan/LeakSanitizer run covered the native runtime and
+scheduler, seven reset cases and 34 resource cases, with leak detection enabled. See
+[reset-queue evidence](#reset-cancels-queued-accesses-2026-11-13) for the
 commands, logs, review and measured scale. This did not rerun installation,
 RTL simulation or strict authored-code coverage.
 
@@ -437,6 +438,10 @@ broader syntax support and never execute PDL.
   scan-interface control ports still require the supported single-TAP backend.
   Hardware starts unknown; ResetValue metadata is never treated as a power-on
   reset. A child-module iReset is rejected instead of promoted to a global reset.
+  Reset discards pending reads/writes and clears resource ownership; it does
+  not apply the discarded queue. Targets, declaration kinds and operands are
+  still validated. Reset-only rewriting retains canceled source commands but
+  does not insert releases for them.
 - ScanMux and compiled LogicSignal selection, including register-controlled
   SIB and local-reset prerequisites. Reset release cannot enable an update on
   the same edge retroactively.
@@ -2043,3 +2048,55 @@ now emits two applies instead of the baseline 128. Three replay forms took
 `build/merge-slices-scale.log`). This is an apply-count reduction, not a measured
 runtime speedup or a global optimization claim. No new vendor certificate,
 installation or strict authored-coverage measurement was made for this change.
+
+## Reset cancels queued accesses (2026-11-13)
+
+An explicit `iReset` or `iReset -sync` discards unapplied `iWrite` and `iRead`
+operations, including queues spanning input files or a caller and its reset
+procedure. Previously applied accesses remain in the generated pattern. Reset
+also clears resource ownership. Discarded accesses still undergo target-kind,
+range and value validation; malformed input must fail without replacing an
+existing output. No scan or reset-release preamble is generated solely for a
+canceled access.
+
+IEEE 1687-2014 §7.9.9(a), printed p164/PDF p178, specifies resetting controlling
+and expected state. Six Tessent 2026.2 probes additionally establish the queue
+ordering: queued writes, reads and combined reads/writes disappear on async or
+sync reset, while a preceding applied write remains. The maintained probe is
+`tests/src/pattern/probe_pending_reset.tcl`. Vendor logs and exported PDL remain
+under `/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_pending_reset/run_2026_11_13`,
+with a local ignored copy in `build/pending-reset-probe/`. These are behavior
+observations, not directional qualification certificates.
+
+The seven CLI tests in `tests/src/pattern/test_pending_reset.py` cover queue
+boundaries, TAP reset, ownership, original/flat/generated replay, immutable
+procedure rewriting, real local-reset prerequisites and failed-output
+preservation. A native runtime test covers a queue crossing files. Positive
+cases failed before the fix. Independent review found that unsupported target
+kinds could escape validation when canceled; five additional rejection cases
+failed before the shared target-kind check and now pass.
+
+Queue clearing and reset-target filtering are linear in operation count,
+apart from existing target/value resolution. As a representative check of the
+added per-access validation, the existing 64-call, 128-storage-bit merge case
+(9,801 ICL+PDL bytes) took 0.205 s for three replay forms. The complete 13-case
+observation suite took 2.40 s and 59,124 KiB peak RSS with GCC 16.2.1 `-O2` on
+Linux 6.18.33.2 WSL2. Command:
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' python3 tests/src/pattern/test_merge_observations.py build/icl-pattern-generation`.
+Log: `build/pending-reset-scale.log`. These measurements establish tested scale,
+not a runtime speedup.
+
+The native runtime and scheduler tests, seven reset tests and 34 resource tests
+passed Clang ASan/UBSan/LeakSanitizer with
+`ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1` using the rebuilt
+`build/local-reset-sanitize/` binaries. Logs:
+`build/pending-reset-sanitizer-{native,cli}-final.log`. Google formatting and
+changed-source clang-tidy checks pass. No installation, RTL simulation, strict
+authored-code coverage or new directional vendor certification was run.
+
+The final full dynamic/static `make -j2 --jobserver-style=pipe check` passed
+(exit 0, `build/pending-reset-regression-final.log`), including 1,916 ICL
+regression cases, 2,180 conformance cases, 37 directional and seven legacy
+offline vendor standards, all 334 parser and 119 scanner rules across 2,504
+files, and the Vim/Neovim corpus integration suite. Five optional ANTLR checks
+were skipped because `ICL_REF_DIR` was unset. Whitespace checks also pass.

@@ -802,7 +802,12 @@ class ScanScheduler::Impl {
   std::set<size_t> ResetTargets(
       const std::vector<Operation>& operations) const {
     std::set<size_t> targets, aliases;
-    for (const auto& operation : operations) {
+    bool canceled = false;
+    for (auto it = operations.rbegin(); it != operations.rend(); ++it) {
+      const auto& operation = *it;
+      if (operation.command == "iReset") canceled = true;
+      if (operation.command == "iApply") canceled = false;
+      if (canceled) continue;
       if (operation.command != "iWrite" && operation.command != "iRead") {
         continue;
       }

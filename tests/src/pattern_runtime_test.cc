@@ -270,6 +270,14 @@ void TestEndOfStream() {
   runtime.Finish();
   Fails([&] { runtime.Execute("late.pdl", "iApply\n"); }, "finished");
 
+  pattern::Runtime reset(design, "Top");
+  reset.Execute("queued.pdl", "iWrite reg 1\niRead reg 0\n");
+  reset.Execute("reset.pdl", "iReset\n");
+  reset.Finish();
+  Require(reset.operations().size() == 3 &&
+              reset.operations().back().command == "iReset",
+          "reset clears pending status without losing source operation order");
+
   pattern::Runtime pending(design, "Top");
   pending.Execute("pending.pdl", "iWrite reg 1\n");
   Fails([&] { pending.Finish(); }, "pending.pdl:1:1");
