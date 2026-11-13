@@ -1,0 +1,172 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "feedback_reset",
+    "top": "FeedbackReset",
+    "icl": [
+      "tests/cases/ours/pattern_generation/feedback_reset.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/feedback_reset.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/feedback_reset.icl": "b519595b11e72800a41d62d8f535676bb4bdb97087f693facba03ea637046fe9",
+    "tests/cases/ours/pattern_generation/feedback_reset.pdl": "29cd07e0109862e65ae1300b45d3534f66bab86c2218b3c002e49cf2591dad60"
+  },
+  "job": {
+    "id": "feedback_reset",
+    "top": "FeedbackReset",
+    "icl": [
+      "tests/cases/ours/pattern_generation/feedback_reset.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/feedback_reset.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "b519595b11e72800a41d62d8f535676bb4bdb97087f693facba03ea637046fe9",
+      "source_0.pdl": "29cd07e0109862e65ae1300b45d3534f66bab86c2218b3c002e49cf2591dad60",
+      "run.tcl": "db0a152a10e2f21f9efc2aad999378550cb179e672fd9b0e6697e6f2fdd6ef56"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/feedback_reset.icl": "b519595b11e72800a41d62d8f535676bb4bdb97087f693facba03ea637046fe9",
+      "tests/cases/ours/pattern_generation/feedback_reset.pdl": "29cd07e0109862e65ae1300b45d3534f66bab86c2218b3c002e49cf2591dad60"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.830573915038258,
+    "outcome": "ok",
+    "result_sha256": "36840ef79a34af4ae86e348d58edd0f11d5503cc3de1c104bf5e644308fd8924",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "FeedbackReset",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "1"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "1"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "1"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "264138ebe448f48c64f76f3ce5e997c51b93b1119a664c66a7104cadabca2355",
+  "vendor_console_sha256": "7334f252991843c316a8240aa3c3bdc7d7814bec7cae36a2a8d34fdcf320725a",
+  "artifacts": {
+    "flat.pdl": "b65ca2903ab6f52c78d0b37e6d9247944b077f42a556a1788b9da8bb5241ec40",
+    "vendor.pdl": "36840ef79a34af4ae86e348d58edd0f11d5503cc3de1c104bf5e644308fd8924"
+  }
+}

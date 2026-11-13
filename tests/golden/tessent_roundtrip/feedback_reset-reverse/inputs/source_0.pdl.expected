@@ -1,0 +1,5 @@
+iReset
+iWrite c.value 2
+iApply
+iRead c.value 2
+iApply

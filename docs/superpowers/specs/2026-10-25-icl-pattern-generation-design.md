@@ -238,6 +238,20 @@ and arbitrary feedback remain outside this implemented subset. Emission still
 requires a representable register operation: payloads with effects that cannot
 be expressed as iWrite/iRead need the remaining raw-scan output work.
 
+Task39 adds bounded register-reset feedback. The reset graph is condensed into
+components; global simultaneous snapshots retain transient upstream effects.
+Each fixed-ResetValue vector can change at most twice per reset-only closure,
+with an extra pass to record final reset/fill events. Mutually dependent release
+choices share a layer but still require a realizable schedule and concrete replay.
+Capture comparisons retain their earlier snapshot; update reset checks use the
+post-capture closure. General serial/phase-dependent reset changes during shifting
+remain part of the outstanding per-edge model requirements.
+
+Unknown mux selectors join every compatible branch only when no compatible
+encoding is uncovered. Concrete and symbolic evaluators share bounded selector
+cube subtraction, preserving unknown results for missing encodings and per-bit
+joins for overlapping codes. Known selectors retain their existing fast path.
+
 Expand `iMerge` into dependent operation streams and optimize compatible work
 jointly; do not emit a separate merge artifact. Preserve required apply/clock/
 read/reset/resource barriers. IEEE requires an empty apply queue on merge entry;

@@ -309,14 +309,22 @@ SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
       auto match = context_.bool_val(false);
       for (const auto& code : choice.codes) {
         const auto pattern = SymbolicValue::Literal(context_, code.data);
-        match =
-            match || ((selector.bits ^ pattern.bits) & pattern.known) == zero;
+        match = match || ((selector.bits ^ pattern.bits) & pattern.known &
+                          selector.known) == zero;
       }
       const auto next = Bits(choice.source, serial);
       result = Select(match, Select(found, Join(result, next), next), result);
       found = found || match;
     }
-    result = Select(defined, result, unknown);
+    if (!defined.simplify().is_true()) {
+      auto uncovered = context_.bool_val(false);
+      for (const auto& code : UncoveredMuxCodes(node)) {
+        const auto pattern = SymbolicValue::Literal(context_, code);
+        uncovered = uncovered || ((selector.bits ^ pattern.bits) &
+                                  pattern.known & selector.known) == zero;
+      }
+      result = Select(uncovered, unknown, result);
+    }
   } else if (node.model == ModelKind::kGroup) {
     auto found = context_.bool_val(false), uncertain = context_.bool_val(false);
     for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {

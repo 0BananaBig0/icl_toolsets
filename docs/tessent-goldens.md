@@ -684,3 +684,27 @@ rewrite or direct DataRegister-to-ResetPort connection.
 Remote evidence is under
 /data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_data_reset_releases/run_2026_11_13_01,
 in data-reset-release-forward-bundle and data-reset-release-reverse-bundle.
+
+## Self-feedback reset mux (2026-11-13)
+
+Tessent 2026.2 accepts feedback_reset.icl/.pdl, which selects a reset-mux branch
+from the target register's output port. During global reset both mux branches
+are zero even while the selector is unknown. The local concrete/symbolic mux
+precision fix preserves that known reset and avoids an invented startup scan.
+The vendor export now replays unchanged:
+build/feedback-reset-mux-reverse-certificate.log/.exit(0), with the snapshot in
+tests/golden/tessent_roundtrip/feedback_reset-reverse. Coverage becomes 50
+directions (21 forward/29 reverse), 34 cases, plus seven legacy standards.
+
+The first probe referenced an internal child register instead of an output port
+and failed vendor elaboration; its logs remain in feedback-reset-reverse-evidence.
+The corrected port probe passed vendor execution, but initially failed reverse
+comparison because of the extra local scan. That failed comparison remains in
+build/feedback-reset-reverse-certificate.log/.exit(2). No comparator or vendor
+artifact changed when the mux evaluation was fixed.
+
+Corrected remote evidence is under
+/data/workspaces/lianghuaxiao/test/tessent_ijtag/test_icl_toolsets/test_feedback_resets/run_2026_11_13_02,
+in feedback-reset-port-reverse-bundle; local evidence is in
+build/feedback-reset-port-reverse-evidence. This certificate covers this fixture,
+not arbitrary serial-dependent reset events.

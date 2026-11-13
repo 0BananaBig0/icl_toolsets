@@ -170,6 +170,8 @@ struct Netlist {
                                     size_t max_bits = 1024 * 1024) const;
 };
 
+// Disjoint selector cubes not covered by any mux code; work is bounded.
+std::vector<std::string> UncoveredMuxCodes(const NetlistNode& node);
 bool IsInputPort(const std::string& kind);
 struct ScanInterfaceBinding {
   size_t scope;

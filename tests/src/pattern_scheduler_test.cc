@@ -930,6 +930,47 @@ Module ControlResources {
             "explicit replacement succeeds after failed planning");
   }
 }
+void TestFeedbackReleaseGroups() {
+  pattern::Design design;
+  design.AddIcl("feedback-groups.icl", R"(
+Module Cell {
+ Parameter W=1; ScanInPort si; ResetPort rst { ActivePolarity 0; }
+ ScanRegister value[$W-1:0] { ScanInSource si; CaptureSource value; ResetValue 0; }
+ ScanOutPort so { Source value[0]; } DataOutPort q[$W-1:0] { Source value; }
+}
+Module Feedback {
+ ScanInPort si;
+ Instance a Of Cell { InputPort si=si; InputPort rst=b.q; }
+ Instance b Of Cell { InputPort si=a.so; InputPort rst=a.q; }
+ LogicSignal ready { a.q & b.q; }
+ Instance c Of Cell { Parameter W=4; InputPort si=b.so; InputPort rst=ready; }
+ ScanOutPort so { Source c.so; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Feedback");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("a.value", "0");
+  scheduler.Assume("b.value", "0");
+  scheduler.Assume("c.value", "0000");
+  const auto groups =
+      scheduler.ResetPrerequisites({{"iWrite", {"c.value", "9"}, "test", {}}});
+  Require(groups.size() == 1 && groups[0].size() == 2 &&
+              groups[0][0].arguments ==
+                  std::vector<std::string>({"a.value", "0b1"}) &&
+              groups[0][1].arguments ==
+                  std::vector<std::string>({"b.value", "0b1"}),
+          "mutually dependent release choices occupy one component layer");
+  bool rejected = false;
+  try {
+    scheduler.Apply(groups[0]);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("a.value") == "0" &&
+              scheduler.Value("b.value") == "0" &&
+              scheduler.Value("c.value") == "0000",
+          "grouping held controls does not invent a reachable release");
+}
 void TestResetDependencyScale() {
   // Reverse declaration order is the worst case for repeatedly scanning all
   // registers to discover the next reset dependency.
@@ -952,14 +993,14 @@ void TestResetDependencyScale() {
                    .count()
             << '\n';
   netlist.nodes.back().reset = pattern::BitReference{0, 0};
-  bool rejected = false;
-  try {
-    pattern::ScanScheduler cyclic(netlist);
-  } catch (const std::exception& error) {
-    rejected =
-        std::string(error.what()).find("feedback reset") != std::string::npos;
-  }
-  Require(rejected, "reset dependency cycle must not be silently ordered");
+  const auto cycle_start = std::chrono::steady_clock::now();
+  pattern::ScanScheduler cyclic(netlist);
+  std::cout << "feedback reset dependencies: registers=" << kRegisters
+            << " seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             cycle_start)
+                   .count()
+            << '\n';
 }
 void TestGreedyRollback() {
   std::string source = R"(
@@ -2159,6 +2200,7 @@ int main() {
     TestPrimaryAccessTogether();
     TestMixedPortGoals();
     TestParallelControlReservations();
+    TestFeedbackReleaseGroups();
     TestResetDependencyScale();
     TestGreedyRollback();
     TestAddressedRollback();

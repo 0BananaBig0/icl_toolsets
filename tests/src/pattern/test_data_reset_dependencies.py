@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DataRegister outputs participate in the shared acyclic reset graph."""
+"""DataRegister outputs participate in the shared reset graph."""
 import time
 import unittest
 
@@ -59,7 +59,7 @@ class DataResetDependencies(unittest.TestCase):
                     'iWrite c.value 1; iApply; iWrite last.value 9; iApply; '
                     'iRead last.value 9; iApply;\n')
 
-    def test_mixed_reset_cycle_remains_explicit(self):
+    def test_unreleased_mixed_feedback_write_is_bounded(self):
         source = """Module Scan {
  ScanInPort si; ResetPort rst { ActivePolarity 0; }
  ScanRegister value { ScanInSource si; ResetValue 0; }
@@ -80,7 +80,7 @@ Module Chains {
         icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
         icl.write_text(source)
         pdl.write_text('iReset; iWrite s.value 1; iApply;\n')
-        self.assertIn('feedback reset scheduling', self.run_tool(icl, pdl, ok=False))
+        self.assertIn('reachability not proved', self.run_tool(icl, pdl, ok=False))
 
     def test_pure_data_snapshot(self):
         source = """Module Cell {
@@ -181,13 +181,13 @@ Module Chains {
 """
         self.replay(source, 'iState reset 0; iState a.value 1; iState b.value 9; iWrite reset 1; iApply;\n')
 
-    def test_real_reset_feedback_remains_explicit(self):
+    def test_unreleased_self_feedback_write_is_bounded(self):
         source = BASE.replace('InputPort rst = release;', 'InputPort rst = c.value[0];')
         icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
         icl.write_text(source)
         pdl.write_text('iReset; iWrite c.value 9; iApply;\n')
         message = self.run_tool(icl, pdl, ok=False)
-        self.assertIn('feedback reset scheduling', message)
+        self.assertIn('reachability not proved', message)
 
 
     def test_mixed_reset_chain_scale(self):

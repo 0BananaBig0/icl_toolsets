@@ -652,7 +652,7 @@ changes. Bound dependency builds to two parallel jobs.
 ## Remaining completion work (not yet completed)
 
 - Multiple TAPs and intermediate storage taps: extend common-state event planning beyond selected clients, named-chain groups and ShiftEn-only selection completed in Tasks29–31.
-- General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
+- General independently gated/serial-derived events, serial-dependent reset feedback and register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
 - Broader merge optimization: preserve reads, last-write semantics, barriers and reservations while grouping compatible work; benchmark representative scale.
@@ -1056,3 +1056,21 @@ formatting/naming and independent review pass. The initial duplicate-fixture,
 solver-limit and sandbox-sanitizer failures are retained with corrected evidence
 in [the focused plan](2026-11-13-data-reset-releases.md). Strict coverage and
 remaining model requirements are still open.
+
+## Task39: Register reset feedback and mux consensus
+
+Completed [the focused plan](2026-11-13-feedback-resets.md). Register reset
+components use bounded snapshot settlement, preserving transient resets and
+controlling history. Concrete and symbolic mux evaluation join compatible
+branches while retaining unknown results for possible uncovered selector codes.
+Measured constrained snapshots keep the32-register feedback case practical
+without increasing solver limits. General serial/phase-dependent events remain
+part of the outstanding model work.
+
+Full39suite dynamic/static regression, three native/eight CLI leak-enabled
+sanitizer checks, format/naming and independent review pass. The fresh reverse
+certificate brings stored vendor directions to50 plus seven legacy standards.
+The full corpus covers2,518ICL files and334/119parser/scanner rules; six editor
+tests pass. Earlier interrupted runs and failed vendor probes remain recorded.
+Task25 strict coverage is being remeasured with unchanged thresholds; broader
+requirements and qualification of later changes remain unfinished.

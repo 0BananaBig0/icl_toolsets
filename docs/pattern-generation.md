@@ -9,18 +9,19 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, automatic DataRegister reset releases passed the complete
+On 2026-11-13, register reset feedback and mux consensus passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/data-reset-releases-final-full.log/.exit. This includes all38 generator CLI
-suites under dynamic/static builds, native tests,49 directional and seven legacy
-Tessent standards, all334 parser and119 scanner rules across2,517 ICL files,
-and six Vim/Neovim tests (186.241s). Five optional ANTLR integration tests were
+build/feedback-final-full.log/.exit. This includes all39 generator CLI
+suites under dynamic/static builds, native tests,50 directional and seven legacy
+Tessent standards, all334 parser and119 scanner rules across2,518 ICL files,
+and six Vim/Neovim tests (179.205s). Five optional ANTLR integration tests were
 skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native scheduler,new14 reset-release,
-reservation35,argument12,reset-dependency13 andqueued-state15 CLI methods.
+Leak-enabled ASan/UBSan checks passed for native scheduler/state/symbolic tests
+and eight CLI suites: feedback10, reset-release14, reservation35, argument12,
+reset-dependency13, queued-state15, data-scheduling20 and hidden-client8 methods.
 Formatting, naming, whitespace and independent review passed.
-See [reset-release verification](#automatic-dataregister-reset-releases-2026-11-13).
+See [feedback verification](#register-reset-feedback-2026-11-13).
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -480,7 +481,7 @@ capture/shift/update storage when that proof does not hold. Unbound vector contr
 their state, and parallel input frames do not pulse scan controls.
 It rejects
 multiple TAPs, overlapping paths within a selected chain group, intermediate serial taps,
-feedback reset scheduling,
+general serial- or phase-dependent reset events,
 system-clock/absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
 interface events are outside the current complete-scan model; inability to
@@ -536,7 +537,7 @@ Remaining limits: a procedure that reasserts reset internally and then needs
 another release cannot always be repaired from its caller without changing the
 procedure. Cases that none of these caller-site strategies can repair remain
 rejected. Unresolved
-reset sources, forwarding cycles, feedback scheduling and unsupported controller
+reset sources, forwarding cycles, serial-dependent reset events and unsupported controller
 models remain errors. Reset solving is bounded to 4096 control bits and two
 seconds per solver query; a limit is not proof of unreachability. These are
 outstanding requirements, not a reduced final scope.
@@ -2809,6 +2810,10 @@ Strict authored-code coverage and later-change Rocky8 qualification remain open.
 
 ## Mixed storage reset dependencies (2026-11-13)
 
+This Task35 checkpoint predates automatic DataRegister reset releases and
+register feedback support, described in the later sections below. Its cycle
+rejection and fixed-data-control restrictions are historical.
+
 Reset ordering now includes ScanRegister and DataRegister storage in one acyclic
 graph, separate from data write/address/enable ordering. Source-cone discovery
 includes one-hot contributors and their selection conditions. Snapshot passes
@@ -3017,3 +3022,44 @@ forward comparison failed after Tessent added an implicit read. See the
 Full dynamic/static regression passes in build/data-reset-releases-final-full.log/.exit(0):
 38generator suites,49directional/seven legacy standards,2,517ICL files covering
 334/119parser/scanner rules, and six editor tests in186.241s.
+
+## Register reset feedback (2026-11-13)
+
+The scheduler now accepts reset feedback among ScanRegisters and DataRegisters.
+It groups mutually dependent reset controls, propagates resets through global
+simultaneous snapshots, and preserves unknown state, transient assertions and
+controlling-fill history. A component of N registers needs at most 2N changing
+passes because each vector moves only toward its fixed ResetValue; one extra
+pass records reset events after hardware stops changing. Existing work and solver
+limits remain. Grouping reset releases does not prove that held controls are
+writable: scheduling and concrete replay still validate each selected payload.
+
+Capture uses the earlier state for comparisons. Update uses the state after the
+capture-triggered reset closure, including writability and fill checks. General
+resets driven by changing serial or phase pins during shifting remain outside
+this increment; the remaining per-edge model work is still required.
+
+Reset muxes now retain a known result under an unknown selector when all possible
+branches agree. A shared cube-subtraction calculation identifies uncovered
+selector encodings; any possible uncovered encoding keeps the result unknown.
+Overlapping branches retain their per-bit join. Known selectors avoid coverage
+expansion, and unknown-selector coverage has a 4 MiB character-work budget that
+counts full-width scans and copies before allocation.
+
+Ten focused CLI methods pass in build/feedback-mux-cli.log/.exit(0), as do the
+native state and symbolic tests. An independent binary-completion oracle checks
+complete, partial and overlapping mux codes, including symbolic known masks.
+The 8/32-register feedback rings (801/2,475 ICL bytes) take 0.165s/1.144s across
+three replays on local Linux g++16.2.1 -O2; the whole suite takes 2.67s wall time
+and 66,940 KiB peak RSS. Named symbolic snapshots are retained: the same factored
+expressions without them took 20.828s for 32 registers. These measurements do not
+establish a runtime guarantee for arbitrary feedback networks.
+
+The reset-mux feedback fixture passes reverse Tessent certification after the
+mux precision fix. Leak-enabled ASan/UBSan checks pass for three native tests
+and eight affected CLI suites in build/feedback-final-sanitizer-*.log/.exit(0).
+Full dynamic/static regression passes in build/feedback-final-full.log/.exit(0):
+39 generator suites per build, 50 directional and seven legacy standards,
+2,518 ICL files covering all 334 parser and 119 scanner rules, and six editor
+tests in 179.205s. Five optional ANTLR tests remain skipped. See the
+[implementation plan](superpowers/plans/2026-11-13-feedback-resets.md).

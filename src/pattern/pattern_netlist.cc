@@ -1257,6 +1257,51 @@ std::vector<ScanInterfaceBinding> EffectiveScanInterfaces(
   return result;
 }
 
+std::vector<std::string> UncoveredMuxCodes(const NetlistNode& node) {
+  const size_t width = node.inputs.at("SelectedBy").size();
+  size_t remaining = 4 * 1024 * 1024;
+  const auto spend = [&]() {
+    if (width > remaining) {
+      throw std::runtime_error("mux coverage resource limit exceeded");
+    }
+    remaining -= width;
+  };
+  spend();
+  std::vector<std::string> uncovered{std::string(width, 'x')};
+  for (const auto& choice : node.choices) {
+    for (const auto& code : choice.codes) {
+      std::vector<std::string> next;
+      for (auto& cube : uncovered) {
+        spend();
+        bool overlaps = true;
+        for (size_t bit = 0; bit < width; ++bit) {
+          if (cube[bit] != 'x' && code.data.at(bit) != 'x' &&
+              cube[bit] != code.data[bit]) {
+            overlaps = false;
+            break;
+          }
+        }
+        if (!overlaps) {
+          next.push_back(std::move(cube));
+          continue;
+        }
+        spend();
+        for (size_t bit = 0; bit < width; ++bit) {
+          if (cube[bit] == 'x' && code.data[bit] != 'x') {
+            spend();
+            next.push_back(cube);
+            next.back()[bit] = code.data[bit] == '0' ? '1' : '0';
+            cube[bit] = code.data[bit];
+          }
+        }
+      }
+      uncovered = std::move(next);
+      if (uncovered.empty()) return uncovered;
+    }
+  }
+  return uncovered;
+}
+
 bool IsInputPort(const std::string& kind) {
   return kind == "ScanInPort" || kind == "DataInPort" || kind == "ResetPort" ||
          kind == "TRSTPort" || kind == "TMSPort" || kind == "SelectPort" ||

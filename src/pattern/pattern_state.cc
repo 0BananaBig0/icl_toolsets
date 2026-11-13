@@ -191,21 +191,25 @@ class SignalEvaluator {
     std::string value = unknown;
     if (node.model == ModelKind::kMux) {
       const auto selected = Bits(node.inputs.at("SelectedBy"));
-      // An uncertain selector can include an unmapped encoding.
+      const auto compatible = [&](const std::string& code) {
+        for (size_t bit = 0; bit < selected.size(); ++bit) {
+          if (selected[bit] != 'x' && code.at(bit) != 'x' &&
+              selected[bit] != code[bit]) {
+            return false;
+          }
+        }
+        return true;
+      };
       if (selected.find('x') != std::string::npos) {
-        return unknown;
+        for (const auto& hole : UncoveredMuxCodes(node)) {
+          if (compatible(hole)) return unknown;
+        }
       }
       bool found = false;
       for (const auto& choice : node.choices) {
         bool matches = false;
         for (const auto& code : choice.codes) {
-          bool match = true;
-          for (size_t i = 0; i < selected.size(); ++i) {
-            if (code.data.at(i) != 'x' && code.data[i] != selected[i]) {
-              match = false;
-            }
-          }
-          matches = matches || match;
+          matches = matches || compatible(code.data);
         }
         if (matches) {
           const auto next = Bits(choice.source, serial);
@@ -512,7 +516,10 @@ void NetworkState::Reset() {
   // Reset controls may themselves be register outputs. Propagate to a fixed
   // point without inventing a reset or prioritizing a source by traversal
   // order.
-  for (size_t pass = 0; pass <= netlist_.nodes.size(); ++pass) {
+  size_t resets = 0;
+  for (const auto& node : netlist_.nodes) resets += node.reset.has_value();
+  // Each vector changes at most twice; retain the final event-observation pass.
+  for (size_t pass = 0; pass <= 2 * resets; ++pass) {
     SignalEvaluator values(*this);
     std::map<size_t, std::string> next;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {

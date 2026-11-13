@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "feedback_reset",
+      "top": "FeedbackReset",
+      "icl": [
+        "tests/cases/ours/pattern_generation/feedback_reset.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/feedback_reset.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

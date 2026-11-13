@@ -1,0 +1,15 @@
+iProcsForModule FeedbackReset
+
+iProc oracle {} {
+
+   iReset
+   iWrite c.value[3:0] 0b0010
+   iRead  c.value[3:0] 0b0000
+   iApply
+
+   iWrite c.value[3:0] 0b0010
+   iRead  c.value[3:0] 0b0010
+   iApply
+
+
+}

@@ -13,6 +13,110 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestMuxConsensus() {
+  pattern::Design design;
+  design.AddIcl("mux-consensus.icl", R"(
+Module Consensus {
+ DataInPort sel[2:0];
+ DataMux complete[1:0] SelectedBy sel { 3'b0xx: 2'b10; 3'b1xx: 2'b10; }
+ DataMux partial[1:0] SelectedBy sel { 3'b00x: 2'b10; 3'b01x: 2'b10; 3'b10x: 2'b11; }
+ DataMux overlap[1:0] SelectedBy sel {
+  3'b0xx: 2'b10; 3'bx0x: 2'b11; 3'b1xx: 2'b1x; 3'bx1x: 2'b10;
+ }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Consensus");
+  const auto selector = netlist.node_ids.at("sel");
+  z3::context context;
+  const auto bits = context.bv_const("selector_bits", 3);
+  const auto known = context.bv_const("selector_known", 3);
+  pattern::SymbolicNetwork symbolic(netlist, context,
+                                    {{selector, {bits, known}}});
+  for (char first : std::string("01x"))
+    for (char second : std::string("01x"))
+      for (char third : std::string("01x")) {
+        const std::string input{first, second, third};
+        pattern::NetworkState uncertain(netlist);
+        uncertain.Drive(selector, input);
+        for (const std::string name : {"complete", "partial", "overlap"}) {
+          const auto id = netlist.node_ids.at(name);
+          std::string expected;
+          for (size_t value = 0; value < 8; ++value) {
+            std::string candidate(3, '0');
+            bool compatible = true;
+            for (size_t bit = 0; bit < 3; ++bit) {
+              candidate[bit] = (value >> (2 - bit)) & 1 ? '1' : '0';
+              compatible = compatible &&
+                           (input[bit] == 'x' || input[bit] == candidate[bit]);
+            }
+            if (!compatible) continue;
+            pattern::NetworkState concrete(netlist);
+            concrete.Drive(selector, candidate);
+            const auto result = concrete.Value(id);
+            if (expected.empty()) expected = result;
+            for (size_t bit = 0; bit < expected.size(); ++bit) {
+              if (expected[bit] != result[bit]) expected[bit] = 'x';
+            }
+          }
+          Require(uncertain.Value(id) == expected,
+                  "mux unknown selector must join every binary completion");
+          const auto input_value =
+              pattern::SymbolicValue::Literal(context, input);
+          const auto wanted =
+              pattern::SymbolicValue::Literal(context, expected);
+          const auto result = symbolic.Value(id);
+          z3::solver solver(context);
+          solver.add(bits == input_value.bits && known == input_value.known);
+          solver.add(result.bits != wanted.bits ||
+                     result.known != wanted.known);
+          Require(solver.check() == z3::unsat,
+                  "symbolic mux consensus must match the completion oracle");
+        }
+      }
+}
+void TestMuxCoverageBudget() {
+  constexpr size_t kWidth = 4096;
+  pattern::Design design;
+  design.AddIcl("wide-mux.icl",
+                "Module Wide { DataInPort sel[4095:0]; "
+                "DataMux out SelectedBy sel { 4096'b" +
+                    std::string(kWidth, '0') + ": 1'b1; } }");
+  const auto netlist = pattern::Elaborate(design, "Wide");
+  const auto selector = netlist.node_ids.at("sel");
+  const auto output = netlist.node_ids.at("out");
+  pattern::NetworkState state(netlist);
+  state.Drive(selector, std::string(kWidth, '0'));
+  Require(state.Value(output) == "1", "known wide selector retains fast path");
+  z3::context context;
+  pattern::SymbolicNetwork known(
+      netlist, context,
+      {{selector,
+        pattern::SymbolicValue::Literal(context, std::string(kWidth, '0'))}});
+  Require(known.Value(output).known.simplify().get_numeral_uint() == 1,
+          "known symbolic selector needs no coverage expansion");
+  state.Drive(selector, std::string(kWidth, 'x'));
+  bool native_limited = false, symbolic_limited = false;
+  try {
+    state.Value(output);
+  } catch (const std::runtime_error& error) {
+    native_limited =
+        std::string(error.what()).find("mux coverage resource limit") !=
+        std::string::npos;
+  }
+  try {
+    pattern::SymbolicNetwork unknown(
+        netlist, context,
+        {{selector,
+          pattern::SymbolicValue::Literal(context, std::string(kWidth, 'x'))}});
+    unknown.Value(output);
+  } catch (const std::runtime_error& error) {
+    symbolic_limited =
+        std::string(error.what()).find("mux coverage resource limit") !=
+        std::string::npos;
+  }
+  Require(native_limited && symbolic_limited,
+          "wide sparse mux coverage fails within the character-work budget");
+}
 void TestTernaryAgreement() {
   pattern::Design design;
   design.AddIcl("symbolic.icl", R"(
@@ -305,6 +409,8 @@ Module Targets {
 }  // namespace
 int main() {
   try {
+    TestMuxConsensus();
+    TestMuxCoverageBudget();
     TestTernaryAgreement();
     TestOneHotPortValues();
     TestOneHotScanValues();

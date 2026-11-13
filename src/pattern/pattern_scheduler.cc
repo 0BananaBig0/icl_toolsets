@@ -69,9 +69,10 @@ SymbolicValue ResetValue(const SymbolicValue& control,
                          const SymbolicValue& previous) {
   const auto known =
       reset.known & previous.known & ~(reset.bits ^ previous.bits);
-  return Choose(
-      Known(control, true), reset,
-      Choose(Known(control, false), previous, {previous.bits & known, known}));
+  auto& context = control.bits.ctx();
+  return Choose(control.known == context.bv_val(1, 1),
+                Choose(control.bits == context.bv_val(1, 1), reset, previous),
+                {previous.bits & known, known});
 }
 std::string Decode(const z3::model& model, const SymbolicValue& value) {
   std::string bits;
@@ -817,18 +818,32 @@ class ScanScheduler::Impl {
       throw std::runtime_error(message);
     }
     const auto model = solver.get_model();
-    std::map<size_t, size_t> depth;
+    std::map<size_t, std::string> replacements;
+    for (const auto& [id, choice] : choices) {
+      const auto bits = Decode(model, choice);
+      if (bits != state_.Value(id)) replacements.emplace(id, bits);
+    }
+    std::map<size_t, size_t> levels;
+    for (size_t group = 0; group < reset_components_.size(); ++group) {
+      const auto& component = reset_components_[group];
+      if (std::none_of(component.begin(), component.end(),
+                       [&](size_t id) { return replacements.count(id); })) {
+        continue;
+      }
+      size_t level = 0;
+      for (size_t id : component) {
+        for (size_t parent : reset_dependencies_[id]) {
+          const auto found = levels.find(reset_component_.at(parent));
+          if (found != levels.end()) level = std::max(level, found->second + 1);
+        }
+      }
+      levels.emplace(group, level);
+    }
     std::map<size_t, std::vector<Operation>> layers;
     for (size_t id : reset_order_) {
-      if (!choices.count(id)) continue;
-      const auto bits = Decode(model, choices.at(id));
-      if (bits == state_.Value(id)) continue;
-      size_t level = 0;
-      for (size_t parent : reset_dependencies_[id]) {
-        const auto found = depth.find(parent);
-        if (found != depth.end()) level = std::max(level, found->second + 1);
-      }
-      depth[id] = level;
+      if (!replacements.count(id)) continue;
+      const auto& bits = replacements.at(id);
+      const size_t level = levels.at(reset_component_.at(id));
       const auto& node = netlist_.nodes[id];
       const auto frozen = unwritten.find(id);
       if (frozen == unwritten.end()) {
@@ -1250,7 +1265,7 @@ class ScanScheduler::Impl {
         }
         Values before_data;
         if (data_reset_dependencies_) {
-          SettleResets(&next, &fills, &any_drive);
+          SettleResets(&next, &fills, &any_drive, &solver);
           before_data = next;
         }
         for (size_t id : data_plan.order) {
@@ -1326,7 +1341,7 @@ class ScanScheduler::Impl {
           }
         }
         if (data_reset_dependencies_) {
-          SettleResets(&next, &fills, &any_drive);
+          SettleResets(&next, &fills, &any_drive, &solver);
           values = std::make_unique<SymbolicNetwork>(netlist_, context_, next,
                                                      global_resets_);
         }
@@ -1779,25 +1794,77 @@ class ScanScheduler::Impl {
         if (--remaining[child] == 0) ready.insert(child);
       }
     }
-    if (reset_order_.size() != storage.size()) {
-      throw std::runtime_error(
-          "feedback reset scheduling requires fixed-point constraints");
-    }
-    {
-      std::map<size_t, size_t> depths;
-      size_t bits = netlist_.nodes.size();
-      for (size_t id : reset_order_) {
-        size_t depth = netlist_.nodes[id].reset ? 1 : 0;
-        for (size_t parent : dependencies[id]) {
-          depth = std::max(depth, depths.at(parent) + 1);
+    feedback_resets_ = reset_order_.size() != storage.size();
+    const bool feedback = feedback_resets_;
+    if (!feedback) {
+      for (size_t id : reset_order_) reset_components_.push_back({id});
+    } else {
+      // Iterative Kosaraju keeps graph depth off the C++ call stack.
+      std::set<size_t> visited;
+      std::vector<size_t> finished;
+      for (size_t root : storage) {
+        std::vector<std::pair<size_t, bool>> pending{{root, false}};
+        while (!pending.empty()) {
+          const auto [id, expanded] = pending.back();
+          pending.pop_back();
+          if (expanded) {
+            finished.push_back(id);
+          } else if (visited.insert(id).second) {
+            pending.emplace_back(id, true);
+            for (size_t child : children[id]) {
+              pending.emplace_back(child, false);
+            }
+          }
         }
-        depths.emplace(id, depth);
-        reset_passes_ = std::max(reset_passes_, depth);
-        bits += netlist_.nodes[id].Width();
       }
-      reset_work_ = reset_passes_ * bits;
+      visited.clear();
+      for (auto root = finished.rbegin(); root != finished.rend(); ++root) {
+        if (!visited.insert(*root).second) continue;
+        std::vector<size_t> component, pending{*root};
+        while (!pending.empty()) {
+          const size_t id = pending.back();
+          pending.pop_back();
+          component.push_back(id);
+          for (size_t parent : dependencies[id]) {
+            if (visited.insert(parent).second) pending.push_back(parent);
+          }
+        }
+        std::sort(component.begin(), component.end());
+        reset_components_.push_back(std::move(component));
+      }
+      reset_order_.clear();
+      for (const auto& component : reset_components_) {
+        reset_order_.insert(reset_order_.end(), component.begin(),
+                            component.end());
+      }
     }
+    std::vector<size_t> depths(reset_components_.size());
+    size_t bits = netlist_.nodes.size();
+    for (size_t group = 0; group < reset_components_.size(); ++group) {
+      const auto& component = reset_components_[group];
+      const bool cyclic =
+          component.size() > 1 ||
+          dependencies[component.front()].count(component.front());
+      for (size_t id : component) reset_component_[id] = group;
+      size_t depth = 0;
+      for (size_t id : component) {
+        bits += netlist_.nodes[id].Width();
+        for (size_t parent : dependencies[id]) {
+          const size_t ancestor = reset_component_.at(parent);
+          if (ancestor != group) depth = std::max(depth, depths.at(ancestor));
+        }
+      }
+      // A reset-only vector moves at most V -> join(V, R) -> R.
+      depths[group] = depth + (cyclic ? 2 * component.size()
+                               : netlist_.nodes[component.front()].reset ? 1
+                                                                         : 0);
+      reset_passes_ = std::max(reset_passes_, depths[group]);
+    }
+    // Observe reset/fill events after the final changing feedback snapshot.
+    if (feedback) ++reset_passes_;
+    reset_work_ = reset_passes_ * bits;
   }
+
   z3::expr Match(SymbolicNetwork& values, const NetlistNode& node,
                  size_t choice) {
     if (node.kind == "OneHotScanGroup") {
@@ -1867,7 +1934,8 @@ class ScanScheduler::Impl {
     std::vector<z3::expr> selected, clients;
   };
   void SettleResets(Values* state, Values* fills = nullptr,
-                    const z3::expr* event = nullptr) {
+                    const z3::expr* event = nullptr,
+                    z3::optimize* solver = nullptr) {
     if (event && event->is_false()) return;
     if (reset_work_ > 1048576) {
       throw std::runtime_error("reset resource limit; fixed point not proved");
@@ -1889,6 +1957,18 @@ class ScanScheduler::Impl {
         updated.known = updated.known.simplify();
         changed = changed || !z3::eq(updated.bits, state->at(id).bits) ||
                   !z3::eq(updated.known, state->at(id).known);
+        if (solver && feedback_resets_) {
+          const auto bind = [&](z3::expr value, const z3::expr& previous) {
+            if (value.is_numeral() || z3::eq(value, previous)) return value;
+            // Name snapshots so cyclic reset expressions do not keep expanding.
+            const z3::expr named(context_, Z3_mk_fresh_const(context_, "reset",
+                                                             value.get_sort()));
+            solver->add(named == value);
+            return named;
+          };
+          updated.bits = bind(updated.bits, state->at(id).bits);
+          updated.known = bind(updated.known, state->at(id).known);
+        }
         next.at(id) = std::move(updated);
         if (fills && fills->count(id)) {
           auto initial = initial_fill_.at(id);
@@ -2302,7 +2382,7 @@ class ScanScheduler::Impl {
     if (client_controls_) {
       assignments = EventPins(assignments, frame, "capture");
     }
-    SettleResets(&assignments);
+    SettleResets(&assignments, nullptr, nullptr, &solver);
     SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
     SelectScan(solver, values, 0, frame);
     for (size_t id : required) {
@@ -2631,7 +2711,7 @@ class ScanScheduler::Impl {
       frame.instruction = SymbolicValue{ir, context_.bv_val(1, 1)};
     } else {
       state = EventPins(state, frame, "capture");
-      SettleResets(&state);
+      SettleResets(&state, nullptr, nullptr, &solver);
     }
     SymbolicNetwork values(netlist_, context_, state, global_resets_);
     SelectScan(solver, values, 0, frame);
@@ -2723,6 +2803,8 @@ class ScanScheduler::Impl {
           id, Choose(events.at("capture").at(id), value, shifts->at(id)));
     }
     *shifts = std::move(captured);
+    if (feedback_resets_) SettleResets(&pins, nullptr, &event, &solver);
+    const auto before_update = pins;
     for (size_t tick = 0; tick < maximum; ++tick) {
       pins = SerialPins(pins, frame, time, tick);
       SymbolicNetwork values(netlist_, context_, pins, global_resets_, shifts);
@@ -2747,13 +2829,13 @@ class ScanScheduler::Impl {
       }
       *shifts = std::move(next);
     }
-    Values next = state;
+    Values next = before_update;
     if (!tap_) {
       for (const auto& [key, path] : frame.inputs) {
         next.insert_or_assign(key.first, pins.at(key.first));
       }
     }
-    SymbolicNetwork before(netlist_, context_, state, global_resets_);
+    SymbolicNetwork before(netlist_, context_, before_update, global_resets_);
     for (size_t id : registers_) {
       const auto& node = netlist_.nodes[id];
       if (frame.active.count(id)) {
@@ -2762,8 +2844,8 @@ class ScanScheduler::Impl {
                                shifts->at(id).known == load.known &&
                                    shifts->at(id).bits == load.bits));
       }
-      auto value =
-          Choose(events.at("update").at(id), shifts->at(id), state.at(id));
+      auto value = Choose(events.at("update").at(id), shifts->at(id),
+                          before_update.at(id));
       if (node.reset) {
         value = ResetValue(before.Read(*node.reset),
                            SymbolicValue::Literal(
@@ -3153,6 +3235,26 @@ class ScanScheduler::Impl {
     }
   }
 
+  std::pair<Values, Values> InitialValues(const std::vector<size_t>& storage,
+                                          const std::vector<size_t>& pins) {
+    Values state, fills;
+    for (size_t id : storage) {
+      state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
+      fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
+    }
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      if (state_.IsDriven(id)) {
+        state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
+      }
+    }
+    for (size_t id : pins) {
+      state.insert_or_assign(
+          id, SymbolicValue::Literal(context_, state_.Value(id)));
+      fills.insert_or_assign(id,
+                             SymbolicValue::Literal(context_, fill_.at(id)));
+    }
+    return {std::move(state), std::move(fills)};
+  }
   std::vector<ScanStep> Solve(
       const std::vector<Operation>& operations, bool together,
       size_t max_steps = kMaxSteps,
@@ -3477,7 +3579,8 @@ class ScanScheduler::Impl {
       z3::params parameters(context_);
       parameters.set("timeout", 2000U);
       solver.set(parameters);
-      Values state, fills, shifts;
+      auto [state, fills] = InitialValues(storage, pins);
+      Values shifts;
       if (events) {
         for (size_t id : registers_) {
           shifts.emplace(
@@ -3487,21 +3590,6 @@ class ScanScheduler::Impl {
       std::map<size_t, z3::expr> reserved_changed;
       for (const auto& [id, value] : preserved) {
         reserved_changed.emplace(id, context_.bool_val(false));
-      }
-      for (size_t id : storage) {
-        state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
-        fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
-      }
-      for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
-        if (state_.IsDriven(id)) {
-          state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
-        }
-      }
-      for (size_t id : pins) {
-        state.insert_or_assign(
-            id, SymbolicValue::Literal(context_, state_.Value(id)));
-        fills.insert_or_assign(id,
-                               SymbolicValue::Literal(context_, fill_.at(id)));
       }
       std::map<size_t, z3::expr> touched;
       for (const auto& [id, goal] : goals) {
@@ -3570,7 +3658,7 @@ class ScanScheduler::Impl {
         const auto event = scan || any_drive;
         const auto before_capture =
             (tap_ || client_controls_) ? event : any_drive;
-        SettleResets(&state, &fills, &before_capture);
+        SettleResets(&state, &fills, &before_capture, &solver);
         SymbolicNetwork values(netlist_, context_, state, global_resets_);
         SelectScan(solver, values, time, frame);
         const auto scan_events =
@@ -3592,7 +3680,13 @@ class ScanScheduler::Impl {
           frame.active.emplace(id, drive);
           if (touched.count(id)) touched.at(id) = touched.at(id) || held;
         }
-        Values next = state;
+        auto before_update = state;
+        if (feedback_resets_) {
+          SettleResets(&before_update, &fills, &scan, &solver);
+        }
+        SymbolicNetwork update_values(netlist_, context_, before_update,
+                                      global_resets_);
+        Values next = before_update;
         for (size_t id : registers_) {
           const auto& node = netlist_.nodes[id];
           const auto active = frame.active.count(id) ? frame.active.at(id)
@@ -3619,7 +3713,7 @@ class ScanScheduler::Impl {
                                ? SymbolicValue::Literal(context_, goals.at(id))
                                : fills.at(id);
           if (node.reset && goals.count(id)) {
-            const auto writable = Known(values.Read(*node.reset), false);
+            const auto writable = Known(update_values.Read(*node.reset), false);
             requested = Choose(writable, requested, fills.at(id));
             solver.add(z3::implies(!writable, loaded == fills.at(id).bits));
           }
@@ -3636,10 +3730,10 @@ class ScanScheduler::Impl {
           if (node.reset) {
             frame.needs_write.emplace(id, loaded != fills.at(id).bits);
           }
-          auto value = Choose(active, load, state.at(id));
+          auto value = Choose(active, load, before_update.at(id));
           if (node.reset) {
             value =
-                ResetValue(values.Read(*node.reset),
+                ResetValue(update_values.Read(*node.reset),
                            SymbolicValue::Literal(
                                context_, node.constants.at("ResetValue").data),
                            value);
@@ -3656,7 +3750,7 @@ class ScanScheduler::Impl {
                 touched.at(id) ||
                 (active &&
                  (!node.reset ? context_.bool_val(true)
-                              : Known(values.Read(*node.reset), false)));
+                              : Known(update_values.Read(*node.reset), false)));
           }
         }
         cycles = cycles + *frame.clocks;
@@ -3677,14 +3771,15 @@ class ScanScheduler::Impl {
             for (size_t i = 0; i < reset_fill.size(); ++i) {
               if (reset_bits[i] != 'x') reset_fill[i] = reset_bits[i];
             }
-            fill = Choose(event && (Known(values.Read(*node.reset), true) ||
-                                    Known(scan_after.Read(*node.reset), true)),
-                          SymbolicValue::Literal(context_, reset_fill), fill);
+            fill =
+                Choose(event && (Known(update_values.Read(*node.reset), true) ||
+                                 Known(scan_after.Read(*node.reset), true)),
+                       SymbolicValue::Literal(context_, reset_fill), fill);
           }
           fills.at(id) = fill;
         }
         // Native scan updates precede simultaneous reset propagation.
-        SettleResets(&next, &fills, &event);
+        SettleResets(&next, &fills, &event, &solver);
         // Route comparisons through the value present at Capture, before
         // this scan's new write-data/address/enable bits reach Update.
         std::map<std::pair<Key, char>, z3::expr> physical_reads;
@@ -3838,7 +3933,7 @@ class ScanScheduler::Impl {
           if (touched.count(id)) touched.at(id) = touched.at(id) || enabled;
         }
         if (data_reset_dependencies_) {
-          SettleResets(&next, &fills, &event);
+          SettleResets(&next, &fills, &event, &solver);
         }
         for (const auto& [id, previous] : preserved) {
           if (!frame.loads.count(id)) continue;
@@ -3853,7 +3948,7 @@ class ScanScheduler::Impl {
                           Matches(load, wanted)));
         }
         SymbolicNetwork after(netlist_, context_, next, global_resets_);
-        ConstrainResetLoads(solver, frame, values, after, events);
+        ConstrainResetLoads(solver, frame, update_values, after, events);
         ActivatePorts(port_drivers, values, after, next, time, &frame,
                       &touched);
         ConstrainPreserved(solver, after, preserved, desired_preserved,
@@ -3883,7 +3978,8 @@ class ScanScheduler::Impl {
               }
               const auto& node = netlist_.nodes[id];
               if (node.reset) {
-                complete = complete && Known(values.Read(*node.reset), false) &&
+                complete = complete &&
+                           Known(update_values.Read(*node.reset), false) &&
                            Known(after.Read(*node.reset), false);
               }
             }
@@ -4457,7 +4553,7 @@ class ScanScheduler::Impl {
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
   bool parallel_chains_ = false;
-  bool data_reset_dependencies_ = false;
+  bool data_reset_dependencies_ = false, feedback_resets_ = false;
   size_t reset_passes_ = 0, reset_work_ = 0;
   std::vector<std::vector<Key>> clients_;
   std::vector<size_t> client_route_counts_;
@@ -4473,6 +4569,8 @@ class ScanScheduler::Impl {
   std::string global_resets_ = "xx";
   z3::context context_;
   std::vector<size_t> registers_, roots_, order_, reset_order_;
+  std::vector<std::vector<size_t>> reset_components_;
+  std::map<size_t, size_t> reset_component_;
   std::map<size_t, std::string> fill_, initial_fill_, control_masks_,
       end_states_, data_control_masks_;
   std::map<size_t, std::set<size_t>> reset_dependencies_;

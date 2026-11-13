@@ -74,6 +74,59 @@ Module Events {
           "flat reset semantics replay");
 }
 
+void TestFeedbackResetSnapshots() {
+  pattern::Design design;
+  design.AddIcl("feedback.icl", R"(
+Module Cell {
+ Parameter W=1; ResetPort rst; DataRegister value[$W-1:0] { ResetValue 0; }
+ DataOutPort q[$W-1:0] { Source value; }
+}
+Module Feedback {
+ Instance a Of Cell { InputPort rst=b.q; }
+ Instance b Of Cell { InputPort rst=a.q; }
+}
+Module Transient {
+ DataInPort reset;
+ Instance gate Of Cell { InputPort rst=reset; }
+ LogicSignal asserted { gate.q & b.q; }
+ Instance a Of Cell { InputPort rst=asserted; }
+ Instance b Of Cell { InputPort rst=a.q; }
+ Instance child Of Cell { Parameter W=4; InputPort rst=a.q; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Feedback");
+  const auto a = netlist.node_ids.at("a.value");
+  const auto b = netlist.node_ids.at("b.value");
+  for (const auto& initial :
+       {std::string("11"), std::string("1x"), std::string("01")}) {
+    pattern::NetworkState state(netlist);
+    state.Assume(a, initial.substr(0, 1));
+    state.Assume(b, initial.substr(1, 1));
+    state.Reset();
+    Require(state.Value(a) == (initial == "1x" ? "x" : "0") &&
+                state.Value(b) == (initial == "01" ? "1" : "0"),
+            "feedback reset retains snapshot and unknown-state semantics");
+    const auto events = state.TakeControlEvents();
+    Require(events.count(a) == (initial != "1x") &&
+                events.count(b) == (initial != "01"),
+            "reset events include unchanged storage, never unknown assertions");
+  }
+  const auto transient = pattern::Elaborate(design, "Transient");
+  pattern::NetworkState state(transient);
+  for (const std::string name : {"gate.value", "a.value", "b.value"}) {
+    state.Assume(transient.node_ids.at(name), "1");
+  }
+  state.Assume(transient.node_ids.at("child.value"), "1001");
+  state.Drive(transient.node_ids.at("reset"), "1");
+  state.Reset();
+  for (const std::string name : {"gate.value", "a.value", "b.value"}) {
+    Require(state.Value(transient.node_ids.at(name)) == "0",
+            "feedback closure retains a transient ancestor reset");
+  }
+  Require(state.Value(transient.node_ids.at("child.value")) == "0000",
+          "transient feedback reset reaches downstream storage");
+}
+
 void TestControllingEventHistory() {
   pattern::Design design;
   design.AddIcl("control-history.icl", R"(
@@ -646,6 +699,7 @@ void TestLongChain() {
 }  // namespace
 int main() {
   try {
+    TestFeedbackResetSnapshots();
     TestControllingEventHistory();
     TestLogicEvaluation();
     TestPinSnapshot();
