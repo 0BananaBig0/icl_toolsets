@@ -46,5 +46,10 @@ class TapExecution {
   std::map<size_t, std::set<size_t>> owned_registers_;
   std::map<size_t, std::vector<InterfacePorts>> register_ports_;
 };
+ScanControl EffectiveScanControl(
+    const Netlist& netlist, const NetworkState& state,
+    const std::vector<TapExecution::InterfacePorts>& interfaces,
+    const ScanControl& fallback,
+    const std::map<std::pair<size_t, int64_t>, char>& clocks);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_TAP_EXECUTION_H_

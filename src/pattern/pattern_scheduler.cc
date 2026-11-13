@@ -200,35 +200,60 @@ class ScanScheduler::Impl {
         serial_scopes.insert(netlist.nodes.at(vertex.bit.node).scope);
       }
     }
-    // Vector ports need not have an inferred interface, but their controls
-    // apply.
-    for (const auto& node : netlist.nodes) {
+    const auto interfaces = EffectiveScanInterfaces(netlist);
+    std::set<size_t> bound_controls;
+    size_t top_clients = 0;
+    const std::map<std::string, std::string> roles = {
+        {"SelectPort", "select"},
+        {"CaptureEnPort", "capture"},
+        {"ShiftEnPort", "shift"},
+        {"UpdateEnPort", "update"},
+        {"TCKPort", "clock"}};
+    for (const auto& binding : interfaces) {
+      if (binding.interface.kind != ScanInterfaceKind::kClient) {
+        throw std::runtime_error(
+            binding.origin +
+            ": interface controls require event scheduling integration");
+      }
+      if (binding.scope == 0 && ++top_clients > 1) {
+        throw std::runtime_error(
+            "multiple client interfaces require shared-control transaction "
+            "scheduling");
+      }
+      for (const auto& port : binding.interface.ports) {
+        const auto& node = netlist.nodes.at(port.node);
+        const auto role = roles.find(node.kind);
+        if (role == roles.end()) continue;
+        bound_controls.insert(port.node);
+        AddControl(port);
+        client_controls_ = true;
+        if (node.kind == "TCKPort") {
+          client_clocks_.insert({port.node, port.index});
+        }
+        if (!node.inputs.count("Source") &&
+            (node.scope == 0 || node.kind == "TCKPort")) {
+          client_pins_.emplace(port.node, role->second);
+          client_pin_bits_[port.node].insert(Offset(node, port.index));
+        }
+      }
+    }
+    // Vector ports without a client interface must not hide declared controls.
+    for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+      const auto& node = netlist.nodes[id];
       if (serial_scopes.count(node.scope) &&
-          (node.kind == "SelectPort" || node.kind == "CaptureEnPort" ||
-           node.kind == "ShiftEnPort" || node.kind == "UpdateEnPort" ||
-           node.kind == "TCKPort" || node.kind == "TMSPort" ||
-           node.kind == "TRSTPort")) {
+          (roles.count(node.kind) || node.kind == "TMSPort" ||
+           node.kind == "TRSTPort") &&
+          !bound_controls.count(id)) {
         throw std::runtime_error(
             node.origin +
             ": interface controls require event scheduling integration");
       }
     }
-    for (const auto& binding : EffectiveScanInterfaces(netlist)) {
-      const auto check = [&](const std::vector<BitReference>& ports) {
-        for (const auto& port : ports) {
-          const auto& kind = netlist.nodes.at(port.node).kind;
-          if (kind != "ScanInPort" && kind != "ScanOutPort" &&
-              kind != "ResetPort") {
-            throw std::runtime_error(
-                binding.origin +
-                ": interface controls require event scheduling integration");
-          }
-        }
-      };
-      check(binding.interface.ports);
-      for (const auto& chain : binding.interface.chains) check(chain.ports);
+    if (client_controls_) {
+      register_ports_ = TapExecution(netlist).RegisterInterfaces();
     }
   }
+
   BitReference EndStateSource(BitReference bit) const {
     std::set<Key> visited;
     while (bit.node != kMissing) {
@@ -2023,9 +2048,38 @@ class ScanScheduler::Impl {
     return std::nullopt;
   }
   using Events = std::map<std::string, std::map<size_t, z3::expr>>;
+  std::map<size_t, std::string> ClientPins(const std::string& phase,
+                                           bool before = false) const {
+    std::map<size_t, std::string> pins;
+    for (const auto& [id, role] : client_pins_) {
+      bool active = role == "select" || role == phase ||
+                    (role == "clock" && phase != "update" && phase != "idle");
+      if (before && role == "clock") active = !active;
+      auto bits = state_.Value(id);
+      for (size_t offset : client_pin_bits_.at(id)) {
+        bits[offset] = active ? '1' : '0';
+      }
+      pins.emplace(id, std::move(bits));
+    }
+    return pins;
+  }
   Values EventPins(const Values& state, const Frame& frame,
                    const std::string& phase) {
     auto pins = state;
+    if (!tap_) {
+      for (const auto& [id, bits] : ClientPins(phase)) {
+        auto value = SymbolicValue::Literal(context_, bits);
+        if (frame.parallel) {
+          const auto old = state.find(id);
+          value = Choose(!*frame.parallel, value,
+                         old == state.end() ? SymbolicValue::Literal(
+                                                  context_, state_.Value(id))
+                                            : old->second);
+        }
+        pins.insert_or_assign(id, std::move(value));
+      }
+      return pins;
+    }
     const auto ir = Known(*frame.instruction, true);
     for (const auto& [role, id] : tap_->controls) {
       pins.insert_or_assign(
@@ -2041,27 +2095,34 @@ class ScanScheduler::Impl {
     Events result;
     const auto scan =
         frame.parallel ? !*frame.parallel : context_.bool_val(true);
-    const auto ir = Known(*frame.instruction, true);
-    const auto clock = tap_->pins.at("tap_scan_clock");
+    const auto ir =
+        tap_ ? Known(*frame.instruction, true) : context_.bool_val(false);
+    const auto& bindings =
+        tap_ ? execution_->RegisterInterfaces() : register_ports_;
     for (const std::string phase : {"capture", "shift", "update", "idle"}) {
       auto pins = EventPins(state, frame, phase);
       SymbolicNetwork after(netlist_, context_, pins, global_resets_);
-      pins.insert_or_assign(
-          clock,
-          SymbolicValue::Literal(context_, phase == "update" ? "1" : "0"));
+      if (tap_) {
+        pins.insert_or_assign(
+            tap_->pins.at("tap_scan_clock"),
+            SymbolicValue::Literal(context_, phase == "update" ? "1" : "0"));
+      } else {
+        for (const auto& [id, bits] : ClientPins(phase, true)) {
+          pins.insert_or_assign(id, SymbolicValue::Literal(context_, bits));
+        }
+      }
       SymbolicNetwork before(netlist_, context_, pins, global_resets_);
       for (size_t id : registers_) {
-        if (id == tap_->instruction_register) continue;
+        if (tap_ && id == tap_->instruction_register) continue;
         const auto active = frame.active.count(id) ? frame.active.at(id)
                                                    : context_.bool_val(false);
-        const auto entry = execution_->RegisterInterfaces().find(id);
+        const auto entry = bindings.find(id);
         std::vector<TapExecution::InterfacePorts> defaults;
-        if (entry == execution_->RegisterInterfaces().end()) {
+        if (entry == bindings.end()) {
           defaults.emplace_back();
         }
-        const auto& interfaces = entry == execution_->RegisterInterfaces().end()
-                                     ? defaults
-                                     : entry->second;
+        const auto& interfaces =
+            entry == bindings.end() ? defaults : entry->second;
         for (const auto& [kind, role] :
              std::map<std::string, std::string>{{"CaptureEnPort", "capture"},
                                                 {"ShiftEnPort", "shift"},
@@ -2076,7 +2137,7 @@ class ScanScheduler::Impl {
               for (const auto& [port, index] : found->second) {
                 const auto value =
                     !netlist_.nodes[port].inputs.count("Source") &&
-                            !state_.IsDriven(port)
+                            !state_.IsDriven(port) && !client_pins_.count(port)
                         ? BooleanValue(fallback)
                         : after.Read({port, index});
                 enabled = And(enabled, value);
@@ -2089,13 +2150,15 @@ class ScanScheduler::Impl {
               for (const auto& [port, index] : clocks->second) {
                 const auto prior = before.Read({port, index});
                 const auto next = after.Read({port, index});
-                const auto edge = Known(prior, phase == "update") &&
-                                  Known(next, phase != "update");
-                const auto reverse = Known(prior, phase != "update") &&
-                                     Known(next, phase == "update");
+                const bool falling =
+                    phase == "update" || (!tap_ && phase == "idle");
+                const auto edge =
+                    Known(prior, falling) && Known(next, !falling);
+                const auto reverse =
+                    Known(prior, !falling) && Known(next, falling);
                 solver.add(z3::implies(scan, !reverse));
-                const auto absent = Known(prior, phase != "update") ||
-                                    Known(next, phase == "update");
+                const auto absent =
+                    Known(prior, !falling) || Known(next, falling);
                 const SymbolicValue clocked{BooleanValue(edge).bits,
                                             BooleanValue(edge || absent).bits};
                 enabled = And(enabled, clocked);
@@ -2128,6 +2191,23 @@ class ScanScheduler::Impl {
       }
     }
     return result;
+  }
+  void ConstrainScanControls(z3::optimize& solver, const Values& state,
+                             const Frame& frame, size_t time, bool events) {
+    if ((tap_ || client_controls_) && !events) {
+      ControlEvents(solver, state, frame, false);
+    }
+    if (!client_controls_) return;
+    for (const std::string phase : {"shift", "update"}) {
+      const auto pins = EventPins(state, frame, phase);
+      SymbolicNetwork during(netlist_, context_, pins, global_resets_);
+      Frame selected;
+      selected.parallel = frame.parallel;
+      SelectScan(solver, during, time, selected);
+      for (const auto& [id, active] : frame.active) {
+        solver.add(active == selected.active.at(id));
+      }
+    }
   }
   bool NeedsScanEvents() {
     Values state;
@@ -3042,14 +3122,15 @@ class ScanScheduler::Impl {
                                    context_.int_val(6), context_.int_val(5)),
                            context_.int_val(0));
         }
+        if (client_controls_) state = EventPins(state, frame, "capture");
         SymbolicNetwork values(netlist_, context_, state, global_resets_);
         SelectScan(solver, values, time, frame);
+        ConstrainScanControls(solver, state, frame, time, events);
         for (const auto& [id, drive] : frame.drives) {
           const auto held = scan && context_.bool_val(goals.count(id) != 0);
           frame.active.emplace(id, drive);
           if (touched.count(id)) touched.at(id) = touched.at(id) || held;
         }
-        if (tap_ && !events) ControlEvents(solver, state, frame, false);
         Values next = state;
         for (size_t id : registers_) {
           const auto& node = netlist_.nodes[id];
@@ -3116,6 +3197,7 @@ class ScanScheduler::Impl {
         if (events) {
           next = ScanEvents(solver, state, frame, &shifts, time, maximum);
         }
+        if (client_controls_) next = EventPins(next, frame, "update");
         // Update qualification uses the old state. New reset assertions then
         // propagate in dependency order, without retroactively enabling writes.
         for (size_t id : reset_order_) {
@@ -3350,6 +3432,7 @@ class ScanScheduler::Impl {
           next.insert_or_assign(tap_->ir_select,
                                 SymbolicValue::Literal(context_, "0"));
         }
+        if (client_controls_) next = EventPins(next, frame, "idle");
         frame.fill = fills;
         frame.state = next;
         frames.push_back(std::move(frame));
@@ -3570,6 +3653,46 @@ class ScanScheduler::Impl {
     }
     return step;
   }
+  std::map<size_t, ScanControl> ClientControls(NetworkState* state,
+                                               const std::set<size_t>& active,
+                                               const std::string& phase) const {
+    const bool falling = phase == "update";
+    const auto pins = ClientPins(phase);
+    for (const auto& [id, bits] : ClientPins(phase, true)) {
+      state->Drive(id, bits);
+    }
+    state->Reset();
+    std::map<Key, char> clocks;
+    for (const auto& pin : client_clocks_) {
+      clocks.emplace(pin, state->Read({pin.first, pin.second}));
+    }
+    for (const auto& [id, bits] : pins) {
+      if (client_pins_.at(id) == "clock") state->Drive(id, bits);
+    }
+    for (auto& [pin, before] : clocks) {
+      const char after = state->Read({pin.first, pin.second});
+      const char from = falling ? '1' : '0', to = falling ? '0' : '1';
+      if (before == to && after == from) {
+        throw std::runtime_error("inverted client TCK phase is not supported");
+      }
+      before = before == to || after == from   ? '0'
+               : before == from && after == to ? '1'
+                                               : 'x';
+    }
+    std::map<size_t, ScanControl> controls;
+    const std::vector<TapExecution::InterfacePorts> empty;
+    for (size_t id : registers_) {
+      const auto found = register_ports_.find(id);
+      controls.emplace(
+          id, EffectiveScanControl(
+                  netlist_, *state,
+                  found == register_ports_.end() ? empty : found->second,
+                  {phase == "capture" ? '1' : '0', phase == "shift" ? '1' : '0',
+                   falling ? '1' : '0', active.count(id) ? '1' : '0'},
+                  clocks));
+    }
+    return controls;
+  }
   ScanStep Replay(const Frame& frame, const z3::model& model,
                   const std::map<size_t, std::string>& expected,
                   bool implicit_instruction, NetworkState* replay,
@@ -3590,6 +3713,11 @@ class ScanScheduler::Impl {
       throw std::runtime_error("solver selected no serial output");
     }
     ScanStep step;
+    if (client_controls_) {
+      for (const auto& [id, bits] : ClientPins("capture")) {
+        replay->Drive(id, bits);
+      }
+    }
     if (tap_) {
       step.instruction = Decode(model, *frame.instruction) == "1";
       replay->Drive(tap_->ir_select, step.instruction ? "1" : "0");
@@ -3694,6 +3822,11 @@ class ScanScheduler::Impl {
       Cycle(tap_replay, '0', '0', check);
       replay->Restore(tap_replay->State());
     } else {
+      std::set<size_t> active;
+      for (const auto& [id, control] : controls) active.insert(id);
+      if (client_controls_) {
+        controls = ClientControls(replay, active, "capture");
+      }
       replay->Clock(controls, true);
       if (check) check(*replay);
       for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
@@ -3703,18 +3836,30 @@ class ScanScheduler::Impl {
       for (char bit : step.serial) {
         input_bits.at(input_offset) = bit;
         replay->Drive(input, input_bits);
+        if (client_controls_) {
+          controls = ClientControls(replay, active, "shift");
+        }
         replay->Clock(controls, true);
         if (check) check(*replay);
       }
       for (auto& [id, control] : controls) control = {'0', '0', '1', '1'};
+      if (client_controls_) controls = ClientControls(replay, active, "update");
       for (const auto& [id, control] : controls) {
         const auto& node = netlist_.nodes[id];
-        if (!node.reset || replay->Read(*node.reset) == '0') {
+        if (control.select == '1' && control.update == '1' &&
+            (!node.reset || replay->Read(*node.reset) == '0')) {
           writable.insert(id);
         }
       }
       replay->Clock(controls, false);
       if (check) check(*replay);
+      if (client_controls_) {
+        for (const auto& [id, bits] : ClientPins("idle")) {
+          replay->Drive(id, bits);
+        }
+        replay->Reset();
+        if (check) check(*replay);
+      }
     }
     for (size_t id : writable) {
       const auto& node = netlist_.nodes[id];
@@ -3743,6 +3888,11 @@ class ScanScheduler::Impl {
   OneHotReadResolver one_hot_;
   const TapRuntimeModel* tap_ = nullptr;
   std::unique_ptr<TapExecution> execution_;
+  bool client_controls_ = false;
+  std::map<size_t, std::string> client_pins_;
+  std::map<size_t, std::set<size_t>> client_pin_bits_;
+  std::set<Key> client_clocks_;
+  std::map<size_t, std::vector<TapExecution::InterfacePorts>> register_ports_;
   std::unique_ptr<DataReadRoutes> data_read_routes_, scan_read_routes_,
       mixed_read_routes_;
   bool tap_ready_ = false;

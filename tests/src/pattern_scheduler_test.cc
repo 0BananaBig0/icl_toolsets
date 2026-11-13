@@ -86,9 +86,9 @@ Module SharedTop {
   scheduler.Assume("ena", "0");
   bool rejected = false;
   try {
-    scheduler.Apply({{"iWrite", {"data", "9"}, "blocked", {}}}, false,
-                    {{netlist.node_ids.at("ena"), "0"},
-                     {netlist.node_ids.at("enb"), "0"}});
+    scheduler.Apply(
+        {{"iWrite", {"data", "9"}, "blocked", {}}}, false,
+        {{netlist.node_ids.at("ena"), "0"}, {netlist.node_ids.at("enb"), "0"}});
   } catch (const std::exception&) {
     rejected = true;
   }
@@ -104,6 +104,71 @@ Module SharedTop {
   }
   Require(rejected && scheduler.Value("data") == "0110",
           "gated observation preserves reservation rollback");
+}
+void TestClientScanControls() {
+  pattern::Design design;
+  design.AddIcl("client-controls.icl", R"(
+Module ClientTop {
+  ScanInPort si; ScanOutPort so { Source value[0]; }
+  SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+  DataInPort data;
+  DataRegister d { WriteDataSource data; WriteEnSource ue; ResetValue 1'b0; }
+  ScanRegister value[3:0] { ScanInSource si; ResetValue 4'b0; CaptureSource value; }
+  ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port ck; }
+})");
+  const auto netlist = pattern::Elaborate(design, "ClientTop");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("data", "0");
+  const auto steps = scheduler.Apply({{"iWrite", {"value", "9"}, "write", {}}});
+  Require(steps.size() == 1 && steps[0].serial == "1001" &&
+              scheduler.Value("value") == "1001" &&
+              scheduler.Value("ce") == "0" && scheduler.Value("se") == "0" &&
+              scheduler.Value("ue") == "0" && scheduler.Value("ck") == "0",
+          "client control phases write storage and return clock/enables idle");
+  scheduler.Apply({{"iWrite", {"data", "1"}, "parallel", {}}});
+  Require(scheduler.Value("data") == "1" && scheduler.Value("d") == "0" &&
+              scheduler.Value("ue") == "0" && scheduler.Value("ck") == "0",
+          "parallel frame leaves client update disabled and storage unchanged");
+  const auto read = scheduler.Apply({{"iRead", {"value", "9"}, "read", {}},
+                                     {"iWrite", {"value", "6"}, "write", {}}});
+  Require(read.size() == 2 && read[0].loads.empty() &&
+              read[0].writes.at("data") == "0" &&
+              read.back().serial_expected == "1001" &&
+              scheduler.Value("value") == "0110" && scheduler.Value("d") == "0",
+          "client scan restores parallel data before capture and update");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"value", "9"}, "reserved", {}}}, false,
+                    {{netlist.node_ids.at("value"), "0110"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("value") == "0110" &&
+              scheduler.Value("ck") == "0" && scheduler.Value("ue") == "0",
+          "failed client access rolls back storage and interface pins");
+  pattern::Design vector_design;
+  vector_design.AddIcl("vector-client.icl", R"(
+Module ClientTop {
+  ScanInPort si; ScanOutPort so { Source value[0]; }
+  SelectPort sel[5:2]; CaptureEnPort ce[5:2]; ShiftEnPort se[5:2];
+  UpdateEnPort ue[5:2]; TCKPort ck[5:2];
+  ScanRegister value[3:0] { ScanInSource si; ResetValue 4'b0; }
+  ScanInterface client {
+    Port si; Port so; Port sel[3]; Port ce[3]; Port se[3]; Port ue[3]; Port ck[3];
+  }
+})");
+  const auto vector_netlist = pattern::Elaborate(vector_design, "ClientTop");
+  pattern::ScanScheduler vector_scheduler(vector_netlist);
+  vector_scheduler.Reset();
+  vector_scheduler.Apply({{"iWrite", {"value", "9"}, "write", {}}});
+  Require(vector_scheduler.Value("value") == "1001" &&
+              vector_scheduler.Value("sel") == "xx1x" &&
+              vector_scheduler.Value("ce") == "xx0x" &&
+              vector_scheduler.Value("se") == "xx0x" &&
+              vector_scheduler.Value("ue") == "xx0x" &&
+              vector_scheduler.Value("ck") == "xx0x",
+          "client phases drive only the interface's indexed control lanes");
 }
 void TestVectorScanInputs() {
   std::ifstream file(
@@ -1536,6 +1601,7 @@ int main() {
   try {
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
+    TestClientScanControls();
     TestVectorScanInputs();
     TestMixedReadRoutes();
     TestMixedIoPhases();

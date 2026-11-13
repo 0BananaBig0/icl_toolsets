@@ -24,7 +24,7 @@ and nine shared-output cases, with leak detection enabled. See
 commands, logs, review and measured scale. This did not rerun installation,
 RTL simulation or strict authored-code coverage.
 
-Ordinary regression passes 37 directional and seven legacy Tessent standards
+Ordinary regression passes 38 directional and seven legacy Tessent standards
 offline. The [latest six directional certificates](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30)
 cover three specific TAP fixtures. Indexed vector-input and shared-output cases have local replay
 coverage and no vendor certificate. The
@@ -473,7 +473,10 @@ or vector output bits may observe that path through transparent forwarding,
 including inversion. Equivalent ungated observations use the first sorted
 output; gated alternatives retain their enables and require a known-enabled
 path. All declared controls are still checked. A path may use an indexed vector input
-and an indexed one-hot return lane.
+and an indexed one-hot return lane. Explicit or inferred standalone client
+interfaces support bound select/capture/shift/update/clock controls when their
+events match the selected complete scan. Unbound vector control lanes retain
+their state, and parallel input frames do not pulse scan controls.
 It rejects
 multiple TAPs, distinct scan-output paths/shared chains, intermediate serial taps,
 simultaneous vector OneHotScanGroup lanes, feedback reset scheduling,
@@ -2144,3 +2147,38 @@ conformance cases, 37 directional/seven legacy offline vendor standards,
 Five optional ANTLR checks were skipped because `ICL_REF_DIR` was unset.
 No new vendor certificate, installation, RTL simulation or strict authored-code
 coverage measurement was run for this change.
+
+
+### Standalone client scan controls (2026-11-13)
+
+Standalone client interfaces now reuse explicit/implicit interface membership
+and the concrete executor's control resolution. Top-level select, phase and
+clock pins drive the interface; child controls retain their actual bindings.
+The symbolic solver proves capture/shift/update equivalence to the selected
+whole path, and concrete replay samples clock edges and checks all storage.
+Indexed control ports drive only their bound lanes. Unknown or disabled required
+controls reject the access without publishing outputs. General hidden and
+independently timed client events remain separate acceptance work.
+
+Native tests and ten CLI cases cover explicit/inferred clients, nested controls,
+SIB setup, inverted select, gated clock, indexed lanes, local reset rewriting,
+reservations, parallel-frame phases and source/flat/generated replay. A synthetic
+parallel-storage regression uses UpdateEnPort as DataRegister WriteEnSource;
+Tessent rejects that source kind (ICL65-1), so it is not a valid-ICL or vendor
+qualification claim. The model's broader source-kind validation remains open.
+
+Tessent 2026.2 accepted the standalone four-bit fixture in both runs. Only reverse
+ordered-apply equivalence passed: the forward result added an initial reset-value
+read, so the unchanged comparator rejected it. The new reverse certificate
+raises the offline total to 38 directions. Evidence was produced under
+`test_icl_toolsets/test_client_scan_controls/run_2026_11_13_01`; local retained
+copies are `build/client-controls-{forward,reverse}-evidence`.
+
+Verification: full dynamic/static `make check` passed
+(`build/client-controls-regression-verified.log`), including 38 directional/seven
+legacy standards and all334parser/119scanner rules over2505ICL files; five optional
+ANTLR checks were skipped. Native scheduler and ten CLI cases passed ASan/UBSan/
+LeakSanitizer with leak detection enabled. Style/naming/whitespace and independent
+source/certificate review passed. The64-register,3806-byte case took0.167s for
+three replays; all10CLI cases took4.56s with60504KiB peak RSS. These measurements
+do not establish broader event-model completeness.

@@ -309,6 +309,18 @@
       "bsdl_entity": "AccessProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "client_scan_controls",
+      "top": "ClientTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/client_controls/network.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/client_controls/access.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

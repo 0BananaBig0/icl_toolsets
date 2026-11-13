@@ -440,7 +440,9 @@ Distinct chains still require additional event scheduling.
 A single scan chain can use indexed bits of a vector `ScanInPort`, including
 mux-selected or inverted inputs and one lane of a vector `OneHotScanGroup`.
 Replay preserves the other input bits. Declared scan controls require supported
-event handling; simultaneous vector return lanes remain unfinished.
+event handling. Explicit or inferred standalone clients now drive capture, shift,
+update and clock phases through their bound controls, with concrete replay.
+Simultaneous vector return lanes remain unfinished.
 
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
@@ -490,7 +492,7 @@ See [merge behavior](docs/pattern-generation.md#merge-scheduling).
 
 Three further TAP cases covering computed-port writes, child-enable ownership,
 and merged observations are certified in both directions with Tessent 2026.2.
-The offline suite contains 37 directional standards; see
+The offline suite contains 38 directional standards; see
 [qualification scope](docs/tessent-goldens.md#port-control-and-merge-qualification-2026-10-30).
 
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,

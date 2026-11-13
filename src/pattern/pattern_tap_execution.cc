@@ -252,11 +252,53 @@ std::map<size_t, char> TapExecution::Active(const TapRuntimeModel& tap) const {
   }
   return active;
 }
+ScanControl EffectiveScanControl(
+    const Netlist& netlist, const NetworkState& state,
+    const std::vector<TapExecution::InterfacePorts>& interfaces,
+    const ScanControl& fallback,
+    const std::map<std::pair<size_t, int64_t>, char>& clocks) {
+  ScanControl combined{'0', '0', '0', '1'};
+  const auto accumulate = [&](const TapExecution::InterfacePorts& interface) {
+    const auto control = [&](const std::string& kind, char missing) {
+      const auto ports = interface.find(kind);
+      if (ports == interface.end()) return missing;
+      char value = '1';
+      for (const auto& [port, index] : ports->second) {
+        const auto& node = netlist.nodes.at(port);
+        const char driven =
+            (node.inputs.count("Source") || state.IsDriven(port))
+                ? state.Read({port, index})
+                : missing;
+        value = And(value, driven);
+      }
+      return value;
+    };
+    char enabled = control("SelectPort", fallback.select);
+    const auto clock_ports = interface.find("TCKPort");
+    if (clock_ports != interface.end()) {
+      for (const auto& pin : clock_ports->second) {
+        enabled = And(enabled, clocks.at(pin));
+      }
+    }
+    combined.capture =
+        Or(combined.capture,
+           And(enabled, control("CaptureEnPort", fallback.capture)));
+    combined.shift = Or(combined.shift,
+                        And(enabled, control("ShiftEnPort", fallback.shift)));
+    combined.update =
+        Or(combined.update,
+           And(enabled, control("UpdateEnPort", fallback.update)));
+  };
+  if (interfaces.empty()) accumulate({});
+  for (const auto& interface : interfaces) accumulate(interface);
+  return combined;
+}
 std::map<size_t, ScanControl> TapExecution::Controls(
     const TapRuntimeModel& tap, const TapActions& actions,
     const std::map<std::pair<size_t, int64_t>, char>& clocks) const {
   const auto active = Active(tap);
   std::map<size_t, ScanControl> result;
+  const std::vector<InterfacePorts> empty;
   for (size_t id : owned_registers_.at(tap.instruction_register)) {
     const auto selected_entry = active.find(id);
     const char selected =
@@ -264,50 +306,14 @@ std::map<size_t, ScanControl> TapExecution::Controls(
     if (id == tap.instruction_register) {
       continue;
     }
-    ScanControl combined{'0', '0', '0', '1'};
-    const auto accumulate = [&](const InterfacePorts& interface) {
-      const auto control = [&](const std::string& kind, char fallback) {
-        const auto ports = interface.find(kind);
-        if (ports == interface.end()) {
-          return fallback;
-        }
-        char value = '1';
-        for (const auto& [port, index] : ports->second) {
-          const auto& node = netlist_.nodes.at(port);
-          const char driven =
-              (node.inputs.count("Source") || state_.IsDriven(port))
-                  ? state_.Read({port, index})
-                  : fallback;
-          value = And(value, driven);
-        }
-        return value;
-      };
-      char enabled = control("SelectPort", selected);
-      const auto clock_ports = interface.find("TCKPort");
-      if (clock_ports != interface.end()) {
-        for (const auto& pin : clock_ports->second) {
-          enabled = And(enabled, clocks.at(pin));
-        }
-      }
-      combined.capture =
-          Or(combined.capture,
-             And(enabled, control("CaptureEnPort", actions.capture_dr)));
-      combined.shift =
-          Or(combined.shift,
-             And(enabled, control("ShiftEnPort", actions.shift_dr)));
-      combined.update =
-          Or(combined.update,
-             And(enabled, control("UpdateEnPort", actions.update_dr)));
-    };
     const auto found = register_ports_.find(id);
-    if (found == register_ports_.end()) {
-      accumulate({});
-    } else {
-      for (const auto& interface : found->second) {
-        accumulate(interface);
-      }
-    }
-    result.emplace(id, combined);
+    result.emplace(
+        id,
+        EffectiveScanControl(
+            netlist_, state_,
+            found == register_ports_.end() ? empty : found->second,
+            {actions.capture_dr, actions.shift_dr, actions.update_dr, selected},
+            clocks));
   }
   return result;
 }

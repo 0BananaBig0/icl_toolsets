@@ -429,19 +429,47 @@ Files: `src/pattern/pattern_scheduler.cc`, shared interface-control code only
 where needed, existing native scheduler tests, new
 `tests/src/pattern/test_client_scan_controls.py`, Makefile and support docs.
 
-- [ ] Add RED native/CLI cases for explicit and inferred clients, nested
+- [x] Add RED native/CLI cases for explicit and inferred clients, nested
   connected controls, top-level control pins, inverted/gated enables,
   disabled/unknown select/shift/update and absent clock edges. Cover actual
   register state, primary/scan interaction, original/flat/generated replay,
   reset rewriting, reservation rollback and failed-output preservation.
-- [ ] Reuse interface membership and phase constraints for standalone clients;
+- [x] Reuse interface membership and phase constraints for standalone clients;
   implement concrete phase replay with actual controls. Keep unsupported
   client-TAP, unmatched controls and distinct-chain diagnostics. Expected:
   focused tests pass, including negative cases that would pass if controls were
   ignored. Measure a 64-register explicitly controlled network.
-- [ ] Run full dynamic/static regression, focused leak-enabled sanitizers,
+- [x] Run full dynamic/static regression, focused leak-enabled sanitizers,
   style/naming and independent review. Record remaining event limitations and
   continue to simultaneous-chain/control event support.
+
+## Task 19: Simultaneous independent chains in one client interface
+
+IEEE §6.4.16 requires the chains in one interface to react simultaneously.
+Reuse the selected-root graph, per-register constraints and client phase proof.
+Use the declared `Chain` SI/SO pairs; select all chain outputs together.
+Unlisted observation ports cannot replace a declared output. This increment requires exactly one top-level client and disjoint serial
+storage/input paths. Shared storage/inputs and multiple controllers retain an
+explicit diagnostic pending general serial-event solving.
+
+Concrete replay derives one input stream per selected path, pads shorter chains
+at the beginning and clocks every active chain together for the longest path.
+Capture/update occur once and state/reservations are checked after every edge.
+Expose lane metadata without changing existing single-lane ScanStep fields.
+Use graph-order path lengths to optimize actual simultaneous clock count.
+Bound graph processing by existing limits, avoiding per-chain graph scans.
+
+- [ ] Add failing native and CLI tests for unequal widths, indexed input/output
+  lanes, inverted paths, gated observations, cross-chain SIB prerequisites,
+  shared primary/scan controls, grouped access, partial writes and reservations.
+  Include shared-input/storage rejection, output safety, actual input/register
+  state and source/flat/generated fixed points.
+- [ ] Reuse serial graph ownership and common-state constraints; implement
+  simultaneous concrete replay and per-lane metadata. Prove constant-path
+  phase equivalence and retain independent state/replay checks.
+- [ ] Measure representative many-lane inputs; run focused/full dynamic/static
+  tests, leak-enabled sanitizers, Google checks and independent review. Update
+  support records and continue shared/overlapping path and controller work.
 
 ## Remaining completion work (not yet completed)
 
@@ -633,4 +661,16 @@ whitespace and independent review. Positive gated observations failed before
 implementation. The 257-output/64-bit case took 0.234 s for three replay forms.
 Five optional ANTLR checks remain skipped. See
 [enabled-output evidence](../../pattern-generation.md#enabled-observations-of-one-scan-path-2026-11-13).
-Task 18 and the broader remaining requirements are not complete.
+Task 18 verification is recorded below; Task 19 and the broader requirements remain open.
+
+Task 18 passed full dynamic/static `make -j2 --jobserver-style=pipe check`
+(exit 0, `build/client-controls-regression-verified.log`), 38 directional/seven
+legacy offline standards, all334 parser/119scanner rules over2505ICL files and
+editor corpus checks. Five optional ANTLR checks remain skipped. Native scheduler
+and ten CLI cases passed ASan/UBSan/LeakSanitizer with detect_leaks=1
+(`build/client-controls-sanitizer-{native,cli}-verified.log`). Google formatting,
+naming and whitespace checks pass. Independent source and certificate review
+found no remaining issues after the parallel-frame phase fix. The64-register
+case took0.167s for three replay forms; full10case suite4.56s/60504KiB. Only
+reverse Tessent ordered-apply equivalence certified; see
+[client evidence](../../pattern-generation.md#standalone-client-scan-controls-2026-11-13).
