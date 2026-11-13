@@ -1,0 +1,21 @@
+iProcsForModule Chains
+
+iProc oracle {} {
+
+   iReset
+   iWrite route 0b0
+   iApply
+
+   iWrite c.value[3:0] 0b1001
+   iRead  c.value[3:0] 0b0000
+   iApply
+
+   iWrite route 0b1
+   iApply
+
+   iWrite c.value[3:0] 0b0110
+   iRead  c.value[3:0] 0b1001
+   iApply
+
+
+}

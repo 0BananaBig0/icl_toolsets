@@ -101,6 +101,37 @@ class ScanScheduler::Impl {
       state_.Restore(execution_->State());
     }
     const auto interfaces = EffectiveScanInterfaces(netlist);
+    std::vector<const ScanInterface*> clients;
+    for (const auto& binding : interfaces) {
+      if (binding.scope == 0 &&
+          binding.interface.kind == ScanInterfaceKind::kClient) {
+        clients.push_back(&binding.interface);
+      }
+    }
+    if (clients.size() > 1) {
+      for (const auto* client : clients) {
+        if (!client->chains.empty()) {
+          throw std::runtime_error(
+              "multiple clients with named chains require grouped scheduling");
+        }
+        const size_t id = clients_.size();
+        clients_.emplace_back();
+        for (const auto& port : client->ports) {
+          const Key key{port.node, port.index};
+          const auto& kind = netlist.nodes.at(port.node).kind;
+          if (kind == "ScanInPort") client_inputs_[key].push_back(id);
+          if (kind == "ScanOutPort") client_outputs_[key].push_back(id);
+          if (kind == "SelectPort") {
+            clients_.back().push_back(key);
+            client_selectors_[key].push_back(id);
+          }
+        }
+        if (clients_.back().empty()) {
+          throw std::runtime_error(
+              "multiple clients require explicit SelectPort controls");
+        }
+      }
+    }
     std::map<Key, Key> chain_inputs;
     for (const auto& binding : interfaces) {
       if (binding.scope != 0 ||
@@ -143,7 +174,8 @@ class ScanScheduler::Impl {
       if (node.kind == "ScanOutPort" && node.scope == 0) {
         for (int64_t index = node.left;;
              index += node.left <= node.right ? 1 : -1) {
-          if (!parallel_chains_ || chain_inputs.count({id, index})) {
+          if ((!parallel_chains_ || chain_inputs.count({id, index})) &&
+              (clients_.empty() || client_outputs_.count({id, index}))) {
             roots_.push_back(Add({id, index}));
           }
           if (index == node.right) break;
@@ -166,7 +198,7 @@ class ScanScheduler::Impl {
             "multiple TAP chains require event scheduling");
       }
       CheckIndependentChains(chain_inputs);
-    } else if (roots_.size() > 1) {
+    } else if (clients_.empty() && roots_.size() > 1) {
       // Forwarded observations of one path do not create extra clock events.
       std::vector<size_t> paths(graph_.size()), physical(graph_.size());
       for (size_t id : order_) {
@@ -230,7 +262,6 @@ class ScanScheduler::Impl {
       }
     }
     std::set<size_t> bound_controls;
-    size_t top_clients = 0;
     const std::map<std::string, std::string> roles = {
         {"SelectPort", "select"},
         {"CaptureEnPort", "capture"},
@@ -242,11 +273,6 @@ class ScanScheduler::Impl {
         throw std::runtime_error(
             binding.origin +
             ": interface controls require event scheduling integration");
-      }
-      if (binding.scope == 0 && ++top_clients > 1) {
-        throw std::runtime_error(
-            "multiple client interfaces require shared-control transaction "
-            "scheduling");
       }
       for (const auto& port : binding.interface.ports) {
         const auto& node = netlist.nodes.at(port.node);
@@ -1648,6 +1674,29 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "feedback reset scheduling requires fixed-point constraints");
     }
+    if (!clients_.empty()) {
+      std::map<size_t, size_t> depths;
+      size_t bits = netlist_.nodes.size();
+      for (size_t id : reset_order_) {
+        size_t depth = netlist_.nodes[id].reset ? 1 : 0;
+        for (size_t parent : dependencies[id]) {
+          depth = std::max(depth, depths.at(parent) + 1);
+        }
+        depths.emplace(id, depth);
+        client_reset_passes_ = std::max(client_reset_passes_, depth);
+        bits += netlist_.nodes[id].Width();
+      }
+      // Data reset dependencies follow scan storage and their own DAG order.
+      for (size_t id : state_.DataRegisters().order) {
+        if (netlist_.nodes[id].reset) ++client_reset_passes_;
+        bits += netlist_.nodes[id].Width();
+      }
+      if (client_reset_passes_ > 1048576 / std::max<size_t>(1, bits)) {
+        throw std::runtime_error(
+            "client reset resource limit; fixed point not proved");
+      }
+      client_reset_work_ = client_reset_passes_ * bits;
+    }
   }
   z3::expr Match(SymbolicNetwork& values, const NetlistNode& node,
                  size_t choice) {
@@ -1715,10 +1764,80 @@ class ScanScheduler::Impl {
     std::map<size_t, z3::expr> drives;
     std::map<size_t, z3::expr> active, read;
     std::map<Key, std::pair<z3::expr, z3::expr>> inputs;
-    std::vector<z3::expr> selected;
+    std::vector<z3::expr> selected, clients;
   };
+  void SettleClientResets(Values* state, Values* fills = nullptr) {
+    for (size_t pass = 0; pass < client_reset_passes_; ++pass) {
+      SymbolicNetwork values(netlist_, context_, *state, global_resets_);
+      auto next = *state;
+      const auto settle = [&](size_t id) {
+        const auto& node = netlist_.nodes[id];
+        if (!node.reset) return;
+        const auto reset = values.Read(*node.reset);
+        const auto& bits = node.constants.at("ResetValue").data;
+        next.at(id) = ResetValue(reset, SymbolicValue::Literal(context_, bits),
+                                 state->at(id));
+        if (fills && fills->count(id)) {
+          auto initial = initial_fill_.at(id);
+          for (size_t bit = 0; bit < bits.size(); ++bit) {
+            if (bits[bit] != 'x') initial[bit] = bits[bit];
+          }
+          fills->at(id) =
+              Choose(Known(reset, true),
+                     SymbolicValue::Literal(context_, initial), fills->at(id));
+        }
+      };
+      // Match concrete simultaneous passes, including transient assertions.
+      for (size_t id : reset_order_) settle(id);
+      for (size_t id : state_.DataRegisters().order) settle(id);
+      *state = std::move(next);
+    }
+  }
+  void SelectClients(Frame& frame, size_t time) {
+    for (size_t i = 0; i < clients_.size(); ++i) {
+      frame.clients.push_back(context_.bool_const(
+          ("client_" + std::to_string(time) + "_" + std::to_string(i))
+              .c_str()));
+    }
+  }
+  void ClientSelections(Values* pins, const Frame& frame) {
+    for (const auto& [key, clients] : client_selectors_) {
+      auto active = context_.bool_val(false);
+      for (size_t id : clients) active = active || frame.clients.at(id);
+      const auto bit = BooleanValue(active);
+      auto& value = pins->at(key.first);
+      const auto& node = netlist_.nodes.at(key.first);
+      const auto width = static_cast<unsigned>(node.Width());
+      const auto shift =
+          context_.bv_val(width - 1 - Offset(node, key.second), width);
+      const auto mask = z3::shl(context_.bv_val(1, width), shift);
+      const SymbolicValue selected{
+          (value.bits & ~mask) | z3::shl(z3::zext(bit.bits, width - 1), shift),
+          value.known | mask};
+      value =
+          frame.parallel ? Choose(!*frame.parallel, selected, value) : selected;
+    }
+  }
   void SelectScan(z3::optimize& solver, SymbolicNetwork& values, size_t time,
                   Frame& frame) {
+    if (!clients_.empty()) {
+      auto count = context_.int_val(0);
+      for (size_t i = 0; i < clients_.size(); ++i) {
+        count = count + z3::ite(frame.clients.at(i), context_.int_val(1),
+                                context_.int_val(0));
+        auto enabled = context_.bool_val(true);
+        for (const auto& [node, index] : clients_[i]) {
+          enabled = enabled && Known(values.Read({node, index}), true);
+        }
+        solver.add(z3::implies(
+            frame.parallel ? !*frame.parallel : context_.bool_val(true),
+            enabled == frame.clients.at(i)));
+      }
+      solver.add(count == (frame.parallel
+                               ? z3::ite(*frame.parallel, context_.int_val(0),
+                                         context_.int_val(1))
+                               : context_.int_val(1)));
+    }
     std::vector<z3::expr> viable, observed, lengths, input_lengths;
     for (size_t i = 0; i < graph_.size(); ++i) {
       viable.push_back(context_.bool_val(false));
@@ -1763,6 +1882,14 @@ class ScanScheduler::Impl {
       auto selected = context_.bool_const(
           ("scan_" + std::to_string(time) + "_" + std::to_string(i)).c_str());
       frame.selected.push_back(selected);
+      if (!clients_.empty()) {
+        const auto& bit = graph_[roots_[i]].bit;
+        auto enabled = context_.bool_val(false);
+        for (size_t client : client_outputs_.at({bit.node, bit.index})) {
+          enabled = enabled || frame.clients.at(client);
+        }
+        solver.add(selected == enabled);
+      }
       solver.add(z3::implies(selected, viable[roots_[i]]));
       observed[roots_[i]] = observed[roots_[i]] || selected;
       input_lengths[roots_[i]] = lengths[roots_[i]];
@@ -1783,8 +1910,19 @@ class ScanScheduler::Impl {
       const size_t id = *it;
       const auto& vertex = graph_[id];
       if (vertex.input) {
-        frame.inputs.emplace(Key{vertex.bit.node, vertex.bit.index},
+        const Key key{vertex.bit.node, vertex.bit.index};
+        frame.inputs.emplace(key,
                              std::make_pair(observed[id], input_lengths[id]));
+        if (!clients_.empty()) {
+          auto allowed = context_.bool_val(false);
+          const auto clients = client_inputs_.find(key);
+          if (clients != client_inputs_.end()) {
+            for (size_t client : clients->second) {
+              allowed = allowed || frame.clients.at(client);
+            }
+          }
+          solver.add(z3::implies(observed[id], allowed));
+        }
       }
       if (vertex.bit.node != kMissing &&
           netlist_.nodes.at(vertex.bit.node).kind == "ScanRegister") {
@@ -1998,8 +2136,13 @@ class ScanScheduler::Impl {
       assignments.insert_or_assign(tap_->ir_select,
                                    SymbolicValue::Literal(context_, "0"));
     }
-    SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
     Frame frame;
+    SelectClients(frame, 0);
+    if (client_controls_) {
+      assignments = EventPins(assignments, frame, "capture");
+    }
+    SettleClientResets(&assignments);
+    SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
     SelectScan(solver, values, 0, frame);
     for (size_t id : required) {
       if (!frame.active.count(id)) return std::nullopt;
@@ -2124,8 +2267,9 @@ class ScanScheduler::Impl {
     return std::nullopt;
   }
   using Events = std::map<std::string, std::map<size_t, z3::expr>>;
-  std::map<size_t, std::string> ClientPins(const std::string& phase,
-                                           bool before = false) const {
+  std::map<size_t, std::string> ClientPins(
+      const std::string& phase, bool before = false,
+      const std::map<Key, char>& selections = {}) const {
     std::map<size_t, std::string> pins;
     for (const auto& [id, role] : client_pins_) {
       bool active = role == "select" || role == phase ||
@@ -2133,7 +2277,12 @@ class ScanScheduler::Impl {
       if (before && role == "clock") active = !active;
       auto bits = state_.Value(id);
       for (size_t offset : client_pin_bits_.at(id)) {
-        bits[offset] = active ? '1' : '0';
+        const auto& node = netlist_.nodes.at(id);
+        const int64_t index = node.left + (node.left <= node.right ? 1 : -1) *
+                                              static_cast<int64_t>(offset);
+        const auto selected = selections.find({id, index});
+        bits[offset] = selected == selections.end() ? (active ? '1' : '0')
+                                                    : selected->second;
       }
       pins.emplace(id, std::move(bits));
     }
@@ -2154,6 +2303,7 @@ class ScanScheduler::Impl {
         }
         pins.insert_or_assign(id, std::move(value));
       }
+      ClientSelections(&pins, frame);
       return pins;
     }
     const auto ir = Known(*frame.instruction, true);
@@ -2187,6 +2337,7 @@ class ScanScheduler::Impl {
           pins.insert_or_assign(id, SymbolicValue::Literal(context_, bits));
         }
       }
+      if (!tap_) ClientSelections(&pins, frame);
       SymbolicNetwork before(netlist_, context_, pins, global_resets_);
       for (size_t id : registers_) {
         if (tap_ && id == tap_->instruction_register) continue;
@@ -2279,6 +2430,7 @@ class ScanScheduler::Impl {
       SymbolicNetwork during(netlist_, context_, pins, global_resets_);
       Frame selected;
       selected.parallel = frame.parallel;
+      selected.clients = frame.clients;
       SelectScan(solver, during, time, selected);
       for (const auto& [id, active] : frame.active) {
         solver.add(active == selected.active.at(id));
@@ -2305,12 +2457,14 @@ class ScanScheduler::Impl {
     parameters.set("timeout", 250U);
     solver.set(parameters);
     Frame frame;
+    SelectClients(frame, 0);
     if (tap_) {
       state.insert_or_assign(tap_->ir_select,
                              SymbolicValue{ir, context_.bv_val(1, 1)});
       frame.instruction = SymbolicValue{ir, context_.bv_val(1, 1)};
     } else {
       state = EventPins(state, frame, "capture");
+      SettleClientResets(&state);
     }
     SymbolicNetwork values(netlist_, context_, state, global_resets_);
     SelectScan(solver, values, 0, frame);
@@ -3139,6 +3293,10 @@ class ScanScheduler::Impl {
     const size_t event_bits = events ? EventWorkSize() : 0;
     const auto start = std::chrono::steady_clock::now();
     for (size_t horizon = 1; horizon <= max_steps; ++horizon) {
+      if (horizon * client_reset_work_ > 1048576) {
+        throw std::runtime_error(
+            "client reset resource limit; fixed point not proved");
+      }
       if (events && horizon * (maximum + 1) * event_bits > 1048576) {
         throw std::runtime_error(
             "scan event resource limit; reachability not proved");
@@ -3201,6 +3359,7 @@ class ScanScheduler::Impl {
       auto cycles = context_.int_val(0), changes = context_.int_val(0);
       for (size_t time = 0; time < horizon; ++time) {
         Frame frame;
+        SelectClients(frame, time);
         auto scan = context_.bool_val(true);
         auto any_drive = context_.bool_val(false);
         if (mixed) {
@@ -3241,6 +3400,7 @@ class ScanScheduler::Impl {
                            context_.int_val(0));
         }
         if (client_controls_) state = EventPins(state, frame, "capture");
+        SettleClientResets(&state, &fills);
         SymbolicNetwork values(netlist_, context_, state, global_resets_);
         SelectScan(solver, values, time, frame);
         ConstrainScanControls(solver, state, frame, time, events);
@@ -3432,9 +3592,10 @@ class ScanScheduler::Impl {
                            updated);
             enabled = enabled && Known(reset, false);
             definite = definite || Known(reset, true);
-            fill = Choose(
-                Known(reset, true),
-                SymbolicValue::Literal(context_, initial_fill_.at(id)), fill);
+            fill =
+                Choose(Known(reset, true),
+                       SymbolicValue::Literal(context_, initial_fill_.at(id)),
+                       Choose(enabled, load, fills.at(id)));
           }
           solver.add(definite);
           solver.add(z3::implies(
@@ -3609,6 +3770,7 @@ class ScanScheduler::Impl {
       auto replayed_preserved = preserved;
       std::vector<bool> simultaneous_replayed(groups.size());
       for (const auto& frame : frames) {
+        if (!clients_.empty()) replay.TakeResetEvents();
         std::set<size_t> reset;
         for (size_t id : registers_) {
           if (netlist_.nodes[id].reset &&
@@ -3624,6 +3786,9 @@ class ScanScheduler::Impl {
                          tap_ && !required.count(tap_->instruction_register),
                          &replay, tap_replay.get(), replayed_preserved,
                          desired_preserved);
+        if (!clients_.empty()) {
+          for (size_t id : replay.TakeResetEvents()) reset.insert(id);
+        }
         for (const auto& [id, drive] : frame.drives) {
           if (model.eval(drive, true).is_true()) fill[id] = replay.Value(id);
           if (replay.Value(id) != Decode(model, frame.state.at(id))) {
@@ -3631,23 +3796,7 @@ class ScanScheduler::Impl {
                 "symbolic/concrete mixed-input replay mismatch");
           }
         }
-        for (size_t id : data_plan.order) {
-          if (replay.Value(id) != Decode(model, frame.state.at(id))) {
-            throw std::runtime_error(
-                "symbolic/concrete DataRegister replay mismatch at " +
-                netlist_.nodes[id].name);
-          }
-          if (model.eval(frame.active.at(id), true).is_true()) {
-            fill[id] = replay.Value(id);
-          }
-          const auto& node = netlist_.nodes[id];
-          if (node.reset && replay.Read(*node.reset) == '1') {
-            fill[id] = initial_fill_.at(id);
-          }
-          if (fill.at(id) != Decode(model, frame.fill.at(id))) {
-            throw std::runtime_error("symbolic/concrete data fill mismatch");
-          }
-        }
+        UpdateDataFill(frame, model, replay, reset, fill);
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           bool complete = true;
@@ -3689,7 +3838,8 @@ class ScanScheduler::Impl {
         for (size_t id : registers_) {
           const auto& node = netlist_.nodes[id];
           if (node.reset &&
-              (reset.count(id) || replay.Read(*node.reset) == '1')) {
+              ((reset.count(id) && !step.writes.count(node.name)) ||
+               replay.Read(*node.reset) == '1')) {
             fill[id] = initial_fill_.at(id);
             const auto& reset_bits = node.constants.at("ResetValue").data;
             for (size_t i = 0; i < reset_bits.size(); ++i) {
@@ -3722,6 +3872,27 @@ class ScanScheduler::Impl {
                         " scans; reachability not proved (unknown "
                         "control, reset, or blocked path)" +
                         access_context);
+  }
+  void UpdateDataFill(const Frame& frame, const z3::model& model,
+                      const NetworkState& replay, const std::set<size_t>& reset,
+                      std::map<size_t, std::string>& fill) const {
+    for (size_t id : state_.DataRegisters().order) {
+      if (replay.Value(id) != Decode(model, frame.state.at(id))) {
+        throw std::runtime_error(
+            "symbolic/concrete DataRegister replay mismatch at " +
+            netlist_.nodes[id].name);
+      }
+      const bool written = model.eval(frame.active.at(id), true).is_true();
+      if (written) fill[id] = replay.Value(id);
+      const auto& node = netlist_.nodes[id];
+      if (node.reset &&
+          ((reset.count(id) && !written) || replay.Read(*node.reset) == '1')) {
+        fill[id] = initial_fill_.at(id);
+      }
+      if (fill.at(id) != Decode(model, frame.fill.at(id))) {
+        throw std::runtime_error("symbolic/concrete data fill mismatch");
+      }
+    }
   }
   ScanStep ReplayParallel(
       const Frame& frame, const z3::model& model, NetworkState* replay,
@@ -3768,12 +3939,12 @@ class ScanScheduler::Impl {
     }
     return step;
   }
-  std::map<size_t, ScanControl> ClientControls(NetworkState* state,
-                                               const std::set<size_t>& active,
-                                               const std::string& phase) const {
+  std::map<size_t, ScanControl> ClientControls(
+      NetworkState* state, const std::set<size_t>& active,
+      const std::string& phase, const std::map<Key, char>& selections) const {
     const bool falling = phase == "update";
-    const auto pins = ClientPins(phase);
-    for (const auto& [id, bits] : ClientPins(phase, true)) {
+    const auto pins = ClientPins(phase, false, selections);
+    for (const auto& [id, bits] : ClientPins(phase, true, selections)) {
       state->Drive(id, bits);
     }
     state->Reset();
@@ -3830,9 +4001,21 @@ class ScanScheduler::Impl {
       throw std::runtime_error("solver selected no serial output");
     }
     ScanStep step;
+    std::map<Key, char> selections;
+    for (const auto& [key, clients] : client_selectors_) {
+      char active = '0';
+      for (size_t id : clients) {
+        if (model.eval(frame.clients.at(id), true).is_true()) active = '1';
+      }
+      selections.emplace(key, active);
+    }
     if (client_controls_) {
-      for (const auto& [id, bits] : ClientPins("capture")) {
+      for (const auto& [id, bits] : ClientPins("capture", false, selections)) {
         replay->Drive(id, bits);
+      }
+      if (!clients_.empty()) {
+        replay->Reset();
+        if (check) check(*replay);
       }
     }
     if (tap_) {
@@ -3960,7 +4143,7 @@ class ScanScheduler::Impl {
       std::set<size_t> active;
       for (const auto& [id, control] : controls) active.insert(id);
       if (client_controls_) {
-        controls = ClientControls(replay, active, "capture");
+        controls = ClientControls(replay, active, "capture", selections);
       }
       replay->Clock(controls, true);
       if (check) check(*replay);
@@ -3975,13 +4158,15 @@ class ScanScheduler::Impl {
         }
         for (const auto& [input, bits] : inputs) replay->Drive(input, bits);
         if (client_controls_) {
-          controls = ClientControls(replay, active, "shift");
+          controls = ClientControls(replay, active, "shift", selections);
         }
         replay->Clock(controls, true);
         if (check) check(*replay);
       }
       for (auto& [id, control] : controls) control = {'0', '0', '1', '1'};
-      if (client_controls_) controls = ClientControls(replay, active, "update");
+      if (client_controls_) {
+        controls = ClientControls(replay, active, "update", selections);
+      }
       for (const auto& [id, control] : controls) {
         const auto& node = netlist_.nodes[id];
         if (control.select == '1' && control.update == '1' &&
@@ -3993,7 +4178,7 @@ class ScanScheduler::Impl {
       replay->Clock(controls, false);
       if (check) check(*replay);
       if (client_controls_) {
-        for (const auto& [id, bits] : ClientPins("idle")) {
+        for (const auto& [id, bits] : ClientPins("idle", false, selections)) {
           replay->Drive(id, bits);
         }
         replay->Reset();
@@ -4029,6 +4214,10 @@ class ScanScheduler::Impl {
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
   bool parallel_chains_ = false;
+  size_t client_reset_passes_ = 0, client_reset_work_ = 0;
+  std::vector<std::vector<Key>> clients_;
+  std::map<Key, std::vector<size_t>> client_inputs_, client_outputs_,
+      client_selectors_;
   std::map<size_t, std::string> client_pins_;
   std::map<size_t, std::set<size_t>> client_pin_bits_;
   std::set<Key> client_clocks_;

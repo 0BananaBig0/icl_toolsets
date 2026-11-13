@@ -345,6 +345,30 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "multiple_clients_separate",
+      "top": "Chains",
+      "icl": [
+        "tests/cases/ours/pattern_generation/independent_clients.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_clients_separate.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "multiple_clients_shared",
+      "top": "Chains",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_clients.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_clients_shared.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

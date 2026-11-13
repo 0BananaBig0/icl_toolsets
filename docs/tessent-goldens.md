@@ -57,7 +57,7 @@ TAP/SIB fixture to verify this transition and reopening before a later write.
 Schema-3 snapshots under `tests/golden/tessent_roundtrip/` preserve the direction,
 comparison policy, original source hashes, staged inputs/scripts, raw vendor
 export, local output, binary/version provenance and compared trace. Ordinary
-checks never refresh them. Thirty-seven directional standards cover 21 source cases (20 forward and 17
+checks never refresh them. Forty-two directional standards cover 26 source cases (20 forward and 22
 reverse). They include pin/vector cases, TAP/SIB and reset reservations, data
 registers, shadow storage, mixed I/O, computed ports, control ownership and
 merged observations. The dated sections below distinguish each qualification's
@@ -535,3 +535,20 @@ were skipped because `ICL_REF_DIR` was unset. The three new fixtures also pass
 ASan/UBSan/LeakSanitizer with leak detection enabled
 (`build/port-control-vendor-sanitizer-final.log`). Independent evidence review
 found no actionable issue in the six certificates.
+
+## Multiple standalone client interfaces (2026-11-13)
+
+Two reverse certificates qualify separate selectable clients and shared storage
+accessed through different clients. Tessent 2026.2 exported the original sources;
+local replay preserved the ordered apply groups and reached a fixed point.
+The ordinary offline check now passes 42 directional standards plus seven legacy
+standards. These two cases do not certify arbitrary reset cascades or multi-TAP
+behavior.
+
+Reproduce preparation with tests/tessent_roundtrip.py prepare --manifest
+tests/cases/ours/pattern_generation/multiple_clients_cases.json --direction reverse
+--output <fresh-bundle>. Evidence is retained remotely under
+test_icl_toolsets/test_multiple_clients/run_2026_11_13_01/
+multiple-client-reverse-final-bundle and locally under
+build/multiple-client-reverse-final-evidence. Recorded snapshots are
+multiple_clients_separate-reverse and multiple_clients_shared-reverse.

@@ -1088,6 +1088,7 @@ python3 tests/src/pattern/test_shared_scan_outputs.py $1
 python3 tests/src/pattern/test_pending_reset.py $1
 python3 tests/src/pattern/test_client_scan_controls.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
+python3 tests/src/pattern/test_multiple_client_interfaces.py $1
 python3 tests/src/pattern/test_hidden_client_events.py $1
 python3 tests/src/pattern/test_compound_reset_sources.py $1
 python3 tests/src/pattern/test_argument_reset_sources.py $1

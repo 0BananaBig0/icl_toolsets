@@ -246,6 +246,49 @@ Module ClientTop {
               vector_scheduler.Value("ck") == "xx0x",
           "client phases drive only the interface's indexed control lanes");
 }
+void TestMultipleClientSelection() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/multiple_clients.icl";
+  std::ifstream input(path);
+  Require(input.good(), "read shared-client fixture");
+  const std::string source((std::istreambuf_iterator<char>(input)), {});
+  pattern::Design design;
+  design.AddIcl(path, source);
+  const auto netlist = pattern::Elaborate(design, "Chains");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Apply({{"iWrite", {"route", "0"}, "route", {}}});
+  const auto first =
+      scheduler.Apply({{"iWrite", {"c.value", "9"}, "first", {}}});
+  Require(first.size() == 1 && first[0].input == "si[0]" &&
+              first[0].output == "so0" && first[0].serial == "1001" &&
+              scheduler.Value("c.value") == "1001" &&
+              scheduler.Value("sel") == "01" && scheduler.Value("si") == "x1",
+          "first client selects one path and leaves unused input undriven");
+  scheduler.Apply({{"iWrite", {"route", "1"}, "route", {}}});
+  Require(
+      scheduler.Value("sel") == "01" && scheduler.Value("c.value") == "1001",
+      "parallel frame preserves previous selection and shared storage");
+  const auto second =
+      scheduler.Apply({{"iRead", {"c.value", "9"}, "read", {}},
+                       {"iWrite", {"c.value", "6"}, "second", {}}});
+  Require(second.size() == 1 && second[0].input == "si[1]" &&
+              second[0].output == "so1" && second[0].serial == "0110" &&
+              second[0].serial_expected == "1001" &&
+              scheduler.Value("c.value") == "0110" &&
+              scheduler.Value("sel") == "10" && scheduler.Value("ck") == "0",
+          "second client captures common prior state before updating it");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"c.value", "3"}, "reserved", {}}}, false,
+                    {{netlist.node_ids.at("c.value"), "0110"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("c.value") == "0110" &&
+              scheduler.Value("sel") == "10",
+          "failed shared-state request restores storage and interface pins");
+}
 void TestSimultaneousScanChains() {
   pattern::Design design;
   design.AddIcl("simultaneous.icl", R"(
@@ -1791,6 +1834,7 @@ int main() {
     TestSharedScanOutputs();
     TestEnabledScanOutputs();
     TestClientScanControls();
+    TestMultipleClientSelection();
     TestSimultaneousScanChains();
     TestHiddenClientEvents();
     TestVectorScanInputs();

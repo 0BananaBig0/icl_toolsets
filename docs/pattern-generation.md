@@ -1,36 +1,35 @@
 # Pattern generation
 
 `icl-pattern-generation` is an experimental executable. It currently expands
-PDL procedures and Tcl computations and schedules single-path scans,
-including shared output observations, indexed vector inputs and single-TAP
-instruction/data scans. It also
-schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
+PDL procedures and Tcl computations and schedules single-path scans, shared
+output observations, simultaneous named client chains, independently selected
+standalone clients, indexed vector inputs and single-TAP instruction/data scans.
+It also schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
 
 ## Current verification
 
-On 2026-11-13, after adding shared scan-output observations, sliced/aliased merge
-reads, reset queue cancellation and enabled shared observations, full dynamic/static
-`make -j2 --jobserver-style=pipe check` passed, including the Vim/Neovim corpus
-checks, 1,916 ICL regression cases and 2,180 conformance cases. All 334 parser
-and 119 scanner rules were exercised across 2,504 ICL files. Five optional ANTLR
-integration tests were skipped because `ICL_REF_DIR` was unset. Rule coverage
-does not establish full handwritten line/branch coverage; the strict coverage
-gate remains unmet in the last recorded measurement.
+On 2026-11-13, the multiple-client checkpoint passed full dynamic/static
+make -j2 --jobserver-style=pipe check, including all 29 generator CLI suites,
+native tests, 42 directional and seven legacy Tessent standards, and six
+Vim/Neovim checks. All 334 parser and 119 scanner rules were exercised across
+2,510 ICL files. Five optional ANTLR integration tests were skipped because
+ICL_REF_DIR was unset. The complete log and exit 0 record are
+build/multiple-client-regression-complete.log and .exit.
 
-The latest focused ASan/UBSan/LeakSanitizer run covered the native scheduler
-and nine shared-output cases, with leak detection enabled. See
-[enabled-output evidence](#enabled-observations-of-one-scan-path-2026-11-13) for the
-commands, logs, review and measured scale. This did not rerun installation,
-RTL simulation or strict authored-code coverage.
+The native scheduler, 17 new client cases, nine existing simultaneous-chain
+cases and eight hidden-client cases passed ASan/UBSan/LeakSanitizer with
+detect_leaks=1. Formatting, naming, whitespace and independent review passed.
+See [client-interface evidence](#independently-selected-client-interfaces-2026-11-13)
+for behavior, vendor evidence, commands and scale measurements.
 
-Ordinary regression passes 40 directional and seven legacy Tessent standards
-offline. The [latest six directional certificates](tessent-goldens.md#port-control-and-merge-qualification-2026-10-30)
-cover three specific TAP fixtures. Indexed vector-input and shared-output cases have local replay
-coverage and no vendor certificate. The
+Strict authored-code coverage remains unmet: the last complete measurement
+at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
+changes have not passed that gate. Rocky8 qualification covers the implementation
+through eecab17. These results do not establish complete retargeting, arbitrary
+event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
-tracks distinct scan paths and multiple TAPs, general events/clocks, remaining
-reservations, reset rewriting and broader qualification as unfinished work.
+records the remaining acceptance work.
 
 ## Vendor round-trip acceptance
 
@@ -2213,8 +2212,9 @@ clocks their disjoint paths together, captures and updates once, and shifts for
 the longest selected path. Shorter chains receive leading input padding and
 trailing X comparison masks. Vector ports retain unused lanes, and unlisted
 outputs cannot replace the declared chain outputs. Each path must reach its
-declared input; shared storage/inputs and multiple controllers still require
-the remaining event-scheduling work.
+declared input. Shared scan ports within named chains remain invalid under
+IEEE6.4.16(q). Independently selected clients can now share internal storage;
+combining multiple clients with named-chain groups remains separate work.
 
 Native state assertions and nine CLI cases cover unequal lengths, inversion,
 indexed lanes, declared-output enables, cross-chain and primary-control
@@ -2444,7 +2444,7 @@ checks, installed PDL formatter/LSP checks, original/flat/generated pattern
 identity, intended reset-target writes, reset-pattern replay identity and
 reset-source idempotence. Uninstall preserves an unrelated sentinel and removes
 installed headers. Local logs are build/source-distribution-reset-reviewed.log
-(exit0,44.110s) and build/static-installation-reviewed.log (exit0).
+(exit 0,44.110s) and build/static-installation-reviewed.log (exit 0).
 The ICL LSP lifecycle suite separately passes all62 checks for the static install.
 
 Actual target qualification used Rocky Linux8.10 x86_64, GCC Toolset15.2.1,
@@ -2536,25 +2536,78 @@ arguments, calls, multiple side effects, prefixes, loops, nested substitutions,
 immutable-procedure failure and 64 iterations. Each successful case checks
 original/flat input, rewritten-source idempotence and both pattern fixed points.
 The 64-iteration, 168-byte PDL case took 7.773 s for five generator invocations
-(g++16.2.1 -O2, local Linux host, concurrent verification jobs); this is a scale
+(g++ 16.2.1 -O2, local Linux host, concurrent verification jobs); this is a scale
 measurement, not a speedup claim. Native tracing verifies vector ranges exclude
 actual command substitutions.
 
 Full dynamic/static make check passed: build/argument-reset-regression-final.log
-and .exit (0), all28 generator CLI suites, native tests, 40 directional and seven
+and .exit (0), all 28 generator CLI suites, native tests, 40 directional and seven
 legacy vendor standards, 334 parser/119 scanner rules across 2,507 ICL files,
 and six Vim/Neovim tests. Five optional ANTLR tests remain skipped.
-Leak-enabled ASan/UBSan/LSan passed the native runtime, new12 cases, existing25
-generator cases and12 compound-reset cases; see
+Leak-enabled ASan/UBSan/LSan passed the native runtime, new 12 cases, existing 25
+generator cases and 12 compound-reset cases; see
 build/argument-reset-sanitizer-{native,cli,existing}.log and .exit (0).
 Formatting, naming, whitespace and independent review passed. Review exposed
 PDL vector brackets being interpreted as Tcl substitutions; failing bit/slice/
 variable-index cases preceded the parser-metadata fix. The initial full run
-was stopped with143 for that repair and is not completion evidence.
+was stopped with 143 for that repair and is not completion evidence.
 
-Tessent2026.2 accepted and exported generated wrappers for whole-register and
+Tessent 2026.2 accepted and exported generated wrappers for whole-register and
 sliced writes, including the reset followed by root/branch releases and the
-intended value3. Evidence is build/argument-reset-vendor/{whole,slice} and remote
+intended value 3. Evidence is build/argument-reset-vendor/{whole,slice} and remote
 test_icl_toolsets/test_argument_reset/run_2026_11_13_01. This checks Tcl acceptance
 and export; it adds no directional equivalence certificate. Current strict
 coverage and later-change Rocky8 qualification remain unverified.
+
+## Independently selected client interfaces (2026-11-13)
+
+Multiple standalone client interfaces with one SI/SO pair each and explicit
+SelectPort controls now share one scheduler state. One interface is selected per
+serial frame; all other interfaces must be disabled. The chosen path must reach
+that interface's declared input. Shared selectors are allowed only when other
+controls permit unique selection. Shared internal storage retains the value
+written through the previous interface. Single-client named chains continue to
+shift together; multi-client named-chain groups and ShiftEn-only selection remain
+unsupported, as do multiple TAPs and intermediate register taps.
+
+Selection changes settle asynchronous resets before evaluating routes, controls
+and capture data. Symbolic snapshot passes match the concrete model's simultaneous
+passes, retaining transient assertions that a single topological pass misses.
+The scan reset DAG depth plus the count of reset-bearing data registers bounds
+the passes; bit/object work is capped at 1,048,576 per constructor analysis and
+across a scheduling horizon. The data-register bound is conservative. Larger
+acyclic models may report a resource limit even within the structural bounds;
+this is not proof of unreachability. Definite reset events clear controlling
+history unless a subsequent successful write replaces it. Unknown resets retain
+unknown hardware state and do not invent successful controlling writes.
+
+Seventeen CLI cases cover independent/shared paths, reads, partial aliases,
+inversion, unequal widths, reservations, shared selectors/outputs, cross-client
+reset prerequisites, reset-before-capture cascades, transient data-register
+history, parallel selector preservation, failure publication and resource limits.
+Native assertions verify SI/SO streams, capture comparison bits, selected pins,
+untouched input lanes and rollback. The 512-stage reset chain exercises the work
+limit and output preservation. Original/flat/generated replay is required for
+every successful CLI case.
+
+The 16-client, 3,637-byte ICL workload took 2.175 s for three replay forms, wall 2.24 s,
+peak 65,640 KiB (g++ 16.2.1 -O2, local Linux host, concurrent validation jobs).
+Reproduce with /usr/bin/time -f 'wall=%e seconds max_rss=%M KiB' python3
+tests/src/pattern/test_multiple_client_interfaces.py build/icl-pattern-generation
+MultipleClients.test_multiple_client_scale. This measures the stated workload.
+
+Tessent 2026.2 exported separate-client and shared-storage source cases; both
+reverse round trips have matching ordered apply groups and local fixed points.
+The offline total is 42 directions plus seven legacy standards. Inputs and hashes
+are retained in tests/golden/tessent_roundtrip/multiple_clients_{separate,shared}-reverse;
+remote evidence is test_multiple_clients/run_2026_11_13_01/
+multiple-client-reverse-final-bundle, retrieved as
+build/multiple-client-reverse-final-evidence. These certify those two cases,
+not the broader reset/event model. Full dynamic/static regression passed
+(build/multiple-client-regression-complete.log and .exit,0). Leak-enabled
+sanitizers passed native scheduler tests and the 17 new/nine simultaneous/eight
+hidden-client cases (build/multiple-client-sanitizer-{native,cli,existing}.log
+and .exit,0). Naming, formatting, whitespace and independent review passed.
+Earlier runs failed the duplicate-fixture and central-manifest checks; another
+was stopped for the required data-fill helper extraction. They are retained
+as failure evidence, not counted as passing runs.

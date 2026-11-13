@@ -651,7 +651,7 @@ changes. Bound dependency builds to two parallel jobs.
 
 ## Remaining completion work (not yet completed)
 
-- Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
+- Multi-client named-chain groups, ShiftEn-only client selection, multiple TAPs and intermediate storage taps: extend common-state event planning beyond the independently selected single-pair clients completed in Task29.
 - General independently gated/serial-derived events, feedback/register callbacks, system-clock/time behavior: establish each model's documented event semantics before implementation.
 - Additional reservations and protected reset/lifecycle behavior: extend resource ownership and transitions consistently across backends.
 - General caller-only reset rewriting: classify repairable source sites and impossible immutable-procedure cases; retain diagnostics for genuinely impossible transformations.
@@ -942,3 +942,16 @@ cases, native metadata checks, full dynamic/static regression, leak-enabled
 sanitizers, style/naming and independent review pass. Tessent2026.2 accepts and
 exports whole/sliced generated wrappers; no additional equivalence certificate
 is claimed. Immutable internal reassertions and other recorded limits remain.
+
+## Task 29: Independently selected standalone clients
+
+Completed [the focused plan](2026-11-13-multiple-client-interfaces.md). Selection,
+route constraints, parallel frames, reset settlement and concrete replay share
+one hardware state. Seventeen CLI cases and native SI/SO/state assertions cover
+ordinary/shared storage, reset cascades, controlling history, resource limits
+and failed-output preservation. Full dynamic/static checks, native/new17/old17
+leak-enabled sanitizers, style/naming and independent review pass. Two Tessent
+reverse certificates bring the offline total to42 directions plus seven legacy
+standards. The guide records exact evidence and remaining limits. Task30 will
+add named-chain groups to selectable clients; its tests remain outside this
+checkpoint.

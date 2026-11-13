@@ -1,0 +1,198 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "multiple_clients_shared",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/multiple_clients.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/multiple_clients_shared.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/multiple_clients.icl": "e49650f8158d801aba1fa36a8324407e4a16f2dee99ac1c2e9526412605b22d5",
+    "tests/cases/ours/pattern_generation/multiple_clients_shared.pdl": "046cda6c1e6495cb0f495fa8911715e8d9f3654cf0fb82c7d69488bfd5e72087"
+  },
+  "job": {
+    "id": "multiple_clients_shared",
+    "top": "Chains",
+    "icl": [
+      "tests/cases/ours/pattern_generation/multiple_clients.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/multiple_clients_shared.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "e49650f8158d801aba1fa36a8324407e4a16f2dee99ac1c2e9526412605b22d5",
+      "source_0.pdl": "046cda6c1e6495cb0f495fa8911715e8d9f3654cf0fb82c7d69488bfd5e72087",
+      "run.tcl": "da3df043ab9065068e4a7a43d656d7d3b1d36432c5f2923f04900bd0198349a3"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/multiple_clients.icl": "e49650f8158d801aba1fa36a8324407e4a16f2dee99ac1c2e9526412605b22d5",
+      "tests/cases/ours/pattern_generation/multiple_clients_shared.pdl": "046cda6c1e6495cb0f495fa8911715e8d9f3654cf0fb82c7d69488bfd5e72087"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.779453323222697,
+    "outcome": "ok",
+    "result_sha256": "d54f9cd2b0531b49d4083032e5aa700733b6245d0270381ae2e2d739d33defe7",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "Chains",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "route",
+            0,
+            "0"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "route",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "c.value",
+            0,
+            "0"
+          ],
+          [
+            "c.value",
+            1,
+            "1"
+          ],
+          [
+            "c.value",
+            2,
+            "1"
+          ],
+          [
+            "c.value",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "c.value",
+            0,
+            "1"
+          ],
+          [
+            "c.value",
+            1,
+            "0"
+          ],
+          [
+            "c.value",
+            2,
+            "0"
+          ],
+          [
+            "c.value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "df48be5a59a75757a3061602068d0df68204be1dfbebae803fddc85753714e63",
+  "vendor_console_sha256": "2336576e541da44d831eb3d3eea60eda371d517956207cbdc7abfdf88787aae7",
+  "artifacts": {
+    "flat.pdl": "7eab4bfdbd2e3cfd2af0eeb480b40f2cdd8f8a42dbd86d1f46f89b6b597998d2",
+    "vendor.pdl": "d54f9cd2b0531b49d4083032e5aa700733b6245d0270381ae2e2d739d33defe7"
+  }
+}
