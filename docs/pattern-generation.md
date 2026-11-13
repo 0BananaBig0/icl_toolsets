@@ -9,22 +9,23 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, ordinary-data source-kind validation passed the complete
+On 2026-11-14, relative system-clock waits passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/data-source-confirmed-full.log/.exit. This includes all40 generator CLI
+build/system-clock-confirmed-full.log/.exit. This includes all41 generator CLI
 suites under dynamic/static builds, native tests,51 directional and seven legacy
 Tessent standards, all334 parser and119 scanner rules across2523 ICL files,
-and six Vim/Neovim tests (176.629s). Full wall time was907.574s. Five optional
+and six Vim/Neovim tests (179.043s). Full wall time was993.511s. Five optional
 ANTLR integration tests were skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native netlist/logic/address/symbolic/
-state/TAP/scheduler/flatten, main35, TAP9, hidden-event4, multiple-TAP functional20,
-end-state11, mixed-I/O15, client-control18 and control-reservation9 methods.
-Both scale methods are excluded from the20-method functional sanitizer run:
-Task48's instrumented16/32-TAP cases reached the unchanged2s solver budget.
-The complete optimized22-method suite passes, including its scale cases.
-Formatting, naming and independent source/fixture reviews pass. See
-[the scope and evidence](#ordinary-data-source-kind-eligibility-2026-11-14).
+Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
+main35, clock17, client-control18 and reset-preview12 methods. The final clock
+fixtures also passed a separate leak-enabled run after their hierarchy correction.
+Formatting, naming and independent source review pass; the review's unrelated
+held-clock finding has a failing-before/passing-after native regression. See
+[the scope and evidence](#relative-system-clock-waits-2026-11-14).
+The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
+cases reached the unchanged2s solver budget. This clock work does not claim a
+fresh sanitizer pass for those scale cases; all optimized suites pass.
 
 Strict authored-code coverage remains unmet. A fresh complete instrumented run
 including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
@@ -3520,3 +3521,74 @@ fixture; that failed aggregate remains exit1. Its corrected18-method suite and
 the final complete dynamic/static regression pass. The validator itself did not
 change during fixture corrections. Strict coverage, vendor certification and
 Rocky8 qualification have not been refreshed for this change.
+
+### Relative system-clock waits (2026-11-14)
+
+`iClock` checks one ClockPort/ToClockPort bit against the applied routing state.
+`iRunLoop count -sck port` then emits the corresponding root ClockPort wait,
+rounding up after cumulative multiplier/divider scaling. For example, a clock
+running at3/10 of its root needs7 root cycles for2 local cycles, or10 root cycles
+for3 local cycles. Generated PDL names the root, so replay does not scale twice.
+
+Supported paths use non-inverted forwarding/aliases, positive fixed frequency
+factors and ClockMux entries evaluated in declaration order. Selectors must be
+known and covered. Targets are scalar or explicitly indexed port bits. A wait
+requires a prior successful iClock on that target, including zero-cycle waits;
+queued reads/writes must be applied first. iClock itself does not flush the queue.
+After applied-state changes, a changed effective root or reduced ratio requires
+another iClock. A different known route with the same effective tuple is accepted;
+this establishes duration equivalence, not phase continuity.
+
+These relative waits preserve modeled storage, TAP state and pin levels. Roots
+with possible non-clock fanout are rejected, including unsafe unselected branches,
+inverted paths and differential-clock uses. Known held clock levels are checked
+only within the pulsed root's possible fanout; unrelated stopped or unknown clocks
+do not block the wait. Potentially related inactive/unknown held routes remain
+conservatively rejected. No physical root period or terminal clock level is invented.
+Oscillators, differential paths, overrides, absolute time, tester-period normalization
+and general clock-driven data/control events remain required follow-up work.
+
+The route walk is iterative and caches effective tuples until hardware state
+changes; it does not retain a full path for each target. Fanout analysis visits
+connections once with ordered-map lookup costs. Ratios and emitted cycle counts
+are checked uint64 values; cross-cancellation and unsigned128 arithmetic avoid
+intermediate rounding/wrap when scaling the count. Individual ICL factors use
+the existing positive signed64 integer domain; a cumulative intermediate ratio
+outside uint64 is rejected even if a later factor could cancel it.
+
+Seventeen CLI methods cover five replay forms, prefixes/procedures, wildcard mux
+order, changed/equivalent routes, zero/missing checks, pending operations, invalid
+factors/overflow, fanout rejection and atomic artifact preservation. Native tests
+cover held root/forwarded/other bits, unrelated inactive/unknown clocks and unchanged
+state. Independent review found the unrelated-held-clock rejection; a native RED
+case now passes, together with the existing scheduler suite. Decimal frequency
+serialization fixes an initial failing flat replay. Existing main35 passes.
+
+With local GCC16.2.1,4096 forwarding instances (219051 ICL bytes),1024 checks/waits
+and five replay forms take0.982595s. A65536-bit root with256 forwarded bits,
+1024 checks/waits and five forms takes0.233540s. The complete17-method run takes
+3.586s (3.63s wall,94096KiB maximum RSS); /usr/bin/time evidence is in
+build/system-clock-legal-fixtures.log. These are
+measured inputs, not a general performance guarantee. Leak-enabled native
+scheduler/flatten/netlist and main35/clock17/client18/reset12 checks pass in
+build/system-clock-final-sanitizer-*. The final hierarchical clock fixtures also
+pass separately in build/system-clock-legal-sanitizer.log/.exit0. Positive clock
+fixtures use child ToClockPort sources under §6.3.12(e), including the long chain;
+initial flat-style local-output fixtures were corrected before either clock-suite
+invocation in the confirmed full run. Full integration passes in
+build/system-clock-confirmed-full.log/.exit0 (993.511s):41 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in179.043s;
+five optional ANTLR tests skipped.
+
+The first full run failed its coverage-source manifest check because the new clock
+source was missing. Both the source and inline-header implementation are now listed;
+the seven manifest checks pass. No coverage threshold or exclusion was relaxed.
+
+Tessent2026.2 accepts both the original3/10-frequency source and the normalized
+root-relative PDL with a configured100ns root period. Its two exports and our
+output have identical runtime traces: iClock root, then7 and10 root cycles.
+Exact submitted files/hashes, fetched logs and comparison commands/results are
+retained in build/system-clock-vendor-probe. The remote run is under the authorized
+lianghuaxiao /tmp/icl-system-clocks-20261114 directory. This is a small direct
+probe, not a new stored directional certificate or general clock equivalence.
+Strict coverage and Rocky8 qualification have not been refreshed.

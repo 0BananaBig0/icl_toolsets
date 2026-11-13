@@ -349,7 +349,10 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
       if (bits != node.inputs.end()) {
         result += name + " " + Signals(netlist, bits->second) + ";\n";
       } else if (value != node.constants.end()) {
-        result += name + " " + Literal(value->second) + ";\n";
+        const auto literal = name == "FreqMultiplier" || name == "FreqDivider"
+                                 ? std::to_string(value->second.AsInteger())
+                                 : Literal(value->second);
+        result += name + " " + literal + ";\n";
       } else if (name == "RefEnum" && node.enumeration) {
         result += "RefEnum " + FlatName(netlist.nodes[*node.enumeration].name) +
                   ";\n";

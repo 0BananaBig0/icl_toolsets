@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <tuple>
 
+#include "pattern/pattern_clock.h"
 #include "pattern/pattern_data.h"
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_flatten.h"
@@ -20,6 +21,63 @@
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestRelativeSystemClocks() {
+  const std::string source = R"(Module Top {
+    ClockPort root[3:2]; ClockPort other;
+    ToClockPort stopped { Source 1'b0; }
+    DataInPort unknown;
+    ClockMux unrelated SelectedBy unknown { 1'b0: other; 1'b1: 1'b0; }
+    ToClockPort unknown_other { Source unrelated; }
+    ToClockPort out[0:1] { Source root; FreqDivider 3; }
+    ScanInPort si;
+    ScanRegister value[3:0] { ScanInSource si; }
+    ScanOutPort so { Source value[0]; }
+  })";
+  pattern::Design design;
+  design.AddIcl("clocks.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("value", "1010");
+  const auto root = netlist.node_ids.at("root");
+  const auto out = netlist.node_ids.at("out");
+  const auto other = netlist.node_ids.at("other");
+  const auto stopped = netlist.node_ids.at("stopped");
+  const auto unknown_other = netlist.node_ids.at("unknown_other");
+  pattern::SystemClocks clocks(netlist);
+  Require(clocks.Check("out(0)", scheduler) == "root(3)", "clock root bit");
+  const auto before_root = scheduler.Value("root");
+  const auto before_out = scheduler.Value("out");
+  for (const auto& held : std::vector<std::map<size_t, std::string>>{
+           {{root, "0x"}}, {{root, "1x"}}, {{out, "0x"}}, {{out, "1x"}}}) {
+    Require(clocks.Wait("out(0)", 0, scheduler, held).second == 0,
+            "zero clock wait permits held levels");
+    bool rejected = false;
+    try {
+      clocks.Wait("out(0)", 1, scheduler, held);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("held clock") != std::string::npos;
+    }
+    Require(rejected, "nonzero clock wait protects root and forwarded holds");
+  }
+  for (const auto& held :
+       std::vector<std::map<size_t, std::string>>{{},
+                                                  {{root, "x0"}},
+                                                  {{out, "x1"}},
+                                                  {{root, "xx"}},
+                                                  {{other, "0"}},
+                                                  {{stopped, "0"}},
+                                                  {{unknown_other, "1"}}}) {
+    const auto wait = clocks.Wait("out(0)", 17, scheduler, held);
+    Require(wait.first == "root(3)" && wait.second == 51,
+            "relative clock duration");
+  }
+  Require(
+      scheduler.Value("value") == "1010" &&
+          scheduler.Value("root") == before_root &&
+          scheduler.Value("out") == before_out,
+      "accepted and rejected relative waits preserve storage and clock pins");
 }
 void TestMultipleTapResetSnapshot() {
   const std::string fixture =
@@ -2581,6 +2639,7 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestRelativeSystemClocks();
     TestMultipleTapResetSnapshot();
     TestStandaloneIdle();
     TestStandaloneIdleImplicitSelection();

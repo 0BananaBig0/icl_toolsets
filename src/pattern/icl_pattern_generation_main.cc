@@ -15,6 +15,7 @@
 #include <tuple>
 #include <vector>
 
+#include "pattern/pattern_clock.h"
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_merge.h"
 #include "pattern/pattern_resources.h"
@@ -209,12 +210,15 @@ std::string Generate(
     std::vector<pattern::Operation>* rewritten = nullptr,
     const pattern::ScanScheduler* initial = nullptr,
     const pattern::ResourceReservations* initial_reservations = nullptr,
-    bool finalize = true) {
+    bool finalize = true,
+    const pattern::SystemClocks* initial_clocks = nullptr) {
   pattern::ScanScheduler scheduler = initial ? pattern::ScanScheduler(*initial)
                                              : pattern::ScanScheduler(netlist);
   pattern::ResourceReservations reservations =
       initial_reservations ? *initial_reservations
                            : pattern::ResourceReservations(netlist);
+  pattern::SystemClocks clocks =
+      initial_clocks ? *initial_clocks : pattern::SystemClocks(netlist);
   z3::context context;
   QueuedAccesses pending;
   std::string result =
@@ -286,7 +290,7 @@ std::string Generate(
           try {
             ResetEdits strict;
             Generate(netlist, group, nullptr, &strict, nullptr, &scheduler,
-                     &reservations, false);
+                     &reservations, false, &clocks);
             ready = true;
           } catch (const std::runtime_error&) {
             // A failed preview leaves the live state for prerequisite planning.
@@ -308,6 +312,7 @@ std::string Generate(
           reservations.CheckAutomaticWrites(layer);
           scheduler.CheckLocalResets(layer);
           scheduler.Apply(layer, false, reservations.Values(), false);
+          clocks.Invalidate();
           if (rewritten) {
             rewritten->insert(rewritten->end(), layer.begin(), layer.end());
             rewritten->push_back({"iApply", {}, operation.origin, {}});
@@ -360,6 +365,7 @@ std::string Generate(
         if (edits) scheduler.CheckLocalResets(accesses);
         const auto steps =
             scheduler.Apply(accesses, together, reservations.Values());
+        clocks.Invalidate();
         reservations.Assigned(accesses, scheduler);
         append_steps(steps);
         if (steps.empty()) result += "iApply\n";
@@ -367,16 +373,23 @@ std::string Generate(
       } else if (operation.command == "iReset") {
         const bool synchronous = !operation.arguments.empty();
         scheduler.Reset(synchronous);
+        clocks.Invalidate();
         reservations.Reset();
         pending.Clear();
         result += synchronous ? "iReset -sync\n" : "iReset\n";
+      } else if (operation.command == "iClock") {
+        result += Command(
+            {"iClock", clocks.Check(operation.arguments.at(0), scheduler)});
       } else if (operation.command == "iRunLoop") {
         if (!pending.Empty()) {
           throw std::runtime_error("iRunLoop has unapplied operations");
         }
         const auto& args = operation.arguments;
-        std::string literal;
-        if (args.size() == 1) {
+        std::string literal, system_clock;
+        if (args.size() == 3 && args[1] == "-sck") {
+          literal = args[0];
+          system_clock = args[2];
+        } else if (args.size() == 1) {
           literal = args[0];
         } else if (args.size() == 2 && args[1] == "-tck") {
           literal = args[0];
@@ -384,7 +397,7 @@ std::string Generate(
           literal = args[1];
         } else {
           throw std::runtime_error(
-              "iRunLoop -sck/-time requires system-clock and period models");
+              "iRunLoop -time requires absolute period models");
         }
         if (literal.find_first_of("xX", 2) != std::string::npos) {
           throw std::runtime_error("iRunLoop cycle count must be known");
@@ -397,8 +410,16 @@ std::string Generate(
           }
           cycles = (cycles << 1) | (bit == '1');
         }
-        scheduler.Idle(cycles, reservations.Values());
-        result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
+        if (system_clock.empty()) {
+          scheduler.Idle(cycles, reservations.Values());
+          clocks.Invalidate();
+          result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
+        } else {
+          const auto wait = clocks.Wait(system_clock, cycles, scheduler,
+                                        reservations.Values());
+          result += Command(
+              {"iRunLoop", std::to_string(wait.second), "-sck", wait.first});
+        }
       } else if (operation.command == "iState") {
         const bool controlling = operation.arguments.size() != 3 ||
                                  operation.arguments[2] == "-LastWrittenValue";
@@ -408,6 +429,7 @@ std::string Generate(
                                              target.bits.size());
         if (controlling) {
           scheduler.Assume(name, bits);
+          clocks.Invalidate();
           pending.Assume(target, bits);
           reservations.Assigned({operation}, scheduler);
           result += Command({"iState", name, "0b" + bits});
@@ -534,8 +556,11 @@ int main(int argc, char** argv) {
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"
            "Nonzero TAP waits and TAP scans require explicit iReset.\n"
-           "Standalone iRunLoop TCK waits need no reset. iRunLoop -sck/-time,\n"
-           "general serial-derived clocks remain unsupported.\n"
+           "Standalone iRunLoop TCK waits need no reset. iClock and -sck "
+           "support\n"
+           "relative positive clock-only routes. Absolute time, clock "
+           "overrides\n"
+           "and general serial-derived clock events remain unsupported.\n"
            "Independent register and data/control-port iMerge calls can "
            "combine\n"
            "ordered applies, including reads, slices, aliases and masks.\n";

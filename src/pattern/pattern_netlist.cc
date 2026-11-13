@@ -1075,6 +1075,13 @@ class Elaborator {
               name == "iApplyEndState") {
             node.constants.emplace(name, ConstantValue(node, property.second));
           }
+          if (name == "FreqMultiplier" || name == "FreqDivider") {
+            const auto value = netlist_.Value(property.second);
+            if (value.AsInteger() <= 0) {
+              throw std::runtime_error(name + " must be positive");
+            }
+            node.constants.emplace(name, value);
+          }
           if (name == "AddressValue") {
             node.constants.emplace(name, ReadAddressValue(property.second));
           }

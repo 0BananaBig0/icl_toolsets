@@ -1313,3 +1313,22 @@ Five optional ANTLR tests remain skipped. Expanded native/functional leak checks
 and corrected scheduler/client18/control-reservation9 sanitizer runs pass.
 Original failed logs remain; independent source and fixture reviews are clean.
 Strict coverage, later vendor and platform qualification remain open.
+
+## Task51: Relative system-clock waits
+
+Completed [the focused plan](2026-11-14-relative-system-clocks.md). Checked clock
+routes emit root-relative waits with exact reduced ratios and rounded-up counts.
+Preserve scheduler state and reject unsupported fanout/events; recheck applied
+routing after state changes. Scalar/indexed targets and first-match ClockMux
+semantics are covered through original/flat/generated/reset-only replay.
+Focused17 clock methods, existing main35 and native scheduler/netlist/flat checks
+pass. Review's unrelated-held-clock finding has a RED/GREEN native regression.
+Formatting/naming and native scheduler/flatten/netlist plus main35/clock17/client18/
+reset12 leak checks pass. Tessent2026.2 accepts the source and normalized3/10-ratio
+probe; both exports match our root7/10-cycle trace. Final integration passes in
+build/system-clock-confirmed-full.log/.exit0,993.511s:41 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules, editor6 in179.043s;
+five optional ANTLR tests skipped. The first full run's missing coverage-manifest
+entry is fixed for both clock.cc and inline clock.h, and7 manifest tests pass.
+Corrected hierarchical clock fixtures pass both builds and leak-enabled checks.
+No new formal vendor certificate, strict coverage or Rocky8 refresh is claimed.

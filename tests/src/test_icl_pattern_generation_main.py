@@ -673,8 +673,8 @@ Module Network {
         for source, message in (
                 ("iRunLoop 1", "explicit iReset"),
                 ("iReset; iWrite core.r 1; iRunLoop 1", "unapplied"),
-                ("iReset; iRunLoop -time 10ns", "system-clock and period models"),
-                ("iReset; iRunLoop 1 -sck clock", "system-clock and period models"),
+                ("iReset; iRunLoop -time 10ns", "absolute period models"),
+                ("iReset; iRunLoop 1 -sck clock", "unknown PDL target clock"),
                 ("iReset; iRunLoop 0xX00000000000000000", "must be known"),
                 ("iReset; iRunLoop 18446744073709551616", "truncates significant bits")):
             with self.subTest(source=source):

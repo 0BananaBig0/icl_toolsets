@@ -140,6 +140,7 @@ Z3_LIBS ?= $(if $(Z3_STATIC_LIB),$(Z3_STATIC_LIB) -lpthread,$(shell pkg-config -
 SOLVER_SOURCES := $(SRC_DIR)/pattern/pattern_symbolic.cc $(SRC_DIR)/pattern/pattern_values.cc $(SRC_DIR)/pattern/pattern_scheduler.cc
 SOLVER_SOURCES += $(SRC_DIR)/pattern/pattern_merge.cc
 SOLVER_SOURCES += $(SRC_DIR)/pattern/pattern_resources.cc
+SOLVER_SOURCES += $(SRC_DIR)/pattern/pattern_clock.cc
 SOLVER_OBJECTS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SOLVER_SOURCES))
 SOURCES += $(SOLVER_SOURCES)
 $(SOLVER_OBJECTS): CPPFLAGS += $(Z3_CFLAGS)
@@ -1092,6 +1093,7 @@ python3 tests/src/pattern/test_vector_scan_inputs.py $1
 python3 tests/src/pattern/test_shared_scan_outputs.py $1
 python3 tests/src/pattern/test_pending_reset.py $1
 python3 tests/src/pattern/test_client_scan_controls.py $1
+python3 tests/src/pattern/test_system_clocks.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
 python3 tests/src/pattern/test_multiple_client_interfaces.py $1
 python3 tests/src/pattern/test_multiple_client_chain_groups.py $1

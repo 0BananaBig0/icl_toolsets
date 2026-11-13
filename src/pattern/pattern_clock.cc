@@ -1,0 +1,274 @@
+// Copyright 2026 The ICL Toolsets Authors.
+// SPDX-License-Identifier: MIT
+#include "pattern/pattern_clock.h"
+
+#include <algorithm>
+#include <limits>
+#include <numeric>
+#include <stdexcept>
+#include <vector>
+
+#include "pattern/pattern_values.h"
+
+namespace pattern {
+namespace {
+bool ClockPort(const NetlistNode& node) {
+  return node.kind == "ClockPort" || node.kind == "ToClockPort";
+}
+size_t Offset(const NetlistNode& node, int64_t index) {
+  return static_cast<size_t>(node.left >= node.right ? node.left - index
+                                                     : index - node.left);
+}
+int64_t Index(const NetlistNode& node, size_t offset) {
+  return node.left +
+         (node.left <= node.right ? 1 : -1) * static_cast<int64_t>(offset);
+}
+uint64_t Factor(const NetlistNode& node, const std::string& name) {
+  const auto found = node.constants.find(name);
+  return found == node.constants.end() ? 1 : found->second.AsInteger();
+}
+uint64_t Product(uint64_t a, uint64_t b) {
+  if (a > std::numeric_limits<uint64_t>::max() / b) {
+    throw std::runtime_error("system-clock frequency ratio limit exceeded");
+  }
+  return a * b;
+}
+}  // namespace
+void SystemClocks::Invalidate() {
+  routes_.clear();
+  values_.clear();
+}
+SystemClocks::Bit SystemClocks::Target(const std::string& name) const {
+  const auto target = ResolvePdlTarget(netlist_, name);
+  if (!ClockPort(netlist_.nodes.at(target.declaration)) ||
+      target.bits.size() != 1) {
+    throw std::runtime_error(
+        "system-clock target requires one ClockPort or "
+        "ToClockPort bit");
+  }
+  return {target.bits[0].node, target.bits[0].index};
+}
+std::string SystemClocks::Name(Bit bit) const {
+  const auto& node = netlist_.nodes.at(bit.first);
+  return node.name +
+         (node.indexed ? "(" + std::to_string(bit.second) + ")" : "");
+}
+BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler) {
+  const auto& node = netlist_.nodes.at(bit.first);
+  const size_t offset = Offset(node, bit.second);
+  if (node.kind == "ClockMux") {
+    std::string selected;
+    for (const auto& signal : node.inputs.at("SelectedBy")) {
+      char value = signal.constant;
+      if (signal.node < netlist_.nodes.size()) {
+        auto found = values_.find(signal.node);
+        if (found == values_.end()) {
+          found =
+              values_
+                  .emplace(signal.node,
+                           scheduler.Value(netlist_.nodes[signal.node].name))
+                  .first;
+        }
+        value =
+            found->second.at(Offset(netlist_.nodes[signal.node], signal.index));
+      }
+      if (value != '0' && value != '1') {
+        throw std::runtime_error(node.origin +
+                                 ": unknown clock selector: " + node.name);
+      }
+      selected += signal.inverted ? (value == '0' ? '1' : '0') : value;
+    }
+    for (const auto& choice : node.choices) {
+      for (const auto& code : choice.codes) {
+        bool match = true;
+        for (size_t i = 0; i < selected.size(); ++i) {
+          if (code.data[i] != 'x' && code.data[i] != selected[i]) match = false;
+        }
+        if (match) return choice.source.at(offset);
+      }
+    }
+    throw std::runtime_error(node.origin +
+                             ": uncovered clock selector: " + node.name);
+  }
+  const auto source = node.inputs.find("Source");
+  if ((!ClockPort(node) && node.model != ModelKind::kAlias) ||
+      source == node.inputs.end()) {
+    throw std::runtime_error(
+        node.origin + ": no supported system-clock source: " + node.name);
+  }
+  return source->second.at(offset);
+}
+SystemClocks::Route SystemClocks::Resolve(Bit bit,
+                                          const ScanScheduler& scheduler) {
+  std::vector<Bit> path;
+  std::set<Bit> active;
+  Route route;
+  while (true) {
+    const auto cached = routes_.find(bit);
+    if (cached != routes_.end()) {
+      route = cached->second;
+      break;
+    }
+    const auto& node = netlist_.nodes.at(bit.first);
+    if (node.properties.count("Period") ||
+        node.properties.count("DifferentialInvOf")) {
+      throw std::runtime_error(
+          node.origin + ": oscillator/differential clock path is unsupported");
+    }
+    if (node.kind == "ClockPort" && node.scope == 0 &&
+        !node.inputs.count("Source")) {
+      route.root = bit;
+      routes_.emplace(bit, route);
+      break;
+    }
+    if (!active.insert(bit).second) {
+      throw std::runtime_error("cyclic system-clock path");
+    }
+    path.push_back(bit);
+    const auto source = Source(bit, scheduler);
+    if (source.inverted || source.node >= netlist_.nodes.size()) {
+      throw std::runtime_error(node.origin +
+                               ": inactive or inverted system-clock path");
+    }
+    bit = {source.node, source.index};
+  }
+  for (auto it = path.rbegin(); it != path.rend(); ++it) {
+    const auto& node = netlist_.nodes[it->first];
+    uint64_t multiplier = Factor(node, "FreqMultiplier");
+    uint64_t divider = Factor(node, "FreqDivider");
+    const auto common = std::gcd(multiplier, divider);
+    multiplier /= common;
+    divider /= common;
+    const auto a = std::gcd(multiplier, route.divider);
+    const auto b = std::gcd(divider, route.multiplier);
+    route.multiplier = Product(route.multiplier / b, multiplier / a);
+    route.divider = Product(route.divider / a, divider / b);
+    routes_.emplace(*it, route);
+  }
+  return route;
+}
+void SystemClocks::BuildSafety() {
+  if (safety_ready_) return;
+  std::map<Bit, std::vector<Bit>> upstream;
+  const auto mark = [&](const BitReference& bit) {
+    if (bit.node < netlist_.nodes.size()) unsafe_.emplace(bit.node, bit.index);
+  };
+  for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+    const auto& node = netlist_.nodes[id];
+    const auto edges = [&](const std::vector<BitReference>& bits,
+                           bool routing) {
+      for (size_t i = 0; i < bits.size(); ++i) {
+        const auto& source = bits[i];
+        if (source.node >= netlist_.nodes.size()) continue;
+        if (routing) {
+          const Bit destination{id, Index(node, i)};
+          upstream[destination].emplace_back(source.node, source.index);
+          fanout_[{source.node, source.index}].push_back(destination);
+        }
+        if (!routing || source.inverted) mark(source);
+      }
+    };
+    for (const auto& [role, bits] : node.inputs) {
+      edges(bits, role == "Source" &&
+                      (ClockPort(node) || node.model == ModelKind::kAlias));
+    }
+    for (const auto& choice : node.choices) {
+      edges(choice.source, node.kind == "ClockMux");
+    }
+    for (const auto& instruction : node.logic) {
+      edges(instruction.signals, false);
+    }
+    for (const auto& source : node.one_hot_sources) edges(source.bits, false);
+    if (node.reset) mark(*node.reset);
+    if (node.scan_interface) {
+      edges(node.scan_interface->ports, false);
+      for (const auto& chain : node.scan_interface->chains) {
+        edges(chain.ports, false);
+      }
+    }
+    const auto differential = node.properties.find("DifferentialInvOf");
+    if (differential != node.properties.end()) {
+      edges(netlist_.Resolve(differential->second), false);
+    }
+    if (differential != node.properties.end() ||
+        node.properties.count("Period")) {
+      for (size_t i = 0; i < node.Width(); ++i) {
+        unsafe_.emplace(id, Index(node, i));
+      }
+    }
+  }
+  std::vector<Bit> pending(unsafe_.begin(), unsafe_.end());
+  for (size_t next = 0; next < pending.size(); ++next) {
+    const auto found = upstream.find(pending[next]);
+    if (found == upstream.end()) continue;
+    for (const auto& source : found->second) {
+      if (unsafe_.insert(source).second) pending.push_back(source);
+    }
+  }
+  safety_ready_ = true;
+}
+std::string SystemClocks::Check(const std::string& target,
+                                const ScanScheduler& scheduler) {
+  const auto bit = Target(target);
+  const auto route = Resolve(bit, scheduler);
+  BuildSafety();
+  if (unsafe_.count(route.root)) {
+    throw std::runtime_error("system-clock root has unsupported fanout: " +
+                             Name(route.root));
+  }
+  checked_[bit] = route;
+  return Name(route.root);
+}
+std::pair<std::string, uint64_t> SystemClocks::Wait(
+    const std::string& target, uint64_t cycles, const ScanScheduler& scheduler,
+    const std::map<size_t, std::string>& preserved) {
+  const auto bit = Target(target);
+  const auto checked = checked_.find(bit);
+  if (checked == checked_.end()) {
+    throw std::runtime_error("system-clock wait requires prior iClock");
+  }
+  const auto route = Resolve(bit, scheduler);
+  const auto& previous = checked->second;
+  if (route.root != previous.root || route.multiplier != previous.multiplier ||
+      route.divider != previous.divider) {
+    throw std::runtime_error(
+        "system-clock source or ratio changed since iClock; repeat iClock");
+  }
+  if (cycles) {
+    std::set<Bit> held;
+    for (const auto& [id, value] : preserved) {
+      const auto& node = netlist_.nodes.at(id);
+      if (!ClockPort(node)) continue;
+      for (size_t i = 0; i < value.size(); ++i) {
+        if (value[i] == '0' || value[i] == '1') {
+          held.emplace(id, Index(node, i));
+        }
+      }
+    }
+    if (!held.empty()) {
+      std::vector<Bit> pending{route.root};
+      std::set<Bit> visited{route.root};
+      for (size_t next = 0; next < pending.size(); ++next) {
+        const auto current = pending[next];
+        if (held.count(current) &&
+            Resolve(current, scheduler).root == route.root) {
+          throw std::runtime_error(
+              "system-clock wait conflicts with held clock: " + Name(current));
+        }
+        const auto found = fanout_.find(current);
+        if (found == fanout_.end()) continue;
+        for (const auto& output : found->second) {
+          if (visited.insert(output).second) pending.push_back(output);
+        }
+      }
+    }
+  }
+  const __uint128_t product = static_cast<__uint128_t>(cycles) * route.divider;
+  const auto count =
+      product / route.multiplier + (product % route.multiplier != 0);
+  if (count > std::numeric_limits<uint64_t>::max()) {
+    throw std::runtime_error("system-clock cycle count limit exceeded");
+  }
+  return {Name(route.root), static_cast<uint64_t>(count)};
+}
+}  // namespace pattern
