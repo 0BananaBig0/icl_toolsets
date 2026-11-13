@@ -23,9 +23,12 @@ reset-dependency13, queued-state15, data-scheduling20 and hidden-client8 methods
 Formatting, naming, whitespace and independent review passed.
 See [feedback verification](#register-reset-feedback-2026-11-13).
 
-Strict authored-code coverage remains unmet: the last complete measurement
-at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
-changes have not passed that gate. Rocky8 qualification covers the implementation
+Strict authored-code coverage remains unmet. The complete Task39 instrumented
+run reaches 96.0% lines/61.6% raw branches; additional native numeric-boundary
+tests bring the cumulative result to 14,385/14,971 lines (96.1%) and
+24,055/38,965 raw branches (61.7%), against required 100%/90%.
+See [coverage evidence](superpowers/plans/2026-11-13-expression-coverage.md).
+Rocky8 qualification covers the implementation
 through eecab17. These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)

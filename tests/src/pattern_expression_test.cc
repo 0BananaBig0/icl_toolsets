@@ -3,6 +3,7 @@
 #include "pattern/pattern_expression.h"
 
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -35,17 +36,23 @@ void Expect(const std::string& expression, int64_t expected) {
                              std::to_string(actual));
 }
 
-void Fails(const std::string& expression, const std::string& message) {
+template <typename Action>
+void Rejects(Action action, const std::string& message) {
   try {
-    Evaluate(expression);
+    action();
   } catch (const std::runtime_error& error) {
     if (std::string(error.what()).find(message) == std::string::npos) throw;
     return;
   }
-  throw std::runtime_error("expected failure: " + expression);
+  throw std::runtime_error("expected failure containing: " + message);
 }
 
-pattern::Constant Constant(const std::string& expression, size_t width = 0) {
+void Fails(const std::string& expression, const std::string& message) {
+  Rejects([&] { Evaluate(expression); }, message);
+}
+
+pattern::Constant Constant(const std::string& expression, size_t width = 0,
+                           size_t max_string_bytes = 1024 * 1024) {
   const std::string header = width
                                  ? "Module M { ScanInPort si; ScanRegister r[" +
                                        std::to_string(width - 1) +
@@ -66,9 +73,64 @@ pattern::Constant Constant(const std::string& expression, size_t width = 0) {
       [](const std::string& name) {
         if (name == "width") return pattern::Constant{false, false, "1000"};
         if (name == "value") return pattern::Constant{false, true, "0111"};
+        if (name == "text") return pattern::Constant{true, true, "abc"};
+        if (name == "unknown") return pattern::Constant{false, true, "x"};
+        if (name == "wide")
+          return pattern::Constant{false, true, std::string(64, '1')};
+        if (name == "zero") return pattern::Constant{false, false, "0"};
+        if (name == "too_wide")
+          return pattern::Constant{false, false,
+                                   "1" + std::string(19, '0') + "1"};
         throw std::runtime_error("unknown parameter " + name);
       },
-      width);
+      width, max_string_bytes);
+}
+
+void TestConstantBoundaries() {
+  using Value = pattern::Constant;
+  const Value maximum{false, true, std::string(63, '1')};
+  if (maximum.AsInteger() != std::numeric_limits<int64_t>::max() ||
+      Value{false, false, std::string(100, '0') + "101"}.AsInteger() != 5 ||
+      Value{false, false, "0"}.Sized(4).data != "0000" ||
+      Value{false, false, "x1"}.Sized(4).data != "xxx1" ||
+      Value{false, false, "0001"}.Sized(2).data != "01" ||
+      Value{false, true, "01"}.Sized(2).data != "01") {
+    throw std::runtime_error("constant conversion or sizing boundary changed");
+  }
+  Rejects([] { Value{true, true, "1"}.AsInteger(); }, "integer parameter");
+  Rejects([] { Value{}.AsInteger(); }, "integer parameter");
+  Rejects([] { Value{false, true, "x"}.AsInteger(); }, "unknown bit");
+  Rejects([] { Value{false, true, "1" + std::string(63, '0')}.AsInteger(); },
+          "64-bit limit");
+  Rejects([] { Value{true, true, "a"}.Sized(1); }, "numeric value");
+  Rejects([] { Value{false, true, "01"}.Sized(3); }, "width does not match");
+  Rejects([] { Value{false, false, "1"}.Sized(0); }, "width exceeds");
+  Rejects([] { Value{false, false, "1"}.Sized(1048577); }, "width exceeds");
+  Rejects([] { Value{false, false, "10"}.Sized(1); }, "significant bits");
+  if (Value{false, false, "x"}.Sized(1048576).data !=
+      std::string(1048576, 'x')) {
+    throw std::runtime_error("maximum supported value width rejected");
+  }
+
+  if (Constant("8 /* width */ 'h // digits\n A5").data != "10100101" ||
+      Constant("8 // width\n 'H /* digits */ xA").data != "xxxx1010" ||
+      Constant("4'd0").data != "0000" ||
+      Constant(R"("a\"b\\c")").data != "a\"b\\c" ||
+      Constant("\"ab\", \"cd\"", 0, 4).data != "abcd") {
+    throw std::runtime_error("numeric comments or string decoding changed");
+  }
+  Rejects([] { Constant("$text + 1"); }, "integer parameter");
+  Rejects([] { Constant("$unknown + 1"); }, "unknown bit");
+  Rejects([] { Constant("$wide + 1"); }, "64-bit limit");
+  Rejects([] { Constant("$text, 4'b0000"); }, "strings and numbers");
+  Rejects([] { Constant("$value", 3); }, "constant width does not match");
+  Rejects([] { Constant("$width, $width", 16); }, "one unsized element");
+  Rejects([] { Constant("$zero'b0"); }, "width exceeds");
+  Rejects([] { Constant("$too_wide'b0"); }, "width exceeds");
+  Rejects([] { Constant("~$text"); }, "known numeric width");
+  Rejects([] { Constant("\"ab\", \"cd\"", 0, 3); }, "size limit");
+  Rejects([] { Constant("524289'b0, 524288'b0"); }, "size limit");
+  Rejects([] { Constant("'b" + std::string(1048577, '0')); }, "bit limit");
 }
 
 void TestConstants() {
@@ -143,7 +205,13 @@ int main() {
     Fails("9223372036854775807 + 1", "limit");
     Fails("9223372036854775807 * 2", "limit");
     Fails("9223372036854775808", "limit");
+    Expect("(0 - 3) * (0 - 2)", 6);
+    Expect("(((0 - 9223372036854775807) - 1) + 9223372036854775807) + 1", 0);
+    Fails("(0 - 9223372036854775807) - 2", "limit");
+    Fails("((0 - 9223372036854775807) - 1) / (0 - 1)", "limit");
+    Fails("((0 - 9223372036854775807) - 1) % (0 - 1)", "limit");
     TestConstants();
+    TestConstantBoundaries();
     std::cout << "PASS: ICL integer expressions from shared parser tokens\n";
   } catch (const std::exception& error) {
     std::cerr << "FAIL: " << error.what() << '\n';

@@ -1074,3 +1074,19 @@ The full corpus covers2,518ICL files and334/119parser/scanner rules; six editor
 tests pass. Earlier interrupted runs and failed vendor probes remain recorded.
 Task25 strict coverage is being remeasured with unchanged thresholds; broader
 requirements and qualification of later changes remain unfinished.
+
+## Task25 coverage follow-up after Task39
+
+The complete instrumented suite passes, then the unchanged strict gate fails:
+14,366/14,971 lines(96.0%) and24,013/38,965 raw branches(61.6%). The existing
+native numeric test now covers parsed comments, sizing/conversion boundaries,
+string/literal budgets and signed intermediate overflow. Optimized, instrumented
+and leak-enabled sanitizer checks, formatting and independent review pass;
+no product code changes were needed.
+
+Combining this focused test with the full baseline raises evaluator coverage
+from203/237 to222/237 lines and288/477 to330/477 branches. Aggregate coverage
+is14,385/14,971 lines(96.1%) and24,055/38,965 raw branches(61.7%). The strict
+gate still fails; its checkbox above stays open. Retained malformed-token,
+invariant and compiler-cleanup paths were not forced through fabricated inputs.
+See [the bounded follow-up and exact evidence](2026-11-13-expression-coverage.md).
