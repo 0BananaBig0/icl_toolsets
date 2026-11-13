@@ -66,8 +66,7 @@ std::map<size_t, std::string> ResourceReservations::Targets(
       if (bit.node >= netlist_.nodes.size() ||
           !IsReservableResource(netlist_.nodes[bit.node])) {
         throw std::runtime_error(
-            "resource reservation requires a ScanRegister, DataRegister, "
-            "data port or parallel control port: " +
+            "resource reservation requires a register, port or instance: " +
             name);
       }
       const auto& node = netlist_.nodes[bit.node];

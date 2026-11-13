@@ -393,6 +393,30 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "port_reservations",
+      "top": "Chains",
+      "icl": [
+        "tests/cases/ours/pattern_generation/shift_enable_clients.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/port_reservations.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "data_register_state",
+      "top": "DataStateSnapshot",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_register_state.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/data_register_state.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

@@ -1,0 +1,170 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "data_register_state",
+    "top": "DataStateSnapshot",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_register_state.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_register_state.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/data_register_state.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+    "tests/cases/ours/pattern_generation/data_register_state.pdl": "982e05184e4cff610287868d9e2f15991eebc9b90642c89ed3bdd6d2783cb10e"
+  },
+  "job": {
+    "id": "data_register_state",
+    "top": "DataStateSnapshot",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_register_state.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/data_register_state.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+      "source_0.pdl": "982e05184e4cff610287868d9e2f15991eebc9b90642c89ed3bdd6d2783cb10e",
+      "run.tcl": "899a7ce78cba9fbd12a443776b23439e91da1d79948667a92b695b9400adb86f"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_register_state.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+      "tests/cases/ours/pattern_generation/data_register_state.pdl": "982e05184e4cff610287868d9e2f15991eebc9b90642c89ed3bdd6d2783cb10e"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.729985773097724,
+    "outcome": "ok",
+    "result_sha256": "3848265a38cacb6db095e090b09292ade3344525d88c7cebfde716b53119951c",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "DataStateSnapshot",
+    "operations": [
+      {
+        "iState": [
+          [
+            "enable",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            0,
+            "1"
+          ],
+          [
+            "value",
+            1,
+            "0"
+          ],
+          [
+            "value",
+            2,
+            "0"
+          ],
+          [
+            "value",
+            3,
+            "1"
+          ]
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "q",
+            0,
+            "1"
+          ],
+          [
+            "q",
+            1,
+            "0"
+          ],
+          [
+            "q",
+            2,
+            "0"
+          ],
+          [
+            "q",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "iState": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "1"
+          ]
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "q",
+            0,
+            "0"
+          ],
+          [
+            "q",
+            1,
+            "1"
+          ],
+          [
+            "q",
+            2,
+            "0"
+          ],
+          [
+            "q",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "ca64e28ea8e25ae0add135fbd02a6be1d3c616a211b90f5f981f3b0251144f45",
+  "vendor_console_sha256": "44c8e66929a6aa762afc0c9e812d102f92dcabe37e251ee4d5b4d270c5541228",
+  "artifacts": {
+    "flat.pdl": "8c1e8d7c06de1a38fce59cfb0a0e7f804ab613b1144a4c0c8935570ee2cde575",
+    "vendor.pdl": "3848265a38cacb6db095e090b09292ade3344525d88c7cebfde716b53119951c"
+  }
+}

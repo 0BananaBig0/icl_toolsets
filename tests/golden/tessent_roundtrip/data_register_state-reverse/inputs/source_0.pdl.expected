@@ -1,0 +1,9 @@
+iPDLLevel 1
+iProcsForModule DataStateSnapshot
+iState enable 0
+iState value 9
+iRead q 9
+iApply
+iState value[1:0] 2
+iRead q 10
+iApply

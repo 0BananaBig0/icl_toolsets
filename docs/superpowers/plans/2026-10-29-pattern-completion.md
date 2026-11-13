@@ -986,3 +986,18 @@ conflicting6.3.11 example and Tessent2026.2 acceptance; vendor rejection agreeme
 is not claimed. Eight CLI and native cases, full dynamic/static regression,
 leak-enabled sanitizers, naming/style and independent review pass.
 Broader source-kind/hierarchy validation remains open.
+
+## Tasks33–34: All-port reservations and DataRegister state
+
+Completed the [reservation plan](2026-11-13-all-port-reservations.md) and
+[state plan](2026-11-13-data-register-state.md). Membership covers every ICL port
+without broadening read/write/state target contracts. Event-free DataRegister
+state assignments reuse alias/slice/hierarchy handling; read-only planning
+preserves state and fill in primary, mixed and hidden-event backends.
+
+Eight new reservation methods,35existing reservation methods,11state methods
+and native tests pass. Combined full dynamic/static regression, final
+leak-enabled sanitizers, naming/style and independent review pass. Two reverse
+certificates bring the offline total to46directions plus seven legacy standards.
+The guide records exact evidence. DataRegister-controlled scan reset dependency
+ordering is the next task; strict coverage and broader requirements remain open.

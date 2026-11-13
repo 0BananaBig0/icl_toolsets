@@ -504,8 +504,11 @@ class Reservations(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(output, (self.root / dest).read_text())
 
+    def test_unwritten_scan_input_is_reservable(self):
+        self.generate('iTake si; iWrite target 5; iApply; iRelease si;')
+
     def test_unsupported_resource_forms(self):
-        for target in ('missing', 'si', 'gate[2]', 'gate -invalid'):
+        for target in ('missing', 'gate[2]', 'gate -invalid'):
             with self.subTest(target=target):
                 self.generate(f'iTake {target}\niWrite target 5\niApply\n', ok=False)
 

@@ -14,6 +14,7 @@
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_merge.h"
+#include "pattern/pattern_resources.h"
 #include "pattern/pattern_tap.h"
 
 namespace {
@@ -340,6 +341,53 @@ Module GroupedClients {
           "an unreserved route control can restore declared chain pairing");
 }
 
+void TestAllPortReservations() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/shift_enable_clients.icl";
+  std::ifstream input(path);
+  Require(input.good(), "read port reservation fixture");
+  pattern::Design design;
+  design.AddIcl(path, std::string(std::istreambuf_iterator<char>(input), {}));
+  const auto netlist = pattern::Elaborate(design, "Chains");
+  pattern::ResourceReservations resources(netlist);
+  resources.Enter({"parent"});
+  resources.Change({"iTake", {"c0"}, "take", {}});
+  auto masks = resources.UnwrittenBits();
+  Require(masks.size() == 4 && masks.at(netlist.node_ids.at("c0.si")) == "1" &&
+              masks.at(netlist.node_ids.at("c0.se")) == "1" &&
+              masks.at(netlist.node_ids.at("c0.so")) == "1" &&
+              masks.at(netlist.node_ids.at("c0.value")) == "1111",
+          "instance ownership includes serial ports and register bits");
+  resources.Enter({"parent", "child"});
+  resources.Change({"iTake", {"shift[1]"}, "take", {}});
+  resources.Change({"iTake", {"ck", "-persistent"}, "take", {}});
+  masks = resources.UnwrittenBits();
+  Require(masks.at(netlist.node_ids.at("shift")) == "10" &&
+              masks.at(netlist.node_ids.at("ck")) == "1",
+          "vector lanes and persistent clock ownership retain exact masks");
+  resources.Enter({"parent"});
+  masks = resources.UnwrittenBits();
+  Require(!masks.count(netlist.node_ids.at("shift")) &&
+              masks.count(netlist.node_ids.at("ck")) &&
+              masks.count(netlist.node_ids.at("c0.si")),
+          "return releases child ports while retaining inherited and "
+          "persistent ownership");
+  resources.Change({"iRelease", {"c0.si"}, "release", {}});
+  Require(!resources.UnwrittenBits().count(netlist.node_ids.at("c0.si")),
+          "explicit port release removes the inherited mask");
+  resources.Enter({});
+  Require(resources.UnwrittenBits().size() == 1 && resources.Values().empty(),
+          "unwritten takes do not freeze physical pin values");
+  resources.Change({"iRelease", {"ck"}, "release", {}});
+  Require(resources.UnwrittenBits().empty(),
+          "persistent clock can be released");
+  resources.Change({"iTake", {""}, "take all", {}});
+  Require(
+      resources.UnwrittenBits().size() == 15,
+      "root ownership includes every register and port, excluding interfaces");
+  resources.Reset();
+  Require(resources.UnwrittenBits().empty(), "reset clears all resource types");
+}
 void TestShiftEnableClients() {
   const std::string path =
       "tests/cases/ours/pattern_generation/shift_enable_clients.icl";
@@ -1973,6 +2021,7 @@ int main() {
     TestEnabledScanOutputs();
     TestClientScanControls();
     TestMultipleClientChainGroups();
+    TestAllPortReservations();
     TestShiftEnableClients();
     TestMultipleClientSelection();
     TestSimultaneousScanChains();

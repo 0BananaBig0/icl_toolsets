@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-13, the literal-validation checkpoint passed full dynamic/static
-make -j2 --jobserver-style=pipe check, including all 32 generator CLI suites,
-native tests, 44 directional and seven legacy Tessent standards, and six
-Vim/Neovim checks. All 334 parser and 119 scanner rules were exercised across
-2,512 ICL files. Five optional ANTLR integration tests were skipped because
+On 2026-11-13, the reservation/state checkpoint passed full dynamic/static
+make -j2 --jobserver-style=pipe check, including all34 generator CLI suites,
+native tests,46 directional and seven legacy Tessent standards, and six
+Vim/Neovim checks (191.518s). All334 parser and119 scanner rules were exercised
+across2,513 ICL files. Five optional ANTLR integration tests were skipped because
 ICL_REF_DIR was unset. The complete log and exit0 record are
-build/source-literals-regression.log and .exit.
+build/access-state-regression.log and .exit.
 
-Native expression/netlist tests and eight literal CLI cases passed
-ASan/UBSan/LeakSanitizer with detect_leaks=1. Formatting, naming, whitespace and
-independent review passed. See [literal validation](#unsized-literal-inversion-validation-2026-11-13)
-for the normative rule, conflicting example and Tessent compatibility difference.
+Native state/scheduler tests and11state CLI cases passed ASan/UBSan/
+LeakSanitizer with detect_leaks=1 on the final source. Reservation native/new8/
+old35 CLI leak checks also passed. Formatting, naming, whitespace and independent
+source/certificate review passed. See [reservation and state verification](#all-port-reservations-and-dataregister-state-2026-11-13).
 
 Strict authored-code coverage remains unmet: the last complete measurement
 at Task25 was 95.8% lines/61.4% raw branches against required 100%/90%; later
@@ -2755,3 +2755,53 @@ and .exit(0): all32 generator suites,44directions/seven legacy standards,
 334parser/119scanner rules over2,512ICL files and six editor checks(208.212s).
 Five optional ANTLR tests remain skipped. This change does not complete the
 strict coverage gate, later-change Rocky8 qualification or source-kind audit.
+
+## All-port reservations and DataRegister state (2026-11-13)
+
+iTake/iRelease now accept all declared ICL ports, as well as registers and
+instance members, under IEEE1687-2014 §7.9.19–20. Membership does not broaden
+iRead/iWrite or iState target types. Unwritten taken ports remain available to
+automatic scheduling; a valid SelectPort iState becomes protected until release.
+Vector masks, nested ownership, persistent takes and instance traversal reuse
+the existing reservation representation.
+
+iState now accepts DataRegister storage under §7.9.22, including aliases, slices,
+inversion and hierarchical registers. Assignment validates and changes held
+storage directly, leaving shift storage, reset propagation and write callbacks
+untouched. Read-only apply frames preserve that snapshot and controlling fill
+when no hardware event occurs. This applies to data-only networks, mixed scan
+networks, selected clients and the hidden-event backend. Explicit read
+expectations remain comparisons even when stored hardware knowledge is unknown.
+
+The native state test checks event-free assignment despite an asserted reset
+and active write-enable, preservation of scan shift storage, unknown bits,
+width rejection and later explicit reset/update behavior. Eleven CLI methods
+cover original/flat/generated replay, reservations, aliases, wide values and
+the no-event paths found during independent review. Eight new reservation
+methods and35existing reservation methods cover the separate membership change.
+The16,384-bit state-only workload (197ICL bytes) completed three replay forms in
+0.129s (wall0.18s, peak49,836KiB) on the local Linux g++16.2.1 -O2 build,
+recorded in build/data-register-state-scale.log; it measures state assignment,
+not scan planning. Reproduce with python3
+tests/src/pattern/test_data_register_state.py build/icl-pattern-generation
+DataState.test_wide_state_scale.
+
+Tessent2026.2 accepted both saved fixtures, with reverse certificates retained.
+See [vendor evidence](tessent-goldens.md#all-port-reservations-and-dataregister-state-2026-11-13).
+DataRegister-controlled scan resets still hit the scheduler's scan-only reset
+dependency boundary; the CLI test records this limitation explicitly.
+Observation-history iState flags, queued-state integration, iScan/iClock,
+system-clock/time waits and broader pattern-set ownership remain unfinished.
+Final native state/scheduler tests and11CLI methods pass ASan/UBSan/
+LeakSanitizer with detect_leaks=1, recorded in build/access-state-sanitizer-
+{state,scheduler,cli}.log/.exit(0). The earlier data-register-state sanitizer
+CLI failure predates the final hidden-event fix and is superseded.
+Reservation native/new8/old35 leak-enabled checks also passed in
+build/port-reservations-sanitizer-{native,cli,existing}.log/.exit(0).
+Changed-source naming, formatting, whitespace and independent review pass.
+Combined full dynamic/static regression passed in
+build/access-state-regression.log/.exit(0): all34generator suites,46directional/
+seven legacy standards,334parser/119scanner rules over2,513ICL files and six
+editor checks(191.518s). Five optional ANTLR checks remain skipped.
+The two earlier stopped reservation full runs do not count as completed checks.
+Strict authored-code coverage and later-change Rocky8 qualification remain open.

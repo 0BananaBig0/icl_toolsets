@@ -1244,6 +1244,8 @@ class ScanScheduler::Impl {
             enabled = enabled && Known(reset, false);
             definite_event = definite_event || Known(reset, true);
           }
+          // A read-only frame emits no event, including no reset evaluation.
+          updated = Choose(any_drive, updated, state.at(id));
           // An emitted input event must not leave unrequested storage exposed
           // to an unknown write-enable (and silently destroy known values).
           solver.add(definite_event);
@@ -1264,7 +1266,7 @@ class ScanScheduler::Impl {
           auto fill = Choose(enabled, load, fills.at(id));
           if (node.reset) {
             fill = Choose(
-                Known(values.Read(*node.reset), true),
+                any_drive && Known(values.Read(*node.reset), true),
                 SymbolicValue::Literal(context_, initial_fill_.at(id)), fill);
           }
           fills.at(id) = fill;
@@ -1791,14 +1793,17 @@ class ScanScheduler::Impl {
     std::map<Key, std::pair<z3::expr, z3::expr>> inputs;
     std::vector<z3::expr> selected, clients;
   };
-  void SettleClientResets(Values* state, Values* fills = nullptr) {
+  void SettleClientResets(Values* state, Values* fills = nullptr,
+                          const z3::expr* event = nullptr) {
     for (size_t pass = 0; pass < client_reset_passes_; ++pass) {
       SymbolicNetwork values(netlist_, context_, *state, global_resets_);
       auto next = *state;
       const auto settle = [&](size_t id) {
         const auto& node = netlist_.nodes[id];
         if (!node.reset) return;
-        const auto reset = values.Read(*node.reset);
+        const auto reset = event ? Choose(*event, values.Read(*node.reset),
+                                          SymbolicValue::Literal(context_, "0"))
+                                 : values.Read(*node.reset);
         const auto& bits = node.constants.at("ResetValue").data;
         next.at(id) = ResetValue(reset, SymbolicValue::Literal(context_, bits),
                                  state->at(id));
@@ -2604,7 +2609,7 @@ class ScanScheduler::Impl {
   }
   Values ScanEvents(z3::optimize& solver, const Values& state,
                     const Frame& frame, Values* shifts, size_t time,
-                    size_t maximum) {
+                    size_t maximum, const z3::expr& event) {
     const auto events = ControlEvents(solver, state, frame, true);
     auto pins = EventPins(state, frame, "capture");
     SymbolicNetwork capture(netlist_, context_, pins, global_resets_, shifts);
@@ -2676,7 +2681,7 @@ class ScanScheduler::Impl {
                                context_, node.constants.at("ResetValue").data),
                            value);
       }
-      next.insert_or_assign(id, value);
+      next.insert_or_assign(id, Choose(event, value, state.at(id)));
       // Shift storage becomes unspecified once UpdateEn has been removed.
       shifts->at(id) = Choose(
           events.at("update").at(id),
@@ -3473,7 +3478,8 @@ class ScanScheduler::Impl {
                            context_.int_val(0));
         }
         if (client_controls_) state = EventPins(state, frame, "capture");
-        SettleClientResets(&state, &fills);
+        const auto event = scan || any_drive;
+        SettleClientResets(&state, &fills, &event);
         SymbolicNetwork values(netlist_, context_, state, global_resets_);
         SelectScan(solver, values, time, frame);
         ConstrainScanControls(solver, state, frame, time, events);
@@ -3526,7 +3532,7 @@ class ScanScheduler::Impl {
                                context_, node.constants.at("ResetValue").data),
                            value);
           }
-          next.insert_or_assign(id, value);
+          next.insert_or_assign(id, Choose(event, value, state.at(id)));
           const auto desired = SymbolicValue::Literal(context_, fill_.at(id));
           changes = changes + z3::ite(active && loaded != desired.bits,
                                       context_.int_val(1), context_.int_val(0));
@@ -3543,7 +3549,8 @@ class ScanScheduler::Impl {
         }
         cycles = cycles + *frame.clocks;
         if (events) {
-          next = ScanEvents(solver, state, frame, &shifts, time, maximum);
+          next =
+              ScanEvents(solver, state, frame, &shifts, time, maximum, event);
         }
         if (client_controls_) next = EventPins(next, frame, "update");
         // Update qualification uses the old state. New reset assertions then
@@ -3552,11 +3559,13 @@ class ScanScheduler::Impl {
           const auto& node = netlist_.nodes[id];
           if (!node.reset) continue;
           SymbolicNetwork after(netlist_, context_, next, global_resets_);
-          next.at(id) =
+          next.at(id) = Choose(
+              event,
               ResetValue(after.Read(*node.reset),
                          SymbolicValue::Literal(
                              context_, node.constants.at("ResetValue").data),
-                         next.at(id));
+                         next.at(id)),
+              next.at(id));
         }
         // Route comparisons through the value present at Capture, before
         // this scan's new write-data/address/enable bits reach Update.
@@ -3670,6 +3679,8 @@ class ScanScheduler::Impl {
                        SymbolicValue::Literal(context_, initial_fill_.at(id)),
                        Choose(enabled, load, fills.at(id)));
           }
+          updated = Choose(event, updated, next.at(id));
+          fill = Choose(event, fill, fills.at(id));
           solver.add(definite);
           solver.add(z3::implies(
               enabled, load.known == ~context_.bv_val(0, node.Width())));
@@ -3769,8 +3780,8 @@ class ScanScheduler::Impl {
             for (size_t i = 0; i < reset_fill.size(); ++i) {
               if (reset_bits[i] != 'x') reset_fill[i] = reset_bits[i];
             }
-            fill = Choose(Known(values.Read(*node.reset), true) ||
-                              Known(after.Read(*node.reset), true),
+            fill = Choose(event && (Known(values.Read(*node.reset), true) ||
+                                    Known(after.Read(*node.reset), true)),
                           SymbolicValue::Literal(context_, reset_fill), fill);
           }
           fills.at(id) = fill;
@@ -3851,8 +3862,16 @@ class ScanScheduler::Impl {
             reset.insert(id);
           }
         }
+        const bool parallel =
+            frame.parallel && model.eval(*frame.parallel, true).is_true();
+        const bool event =
+            !parallel ||
+            std::any_of(frame.drives.begin(), frame.drives.end(),
+                        [&](const auto& drive) {
+                          return model.eval(drive.second, true).is_true();
+                        });
         auto step =
-            frame.parallel && model.eval(*frame.parallel, true).is_true()
+            parallel
                 ? ReplayParallel(frame, model, &replay, tap_replay.get(),
                                  replayed_preserved, desired_preserved)
                 : Replay(frame, model, expected,
@@ -3869,7 +3888,7 @@ class ScanScheduler::Impl {
                 "symbolic/concrete mixed-input replay mismatch");
           }
         }
-        UpdateDataFill(frame, model, replay, reset, fill);
+        UpdateDataFill(frame, model, replay, reset, event, fill);
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           bool complete = true;
@@ -3910,7 +3929,7 @@ class ScanScheduler::Impl {
         }
         for (size_t id : registers_) {
           const auto& node = netlist_.nodes[id];
-          if (node.reset &&
+          if (event && node.reset &&
               ((reset.count(id) && !step.writes.count(node.name)) ||
                replay.Read(*node.reset) == '1')) {
             fill[id] = initial_fill_.at(id);
@@ -3948,7 +3967,7 @@ class ScanScheduler::Impl {
   }
   void UpdateDataFill(const Frame& frame, const z3::model& model,
                       const NetworkState& replay, const std::set<size_t>& reset,
-                      std::map<size_t, std::string>& fill) const {
+                      bool event, std::map<size_t, std::string>& fill) const {
     for (size_t id : state_.DataRegisters().order) {
       if (replay.Value(id) != Decode(model, frame.state.at(id))) {
         throw std::runtime_error(
@@ -3958,7 +3977,7 @@ class ScanScheduler::Impl {
       const bool written = model.eval(frame.active.at(id), true).is_true();
       if (written) fill[id] = replay.Value(id);
       const auto& node = netlist_.nodes[id];
-      if (node.reset &&
+      if (event && node.reset &&
           ((reset.count(id) && !written) || replay.Read(*node.reset) == '1')) {
         fill[id] = initial_fill_.at(id);
       }

@@ -74,6 +74,50 @@ Module Events {
           "flat reset semantics replay");
 }
 
+void TestDataRegisterStateSnapshot() {
+  pattern::Design design;
+  design.AddIcl("data-state.icl", R"(
+Module Snapshot {
+ ScanInPort si; DataInPort data[3:0]; DataInPort enable; ResetPort rst;
+ ScanRegister scan[3:0] { ScanInSource si; ResetValue 0; }
+ DataRegister first[3:0] { WriteDataSource data; WriteEnSource enable; ResetValue 0; }
+ DataRegister second[3:0] { WriteDataSource first; WriteEnSource enable; ResetValue 0; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Snapshot");
+  pattern::NetworkState state(netlist);
+  const auto first = netlist.node_ids.at("first");
+  const auto second = netlist.node_ids.at("second");
+  const auto scan = netlist.node_ids.at("scan");
+  state.Drive(netlist.node_ids.at("rst"), "1");
+  state.Drive(netlist.node_ids.at("data"), "0110");
+  state.Drive(netlist.node_ids.at("enable"), "1");
+  state.SetRegister(scan, "1010", "0101");
+  state.Assume(first, "1001");
+  Require(state.Value(first) == "1001" && state.Value(second) == "xxxx" &&
+              state.Value(scan) == "0101" &&
+              state.Value(scan, true) == "1010" &&
+              state.TakeResetEvents().empty(),
+          "DataRegister assumption triggers no reset, cascade or scan event");
+  bool rejected = false;
+  try {
+    state.Assume(first, "11");
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && state.Value(first) == "1001",
+          "invalid DataRegister snapshot preserves old storage");
+  state.Assume(first, "x001");
+  Require(state.Value(first) == "x001", "snapshot retains unknown data bits");
+  state.Reset();
+  Require(state.Value(first) == "0000" && state.Value(second) == "0000" &&
+              state.Value(scan, true) == "1010",
+          "an explicit later reset updates storage without clearing scan shift "
+          "state");
+  state.Drive(netlist.node_ids.at("rst"), "0");
+  state.ApplyInputs({});
+  Require(state.Value(first) == "0110" && state.Value(second) == "0110",
+          "a later data event resumes normal cascade behavior");
+}
 void TestDataRegisterEvents() {
   pattern::Design design;
   design.AddIcl("data-events.icl", R"(
@@ -532,6 +576,7 @@ int main() {
     TestPinSnapshot();
     TestResetReleaseOrdering();
     TestRegisterEvents();
+    TestDataRegisterStateSnapshot();
     TestDataRegisterEvents();
     TestAddressedDataEvents();
     TestAmbiguousDataAddress();

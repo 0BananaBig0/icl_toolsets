@@ -582,3 +582,23 @@ retrieved as build/shift-enable-clients-reverse-evidence. Certification and
 offline checks are recorded in build/shift-enable-clients-certificate.log and
 build/shift-enable-clients-goldens.log. Only the saved two-client fixture is
 certified; general event-model equivalence remains unverified.
+
+## All-port reservations and DataRegister state (2026-11-13)
+
+Two reverse certificates preserve ordered apply groups and local fixed-point
+replay: port_reservations and data_register_state. The total is46 directional
+standards (20forward/26reverse across30cases) plus seven legacy standards.
+The latter retains whole/sliced DataRegister iState and subsequent comparisons;
+the former qualifies membership and release of otherwise unwritten serial ports.
+
+Snapshots are tests/golden/tessent_roundtrip/port_reservations-reverse and
+data_register_state-reverse. The subset manifests are the corresponding
+*_cases.json files under tests/cases/ours/pattern_generation.
+Tessent2026.2 evidence is retained under the authorized remote test_icl_toolsets:
+test_port_reservations/run_2026_11_13_01/port-reservations-reverse-bundle and
+test_data_register_state/run_2026_11_13_01/data-register-state-certificate-bundle.
+Retrieved copies are build/port-reservations-reverse-evidence and
+build/data-register-state-certificate-evidence. The initial state acceptance
+probe used the oracle harness and is retained separately; certification uses
+the round-trip harness. These fixtures do not certify arbitrary clocks, reset
+dependencies or observation-history commands.

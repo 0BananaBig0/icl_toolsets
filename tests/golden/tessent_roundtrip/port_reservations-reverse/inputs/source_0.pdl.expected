@@ -1,0 +1,21 @@
+iPDLLevel 1
+iProcsForModule Chains
+iReset
+iTake si
+iTake so0
+iTake shift
+iTake ce
+iTake ue
+iTake ck
+iWrite c0.value 9
+iWrite c1.value 6
+iApply
+iRelease si
+iRelease so0
+iRelease shift
+iRelease ce
+iRelease ue
+iRelease ck
+iRead c0.value 9
+iRead c1.value 6
+iApply

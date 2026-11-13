@@ -10,10 +10,9 @@
 
 namespace pattern {
 bool IsReservableResource(const NetlistNode& node) {
-  return node.kind == "ScanRegister" || node.kind == "DataRegister" ||
-         node.kind == "DataInPort" || node.kind == "DataOutPort" ||
-         node.kind == "AddressPort" || node.kind == "ReadEnPort" ||
-         node.kind == "WriteEnPort";
+  return node.model == ModelKind::kRegister ||
+         (node.model == ModelKind::kPort && node.kind.size() >= 4 &&
+          node.kind.compare(node.kind.size() - 4, 4, "Port") == 0);
 }
 namespace {
 constexpr size_t kMaxBits = 1024 * 1024;
@@ -56,7 +55,10 @@ void ValidatePdlAccessTarget(const Netlist& netlist, const PdlTarget& target,
     if (bit.node < netlist.nodes.size()) {
       const auto& node = netlist.nodes[bit.node];
       if (node.kind == "ScanRegister" || node.kind == "DataRegister" ||
-          node.kind == "DataOutPort" || (!read && IsReservableResource(node))) {
+          node.kind == "DataOutPort" ||
+          (!read &&
+           (node.kind == "DataInPort" || node.kind == "AddressPort" ||
+            node.kind == "ReadEnPort" || node.kind == "WriteEnPort"))) {
         continue;
       }
     }
