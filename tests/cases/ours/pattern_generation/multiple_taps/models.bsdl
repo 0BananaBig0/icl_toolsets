@@ -1,0 +1,51 @@
+-- Self-constructed BSDL companion for the IEEE 1687 AccessLink probe.
+entity ProbeA is
+  generic (PHYSICAL_PIN_MAP : string := "PACK");
+  port (TDIA, TMSA, TCK, TRSTA, PIN : in bit; TDOA : out bit);
+  use STD_1149_1_2001.all;
+  attribute COMPONENT_CONFORMANCE of ProbeA : entity is "STD_1149_1_2001";
+  attribute PIN_MAP of ProbeA : entity is PHYSICAL_PIN_MAP;
+  constant PACK : PIN_MAP_STRING := "TDIA:1, TMSA:2, TCK:3, TRSTA:4, PIN:5, TDOA:6";
+  attribute TAP_SCAN_IN of TDIA : signal is true;
+  attribute TAP_SCAN_OUT of TDOA : signal is true;
+  attribute TAP_SCAN_MODE of TMSA : signal is true;
+  attribute TAP_SCAN_CLOCK of TCK : signal is (10.0e6, BOTH);
+  attribute TAP_SCAN_RESET of TRSTA : signal is true;
+  attribute INSTRUCTION_LENGTH of ProbeA : entity is 4;
+  attribute INSTRUCTION_OPCODE of ProbeA : entity is
+    "BYPASS (1111), EXTEST (0000), SAMPLE (0001), IDCODE (0010), " &
+    "IJTAG_ON (0011), IJTAG_OFF (0100)";
+  attribute INSTRUCTION_CAPTURE of ProbeA : entity is "0001";
+  attribute IDCODE_REGISTER of ProbeA : entity is
+    "0001" & "0000000000000000" & "00000000001" & "1";
+  attribute REGISTER_ACCESS of ProbeA : entity is
+    "BOUNDARY (EXTEST, SAMPLE), BYPASS (BYPASS), DEVICE_ID (IDCODE)";
+  attribute BOUNDARY_LENGTH of ProbeA : entity is 1;
+  attribute BOUNDARY_REGISTER of ProbeA : entity is "0 (BC_1, PIN, input, X)";
+end ProbeA;
+
+-- Self-constructed BSDL companion for the IEEE 1687 AccessLink probe.
+entity ProbeB is
+  generic (PHYSICAL_PIN_MAP : string := "PACK");
+  port (TDIB, TMSB, TCK, TRSTB, PIN : in bit; TDOB : out bit);
+  use STD_1149_1_2001.all;
+  attribute COMPONENT_CONFORMANCE of ProbeB : entity is "STD_1149_1_2001";
+  attribute PIN_MAP of ProbeB : entity is PHYSICAL_PIN_MAP;
+  constant PACK : PIN_MAP_STRING := "TDIB:1, TMSB:2, TCK:3, TRSTB:4, PIN:5, TDOB:6";
+  attribute TAP_SCAN_IN of TDIB : signal is true;
+  attribute TAP_SCAN_OUT of TDOB : signal is true;
+  attribute TAP_SCAN_MODE of TMSB : signal is true;
+  attribute TAP_SCAN_CLOCK of TCK : signal is (10.0e6, BOTH);
+  attribute TAP_SCAN_RESET of TRSTB : signal is true;
+  attribute INSTRUCTION_LENGTH of ProbeB : entity is 4;
+  attribute INSTRUCTION_OPCODE of ProbeB : entity is
+    "BYPASS (1111), EXTEST (0000), SAMPLE (0001), IDCODE (0010), " &
+    "IJTAG_ON (0011), IJTAG_OFF (0100)";
+  attribute INSTRUCTION_CAPTURE of ProbeB : entity is "0001";
+  attribute IDCODE_REGISTER of ProbeB : entity is
+    "0001" & "0000000000000000" & "00000000001" & "1";
+  attribute REGISTER_ACCESS of ProbeB : entity is
+    "BOUNDARY (EXTEST, SAMPLE), BYPASS (BYPASS), DEVICE_ID (IDCODE)";
+  attribute BOUNDARY_LENGTH of ProbeB : entity is 1;
+  attribute BOUNDARY_REGISTER of ProbeB : entity is "0 (BC_1, PIN, input, X)";
+end ProbeB;

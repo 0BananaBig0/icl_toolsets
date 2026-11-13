@@ -670,6 +670,34 @@
   ],
   "retained_module_duplicates": [
     {
+      "id": "01447ffe323019462c1430da78e722d4ddaa64bfd87f9240b140732b9f63c268",
+      "name": "TapCell",
+      "namespace": "",
+      "occurrences": [
+        {
+          "path": "cases/ours/pattern_generation/multiple_taps/multiple_explicit.icl",
+          "module_index": 0,
+          "sha256": "6ff764a5a1f93e8aa8f1bacea378687a9ec92544ff82c6956019d90f7e976deb"
+        },
+        {
+          "path": "cases/ours/pattern_generation/multiple_taps/multiple_implicit.icl",
+          "module_index": 0,
+          "sha256": "dca557c51297967081b22c26ce40af45599be45ccbbf14df7a8ce2066bbd0648"
+        },
+        {
+          "path": "cases/ours/pattern_generation/multiple_taps/single_explicit.icl",
+          "module_index": 0,
+          "sha256": "b444daccb538d9763d54ccf226a545c95bd2e92b167df376ea55492883a55227"
+        },
+        {
+          "path": "cases/ours/pattern_generation/multiple_taps/single_second_entity.icl",
+          "module_index": 0,
+          "sha256": "cba49b561f171568bf2da0c208fb0c55994c59ee99d53a05fe71b1b80d450d0c"
+        }
+      ],
+      "reason": "The identical TapCell definition is retained in four self-contained vendor loading probes: one explicit TAP, two explicit TAPs, two implicit-reset TAPs, and a single TAP using the second BSDL entity. Keeping the submitted source bytes preserves the observed loading failures and the successful single-entity control."
+    },
+    {
       "id": "019c26f8a5b4e61ba45fae470bd0261460de936a45675658145470407af4bc6d",
       "name": "SReg",
       "namespace": "",

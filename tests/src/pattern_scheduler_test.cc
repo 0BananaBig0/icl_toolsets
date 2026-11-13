@@ -21,6 +21,136 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestMultipleTapResetSnapshot() {
+  const std::string fixture =
+      "tests/cases/ours/pattern_generation/multiple_taps/";
+  std::ifstream icl(fixture + "multiple_explicit.icl");
+  std::ifstream bsdl(fixture + "models.bsdl");
+  const std::string original(std::istreambuf_iterator<char>(icl), {});
+  const std::string models(std::istreambuf_iterator<char>(bsdl), {});
+  for (bool reverse : {false, true}) {
+    std::string source = original;
+    const auto replace = [&](const std::string& from, const std::string& to) {
+      const auto at = source.find(from);
+      Require(at != std::string::npos, "reset fixture substitution exists");
+      source.replace(at, from.size(), to);
+    };
+    replace("Module TapCell {",
+            "Module TapCell { DataOutPort q[3:0] { Source value; }");
+    replace("InputPort reset = TRSTB;", "InputPort reset = reset_b;");
+    replace("TRSTPort TRSTA; TRSTPort TRSTB;",
+            "TRSTPort TRSTA; TRSTPort TRSTB; DataMux reset_b SelectedBy a.q[0] "
+            "{ 1'b0: TRSTB; 1'b1: 1'b1; }");
+    if (reverse) replace("AccessLink tapA", "AccessLink z_tapA");
+    pattern::Design design;
+    design.AddIcl("reset-snapshot.icl", source);
+    for (const std::string entity : {"ProbeA", "ProbeB"}) {
+      design.AddBsdl("models.bsdl", models, entity);
+    }
+    const auto netlist =
+        pattern::ElaborateTapNetwork(design, "MultiTapTop").netlist;
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Apply({{"iWrite", {"a.value", "1"}, "reset:1", {}},
+                     {"iWrite", {"b.value", "1"}, "reset:2", {}}},
+                    true);
+    Require(scheduler.Value("a.value") == "0001" &&
+                scheduler.Value("b.value") == "0001",
+            "prepare gated reset with both instruments nonzero");
+    scheduler.Reset();
+    Require(scheduler.Value("a.value") == "0000" &&
+                scheduler.Value("b.value") == "0000",
+            "simultaneous reset assertions settle shared gating independent of "
+            "TAP order");
+  }
+}
+void TestMultipleTapScheduling() {
+  const std::string fixture =
+      "tests/cases/ours/pattern_generation/multiple_taps/";
+  std::ifstream icl(fixture + "multiple_explicit.icl");
+  std::ifstream bsdl(fixture + "models.bsdl");
+  const std::string source(std::istreambuf_iterator<char>(icl), {});
+  const std::string models(std::istreambuf_iterator<char>(bsdl), {});
+  pattern::Design design;
+  design.AddIcl("multiple.icl", source);
+  for (const std::string entity : {"ProbeA", "ProbeB"}) {
+    design.AddBsdl("models.bsdl", models, entity);
+  }
+  const auto original =
+      pattern::ElaborateTapNetwork(design, "MultiTapTop").netlist;
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  const auto flat = pattern::Elaborate(flat_design, "MultiTapTop");
+  for (const auto* netlist : {&original, &flat}) {
+    for (bool synchronous : {false, true}) {
+      pattern::ScanScheduler scheduler(*netlist), regenerated(*netlist);
+      scheduler.Reset(synchronous);
+      regenerated.Reset(synchronous);
+      Require(scheduler.Value("tapA.INSTRUCTION") == "0010" &&
+                  scheduler.Value("tapB.INSTRUCTION") == "0010",
+              "all TAP instruction registers receive BSDL reset values");
+      if (!synchronous) {
+        Require(scheduler.Value("a.value") == "0000" &&
+                    scheduler.Value("b.value") == "0000",
+                "explicit TRST paths reset both instruments");
+      } else {
+        Require(scheduler.Value("a.value") == "xxxx" &&
+                    scheduler.Value("b.value") == "xxxx",
+                "synchronous TAP reset does not invent TRST assertions");
+      }
+      const auto steps =
+          scheduler.Apply({{"iWrite", {"a.value", "5"}, "test:1", {}},
+                           {"iWrite", {"b.value", "10"}, "test:2", {}}},
+                          true);
+      Require(steps.size() == 2 && steps[0].instruction &&
+                  !steps[1].instruction && steps[1].together,
+              "common IR scan precedes one simultaneous DR update");
+      for (const auto& step : steps) {
+        Require(step.lanes.size() == 2 && step.serial.empty(),
+                "both TAP lanes participate in each common scan");
+        Require(step.lanes[0].serial.size() == step.lanes[1].serial.size(),
+                "serial lanes use the same number of TCK cycles");
+        std::vector<pattern::Operation> operations;
+        for (const auto& [name, bits] : step.writes) {
+          operations.push_back({"iWrite", {name, "0b" + bits}, "replay", {}});
+        }
+        for (const auto& [name, bits] : step.expected) {
+          operations.push_back({"iRead", {name, "0b" + bits}, "replay", {}});
+        }
+        regenerated.Apply(operations, step.together);
+      }
+      for (const auto* path :
+           {"a.value", "b.value", "tapA.INSTRUCTION", "tapB.INSTRUCTION"}) {
+        Require(scheduler.Value(path) == regenerated.Value(path),
+                "source and generated common TAP scans preserve held state");
+      }
+      Require(scheduler.Value("a.value") == "0101" &&
+                  scheduler.Value("b.value") == "1010",
+              "separate TAP lanes update both requested values");
+      const std::map<size_t, std::string> preserved{
+          {netlist->node_ids.at("b.value"), "1010"}};
+      scheduler.Idle(3, preserved);
+      scheduler.Apply({{"iWrite", {"a.value", "9"}, "test:3", {}}}, false,
+                      preserved);
+      Require(scheduler.Value("a.value") == "1001" &&
+                  scheduler.Value("b.value") == "1010",
+              "unrequested lane retains reserved controlling data");
+      bool rejected = false;
+      try {
+        scheduler.Apply({{"iWrite", {"a.value", "2"}, "test:4", {}},
+                         {"iWrite", {"b.value", "3"}, "test:5", {}}},
+                        true, preserved, false);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected && scheduler.Value("a.value") == "1001" &&
+                  scheduler.Value("b.value") == "1010" &&
+                  scheduler.Value("tapA.INSTRUCTION") == "0011" &&
+                  scheduler.Value("tapB.INSTRUCTION") == "0011",
+              "failed joint transaction preserves both lanes and controllers");
+    }
+  }
+}
 void TestOneHotSharedAnalysisBudget() {
   pattern::Design design;
   design.AddIcl("one-hot-budget.icl", R"(
@@ -2449,6 +2579,7 @@ Module Network {
 }  // namespace
 int main() {
   try {
+    TestMultipleTapResetSnapshot();
     TestStandaloneIdle();
     TestStandaloneIdleImplicitSelection();
     TestStandaloneIdleResetEdges();
@@ -2457,6 +2588,7 @@ int main() {
     TestDataResetCallbacks();
     TestDataResetDependencies();
     TestDataResetReleaseReplay();
+    TestMultipleTapScheduling();
     TestOneHotSharedAnalysisBudget();
     TestMergeAnalysisBudget();
     TestSharedScanOutputs();

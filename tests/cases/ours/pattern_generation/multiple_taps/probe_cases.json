@@ -1,0 +1,46 @@
+{
+  "cases": [
+    {
+      "id": "single_explicit",
+      "top": "MultiTapTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/single_explicit.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/single_explicit.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/multiple_taps/models.bsdl",
+      "bsdl_entity": "ProbeA",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "multiple_explicit",
+      "top": "MultiTapTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/multiple_explicit.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/multiple_explicit.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/multiple_taps/models.bsdl",
+      "bsdl_entity": "ProbeA",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "multiple_implicit",
+      "top": "MultiTapTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/multiple_implicit.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/multiple_implicit.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/multiple_taps/models.bsdl",
+      "bsdl_entity": "ProbeA",
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

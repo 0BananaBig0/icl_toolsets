@@ -1251,3 +1251,29 @@ native/main33/TAP9/hidden-event4 checks, formatting and naming pass. The earlier
 detached full run has no completion status and is not counted as a pass.
 Scheduler multi-TAP support, shared ownership and
 general clock/reset work remain mandatory and are not closed by this replay fix.
+
+## Task48: Common-phase multiple-TAP scheduling
+
+Completed [the focused plan](2026-11-14-common-phase-multiple-taps.md). Shared-TCK
+TAPs use simultaneous independent serial lanes, per-IR capture metadata and one
+joint state/event history. Explicit root ResetPorts and TRST assertions are
+batched before shared reset settlement; no implicit multi-TAP reset ownership is
+invented. Synthetic BSDL lane storage remains internal and unexpressible frames
+fail. A connected existing end-state serialization defect is fixed for both
+single- and multi-TAP mixed frames.
+
+Nineteen CLI methods and native source/flat state checks pass. Independent
+review found the reset publication issue, now covered by a failing-before/
+passing-after native case; corrected source review is clean. Full integration
+passes in build/multiple-tap-confirmed-full.log/.exit0:40 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in178.774s.
+Native/main33/TAP9/hidden4/multiple-functional18/end11/mixed15 leak checks pass.
+The original19-method instrumented suite has16/32-TAP solver-budget failures;
+it remains exit1, with no full sanitizer-scale pass claim or increased budget.
+The first full corpus-policy failure also remains; the exact repeated-probe
+module group is independently reviewed and the corrected corpus check passes.
+Larger joint prerequisite solves can reach existing budgets; explicit32-TAP
+instruction setup is measured. Independent phases, overlapping storage,
+separate equivalent clock roots and general implicit reset ownership remain
+required follow-up work. Strict coverage and later Rocky8 qualification remain
+open. Task49's equivalent-root design is reviewed separately.

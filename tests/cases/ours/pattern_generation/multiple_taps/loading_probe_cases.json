@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "id": "single_second_entity",
+      "top": "MultiTapTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/single_second_entity.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/single_second_entity.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/multiple_taps/models.bsdl",
+      "bsdl_entity": "ProbeB",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "multiple_distinct_clocks",
+      "top": "MultiTapTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/multiple_explicit.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/multiple_taps/multiple_explicit.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/multiple_taps/distinct_clocks.bsdl",
+      "bsdl_entity": "ProbeA",
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

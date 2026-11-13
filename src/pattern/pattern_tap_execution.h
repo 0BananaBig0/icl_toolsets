@@ -26,6 +26,8 @@ class TapExecution {
   void Assume(size_t node, const std::string& value);
   explicit TapExecution(const Netlist& netlist);
   void Drive(const std::string& port, const std::string& value);
+  // Stage one pin snapshot before settling controller and network resets.
+  void Drive(const std::map<size_t, std::string>& values);
   // One parallel input event, without advancing the TAP state machines.
   void ApplyInputs(const std::map<size_t, std::string>& values);
   void RisingEdge(const std::string& clock);

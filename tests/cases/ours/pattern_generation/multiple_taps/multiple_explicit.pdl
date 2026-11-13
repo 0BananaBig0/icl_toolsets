@@ -1,0 +1,9 @@
+iPDLLevel 1
+iProcsForModule MultiTapTop
+iReset
+iWrite a.value 5
+iWrite b.value 10
+iApply
+iRead a.value 5
+iRead b.value 10
+iApply

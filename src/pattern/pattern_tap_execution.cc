@@ -110,12 +110,14 @@ void TapExecution::ApplyInputs(const std::map<size_t, std::string>& values) {
   state_.ApplyInputs(values);
 }
 void TapExecution::Drive(const std::string& port, const std::string& value) {
-  const size_t id = netlist_.node_ids.at(port);
-  state_.Drive(id, value);
+  Drive({{netlist_.node_ids.at(port), value}});
+}
+void TapExecution::Drive(const std::map<size_t, std::string>& values) {
+  for (const auto& [id, value] : values) state_.Drive(id, value);
   for (const auto& [name, tap] : netlist_.taps) {
     const auto reset = tap.pins.find("tap_scan_reset");
-    if (reset != tap.pins.end() && reset->second == id) {
-      controllers_.at(name).SetTrst(value.at(0));
+    if (reset != tap.pins.end() && values.count(reset->second)) {
+      controllers_.at(name).SetTrst(values.at(reset->second).at(0));
       Synchronize(name);
     }
   }

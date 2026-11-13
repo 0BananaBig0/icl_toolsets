@@ -3,24 +3,27 @@
 `icl-pattern-generation` is an experimental executable. It currently expands
 PDL procedures and Tcl computations and schedules single-path scans, shared
 output observations, simultaneous named client chains, independently selected
-standalone clients, indexed vector inputs and single-TAP instruction/data scans.
+standalone clients, indexed vector inputs and common-phase TAP instruction/data scans.
 It also schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
 
 ## Current verification
 
-On 2026-11-14, common-edge TAP replay passed the complete
+On 2026-11-14, common-phase multiple-TAP scheduling passed the complete
 make -j2 --jobserver-style=pipe check command, with exit 0 recorded in
-build/tap-edge-confirmed-full.log/.exit. This includes all 39 generator CLI
+build/multiple-tap-confirmed-full.log/.exit. This includes all 40 generator CLI
 suites under dynamic/static builds, native tests, 51 directional and seven legacy
-Tessent standards, all 334 parser and 119 scanner rules across 2,519 ICL files,
-and six Vim/Neovim tests (177.401s). Five optional ANTLR integration tests were
-skipped because ICL_REF_DIR was unset.
+Tessent standards, all 334 parser and 119 scanner rules across 2,523 ICL files,
+and six Vim/Neovim tests (178.774s). Full wall time was941.461s. Five optional
+ANTLR integration tests were skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native state/TAP/scheduler/flatten and
-main (33), TAP replay (9) and hidden-scan-event (4) CLI methods. Formatting,
-naming, scale and independent review passed. See
-[common-edge replay verification](#common-edge-tap-replay-2026-11-14).
+Leak-enabled ASan/UBSan checks passed for native state/TAP/scheduler/flatten,
+main33, TAP9, hidden-event4, multiple-TAP functional18, end-state11 and mixed-I/O15
+methods. The instrumented19-method multiple-TAP run also passes4-TAP scale but
+fails its16/32-TAP scale subcases at the unchanged2s solver budget; the failed
+run is retained and is not counted as a full sanitizer-suite pass. Optimized
+scale cases pass. Formatting, naming and independent review pass. See
+[the scope and evidence](#common-phase-multiple-taps-2026-11-14).
 
 Strict authored-code coverage remains unmet. A fresh complete instrumented run
 including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
@@ -3359,3 +3362,70 @@ and only the completed foreground rerun is counted as passing. This replay fix
 does not enable multiple-TAP scheduling or resolve shared-register ownership,
 implicit multiple-TAP reset ownership or general clock/event support. Strict
 coverage was not rerun, and Rocky8 qualification remains at473bc9e.
+
+### Common-phase multiple TAPs (2026-11-14)
+
+Multiple TAPs can now share one actual top-level TCK node while using distinct
+serial lanes. Shared or separate TMS pins carry the same IR/DR phase. Unequal
+instruction/data widths use aligned lanes, and every TAP participates in every
+common scan, including an unrequested TAP's current instrument, BYPASS or IDCODE
+path. Instruction captures and reset fills use each TAP's own BSDL metadata.
+Synthetic BSDL data storage remains in internal replay and fill history; it is
+not emitted as a user PDL target. A meaningful synthetic comparison or a physical
+scan with no expressible remaining access is rejected.
+
+Reset dependencies must resolve through explicit connectivity; virtual global
+reset ownership for multiple TAPs remains undefined. Explicit root ResetPorts
+follow their declared polarities, and applicable TRST pins are asserted together
+before shared reset settlement. Mixed TRST availability uses common reset clocks
+where needed. Synchronous TAP reset does not invent an asynchronous TRST pulse.
+The batched pin snapshot also stages every lane's TMS/TDI before the common edge.
+A native gated-reset case proves that reversing TAP names cannot lose a reset.
+
+IR-only and DR-only AccessTogether groups can span TAPs. A simultaneous group
+mixing IR and DR still requires independent-phase work. One joint solver and
+concrete state retain cross-TAP reset, capture/control and resource dependencies;
+no per-TAP state partition is introduced. Generated applies also preserve
+ScanRegister end-state overrides only when that frame represents their write.
+This fixes an existing single-TAP mixed-frame case where regeneration inserted
+an extra restoration scan after an override expired early.
+
+Nineteen new CLI methods cover source/flat/generated fixed points, distinct IR
+capture patterns, root reset polarities, mixed TRST, cross-TAP controls/data,
+held unrequested lanes, AccessTogether, mixed primary/end-state frames, hidden
+instrument events, local-reset rewriting and atomic rejections. Native tests
+check held state, aligned lanes, common updates and failed-plan rollback.
+Independent source and corpus-policy reviews pass; the exact submitted vendor
+probe files are retained, with their one duplicated instrument definition
+recorded by occurrence and hash in the corpus policy.
+
+On local Linux/GCC16.2.1, four replay forms for4/16/32 TAPs take approximately
+0.575/3.717/6.309s with6907/26431/52703 model bytes. IR widths vary4–6 bits and DR
+widths4–8 bits. The combined run takes10.65s and80220KiB maximum RSS. The32-TAP
+case explicitly sets its instructions first; implicit joint32-TAP setup reaches
+the unchanged2s solver budget. A hidden-SIB two-TAP case likewise uses explicit
+IR/gate setup within the current budget. No global optimality or speedup is
+claimed, and unsuccessful bounded plans are not counted as supported schedules.
+
+Final full regression passes in build/multiple-tap-confirmed-full.log/.exit0:
+40 dynamic/static suites,51 directional/seven legacy goldens,2523 ICL334/119
+rules and six editor tests in178.774s. The first full attempt's corpus-policy
+failure remains in build/multiple-tap-final-full.log/.exit2. Focused19-method
+and existing-suite checks, native state tests, formatting and naming pass. Leak-enabled native,
+main/TAP/hidden-event checks pass. The instrumented19-method run records18
+functional passes and a4-TAP scale pass, but its16/32-TAP cases reach the solver
+budget; that failed run is retained and is not a full sanitizer-suite pass.
+Separate18-functional-method, end-state11 and mixed-frame15 sanitizer runs pass;
+the exact scope is recorded in [the focused plan](superpowers/plans/2026-11-14-common-phase-multiple-taps.md).
+
+Tessent2026.2 accepts the single explicit-TAP control probe. The two-TAP loading
+probes fail at set_current_design with an empty filename diagnostic and SIGSEGV;
+a single TAP naming the second BSDL entity fails because the loader selects the
+first entity. These are loading failures, not proof that the IEEE model is
+invalid, and they provide no multiple-TAP equivalence certificate. Evidence is
+retained in build/multiple-tap-probe-evidence and
+build/multiple-tap-loading-probe-evidence.
+
+Independent TAP phases, distinct equivalent TCK roots, shared intermediate
+serial storage and general implicit multiple-TAP reset ownership remain required.
+Strict coverage and Rocky8 qualification still predate this implementation.
