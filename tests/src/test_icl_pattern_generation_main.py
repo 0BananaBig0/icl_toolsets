@@ -42,6 +42,46 @@ class Generator(unittest.TestCase):
         self.assertIn("--icl", self.run_tool("--help").stdout)
         self.assertIn("icl-pattern-generation", self.run_tool("--version").stdout)
 
+    def test_non_data_sources_preserve_outputs(self):
+        (self.root / "debug").mkdir()
+        outputs = ("result.pdl", "reset.pdl", "debug/Network.icl")
+        (self.root / "source.pdl").write_text("iProcsForModule Network\n")
+        for source in ("clock", "wrapped"):
+            with self.subTest(source=source):
+                text = ("Module Network { TCKPort clock; Alias wrapped = clock; "
+                    f"DataOutPort observed {{ Source {source}; }} }}\n")
+                (self.root / "source.icl").write_text(text)
+                for name in outputs:
+                    (self.root / name).write_text("previous artifact\n")
+                result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                       "--output", "result.pdl", "--debug",
+                                       "--local_reset", "reset.pdl", ok=False)
+                self.assertIn("data signal", result.stdout + result.stderr)
+                self.assertIn("source.icl:", result.stdout + result.stderr)
+                for name in outputs:
+                    self.assertEqual((self.root / name).read_text(), "previous artifact\n")
+
+    def test_flat_data_source_kinds_are_checked(self):
+        text = ("Module Network { TCKPort clock; DataInPort data; "
+            "DataOutPort observed { Source data; } }\n")
+        (self.root / "source.icl").write_text(text)
+        (self.root / "source.pdl").write_text(
+            "iProcsForModule Network\niWrite data 1\niApply\niRead observed 1\niApply\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "result.pdl", "--debug")
+        flat = (self.root / "debug/Network.icl").read_text()
+        original = (self.root / "result.pdl").read_bytes()
+        self.run_tool("--icl", "debug/Network.icl", "--pdl", "result.pdl",
+                      "--output", "again.pdl")
+        self.assertEqual((self.root / "again.pdl").read_bytes(), original)
+        self.assertIn("Source n64617461;", flat)
+        (self.root / "invalid.icl").write_text(
+            flat.replace("Source n64617461;", "Source n636c6f636b;"))
+        result = self.run_tool("--icl", "invalid.icl", "--pdl", "source.pdl",
+                               "--output", "result.pdl", ok=False)
+        self.assertIn("data signal", result.stdout + result.stderr)
+        self.assertEqual((self.root / "result.pdl").read_bytes(), original)
+
     def test_round_trips(self):
         result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug", "--log", "run.log")
         self.assertIn("warning", result.stdout)

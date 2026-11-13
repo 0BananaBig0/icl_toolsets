@@ -9,21 +9,22 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, equivalent-TCK-root scheduling passed the complete
+On 2026-11-14, ordinary-data source-kind validation passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/equivalent-tck-final-full.log/.exit. This includes all40 generator CLI
+build/data-source-confirmed-full.log/.exit. This includes all40 generator CLI
 suites under dynamic/static builds, native tests,51 directional and seven legacy
 Tessent standards, all334 parser and119 scanner rules across2523 ICL files,
-and six Vim/Neovim tests (178.636s). Full wall time was1047.081s. Five optional
+and six Vim/Neovim tests (176.629s). Full wall time was907.574s. Five optional
 ANTLR integration tests were skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native state/TAP/scheduler/flatten,
-main33, TAP9, hidden-event4, multiple-TAP functional20, end-state11 and mixed-I/O15
-methods. Both scale methods are excluded from the20-method functional sanitizer
-run: Task48’s instrumented16/32-TAP cases reached the unchanged2s solver budget.
+Leak-enabled ASan/UBSan checks passed for native netlist/logic/address/symbolic/
+state/TAP/scheduler/flatten, main35, TAP9, hidden-event4, multiple-TAP functional20,
+end-state11, mixed-I/O15, client-control18 and control-reservation9 methods.
+Both scale methods are excluded from the20-method functional sanitizer run:
+Task48's instrumented16/32-TAP cases reached the unchanged2s solver budget.
 The complete optimized22-method suite passes, including its scale cases.
-Formatting, naming and independent source/evidence reviews pass. See
-[the scope and evidence](#equivalent-tck-root-snapshots-2026-11-14).
+Formatting, naming and independent source/fixture reviews pass. See
+[the scope and evidence](#ordinary-data-source-kind-eligibility-2026-11-14).
 
 Strict authored-code coverage remains unmet. A fresh complete instrumented run
 including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
@@ -3470,3 +3471,52 @@ seven legacy goldens,2523 ICL334/119 rules and editor6 in178.636s. Full wall tim
 is1047.081s; the five optional ANTLR tests remain skipped.
 Strict coverage, vendor certification and Rocky8 qualification have not been
 refreshed for this change.
+
+
+### Ordinary data-source kind eligibility (2026-11-14)
+
+Elaboration now rejects clock, scan and control-only terminal kinds in ordinary
+data consumers. This covers data-output and ToSelect sources, child data/select
+inputs, register capture/read/write data and write enables, output enables, mux
+selectors, LogicSignal operands and explicit OneHotDataGroup Port contributors.
+Alias classification follows only the consumed bits and stops at actual typed
+terminals. ToIRSelectPort retains its specific exception as the scalar selector
+of a two-input ScanMux (§6.4.6.23(d)). PDL target eligibility is unchanged.
+
+The check runs after flat origin/type restoration and combinational-cycle checks.
+Thus an internal clock port serialized as a flat DataOutPort regains its original
+kind before validation. Generated TAP route/control connections still replay;
+there is no exemption based on a generated name or the presence of metadata.
+This is terminal-kind eligibility under §6.3.12(d), not a complete local-versus-
+child direction check. Contextual DataMux/control-source rules and special
+AddressPort/WriteEnPort/ReadEnPort binding rules remain separate requirements.
+
+The validator classifies node kinds once and memoizes referenced alias bits with
+an iterative walk. With GCC16.2.1 on the local host,4096 scalar aliases in83873
+ICL bytes take0.069–0.079s over three validated CLI runs (baseline0.072–0.076s),
+with maximum56408KiB RSS. A65536-bit alias and4096 consumers of256 distinct bits
+in177434 bytes take0.060–0.070s (baseline0.067–0.078s), with maximum61864KiB RSS.
+Exact commands, input sizes and per-run results are in
+build/source-kind-audit/comparison.json. These measurements do not establish a
+speedup or a bound for every legal input.
+
+Native kind/alias/restored-type checks, main35 and multiple-TAP22 CLI methods,
+formatting/naming and independent source review pass. Existing fixture wiring
+that treated scan/clock signals as ordinary data now uses the corresponding port
+kind. The native graph-cycle test retains its assertion by explicitly constructing a
+lowered cycle after legal elaboration. Update-controlled data-register fixtures
+use the specified UE/zero DataMux and ToUpdateEnPort combination, preserving the
+original update/restoration assertions and CLI round trips.
+
+Full integration passes in build/data-source-confirmed-full.log/.exit0, with
+907.574s wall time. The initially selected leak-enabled checks and corrected
+scheduler/client/control-reservation checks all pass in
+build/data-source-final-sanitizer-* and build/data-source-corrected-sanitizer-*.
+The first full failure is retained in build/data-source-final-full.log/.exit2:
+reservation fixtures exposed address/read enables through invalid data outputs.
+Their corrected same-kind child-port fixtures retain distinct ownership identities.
+A separate40-suite optimized sweep passed39 suites and found the direct-UE client
+fixture; that failed aggregate remains exit1. Its corrected18-method suite and
+the final complete dynamic/static regression pass. The validator itself did not
+change during fixture corrections. Strict coverage, vendor certification and
+Rocky8 qualification have not been refreshed for this change.

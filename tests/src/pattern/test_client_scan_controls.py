@@ -229,10 +229,12 @@ class ClientScanControls(unittest.TestCase):
         self.assertIn(b'iWrite reset 0b0', (self.root / 'reset.pdl').read_bytes())
 
     def test_parallel_frames_do_not_pulse_client_controls(self):
-        # Synthetic state-model regression; Tessent rejects ue as WriteEnSource.
+        # IEEE 6.3.12(d), 6.4.6.10: the mux also drives an update-control output.
         source = NETWORK.replace('Module ClientTop {', '''Module ClientTop {
   DataInPort data;
-  DataRegister d { WriteDataSource data; WriteEnSource ue; ResetValue 1'b0; }
+  DataMux write_enable SelectedBy 1'b0 { 1'b0: ue; 1'b1: 1'b0; }
+  ToUpdateEnPort forwarded_update { Source write_enable; }
+  DataRegister d { WriteDataSource data; WriteEnSource write_enable; ResetValue 1'b0; }
   DataOutPort observed { Source d; }''')
         self.replay(source, 'iPDLLevel 1\niProcsForModule ClientTop\niReset\n'
                     'iState data 0; iWrite value 9; iApply; iWrite data 1; iApply; '

@@ -1534,8 +1534,26 @@ void TestSerialNetworkErrors() {
   cyclic = Replace(cyclic, "InputPort mode = tap.long_setup;",
                    "InputPort mode = peer.so;");
   cyclic = Replace(cyclic, "core.client;", "core.client; peer.client;");
-  // The new core-to-peer serial connection closes the feedback through mode.
-  reject(cyclic, "combinational connection cycle");
+  reject(cyclic, "data signal");
+  pattern::Design graph_design;
+  graph_design.AddIcl(
+      "graph_cycle.icl",
+      Replace(cyclic, "InputPort mode = peer.so;", "InputPort mode = 1'b0;"));
+  graph_design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                       "AccessProbe");
+  auto graph = pattern::ElaborateTapNetwork(graph_design, "AccessTop").netlist;
+  // Exercise the lowered graph check independently of source-kind rejection.
+  graph.nodes.at(graph.node_ids.at("core.mode")).inputs.at("Source") = {
+      {graph.node_ids.at("peer.so"), 0}};
+  bool cycle_rejected = false;
+  try {
+    pattern::CheckCombinationalConnections(graph);
+  } catch (const std::runtime_error& error) {
+    cycle_rejected =
+        std::string(error.what()).find("combinational connection cycle") !=
+        std::string::npos;
+  }
+  Require(cycle_rejected, "lowered serial feedback remains a connection cycle");
   reject(
       Replace(
           base, "AccessLink tap Of",

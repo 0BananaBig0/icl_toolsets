@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "utility/text_input.h"
 
@@ -25,6 +26,135 @@ void Fails(Action action, const std::string& expected) {
     return;
   }
   throw std::runtime_error("expected failure: " + expected);
+}
+
+void TestDataSignalSources() {
+  const std::string prefix =
+      "Module Sink { DataInPort data; SelectPort selected; } Module M {"
+      "ScanInPort si; TCKPort clock; Alias clock_alias = clock;";
+  const std::vector<std::string> consumers = {
+      "DataOutPort result { Source SOURCE; }",
+      "ToSelectPort result { Source SOURCE; }",
+      "ScanRegister value { ScanInSource si; CaptureSource SOURCE; }",
+      "DataRegister value { WriteDataSource SOURCE; WriteEnSource 1'b1; }",
+      "DataRegister value { WriteDataSource 1'b0; WriteEnSource SOURCE; }",
+      "DataRegister value { ReadDataSource SOURCE; }",
+      "DataOutPort result { Source 1'b0; Enable SOURCE; }",
+      "ScanOutPort result { Source si; Enable SOURCE; }",
+      "DataMux value SelectedBy SOURCE { 1'b0: 0; 1'b1: 1; }",
+      "ScanMux value SelectedBy SOURCE { 1'b0: si; 1'b1: si; }",
+      "ClockMux value SelectedBy SOURCE { 1'b0: clock; 1'b1: clock; }",
+      "LogicSignal value { SOURCE == 1'b0; }",
+      "Instance sink Of Sink { InputPort data = SOURCE; }",
+      "Instance sink Of Sink { InputPort selected = SOURCE; }"};
+  for (const auto& consumer : consumers) {
+    for (const std::string source : {"clock", "clock_alias"}) {
+      auto body = consumer;
+      body.replace(body.find("SOURCE"), 6, source);
+      pattern::Design design;
+      design.AddIcl("data_sources.icl", prefix + body + "}");
+      Fails([&] { pattern::Elaborate(design, "M"); }, "data signal");
+    }
+  }
+  for (const std::string declaration :
+       {"ScanInPort source;", "ScanOutPort source { Source 1'b0; }",
+        "TCKPort source;", "ClockPort source;", "ResetPort source;",
+        "CaptureEnPort source;", "ShiftEnPort source;", "UpdateEnPort source;",
+        "TMSPort source;", "TRSTPort source;", "ToTCKPort source;",
+        "ToResetPort source;", "ToCaptureEnPort source;",
+        "ToShiftEnPort source;", "ToUpdateEnPort source;",
+        "ToTRSTPort source;"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "wrong_kind.icl",
+        "Module M {" + declaration + "DataOutPort result { Source source; }}");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "data signal");
+  }
+  for (const auto& entry : std::vector<std::pair<std::string, std::string>>{
+           {"DataInPort source;", "source"},
+           {"SelectPort source;", "source"},
+           {"ScanInPort si; ScanRegister source { ScanInSource si; }",
+            "source"},
+           {"DataRegister source;", "source"},
+           {"LogicSignal source { 1'b1; }", "source"},
+           {"DataMux source SelectedBy 1'b0 { 1'b0: 0; 1'b1: 1; }", "source"},
+           {"Instance child Of Leaf;", "child.data"},
+           {"Instance child Of Leaf;", "child.select"},
+           {"Instance child Of Leaf; OneHotDataGroup source { Port child.data; "
+            "}",
+            "source"},
+           {"", "1'b0"},
+           {"", "1'b1"},
+           {"", "1'bX"}}) {
+    pattern::Design design;
+    design.AddIcl("valid_data.icl",
+                  "Module Leaf { DataOutPort data { Source 1'b1; Enable 1'b1; }"
+                  "ToSelectPort select { Source 1'b1; }} Module M {" +
+                      entry.first + "DataOutPort result { Source " +
+                      entry.second + "; }}");
+    pattern::Elaborate(design, "M");
+  }
+}
+
+void TestDataSignalAliasSlices() {
+  const std::string body =
+      "Module M { DataInPort data; TCKPort clock;"
+      "Alias mixed[0:1] = data, clock; Alias wrapped[1:0] = ~mixed[1:0];";
+  pattern::Design valid;
+  valid.AddIcl("alias_data.icl",
+               body + "DataOutPort result { Source wrapped[0]; }}");
+  pattern::Elaborate(valid, "M");
+  pattern::Design invalid;
+  invalid.AddIcl("alias_clock.icl",
+                 body + "DataOutPort result { Source wrapped[1]; }}");
+  Fails([&] { pattern::Elaborate(invalid, "M"); }, "data signal");
+
+  for (const std::string consumer :
+       {"ScanMux route SelectedBy selected { 1'b0: si; 1'b1: si; }",
+        "DataOutPort result { Source selected; }",
+        "ScanMux route SelectedBy selected { 1'b0: si; }"}) {
+    pattern::Design design;
+    design.AddIcl("ir_select.icl",
+                  "Module M { ScanInPort si; TMSPort tms; ToIRSelectPort ir;"
+                  "Alias selected = ir;" +
+                      consumer + "}");
+    if (consumer.find("1'b1") != std::string::npos) {
+      pattern::Elaborate(design, "M");
+    } else {
+      Fails([&] { pattern::Elaborate(design, "M"); }, "data signal");
+    }
+  }
+}
+
+void TestDataSourceScale() {
+  for (bool wide : {false, true}) {
+    std::string source = wide ? "Module M { DataInPort data[65535:0];"
+                                "Alias packed[65535:0] = data;"
+                              : "Module M { DataInPort data; Alias a0 = data;";
+    for (size_t i = wide ? 0 : 1; i < 4096; ++i) {
+      source += wide
+                    ? "DataOutPort out" + std::to_string(i) +
+                          " { Source packed[" + std::to_string(i % 256) + "]; }"
+                    : "Alias a" + std::to_string(i) + " = a" +
+                          std::to_string(i - 1) + ";";
+    }
+    if (!wide) source += "DataOutPort result { Source a4095; }";
+    source += "}";
+    const auto start = std::chrono::steady_clock::now();
+    pattern::Design design;
+    design.AddIcl("data_source_scale.icl", source);
+    const auto netlist = pattern::Elaborate(design, "M");
+    Require(netlist.nodes.size() == 4098,
+            "all long-chain or repeated-slice data consumers are retained");
+    std::cout << "Data source aliases: "
+              << (wide ? "width=65536 consumers=4096 distinct_bits=256"
+                       : "aliases=4096 consumers=1")
+              << " bytes=" << source.size() << " seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - start)
+                     .count()
+              << '\n';
+  }
 }
 
 void TestAddressedDataDefaults() {
@@ -227,7 +357,7 @@ void TestGeneratedTapPorts() {
   pattern::Design design;
   design.AddIcl("pins.icl",
                 "Module Child { TMSPort mode; } Module Top {"
-                "Instance child Of Child; DataOutPort monitor { Source TDI; } "
+                "Instance child Of Child; ScanOutPort monitor { Source TDI; } "
                 "Parameter reserved = 0; }");
   const auto netlist = pattern::Elaborate(
       design, "Top", {}, {{"TDI", "ScanInPort"}, {"TMS", "TMSPort"}});
@@ -1155,7 +1285,10 @@ void TestOneHotScanLimits() {
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestSpecialization,
+  for (const auto test : {TestDataSignalSources,
+                          TestDataSignalAliasSlices,
+                          TestDataSourceScale,
+                          TestSpecialization,
                           TestAccessLinkModelInsertion,
                           TestAccessLinkModelErrors,
                           TestSharedAccessLinkModels,

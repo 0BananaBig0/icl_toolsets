@@ -17,6 +17,44 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestRestoredDataSourceKinds() {
+  pattern::Design design;
+  design.AddIcl("source_kinds.icl", R"(
+Module Leaf {
+  TCKPort clock;
+  DataOutPort data { Source 1'b0; }
+}
+Module Top {
+  TCKPort clock;
+  Instance child Of Leaf { InputPort clock = clock; }
+  DataOutPort result { Source child.data; }
+}
+)");
+  const auto original = pattern::Elaborate(design, "Top");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design valid;
+  valid.AddIcl("valid_flat.icl", text);
+  const auto flat = pattern::Elaborate(valid, "Top");
+  Require(flat.NodeAt("child.clock").kind == "TCKPort" &&
+              pattern::SerializeIcl(flat) == text,
+          "internal input kinds survive their flat output-port encoding");
+  for (const std::string source : {"clock", "child.clock"}) {
+    auto changed = original;
+    changed.nodes.at(changed.node_ids.at("result")).inputs.at("Source") = {
+        {changed.node_ids.at(source), 0}};
+    pattern::Design invalid;
+    invalid.AddIcl("invalid_flat.icl", pattern::SerializeIcl(changed));
+    bool rejected = false;
+    try {
+      pattern::Elaborate(invalid, "Top");
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("data signal") != std::string::npos;
+    }
+    Require(rejected, "restored clock kinds cannot masquerade as data outputs");
+  }
+}
+
 void TestEmptyDataRegisterRoundTrip() {
   pattern::Design design;
   design.AddIcl("empty-register.icl", R"(
@@ -658,6 +696,7 @@ Module Top {
 
 int main() {
   try {
+    TestRestoredDataSourceKinds();
     TestEmptyDataRegisterRoundTrip();
     TestHierarchyRoundTrip();
     TestPropertiesAndNames();

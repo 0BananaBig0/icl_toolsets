@@ -1293,3 +1293,23 @@ build/equivalent-tck-final-full.log/.exit0 (1047.081s):40 dynamic/static suites,
 51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in178.636s.
 The five optional ANTLR tests remain skipped.
 Independent phases, shared serial storage and implicit reset ownership remain open.
+
+
+## Task50: Ordinary data-source kind eligibility
+
+Completed [the focused plan](2026-11-14-data-signal-source-kinds.md). One shared
+post-restoration check rejects non-data terminal kinds across ordinary-data
+consumers, with memoized bit-specific aliases and the specific ToIRSelect mux
+exception. Original/flat/generated TAP behavior remains covered. Full source
+scope/direction and contextual control-source rules remain required.
+Focused native/main35/multiple22 checks and source review pass. First full run
+fails on pre-existing invalid reservation-fixture data sources; fixes preserve
+ownership identities through same-kind child control inputs and PDL aliases.
+The optimized40-suite sweep passed39 suites and exposed a direct-UE client fixture;
+its corrected18-method suite passes. Final full regression passes in
+build/data-source-confirmed-full.log/.exit0 (907.574s):40 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules and editor6 in176.629s.
+Five optional ANTLR tests remain skipped. Expanded native/functional leak checks
+and corrected scheduler/client18/control-reservation9 sanitizer runs pass.
+Original failed logs remain; independent source and fixture reviews are clean.
+Strict coverage, later vendor and platform qualification remain open.

@@ -319,7 +319,9 @@ Module ClientTop {
   ScanInPort si; ScanOutPort so { Source value[0]; }
   SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
   DataInPort data;
-  DataRegister d { WriteDataSource data; WriteEnSource ue; ResetValue 1'b0; }
+  DataMux write_enable SelectedBy 1'b0 { 1'b0: ue; 1'b1: 1'b0; }
+  ToUpdateEnPort forwarded_update { Source write_enable; }
+  DataRegister d { WriteDataSource data; WriteEnSource write_enable; ResetValue 1'b0; }
   ScanRegister value[3:0] { ScanInSource si; ResetValue 4'b0; CaptureSource value; }
   ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port ck; }
 })");
@@ -1735,7 +1737,7 @@ void TestStandaloneIdle() {
       source +=
           "SelectPort sel; CaptureEnPort ce; ShiftEnPort se; "
           "UpdateEnPort ue; TCKPort ck[2:0]; "
-          "DataOutPort clock_seen { Source ck[1]; } "
+          "ToTCKPort clock_seen { Source ck[1]; } "
           "ScanInterface client { Port si; Port so; Port sel; Port ce; "
           "Port se; Port ue; Port ck[1]; }";
     }

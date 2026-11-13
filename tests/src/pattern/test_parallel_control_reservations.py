@@ -95,29 +95,34 @@ Instance child Of Child { InputPort pin = pin; }'''
     def test_address_alias_slices_keep_unowned_bits_free(self):
         declarations = '''AddressPort address[3:0];
 Alias upper[1:0] = ~address[3:2];
-DataOutPort observed[3:0] { Source address; }'''
+Instance child Of Child { InputPort address = address; }
+Alias observed[3:0] = child.address;'''
+        module = 'Module Child { AddressPort address[3:0]; }'
         prefix = 'iTake upper; iWrite upper 2; iApply; '
         for serial in (False, True):
             with self.subTest(serial=serial):
                 self.exercise(declarations,
-                    prefix + 'iWrite observed 7; iApply', serial=serial)
+                    prefix + 'iWrite observed 7; iApply', serial=serial, modules=module)
                 self.exercise(declarations,
-                    prefix + 'iWrite observed 11; iApply', serial=serial, ok=False)
+                    prefix + 'iWrite observed 11; iApply', serial=serial, modules=module, ok=False)
                 self.exercise(declarations,
                     prefix + 'iWrite upper 1; iApply; iWrite observed 11; iApply',
-                    serial=serial)
+                    serial=serial, modules=module)
 
     def test_return_release_and_reset_clear_control_ownership(self):
-        declarations = 'ReadEnPort pin; DataOutPort observed { Source pin; }'
+        declarations = '''ReadEnPort pin;
+Instance child Of Child { InputPort pin = pin; }
+Alias observed = child.pin;'''
+        module = 'Module Child { ReadEnPort pin; }'
         definition = 'iProc lock {} { iTake pin; iWrite pin 0; iApply }; '
         self.exercise(declarations,
-            definition + 'iCall lock; iWrite observed 1; iApply', serial=True)
+            definition + 'iCall lock; iWrite observed 1; iApply', serial=True, modules=module)
         self.exercise(declarations,
             definition + 'iTake pin; iCall lock; iWrite observed 1; iApply',
-            serial=True, ok=False)
+            serial=True, modules=module, ok=False)
         self.exercise(declarations,
             definition + 'iTake pin; iCall lock; iReset; iWrite observed 1; iApply',
-            serial=True)
+            serial=True, modules=module)
 
     def test_many_forwarded_enable_reservations(self):
         declarations = "ScanInPort si; ScanRegister pins[63:0] { ScanInSource si; ResetValue 64'b0; }\nScanOutPort so { Source pins[0]; }\n" + ''.join(

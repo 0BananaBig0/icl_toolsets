@@ -95,6 +95,85 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
   return {left, right};
 }
 
+void CheckDataSignalSources(const Netlist& netlist) {
+  enum class Kind { kOther, kData, kIrSelect };
+  static const std::set<std::string> kDataKinds = {
+      "DataInPort",   "DataOutPort",  "SelectPort",
+      "ToSelectPort", "ScanRegister", "DataRegister",
+      "LogicSignal",  "DataMux",      "OneHotDataGroup"};
+  std::vector<Kind> kinds;
+  kinds.reserve(netlist.nodes.size());
+  for (const auto& node : netlist.nodes) {
+    kinds.push_back(kDataKinds.count(node.kind)     ? Kind::kData
+                    : node.kind == "ToIRSelectPort" ? Kind::kIrSelect
+                                                    : Kind::kOther);
+  }
+  using Key = std::pair<size_t, int64_t>;
+  std::map<Key, Kind> aliases;
+  const auto classify = [&](BitReference bit) {
+    std::vector<Key> path;
+    Kind kind;
+    while (true) {
+      if (bit.node == std::numeric_limits<size_t>::max()) {
+        // Missing input-binding holes retain their existing validation path.
+        kind = bit.virtual_signal == VirtualSignal::kNone ? Kind::kData
+                                                          : Kind::kOther;
+        break;
+      }
+      const auto& node = netlist.nodes.at(bit.node);
+      if (node.model != ModelKind::kAlias) {
+        kind = kinds.at(bit.node);
+        break;
+      }
+      const Key key{bit.node, bit.index};
+      const auto found = aliases.find(key);
+      if (found != aliases.end()) {
+        kind = found->second;
+        break;
+      }
+      path.push_back(key);
+      const size_t offset = node.left >= node.right ? node.left - bit.index
+                                                    : bit.index - node.left;
+      bit = node.inputs.at("Source").at(offset);
+    }
+    for (const auto& key : path) aliases.emplace(key, kind);
+    return kind;
+  };
+  for (const auto& node : netlist.nodes) {
+    const auto check = [&](const std::string& role,
+                           const std::vector<BitReference>& bits) {
+      const bool ir_select = role == "SelectedBy" && node.kind == "ScanMux" &&
+                             bits.size() == 1 && node.choices.size() == 2;
+      for (const auto& bit : bits) {
+        const auto kind = classify(bit);
+        if (kind == Kind::kData || (ir_select && kind == Kind::kIrSelect)) {
+          continue;
+        }
+        throw std::runtime_error(node.origin + ": " + node.name + ": " + role +
+                                 " requires a data signal");
+      }
+    };
+    for (const auto& [role, bits] : node.inputs) {
+      if (role == "CaptureSource" || role == "WriteDataSource" ||
+          role == "ReadDataSource" || role == "WriteEnSource" ||
+          role == "Enable" || role == "SelectedBy" ||
+          (role == "Source" &&
+           (node.kind == "DataOutPort" || node.kind == "ToSelectPort" ||
+            node.kind == "DataInPort" || node.kind == "SelectPort"))) {
+        check(role, bits);
+      }
+    }
+    for (const auto& instruction : node.logic) {
+      check("LogicSignal operand", instruction.signals);
+    }
+    if (node.kind == "OneHotDataGroup") {
+      for (const auto& source : node.one_hot_sources) {
+        if (source.kind == OneHotSourceKind::kPort) check("Port", source.bits);
+      }
+    }
+  }
+}
+
 class Elaborator {
  public:
   Elaborator(Design& design,
@@ -123,6 +202,7 @@ class Elaborator {
     ConnectAddressedRegisters();
     ValidateInterfaces();
     CheckCombinationalConnections(netlist_);
+    CheckDataSignalSources(netlist_);
     return std::move(netlist_);
   }
 
