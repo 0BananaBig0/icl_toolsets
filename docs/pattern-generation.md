@@ -9,20 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, alias instance-boundary validation passed the complete
+On 2026-11-14, common-edge TAP replay passed the complete
 make -j2 --jobserver-style=pipe check command, with exit 0 recorded in
-build/alias-boundary-final-full.log/.exit. This includes all 39 generator CLI
+build/tap-edge-confirmed-full.log/.exit. This includes all 39 generator CLI
 suites under dynamic/static builds, native tests, 51 directional and seven legacy
 Tessent standards, all 334 parser and 119 scanner rules across 2,519 ICL files,
-and six Vim/Neovim tests (178.257s). Five optional ANTLR integration tests were
+and six Vim/Neovim tests (177.401s). Five optional ANTLR integration tests were
 skipped because ICL_REF_DIR was unset.
 
-Leak-enabled ASan/UBSan checks passed for native netlist/flatten tests and
-main (33), end-state (11) and merge-observation (20) CLI methods. Formatting,
-naming, scale and independent review passed. After the full run, a help-only
-wording correction clarified that standalone waits need no reset; both rebuilt
-dynamic/static binaries passed help smoke checks. No runtime branch changed.
-See [alias-boundary verification](#alias-instance-boundaries-2026-11-14).
+Leak-enabled ASan/UBSan checks passed for native state/TAP/scheduler/flatten and
+main (33), TAP replay (9) and hidden-scan-event (4) CLI methods. Formatting,
+naming, scale and independent review passed. See
+[common-edge replay verification](#common-edge-tap-replay-2026-11-14).
 
 Strict authored-code coverage remains unmet. A fresh complete instrumented run
 including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
@@ -3338,3 +3336,26 @@ or qualification of later source changes. Strict coverage and unfinished model
 requirements remain open.
 The exact submitted command body is retained in
 build/qualification-473bc9e/commands.log. Independent evidence review passed.
+
+### Common-edge TAP replay (2026-11-14)
+
+Concrete replay now computes every TAP's actions before publishing shared
+control outputs, then evaluates register controls after all outputs are ready.
+This removes dependence on AccessLink name order when one child forwards capture,
+shift or update controls to another. One joint register clock event and subsequent
+instruction/reset settlement preserve the shared hardware state.
+
+Six native variants cover the three forwarded controls in both name orders,
+with source/flat equality at every cycle. The old product fails the capture
+assertion when the producer sorts last. Existing unknown-controller and old
+serial-state tests remain passing. Two TAPs replaying 1000 idle cycles in both
+forms take 0.0339409s locally; the complete focused native run takes 0.12s and
+23244KiB maximum RSS with GCC16.2.1. No speed improvement is claimed.
+
+Full regression and leak-enabled sanitizer evidence is recorded above and in
+[the focused plan](superpowers/plans/2026-11-14-tap-edge-snapshot.md). An earlier
+detached full run ended without a completion status; its logs are preserved,
+and only the completed foreground rerun is counted as passing. This replay fix
+does not enable multiple-TAP scheduling or resolve shared-register ownership,
+implicit multiple-TAP reset ownership or general clock/event support. Strict
+coverage was not rerun, and Rocky8 qualification remains at473bc9e.

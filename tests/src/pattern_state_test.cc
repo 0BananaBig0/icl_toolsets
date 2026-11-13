@@ -626,6 +626,113 @@ Module AccessTop {
           "bypasses them");
 }
 
+void TestSharedTapEdge(bool producer_first, const std::string& control) {
+  const std::string producer = producer_first ? "a_source" : "z_source";
+  pattern::Design design;
+  design.AddIcl("shared_edge.icl", R"(
+Module EdgeCell {
+  ScanInPort si; ScanOutPort so { Source r; }
+  SelectPort select; CaptureEnPort capture; ShiftEnPort shift;
+  UpdateEnPort update; TCKPort clock;
+  ToCaptureEnPort capture_out { Source capture; }
+  ToShiftEnPort shift_out { Source shift; }
+  ToUpdateEnPort update_out { Source update; }
+  ScanRegister r { ScanInSource si; CaptureSource 1'b1; }
+  ScanInterface client {
+    Port si; Port so; Port select; Port capture; Port shift; Port update;
+    Port clock;
+  }
+}
+Module SharedEdge {
+  Instance producer Of EdgeCell;
+  Instance sink Of EdgeCell { InputPort )" +
+                                       control + " = producer." + control +
+                                       R"(_out; }
+  AccessLink )" + producer + R"( Of STD_1149_1_2001 {
+    BSDLEntity ProbeA;
+    IJTAG_ON { ScanInterface { producer.client; } }
+    IJTAG_OFF { ScanInterface { producer.client; } }
+  }
+  AccessLink m_sink Of STD_1149_1_2001 {
+    BSDLEntity ProbeB;
+    IJTAG_ON { ScanInterface { sink.client; } }
+    IJTAG_OFF { ScanInterface { sink.client; } }
+  }
+})");
+  for (const std::string suffix : {"A", "B"}) {
+    auto bsdl =
+        ReadFile("tests/cases/ours/pattern_generation/access_link/simple.bsdl");
+    for (const std::string token :
+         {"AccessProbe", "TDI", "TDO", "TMS", "TRST"}) {
+      const auto replacement =
+          token == "AccessProbe" ? "Probe" + suffix : token + suffix;
+      size_t at = 0;
+      while ((at = bsdl.find(token, at)) != std::string::npos) {
+        bsdl.replace(at, token.size(), replacement);
+        at += replacement.size();
+      }
+    }
+    design.AddBsdl("probe" + suffix + ".bsdl", bsdl, "Probe" + suffix);
+  }
+  const auto network = pattern::ElaborateTapNetwork(design, "SharedEdge");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(network.netlist));
+  const auto restored = pattern::ElaborateTapNetwork(flat, "SharedEdge");
+  pattern::TapExecution run(network.netlist), copy(restored.netlist);
+  for (auto* engine : {&run, &copy}) {
+    for (const auto* reset : {"TRSTA", "TRSTB"}) {
+      engine->Drive(reset, "0");
+      engine->Drive(reset, "1");
+    }
+  }
+  const auto cycle = [&](char tms, char tdi = '0') {
+    for (auto* engine : {&run, &copy}) {
+      engine->Drive("TMSA", std::string(1, tms));
+      engine->Drive("TMSB", std::string(1, tms));
+      engine->Drive("TDIA", std::string(1, tdi));
+      engine->Drive("TDIB", std::string(1, tdi));
+      engine->RisingEdge("TCK");
+      engine->FallingEdge("TCK");
+    }
+    for (const auto* cell : {"producer.r", "sink.r"}) {
+      Require(run.Value(cell) == copy.Value(cell) &&
+                  run.Value(cell, true) == copy.Value(cell, true),
+              "shared-edge original and flat state agree");
+    }
+  };
+  cycle('0');
+  for (char tms : std::string("1100")) cycle(tms);
+  const std::string instruction = "1100";
+  for (size_t i = 0; i < instruction.size(); ++i) {
+    cycle(i + 1 == instruction.size() ? '1' : '0', instruction[i]);
+  }
+  cycle('1');
+  cycle('0');
+  for (char tms : std::string("100")) cycle(tms);
+  Require(
+      run.Value("producer.r", true) == "1" && run.Value("sink.r", true) == "1",
+      "shared TCK capture uses all current controller outputs");
+  cycle('1', '0');
+  Require(run.Value("producer.r", true) == "0" &&
+              run.Value("sink.r", true) == "0" && run.Value("sink.r") == "x",
+          "shared TCK shift uses current controls without updating held data");
+  cycle('1');
+  Require(run.Value("producer.r") == "0" && run.Value("sink.r") == "0",
+          "shared TCK update uses all current controller outputs");
+  cycle('0');
+  if (producer_first && control == "capture") {
+    const auto started = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < 1000; ++i) cycle('0');
+    Require(run.Value("producer.r") == "0" && run.Value("sink.r") == "0",
+            "shared idle edges preserve both held registers");
+    std::cout << "shared TAP replay: taps=2 cycles=1000 forms=2 seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - started)
+                     .count()
+              << '\n';
+  }
+}
+
 void TestInstructionReset() {
   const std::string directory =
       "tests/cases/ours/pattern_generation/access_link/";
@@ -699,6 +806,10 @@ void TestLongChain() {
 }  // namespace
 int main() {
   try {
+    for (const auto* control : {"capture", "shift", "update"}) {
+      TestSharedTapEdge(true, control);
+      TestSharedTapEdge(false, control);
+    }
     TestFeedbackResetSnapshots();
     TestControllingEventHistory();
     TestLogicEvaluation();

@@ -1232,3 +1232,22 @@ hashes, commands and limits. The exact invocation is retained in
 build/qualification-473bc9e/commands.log. Independent evidence review passes,
 including byte comparison of3775 archived tracked files against473bc9e.
 Task47's later concrete TAP replay change is outside this qualification.
+
+## Task47: Common-edge TAP control snapshots
+
+Completed [the focused plan](2026-11-14-tap-edge-snapshot.md). A legal child
+ToCaptureEnPort connection exposed name-order-dependent concrete replay when
+TAPs share TCK. All controller actions are now computed before shared control
+outputs change; all outputs are published before effective register controls
+are evaluated. One shared Clock and existing IR/reset ordering remain.
+
+Six source/flat native variants cover capture, shift and update in both lexical
+orders; the old product fails the capture assertion and the new product passes.
+Independent source review is clean. Focused native/state-static/TAP/scheduler/
+flatten checks pass. Final full integration passes in
+build/tap-edge-confirmed-full.log/.exit(0): 39 dynamic/static suites, 51 directional/
+seven legacy goldens, 2519 ICL334/119 rules and editor6 in177.401s. Leak-enabled
+native/main33/TAP9/hidden-event4 checks, formatting and naming pass. The earlier
+detached full run has no completion status and is not counted as a pass.
+Scheduler multi-TAP support, shared ownership and
+general clock/reset work remain mandatory and are not closed by this replay fix.

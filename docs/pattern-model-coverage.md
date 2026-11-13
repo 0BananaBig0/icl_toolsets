@@ -1278,3 +1278,15 @@ Of15,057 untaken raw branches,10,690 are marked '(throw)' by gcov. This diagnost
 count does not exclude exception edges or weaken the required threshold. Meaningful
 uncovered behavior and compiler-emitted edges still need separate investigation.
 No full-coverage or complete-retargeter claim is made.
+
+## Common-edge TAP control replay (2026-11-14)
+
+All TAP actions are sampled before control publication, and all control outputs
+are published before effective register controls are evaluated. Six source/flat
+native cases establish name-order invariance for forwarded capture, shift and
+update. One joint state clock and existing instruction/reset settlement remain.
+Full dynamic/static and leak-enabled native/CLI checks pass; see
+[the verification record](superpowers/plans/2026-11-14-tap-edge-snapshot.md).
+This establishes concrete replay only. Multiple-TAP scheduling, shared serial
+ownership and implicit multiple-TAP reset semantics remain unfinished. The
+Task45 strict coverage result and473bc9e Rocky8 qualification predate this fix.

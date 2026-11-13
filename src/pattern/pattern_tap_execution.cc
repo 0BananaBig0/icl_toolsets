@@ -351,7 +351,7 @@ void TapExecution::Edge(const std::string& clock, bool rising) {
                                              : 'x';
   }
   std::map<size_t, ScanControl> controls;
-  std::vector<std::string> changed;
+  std::vector<std::pair<std::string, TapActions>> changed;
   for (const auto& [name, tap] : netlist_.taps) {
     if (tap.pins.at("tap_scan_clock") != clock_id) {
       continue;
@@ -362,24 +362,31 @@ void TapExecution::Edge(const std::string& clock, bool rising) {
                      state_.Value(tap.pins.at("tap_scan_mode")).at(0),
                      state_.Value(tap.pins.at("tap_scan_in")).at(0))
                : controller.FallingEdge();
+    changed.emplace_back(name, actions);
+  }
+  if (changed.empty()) {
+    throw std::runtime_error("clock does not drive any TAP");
+  }
+  // Cross-interface controls must observe the same edge for every TAP.
+  for (const auto& [name, actions] : changed) {
+    const auto& tap = netlist_.taps.at(name);
     state_.Drive(tap.controls.at("capture"),
                  std::string(1, actions.capture_dr));
     state_.Drive(tap.controls.at("shift"), std::string(1, actions.shift_dr));
     state_.Drive(tap.controls.at("update"), std::string(1, actions.update_dr));
+  }
+  for (const auto& [name, actions] : changed) {
+    const auto& tap = netlist_.taps.at(name);
     for (const auto& [id, events] : Controls(tap, actions, clocks)) {
       if (!controls.emplace(id, events).second) {
         throw std::runtime_error(netlist_.nodes.at(id).origin +
                                  ": register controlled by multiple TAPs");
       }
     }
-    changed.push_back(name);
-  }
-  if (changed.empty()) {
-    throw std::runtime_error("clock does not drive any TAP");
   }
   GlobalReset();
   state_.Clock(controls, rising);
-  for (const auto& name : changed) {
+  for (const auto& [name, actions] : changed) {
     Synchronize(name);
   }
   state_.Reset();
