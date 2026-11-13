@@ -9,6 +9,59 @@ import unittest
 ROOT = Path(__file__).resolve().parents[2]
 
 class BuildGraph(unittest.TestCase):
+    def test_generator_suites_match_for_dynamic_static_and_coverage(self):
+        suites = []
+        for target, binary in (
+                ('pattern-generation-check', 'build/icl-pattern-generation'),
+                ('pattern-generation-static-check', 'build/icl-pattern-generation-static'),
+                ('coverage', 'build/cov/icl-pattern-generation')):
+            run = subprocess.run(['make', '-n', target, 'BISON=/usr/bin/bison'],
+                                 cwd=ROOT, capture_output=True, text=True, check=True)
+            commands = [shlex.split(line) for line in run.stdout.splitlines()
+                        if line.startswith('python3 ') and line.endswith(' ' + binary)]
+            scripts = [words[1] for words in commands
+                       if len(words) == 3 and words[2] == binary]
+            self.assertIn('tests/src/pattern/test_hidden_client_events.py', scripts)
+            self.assertIn('tests/src/pattern/test_compound_reset_sources.py', scripts)
+            self.assertIn('tests/src/pattern/test_merge_primary_inputs.py', scripts)
+            self.assertEqual(len(scripts), len(set(scripts)))
+            suites.append(scripts)
+        self.assertEqual(suites[0], suites[1])
+        self.assertEqual(suites[0], suites[2])
+
+    def test_generator_suite_stops_at_first_failed_script(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            python = root / 'python3'
+            python.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$PATTERN_PROBE_LOG"\nexit 23\n')
+            python.chmod(0o755)
+            log = root / 'calls.log'
+            environment = dict(os.environ, PATH=str(root) + os.pathsep + os.environ['PATH'],
+                               PATTERN_PROBE_LOG=str(log))
+            run = subprocess.run(['make', '--no-print-directory',
+                                  '--assume-old=build/icl-pattern-generation',
+                                  'pattern-generation-check', 'BISON=/usr/bin/bison'],
+                                 cwd=ROOT, env=environment, capture_output=True, text=True,
+                                 timeout=30)
+            self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+            self.assertEqual(log.read_text().splitlines(),
+                             ['tests/src/test_icl_pattern_generation_main.py build/icl-pattern-generation'])
+
+    def test_coverage_test_links_exclude_header_prerequisites(self):
+        header = 'src/utility/text_position.h'
+        for name in ('pattern_design_test', 'pattern_runtime_test', 'pattern_scheduler_test'):
+            with self.subTest(name=name):
+                target = f'build/cov/{name}'
+                run = subprocess.run(['make', '-n', '-W', header,
+                                      f'--eval={target}: {header}', target,
+                                      'BISON=/usr/bin/bison'], cwd=ROOT,
+                                     capture_output=True, text=True, check=True)
+                link = next(shlex.split(line) for line in run.stdout.splitlines()
+                            if f' -o {target}' in line)
+                self.assertIn(f'tests/src/{name}.cc', link)
+                self.assertNotIn(header, link)
+                self.assertTrue(any(word.endswith('.o') for word in link))
+
     def test_coverage_includes_inline_code_emitted_by_pattern_tests(self):
         run = subprocess.run(['make', '-n', 'coverage', 'BISON=/usr/bin/bison'],
                              cwd=ROOT, capture_output=True, text=True, check=True)

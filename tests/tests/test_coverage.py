@@ -11,6 +11,10 @@ coverage = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(coverage)
 
 class CoverageReader(unittest.TestCase):
+    def test_all_authored_implementation_files_are_measured(self):
+        authored = {path.name for path in (ROOT / 'src').glob('*/*.cc')}
+        self.assertEqual(authored - set(coverage.SOURCES), set())
+
     def test_generator_misses_fail_the_coverage_gate(self):
         with tempfile.TemporaryDirectory() as tmp:
             for name in coverage.SOURCES:

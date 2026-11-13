@@ -615,14 +615,16 @@ Keep 100% line/90% raw-branch thresholds and the existing native/editor coverage
 missing coverage remains an acceptance failure, never a reason to lower limits.
 
 Files: Makefile; existing tests/tests/test_makefile.py for dry-run command-set equivalence;
-coverage evidence and remaining-gap ledger. A shared Make recipe removes duplicate
+tests/coverage.py and its tests for complete authored-source accounting;
+tests/lsp_test.py for an isolated workspace; coverage evidence and remaining-gap ledger.
+A shared Make recipe removes duplicate
 lists without changing suite order or dropping exit failures. Do not override
 the generator executable variable in a recursive make, which would relink the
 coverage binary using ordinary objects.
 
-- [ ] Reproduce missing coverage suites with a dry-run test that compares the
+- [x] Reproduce missing coverage suites with a dry-run test that compares the
   actual planned generator invocations for dynamic/static/coverage builds.
-- [ ] Share the generator suite recipe, keeping all existing suites and native
+- [x] Share the generator suite recipe, keeping all existing suites and native
   checks; verify command-set/order equality and first-failure propagation.
 - [ ] Run instrumented tests and the unchanged strict gate, retain the report,
   address uncovered reachable authored paths and record residual platform or
@@ -909,3 +911,9 @@ remain skipped. Eight new cases passed ASan/UBSan/LeakSanitizer with leaks
 enabled; all44 existing merge cases, formatting/naming/whitespace and independent
 review pass. No new vendor certificate is claimed. See
 [primary-merge evidence](../../pattern-generation.md#merged-direct-primary-input-writes-2026-11-13).
+
+Task25's invocation and build fixes passed independent review, twelve Makefile
+tests, seven coverage-reader tests and the full instrumented test sequence.
+The strict gate remains failed at95.8% lines/61.4% raw branches; the final
+checkbox stays open. See
+[coverage evidence](../../pattern-generation.md#complete-generator-coverage-invocation-2026-11-13).

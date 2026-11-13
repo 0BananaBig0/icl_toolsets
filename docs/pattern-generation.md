@@ -2401,3 +2401,25 @@ Full dynamic/static `make check` passed with exit 0
 legacy standards, all parser/scanner rules over 2,507 ICL files and editor corpus
 checks. Five optional ANTLR checks remain skipped. Broader model, optimization
 and coverage requirements remain open.
+
+## Complete generator coverage invocation (2026-11-13)
+
+Dynamic, static and coverage checks now share the same ordered 26 generator CLI
+suites. The coverage link recipes retain header rebuild prerequisites while
+passing only source/object files to the compiler. The LSP lifecycle suite uses
+an isolated temporary workspace, avoiding unrelated files under /tmp.
+
+The coverage source ledger now includes all authored implementation files,
+including pattern_data, pattern_merge and pattern_resources, plus their emitted
+inline headers. Twelve Makefile tests and seven coverage-reader tests pass;
+independent review found no remaining wiring issue. The instrumented run passed
+all native/editor/generator tests before the unchanged strict gate failed:
+13,750/14,355 lines (95.8%) and 22,906/37,317 raw branches (61.4%).
+Raw branches include compiler-emitted exception and cleanup edges.
+Evidence: build/coverage-complete-suite-resumed.log (make exit 2) and
+build/coverage-complete-report.log (report exit 1, including the three additional
+inline-header lines). Earlier runs stopped on the repaired build/test issues or
+the user interruption and are not complete coverage evidence.
+
+The required 100% line/90% raw-branch acceptance remains unfinished. This wiring
+fix and the successful instrumented tests do not establish that acceptance.

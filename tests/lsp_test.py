@@ -14,6 +14,7 @@ import os
 import queue
 import subprocess
 import sys
+import tempfile
 import threading
 
 PASS = 0
@@ -176,7 +177,7 @@ def coc_initialize(client, root):
     })
 
 
-def main():
+def main(workspace):
     parser = argparse.ArgumentParser()
     parser.add_argument('--binary', default='build/icl-lsp')
     parser.add_argument('--cli', default='build/icl-format',
@@ -193,7 +194,7 @@ def main():
     print('=' * 72)
 
     client = Client(args.binary)
-    response = coc_initialize(client, '/tmp')
+    response = coc_initialize(client, workspace)
     ok = response is not None and 'result' in response
     check('initialize -> result', ok, str(response)[:120])
     caps = response.get('result', {}).get('capabilities', {}) if response else {}
@@ -414,7 +415,7 @@ def main():
 
     # A client that just closes the pipe must not leave the process hanging.
     second = Client(args.binary)
-    coc_initialize(second, '/tmp')
+    coc_initialize(second, workspace)
     second.proc.stdin.close()
     try:
         code = second.proc.wait(timeout=5)
@@ -736,7 +737,7 @@ def main():
     rich = Client(args.binary)
     rich.request('initialize', {
         'processId': None,
-        'rootUri': 'file:///tmp',
+        'rootUri': 'file://' + workspace,
         'capabilities': {
             'textDocument': {
                 'formatting': {'dynamicRegistration': False},
@@ -812,4 +813,5 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    with tempfile.TemporaryDirectory(prefix='icl-lsp-test-') as workspace:
+        sys.exit(main(workspace))

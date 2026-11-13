@@ -462,25 +462,25 @@ $(COV_DIR)/unittests: $(COV_UNIT)
 	$(CXX) $(CXXSTD) --coverage $^ -o $@
 
 $(COV_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_SHARED)
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 $(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) -o $@
 
 $(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ $(TCL_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) -o $@
 
 $(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 $(COV_DIR)/pattern_netlist_test: tests/src/pattern_netlist_test.cc $(COV_DIR)/pattern/pattern_flatten.o $(COV_DIR)/utility/json.o $(COV_DIR)/pattern/pattern_logic.o $(COV_DIR)/pattern/pattern_netlist.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 $(COV_DIR)/pattern_address_test: tests/src/pattern_address_test.cc $(COV_DIR)/pattern/pattern_address.o $(COV_DIR)/pattern/pattern_flatten.o $(COV_DIR)/utility/json.o $(COV_DIR)/pattern/pattern_logic.o $(COV_DIR)/pattern/pattern_netlist.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 $(COV_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(COV_DIR)/pattern/pattern_flatten.o $(COV_DIR)/utility/json.o $(COV_DIR)/pattern/pattern_logic.o $(COV_DIR)/pattern/pattern_netlist.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 coverage: $(COV_BINARIES)
 	@mkdir -p $(COV_REPORT_DIR)
@@ -513,12 +513,7 @@ coverage: $(COV_BINARIES)
 	@$(COV_DIR)/pattern_state_test
 	@$(COV_DIR)/pattern_symbolic_test
 	@$(COV_DIR)/pattern_scheduler_test
-	@python3 tests/src/test_icl_pattern_generation_main.py $(COV_DIR)/icl-pattern-generation
-	@python3 tests/src/pattern/test_tap_pdl_replay.py $(COV_DIR)/icl-pattern-generation
-	@python3 tests/src/pattern/test_apply_end_state.py $(COV_DIR)/icl-pattern-generation
-	@python3 tests/src/pattern/test_data_register_scheduling.py $(COV_DIR)/icl-pattern-generation
-	@python3 tests/src/pattern/test_scan_data_register_scheduling.py $(COV_DIR)/icl-pattern-generation
-	@python3 tests/src/pattern/test_one_hot_scan_scheduling.py $(COV_DIR)/icl-pattern-generation
+	@$(call pattern_generation_tests,$(COV_DIR)/icl-pattern-generation)
 	@$(COV_DIR)/pattern_netlist_test
 	@python3 tests/src/test_pattern_address.py $(COV_DIR)/pattern_address_test
 	@$(COV_DIR)/pattern_logic_test
@@ -962,7 +957,7 @@ $(BUILD_DIR)/pattern_bsdl_test-static: tests/src/pattern_bsdl_test.cc $(BUILD_DI
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
 $(COV_DIR)/pattern_bsdl_test: tests/src/pattern_bsdl_test.cc $(COV_DIR)/pattern/pattern_bsdl.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 check check-dynamic: pattern-bsdl-check
 check check-static: pattern-bsdl-static-check
@@ -981,7 +976,7 @@ $(BUILD_DIR)/pattern_access_link_test-static: tests/src/pattern_access_link_test
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
 $(COV_DIR)/pattern_access_link_test: tests/src/pattern_access_link_test.cc $(COV_DIR)/pattern/pattern_access_link.o $(COV_DIR)/pattern/pattern_design.o $(COV_DIR)/pattern/pattern_bsdl.o $(COV_SHARED)
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 check check-dynamic: pattern-access-link-check
 check check-static: pattern-access-link-static-check
@@ -1002,7 +997,7 @@ $(BUILD_DIR)/pattern_tap_test-static: tests/src/pattern_tap_test.cc $(TAP_TEST_O
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 
 $(COV_DIR)/pattern_tap_test: tests/src/pattern_tap_test.cc $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 
 check check-dynamic: pattern-tap-check
 check check-static: pattern-tap-static-check
@@ -1017,7 +1012,7 @@ $(BUILD_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(TAP_TEST_OBJE
 $(BUILD_DIR)/pattern_state_test-static: tests/src/pattern_state_test.cc $(TAP_TEST_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ -o $@
 $(COV_DIR)/pattern_state_test: tests/src/pattern_state_test.cc $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $^ -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
 check check-dynamic: pattern-state-check
 check check-static: pattern-state-static-check
 
@@ -1048,7 +1043,7 @@ $(BUILD_DIR)/pattern_symbolic_test-static: tests/src/pattern_symbolic_test.cc $(
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 $(COV_DIR)/pattern_symbolic_test: tests/src/pattern_symbolic_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 check check-dynamic: pattern-symbolic-check
 check check-static: pattern-symbolic-static-check
 
@@ -1067,60 +1062,39 @@ $(PATTERN_GENERATOR_STATIC): $(BUILD_DIR)/pattern/icl_pattern_generation_main.o 
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
 	$(CXX) $(CXXSTD) $(CXXFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 .PHONY: pattern-generation-check pattern-generation-static-check
+define pattern_generation_tests
+python3 tests/src/test_icl_pattern_generation_main.py $1
+python3 tests/src/pattern/test_dependency_scheduling.py $1
+python3 tests/src/pattern/test_merge_scheduling.py $1
+python3 tests/src/pattern/test_merge_observations.py $1
+python3 tests/src/pattern/test_merge_data_registers.py $1
+python3 tests/src/pattern/test_merge_primary_inputs.py $1
+python3 tests/src/pattern/test_resource_reservations.py $1
+python3 tests/src/pattern/test_data_resource_reservations.py $1
+python3 tests/src/pattern/test_parallel_control_reservations.py $1
+python3 tests/src/pattern/test_port_control_merge.py $1
+python3 tests/src/pattern/test_mixed_io_scheduling.py $1
+python3 tests/src/pattern/test_primary_access_together.py $1
+python3 tests/src/pattern/test_mixed_port_writes.py $1
+python3 tests/src/pattern/test_hidden_scan_events.py $1
+python3 tests/src/pattern/test_tap_pdl_replay.py $1
+python3 tests/src/pattern/test_apply_end_state.py $1
+python3 tests/src/pattern/test_data_register_scheduling.py $1
+python3 tests/src/pattern/test_scan_data_register_scheduling.py $1
+python3 tests/src/pattern/test_one_hot_scan_scheduling.py $1
+python3 tests/src/pattern/test_vector_scan_inputs.py $1
+python3 tests/src/pattern/test_shared_scan_outputs.py $1
+python3 tests/src/pattern/test_pending_reset.py $1
+python3 tests/src/pattern/test_client_scan_controls.py $1
+python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
+python3 tests/src/pattern/test_hidden_client_events.py $1
+python3 tests/src/pattern/test_compound_reset_sources.py $1
+endef
+
 pattern-generation-check: $(PATTERN_GENERATOR)
-	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_dependency_scheduling.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_merge_scheduling.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_merge_observations.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_merge_data_registers.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_merge_primary_inputs.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_resource_reservations.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_data_resource_reservations.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_parallel_control_reservations.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_port_control_merge.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_mixed_io_scheduling.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_primary_access_together.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_mixed_port_writes.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_hidden_scan_events.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_tap_pdl_replay.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_apply_end_state.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_data_register_scheduling.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_scan_data_register_scheduling.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_one_hot_scan_scheduling.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_vector_scan_inputs.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_shared_scan_outputs.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_pending_reset.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_client_scan_controls.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_simultaneous_scan_chains.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_hidden_client_events.py $(PATTERN_GENERATOR)
-	python3 tests/src/pattern/test_compound_reset_sources.py $(PATTERN_GENERATOR)
+	$(call pattern_generation_tests,$(PATTERN_GENERATOR))
 pattern-generation-static-check: $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/test_icl_pattern_generation_main.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_dependency_scheduling.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_merge_scheduling.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_merge_observations.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_merge_data_registers.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_merge_primary_inputs.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_resource_reservations.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_data_resource_reservations.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_parallel_control_reservations.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_port_control_merge.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_mixed_io_scheduling.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_primary_access_together.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_mixed_port_writes.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_hidden_scan_events.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_tap_pdl_replay.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_apply_end_state.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_data_register_scheduling.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_scan_data_register_scheduling.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_one_hot_scan_scheduling.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_vector_scan_inputs.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_shared_scan_outputs.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_pending_reset.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_client_scan_controls.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_simultaneous_scan_chains.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_hidden_client_events.py $(PATTERN_GENERATOR_STATIC)
-	python3 tests/src/pattern/test_compound_reset_sources.py $(PATTERN_GENERATOR_STATIC)
+	$(call pattern_generation_tests,$(PATTERN_GENERATOR_STATIC))
 
 $(BUILD_DIR)/pattern_scheduler_test-static: tests/src/pattern_scheduler_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3 check-tcl-static
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
@@ -1129,10 +1103,10 @@ $(BUILD_DIR)/pattern_scheduler_test-static: tests/src/pattern_scheduler_test.cc 
 pattern-scheduler-static-check: $(BUILD_DIR)/pattern_scheduler_test-static
 	@$(BUILD_DIR)/pattern_scheduler_test-static
 $(COV_DIR)/pattern_scheduler_test: tests/src/pattern_scheduler_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 $(COV_DIR)/pattern/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
 $(COV_DIR)/icl-pattern-generation: $(COV_DIR)/pattern/icl_pattern_generation_main.o $(COV_PATTERN) $(COV_SOLVER) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 check check-dynamic: pattern-scheduler-check pattern-generation-check
 check check-static: pattern-scheduler-static-check pattern-generation-static-check
 dynamic: $(PATTERN_GENERATOR)
