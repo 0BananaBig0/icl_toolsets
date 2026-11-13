@@ -433,8 +433,9 @@ coverage; they are not new Tessent certificates.
 
 A single physical scan path may be observed by several direct, inverted or
 hierarchically forwarded `ScanOutPort` bits. Equivalent observations reuse one
-scan transaction; distinct chains and independently enabled outputs still require
-additional event scheduling.
+scan transaction. Independently enabled observations of that same path retain
+their enable conditions; the scheduler chooses a known-enabled observation.
+Distinct chains still require additional event scheduling.
 
 A single scan chain can use indexed bits of a vector `ScanInPort`, including
 mux-selected or inverted inputs and one lane of a vector `OneHotScanGroup`.

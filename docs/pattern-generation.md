@@ -10,7 +10,7 @@ schedules supported primary-pin and mixed primary/scan DataRegister operations. 
 ## Current verification
 
 On 2026-11-13, after adding shared scan-output observations, sliced/aliased merge
-reads and reset queue cancellation, full dynamic/static
+reads, reset queue cancellation and enabled shared observations, full dynamic/static
 `make -j2 --jobserver-style=pipe check` passed, including the Vim/Neovim corpus
 checks, 1,916 ICL regression cases and 2,180 conformance cases. All 334 parser
 and 119 scanner rules were exercised across 2,504 ICL files. Five optional ANTLR
@@ -18,9 +18,9 @@ integration tests were skipped because `ICL_REF_DIR` was unset. Rule coverage
 does not establish full handwritten line/branch coverage; the strict coverage
 gate remains unmet in the last recorded measurement.
 
-The latest focused ASan/UBSan/LeakSanitizer run covered the native runtime and
-scheduler, seven reset cases and 34 resource cases, with leak detection enabled. See
-[reset-queue evidence](#reset-cancels-queued-accesses-2026-11-13) for the
+The latest focused ASan/UBSan/LeakSanitizer run covered the native scheduler
+and nine shared-output cases, with leak detection enabled. See
+[enabled-output evidence](#enabled-observations-of-one-scan-path-2026-11-13) for the
 commands, logs, review and measured scale. This did not rerun installation,
 RTL simulation or strict authored-code coverage.
 
@@ -470,8 +470,9 @@ broader syntax support and never execute PDL.
 
 The backend accepts one physical scan path and at most one TAP. Multiple scalar
 or vector output bits may observe that path through transparent forwarding,
-including inversion. The first sorted output identifies the transaction; all
-declared controls are still checked. A path may use an indexed vector input
+including inversion. Equivalent ungated observations use the first sorted
+output; gated alternatives retain their enables and require a known-enabled
+path. All declared controls are still checked. A path may use an indexed vector input
 and an indexed one-hot return lane.
 It rejects
 multiple TAPs, distinct scan-output paths/shared chains, intermediate serial taps,
@@ -2100,3 +2101,46 @@ regression cases, 2,180 conformance cases, 37 directional and seven legacy
 offline vendor standards, all 334 parser and 119 scanner rules across 2,504
 files, and the Vim/Neovim corpus integration suite. Five optional ANTLR checks
 were skipped because `ICL_REF_DIR` was unset. Whitespace checks also pass.
+
+## Enabled observations of one scan path (2026-11-13)
+
+Multiple ScanOutPorts may observe the same physical path through distinct
+Enable conditions. The scheduler retains those gated alternatives and selects
+a known-enabled complete path. It does not add a second shift or update to
+the shared storage. Direct, inverted, hierarchical and vector observations are
+covered. IEEE 1687-2014 §6.4.6.2, printed p82/PDF p96, requires Enable to be
+active for the source to connect to its ScanOutPort.
+
+The graph pass computes both physical identity and observation identity in
+O(V+E). Physical identity crosses transparent forwarding; observation identity
+stops at Enable. Registers and selectors stop both identities. Distinct paths,
+including a different disabled path, retain their rejection. All graph vertices
+remain available for declared-control checks. A free primary input may be
+configured to enable an observation; a protected off input may not.
+
+Seven positive CLI subcases and the new native test failed on the former
+multiple-output guard. All nine CLI tests now pass original/flat/generated
+replay. Native tests check selected endpoints, physical input bits, inverted
+comparisons, state transitions and rollback for blocked or reserved accesses.
+Independent review found no actionable issue and additionally checked nested
+disabled/unknown gates, controls on unused branches and distinct disabled paths.
+
+Native scheduler tests and all nine CLI tests passed Clang
+ASan/UBSan/LeakSanitizer with `detect_leaks=1` and `halt_on_error=1`;
+logs: `build/enabled-output-sanitizer-{native,cli}.log`. Formatting and
+changed-source clang-tidy checks pass.
+
+The 257-output, 64-storage-bit case (13,343 bytes) took 0.234 s for three replay
+forms; the complete nine-case suite took 1.35 s and 57,692 KiB peak RSS on
+Linux 6.18.33.2 WSL2 with GCC 16.2.1 `-O2`. Command:
+`/usr/bin/time -f 'wall_seconds=%e peak_rss_kib=%M' python3 tests/src/pattern/test_shared_scan_outputs.py build/icl-pattern-generation`.
+Log: `build/enabled-output-scale.log`. This records supported scale, not a
+speedup. Distinct chains, simultaneous lanes and multiple TAPs remain open.
+
+Full dynamic/static `make -j2 --jobserver-style=pipe check` passed (exit 0,
+`build/enabled-output-regression.log`), including 1,916 ICL cases, 2,180
+conformance cases, 37 directional/seven legacy offline vendor standards,
+334 parser/119 scanner rules over 2,504 files and Vim/Neovim integration.
+Five optional ANTLR checks were skipped because `ICL_REF_DIR` was unset.
+No new vendor certificate, installation, RTL simulation or strict authored-code
+coverage measurement was run for this change.

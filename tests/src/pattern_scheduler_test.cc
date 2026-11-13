@@ -54,6 +54,57 @@ Module SharedTop {
               scheduler.Value("a") == "1" && scheduler.Value("b") == "0",
           "shared-output reservation failure rolls back all observations");
 }
+void TestEnabledScanOutputs() {
+  pattern::Design design;
+  design.AddIcl("enabled-outputs.icl", R"(
+Module SharedTop {
+  ScanInPort si;
+  DataInPort ena; DataInPort enb;
+  ScanRegister data[3:0] { ScanInSource si; ResetValue 4'b0; }
+  ScanOutPort a { Source data[0]; Enable ena; }
+  ScanOutPort b { Source ~data[0]; Enable enb; }
+})");
+  const auto netlist = pattern::Elaborate(design, "SharedTop");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("ena", "0");
+  scheduler.Assume("enb", "1");
+  const auto first = scheduler.Apply({{"iWrite", {"data", "9"}, "write", {}}});
+  Require(first.size() == 1 && first[0].output == "b" &&
+              first[0].serial == "1001" && scheduler.Value("data") == "1001",
+          "enabled observation chooses the physical path without extra shifts");
+  const auto read = scheduler.Apply({{"iRead", {"data", "9"}, "read", {}}});
+  Require(read.size() == 1 && read[0].output == "b" &&
+              read[0].serial_expected == "0110",
+          "gated inverted output retains serial comparison polarity");
+  scheduler.Assume("ena", "1");
+  scheduler.Assume("enb", "0");
+  const auto second = scheduler.Apply({{"iWrite", {"data", "6"}, "write", {}}});
+  Require(second.size() == 1 && second[0].output == "a" &&
+              scheduler.Value("data") == "0110",
+          "changing observation enable preserves common storage");
+  scheduler.Assume("ena", "0");
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"data", "9"}, "blocked", {}}}, false,
+                    {{netlist.node_ids.at("ena"), "0"},
+                     {netlist.node_ids.at("enb"), "0"}});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("data") == "0110",
+          "no enabled output fails without changing storage");
+  scheduler.Assume("enb", "1");
+  rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"data", "9"}, "reserved", {}}}, false,
+                    {{netlist.node_ids.at("data"), "0110"}}, false);
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("data") == "0110",
+          "gated observation preserves reservation rollback");
+}
 void TestVectorScanInputs() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/vector_scan_inputs/network.icl");
@@ -1484,6 +1535,7 @@ Module Network {
 int main() {
   try {
     TestSharedScanOutputs();
+    TestEnabledScanOutputs();
     TestVectorScanInputs();
     TestMixedReadRoutes();
     TestMixedIoPhases();

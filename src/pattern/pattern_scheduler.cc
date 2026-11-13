@@ -139,15 +139,18 @@ class ScanScheduler::Impl {
     });
     if (roots_.size() > 1) {
       // Forwarded observations of one path do not create extra clock events.
-      std::vector<size_t> paths(graph_.size());
+      std::vector<size_t> paths(graph_.size()), physical(graph_.size());
       for (size_t id : order_) {
         const auto& vertex = graph_[id];
-        paths[id] = id;
+        paths[id] = physical[id] = id;
         if (vertex.bit.node != kMissing && vertex.edges.size() == 1 &&
             vertex.edges.front().choice == kMissing) {
           const auto& node = netlist.nodes[vertex.bit.node];
-          if (node.kind != "ScanRegister" && !node.inputs.count("Enable")) {
-            paths[id] = paths[vertex.edges.front().next];
+          if (node.kind != "ScanRegister") {
+            physical[id] = physical[vertex.edges.front().next];
+            if (!node.inputs.count("Enable")) {
+              paths[id] = paths[vertex.edges.front().next];
+            }
           }
         }
       }
@@ -157,11 +160,14 @@ class ScanScheduler::Impl {
                                     return !observed.insert(paths[root]).second;
                                   }),
                    roots_.end());
-    }
-    if (roots_.size() > 1) {
-      throw std::runtime_error(
-          "multiple scan outputs require shared-control transaction "
-          "scheduling");
+      // Gated observations remain alternatives, with their enables enforced.
+      for (size_t root : roots_) {
+        if (physical[root] != physical[roots_.front()]) {
+          throw std::runtime_error(
+              "multiple scan outputs require shared-control transaction "
+              "scheduling");
+        }
+      }
     }
     BuildEndStates();
     initial_fill_ = fill_;

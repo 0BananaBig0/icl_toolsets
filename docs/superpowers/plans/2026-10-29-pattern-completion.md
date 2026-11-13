@@ -380,6 +380,69 @@ new `tests/src/pattern/test_pending_reset.py`, Makefile and support docs.
   style/naming and independent review; document vendor observations separately
   from certification and retain remaining model requirements.
 
+## Task 17: Enabled observations of one physical scan path
+
+IEEE 1687-2014 §6.4.6.2 qualifies observation with ScanOutPort Enable; two
+observations converging before storage do not add a clocked register or shift
+event. Reuse the existing selected-root solver and concrete serial replay.
+Retain each gated observation and its enable constraint, while computing a
+separate physical-path identity through transparent forwarding. Permit several
+roots only when those physical identities agree. Distinct paths still need
+the simultaneous event work below; never remove that guard indiscriminately.
+Compute identities in existing graph order in O(V+E), with no per-root traversal.
+
+Files: `src/pattern/pattern_scheduler.cc`, existing native scheduler and
+`tests/src/pattern/test_shared_scan_outputs.py`, user/model documentation.
+
+- [x] Add RED tests for constant, unknown and changing enables, forwarding,
+  inversion and vector observations. Test all-disabled/unknown-only failure,
+  reservation rollback, actual native state, source/flat/generated replay and
+  prior-output preservation. Retain distinct-path rejection.
+- [x] Separate physical identity from equivalent-observation deduplication;
+  reuse existing root selection, enable constraints and replay. Expected:
+  focused CLI/native cases pass without bypassing declared interface controls.
+- [x] Verify full dynamic/static regression, focused leak-enabled sanitizers,
+  formatting/naming, scale and independent review; record results and continue
+  the remaining tasks.
+
+## Task 18: Standalone client scan-interface controls
+
+Reuse the existing single-path scheduler before extending its transaction shape.
+IEEE 1687-2014 §6.4.16 defines interface membership, §6.7 defines omitted control
+behavior and §6.8 defines active levels. Tessent v2023.4 IJTAG User's Manual,
+"Checking ICL Module Ports", defines anonymous single-chain interface inference.
+Retain EffectiveScanInterfaces and the concrete executor's register bindings.
+For a standalone client, supply the external capture/shift/update phases at its
+unconnected top-level control ports. Evaluate explicitly connected child
+controls and clocks rather than ignoring them. Missing controls retain the
+existing active-path defaults.
+
+Extend the current phase-equivalence check to standalone clients: each modeled
+event must agree with the selected complete-scan path. Independently timed or
+hidden events that fail that proof remain for the general event task below.
+Concrete replay must derive controls from actual interface bindings and sampled
+clock levels independently of the symbolic proof, and check all storage and
+reservations. Do not implement this by deleting the declared-control rejection
+and retaining unconditional path-only replay.
+
+Files: `src/pattern/pattern_scheduler.cc`, shared interface-control code only
+where needed, existing native scheduler tests, new
+`tests/src/pattern/test_client_scan_controls.py`, Makefile and support docs.
+
+- [ ] Add RED native/CLI cases for explicit and inferred clients, nested
+  connected controls, top-level control pins, inverted/gated enables,
+  disabled/unknown select/shift/update and absent clock edges. Cover actual
+  register state, primary/scan interaction, original/flat/generated replay,
+  reset rewriting, reservation rollback and failed-output preservation.
+- [ ] Reuse interface membership and phase constraints for standalone clients;
+  implement concrete phase replay with actual controls. Keep unsupported
+  client-TAP, unmatched controls and distinct-chain diagnostics. Expected:
+  focused tests pass, including negative cases that would pass if controls were
+  ignored. Measure a 64-register explicitly controlled network.
+- [ ] Run full dynamic/static regression, focused leak-enabled sanitizers,
+  style/naming and independent review. Record remaining event limitations and
+  continue to simultaneous-chain/control event support.
+
 ## Remaining completion work (not yet completed)
 
 - Shared/multiple scan outputs/TAPs: simultaneous event-aware state transitions and cross-backend dependency planning, with common-state replay.
@@ -562,3 +625,12 @@ checks pass. Six Tessent 2026.2 probes establish queue discard for write/read/bo
 and async/sync reset; these are observations, not new qualification certificates.
 See [reset-queue evidence](../../pattern-generation.md#reset-cancels-queued-accesses-2026-11-13).
 All broader remaining requirements above remain open.
+
+Task 17 passed full dynamic/static `make check` (exit 0,
+`build/enabled-output-regression.log`), native scheduler and nine CLI cases
+under ASan/UBSan/LeakSanitizer with leak detection enabled, style/naming/
+whitespace and independent review. Positive gated observations failed before
+implementation. The 257-output/64-bit case took 0.234 s for three replay forms.
+Five optional ANTLR checks remain skipped. See
+[enabled-output evidence](../../pattern-generation.md#enabled-observations-of-one-scan-path-2026-11-13).
+Task 18 and the broader remaining requirements are not complete.

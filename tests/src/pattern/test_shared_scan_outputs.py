@@ -89,10 +89,45 @@ Module SharedTop {
 '''
         self.replay(source, PDL.replace(' data ', ' child.data '))
 
-    def test_distinct_and_enabled_paths_preserve_outputs(self):
+    def test_enabled_observations(self):
+        for a, b in (("1'b0", "1'b1"), ("1'b1", "1'b0"),
+                     ("1'b1", "1'b1"), ('unknown', "1'b1")):
+            with self.subTest(a=a, b=b):
+                source = NETWORK.replace('ScanInPort si;', 'ScanInPort si; DataInPort unknown;')
+                source = source.replace('Source data[0];', f'Source data[0]; Enable {a};')
+                source = source.replace('Source ~data[0];', f'Source ~data[0]; Enable {b};')
+                self.replay(source)
+
+    def test_changing_enabled_observations(self):
+        source = NETWORK.replace('ScanOutPort a { Source data[0]; }', '''
+  ScanRegister select { ScanInSource data[0]; ResetValue 1'b0; }
+  LogicSignal inverse { ~select; }
+  ScanOutPort a { Source select; Enable inverse; }''')
+        source = source.replace('Source ~data[0];', 'Source ~select; Enable select;')
+        self.replay(source, PDL.replace('iWrite data 0b1001', 'iWrite select 1\niWrite data 0b1001')
+                              .replace('iWrite data 0b0110', 'iWrite select 0\niWrite data 0b0110'))
+
+    def test_gated_forwarding_and_vectors(self):
+        source = NETWORK.replace('ScanOutPort a { Source data[0]; }', '''
+  ScanOutPort inner { Source data[0]; Enable 1'b1; }
+  ScanOutPort a[3:2] { Source inner, ~inner; Enable 1'b0; }''')
+        self.replay(source)
+
+    def test_no_observable_path_preserves_output(self):
+        for enable in ("1'b0", "1'bx"):
+            source = NETWORK
+            source = source.replace('Source data[0];', f'Source data[0]; Enable {enable};')
+            source = source.replace('Source ~data[0];', f'Source ~data[0]; Enable {enable};')
+            icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+            icl.write_text(source)
+            pdl.write_text(PDL)
+            (self.root / 'result.pdl').write_bytes(b'previous result\n')
+            self.run_tool(icl, pdl, ok=False)
+            self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
+
+    def test_distinct_paths_preserve_outputs(self):
         for source in (
                 NETWORK.replace('Source ~data[0]', 'Source si'),
-                NETWORK.replace('Source ~data[0];', "Source data[0]; Enable 1'b0;"),
                 NETWORK.replace('ScanOutPort b',
                                 'ScanRegister other { ScanInSource si; } ScanOutPort b')
                        .replace('Source ~data[0]', 'Source other')):
@@ -106,7 +141,8 @@ Module SharedTop {
                 self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
 
     def test_wide_shared_observation(self):
-        outputs = '\n'.join(f'ScanOutPort out{i} {{ Source data[0]; }}' for i in range(256))
+        outputs = '\n'.join(f"ScanOutPort out{i} {{ Source data[0]; Enable 1'b{int(i == 255)}; }}"
+                            for i in range(256))
         source = NETWORK.replace("data[3:0]", "data[63:0]").replace("4'b0", "64'b0")
         source = source.replace('ScanOutPort b { Source ~data[0]; }', outputs)
         start = time.monotonic()
