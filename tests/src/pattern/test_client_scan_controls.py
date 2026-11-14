@@ -107,9 +107,11 @@ class ClientScanControls(unittest.TestCase):
         self.assertIn(b'iRead observed 0b0100', output)
 
     def test_idle_known_and_unknown_clock_gates(self):
+        # Explicit ToTCKPort Source is the existing lowered-model gate extension.
         source = self.idle_network().replace('DataInPort enable;', '''DataInPort enable;
-  ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }''')
-        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated;')
+  ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }
+  ToTCKPort gated_tck { Source gated; }''')
+        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated_tck;')
         body = ('iReset; iState enable 0; iState child.value 8; iRunLoop 2; '
                 'iRead observed 8; iApply; iState enable 1; iRunLoop 1; '
                 'iRead observed 1; iApply;\n')
@@ -210,13 +212,15 @@ class ClientScanControls(unittest.TestCase):
         self.replay(source, PDL.replace(' value ', ' child.value '))
 
     def test_inverted_select_and_gated_clock(self):
+        # Explicit ToTCKPort Source is the existing lowered-model gate extension.
         body = PDL.replace(' value ', ' child.value ')
         source = self.nested('inverse').replace('DataInPort enable;',
                     'DataInPort enable; LogicSignal inverse { ~enable; }')
         self.replay(source, body.replace('iReset', 'iReset\niWrite enable 0; iApply'))
         source = self.nested().replace('DataInPort enable;', '''DataInPort enable;
-  ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }''')
-        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated;')
+  ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }
+  ToTCKPort gated_tck { Source gated; }''')
+        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated_tck;')
         self.replay(source, body.replace('iReset', 'iReset\niWrite enable 1; iApply'))
 
     def test_local_reset_release_with_explicit_controls(self):

@@ -120,17 +120,20 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
 }
 
 void CheckSignalSources(const Netlist& netlist) {
-  enum class Kind { kOther, kData, kClock, kConstant, kIrSelect };
+  enum class Kind { kOther, kData, kClock, kTck, kConstant, kIrSelect };
+  enum class Family { kData, kClock, kTck };
   static const std::set<std::string> kDataKinds = {
       "DataInPort",   "DataOutPort",  "SelectPort",
       "ToSelectPort", "ScanRegister", "DataRegister",
       "LogicSignal",  "DataMux",      "OneHotDataGroup"};
-  static const std::set<std::string> kClockKinds = {
-      "ClockPort", "ToClockPort", "TCKPort", "ToTCKPort", "ClockMux"};
+  static const std::set<std::string> kClockKinds = {"ClockPort", "ToClockPort",
+                                                    "ClockMux"};
   std::vector<Kind> kinds;
   kinds.reserve(netlist.nodes.size());
   for (const auto& node : netlist.nodes) {
     kinds.push_back(kDataKinds.count(node.kind) ? Kind::kData
+                    : node.kind == "TCKPort" || node.kind == "ToTCKPort"
+                        ? Kind::kTck
                     : kClockKinds.count(node.kind) &&
                             !node.properties.count("DifferentialInvOf")
                         ? Kind::kClock
@@ -171,26 +174,33 @@ void CheckSignalSources(const Netlist& netlist) {
   for (const auto& node : netlist.nodes) {
     const auto check = [&](const std::string& role,
                            const std::vector<BitReference>& bits,
-                           bool clock = false) {
+                           Family family = Family::kData) {
       const bool ir_select = role == "SelectedBy" && node.kind == "ScanMux" &&
                              bits.size() == 1 && node.choices.size() == 2;
       for (const auto& bit : bits) {
         const auto kind = classify(bit);
         if (kind == Kind::kData || kind == Kind::kConstant ||
-            (clock && kind == Kind::kClock) ||
+            (family == Family::kClock &&
+             (kind == Kind::kClock || kind == Kind::kTck)) ||
+            (family == Family::kTck && kind == Kind::kTck) ||
             (ir_select && kind == Kind::kIrSelect)) {
           continue;
         }
-        throw std::runtime_error(node.origin + ": " + node.name + ": " + role +
-                                 (clock ? " requires a clock or data signal"
-                                        : " requires a data signal"));
+        throw std::runtime_error(
+            node.origin + ": " + node.name + ": " + role +
+            (family == Family::kClock ? " requires a clock or data signal"
+             : family == Family::kTck ? " requires a TCK or data signal"
+                                      : " requires a data signal"));
       }
     };
     for (const auto& [role, bits] : node.inputs) {
       if (role == "DifferentialInvOf" ||
           (role == "Source" &&
            (node.kind == "ClockPort" || node.kind == "ToClockPort"))) {
-        check(role, bits, true);
+        check(role, bits, Family::kClock);
+      }
+      if (role == "Source" && node.kind == "TCKPort") {
+        check(role, bits, Family::kTck);
       }
       if (role == "CaptureSource" || role == "WriteDataSource" ||
           role == "ReadDataSource" || role == "WriteEnSource" ||
@@ -203,7 +213,7 @@ void CheckSignalSources(const Netlist& netlist) {
     }
     if (node.kind == "ClockMux") {
       for (const auto& choice : node.choices) {
-        check("clock choice", choice.source, true);
+        check("clock choice", choice.source, Family::kClock);
       }
     }
     for (const auto& instruction : node.logic) {

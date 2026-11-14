@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, clock source terminal eligibility passed the complete
+On 2026-11-14, child TCK input source kinds passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/clock-source-final-full.log/.exit. This includes all41 generator CLI suites
+build/tck-source-confirmed-full.log/.exit. This includes all41 generator CLI suites
 under dynamic/static builds, native tests,51 directional and seven legacy Tessent
 standards, all334 parser and119 scanner rules across2523 ICL files, and six
-Vim/Neovim tests (181.921s). Full wall time was1103.136s. Five optional ANTLR
+Vim/Neovim tests (182.718s). Full wall time was964.274s. Five optional ANTLR
 integration tests were skipped because ICL_REF_DIR was unset.
 
 Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
-main38, clock41, client-control18 and reset-preview12 methods. Formatting, naming
+main39, clock41, client-control18 and reset-preview12 methods. Formatting, naming
 and independent source review pass. See
-[the scope and evidence](#clock-source-terminal-eligibility-2026-11-14).
+[the scope and evidence](#child-tck-input-source-kinds-2026-11-14).
 The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
@@ -3738,3 +3738,26 @@ and main38/clock41/client18/reset12 checks pass in build/clock-source-final-sani
 Older generators requiring eight-field entries reject the new bound differential
 input metadata; ordinary eight-field output remains unchanged. Strict coverage and platform qualification
 have not been refreshed.
+
+### Child TCK input source kinds (2026-11-14)
+
+Child TCKPort bindings now require TCKPort/ToTCKPort terminals, ordinary data,
+constants or their aliases. General ClockPort/ToClockPort/ClockMux terminals
+remain valid ordinary clock sources but are outside this TCK binding union.
+Kind eligibility does not establish same polarity, phase or hierarchy direction.
+Explicit ToTCKPort Source is an existing lowered-model extension; it remains
+available without claiming its Source syntax is IEEE-defined.
+
+Main39, native positive/negative/alias/flat/constant checks and clock41 pass.
+Independent source review and naming/style pass. Two client and one native gate
+fixtures previously bound ClockMux directly to TCKPort; they now use explicit
+ToTCKPort Source forwarding, retaining all disabled/enabled/unknown assertions.
+Their comments identify extension coverage. The first full run and scheduler
+sanitizer failure remain recorded in build/tck-source-final-*; the corrected
+full native scheduler passes. Confirmed full integration passes in
+build/tck-source-confirmed-full.log/.exit0 (964.274s):41 dynamic/static suites,
+51 directional/seven legacy goldens,2523 ICL334/119 rules, editor6 in182.718s;
+five optional ANTLR tests skipped. Leak-enabled native scheduler/flatten/netlist
+and main39/clock41/client18/reset12 checks pass in
+build/tck-source-confirmed-sanitizer-*. The corrected client18 suite passes.
+Strict coverage, vendor certification and platform qualification are not refreshed.

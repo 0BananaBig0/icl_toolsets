@@ -151,6 +151,30 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                                    '--output', 'invalid.pdl', ok=False)
             self.assertIn(diagnostic, result.stdout + result.stderr)
 
+    def test_tck_input_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        for declaration in ('ClockPort source;', 'ToClockPort source;',
+                            "ClockPort ck; ClockMux source SelectedBy 1'b0 { 1'b0: ck; }",
+                            'ResetPort source;', 'ScanInPort source;'):
+            for reference in ('source', 'wrapped'):
+                (self.root / 'source.icl').write_text(
+                    'Module Child { TCKPort ck; } Module Network { ' + declaration +
+                    ' Alias wrapped = source; Instance child Of Child { InputPort ck = ' + reference + '; } }')
+                (self.root / 'result.pdl').write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--output', 'result.pdl', ok=False)
+                self.assertIn('TCK or data signal', result.stdout + result.stderr)
+                self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
+        for declaration in ('TCKPort source;', 'ToTCKPort source;',
+                            'DataInPort source;', "LogicSignal source { 1'b0; }"):
+            (self.root / 'source.icl').write_text(
+                'Module Child { TCKPort ck; } Module Network { ' + declaration +
+                ' Alias wrapped = source; Instance child Of Child { InputPort ck = wrapped; } }')
+            self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                          '--output', 'result.pdl', '--debug')
+            self.run_tool('--icl', 'debug/Network.icl', '--pdl', 'source.pdl',
+                          '--output', 'again.pdl')
+
     def test_round_trips(self):
         result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug", "--log", "run.log")
         self.assertIn("warning", result.stdout)

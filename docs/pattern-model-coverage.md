@@ -1372,3 +1372,18 @@ rules and editor6 in181.921s; five optional ANTLR tests skipped. Leak-enabled
 native scheduler/flatten/netlist and main38/clock41/client18/reset12 checks pass.
 Formatting, naming and corrected independent source review pass. Strict coverage,
 new vendor certification and later platform qualification remain open.
+
+## Child TCK input source kinds (2026-11-14)
+
+Restored TCK bindings use a separate terminal family from general clocks while
+retaining ordinary data/constants. Explicit ToTCKPort Source extension coverage
+keeps native/client gated-clock assertions without validation exceptions.
+
+Confirmed full integration passes in build/tck-source-confirmed-full.log/.exit0,
+964.274s wall:41 dynamic/static suites,51 directional/seven legacy goldens,2523
+ICL334/119 rules and editor6 in182.718s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main39/clock41/client18/reset12
+checks pass in build/tck-source-confirmed-sanitizer-*. Original full exit2 and
+scheduler sanitizer exit1 are preserved. Source/fixture reviews, naming and style
+pass; no kind exemption or solver-budget change was introduced. Strict coverage,
+new vendor certification and later platform qualification remain open.

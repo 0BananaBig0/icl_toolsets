@@ -114,6 +114,46 @@ void TestClockSignalSources() {
     }
   }
 }
+void TestTckInputSources() {
+  for (const auto& entry : std::vector<std::pair<std::string, bool>>{
+           {"TCKPort source;", true},
+           {"ToTCKPort source;", true},
+           {"ClockPort ck; ToTCKPort source { Source ck; }", true},
+           {"DataInPort source;", true},
+           {"DataRegister source;", true},
+           {"LogicSignal source { 1'b0; }", true},
+           {"ClockPort source;", false},
+           {"ToClockPort source;", false},
+           {"ResetPort source;", false},
+           {"TRSTPort source;", false},
+           {"CaptureEnPort source;", false},
+           {"ShiftEnPort source;", false},
+           {"UpdateEnPort source;", false},
+           {"TMSPort source;", false},
+           {"ScanInPort source;", false}}) {
+    pattern::Design design;
+    design.AddIcl("tck_sources.icl",
+                  "Module Child { TCKPort ck; } Module M {" + entry.first +
+                      " Alias wrapped = source; Instance child Of Child { "
+                      "InputPort ck = wrapped; } }");
+    if (entry.second) {
+      const auto original = pattern::Elaborate(design, "M");
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+      pattern::Elaborate(flat, "M");
+    } else {
+      Fails([&] { pattern::Elaborate(design, "M"); }, "TCK or data signal");
+    }
+  }
+  for (const std::string source : {"1'b0", "1'b1", "1'bx"}) {
+    pattern::Design design;
+    design.AddIcl("constant_tck.icl",
+                  "Module Child { TCKPort ck; } Module M { "
+                  "Instance child Of Child { InputPort ck = " +
+                      source + "; } }");
+    pattern::Elaborate(design, "M");
+  }
+}
 void TestDataSignalSources() {
   const std::string prefix =
       "Module Sink { DataInPort data; SelectPort selected; } Module M {"
@@ -1389,6 +1429,7 @@ void TestOneHotScanLimits() {
 int main() {
   int failures = 0;
   for (const auto test : {TestClockSignalSources,
+                          TestTckInputSources,
                           TestDataSignalSources,
                           TestDataSignalAliasSlices,
                           TestDataSourceScale,
