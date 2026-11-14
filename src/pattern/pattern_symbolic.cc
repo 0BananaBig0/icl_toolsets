@@ -20,6 +20,13 @@ SymbolicValue Invert(const SymbolicValue& value) {
 SymbolicValue Concat(const SymbolicValue& a, const SymbolicValue& b) {
   return {z3::concat(a.bits, b.bits), z3::concat(a.known, b.known)};
 }
+unsigned BitOffset(const NetlistNode& node, int64_t index) {
+  if (index < std::min(node.left, node.right) ||
+      index > std::max(node.left, node.right)) {
+    throw std::runtime_error("symbolic reference index outside range");
+  }
+  return node.left >= node.right ? index - node.right : node.right - index;
+}
 SymbolicValue Select(const z3::expr& condition, const SymbolicValue& yes,
                      const SymbolicValue& no) {
   return {z3::ite(condition, yes.bits, no.bits),
@@ -111,12 +118,7 @@ SymbolicValue SymbolicNetwork::Read(const BitReference& bit, bool scan) {
     }
   } else {
     const auto& node = netlist_.nodes.at(bit.node);
-    if (bit.index < std::min(node.left, node.right) ||
-        bit.index > std::max(node.left, node.right)) {
-      throw std::runtime_error("symbolic reference index outside range");
-    }
-    const unsigned offset = node.left >= node.right ? bit.index - node.right
-                                                    : node.right - bit.index;
+    const unsigned offset = BitOffset(node, bit.index);
     const auto source = Value(bit.node, scan);
     result = {source.bits.extract(offset, offset),
               source.known.extract(offset, offset)};
@@ -126,10 +128,28 @@ SymbolicValue SymbolicNetwork::Read(const BitReference& bit, bool scan) {
 SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits,
                                     bool scan) {
   if (bits.empty()) throw std::runtime_error("empty symbolic signal");
-  auto result = Read(bits[0], scan);
-  for (size_t i = 1; i < bits.size(); ++i) {
-    result = Concat(result, Read(bits[i], scan));
-  }
+  // Preserve vector slices so the solver sees direct wide equalities.
+  size_t position = 0;
+  const auto read_run = [&]() {
+    const auto& bit = bits[position++];
+    if (bit.node == kMissing) return Read(bit, scan);
+    const auto& node = netlist_.nodes.at(bit.node);
+    const unsigned high = BitOffset(node, bit.index);
+    unsigned low = high;
+    while (position < bits.size() && bits[position].node == bit.node &&
+           bits[position].inverted == bit.inverted) {
+      const unsigned next = BitOffset(node, bits[position].index);
+      if (next + 1 != low) break;
+      low = next;
+      ++position;
+    }
+    const auto source = Value(bit.node, scan);
+    const SymbolicValue value{source.bits.extract(high, low),
+                              source.known.extract(high, low)};
+    return bit.inverted ? Invert(value) : value;
+  };
+  auto result = read_run();
+  while (position < bits.size()) result = Concat(result, read_run());
   return result;
 }
 SymbolicValue SymbolicNetwork::Active(const AddressRequirement& requirement) {

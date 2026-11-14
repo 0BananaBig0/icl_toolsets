@@ -1274,6 +1274,127 @@ Module Top {
   Fails([&] { pattern::Elaborate(ambiguous, "M"); },
         "ambiguous register reset");
 }
+void TestMuxExpansionBudget() {
+  for (const std::string kind : {"DataMux", "ScanMux", "ClockMux"}) {
+    std::string source =
+        "Module M { DataInPort data[65535:0]; "
+        "DataInPort mode[6:0]; " +
+        kind + " mux[65535:0] SelectedBy mode { ";
+    for (size_t i = 0; i < 65; ++i) {
+      source += std::to_string(i) + ": data; ";
+    }
+    pattern::Design design;
+    design.AddIcl("mux_sources.icl", source + "} }");
+    Fails([&] { pattern::Elaborate(design, "M"); },
+          "mux expansion bit limit exceeded");
+  }
+  for (const std::string body :
+       {"DataInPort mode[1048575:0]; DataMux mux SelectedBy mode { "
+        "0 | 1 | 2 : 0; }",
+        "DataInPort mode[1048574:0]; DataMux mux[4:0] SelectedBy mode { "
+        "0 | 1 | 2 : 0; }",
+        "Instance a Of Child; Instance b Of Child;",
+        "DataInPort mode[1048574:0]; DataMux mux[3:0] SelectedBy mode { "
+        "0 | 1 | 2 : 0; } DataMux extra SelectedBy 1'b0 { 0 : 0; }"}) {
+    pattern::Design design;
+    design.AddIcl("mux_budget.icl",
+                  "Module Child { DataInPort mode[524287:0]; "
+                  "DataMux mux SelectedBy mode { 0 | 1 | 2 : 0; } } "
+                  "Module M { " +
+                      body + " }");
+    Fails([&] { pattern::Elaborate(design, "M"); },
+          "mux expansion bit limit exceeded");
+  }
+  pattern::Design boundary;
+  boundary.AddIcl("mux_boundary.icl",
+                  "Module M { DataInPort mode[1048574:0]; "
+                  "DataMux mux[3:0] SelectedBy mode { 0 | 1 | 2 : 0; } }");
+  const auto netlist = pattern::Elaborate(boundary, "M");
+  const auto flat = pattern::SerializeIcl(netlist);
+  pattern::Design replay;
+  replay.AddIcl("mux_boundary_flat.icl", flat);
+  Require(pattern::SerializeIcl(pattern::Elaborate(replay, "M")) == flat,
+          "exact aggregate mux budget survives original/flat replay");
+}
+
+void TestMuxNumericCodes() {
+  for (const std::string kind : {"DataMux", "ScanMux", "ClockMux"}) {
+    for (const std::string value : {"\"0\"", "1'b0"}) {
+      pattern::Design design;
+      design.AddIcl("mux_codes.icl",
+                    "Module M { Parameter CODE = " + value +
+                        "; DataInPort mode; " + kind +
+                        " mux SelectedBy mode { $CODE : 0; } }");
+      if (value.front() == '"') {
+        Fails([&] { pattern::Elaborate(design, "M"); },
+              "mux selector code must be numeric");
+      } else {
+        Require(pattern::Elaborate(design, "M")
+                        .NodeAt("mux")
+                        .choices[0]
+                        .codes[0]
+                        .data == "0",
+                "numeric parameter selector code remains supported");
+      }
+    }
+  }
+}
+
+void TestMuxSelectorGraph() {
+  const std::vector<std::pair<std::string, bool>> cases = {
+      {"DataInPort mode[1:0]; DataMux mux[1:0] SelectedBy mode { "
+       "2'bxx : 1'b0, mux[1]; }",
+       false},
+      {"DataInPort mode[1:0]; DataMux mux[1:0] SelectedBy mode { "
+       "2'bxx : mux[0], mux[1]; }",
+       true},
+      {"DataMux mux[1:0] SelectedBy mux { 2'bxx : 0; }", true},
+      {"Alias mode[1:0] = mux; DataMux mux[1:0] SelectedBy mode { "
+       "2'bxx : 0; }",
+       true},
+      {"ScanInPort si; ScanRegister r[1:0] { ScanInSource si; "
+       "CaptureSource mux; } DataMux mux[1:0] SelectedBy r { "
+       "2'bxx : r; }",
+       false}};
+  for (const auto& [body, cycle] : cases) {
+    pattern::Design design;
+    design.AddIcl("mux_graph.icl", "Module M { " + body + " }");
+    if (cycle) {
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            "combinational connection cycle");
+    } else {
+      const auto original = pattern::Elaborate(design, "M");
+      pattern::Design replay;
+      replay.AddIcl("flat.icl", pattern::SerializeIcl(original));
+      Require(pattern::SerializeIcl(pattern::Elaborate(replay, "M")) ==
+                  pattern::SerializeIcl(original),
+              "shared selector graph preserves bit DAGs and register cuts");
+    }
+  }
+  pattern::Design design;
+  design.AddIcl("mux_enable.icl", R"(
+Module Leaf {
+  ScanInPort si[1:0]; DataInPort en;
+  ScanOutPort so[1:0] { Source si; Enable en; }
+}
+Module M {
+  ScanInPort si[1:0]; DataInPort mode[1:0]; DataInPort en;
+  Instance data Of Leaf { InputPort si = si; InputPort en = en; }
+  Instance selector Of Leaf { InputPort si = si; InputPort en = en; }
+  ScanMux mux[1:0] SelectedBy mode { 2'bxx : data.so; }
+  OneHotScanGroup group[1:0] { Port mux; }
+}
+)");
+  auto graph = pattern::Elaborate(design, "M");
+  // Isolate enabled-path validation on a lowered graph with a scan selector.
+  graph.nodes.at(graph.node_ids.at("data.so")).inputs.erase("Enable");
+  auto& selector =
+      graph.nodes.at(graph.node_ids.at("mux")).inputs.at("SelectedBy");
+  for (auto& bit : selector) bit.node = graph.node_ids.at("selector.so");
+  Fails([&] { pattern::CheckCombinationalConnections(graph); },
+        "group source needs an enabled ScanOutPort");
+}
+
 void TestMuxAndEnum() {
   pattern::Design design;
   design.AddIcl("mux.icl", R"(
@@ -1329,6 +1450,15 @@ void TestUnsizedSources() {
   Require(netlist.NodeAt("one").inputs.at("Source")[0].constant == '1' &&
               netlist.NodeAt("unknown").inputs.at("Source")[0].constant == 'x',
           "context sizing may discard leading zero or unknown digits");
+  const auto expression = netlist.NodeAt("one").properties.at("Source");
+  Require(netlist.Resolve(expression, 4, pattern::ReferenceUse::kConnection, 4)
+                  .size() == 4,
+          "unsized padding respects the exact operand budget");
+  Fails(
+      [&] {
+        netlist.Resolve(expression, 4, pattern::ReferenceUse::kConnection, 3);
+      },
+      "signal operand bit limit exceeded");
 }
 
 void TestConnectionHierarchy() {
@@ -2021,6 +2151,9 @@ int main() {
                           TestErrors,
                           TestBitConnections,
                           TestResetInference,
+                          TestMuxExpansionBudget,
+                          TestMuxNumericCodes,
+                          TestMuxSelectorGraph,
                           TestMuxAndEnum,
                           TestConnectionErrors,
                           TestConnectionHierarchy,

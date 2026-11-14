@@ -3974,3 +3974,56 @@ main49/clock41/client18/reset12 pass in build/data-mux-control-use-final-sanitiz
 All three source/test SHA-256 values match the independently reviewed checkpoint
 and measured scale source. Naming/style and independent review pass. Strict
 coverage, full vendor certification and refreshed platform checks remain open.
+
+### Aggregate mux expansion and selector graph work (2026-11-14)
+
+DataMux, ScanMux and ClockMux now share a4M expanded-bit limit per final netlist:
+selector references once, every choice source bit and every selector-code bit,
+including alternative codes. Checks precede padded-source and code allocation.
+Selectors resolve against the remaining budget. String-valued selector codes are
+rejected during elaboration instead of failing only when debug ICL is serialized.
+The final graph check also counts generated TAP routing muxes; a source network
+at the exact combined boundary retains identical flat replay. Oversized networks
+previously accepted now fail with a source-located limit diagnostic, preserving
+existing pattern/reset/debug artifacts. Object/width/real-graph-bit limits remain.
+
+Wide muxes share one private selector-dependency vertex. Output data dependencies
+stay bit-specific, registers still cut cycles, and selectors cannot qualify an
+enabled data path. This removes output-width times selector-width traversal.
+Three interleaved source/flat runs against9e602dd preserve output and flat hashes.
+For65536 outputs/4096 selector bits (169 ICL bytes), source changed0.1144–0.1146s
+versus8.9460–8.9966s; changed source/flat peak52728KiB. Ordinary655360-reference
+and262144-bit control cases retain similar measured ranges. Exact commands,
+compiler/platform and hashes are in build/mux-resource-scale/comparison.json.
+These workload measurements do not establish a worst-case runtime guarantee.
+
+The shared signal resolver also rejects target widths beyond its operand budget
+before unsized padding. This prevents one-hot budget subtraction from underflowing;
+width4/max4 remains accepted, width4/max3 is a failing-first regression.
+
+Verification exposed a primary-input optimization hotspot. Symbolic references now
+reuse contiguous vector slices with validated index order, inversion, knownness and
+held/shift selection. Primary deviation objectives use unsigned32-bit chunks MSB
+first, preserving their lexicographic order around drive-count minimization. All
+goals, reservations, replay and deadlines remain unchanged. Slice-only, chunk-only
+and unsigned-integer alternatives were measured; both final changes are necessary
+for the tested4096-bit boundary. Native concrete equivalence and a262-bit reduction
+preference check protect semantics. No diagnostic setting/output enters the product.
+
+Full final integration passes in build/mux-resource-primary-confirmed-full.log/
+.exit0,1641.867s wall with make-j1check: dynamic/static generator suites,51 directional
+goldens,2523 ICL334/119 rules, LSP62 and editor6 in216.032s. Five optional ANTLR
+tests are skipped. Leak-enabled native symbolic/netlist/flatten/state/TAP/address/
+scheduler and main50/clock41/client18/reset12 pass in
+build/mux-resource-primary-final-sanitizer-*. All8 source/test hashes match the
+reviewed checkpoint. Naming/style and independent source/test review pass.
+
+The full optimized scheduler measures1024 direct bits0.0232s and4096 bits0.3365s.
+Official ASan total Apply times are0.320s/4.750s; diagnostic check-only4096 times
+0.425–0.834s stay below the unchanged2s check deadline. Source/command/environment/
+RSS evidence is in build/primary-combined-scale-comparison.json and
+build/mux-resource-primary-final-optimized-comparison.json. The selector comparison
+above measures its earlier reviewed checkpoint; the shared sizing and primary
+fixes were integrated afterward. Initial solver timeouts and diagnostic failures
+remain recorded, with no assertion/deadline/coverage waiver. Strict coverage, full
+vendor certification and refreshed platform qualification remain open.

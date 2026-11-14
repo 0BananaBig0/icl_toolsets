@@ -1521,7 +1521,7 @@ metadata assumptions remain recorded. Naming/style and independent product/fixtu
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
 
-Task64 matching-use work is completed in its separate focused plan. Task65 must bound
+Task64 matching-use work is completed in its separate focused plan. Task65 bounds
 aggregate mux source/code expansion and dependency work; node-bit limits alone do
 not bound those arrays. Previously listed runtime/clock/TAP, lifecycle, coverage,
 vendor and platform requirements remain open.
@@ -1543,3 +1543,25 @@ main49/clock41/client18/reset12 pass in build/data-mux-control-use-final-sanitiz
 All three source/test SHA-256 values match the independently reviewed checkpoint
 and measured scale source. Naming/style and independent review pass. Strict
 coverage, full vendor certification and refreshed platform checks remain open.
+
+## Task65: Mux expansion, selector dependencies and primary solver work
+
+Completed [mux resource work](2026-11-14-mux-resource-work.md) and the necessary
+[primary expression/objective fix](2026-11-14-primary-objective-width.md). Shared4M
+selector/source/code accounting includes final TAP routes; generic resolver target
+preflight prevents unsized-padding budget bypass. Shared selector vertices preserve
+per-bit graph semantics. Symbolic vector runs and unsigned32-bit objectives retain
+goals/reservations/replay while meeting the measured direct4096-bit check budget.
+
+Full final make-j1check passes in build/mux-resource-primary-confirmed-full.log/
+.exit0,1641.867s wall: dynamic/static suites,51 directional goldens,2523 ICL334/119
+rules, LSP62 and editor6 in216.032s; optional ANTLR5 skipped. Native7 leak-enabled
+sanitizers and main50/clock41/client18/reset12 pass. All8 source/test hashes match
+the reviewed checkpoint. Naming/style and independent reviews pass. Initial full/
+solver failures are preserved, without weakened deadlines or assertions.
+
+Task66 actual CaptureEn/UpdateEn mux structure is drafted in its focused plan;
+main51/native checks and matched source/flat scale outputs pass in isolation.
+Direct reset/TMS/TRST data-driver constraints, remaining structural/operational
+conformance, runtime/TAP/lifecycle requirements, strict coverage, full vendor and
+platform qualification remain mandatory.

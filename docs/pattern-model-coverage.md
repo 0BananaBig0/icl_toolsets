@@ -1502,3 +1502,27 @@ main49/clock41/client18/reset12 pass in build/data-mux-control-use-final-sanitiz
 All three source/test SHA-256 values match the independently reviewed checkpoint
 and measured scale source. Naming/style and independent review pass. Strict
 coverage, full vendor certification and refreshed platform checks remain open.
+
+## Mux expansion and selector dependencies (2026-11-14)
+
+Shared4M selector/source/code expansion accounting covers all mux kinds,
+alternatives, instances and final generated TAP routes. Preflight covers unsized
+padding; selector codes must be numeric. Exact combined source/flat boundary and
+atomic CLI rejection tests pass. Shared selector vertices preserve scalar cycles,
+valid cross-bit DAGs, register cuts and enabled-data validation. Wide selector
+measurements preserve output hashes while reducing repeated graph traversal;
+ordinary/control scale remains measured. Shared target-width preflight also bounds
+unsized padding in other resolver callers. Necessary primary performance fixes
+coalesce symbolic vector runs and bound unsigned objective chunks, preserving
+value/knownness, scan state, fill order, reservations and replay. Legal1024/4096-bit
+writes,262-bit preference and4097-bit atomic rejection are checked.
+
+Full final integration passes in build/mux-resource-primary-confirmed-full.log/
+.exit0,1641.867s wall with make-j1check: dynamic/static generator suites,51 directional
+goldens,2523 ICL334/119 rules, LSP62 and editor6 in216.032s. Five optional ANTLR
+tests are skipped. Leak-enabled native symbolic/netlist/flatten/state/TAP/address/
+scheduler and main50/clock41/client18/reset12 pass in
+build/mux-resource-primary-final-sanitizer-*. All8 source/test hashes match the
+reviewed checkpoint. Naming/style and independent review pass. Initial solver
+failures remain recorded. Strict coverage, full vendor certification and refreshed
+platform qualification remain open.

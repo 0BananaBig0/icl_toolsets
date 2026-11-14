@@ -3,6 +3,7 @@
 #include "pattern/pattern_symbolic.h"
 
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 #include "pattern/pattern_design.h"
@@ -162,6 +163,77 @@ Module Signals {
         }
     }
 }
+void TestSignalRunAgreement() {
+  pattern::Design design;
+  design.AddIcl("signal_runs.icl", R"(
+Module Runs {
+  DataInPort down[8:3]; DataInPort up[2:7];
+  DataOutPort whole_down[5:0] { Source down; }
+  DataOutPort whole_up[0:5] { Source up; }
+  DataOutPort slice_down[3:0] { Source down[7:4]; }
+  DataOutPort slice_up[0:3] { Source up[3:6]; }
+  DataOutPort reverse_down[5:0] { Source down[3:8]; }
+  DataOutPort reverse_up[5:0] { Source up[7:2]; }
+  DataOutPort mixed[8:0] { Source down[8:6], ~up[3:5], 1'bx, down[3], up[7]; }
+  DataOutPort duplicate[2:0] { Source down[6], down[6], down[6]; }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Runs");
+  z3::context context;
+  for (const std::string down : {"000000", "111111", "10x011", "xxxxxx"}) {
+    for (const std::string up : {"000000", "111111", "x1010x", "xxxxxx"}) {
+      pattern::NetworkState native(netlist);
+      native.Drive(netlist.node_ids.at("down"), down);
+      native.Drive(netlist.node_ids.at("up"), up);
+      pattern::SymbolicNetwork symbolic(
+          netlist, context,
+          {{netlist.node_ids.at("down"),
+            pattern::SymbolicValue::Literal(context, down)},
+           {netlist.node_ids.at("up"),
+            pattern::SymbolicValue::Literal(context, up)}},
+          "10");
+      for (const auto* name :
+           {"whole_down", "whole_up", "slice_down", "slice_up", "reverse_down",
+            "reverse_up", "mixed", "duplicate"}) {
+        const auto result = symbolic.Value(netlist.node_ids.at(name));
+        const auto expected = pattern::SymbolicValue::Literal(
+            context, native.Value(netlist.node_ids.at(name)));
+        z3::solver solver(context);
+        solver.add(result.bits != expected.bits ||
+                   result.known != expected.known);
+        Require(
+            solver.check() == z3::unsat,
+            "symbolic signal runs preserve concrete bit order and unknowns");
+      }
+      const size_t missing = std::numeric_limits<size_t>::max();
+      const auto result = symbolic.Bits(
+          {{netlist.node_ids.at("down"), 8},
+           {missing, 0, 'x', false, pattern::VirtualSignal::kGlobalReset},
+           {netlist.node_ids.at("down"), 7},
+           {missing, 0, 'x', false, pattern::VirtualSignal::kAsyncGlobalReset},
+           {missing, 0, '?'}});
+      const auto expected = pattern::SymbolicValue::Literal(
+          context, std::string{down[0], '1', down[1], '0', 'x'});
+      z3::solver solver(context);
+      solver.add(result.bits != expected.bits ||
+                 result.known != expected.known);
+      Require(solver.check() == z3::unsat,
+              "virtual and unspecified references interrupt physical runs");
+      for (const int64_t index : {2, 9}) {
+        bool rejected = false;
+        try {
+          symbolic.Bits({{netlist.node_ids.at("down"), 8},
+                         {netlist.node_ids.at("down"), index}});
+        } catch (const std::runtime_error& error) {
+          rejected = std::string(error.what()).find("index outside range") !=
+                     std::string::npos;
+        }
+        Require(rejected, "run grouping retains reference range validation");
+      }
+    }
+  }
+}
+
 void TestOneHotPortValues() {
   pattern::Design design;
   design.AddIcl("one_hot.icl", R"(
@@ -300,6 +372,23 @@ Module ShiftState {
        {b, pattern::SymbolicValue::Literal(context, "10")}},
       "xx", &shifts);
   for (bool scan : {false, true, false}) {
+    for (const size_t id : {a, b}) {
+      for (bool inverted : {false, true}) {
+        const auto actual = symbolic.Bits(
+            {{id, 1, 'x', inverted}, {id, 0, 'x', inverted}}, scan);
+        auto bits = native.Value(id, scan);
+        if (inverted) {
+          for (char& bit : bits)
+            bit = bit == '0' ? '1' : bit == '1' ? '0' : 'x';
+        }
+        const auto expected = pattern::SymbolicValue::Literal(context, bits);
+        z3::solver solver(context);
+        solver.add(actual.bits != expected.bits ||
+                   actual.known != expected.known);
+        Require(solver.check() == z3::unsat,
+                "contiguous register runs preserve distinct held/shift views");
+      }
+    }
     for (const auto* name : {"a", "b", "inverted", "mux", "so", "data"}) {
       const size_t id = netlist.node_ids.at(name);
       const auto actual = symbolic.Value(id, scan);
@@ -412,6 +501,7 @@ int main() {
     TestMuxConsensus();
     TestMuxCoverageBudget();
     TestTernaryAgreement();
+    TestSignalRunAgreement();
     TestOneHotPortValues();
     TestOneHotScanValues();
     TestSeparateShiftState();

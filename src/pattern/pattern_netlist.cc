@@ -18,6 +18,14 @@ namespace {
 constexpr size_t kMaxObjects = 1000000;
 constexpr size_t kMaxWidth = 1024 * 1024;
 constexpr size_t kMaxDepth = 128;
+constexpr size_t kMaxMuxBits = 4 * 1024 * 1024;
+
+void SpendMuxBits(size_t bits, size_t* remaining) {
+  if (bits > *remaining) {
+    throw std::runtime_error("mux expansion bit limit exceeded");
+  }
+  *remaining -= bits;
+}
 
 std::string Path(const std::string& scope, const std::string& name) {
   return scope.empty() ? name : scope + "." + name;
@@ -1598,8 +1606,20 @@ class Elaborator {
   }
 
   void ConnectMux(NetlistNode* node) {
-    auto selector = netlist_.Resolve(node->properties.at("SelectedBy"));
+    std::vector<BitReference> selector;
+    try {
+      selector =
+          netlist_.Resolve(node->properties.at("SelectedBy"), 0,
+                           ReferenceUse::kConnection, mux_bits_remaining_);
+    } catch (const std::runtime_error& error) {
+      if (mux_bits_remaining_ < kMaxWidth &&
+          std::string(error.what()) == "signal operand bit limit exceeded") {
+        throw std::runtime_error("mux expansion bit limit exceeded");
+      }
+      throw;
+    }
     const size_t width = selector.size();
+    SpendMuxBits(width, &mux_bits_remaining_);
     node->inputs.emplace("SelectedBy", std::move(selector));
     const auto& module = netlist_.scopes[node->scope].definition;
     const auto& tokens = SourceTokens(netlist_, node->scope);
@@ -1618,10 +1638,15 @@ class Elaborator {
       for (size_t begin = expression.begin; begin < colon;) {
         size_t end = begin;
         while (end < colon && tokens[end].text != "|") ++end;
-        choice.codes.push_back(
-            netlist_.Value({node->scope, begin, end}, width));
+        SpendMuxBits(width, &mux_bits_remaining_);
+        auto code = netlist_.Value({node->scope, begin, end}, width);
+        if (code.is_string) {
+          throw std::runtime_error("mux selector code must be numeric");
+        }
+        choice.codes.push_back(std::move(code));
         begin = end + 1;
       }
+      SpendMuxBits(node->Width(), &mux_bits_remaining_);
       choice.source = netlist_.Resolve({node->scope, colon + 1, expression.end},
                                        node->Width());
       node->choices.push_back(std::move(choice));
@@ -1721,6 +1746,7 @@ class Elaborator {
   size_t logic_bits_remaining_ = 4 * 1024 * 1024;
   size_t address_bits_remaining_ = kMaxAddressBits;
   size_t one_hot_bits_remaining_ = 4 * 1024 * 1024;
+  size_t mux_bits_remaining_ = kMaxMuxBits;
   std::map<std::string, Template> templates_;
   std::map<std::string, size_t> scope_ids_;
   std::map<std::pair<size_t, std::string>, std::vector<size_t>> kinds_;
@@ -1839,14 +1865,42 @@ bool IsInputPort(const std::string& kind) {
 void CheckCombinationalConnections(const Netlist& netlist) {
   // Signal-level cycles may be acyclic between bits; registers cut the graph.
   constexpr size_t kMaxGraphBits = 16 * 1024 * 1024;
+  size_t mux_bits_remaining = kMaxMuxBits;
   std::vector<size_t> offsets{0};
   for (const auto& node : netlist.nodes) {
+    if (node.model == ModelKind::kMux) {
+      try {
+        SpendMuxBits(node.inputs.at("SelectedBy").size(), &mux_bits_remaining);
+        for (const auto& choice : node.choices) {
+          SpendMuxBits(choice.source.size(), &mux_bits_remaining);
+          for (const auto& code : choice.codes) {
+            SpendMuxBits(code.data.size(), &mux_bits_remaining);
+          }
+        }
+      } catch (const std::runtime_error& error) {
+        throw std::runtime_error(node.origin + ": " + node.name + ": " +
+                                 error.what());
+      }
+    }
     if (node.Width() > kMaxGraphBits - offsets.back()) {
       throw std::runtime_error("ICL bit dependency graph limit exceeded");
     }
     offsets.push_back(offsets.back() + node.Width());
   }
+  const size_t real_bits = offsets.back();
+  std::vector<size_t> selector_vertices(netlist.nodes.size(),
+                                        std::numeric_limits<size_t>::max());
+  std::vector<size_t> selector_owners;
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& node = netlist.nodes[id];
+    if (node.model == ModelKind::kMux && node.Width() > 1 &&
+        node.inputs.at("SelectedBy").size() > 1) {
+      selector_vertices[id] = real_bits + selector_owners.size();
+      selector_owners.push_back(id);
+    }
+  }
   const auto owner = [&](size_t bit) {
+    if (bit >= real_bits) return selector_owners[bit - real_bits];
     return static_cast<size_t>(
         std::upper_bound(offsets.begin(), offsets.end(), bit) -
         offsets.begin() - 1);
@@ -1863,26 +1917,37 @@ void CheckCombinationalConnections(const Netlist& netlist) {
     const size_t id = owner(bit);
     const auto& node = netlist.nodes[id];
     if (node.model == ModelKind::kRegister) return result;
-    const size_t position = bit - offsets[id];
     const auto append = [&](const BitReference& ref) {
       if (ref.node == std::numeric_limits<size_t>::max()) return;
       result.push_back(bit_id(ref));
     };
-    for (const auto& input : node.inputs) {
-      if (input.first != "SelectedBy" && input.second.size() == node.Width()) {
-        append(input.second[position]);
-      } else {
-        for (const auto& ref : input.second) append(ref);
+    if (bit >= real_bits) {
+      for (const auto& ref : node.inputs.at("SelectedBy")) append(ref);
+    } else {
+      const size_t position = bit - offsets[id];
+      for (const auto& input : node.inputs) {
+        if (input.first == "SelectedBy" &&
+            selector_vertices[id] != std::numeric_limits<size_t>::max()) {
+          result.push_back(selector_vertices[id]);
+          continue;
+        }
+        if (input.first != "SelectedBy" &&
+            input.second.size() == node.Width()) {
+          append(input.second[position]);
+        } else {
+          for (const auto& ref : input.second) append(ref);
+        }
       }
-    }
-    for (const auto& choice : node.choices) {
-      append(choice.source.at(position));
-    }
-    for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
-      if (position < node.Width() - node.one_hot_sources[source].bits.size()) {
-        break;
+      for (const auto& choice : node.choices) {
+        append(choice.source.at(position));
       }
-      append(node.OneHotSourceBit(source, position));
+      for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
+        if (position <
+            node.Width() - node.one_hot_sources[source].bits.size()) {
+          break;
+        }
+        append(node.OneHotSourceBit(source, position));
+      }
     }
     std::sort(result.begin(), result.end());
     result.erase(std::unique(result.begin(), result.end()), result.end());
@@ -1892,7 +1957,7 @@ void CheckCombinationalConnections(const Netlist& netlist) {
     size_t bit, next;
     std::vector<size_t> dependencies;
   };
-  std::vector<unsigned char> state(offsets.back());
+  std::vector<unsigned char> state(real_bits + selector_owners.size());
   const bool has_groups = std::any_of(
       netlist.nodes.begin(), netlist.nodes.end(),
       [](const NetlistNode& node) { return !node.one_hot_sources.empty(); });
@@ -1903,6 +1968,7 @@ void CheckCombinationalConnections(const Netlist& netlist) {
                : enabled_paths[bit_id(ref)];
   };
   const auto propagate_enable = [&](size_t bit) {
+    if (bit >= real_bits) return;
     const size_t id = owner(bit);
     const auto& node = netlist.nodes[id];
     const auto position = bit - offsets[id];
@@ -2021,6 +2087,9 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
                                            size_t max_bits) const {
   const bool scan_input = use == ReferenceUse::kScanInput;
   max_bits = std::min(max_bits, kMaxWidth);
+  if (width > max_bits) {
+    throw std::runtime_error("signal operand bit limit exceeded");
+  }
   const auto& tokens = SourceTokens(*this, expression.scope);
   const auto& scope = scopes.at(expression.scope);
   struct Segment {

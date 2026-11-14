@@ -339,6 +339,47 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                     for artifact in artifacts:
                         self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_mux_expansion_and_string_codes_preserve_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        models = {}
+        for kind in ('DataMux', 'ScanMux', 'ClockMux'):
+            rows = ' '.join(f'{code} : data;' for code in range(65))
+            models[kind + ' source expansion'] = (
+                'Module Network { DataInPort data[65535:0]; DataInPort mode[6:0]; '
+                f'{kind} mux[65535:0] SelectedBy mode {{ {rows} }} }}',
+                'mux expansion bit limit exceeded')
+            models[kind + ' string code'] = (
+                'Module Network { Parameter CODE = "0"; DataInPort mode; '
+                f'{kind} mux SelectedBy mode {{ $CODE : 0; }} }}',
+                'mux selector code must be numeric')
+        models['code expansion'] = (
+            'Module Network { DataInPort mode[1048575:0]; '
+            'DataMux mux SelectedBy mode { 0 | 1 | 2 : 0; } }',
+            'mux expansion bit limit exceeded')
+        models['padded source'] = (
+            'Module Network { DataInPort mode[1048574:0]; '
+            'DataMux mux[4:0] SelectedBy mode { 0 | 1 | 2 : 0; } }',
+            'mux expansion bit limit exceeded')
+        models['instance aggregate'] = (
+            'Module Child { DataInPort mode[524287:0]; '
+            'DataMux mux SelectedBy mode { 0 | 1 | 2 : 0; } } '
+            'Module Network { Instance a Of Child; Instance b Of Child; }',
+            'mux expansion bit limit exceeded')
+        for label, (source, diagnostic) in models.items():
+            with self.subTest(label=label):
+                (self.root / 'source.icl').write_text(source)
+                for artifact in artifacts:
+                    artifact.write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                for artifact in artifacts:
+                    self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_data_mux_impossible_sources(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         debug = self.root / 'debug/Network.icl'

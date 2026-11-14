@@ -22,6 +22,16 @@ constexpr size_t kMissing = std::numeric_limits<size_t>::max();
 constexpr size_t kMaxSteps = 32;
 using Values = std::map<size_t, SymbolicValue>;
 using Key = std::pair<size_t, int64_t>;
+
+void MinimizeBits(z3::optimize* solver, const z3::expr& bits) {
+  // Bound soft-constraint weights while preserving unsigned objective order.
+  for (unsigned high = bits.get_sort().bv_size(); high;) {
+    const unsigned low = high > 32 ? high - 32 : 0;
+    solver->minimize(bits.extract(high - 1, low));
+    high = low;
+  }
+}
+
 class ScheduleLimit : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
@@ -1577,9 +1587,11 @@ class ScanScheduler::Impl {
                    (actual.bits & wanted.known) == wanted.bits);
       }
       if (together) solver.add(simultaneous);
-      for (const auto& deviation : data_deviations) solver.minimize(deviation);
+      for (const auto& deviation : data_deviations) {
+        MinimizeBits(&solver, deviation);
+      }
       solver.minimize(count);
-      for (const auto& deviation : deviations) solver.minimize(deviation);
+      for (const auto& deviation : deviations) MinimizeBits(&solver, deviation);
       const auto status = solver.check();
       if (status == z3::unsat) continue;
       if (status != z3::sat) {

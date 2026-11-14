@@ -1833,27 +1833,47 @@ void TestDataReservationRollback() {
   }
 }
 void TestPrimaryLimits() {
+  for (const size_t width : {1024U, 4096U}) {
+    pattern::Design direct;
+    direct.AddIcl("direct-primary.icl",
+                  "Module Direct { DataInPort data[" +
+                      std::to_string(width - 1) + ":0]; DataOutPort out[" +
+                      std::to_string(width - 1) + ":0] { Source data; } }");
+    const auto netlist = pattern::Elaborate(direct, "Direct");
+    pattern::ScanScheduler scheduler(netlist);
+    const auto start = std::chrono::steady_clock::now();
+    const std::string bits(width, '1');
+    const auto steps =
+        scheduler.Apply({{"iWrite", {"out", "0b" + bits}, "direct:1", {}}});
+    Require(steps.size() == 1 && steps[0].writes.at("data") == bits,
+            "legal large primary input replays its full assignment");
+    std::cout << "direct primary: bits=" << width << " seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - start)
+                     .count()
+              << '\n';
+  }
+  {
+    pattern::Design choices;
+    choices.AddIcl("primary-fill-choice.icl", R"(
+Module Choices {
+  DataInPort data[261:0];
+  LogicSignal merged { |data; }
+  DataOutPort out { Source merged; }
+}
+)");
+    const auto netlist = pattern::Elaborate(choices, "Choices");
+    pattern::ScanScheduler scheduler(netlist);
+    const auto steps =
+        scheduler.Apply({{"iWrite", {"out", "1"}, "fill-choice:1", {}}});
+    Require(steps.size() == 1 &&
+                steps[0].writes.at("data") == std::string(261, '0') + "1",
+            "unsigned fill preference crosses nonaligned objective chunks");
+  }
   pattern::Design design;
   design.AddIcl("wide-primary.icl", R"(
-Module Wide {
- DataInPort data[1023:0];
- DataOutPort out[1023:0] { Source data; }
-}
 Module TooWide { DataInPort data[4096:0]; }
 )");
-  const auto netlist = pattern::Elaborate(design, "Wide");
-  pattern::ScanScheduler scheduler(netlist);
-  const auto start = std::chrono::steady_clock::now();
-  const std::string bits(1024, '1');
-  const auto steps =
-      scheduler.Apply({{"iWrite", {"out", "0b" + bits}, "wide:1", {}}});
-  Require(steps.size() == 1 && steps[0].writes.at("data") == bits,
-          "wide primary-input replay");
-  std::cout << "primary write: bits=1024 seconds="
-            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
-                                             start)
-                   .count()
-            << '\n';
   const auto large = pattern::Elaborate(design, "TooWide");
   pattern::ScanScheduler limited(large);
   bool rejected = false;
@@ -2902,8 +2922,14 @@ Module Network {
   }
 }
 }  // namespace
-int main() {
+int main(int argc, char* argv[]) {
   try {
+    if (argc != 1) {
+      Require(argc == 2 && std::string(argv[1]) == "--primary-limits",
+              "expected --primary-limits or no test arguments");
+      TestPrimaryLimits();
+      return 0;
+    }
     TestClockOverrideSnapshots();
     TestClockOverrideScale();
     TestRelativeSystemClocks();

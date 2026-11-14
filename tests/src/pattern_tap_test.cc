@@ -1678,6 +1678,59 @@ void TestIndexedSerialEndpoints() {
           "unconnected bits remain unspecified after flat replay");
 }
 
+void TestCombinedMuxBudget() {
+  const auto run = [&](const std::string& padding) {
+    pattern::Design design;
+    design.AddIcl("combined_mux.icl",
+                  Replace(Read(kDirectory + "simple.icl"), "Module AccessTop {",
+                          "Module AccessTop {" + padding));
+    design.AddBsdl("simple.bsdl", Read(kDirectory + "simple.bsdl"),
+                   "AccessProbe");
+    return pattern::ElaborateTapNetwork(design, "AccessTop");
+  };
+  size_t base_bits = 0;
+  for (const auto& node : run("").netlist.nodes) {
+    if (node.model != pattern::ModelKind::kMux) continue;
+    base_bits += node.inputs.at("SelectedBy").size();
+    for (const auto& choice : node.choices) {
+      base_bits += choice.source.size();
+      for (const auto& code : choice.codes) base_bits += code.data.size();
+    }
+  }
+  constexpr size_t kBudget = 4 * 1024 * 1024;
+  for (const size_t total : {kBudget, kBudget + 1}) {
+    const auto target = total - base_bits;
+    const auto width = (target - 3) / 4 - 1;
+    const auto tail = target - (4 * width + 3) - 2;
+    const auto padding =
+        "DataInPort padmode[" + std::to_string(width - 1) +
+        ":0]; DataMux pad[2:0] SelectedBy padmode { 0 | 1 | 2 : 0; } "
+        "DataMux tail[" +
+        std::to_string(tail - 1) + ":0] SelectedBy 1'b0 { 0 : 0; } ";
+    if (total > kBudget) {
+      try {
+        run(padding);
+      } catch (const std::exception& error) {
+        Require(std::string(error.what()).find("combined_mux.icl:") !=
+                        std::string::npos &&
+                    std::string(error.what()).find("mux expansion bit limit") !=
+                        std::string::npos,
+                "final combined TAP mux limit has a source diagnostic");
+        continue;
+      }
+      throw std::runtime_error("expected combined TAP mux resource limit");
+    }
+    const auto network = run(padding);
+    const auto flat = pattern::SerializeIcl(network.netlist);
+    pattern::Design replay;
+    replay.AddIcl("combined_mux_flat.icl", flat);
+    Require(
+        pattern::SerializeIcl(
+            pattern::ElaborateTapNetwork(replay, "AccessTop").netlist) == flat,
+        "authored plus generated muxes at aggregate limit replay identically");
+  }
+}
+
 void TestSerialScaleAndBudget() {
   const auto run = [&](size_t count, size_t width) {
     std::string instances, references;
@@ -1743,6 +1796,7 @@ int main() {
     TestIndependentTaps();
     TestSerialWithoutResetAndLinks();
     TestIndexedSerialEndpoints();
+    TestCombinedMuxBudget();
     TestSerialScaleAndBudget();
     TestDatapathInsertion();
     TestControllerTransitions();
