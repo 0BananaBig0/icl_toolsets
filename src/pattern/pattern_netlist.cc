@@ -400,25 +400,42 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
       const bool addressed = family == Family::kAddress ||
                              family == Family::kWriteEn ||
                              family == Family::kReadEn;
-      const auto check_output_scope = [&](BitReference bit) {
+      const auto parent = netlist.scopes.at(node.scope).parent;
+      const auto reference_scope =
+          role == "Source" && IsInputPort(node.kind) &&
+                  parent != std::numeric_limits<size_t>::max()
+              ? parent
+              : node.scope;
+      const auto check_source_scope = [&](const BitReference& raw,
+                                          const BitReference& bit) {
         if (role == "DifferentialInvOf") return;
-        if (bit.node == std::numeric_limits<size_t>::max()) return;
-        const auto& driver = netlist.nodes.at(bit.node);
-        if (driver.kind != "DataOutPort" && driver.kind != "ScanOutPort" &&
-            (driver.kind.compare(0, 2, "To") != 0 ||
-             driver.kind == "ToIRSelectPort")) {
+        if (bit.node != std::numeric_limits<size_t>::max() &&
+            netlist.nodes.at(bit.node).kind == "ToIRSelectPort") {
           return;
         }
-        const auto parent = netlist.scopes.at(node.scope).parent;
-        const auto reference_scope =
-            role == "Source" && IsInputPort(node.kind) &&
-                    parent != std::numeric_limits<size_t>::max()
-                ? parent
-                : node.scope;
-        if (driver.scope == reference_scope) {
+        if (raw.node != std::numeric_limits<size_t>::max()) {
+          const auto& reference = netlist.nodes.at(raw.node);
+          if (reference.model == ModelKind::kAlias &&
+              reference.scope != reference_scope) {
+            throw std::runtime_error(
+                node.origin + ": " + node.name + ": " + role +
+                ": hierarchical source must name an output port: " +
+                reference.name);
+          }
+        }
+        if (bit.node == std::numeric_limits<size_t>::max()) return;
+        const auto& driver = netlist.nodes.at(bit.node);
+        const bool output = driver.kind == "DataOutPort" ||
+                            driver.kind == "ScanOutPort" ||
+                            driver.kind.compare(0, 2, "To") == 0;
+        if (output ? netlist.scopes.at(driver.scope).parent != reference_scope
+                   : driver.scope != reference_scope) {
           throw std::runtime_error(
               node.origin + ": " + node.name + ": " + role +
-              ": output must be referenced from an instance: " + driver.name);
+              (output ? ": output must be referenced from an instance in the "
+                        "reference scope: "
+                      : ": source must be local to the reference scope: ") +
+              driver.name);
         }
       };
       for (const auto& bit : bits) {
@@ -451,7 +468,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
               " must use the rightmost bit of a ScanRegister");
         }
         if (family == Family::kDataMux && control_use(kind)) {
-          check_output_scope(resolved);
+          check_source_scope(bit, resolved);
           mux_control_sources |= control_use(kind);
           continue;
         }
@@ -493,7 +510,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
             ((family == Family::kScan || family == Family::kScanInput) &&
              (kind == Kind::kScan || kind == Kind::kScanRegister)) ||
             (ir_select && kind == Kind::kIrSelect)) {
-          check_output_scope(resolved);
+          check_source_scope(bit, resolved);
           continue;
         }
         throw std::runtime_error(

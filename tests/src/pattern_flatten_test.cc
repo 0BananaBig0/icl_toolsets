@@ -55,6 +55,104 @@ Module Top {
   }
 }
 
+void TestRestoredHardwareSourceScopes() {
+  for (const std::string family :
+       {"Data", "Scan", "Clock", "TCK", "Reset", "CaptureEn", "ShiftEn",
+        "UpdateEn", "TMS", "TRST"}) {
+    const std::string input = family == "Data"   ? "DataInPort"
+                              : family == "Scan" ? "ScanInPort"
+                                                 : family + "Port";
+    const std::string output = family == "Data"   ? "DataOutPort"
+                               : family == "Scan" ? "ScanOutPort"
+                                                  : "To" + family + "Port";
+    const std::string mux = family == "Scan"    ? "ScanMux"
+                            : family == "Clock" ? "ClockMux"
+                                                : "DataMux";
+    const std::string mux_source =
+        family == "TCK" || family == "ShiftEn" ? "data" : "incoming";
+    const std::string force = family == "Reset" ? "1'b1" : "1'b0";
+    const std::string prefix =
+        "Module Leaf { " + input +
+        " incoming; DataInPort mode; DataInPort data; " + mux +
+        " storage SelectedBy mode { 1'b0: " + mux_source + "; 1'b1: " + force +
+        "; } " + output + " out { Source incoming; } } Module Middle { " +
+        input +
+        " incoming; Instance leaf Of Leaf { InputPort incoming = incoming; } " +
+        output +
+        " out { Source leaf.out; } Alias wrapped = out; } "
+        "Module Sink { " +
+        input + " ctl; } Module Top { " + input +
+        " control; Instance child Of Middle { InputPort incoming = control; } "
+        "Alias wrapped = child.out; ";
+    for (const std::string source : {"control", "child.out", "wrapped"}) {
+      pattern::Design design;
+      design.AddIcl("restored_scope.icl",
+                    prefix + "Instance sink Of Sink { InputPort ctl = " +
+                        source + "; } }");
+      const auto original = pattern::Elaborate(design, "Top");
+      const auto text = pattern::SerializeIcl(original);
+      pattern::Design flat;
+      flat.AddIcl("valid_flat.icl", text);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "Top")) == text,
+          "local inputs and direct-child outputs retain original/flat scope");
+      if (source != "child.out") continue;
+      for (const std::string driver :
+           {"child.incoming", "child.leaf.incoming", "child.leaf.storage",
+            "child.leaf.out", "child.wrapped"}) {
+        auto changed = original;
+        changed.nodes.at(changed.node_ids.at("sink.ctl"))
+            .inputs.at("Source")[0] = {changed.node_ids.at(driver), 0};
+        pattern::Design altered;
+        altered.AddIcl("altered_scope.icl", pattern::SerializeIcl(changed));
+        bool rejected = false;
+        try {
+          pattern::Elaborate(altered, "Top");
+        } catch (const std::runtime_error& error) {
+          const std::string message = error.what();
+          rejected = message.find("reference scope") != std::string::npos ||
+                     message.find("hierarchical source") != std::string::npos;
+        }
+        Require(rejected, "restored hardware scope must reject " + family +
+                              " source " + driver);
+      }
+    }
+  }
+  pattern::Design vectors;
+  vectors.AddIcl(
+      "vector_scope.icl",
+      "Module Leaf { DataInPort incoming[1:0]; DataOutPort out[1:0] { "
+      "Source incoming; } } Module Sink { DataInPort ctl[1:0]; } "
+      "Module Top { DataInPort control[1:0]; Instance child Of Leaf { "
+      "InputPort incoming = control; } Instance sink Of Sink { "
+      "InputPort ctl[1] = child.out[1]; } }");
+  const auto partial = pattern::Elaborate(vectors, "Top");
+  pattern::Design flat;
+  const auto text = pattern::SerializeIcl(partial);
+  flat.AddIcl("partial_flat.icl", text);
+  Require(pattern::SerializeIcl(pattern::Elaborate(flat, "Top")) == text &&
+              partial.NodeAt("sink.ctl").inputs.at("Source")[1].constant == '?',
+          "partial child-output bindings preserve holes and scope");
+  for (size_t offset : {0u, 1u}) {
+    auto mixed = partial;
+    auto& bits =
+        mixed.nodes.at(mixed.node_ids.at("sink.ctl")).inputs.at("Source");
+    bits[offset] = {mixed.node_ids.at("child.incoming"),
+                    static_cast<int64_t>(1 - offset)};
+    pattern::Design altered;
+    altered.AddIcl("mixed_scope.icl", pattern::SerializeIcl(mixed));
+    bool rejected = false;
+    try {
+      pattern::Elaborate(altered, "Top");
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("reference scope") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "each restored vector lane checks actual reference scope");
+  }
+}
+
 void TestEmptyDataRegisterRoundTrip() {
   pattern::Design design;
   design.AddIcl("empty-register.icl", R"(
@@ -702,6 +800,7 @@ Module Top {
 int main() {
   try {
     TestRestoredDataSourceKinds();
+    TestRestoredHardwareSourceScopes();
     TestEmptyDataRegisterRoundTrip();
     TestHierarchyRoundTrip();
     TestPropertiesAndNames();

@@ -1362,21 +1362,65 @@ void TestSerialNetwork() {
               mux.choices[0].codes.size() == 2 &&
               mux.choices[0].codes[0].data == "0011" &&
               mux.choices[0].codes[1].data == "0100" &&
-              mux.choices[0].source[0].node == tap.scan_input,
-          "two instructions share the same child input route");
+              mux.choices[0].source[0].node == netlist.node_ids.at("TDI"),
+          "two instructions share the same root TDI route");
+  const auto& selector = mux.inputs.at("SelectedBy");
+  const auto& ir_output = netlist.nodes.at(selector[0].node);
+  Require(
+      ir_output.kind == "DataOutPort" &&
+          ir_output.scope == netlist.nodes[tap.instruction_register].scope &&
+          ir_output.left == netlist.nodes[tap.instruction_register].left &&
+          ir_output.right == netlist.nodes[tap.instruction_register].right &&
+          selector.size() == ir_output.Width(),
+      "root route selectors cross the TAP boundary through a shaped output");
+  for (size_t i = 0; i < selector.size(); ++i) {
+    const auto& source = ir_output.inputs.at("Source")[i];
+    Require(selector[i].node == selector[0].node &&
+                source.node == tap.instruction_register &&
+                source.index == selector[i].index &&
+                source.inverted == selector[i].inverted,
+            "IR wrapper retains each selected instruction bit");
+  }
   for (const auto& entry : tap.scan_returns) {
     Require(netlist.nodes[entry.second].inputs.at("Source")[0].node ==
                 netlist.node_ids.at("core.so"),
             "child output returns to both instruction routes");
   }
-  Require(netlist.nodes
-                      .at(netlist.NodeAt("core.capture")
-                              .inputs.at("Source")[0]
-                              .node)
-                      .kind == "DataInPort" &&
-              netlist.NodeAt("core.clock").inputs.at("Source")[0].node ==
-                  netlist.node_ids.at("TCK"),
-          "client controls connect to runtime boundaries and physical clock");
+  for (const auto& role :
+       std::map<std::string, std::string>{{"capture", "ToCaptureEnPort"},
+                                          {"shift", "ToShiftEnPort"},
+                                          {"update", "ToUpdateEnPort"}}) {
+    const auto raw = netlist.taps.at("tap").controls.at(role.first);
+    const auto exposed =
+        netlist.NodeAt("core." + role.first).inputs.at("Source")[0].node;
+    const auto& port = netlist.nodes.at(exposed);
+    Require(netlist.nodes.at(raw).kind == "DataInPort" &&
+                port.kind == role.second &&
+                port.scope == netlist.nodes.at(raw).scope &&
+                port.inputs.at("Source")[0].node == raw && exposed > raw,
+            "typed outputs expose the unchanged runtime control inputs");
+  }
+  for (const auto& role : std::map<std::string, size_t>{
+           {"capture", 0}, {"shift", 1}, {"update", 2}}) {
+    Require(netlist.NodeAt("tap.IclPatternControl" + role.first +
+                           std::to_string(role.second))
+                    .name ==
+                netlist.nodes.at(netlist.taps.at("tap").controls.at(role.first))
+                    .name,
+            "appended wrappers preserve original generated control identities");
+  }
+  const auto& select_output = netlist.nodes.at(
+      netlist.NodeAt("core.select").inputs.at("Source")[0].node);
+  Require(
+      select_output.kind == "ToSelectPort" &&
+          select_output.scope ==
+              netlist.nodes[tap.instruction_register].scope &&
+          netlist.nodes.at(select_output.inputs.at("Source")[0].node).kind ==
+              "LogicSignal" &&
+          netlist.NodeAt("core.clock").inputs.at("Source")[0].node ==
+              netlist.node_ids.at("TCK"),
+      "selection logic crosses through an output and clock retains its root "
+      "pin");
   const auto flat = pattern::SerializeIcl(netlist);
   pattern::Design replay;
   replay.AddIcl("flat.icl", flat);
@@ -1606,6 +1650,40 @@ void TestIndependentTaps() {
               network.netlist.NodeAt("PDO").inputs.at("Source")[0].node ==
                   network.taps.at("second").scan_output,
           "independent TAPs retain separate models and physical pins");
+  std::set<size_t> exposed;
+  for (const std::string client : {"core", "peer"}) {
+    for (const std::string role : {"select", "capture", "shift", "update"}) {
+      const auto id = network.netlist.NodeAt(client + "." + role)
+                          .inputs.at("Source")[0]
+                          .node;
+      Require(network.netlist.nodes.at(id).kind.compare(0, 2, "To") == 0,
+              "each TAP exposes client controls through output ports");
+      exposed.insert(id);
+    }
+  }
+  std::map<size_t, size_t> ir_outputs;
+  for (const auto& node : network.netlist.nodes) {
+    if (node.scope != 0 || node.kind != "ScanMux") continue;
+    const auto id = node.inputs.at("SelectedBy")[0].node;
+    const auto& port = network.netlist.nodes.at(id);
+    Require(port.kind == "DataOutPort",
+            "each TAP exposes its instruction selector");
+    const auto raw = port.inputs.at("Source")[0].node;
+    const auto entry = ir_outputs.emplace(raw, id);
+    Require(entry.first->second == id,
+            "route muxes reuse each TAP's IR output");
+    exposed.insert(id);
+  }
+  Require(exposed.size() == 10 && ir_outputs.size() == 2,
+          "two TAPs need distinct bounded control and IR outputs");
+  size_t last_original = 0;
+  for (size_t id = 0; id < network.netlist.nodes.size(); ++id) {
+    if (!exposed.count(id)) last_original = id;
+  }
+  for (size_t id : exposed) {
+    Require(id > last_original,
+            "all wrappers append after both TAPs' original nodes and controls");
+  }
   try {
     auto shared = Replace(source, "peer.client;", "core.client;");
     shared = Replace(shared, "peer.client;", "core.client;");

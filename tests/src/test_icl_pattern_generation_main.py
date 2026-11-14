@@ -84,6 +84,36 @@ class Generator(unittest.TestCase):
         self.assertIn("data signal", result.stdout + result.stderr)
         self.assertEqual((self.root / "result.pdl").read_bytes(), original)
 
+    def test_restored_hardware_source_scope_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for deep in (False, True):
+            source = ('Module Leaf { DataInPort incoming; '
+                      'DataOutPort out { Source incoming; } } ')
+            if deep:
+                source += ('Module Middle { DataInPort incoming; Instance leaf Of Leaf { '
+                           'InputPort incoming = incoming; } DataOutPort out { Source leaf.out; } } ')
+            source += ('Module Network { DataInPort data; Instance child Of ' +
+                       ('Middle' if deep else 'Leaf') +
+                       ' { InputPort incoming = data; } DataOutPort result { Source child.out; } }')
+            (self.root / 'source.icl').write_text(source)
+            self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                          '--top_module', 'Network', '--output', 'seed.pdl', '--debug')
+            flat = (self.root / 'debug/Network.icl').read_text()
+            old = 'Source n' + 'child.out'.encode().hex() + ';'
+            target = 'child.leaf.out' if deep else 'child.incoming'
+            self.assertEqual(flat.count(old), 1)
+            (self.root / 'altered.icl').write_text(
+                flat.replace(old, 'Source n' + target.encode().hex() + ';'))
+            for path in outputs:
+                (self.root / path).write_text('previous artifact\n')
+            result = self.run_tool('--icl', 'altered.icl', '--pdl', 'source.pdl',
+                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+            self.assertIn('reference scope', result.stdout + result.stderr)
+            for path in outputs:
+                self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
+
     def test_clock_source_kinds_preserve_outputs(self):
         (self.root / "source.pdl").write_text("iProcsForModule Network\n")
         for source in ("bad", "wrapped"):

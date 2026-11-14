@@ -106,15 +106,15 @@ class SerialAssembler {
     const auto endpoint = [&](size_t id) {
       return Endpoint{id, netlist_.nodes.at(id).left};
     };
-    Connect(&netlist_, endpoint(tap.scan_input),
-            endpoint(netlist_.node_ids.at(link.bsdl->ports.at("tap_scan_in"))),
-            &remaining_);
+    const auto root_input =
+        endpoint(netlist_.node_ids.at(link.bsdl->ports.at("tap_scan_in")));
+    Connect(&netlist_, endpoint(tap.scan_input), root_input, &remaining_);
     Connect(&netlist_,
             endpoint(netlist_.node_ids.at(link.bsdl->ports.at("tap_scan_out"))),
             endpoint(tap.scan_output), &remaining_);
     std::map<Endpoint, std::map<Endpoint, std::set<std::string>>> routes;
     for (const auto& instruction : link.instructions) {
-      auto previous = endpoint(tap.scan_input);
+      auto previous = root_input;
       std::set<Endpoint> seen;
       for (const auto& selected : instruction.interfaces) {
         const auto [input, output] = SerialPorts(netlist_, selected);
@@ -177,6 +177,10 @@ class SerialAssembler {
     }
     for (const auto& [destination, source] : controls) {
       Connect(&netlist_, destination, endpoint(source), &remaining_);
+      const auto& kind = netlist_.nodes.at(destination.first).kind;
+      if (kind != "TCKPort") {
+        rewrites_.push_back({destination, endpoint(source), "To" + kind});
+      }
     }
     for (const auto& [destination, sources] : selects) {
       NetlistNode selected;
@@ -206,6 +210,7 @@ class SerialAssembler {
       }
       const auto id = AddNode(std::move(selected), "select");
       Connect(&netlist_, destination, endpoint(id), &remaining_);
+      rewrites_.push_back({destination, endpoint(id), "ToSelectPort"});
     }
     const auto& ir = netlist_.nodes.at(tap.instruction_register);
     const auto ir_left = ir.left, ir_right = ir.right;
@@ -244,11 +249,78 @@ class SerialAssembler {
       netlist_.node_ids.emplace(mux.name, id);
       netlist_.scopes[0].members.emplace(mux.name, id);
       netlist_.nodes.push_back(std::move(mux));
+      selectors_.emplace_back(id, tap.instruction_register);
       Connect(&netlist_, destination, {id, 0}, &remaining_);
     }
   }
 
+  void Finalize() {
+    // Append after all TAPs to preserve old node IDs, names and driver
+    // ownership.
+    for (const auto& rewrite : rewrites_) {
+      const auto& destination = netlist_.nodes.at(rewrite.destination.first);
+      const size_t offset = destination.left >= destination.right
+                                ? destination.left - rewrite.destination.second
+                                : rewrite.destination.second - destination.left;
+      const auto old = destination.inputs.at("Source").at(offset);
+      if (old.node != rewrite.source.first ||
+          old.index != rewrite.source.second || old.inverted) {
+        throw std::runtime_error(destination.origin +
+                                 ": multiple TAP drivers for " +
+                                 destination.name);
+      }
+      const size_t output = Output(rewrite.source.first, rewrite.kind);
+      netlist_.nodes.at(rewrite.destination.first)
+          .inputs.at("Source")
+          .at(offset) = {output, rewrite.source.second};
+    }
+    for (const auto& [mux, source] : selectors_) {
+      const auto& original = netlist_.nodes.at(source);
+      const auto& bits = netlist_.nodes.at(mux).inputs.at("SelectedBy");
+      if (bits.size() != original.Width()) {
+        throw std::runtime_error("changed TAP instruction selector width");
+      }
+      for (size_t i = 0; i < bits.size(); ++i) {
+        const auto index =
+            original.left + (original.left <= original.right ? 1 : -1) *
+                                static_cast<int64_t>(i);
+        if (bits[i].node != source || bits[i].index != index ||
+            bits[i].inverted) {
+          throw std::runtime_error("changed TAP instruction selector source");
+        }
+      }
+      const size_t output = Output(source, "DataOutPort");
+      for (auto& bit : netlist_.nodes.at(mux).inputs.at("SelectedBy")) {
+        bit.node = output;
+      }
+    }
+  }
+
  private:
+  size_t Output(size_t source, const std::string& kind) {
+    const auto found = outputs_.find(source);
+    if (found != outputs_.end()) return found->second;
+    const auto& original = netlist_.nodes.at(source);
+    Spend(original.Width(), &remaining_);
+    NetlistNode port;
+    port.kind = kind;
+    port.scope = original.scope;
+    port.origin = original.origin;
+    port.left = original.left;
+    port.right = original.right;
+    port.indexed = original.indexed;
+    auto& bits = port.inputs["Source"];
+    bits.reserve(original.Width());
+    for (int64_t bit = original.left;;
+         bit += original.left <= original.right ? 1 : -1) {
+      bits.push_back({source, bit});
+      if (bit == original.right) break;
+    }
+    const size_t id = AddNode(std::move(port), "output");
+    outputs_.emplace(source, id);
+    return id;
+  }
+
   size_t AddNode(NetlistNode node, const std::string& suffix) {
     const auto& path = netlist_.scopes.at(node.scope).path;
     std::string member;
@@ -266,6 +338,13 @@ class SerialAssembler {
     return id;
   }
   Netlist& netlist_;
+  struct Rewrite {
+    Endpoint destination, source;
+    std::string kind;
+  };
+  std::vector<Rewrite> rewrites_;
+  std::vector<std::pair<size_t, size_t>> selectors_;
+  std::map<size_t, size_t> outputs_;
   std::set<std::string> names_;
   std::set<Endpoint> driven_;
   size_t remaining_ = kMaxRoutingBits;
@@ -335,6 +414,7 @@ TapNetwork ElaborateTapNetwork(Design& design, const std::string& top) {
     result.netlist.taps.emplace(link.name, std::move(model));
     result.taps.emplace(link.name, std::move(nodes));
   }
+  assembler.Finalize();
   CheckCombinationalConnections(result.netlist);
   return result;
 }

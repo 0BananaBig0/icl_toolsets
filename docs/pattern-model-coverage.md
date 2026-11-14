@@ -53,7 +53,7 @@ full model coverage or Tessent equivalence.
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters evaluate fully supplied explicit history and applied reads invalidate their target bits | Complete runtime command coverage and broader real-pair generation |
-| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; covered typed/data/scan/clock Sources reject own-scope output references after origin restoration | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
+| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain and canonical replay | Simultaneous vector scan-return lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
@@ -1924,3 +1924,84 @@ qualified0 under its unchanged10s deadline. No full platform/install or vendor
 PDL equivalence claim is made. Broader restored-scope, clock association, gating/
 selector, runtime/TAP/lifecycle, strict coverage and final vendor/platform/static/
 install requirements remain mandatory.
+
+
+### Restored hardware source scope and generated TAP outputs (2026-11-15)
+
+Accepted hardware references are checked after restoring original scopes: local
+non-output terminals or outputs of a direct child instance. Input Source bindings
+use the parent expression scope; other checked roles use the consumer scope.
+Cross-scope raw Alias references also fail, even if the canonical terminal is a
+legal child output. Alias declarations remain subject to their existing separate
+rules. Kind, inversion, rightmost-register-bit and direct-DataMux diagnostics keep
+precedence. Constants, virtuals and holes retain handling; semantic reset fields,
+interface membership, DifferentialInvOf, ToIRSelect and the lowered ToTCK Source
+extension keep their existing contracts. This does not complete their remaining
+source, alias or operational rules.
+
+Two current76 counterexamples are recorded: altered flat Source to child input
+or grandchild output loaded0 despite the declared scope. Original deep hardware
+syntax was already rejected by the parser; this closes reconstructed-model scope,
+not a new parser gap. Native matrices cover10 families, raw nonlocal aliases,
+parent bindings, deep/internal sources, partial and both mixed vector lanes;
+main62 preserves atomic pattern/reset/debug rejection. The unsupported literal-
+Alias RED fixture was removed before implementation; Alias grammar excludes it.
+Corrected RED native/CLI/TAP failures demonstrate missing scope and old TAP wiring.
+
+Generated TAP sources now use root TDI for initial routes, a shared vector DataOut
+for IR selectors, typed phase outputs and ToSelect for selection logic. Existing
+Connect calls retain multi-TAP ownership checks while Add records exact edges.
+Finalize checks the recorded old source and appends one cached output per source
+after all original nodes. Raw runtime IDs/names, bit shape and inversion remain;
+new bits/objects spend the existing budgets. No metadata provenance/name exemption,
+new version or blanket graph pass is introduced. Single/multi-TAP assertions and
+original/flat execution pass, including wrapper append order and IR reuse.
+
+Local connected native7/main62/clock41/client18/reset12/multi22/feedback10 pass;
+independent code/test review finds no consequential issue. The benchmark preflight
+passes0 in0.897s under its unchanged10s deadline. Style/naming passes after two
+brace-only fixes. All84 paired source/flat loading comparisons againstd891771
+preserve output/flat hashes: four8192-bit families0.04–0.08s; scalar scan0.02–
+0.04s;262144 Reset mux0.52–0.57s;4096 aliases0.06–0.12s;4096 shared outputs
+0.06–0.08s;CE-only2621440.31–0.33s;ordinary655360 references0.13–0.16s versus
+0.13–0.17s baseline. Exact commands/environment/compiler/hashes/time/RSS are in
+build/restored-source-scope-loading-scale/comparison.json. These measure whole
+CLI source/flat loading, not isolated guard cost or a memory-saving claim.
+
+Three interleaved native TAP comparisons retain all tests:3000-interface network
+construction0.164–0.183s versus0.144–0.158s baseline; whole TAP test processes
+1.12–1.17s versus1.12–1.15s, peak122620 versus122720KiB (allocator variation).
+Extra boundary ports have a measured construction cost; no speedup is claimed.
+Evidence is build/restored-source-scope-tap-scale/comparison.json. New generated
+TAP flat files replay correctly. Older native TAP dumps with direct private
+references must be regenerated from original ICL/BSDL: baseline76 emits the
+sample0 and new code rejects its private core.select source2, recorded under
+build/restored-source-scope-legacy-flat. No legacy migration is added.
+
+Required leak/full serial integration and broader remote qualification are pending.
+The remote behavior snapshot precedes the two brace-only style fixes. Complete
+source-special-context/alias rules, gating/selector behavior, runtime/TAP/lifecycle,
+strict coverage and final vendor/platform/static/install qualification remain
+mandatory. This is not full IEEE or vendor PDL equivalence certification.
+
+
+Final leak-enabled ASan/UBSan native7/main62/clock41/client18/reset12 all0,
+aggregate build/restored-source-scope-final-sanitizer-all.exit0. All5 changed
+source/test hashes match the reviewed integration snapshot. Broad remote native7/
+all41 pass with actual5 hashes matching the submitted pre-brace behavior snapshot;
+final brace-formatted source-matched flatten/TAP/main62 also all0 with actual5
+hashes matching. Both completed evidence archives fetched0. Full serial integration starts
+now; no full-suite pass is claimed until its aggregate completes.
+
+
+Final Task77 full serial make-j1check0 in1338.899s, recorded in
+build/restored-source-scope-final-full.log/.exit/.wall:41 dynamic and41 static
+generator suites,51 directional goldens,2523 ICL files/334grammar119scanner rules,
+LSP62 and editor6 in174.509s pass. Optional ANTLR5 skipped. Required leak-enabled
+ASan/UBSan native7/main62/clock41/client18/reset12 all0. All5 changed source/test
+hashes match review. Broad pre-brace remote native7/all41 and final source-matched
+flatten/TAP/main62 pass with actual5 hashes matching each submitted snapshot;
+completed archives fetched0. Older TAP dumps with direct private references need
+regeneration from original ICL/BSDL. Remaining special port-source/association,
+alias, gating/selector, runtime/TAP/lifecycle, strict coverage and complete vendor/
+platform/static/install requirements stay mandatory; this is not full conformance.
