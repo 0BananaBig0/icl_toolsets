@@ -232,7 +232,7 @@ void TestResetPortPolarity() {
         "vector_polarity.icl",
         "Module Child { ResetPort rst[1:0]; } Module M { "
         "ResetPort lo { ActivePolarity 0; } ResetPort hi; DataInPort mode; "
-        "DataMux route SelectedBy mode { 1'b0: hi; 1'b1: 1'b1; } "
+        "DataMux route SelectedBy mode { 1'b0: ~hi; 1'b1: 1'b0; } "
         "Instance child Of Child { InputPort rst = " +
             source + "; } }");
     const auto original = pattern::Elaborate(design, "M");
@@ -340,6 +340,212 @@ void TestFlatTrstPolarity() {
   pattern::Design altered;
   altered.AddIcl("altered.icl", pattern::SerializeIcl(original));
   Fails([&] { pattern::Elaborate(altered, "M"); }, "TRST polarity");
+}
+void TestResetMuxPathPolarity() {
+  for (bool low : {false, true}) {
+    for (bool branch_inverted : {false, true}) {
+      for (bool output_inverted : {false, true}) {
+        for (bool consumer_low : {false, true}) {
+          for (bool output : {false, true}) {
+            const std::string polarity = consumer_low ? "0" : "1";
+            const std::string wire = output_inverted ? "~wrapped" : "wrapped";
+            const std::string consumer =
+                output
+                    ? "ToResetPort out { Source " + wire + "; ActivePolarity " +
+                          polarity + "; }"
+                    : "Instance sink Of Sink { InputPort rst = " + wire + "; }";
+            pattern::Design design;
+            design.AddIcl(
+                "mux_polarity.icl",
+                "Module Sink { ResetPort rst { ActivePolarity " + polarity +
+                    "; } } Module M { ResetPort rst { ActivePolarity " +
+                    (low ? "0" : "1") +
+                    "; } DataInPort mode; DataInPort force; Alias branch = " +
+                    (branch_inverted ? "~rst" : "rst") +
+                    "; DataMux route SelectedBy mode { 1'b0: branch; 1'b1: "
+                    "force; } "
+                    "Alias wrapped = route; " +
+                    consumer + " }");
+            if (((low != branch_inverted) != output_inverted) != consumer_low) {
+              Fails([&] { pattern::Elaborate(design, "M"); },
+                    "reset mux path polarity");
+            } else {
+              const auto original = pattern::Elaborate(design, "M");
+              pattern::Design flat;
+              const auto serialized = pattern::SerializeIcl(original);
+              flat.AddIcl("flat.icl", serialized);
+              Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+                          serialized,
+                      "matching reset mux path preserves source/flat polarity");
+            }
+          }
+        }
+      }
+    }
+  }
+  {
+    pattern::Design design;
+    design.AddIcl(
+        "nested_polarity.icl",
+        "Module Sink { ResetPort rst; } Module M { ResetPort rst; "
+        "DataInPort mode[2:0]; DataInPort force; "
+        "DataMux forcing SelectedBy mode[0] { 1'b0: force; 1'b1: 1'b1; } "
+        "DataMux inner SelectedBy mode[1] { 1'b0: ~rst; 1'b1: forcing; } "
+        "DataMux outer SelectedBy mode[2] { 1'b0: ~inner; 1'b1: 1'b0; } "
+        "Instance sink Of Sink { InputPort rst = outer; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    const auto serialized = pattern::SerializeIcl(original);
+    flat.AddIcl("flat.icl", serialized);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+            "nested inversions cancel without tracing forcing-only branches");
+  }
+  for (const std::string declaration : {"TRSTPort rst;", "ToTRSTPort rst;"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "trst_reset_mux.icl",
+        "Module Sink { ResetPort rst { ActivePolarity 0; } } Module M { " +
+            declaration +
+            " DataInPort mode; DataMux route SelectedBy mode { "
+            "1'b0: rst; 1'b1: 1'b1; } ToResetPort out { Source route; "
+            "ActivePolarity 0; } Instance sink Of Sink { InputPort rst = "
+            "route; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    const auto serialized = pattern::SerializeIcl(original);
+    flat.AddIcl("flat.icl", serialized);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+            "TRST path can supply an active-low reset mux consumer");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("typed_forcing.icl",
+                  "Module Sink { ResetPort rst; } "
+                  "Module Low { ResetPort rst { ActivePolarity 0; } } "
+                  "Module M { ResetPort hi; ResetPort lo { ActivePolarity 0; } "
+                  "DataInPort mode; DataMux route SelectedBy mode { 1'b0: hi; "
+                  "1'b1: lo; } "
+                  "Instance high Of Sink { InputPort rst = route; } "
+                  "Instance low Of Low { InputPort rst = route; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    const auto serialized = pattern::SerializeIcl(original);
+    flat.AddIcl("flat.icl", serialized);
+    Require(
+        pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+        "typed forcing and opposite-polarity consumers survive flat replay");
+  }
+  for (const std::string consumers :
+       {"Instance first Of Sink { InputPort rst = route; } "
+        "Instance second Of Low { InputPort rst = route; }",
+        "Instance vector Of Vector { InputPort rst = route, ~route; }"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "shared_polarity.icl",
+        "Module Sink { ResetPort rst; } "
+        "Module Low { ResetPort rst { ActivePolarity 0; } } "
+        "Module Vector { ResetPort rst[1:0]; } Module M { ResetPort rst; "
+        "DataInPort mode; DataMux route SelectedBy mode { "
+        "1'b0: rst; 1'b1: 1'b0; } " +
+            consumers + " }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "reset mux path polarity");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("mux_default.icl",
+                  "Module Sink { ResetPort rst; } Module M { "
+                  "ResetPort rst { ActivePolarity 0; } DataInPort mode; "
+                  "DataMux route SelectedBy mode { 1'b0: rst; 1'b1: 1'b0; } "
+                  "Instance sink Of Sink { InputPort rst = route; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "reset mux path polarity");
+  }
+}
+void TestTrstMuxPathPolarity() {
+  for (bool child_source : {false, true}) {
+    const std::string root = child_source ? "driver.trst" : "trst";
+    const std::string producer =
+        child_source ? "Instance driver Of Driver; " : "TRSTPort trst; ";
+    for (bool output : {false, true}) {
+      for (bool branch_inverted : {false, true}) {
+        for (bool output_inverted : {false, true}) {
+          pattern::Design design;
+          const std::string wire = output_inverted ? "~wrapped" : "wrapped";
+          const std::string consumer =
+              output
+                  ? "ToTRSTPort out { Source " + wire + "; }"
+                  : "Instance sink Of Sink { InputPort trst = " + wire + "; }";
+          design.AddIcl(
+              "trst_mux_polarity.icl",
+              "Module Driver { ToTRSTPort trst; } Module Sink { TRSTPort trst; "
+              "} "
+              "Module M { " +
+                  producer +
+                  "DataInPort mode; DataInPort force; Alias branch = " +
+                  (branch_inverted ? "~" : "") + root +
+                  "; DataMux route SelectedBy mode { 1'b0: branch; 1'b1: "
+                  "force; "
+                  "} "
+                  "Alias wrapped = route; " +
+                  consumer + " }");
+          if (branch_inverted != output_inverted) {
+            Fails([&] { pattern::Elaborate(design, "M"); },
+                  "TRST mux path polarity");
+          } else {
+            const auto serialized =
+                pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+            pattern::Design flat;
+            flat.AddIcl("flat.icl", serialized);
+            Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+                        serialized,
+                    "TRST mux parity survives source and flat replay");
+          }
+        }
+      }
+    }
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("trst_mixed_trap.icl",
+                  "Module Sink { TRSTPort trst; } Module M { TRSTPort trst; "
+                  "ResetPort low { ActivePolarity 0; } DataInPort mode; "
+                  "DataMux route SelectedBy mode { 1'b0: ~trst; 1'b1: low; } "
+                  "ToResetPort out { Source route; ActivePolarity 0; } "
+                  "Instance sink Of Sink { InputPort trst = route; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "TRST mux path polarity");
+  }
+  for (const std::string rows :
+       {"1'b0: trst; 1'b1: ~trst;", "1'b0: ~inner; 1'b1: 1'b1;"}) {
+    pattern::Design design;
+    design.AddIcl("trst_alternatives.icl",
+                  "Module Sink { TRSTPort trst; } Module M { TRSTPort trst; "
+                  "DataInPort mode; DataMux inner SelectedBy mode { "
+                  "1'b0: ~trst; 1'b1: 1'b0; } "
+                  "DataMux route SelectedBy mode { " +
+                      rows +
+                      " } Instance sink Of Sink { InputPort trst = route; } }");
+    const auto serialized =
+        pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", serialized);
+    Require(
+        pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+        "TRST alternatives and nested cancellation retain possible low path");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("implicit_trst.icl", "Module M { ToTRSTPort startup; }");
+    const auto original = pattern::Elaborate(design, "M");
+    const auto& source = original.NodeAt("startup").inputs.at("Source")[0];
+    Require(
+        source.virtual_signal == pattern::VirtualSignal::kAsyncGlobalReset &&
+            source.inverted,
+        "implicit asynchronous TRST retains normalized low polarity");
+    pattern::Design flat;
+    const auto serialized = pattern::SerializeIcl(original);
+    flat.AddIcl("flat.icl", serialized);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+            "implicit virtual TRST retains flat identity");
+  }
 }
 void TestScanControlSourceKinds() {
   for (const std::string family : {"CaptureEn", "ShiftEn", "UpdateEn"}) {
@@ -2663,6 +2869,8 @@ int main() {
                           TestResetSourceKinds,
                           TestResetPortPolarity,
                           TestFlatTrstPolarity,
+                          TestResetMuxPathPolarity,
+                          TestTrstMuxPathPolarity,
                           TestScanControlSourceKinds,
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,

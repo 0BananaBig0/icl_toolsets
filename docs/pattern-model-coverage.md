@@ -1664,3 +1664,52 @@ Rocky8 build/native/main56 and fetched archive pass with matched hashes and
 transport0; full platform/static/install qualification remains separate. Mux
 polarity/forcing/operation, remaining runtime/TAP/lifecycle, strict coverage and
 full vendor acceptance remain open.
+
+## Possible Reset/TRST mux path polarity (2026-11-15)
+
+Consumed ResetPort/ToResetPort mux bits require a possible typed Reset/TRST path
+with the consumer's resolved polarity; TRSTPort/ToTRSTPort require a separate
+possible typed TRST-low path. A Reset forcing input cannot satisfy a TRST path.
+Aliases and mux-edge/output inversions compose; branches union possible polarities.
+The existing two-control forcing interpretation is retained, so not every typed
+ancestor must match. This is structural possibility, not associated-reset ownership,
+selector reachability, normal-operation sensitization or TRST assertion proof.
+Mux ancestry does not dictate omitted ResetPort polarity; another direct typed
+bit in a grouped declaration may still dictate the group under the prior rule.
+
+The existing bounded iterative origins array is widened to uint16_t, with separate
+polarity pairs and unknown512. It adds at most16MiB at the16M-bit graph bound,
+without another array or graph traversal. Family-only CE/UE/shape checks retain
+their masks; one deferred polarity message preserves structural diagnostics.
+Native parity tables, nested cancellation, shared/mixed consumers, typed forcing,
+parent/child TRST producers and implicit virtual TRST plus main58 artifact checks
+cover this boundary. Connected native7/main58/clock41/client18/reset12/multiple-
+TAP22/feedback10 pass. Final child native/style and independent combined review pass. All72 valid
+interleaved loading comparisons preserve output/flat hashes versus5714c7c; full
+serial integration and required leak checks now pass.
+
+All88 vendor input/runner hashes match across40 Reset,40 TRST and8 legal child-
+ToTRST loading probes:36load/36ICL64 polarity failures/8same-module ToTRST source-
+context ICL65/130 failures/8mixed-special-input ICL115 failures. Source-context and
+special-input differences remain distinct from polarity; no PDL equivalence or
+full control operational conformance is inferred.
+
+Joint262144 Reset+262144 TRST loading takes0.617–0.667s, max171424KiB versus
+baseline171704KiB; no memory-saving claim is made from allocator variation. Wide
+262144 Reset source0.616–0.717s versus0.567–0.617s;4096 shared source0.215–0.265s;
+deep/ordinary runs and exact commands/hashes/time/RSS are retained in
+build/reset-mux-path-polarity-loading-scale/comparison-valid.json. Empty PDL/debug
+I/O measures whole loading, not isolated guard cost or a speedup. Both invalid
+joint-fixture pilots remain excluded and recorded; the corrected12 joint runs
+plus60 earlier valid runs form the72-row comparison. No product code changed.
+
+Final combined native7/main58/clock41/client18/reset12 leak-enabled ASan/UBSan
+passes, aggregate build/reset-mux-path-polarity-final-sanitizer-all.exit0. Full
+serial make-j1check passes in build/reset-mux-path-polarity-final-full.log/.exit0,
+1341.862s:41 dynamic and41 static generator suites,51 directional goldens,2523 ICL
+334/119 rules, LSP62 and editor6 in175.000s. Optional ANTLR5 skipped. All3 final
+production/test hashes match the reviewed snapshot. Earlier remote Reset-only
+native7/dynamic41 results have matched source hashes and a completed fetched
+archive; they do not qualify the later combined TRST source. Full vendor, strict
+coverage, source direction, forcing/suppression/selector operation and remaining
+runtime/TAP/lifecycle/platform requirements remain mandatory.

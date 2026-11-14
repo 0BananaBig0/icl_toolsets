@@ -233,6 +233,44 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
             for output in outputs:
                 self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
 
+    def test_reset_mux_path_polarity_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for consumer in ('ToResetPort out { Source route; ActivePolarity 0; }',
+                         'Instance sink Of Sink { InputPort rst = route; }'):
+            (self.root / 'source.icl').write_text(
+                'Module Sink { ResetPort rst { ActivePolarity 0; } } '
+                'Module Network { ResetPort rst; DataInPort mode; '
+                "DataMux route SelectedBy mode { 1'b0: rst; 1'b1: 1'b0; } " + consumer + ' }')
+            for output in outputs:
+                (self.root / output).write_text('previous artifact\n')
+            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+            self.assertIn('reset mux path polarity', result.stdout + result.stderr)
+            for output in outputs:
+                self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
+
+    def test_trst_mux_path_polarity_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for consumer in ('ToTRSTPort out { Source ~route; }',
+                         'Instance sink Of Sink { InputPort trst = ~route; }'):
+            (self.root / 'source.icl').write_text(
+                'Module Sink { TRSTPort trst; } Module Network { TRSTPort trst; '
+                "DataInPort mode; DataMux route SelectedBy mode { 1'b0: trst; 1'b1: 1'b1; } " +
+                consumer + ' }')
+            for output in outputs:
+                (self.root / output).write_text('previous artifact\n')
+            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+            self.assertIn('TRST mux path polarity', result.stdout + result.stderr)
+            for output in outputs:
+                self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
+
     def test_scan_control_source_kinds(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family, diagnostic in [('CaptureEn', 'capture-enable'),

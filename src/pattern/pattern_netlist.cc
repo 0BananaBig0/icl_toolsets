@@ -591,8 +591,18 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
   if (!(mux_control_sources & kGateFamilies) && !intercepted_control_mux) {
     return;
   }
-  constexpr unsigned char kUnknownOrigin = 128;
-  std::vector<unsigned char> origins(contexts.uses.size(), kUnknownOrigin);
+  constexpr uint16_t kUnknownOrigin = 512;
+  constexpr uint16_t kLowResetOrigin = 32, kHighResetOrigin = 64;
+  constexpr uint16_t kLowTrstOrigin = 128, kHighTrstOrigin = 256;
+  const auto reset_polarities = [](uint16_t origin, bool inverted) {
+    constexpr uint16_t kLow = kLowResetOrigin | kLowTrstOrigin;
+    constexpr uint16_t kHigh = kHighResetOrigin | kHighTrstOrigin;
+    return static_cast<uint16_t>(!inverted ? origin
+                                           : (origin & ~(kLow | kHigh)) |
+                                                 ((origin & kLow) << 1) |
+                                                 ((origin & kHigh) >> 1));
+  };
+  std::vector<uint16_t> origins(contexts.uses.size(), kUnknownOrigin);
   const auto bit_id = [&](const BitReference& bit) {
     const auto& node = netlist.nodes.at(bit.node);
     const size_t position =
@@ -601,7 +611,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
   };
   struct GateVisit {
     size_t node, position, next;
-    unsigned char families;
+    uint16_t families;
   };
   std::vector<GateVisit> pending;
   for (size_t id = 0; id < netlist.nodes.size(); ++id) {
@@ -630,9 +640,18 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
                                0, 0});
             continue;
           }
-          visit.families |= origin;
+          visit.families |= reset_polarities(origin, source.inverted);
         } else {
-          visit.families |= control_use(classify(source));
+          const auto family = control_use(classify(source));
+          visit.families |= family;
+          if (family & (kResetUse | kTrstUse)) {
+            const bool low =
+                netlist.nodes[source.node].active_low != source.inverted;
+            visit.families |= low ? kLowResetOrigin : kHighResetOrigin;
+            if (family & kTrstUse) {
+              visit.families |= low ? kLowTrstOrigin : kHighTrstOrigin;
+            }
+          }
         }
         ++visit.next;
       }
@@ -702,6 +721,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
       shape_pending.push_back(static_cast<uint32_t>(id));
     }
   };
+  std::optional<std::string> reset_polarity_error;
   for (const auto& node : netlist.nodes) {
     const unsigned char family =
         node.kind == "ResetPort" || node.kind == "ToResetPort" ? kResetUse
@@ -710,9 +730,28 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
                                                                : 0;
     const auto source = node.inputs.find("Source");
     if (!family || source == node.inputs.end()) continue;
-    for (const auto& bit : source->second) mark_shape(terminal(bit), family);
+    for (const auto& bit : source->second) {
+      const auto driver = terminal(bit);
+      const auto required = family == kTrstUse ? kLowTrstOrigin
+                            : node.active_low  ? kLowResetOrigin
+                                               : kHighResetOrigin;
+      const auto corresponding =
+          family == kResetUse ? kResetUse | kTrstUse : kTrstUse;
+      if (!reset_polarity_error &&
+          (family == kResetUse || family == kTrstUse) &&
+          driver.node < netlist.nodes.size() &&
+          netlist.nodes[driver.node].kind == "DataMux" &&
+          (origins[bit_id(driver)] & corresponding) &&
+          !(reset_polarities(origins[bit_id(driver)], driver.inverted) &
+            required)) {
+        reset_polarity_error =
+            node.origin + ": " + node.name + ": incompatible " +
+            (family == kTrstUse ? "TRST" : "reset") + " mux path polarity";
+      }
+      mark_shape(driver, family);
+    }
   }
-  const auto source_origins = [&](const BitReference& source) {
+  const auto source_origins = [&](const BitReference& source) -> uint16_t {
     return source.node < netlist.nodes.size() &&
                    netlist.nodes[source.node].kind == "DataMux"
                ? origins[bit_id(source)]
@@ -749,7 +788,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
     for (const auto& choice : node.choices) {
       auto source = terminal(choice.source[position]);
       const auto origin = source_origins(source);
-      incoming |= origin;
+      incoming |= origin & kShapeFamilies;
       for (const unsigned char family : {kResetUse, kTmsUse, kTrstUse}) {
         const auto corresponding =
             family == kResetUse ? kResetUse | kTrstUse : family;
@@ -782,6 +821,8 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
       if ((families & family) && !(incoming & corresponding)) fail();
     }
   }
+  // Retain structural diagnostics before reporting incompatible path polarity.
+  if (reset_polarity_error) throw std::runtime_error(*reset_polarity_error);
 }
 
 class Elaborator {
