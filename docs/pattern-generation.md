@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, explicit oscillator source overrides passed the complete
+On 2026-11-14, clock source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/oscillator-override-final-full.log/.exit. This includes all41 generator CLI suites
+build/clock-source-final-full.log/.exit. This includes all41 generator CLI suites
 under dynamic/static builds, native tests,51 directional and seven legacy Tessent
 standards, all334 parser and119 scanner rules across2523 ICL files, and six
-Vim/Neovim tests (181.938s). Full wall time was1086.789s. Five optional ANTLR
+Vim/Neovim tests (181.921s). Full wall time was1103.136s. Five optional ANTLR
 integration tests were skipped because ICL_REF_DIR was unset.
 
 Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
-main35, clock41, client-control18 and reset-preview12 methods. Formatting, naming
+main38, clock41, client-control18 and reset-preview12 methods. Formatting, naming
 and independent source review pass. See
-[the scope and evidence](#explicit-oscillator-source-overrides-2026-11-14).
+[the scope and evidence](#clock-source-terminal-eligibility-2026-11-14).
 The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
@@ -3704,3 +3704,37 @@ check. Exact submitted hashes match fetched files; comparison.json and commands
 are under build/oscillator-override-vendor-probe, with the remote run under
 lianghuaxiao /tmp/icl-oscillator-overrides-20261114. No formal certificate, strict
 coverage or platform refresh is claimed.
+
+### Clock source terminal eligibility (2026-11-14)
+
+ClockPort/ToClockPort input Sources, ClockMux choices and DifferentialInvOf
+connections now require eligible positive clock terminals, ordinary data signals
+or constants. The ordinary-data alternative is explicit in concat_clock_signal;
+a legal data-driven clock remains distinct from an operable SystemClocks route.
+Aliases are classified per bit with the existing iterative memoizer. Negative
+differential ports cannot serve as positive clock terminals. This validates terminal
+kinds, leaving hierarchy direction and contextual control/DataMux rules open.
+
+DifferentialInvOf now has width-checked typed references before hierarchy
+restoration. Internal differential ClockPorts retain their clock declaration in
+flat ICL; explicit parent bindings use an optional ninth origin field because
+ClockPort syntax cannot carry Source. Ordinary eight-field metadata remains
+unchanged. Named/constant/partial bindings roundtrip, including OneHotDataGroup
+sources. Invalid widths, contradictory unconnected metadata and PDL-only alias
+consumers remain rejected. Alias-consumer validation runs once after restoration
+so restored edges receive the same checks. Reset-reference restrictions are unchanged.
+
+Native invalid-kind/direct/alias matrices and positive source/flat cases pass,
+as do38 main CLI and41 clock methods, formatting/naming and independent review.
+Review identified bound-input loss and metadata validation gaps; their corrections
+have explicit roundtrip or rejection cases. The timed native suite takes0.64s,
+126456KiB maximum RSS;4096 clock aliases take0.0177807s and a65536-bit source with
+4096 consumers takes0.0314348s. These are measured workloads, not speedup claims.
+Exact failed and corrected runs remain in build/clock-source-*. Full integration
+passes in build/clock-source-final-full.log/.exit0 (1103.136s):41 dynamic/static
+suites,51 directional/seven legacy goldens,2523 ICL334/119 rules, editor6 in181.921s;
+five optional ANTLR tests skipped. Leak-enabled native scheduler/flatten/netlist
+and main38/clock41/client18/reset12 checks pass in build/clock-source-final-sanitizer-*.
+Older generators requiring eight-field entries reject the new bound differential
+input metadata; ordinary eight-field output remains unchanged. Strict coverage and platform qualification
+have not been refreshed.

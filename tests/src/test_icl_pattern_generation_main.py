@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Generator CLI and original/flat/generated replay contracts."""
 import os
+import json
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -81,6 +83,73 @@ class Generator(unittest.TestCase):
                                "--output", "result.pdl", ok=False)
         self.assertIn("data signal", result.stdout + result.stderr)
         self.assertEqual((self.root / "result.pdl").read_bytes(), original)
+
+    def test_clock_source_kinds_preserve_outputs(self):
+        (self.root / "source.pdl").write_text("iProcsForModule Network\n")
+        for source in ("bad", "wrapped"):
+            (self.root / "source.icl").write_text(
+                "Module Network { ResetPort bad; Alias wrapped = bad; "
+                f"ToClockPort out {{ Source {source}; }} }}")
+            (self.root / "result.pdl").write_text("previous artifact\n")
+            result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                                   "--output", "result.pdl", ok=False)
+            self.assertIn("clock or data signal", result.stdout + result.stderr)
+            self.assertEqual((self.root / "result.pdl").read_text(), "previous artifact\n")
+
+    def test_flat_clock_sources_and_differential_references(self):
+        (self.root / "source.icl").write_text(
+            "Module Child { ClockPort positive; ClockPort negative { DifferentialInvOf positive; } } "
+            "Module Network { ClockPort root; ResetPort bad; Instance child Of Child { InputPort positive = root; } "
+            "ToClockPort out { Source root; } }")
+        (self.root / "source.pdl").write_text("iProcsForModule Network\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "result.pdl", "--debug")
+        original = (self.root / "result.pdl").read_bytes()
+        self.run_tool("--icl", "debug/Network.icl", "--pdl", "source.pdl",
+                      "--output", "again.pdl")
+        self.assertEqual((self.root / "again.pdl").read_bytes(), original)
+        flat = (self.root / "debug/Network.icl").read_text()
+        self.assertIn("Source n726f6f74;", flat)
+        (self.root / "invalid.icl").write_text(
+            flat.replace("Source n726f6f74;", "Source n626164;"))
+        result = self.run_tool("--icl", "invalid.icl", "--pdl", "source.pdl",
+                               "--output", "result.pdl", ok=False)
+        self.assertIn("clock or data signal", result.stdout + result.stderr)
+        self.assertEqual((self.root / "result.pdl").read_bytes(), original)
+
+    def test_differential_binding_metadata_validation(self):
+        (self.root / "source.icl").write_text('''Module Leaf { DataOutPort data { Source 1'b0; Enable 1'b1; } }
+Module Mid { Instance leaf Of Leaf; }
+Module Child { ClockPort p; ClockPort n { DifferentialInvOf p; } }
+Module Network { ClockPort root; Instance provider Of Leaf;
+OneHotDataGroup group { Port provider.data; }
+Instance mid Of Mid; Alias deep = mid.leaf.data;
+Instance child Of Child { InputPort p = root; InputPort n = group; }
+}''')
+        (self.root / "source.pdl").write_text("iProcsForModule Network\n")
+        self.run_tool("--icl", "source.icl", "--pdl", "source.pdl",
+                      "--output", "result.pdl", "--debug")
+        flat = (self.root / "debug/Network.icl").read_text()
+        self.run_tool("--icl", "debug/Network.icl", "--pdl", "source.pdl",
+                      "--output", "again.pdl")
+        match = re.search(r'Attribute icl_pattern_origins_v1 = (".*");', flat)
+        self.assertIsNotNone(match)
+        for conflict in (True, False):
+            metadata = json.loads(json.loads(match.group(1)))
+            node = next(n for n in metadata['nodes'] if n[1] == 'child.n')
+            if conflict:
+                node[4] = True
+                node[8] = ['x']
+                diagnostic = 'invalid flat differential binding'
+            else:
+                node[8] = [['n64656570', '0', False, 0]]
+                diagnostic = 'only available to PDL'
+            quoted = json.dumps(json.dumps(metadata, separators=(',', ':')))
+            (self.root / 'invalid.icl').write_text(
+                flat[:match.start(1)] + quoted + flat[match.end(1):])
+            result = self.run_tool('--icl', 'invalid.icl', '--pdl', 'source.pdl',
+                                   '--output', 'invalid.pdl', ok=False)
+            self.assertIn(diagnostic, result.stdout + result.stderr)
 
     def test_round_trips(self):
         result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug", "--log", "run.log")

@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "pattern/pattern_flatten.h"
 #include "utility/text_input.h"
 
 namespace {
@@ -28,6 +29,91 @@ void Fails(Action action, const std::string& expected) {
   throw std::runtime_error("expected failure: " + expected);
 }
 
+void TestClockSignalSources() {
+  for (const std::string binding : {"~root", "1'b0", "1'b1", "1'bx"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "bound_negative.icl",
+        "Module Child { ClockPort p; ClockPort n { DifferentialInvOf p; } } "
+        "Module M { ClockPort root; Instance child Of Child { "
+        "InputPort p = root; InputPort n = " +
+            binding + "; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat_design;
+    flat_design.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto flat = pattern::Elaborate(flat_design, "M");
+    const auto& inputs = flat.NodeAt("child.n").inputs;
+    Require(inputs.count("Source") &&
+                inputs.at("Source").at(0).inverted == (binding == "~root") &&
+                pattern::SerializeIcl(flat) == pattern::SerializeIcl(original),
+            "bound differential input survives flat replay");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("partial_negative.icl",
+                  "Module Child { ClockPort p[1:0]; ClockPort n[1:0] { "
+                  "DifferentialInvOf p; } } "
+                  "Module M { ClockPort root[1:0]; Instance child Of Child { "
+                  "InputPort p = root; InputPort n[1] = root[1]; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat_design;
+    flat_design.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto flat = pattern::Elaborate(flat_design, "M");
+    Require(flat.NodeAt("child.n").inputs.at("Source").at(1).constant == '?' &&
+                pattern::SerializeIcl(flat) == pattern::SerializeIcl(original),
+            "partial differential binding preserves missing-bit identity");
+  }
+  const std::vector<std::string> consumers = {
+      "ToClockPort out { Source SOURCE; }",
+      "ClockMux out SelectedBy 1'b0 { 1'b0: SOURCE; }",
+      "ClockPort out { DifferentialInvOf SOURCE; }",
+      "ToClockPort out { DifferentialInvOf SOURCE; }",
+      "Instance sink Of Sink { InputPort ck = SOURCE; }"};
+  for (const std::string declaration :
+       {"ScanInPort source;", "ScanOutPort source { Source 1'b0; }",
+        "ResetPort source;", "CaptureEnPort source;", "ShiftEnPort source;",
+        "UpdateEnPort source;", "TMSPort source;", "TRSTPort source;",
+        "ToResetPort source;", "ToCaptureEnPort source;",
+        "ToShiftEnPort source;", "ToUpdateEnPort source;",
+        "ToIRSelectPort source;", "ToTRSTPort source;",
+        "ClockPort positive; ClockPort source { DifferentialInvOf positive; }",
+        "ClockPort positive; ToClockPort source { DifferentialInvOf positive; "
+        "}"}) {
+    for (const auto& consumer : consumers) {
+      for (const std::string signal : {"source", "wrapped"}) {
+        auto body = consumer;
+        body.replace(body.find("SOURCE"), 6, signal);
+        pattern::Design design;
+        design.AddIcl("clock_sources.icl",
+                      "Module Sink { ClockPort ck; } Module M {" + declaration +
+                          " Alias wrapped = source; " + body + "}");
+        Fails([&] { pattern::Elaborate(design, "M"); }, "clock or data signal");
+      }
+    }
+  }
+  for (const std::string declaration :
+       {"ClockPort source;", "ToClockPort source;", "TCKPort source;",
+        "ToTCKPort source;", "DataInPort source;",
+        "DataOutPort source { Source 1'b0; }", "SelectPort source;",
+        "ToSelectPort source { Source 1'b0; }", "DataRegister source;",
+        "ScanInPort si; ScanRegister source { ScanInSource si; }",
+        "LogicSignal source { 1'b0; }",
+        "DataMux source SelectedBy 1'b0 { 1'b0: 1'b0; }",
+        "ClockPort ck; ClockMux source SelectedBy 1'b0 { 1'b0: ck; }"}) {
+    for (const auto& consumer : consumers) {
+      auto body = consumer;
+      body.replace(body.find("SOURCE"), 6, "wrapped");
+      pattern::Design design;
+      design.AddIcl("valid_clock_sources.icl",
+                    "Module Sink { ClockPort ck; } Module M {" + declaration +
+                        " Alias wrapped = source; " + body + "}");
+      const auto model = pattern::Elaborate(design, "M");
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", pattern::SerializeIcl(model));
+      pattern::Elaborate(flat, "M");
+    }
+  }
+}
 void TestDataSignalSources() {
   const std::string prefix =
       "Module Sink { DataInPort data; SelectPort selected; } Module M {"
@@ -127,33 +213,50 @@ void TestDataSignalAliasSlices() {
 }
 
 void TestDataSourceScale() {
-  for (bool wide : {false, true}) {
-    std::string source = wide ? "Module M { DataInPort data[65535:0];"
-                                "Alias packed[65535:0] = data;"
-                              : "Module M { DataInPort data; Alias a0 = data;";
-    for (size_t i = wide ? 0 : 1; i < 4096; ++i) {
-      source += wide
-                    ? "DataOutPort out" + std::to_string(i) +
-                          " { Source packed[" + std::to_string(i % 256) + "]; }"
-                    : "Alias a" + std::to_string(i) + " = a" +
-                          std::to_string(i - 1) + ";";
+  for (bool clock : {false, true}) {
+    for (bool wide : {false, true}) {
+      std::string source = wide
+                               ? "Module M { DataInPort data[65535:0];"
+                                 "Alias packed[65535:0] = data;"
+                               : "Module M { DataInPort data; Alias a0 = data;";
+      for (size_t i = wide ? 0 : 1; i < 4096; ++i) {
+        source += wide ? "DataOutPort out" + std::to_string(i) +
+                             " { Source packed[" + std::to_string(i % 256) +
+                             "]; }"
+                       : "Alias a" + std::to_string(i) + " = a" +
+                             std::to_string(i - 1) + ";";
+      }
+      if (!wide) source += "DataOutPort result { Source a4095; }";
+      source += "}";
+      if (clock) {
+        for (const auto& replacement :
+             {std::make_pair(std::string("DataInPort"),
+                             std::string("ClockPort")),
+              std::make_pair(std::string("DataOutPort"),
+                             std::string("ToClockPort"))}) {
+          size_t at = 0;
+          while ((at = source.find(replacement.first, at)) !=
+                 std::string::npos) {
+            source.replace(at, replacement.first.size(), replacement.second);
+            at += replacement.second.size();
+          }
+        }
+      }
+      const auto start = std::chrono::steady_clock::now();
+      pattern::Design design;
+      design.AddIcl("data_source_scale.icl", source);
+      const auto netlist = pattern::Elaborate(design, "M");
+      Require(netlist.nodes.size() == 4098,
+              "all long-chain or repeated-slice data consumers are retained");
+      std::cout << (clock ? "Clock source aliases: " : "Data source aliases: ")
+                << (wide ? "width=65536 consumers=4096 distinct_bits=256"
+                         : "aliases=4096 consumers=1")
+                << " bytes=" << source.size() << " seconds="
+                << std::chrono::duration<double>(
+                       std::chrono::steady_clock::now() - start)
+                       .count()
+                << '\n';
     }
-    if (!wide) source += "DataOutPort result { Source a4095; }";
-    source += "}";
-    const auto start = std::chrono::steady_clock::now();
-    pattern::Design design;
-    design.AddIcl("data_source_scale.icl", source);
-    const auto netlist = pattern::Elaborate(design, "M");
-    Require(netlist.nodes.size() == 4098,
-            "all long-chain or repeated-slice data consumers are retained");
-    std::cout << "Data source aliases: "
-              << (wide ? "width=65536 consumers=4096 distinct_bits=256"
-                       : "aliases=4096 consumers=1")
-              << " bytes=" << source.size() << " seconds="
-              << std::chrono::duration<double>(
-                     std::chrono::steady_clock::now() - start)
-                     .count()
-              << '\n';
   }
 }
 
@@ -1285,7 +1388,8 @@ void TestOneHotScanLimits() {
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestDataSignalSources,
+  for (const auto test : {TestClockSignalSources,
+                          TestDataSignalSources,
                           TestDataSignalAliasSlices,
                           TestDataSourceScale,
                           TestSpecialization,

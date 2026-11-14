@@ -1357,3 +1357,18 @@ Leak-enabled native scheduler/flatten/netlist and main35/clock41/client18/reset1
 checks pass. Naming, formatting and independent source review pass. The exact
 Tessent2026.2 probe trace matches our normalized output; no formal certificate,
 strict coverage or platform refresh is claimed.
+
+## Clock source terminal eligibility (2026-11-14)
+
+Positive clock/data/constant unions are checked across ordinary clock consumers
+with per-bit alias memoization. Differential references and explicit child input
+bindings survive flat replay with validated metadata and restored alias restrictions.
+Main38/native/flat checks and corrected independent source review pass. Direction,
+contextual DataMux/control rules and other source families remain required.
+
+Full integration passes in build/clock-source-final-full.log/.exit0,1103.136s
+wall:41 dynamic/static suites,51 directional/seven legacy goldens,2523 ICL334/119
+rules and editor6 in181.921s; five optional ANTLR tests skipped. Leak-enabled
+native scheduler/flatten/netlist and main38/clock41/client18/reset12 checks pass.
+Formatting, naming and corrected independent source review pass. Strict coverage,
+new vendor certification and later platform qualification remain open.

@@ -1384,3 +1384,21 @@ Leak-enabled native scheduler/flatten/netlist and main35/clock41/client18/reset1
 checks pass. Naming, formatting and independent source review pass. The exact
 Tessent2026.2 probe trace matches our normalized output; no formal certificate,
 strict coverage or platform refresh is claimed.
+
+## Task55: Clock source terminal eligibility
+
+Completed [the focused plan](2026-11-14-clock-source-kinds.md). The shared cached
+alias classifier validates concat_clock consumers against positive clock terminals,
+ordinary data and constants. Differential references become typed before origin
+restoration. Internal differential inputs preserve explicit named/constant/partial
+bindings through checked optional metadata; alias restrictions run after restoration.
+Independent review findings have roundtrip/rejection regressions. Main38/native/
+flat checks pass;4096 clock aliases take0.0177807s,65536-bit/4096 consumers .0314348s.
+This is terminal eligibility, leaving direction/context and other families open.
+
+Full integration passes in build/clock-source-final-full.log/.exit0,1103.136s
+wall:41 dynamic/static suites,51 directional/seven legacy goldens,2523 ICL334/119
+rules and editor6 in181.921s; five optional ANTLR tests skipped. Leak-enabled
+native scheduler/flatten/netlist and main38/clock41/client18/reset12 checks pass.
+Formatting, naming and corrected independent source review pass. Strict coverage,
+new vendor certification and later platform qualification remain open.

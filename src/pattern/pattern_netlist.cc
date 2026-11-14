@@ -119,16 +119,21 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
   return {left, right};
 }
 
-void CheckDataSignalSources(const Netlist& netlist) {
-  enum class Kind { kOther, kData, kIrSelect };
+void CheckSignalSources(const Netlist& netlist) {
+  enum class Kind { kOther, kData, kClock, kConstant, kIrSelect };
   static const std::set<std::string> kDataKinds = {
       "DataInPort",   "DataOutPort",  "SelectPort",
       "ToSelectPort", "ScanRegister", "DataRegister",
       "LogicSignal",  "DataMux",      "OneHotDataGroup"};
+  static const std::set<std::string> kClockKinds = {
+      "ClockPort", "ToClockPort", "TCKPort", "ToTCKPort", "ClockMux"};
   std::vector<Kind> kinds;
   kinds.reserve(netlist.nodes.size());
   for (const auto& node : netlist.nodes) {
-    kinds.push_back(kDataKinds.count(node.kind)     ? Kind::kData
+    kinds.push_back(kDataKinds.count(node.kind) ? Kind::kData
+                    : kClockKinds.count(node.kind) &&
+                            !node.properties.count("DifferentialInvOf")
+                        ? Kind::kClock
                     : node.kind == "ToIRSelectPort" ? Kind::kIrSelect
                                                     : Kind::kOther);
   }
@@ -140,7 +145,7 @@ void CheckDataSignalSources(const Netlist& netlist) {
     while (true) {
       if (bit.node == std::numeric_limits<size_t>::max()) {
         // Missing input-binding holes retain their existing validation path.
-        kind = bit.virtual_signal == VirtualSignal::kNone ? Kind::kData
+        kind = bit.virtual_signal == VirtualSignal::kNone ? Kind::kConstant
                                                           : Kind::kOther;
         break;
       }
@@ -165,19 +170,28 @@ void CheckDataSignalSources(const Netlist& netlist) {
   };
   for (const auto& node : netlist.nodes) {
     const auto check = [&](const std::string& role,
-                           const std::vector<BitReference>& bits) {
+                           const std::vector<BitReference>& bits,
+                           bool clock = false) {
       const bool ir_select = role == "SelectedBy" && node.kind == "ScanMux" &&
                              bits.size() == 1 && node.choices.size() == 2;
       for (const auto& bit : bits) {
         const auto kind = classify(bit);
-        if (kind == Kind::kData || (ir_select && kind == Kind::kIrSelect)) {
+        if (kind == Kind::kData || kind == Kind::kConstant ||
+            (clock && kind == Kind::kClock) ||
+            (ir_select && kind == Kind::kIrSelect)) {
           continue;
         }
         throw std::runtime_error(node.origin + ": " + node.name + ": " + role +
-                                 " requires a data signal");
+                                 (clock ? " requires a clock or data signal"
+                                        : " requires a data signal"));
       }
     };
     for (const auto& [role, bits] : node.inputs) {
+      if (role == "DifferentialInvOf" ||
+          (role == "Source" &&
+           (node.kind == "ClockPort" || node.kind == "ToClockPort"))) {
+        check(role, bits, true);
+      }
       if (role == "CaptureSource" || role == "WriteDataSource" ||
           role == "ReadDataSource" || role == "WriteEnSource" ||
           role == "Enable" || role == "SelectedBy" ||
@@ -185,6 +199,11 @@ void CheckDataSignalSources(const Netlist& netlist) {
            (node.kind == "DataOutPort" || node.kind == "ToSelectPort" ||
             node.kind == "DataInPort" || node.kind == "SelectPort"))) {
         check(role, bits);
+      }
+    }
+    if (node.kind == "ClockMux") {
+      for (const auto& choice : node.choices) {
+        check("clock choice", choice.source, true);
       }
     }
     for (const auto& instruction : node.logic) {
@@ -221,12 +240,12 @@ class Elaborator {
     }
     AddTopPorts();
     Connect();
-    CheckAliasConsumers();
     if (!RestoreFlatOrigins(&netlist_)) InferResets();
+    CheckAliasConsumers();
     ConnectAddressedRegisters();
     ValidateInterfaces();
     CheckCombinationalConnections(netlist_);
-    CheckDataSignalSources(netlist_);
+    CheckSignalSources(netlist_);
     return std::move(netlist_);
   }
 
@@ -1112,10 +1131,10 @@ class Elaborator {
           if (name == "AddressValue") {
             node.constants.emplace(name, ReadAddressValue(property.second));
           }
-          if (name == "Source" || name == "ScanInSource" ||
-              name == "CaptureSource" || name == "Enable" ||
-              name == "WriteEnSource" || name == "WriteDataSource" ||
-              name == "ReadDataSource") {
+          if (name == "Source" || name == "DifferentialInvOf" ||
+              name == "ScanInSource" || name == "CaptureSource" ||
+              name == "Enable" || name == "WriteEnSource" ||
+              name == "WriteDataSource" || name == "ReadDataSource") {
             const size_t width = name == "ScanInSource" || name == "Enable" ||
                                          name == "WriteEnSource"
                                      ? 1

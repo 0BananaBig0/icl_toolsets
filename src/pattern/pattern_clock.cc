@@ -306,9 +306,6 @@ void SystemClocks::BuildSafety() {
     }
     const auto differential = node.properties.find("DifferentialInvOf");
     if (differential != node.properties.end()) {
-      edges(netlist_.Resolve(differential->second), false);
-    }
-    if (differential != node.properties.end()) {
       for (size_t i = 0; i < node.Width(); ++i) {
         unsafe_.emplace(id, Index(node, i));
       }

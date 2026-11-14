@@ -208,13 +208,30 @@ Json Metadata(const Netlist& netlist) {
              Json::Bool(bit.constant == '?'), Json::Bool(bit.inverted)}));
       }
     }
-    nodes.push_back(Json::Array(
-        {Json::String(FlatName(node.name)), Json::String(node.name),
-         Json::Int(node.scope), Json::String(node.kind),
-         Json::Bool(IsInputPort(node.kind) && node.scope != 0 &&
-                    !node.inputs.count("Source")),
-         node.reset ? Reference(netlist, *node.reset) : Json::Null(),
-         Json::Array(std::move(special)), Json::Bool(node.active_low)}));
+    Json::Elements fields = {
+        Json::String(FlatName(node.name)),
+        Json::String(node.name),
+        Json::Int(node.scope),
+        Json::String(node.kind),
+        Json::Bool(IsInputPort(node.kind) && node.scope != 0 &&
+                   !node.inputs.count("Source") &&
+                   !node.inputs.count("DifferentialInvOf")),
+        node.reset ? Reference(netlist, *node.reset) : Json::Null(),
+        Json::Array(std::move(special)),
+        Json::Bool(node.active_low)};
+    if (node.scope != 0 && node.kind == "ClockPort" &&
+        node.inputs.count("DifferentialInvOf") && node.inputs.count("Source")) {
+      Json::Elements source;
+      for (const auto& bit : node.inputs.at("Source")) {
+        source.push_back(bit.node == kMissing &&
+                                 bit.virtual_signal == VirtualSignal::kNone
+                             ? Json::String(std::string(
+                                   1, bit.constant == '?' ? 'x' : bit.constant))
+                             : Reference(netlist, bit));
+      }
+      fields.push_back(Json::Array(std::move(source)));
+    }
+    nodes.push_back(Json::Array(std::move(fields)));
   }
   Json::Members fields{{"version", Json::Int(1)},
                        {"modules", Json::Array(std::move(modules))},
@@ -269,7 +286,9 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                              node.kind);
   }
   const bool internal_input = IsInputPort(node.kind) && node.scope != 0;
-  std::string result = (internal_input ? "DataOutPort" : node.kind) + " " +
+  const bool flattened_input =
+      internal_input && !node.inputs.count("DifferentialInvOf");
+  std::string result = (flattened_input ? "DataOutPort" : node.kind) + " " +
                        FlatName(node.name) + Range(node);
   if (node.model == ModelKind::kAlias) {
     const auto source = node.inputs.find("Source");
@@ -283,7 +302,7 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
   }
   const size_t body_begin = result.size();
   result += " {\n" + RenderAttributes(node.attributes);
-  if (internal_input) {
+  if (flattened_input) {
     const auto source = node.inputs.find("Source");
     result +=
         "Source " +
@@ -460,7 +479,8 @@ Attributes ReadAttributes(const Json& json) {
   }
   return result;
 }
-BitReference ReadReference(const Netlist& netlist, const Json& json) {
+BitReference ReadReference(const Netlist& netlist, const Json& json,
+                           bool allow_data_group = false) {
   const auto& fields = Array(json, 4);
   BitReference bit;
   const auto name = String(fields[0]);
@@ -482,7 +502,8 @@ BitReference ReadReference(const Netlist& netlist, const Json& json) {
     const auto& source = netlist.nodes[bit.node];
     if (source.model == ModelKind::kEnum ||
         source.model == ModelKind::kInterface ||
-        source.model == ModelKind::kGroup ||
+        (source.model == ModelKind::kGroup &&
+         !(allow_data_group && source.kind == "OneHotDataGroup")) ||
         source.model == ModelKind::kAccessLink ||
         bit.virtual_signal != VirtualSignal::kNone ||
         bit.index < std::min(source.left, source.right) ||
@@ -820,7 +841,10 @@ bool RestoreFlatOrigins(Netlist* netlist) {
   std::map<std::string, size_t> names;
   std::set<size_t> seen;
   for (const auto& item : node_data) {
-    const auto& fields = Array(item, 8);
+    const auto& fields = Array(item);
+    if (fields.size() != 8 && fields.size() != 9) {
+      throw std::runtime_error("invalid flat object metadata");
+    }
     const auto flat_name = String(fields[0]), original_name = String(fields[1]),
                kind = String(fields[3]);
     const size_t scope = Index(fields[2], scopes.size());
@@ -834,8 +858,10 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     const size_t id = netlist->node_ids.at(flat_name);
     auto& node = netlist->nodes[id];
     const bool internal_input = scope != 0 && IsInputPort(kind);
+    const bool flattened_input =
+        internal_input && !node.inputs.count("DifferentialInvOf");
     if (!seen.insert(id).second || !names.emplace(original_name, id).second ||
-        node.kind != (internal_input ? "DataOutPort" : kind)) {
+        node.kind != (flattened_input ? "DataOutPort" : kind)) {
       throw std::runtime_error("invalid flat object kind or duplicate");
     }
     node.name = original_name;
@@ -849,6 +875,26 @@ bool RestoreFlatOrigins(Netlist* netlist) {
       node.kind = kind;
       node.model = ModelKind::kPort;
       node.properties.erase("Source");
+    }
+    if (fields.size() == 9) {
+      if (!internal_input || kind != "ClockPort" || Boolean(fields[4]) ||
+          !node.inputs.count("DifferentialInvOf") ||
+          node.inputs.count("Source")) {
+        throw std::runtime_error("invalid flat differential binding");
+      }
+      auto& source = node.inputs["Source"];
+      for (const auto& value : Array(fields[8], node.Width())) {
+        if (value.type() == Json::Type::kString) {
+          const auto text = String(value);
+          if (text.size() != 1 ||
+              text.find_first_not_of("01x") != std::string::npos) {
+            throw std::runtime_error("invalid flat differential constant");
+          }
+          source.push_back({kMissing, 0, text[0], false});
+        } else {
+          source.push_back(ReadReference(*netlist, value, true));
+        }
+      }
     }
     if (Boolean(fields[4])) {
       if (!internal_input) {
