@@ -168,9 +168,10 @@ class MultipleTaps(unittest.TestCase):
                                         + "ClockMux gated SelectedBy gate { 1'b0: 1'b0; 1'b1: extra_clock; } "
                                         + "ToTCKPort gated_tck { Source gated; }")
                 # Existing lowered ToTCK Source extension forwards the gated clock.
-                clock = '~extra_clock' if gate == 'inverted' else 'gated_tck'
+                if gate == 'inverted':
+                    source = source.replace("1'b1: extra_clock;", "1'b1: ~extra_clock;")
                 source = source.replace('InputPort reset = TRST0;',
-                                        f'InputPort reset = TRST0; InputPort clock = {clock};')
+                                        'InputPort reset = TRST0; InputPort clock = gated_tck;')
                 pdl = self.prepare(source, models, 1, 'iReset; iWrite c0.value 9; iApply;\n')
                 if gate == '1':
                     text = self.run_tool(pdl, extra=('--debug',))

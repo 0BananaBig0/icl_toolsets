@@ -366,6 +366,36 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                             for artifact in artifacts:
                                 self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_typed_control_inversion_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        for family in ('TCK', 'TMS', 'TRST', 'CaptureEn', 'ShiftEn', 'UpdateEn'):
+            forwarded = ('ToTCKPort out;' if family == 'TCK' else
+                         f'To{family}Port out {{ Source ctl; }}')
+            modules = (f'Module Driver {{ {family}Port ctl; {forwarded} }} '
+                       f'Module Sink {{ {family}Port ctl; }} ')
+            for output in ((False,) if family == 'TCK' else (False, True)):
+                for producer in ('ctl', 'driver.out'):
+                    for signal in ('~' + producer, 'odd'):
+                        with self.subTest(family=family, output=output, producer=producer, signal=signal):
+                            consumer = (f'To{family}Port out {{ Source {signal}; }}' if output else
+                                        f'Instance sink Of Sink {{ InputPort ctl = {signal}; }}')
+                            (self.root / 'source.icl').write_text(
+                                modules + f'Module Network {{ {family}Port ctl; '
+                                'Instance driver Of Driver { InputPort ctl = ctl; } '
+                                f'Alias odd = ~{producer}; ' + consumer + ' }')
+                            for artifact in artifacts:
+                                artifact.write_text('previous artifact\n')
+                            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+                            self.assertIn('requires a non-inverted typed control source',
+                                          result.stdout + result.stderr)
+                            for artifact in artifacts:
+                                self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_reset_mux_input_structure_preserves_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         debug = self.root / 'debug/Network.icl'

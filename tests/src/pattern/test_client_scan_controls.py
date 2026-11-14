@@ -120,11 +120,16 @@ class ClientScanControls(unittest.TestCase):
                     'iRunLoop 1;\n')
 
     def test_idle_failures_preserve_pattern_and_debug(self):
+        # The explicit ToTCK Source extension retains the backend phase check.
+        inverted = self.idle_network().replace(
+            'DataInPort enable;',
+            'DataInPort enable; ToTCKPort inverted_tck { Source ~ck; }')
+        inverted = inverted.replace('InputPort ck = ck;', 'InputPort ck = inverted_tck;')
         cases = (
             (self.idle_network(),
              'iReset; iTake child.value; iState child.value 8; iRunLoop 1;',
              'reserved'),
-            (self.idle_network().replace('InputPort ck = ck;', 'InputPort ck = ~ck;'),
+            (inverted,
              'iReset; iState child.value 8; iRunLoop 1;', 'inverted'),
             (self.idle_network(),
              'iReset; iState child.value 8; iRunLoop 18446744073709551615;',

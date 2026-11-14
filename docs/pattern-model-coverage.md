@@ -1611,3 +1611,24 @@ an earlier candidate snapshot with native7/dynamic41 individual exits0 and a
 completed archive, despite transport124; no final platform qualification claim.
 Full directional/forcing/polarity/operational and remaining runtime/TAP/lifecycle,
 strict coverage, full vendor and refreshed platform requirements remain open.
+
+## Effective typed-control inversion (2026-11-14)
+
+Matching typed TCK/TMS/TRST/CaptureEn/ShiftEn/UpdateEn Sources reject odd canonical
+inversion. Direct/child output terminals, per-bit mixtures and aliases are covered;
+even cancellation retains the documented semantic compatibility interpretation.
+Data/constant, Reset/Scan/clock contexts, virtual active-low TRST and the existing
+ToTCK extension retain their boundaries. No broader syntax, direction, mux/output
+polarity or operation claim is made.64 matched-hash loading probes distinguish
+vendor extensions/restrictions; no PDL ran.44 main negatives protect all3 artifacts;
+two existing clock-phase fixtures retain their backend assertions via extensions.
+
+Local native7/main54/clock41/client18/reset12/multiple-TAP22/feedback10, naming/style
+and independent review pass.48 loading comparisons preserve output/flat hashes.
+Required native7/main54/clock41/client18/reset12 leak checks pass. Full serial
+integration passes in build/typed-control-inversion-final-full.log/.exit0,
+1381.252s,41 dynamic/static suites,51 directional goldens,2523 ICL334/119 rules,
+LSP62 and editor6 in173.740s. Optional ANTLR5 skipped; all5 hashes match.
+Rocky8 individual native7/dynamic41 and archive pass; transport124 and test-format
+snapshot differences remain explicit. Strict coverage, full vendor certification,
+remaining functionality and final platform qualification remain open.

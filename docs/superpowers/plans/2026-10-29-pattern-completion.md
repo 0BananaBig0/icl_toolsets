@@ -1586,7 +1586,7 @@ Strict coverage, full vendor certification and refreshed platform checks remain 
 Tasks67/68 direct reset/TMS/TRST data drivers and the necessary reset-mux solver
 fix have completed focused/native/CLI/performance/review, leak-enabled SAN and
 full serial integration. Their reviewed29-file snapshot is imported unchanged. Task69 input shape has completed its final full regression and leak checks from
-the reviewed3-file snapshot. Task70 inversion work remains isolated. Remaining runtime/TAP/
+the reviewed3-file snapshot. Task70 inversion work is verified below. Remaining runtime/TAP/
 lifecycle, structural/operational, strict coverage, full vendor and platform
 requirements remain mandatory.
 
@@ -1647,3 +1647,26 @@ Early Rocky8 native7/dynamic41 individual checks and archive pass; transport124
 and the pre-scale/pre-format snapshot boundary are explicit. This is not final
 platform/static/install qualification. Remaining structural/operational, runtime/
 TAP/lifecycle, strict coverage and full vendor/platform work remain mandatory.
+
+## Task70: Effective typed-control Source inversion
+
+Completed [the focused plan](2026-11-14-typed-control-source-inversion.md). Matching
+typed sources require zero canonical inversion while data/constant, Reset/Scan/
+clock contexts, virtual TRST and the ToTCK extension retain their eligibility.
+Alias cancellation is an explicit semantic compatibility interpretation.44 CLI
+negatives and native/direct/child/vector/flat cases protect boundaries and atomic
+artifacts. Two phase fixtures preserve backend assertions using existing extensions.
+64 matched vendor loading probes distinguish standard-first behavior; no PDL ran.
+48 interleaved loading runs preserve baseline14236ce output/flat hashes.
+
+Connected native7/main54/clock41/client18/reset12/multiple-TAP22/feedback10, naming/
+style and independent review pass. Required native7 and selected CLI leak checks
+pass. Full serial make-j1check passes in
+build/typed-control-inversion-final-full.log/.exit0,1381.251796s:41 dynamic and41
+static generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and
+editor6 in173.740s. Optional ANTLR5 skipped. All5 source/test hashes match the
+reviewed snapshot. Remote native7/dynamic41 individual exits and archive0 are
+retained separately from transport124; final product/Python hashes match, only
+native-test formatting differs. No final platform/install/static claim is made.
+Remaining polarity/direction/forcing/operational, runtime/TAP/lifecycle, strict
+coverage and full vendor/platform requirements stay mandatory.

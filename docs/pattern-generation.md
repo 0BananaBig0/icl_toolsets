@@ -4179,3 +4179,46 @@ snapshot. Its individual checks and completed archive pass despite SSH transport
 exit124; this is not final platform/install/static qualification.
 Hierarchy direction, forcing/polarity, normal-operation/TRST selection, strict
 coverage and remaining model/runtime/vendor/platform requirements stay open.
+
+### Effective typed-control Source inversion (2026-11-14)
+
+Direct typed TCK/TMS/TRST/CaptureEn/ShiftEn/UpdateEn Sources now require zero
+effective inversion, including aliases and child To* output references. Every
+bit is checked. Ordinary-data expressions retain their previous eligibility;
+Reset/Scan inversion, TCK used as a clock_signal, literal sources and inferred
+active-low virtual TRST remain unchanged. Explicit ToTCK Source remains the
+existing lowered-model extension. Mux/output polarity, hierarchy direction and
+operational sensitization remain separate requirements.
+
+This follows IEEE1687 6.3.12's typed-control productions and6.4.7's child binding
+rules. It is effective inversion validation, not full literal grammar enforcement:
+even alias cancellation remains a documented semantic compatibility interpretation.
+The generic typed-alias permission and narrower6.5.2(e) list remain distinct.
+Tessent2026.2 accepts most typed inversions despite that grammar, while inverted
+TRST fails polarity checks. Both cancellation forms load. All64 submitted/fetched
+model and runner hashes match;51 loading cases pass and13 fail ICL64/65. No PDL or
+operational equivalence is inferred. Evidence:
+build/typed-control-inversion-vendor-probe/comparison.json.
+
+Native direct/child-output, hidden alias, cancellation and mixed-vector checks
+plus44 CLI negatives preserve pattern/reset/debug files. Existing standalone idle
+and multi-TAP inverted-phase cases retain backend coverage through the established
+ToTCK/ClockMux extension, with their original assertions and artifact checks.
+All48 interleaved source/flat loading runs match baseline14236ce pattern and flat
+hashes:65536 TCK bits (146 bytes), six8192-bit control families (585 bytes),4096
+cancelling aliases (88008 bytes) and655360 ordinary references (335 bytes).
+Wide TCK runs take0.064–0.115s, peak53008KiB versus53080KiB; other measured ranges,
+commands, environment and source/binary hashes are retained in
+build/typed-control-inversion-loading-scale/comparison.json. Empty PDL and debug
+output measure whole loading runs, not guard-only time or an optimization claim.
+
+Local connected native7/main54/clock41/client18/reset12/multiple-TAP22/feedback10,
+style/naming and independent review pass. Required leak-enabled native7 and
+main54/clock41/client18/reset12 pass. Final serial make-j1check passes in
+build/typed-control-inversion-final-full.log/.exit0,1381.252s:41 dynamic and41 static
+generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and editor6
+in173.740s. Optional ANTLR5 skipped; all5 reviewed source/test hashes match.
+Rocky8 native7/dynamic41 individual results and archive also pass despite SSH
+transport124; production/Python sources match, native-test formatting differs.
+Full vendor, strict coverage, remaining models/runtime and final platform/install/
+static qualification remain open.

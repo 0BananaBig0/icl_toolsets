@@ -371,6 +371,18 @@ void CheckSignalSources(const Netlist& netlist) {
                              family == Family::kReadEn;
       for (const auto& bit : bits) {
         const auto kind = classify(bit);
+        const bool typed_control =
+            (family == Family::kTck && kind == Kind::kTck) ||
+            (family == Family::kCapture && kind == Kind::kCapture) ||
+            (family == Family::kShift && kind == Kind::kShift) ||
+            (family == Family::kUpdate && kind == Kind::kUpdate) ||
+            (family == Family::kTms && kind == Kind::kTms) ||
+            (family == Family::kTrst && kind == Kind::kTrst);
+        if (typed_control && terminal(bit).inverted) {
+          throw std::runtime_error(
+              node.origin + ": " + node.name + ": " + role +
+              " requires a non-inverted typed control source");
+        }
         if (kind == Kind::kIntermediateScanRegister &&
             (family == Family::kScanInput ||
              (node.kind == "ScanOutPort" && role == "Source"))) {

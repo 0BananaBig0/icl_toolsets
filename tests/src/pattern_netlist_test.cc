@@ -831,6 +831,104 @@ void TestDirectControlDataDrivers() {
   }
 }
 
+void TestTypedControlSourceInversion() {
+  for (const std::string family :
+       {"TCK", "TMS", "TRST", "CaptureEn", "ShiftEn", "UpdateEn"}) {
+    const auto forwarded = family == "TCK"
+                               ? "ToTCKPort out;"
+                               : "To" + family + "Port out { Source ctl; }";
+    const auto modules = "Module Driver { " + family + "Port ctl; " +
+                         forwarded + " } Module Sink { " + family +
+                         "Port ctl; } ";
+    for (bool output : {false, true}) {
+      if (output && family == "TCK") continue;
+      const auto consumer = [&](const std::string& source) {
+        return output ? "To" + family + "Port out { Source " + source + "; }"
+                      : "Instance sink Of Sink { InputPort ctl = " + source +
+                            "; }";
+      };
+      for (const std::string producer : {"ctl", "driver.out"}) {
+        const auto prefix =
+            modules + "Module M { " + family +
+            "Port ctl; Instance driver Of Driver { InputPort ctl = ctl; } "
+            "Alias odd = ~" +
+            producer + "; Alias even = ~odd; ";
+        for (const std::string source : {"~" + producer, std::string("odd")}) {
+          pattern::Design invalid;
+          invalid.AddIcl("inverted_control.icl",
+                         prefix + consumer(source) + " }");
+          Fails([&] { pattern::Elaborate(invalid, "M"); },
+                "requires a non-inverted typed control source");
+        }
+        for (const std::string source :
+             {producer, std::string("even"), std::string("~odd")}) {
+          pattern::Design valid;
+          valid.AddIcl("control_cancellation.icl",
+                       prefix + consumer(source) + " }");
+          const auto text =
+              pattern::SerializeIcl(pattern::Elaborate(valid, "M"));
+          pattern::Design flat;
+          flat.AddIcl("flat.icl", text);
+          Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+                  "even control alias inversion retains flat identity");
+        }
+      }
+      if (family != "TMS" && family != "TRST") {
+        for (const std::string source : {"~data", "~1'b0"}) {
+          pattern::Design data;
+          data.AddIcl("inverted_control_data.icl",
+                      modules + "Module M { DataInPort data; " +
+                          consumer(source) + " }");
+          const auto text =
+              pattern::SerializeIcl(pattern::Elaborate(data, "M"));
+          pattern::Design flat;
+          flat.AddIcl("flat.icl", text);
+          pattern::Elaborate(flat, "M");
+        }
+      }
+    }
+    for (const std::string source : {"ctl[1], ~ctl[0]", "~ctl[1], ctl[0]"}) {
+      pattern::Design mixed;
+      mixed.AddIcl("mixed_control_inversion.icl",
+                   "Module Sink { " + family + "Port ctl[1:0]; } Module M { " +
+                       family + "Port ctl[1:0]; Alias mixed[1:0] = " + source +
+                       "; Instance sink Of Sink { InputPort ctl = mixed; } }");
+      Fails([&] { pattern::Elaborate(mixed, "M"); },
+            "requires a non-inverted typed control source");
+    }
+  }
+  pattern::Design allowed;
+  allowed.AddIcl(
+      "other_signal_inversion.icl",
+      "Module Sink { ClockPort clock; ResetPort reset { "
+      "ActivePolarity 0; } ScanInPort si; TCKPort tck; ShiftEnPort se; "
+      "} Module M { TCKPort clock; ResetPort reset; ScanInPort si; "
+      "DataInPort mode; DataMux data SelectedBy mode { "
+      "1'b0: mode; 1'b1: 1'b0; } "
+      "ToTCKPort extension { Source ~clock; } "
+      "Instance sink Of Sink { InputPort clock = ~clock; "
+      "InputPort reset = ~reset; InputPort si = ~si; "
+      "InputPort tck = ~data; InputPort se = ~data; } }");
+  const auto text = pattern::SerializeIcl(pattern::Elaborate(allowed, "M"));
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", text);
+  Require(
+      pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+      "data, clock, reset, scan and ToTCK extension inversions retain replay");
+  pattern::Design inferred;
+  inferred.AddIcl("inferred_trst_polarity.icl",
+                  "Module Sink { TRSTPort trst; } Module M { "
+                  "ToTRSTPort global; Instance sink Of Sink; }");
+  const auto model = pattern::Elaborate(inferred, "M");
+  const auto& bit = model.NodeAt("sink.trst").inputs.at("Source").at(0);
+  Require(bit.virtual_signal == pattern::VirtualSignal::kAsyncGlobalReset &&
+              bit.inverted,
+          "inferred virtual TRST retains its active-low inversion");
+  pattern::Design restored;
+  restored.AddIcl("flat.icl", pattern::SerializeIcl(model));
+  pattern::Elaborate(restored, "M");
+}
+
 void TestResetMuxStructure() {
   for (const std::string family : {"Reset", "TMS", "TRST"}) {
     for (bool output : {false, true}) {
@@ -2425,6 +2523,7 @@ int main() {
                           TestCaptureUpdateMuxStructure,
                           TestDirectControlDataDrivers,
                           TestResetMuxStructure,
+                          TestTypedControlSourceInversion,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,
