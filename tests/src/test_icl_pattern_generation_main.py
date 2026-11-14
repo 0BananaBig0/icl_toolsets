@@ -271,6 +271,27 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
             for output in outputs:
                 self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
 
+    def test_control_mux_identity_paths_preserve_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for family in ('CaptureEn', 'UpdateEn', 'TMS'):
+            port = family + 'Port'
+            for consumer in (f'To{port} out {{ Source ~route; }}',
+                             'Instance sink Of Sink { InputPort ctl = ~route; }'):
+                (self.root / 'source.icl').write_text(
+                    f'Module Sink {{ {port} ctl; }} Module Network {{ {port} ctl; '
+                    "DataInPort mode; DataMux route SelectedBy mode { 1'b0: ctl; 1'b1: 1'b0; } " +
+                    consumer + ' }')
+                for output in outputs:
+                    (self.root / output).write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn(f'{family} mux path polarity', result.stdout + result.stderr)
+                for output in outputs:
+                    self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
+
     def test_scan_control_source_kinds(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family, diagnostic in [('CaptureEn', 'capture-enable'),

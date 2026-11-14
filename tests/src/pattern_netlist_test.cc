@@ -547,6 +547,119 @@ void TestTrstMuxPathPolarity() {
             "implicit virtual TRST retains flat identity");
   }
 }
+void TestControlMuxIdentityPaths() {
+  for (const std::string family : {"CaptureEn", "UpdateEn", "TMS"}) {
+    const std::string port = family + "Port";
+    for (bool child_source : {false, true}) {
+      for (bool output : {false, true}) {
+        for (bool branch_inverted : {false, true}) {
+          for (bool output_inverted : {false, true}) {
+            const std::string source = child_source ? "driver.out" : "ctl";
+            const std::string producer =
+                child_source
+                    ? "Instance driver Of Driver { InputPort incoming = ctl; } "
+                    : "";
+            const std::string wire = output_inverted ? "~wrapped" : "wrapped";
+            const std::string consumer =
+                output
+                    ? "To" + port + " out { Source " + wire + "; }"
+                    : "Instance sink Of Sink { InputPort ctl = " + wire + "; }";
+            pattern::Design design;
+            design.AddIcl(
+                "identity_path.icl",
+                "Module Driver { " + port + " incoming; To" + port +
+                    " out { Source incoming; } } Module Sink { " + port +
+                    " ctl; } Module M { " + port +
+                    " ctl; DataInPort mode; DataInPort force; " + producer +
+                    "Alias branch = " + (branch_inverted ? "~" : "") + source +
+                    "; DataMux route SelectedBy mode { 1'b0: branch; 1'b1: " +
+                    (family == "TMS" ? "force" : "1'b0") +
+                    "; } Alias wrapped = route; " + consumer + " }");
+            if (branch_inverted != output_inverted) {
+              Fails([&] { pattern::Elaborate(design, "M"); },
+                    family + " mux path polarity");
+            } else {
+              const auto serialized =
+                  pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+              pattern::Design flat;
+              flat.AddIcl("flat.icl", serialized);
+              Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+                          serialized,
+                      "normal control path survives alias/producer and flat "
+                      "replay");
+            }
+          }
+        }
+      }
+    }
+    {
+      pattern::Design design;
+      const std::string forcing = family == "TMS" ? "force" : "1'b0";
+      design.AddIcl(
+          "nested_identity.icl",
+          "Module Sink { " + port + " ctl; } Module M { " + port +
+              " ctl; DataInPort mode[1:0]; DataInPort force; "
+              "DataMux inner SelectedBy mode[0] { 1'b0: ~ctl; 1'b1: " +
+              forcing +
+              "; } DataMux outer SelectedBy mode[1] { 1'b0: ~inner; 1'b1: " +
+              forcing +
+              "; } Instance sink Of Sink { InputPort ctl = outer; } }");
+      const auto serialized =
+          pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", serialized);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+          "nested cancellation supplies identity; suppression is separate");
+    }
+    for (const std::string consumers :
+         {"Instance first Of Sink { InputPort ctl = route; } "
+          "Instance second Of Sink { InputPort ctl = ~route; }",
+          "Instance vector Of Vector { InputPort ctl = route, ~route; }"}) {
+      pattern::Design design;
+      design.AddIcl(
+          "shared_identity.icl",
+          "Module Sink { " + port + " ctl; } Module Vector { " + port +
+              " ctl[1:0]; } Module M { " + port +
+              " ctl; DataInPort mode; DataMux route SelectedBy mode { "
+              "1'b0: ctl; 1'b1: 1'b0; } " +
+              consumers + " }");
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            family + " mux path polarity");
+    }
+    {
+      pattern::Design design;
+      design.AddIcl(
+          "unused_identity.icl",
+          "Module M { " + port +
+              " ctl; DataInPort mode; DataMux unused SelectedBy mode { "
+              "1'b0: ~ctl; 1'b1: 1'b0; } }");
+      const auto serialized =
+          pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", serialized);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+          "unused inverted control mux retains its existing boundary");
+    }
+    if (family != "TMS") {
+      pattern::Design design;
+      design.AddIcl(
+          "data_enable_scope.icl",
+          "Module Sink { " + port +
+              " ctl; } Module M { DataInPort data[1:0]; DataInPort mode; "
+              "DataMux route SelectedBy mode { 1'b0: data[0]; 1'b1: data[1]; } "
+              "Instance sink Of Sink { InputPort ctl = route; } }");
+      const auto serialized =
+          pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", serialized);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+          "all-data enable consumers retain their existing scope");
+    }
+  }
+}
 void TestScanControlSourceKinds() {
   for (const std::string family : {"CaptureEn", "ShiftEn", "UpdateEn"}) {
     pattern::Design design;
@@ -1418,20 +1531,27 @@ void TestCaptureUpdateMuxStructure() {
       Fails([&] { pattern::Elaborate(design, "M"); },
             "requires zero and one corresponding control input");
     }
-    for (const std::string rows :
-         {"0 : 1'b0; 1 : src;", "0 : 1'b0; 1 | 2 : src;",
-          "0 : 1'b0; 1 : src; 2 : wrapped;", "0 : src; 1 : wrapped;",
-          "0 : 1'b0; 1 : ~src;", "0 : 1'b0; 1 : src; 2 : 1'b0;",
-          "0 : ~1'b1; 1 : double_inverse; 2 : src;",
-          "0 : 1'b0; 1 : ~wrapped; 2 : inverse;",
-          "0 : 1'b0; 1 : inverse; 2 : ~wrapped;",
-          "0 : 1'b0; 1 : wrapped; 2 : ~inverse;"}) {
+    for (const auto& [rows, inverted] :
+         std::vector<std::pair<std::string, bool>>{
+             {"0 : 1'b0; 1 : src;", false},
+             {"0 : 1'b0; 1 | 2 : src;", false},
+             {"0 : 1'b0; 1 : src; 2 : wrapped;", false},
+             {"0 : src; 1 : wrapped;", false},
+             {"0 : 1'b0; 1 : ~src;", true},
+             {"0 : 1'b0; 1 : src; 2 : 1'b0;", false},
+             {"0 : ~1'b1; 1 : double_inverse; 2 : src;", false},
+             {"0 : 1'b0; 1 : ~wrapped; 2 : inverse;", true},
+             {"0 : 1'b0; 1 : inverse; 2 : ~wrapped;", true},
+             {"0 : 1'b0; 1 : wrapped; 2 : ~inverse;", false}}) {
       pattern::Design design;
+      // Balance canonical inverse inputs for identity; suppression is separate.
+      const auto consumer =
+          inverted ? "To" + family + "Port out { Source ~mux; } }" : output;
       design.AddIcl("gate_shape.icl",
                     prefix +
                         "Alias inverse = ~src; Alias double_inverse = "
                         "~inverse; DataMux mux SelectedBy mode { " +
-                        rows + " } " + output);
+                        rows + " } " + consumer);
       const auto original = pattern::Elaborate(design, "M");
       const auto flat = pattern::SerializeIcl(original);
       pattern::Design replay;
@@ -2871,6 +2991,7 @@ int main() {
                           TestFlatTrstPolarity,
                           TestResetMuxPathPolarity,
                           TestTrstMuxPathPolarity,
+                          TestControlMuxIdentityPaths,
                           TestScanControlSourceKinds,
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,

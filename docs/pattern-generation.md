@@ -4307,3 +4307,50 @@ native7/dynamic41 results have matched source hashes and a completed fetched
 archive; they do not qualify the later combined TRST source. Full vendor, strict
 coverage, source direction, forcing/suppression/selector operation and remaining
 runtime/TAP/lifecycle/platform requirements remain mandatory.
+
+### Possible capture/update/TMS identity paths (2026-11-15)
+
+A consumed CaptureEn/UpdateEn/TMS DataMux with corresponding typed ancestry needs
+a possible non-inverted path to that typed control after alias and mux inversions.
+This is a necessary transparent-normal-path interpretation of the relevant enable
+and TMS sensitization rules. Nested cancellation is retained; raw inverted inputs
+are not banned. A compensated path can invert a zero forcing branch to one, so
+passing this check does not establish zero suppression or selector operation.
+All-data enable scope, unused muxes and opaque ports/storage/logic remain unchanged.
+
+The existing uint16_t origins mask holds three additional pairs with unknown32768;
+there is no allocation-width increase or new graph traversal. CE/UE-only networks
+reach the shared Source check without receiving Reset/TMS/TRST shape rules.
+Native parity/alias/producer/nested/vector/shared tests and main59 preserve flat
+replay and atomic pattern/reset/debug rejection. Canonical inverse-arm fixtures
+balance output parity while retaining every prior row and alias lookup order;
+their suppression behavior remains outside this identity assertion.
+
+All72 matched Tessent2026.2 loading probes pass, including odd paths, differing
+from the derived standard-first normal-path condition. No vendor PDL equivalence
+is claimed. Remote72 interleaved loading comparisons preserve output/flat hashes:
+three65536-bit control families0.418–0.468s, CE-only262144 bits0.569–0.620s at
+103732KiB both,4096 shared gates0.268–0.319s,4096 aliases0.118s,ordinary655360
+references0.168s. Whole empty-PDL CLI/debug runs are measured, not isolated guard
+cost or speedup. Exact environment/compiler, commands, hashes/time/RSS remain in
+the retained remote scale archive. Final local connected/scale/style checks and independent current code/test
+review pass; required full/leak integration now passes.
+
+Local72 valid comparisons also preserve bd99b48 output/flat hashes: three65536-bit
+families0.265–0.266s,82564KiB versus82668KiB;CE-only262144 bits0.315–0.366s,
+103380KiB versus103420KiB;4096 shared gates0.215–0.266s. Deep/ordinary/reset cases,
+commands/environment/compiler/hashes/time/RSS are retained in
+build/control-mux-identity-loading-scale/comparison.json. These are whole empty-PDL
+CLI/debug runs, not isolated guard time or speedup claims. Local connected native7/
+main59/clock41/client18/reset12/multiple-TAP22/feedback10 and style/naming pass.
+
+Final native7/main59/clock41/client18/reset12 leak-enabled ASan/UBSan passes,
+aggregate build/control-mux-identity-final-sanitizer-all.exit0. Full serial
+make-j1check passes in build/control-mux-identity-final-full.log/.exit0,1345.807s:
+41 dynamic and41 static generator suites,51 directional goldens,2523 ICL334/119
+rules, LSP62 and editor6 in174.686s. Optional ANTLR5 skipped. All3 production/test
+hashes match the reviewed snapshot. Current-source remote native7/dynamic41 and
+fetched archive also pass with matched hashes; full platform/static/install
+qualification remains separate. Strict coverage, source direction, full gating/
+selector operation, remaining runtime/TAP/lifecycle and vendor certification
+remain mandatory.
