@@ -664,6 +664,94 @@ void TestDataSignalSources() {
   }
 }
 
+void TestDataMuxMatchingControlUses() {
+  pattern::Design wrong;
+  wrong.AddIcl("wrong_mux_use.icl",
+               "Module M { ResetPort source; DataInPort mode; "
+               "DataMux mux SelectedBy mode { 1'b0 : 1'b1; 1'b1 : source; } "
+               "DataOutPort out { Source mux; } }");
+  Fails([&] { pattern::Elaborate(wrong, "M"); }, "matching control use");
+  for (const std::string family :
+       {"Reset", "CaptureEn", "UpdateEn", "TMS", "TRST"}) {
+    const std::string force = family == "Reset" ? "1'b1" : "1'b0";
+    pattern::Design design;
+    design.AddIcl("matching_mux.icl",
+                  "Module M { " + family +
+                      "Port source; DataInPort mode; DataInPort data; "
+                      "DataMux inner SelectedBy mode { 1'b0 : " +
+                      force +
+                      "; 1'b1 : source; } Alias wrapped = inner; "
+                      "DataMux outer SelectedBy mode { 1'b0 : " +
+                      force + "; 1'b1 : wrapped; } To" + family +
+                      "Port out { Source outer; } DataRegister observed { "
+                      "WriteDataSource data; WriteEnSource inner; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+                pattern::SerializeIcl(original),
+            "matching mux chains and standard-interpreted mixed fanout replay");
+  }
+  for (const std::string bounds : {"[1:0]", "[0:1]"}) {
+    const std::string used = bounds == "[1:0]" ? "1" : "0";
+    pattern::Design design;
+    design.AddIcl(
+        "partial_mux_use.icl",
+        "Module Child { ResetPort ctl { ActivePolarity 0; } } "
+        "Module M { ResetPort source" +
+            bounds + "; DataInPort mode; DataMux mux" + bounds +
+            " SelectedBy mode { 1'b0 : 2'b11; 1'b1 : source; } Alias wrapped" +
+            bounds +
+            " = ~mux; Instance child Of Child { InputPort ctl = wrapped[" +
+            used + "]; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    pattern::Elaborate(flat, "M");
+  }
+  pattern::Design dangling;
+  dangling.AddIcl(
+      "unused_mux.icl",
+      "Module M { ResetPort source; DataInPort mode; "
+      "DataMux first SelectedBy mode { 1'b0 : 1'b1; 1'b1 : source; } "
+      "Alias middle = first; DataMux second SelectedBy mode { "
+      "1'b0 : 1'b1; 1'b1 : middle; } Alias unused = second; }");
+  pattern::Elaborate(dangling, "M");
+  for (bool forward : {false, true}) {
+    pattern::Design design;
+    design.AddIcl(
+        "trst_reset_mux.icl",
+        "Module Provider { TRSTPort input; ToTRSTPort out { Source input; } } "
+        "Module M { TRSTPort input; DataInPort mode; Instance provider Of "
+        "Provider { InputPort input = input; } DataMux mux SelectedBy mode { "
+        "1'b0 : 1'b0; 1'b1 : " +
+            std::string(forward ? "provider.out" : "input") +
+            "; } ToResetPort out { Source mux; ActivePolarity 0; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    pattern::Elaborate(flat, "M");
+  }
+  pattern::Design reset_reference;
+  reset_reference.AddIcl(
+      "mux_reset_reference.icl",
+      "Module M { ResetPort source; DataInPort mode; ScanInPort si; "
+      "DataMux mux SelectedBy mode { 1'b0 : 1'b1; 1'b1 : source; } "
+      "Alias reset_alias = mux; ScanRegister value { ScanInSource si; "
+      "ResetValue 0; } ScanOutPort so { Source value; } }");
+  const auto original = pattern::Elaborate(reset_reference, "M");
+  for (const std::string name : {"mux", "reset_alias"}) {
+    auto lowered = original;
+    lowered.nodes.at(lowered.node_ids.at("value")).reset = {
+        lowered.node_ids.at(name), 0};
+    pattern::Design flat;
+    flat.AddIcl("lowered_reset.icl", pattern::SerializeIcl(lowered));
+    const auto restored = pattern::Elaborate(flat, "M");
+    Require(
+        restored.nodes.at(restored.NodeAt("value").reset->node).name == name,
+        "lowered reset association supplies matching reset use");
+  }
+}
 void TestDataMuxControlSourceUnion() {
   for (const std::string family :
        {"Reset", "CaptureEn", "UpdateEn", "TMS", "TRST"}) {
@@ -1916,6 +2004,7 @@ int main() {
                           TestStrictScanSources,
                           TestAddressPortSourceKinds,
                           TestDataMuxControlSourceUnion,
+                          TestDataMuxMatchingControlUses,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

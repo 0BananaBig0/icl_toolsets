@@ -362,6 +362,52 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 for artifact in artifacts:
                     self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_data_mux_matching_control_use(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        models = {}
+        for family in ('Reset', 'CaptureEn', 'UpdateEn', 'TMS', 'TRST'):
+            body = (f'Module Network {{ DataInPort mode; {family}Port source; '
+                    "DataMux mux SelectedBy mode { 1'b0 : " +
+                    ("1'b1" if family == 'Reset' else "1'b0") + "; 1'b1 : source; } ")
+            models[family + ' data only'] = body + 'DataOutPort observed { Source mux; } }'
+            other = 'TMS' if family != 'TMS' else 'Reset'
+            models[family + ' wrong family'] = (
+                f'Module Child {{ {other}Port ctl; }} ' + body +
+                'Instance child Of Child { InputPort ctl = mux; } }')
+        prefix = ("Module Child { ResetPort ctl; } Module Network { ResetPort source; "
+                  "DataInPort mode; DataMux mux SelectedBy mode { 1'b0 : 1'b1; 1'b1 : source; } ")
+        for kind in ('ScanMux', 'ClockMux'):
+            models[kind + ' choice'] = prefix + kind + " observed SelectedBy 1'b0 { 1'b0 : mux; } }"
+        models['selector'] = (prefix + 'DataMux outer SelectedBy mux { '
+                              "1'b0 : 1'b0; 1'b1 : 1'b1; } "
+                              'Instance child Of Child { InputPort ctl = outer; } }')
+        models['enable'] = prefix + "DataOutPort observed { Source 1'b0; Enable mux; } }"
+        models['logic'] = (prefix + 'LogicSignal logic { mux; } '
+                           'Instance child Of Child { InputPort ctl = logic; } }')
+        models['data port'] = (
+            'Module Forward { DataInPort d; DataOutPort out { Source d; } } ' + prefix +
+            'Instance forward Of Forward { InputPort d = mux; } '
+            'Instance child Of Child { InputPort ctl = forward.out; } }')
+        models['observed vector bit'] = (
+            'Module Child { ResetPort ctl; } Module Network { ResetPort source[1:0]; '
+            "DataInPort mode; DataMux mux[1:0] SelectedBy mode { 1'b0 : 2'b11; 1'b1 : source; } "
+            'Instance child Of Child { InputPort ctl = mux[1]; } '
+            'DataOutPort observed { Source mux[0]; } }')
+        for label, source in models.items():
+            with self.subTest(label=label):
+                (self.root / 'source.icl').write_text(source)
+                for artifact in artifacts:
+                    artifact.write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn('matching control use', result.stdout + result.stderr)
+                for artifact in artifacts:
+                    self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_inferred_control_vector_roundtrips(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family in ('Reset', 'TRST', 'TMS'):

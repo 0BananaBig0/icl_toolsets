@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <functional>
 #include <set>
 #include <stdexcept>
@@ -117,6 +118,106 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
     throw std::runtime_error("signal index out of range for " + node.name);
   }
   return {left, right};
+}
+
+constexpr unsigned char kResetUse = 1;
+constexpr unsigned char kCaptureUse = 2;
+constexpr unsigned char kUpdateUse = 4;
+constexpr unsigned char kTmsUse = 8;
+constexpr unsigned char kTrstUse = 16;
+constexpr unsigned char kObservedUse = 32;
+
+unsigned char PortControlUse(const std::string& kind) {
+  if (kind == "ResetPort" || kind == "ToResetPort") {
+    return kResetUse | kTrstUse;
+  }
+  if (kind == "CaptureEnPort" || kind == "ToCaptureEnPort") return kCaptureUse;
+  if (kind == "UpdateEnPort" || kind == "ToUpdateEnPort") return kUpdateUse;
+  if (kind == "TMSPort" || kind == "ToTMSPort") return kTmsUse;
+  if (kind == "TRSTPort" || kind == "ToTRSTPort") return kTrstUse;
+  return 0;
+}
+
+struct ControlContexts {
+  std::vector<size_t> offsets;
+  std::vector<unsigned char> uses;
+};
+
+ControlContexts FindMuxControlUses(const Netlist& netlist) {
+  constexpr unsigned char kQueued = 128;
+  ControlContexts result;
+  result.offsets.push_back(0);
+  size_t pending_capacity = 0;
+  for (const auto& node : netlist.nodes) {
+    result.offsets.push_back(result.offsets.back() + node.Width());
+    if (node.model == ModelKind::kAlias || node.kind == "DataMux") {
+      pending_capacity += node.Width();
+    }
+  }
+  // The preceding combinational check bounds total width to16M bits.
+  result.uses.resize(result.offsets.back());
+  std::vector<uint32_t> pending;
+  pending.reserve(pending_capacity);
+  const auto mark = [&](const BitReference& bit, unsigned char mask) {
+    if (bit.node == std::numeric_limits<size_t>::max()) return;
+    const auto& node = netlist.nodes.at(bit.node);
+    if (node.model != ModelKind::kAlias && node.kind != "DataMux") return;
+    const size_t position =
+        node.left >= node.right ? node.left - bit.index : bit.index - node.left;
+    const size_t id = result.offsets.at(bit.node) + position;
+    auto& use = result.uses.at(id);
+    if ((use & mask) == mask) return;
+    const bool queued = use & kQueued;
+    use |= mask;
+    if (!queued) {
+      use |= kQueued;
+      pending.push_back(static_cast<uint32_t>(id));
+    }
+  };
+  for (const auto& node : netlist.nodes) {
+    for (const auto& [role, bits] : node.inputs) {
+      if (node.model == ModelKind::kAlias && role == "Source") continue;
+      const unsigned char use =
+          kObservedUse | (role == "Source" ? PortControlUse(node.kind) : 0);
+      for (const auto& bit : bits) mark(bit, use);
+    }
+    if (node.kind != "DataMux") {
+      for (const auto& choice : node.choices) {
+        for (const auto& bit : choice.source) mark(bit, kObservedUse);
+      }
+    }
+    if (node.reset) mark(*node.reset, kObservedUse | kResetUse | kTrstUse);
+    for (const auto& source : node.one_hot_sources) {
+      for (const auto& bit : source.bits) mark(bit, kObservedUse);
+    }
+    if (node.scan_interface) {
+      for (const auto& bit : node.scan_interface->ports) {
+        mark(bit, kObservedUse);
+      }
+      for (const auto& chain : node.scan_interface->chains) {
+        for (const auto& bit : chain.ports) mark(bit, kObservedUse);
+      }
+    }
+  }
+  while (!pending.empty()) {
+    const size_t bit = pending.back();
+    pending.pop_back();
+    const unsigned char use = result.uses[bit] & ~kQueued;
+    result.uses[bit] = use;
+    const size_t id = static_cast<size_t>(
+        std::upper_bound(result.offsets.begin(), result.offsets.end(), bit) -
+        result.offsets.begin() - 1);
+    const auto& node = netlist.nodes[id];
+    const size_t position = bit - result.offsets[id];
+    if (node.model == ModelKind::kAlias) {
+      mark(node.inputs.at("Source").at(position), use);
+    } else {
+      for (const auto& choice : node.choices) {
+        mark(choice.source.at(position), use);
+      }
+    }
+  }
+  return result;
 }
 
 void CheckSignalSources(const Netlist& netlist) {
@@ -234,6 +335,15 @@ void CheckSignalSources(const Netlist& netlist) {
     for (const auto& key : path) aliases.emplace(key, kind);
     return kind;
   };
+  const auto control_use = [](Kind kind) -> unsigned char {
+    return kind == Kind::kReset     ? kResetUse
+           : kind == Kind::kCapture ? kCaptureUse
+           : kind == Kind::kUpdate  ? kUpdateUse
+           : kind == Kind::kTms     ? kTmsUse
+           : kind == Kind::kTrst    ? kTrstUse
+                                    : 0;
+  };
+  bool mux_control_sources = false;
   for (const auto& node : netlist.nodes) {
     const auto check = [&](const std::string& role,
                            const std::vector<BitReference>& bits,
@@ -251,6 +361,10 @@ void CheckSignalSources(const Netlist& netlist) {
           throw std::runtime_error(
               node.origin + ": " + node.name + ": " + role +
               " must use the rightmost bit of a ScanRegister");
+        }
+        if (family == Family::kDataMux && control_use(kind)) {
+          mux_control_sources = true;
+          continue;
         }
         if ((family != Family::kScanInput &&
              ((!addressed && kind == Kind::kData) || kind == Kind::kDataPort ||
@@ -273,10 +387,6 @@ void CheckSignalSources(const Netlist& netlist) {
             (family == Family::kAddress && kind == Kind::kAddress) ||
             (family == Family::kWriteEn && kind == Kind::kWriteEn) ||
             (family == Family::kReadEn && kind == Kind::kReadEn) ||
-            (family == Family::kDataMux &&
-             (kind == Kind::kReset || kind == Kind::kCapture ||
-              kind == Kind::kUpdate || kind == Kind::kTms ||
-              kind == Kind::kTrst)) ||
             ((family == Family::kScan || family == Family::kScanInput) &&
              (kind == Kind::kScan || kind == Kind::kScanRegister)) ||
             (ir_select && kind == Kind::kIrSelect)) {
@@ -374,6 +484,25 @@ void CheckSignalSources(const Netlist& netlist) {
     if (node.kind == "OneHotDataGroup") {
       for (const auto& source : node.one_hot_sources) {
         if (source.kind == OneHotSourceKind::kPort) check("Port", source.bits);
+      }
+    }
+  }
+  if (!mux_control_sources) return;
+  const auto contexts = FindMuxControlUses(netlist);
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& node = netlist.nodes[id];
+    if (node.kind != "DataMux") continue;
+    for (const auto& choice : node.choices) {
+      for (size_t i = 0; i < choice.source.size(); ++i) {
+        const auto required = control_use(classify(choice.source[i]));
+        const auto use = contexts.uses.at(contexts.offsets[id] + i);
+        if (required && (use & kObservedUse) && !(use & required)) {
+          const auto bit = node.left + (node.left <= node.right ? 1 : -1) *
+                                           static_cast<int64_t>(i);
+          throw std::runtime_error(
+              node.origin + ": " + node.name + ": DataMux input for bit " +
+              std::to_string(bit) + " requires matching control use");
+        }
       }
     }
   }

@@ -1521,7 +1521,25 @@ metadata assumptions remain recorded. Naming/style and independent product/fixtu
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
 
-Task64 matching-use work is active in its separate focused plan. Task65 must bound
+Task64 matching-use work is completed in its separate focused plan. Task65 must bound
 aggregate mux source/code expansion and dependency work; node-bit limits alone do
 not bound those arrays. Previously listed runtime/clock/TAP, lifecycle, coverage,
 vendor and platform requirements remain open.
+
+## Task64: Conditional DataMux matching control use
+
+Completed [the matching-use plan](2026-11-14-data-mux-matching-control-use.md).
+Per-bit observation and family masks preserve unused bits and alias/mux chains,
+including semantic reset references. Nontransparent consumers do not grant use.
+Mixed fanout follows the documented standard-first interpretation; vendor loading
+and full operational legality remain distinct. Wide/deep performance and output
+hashes are recorded; Task65 aggregate expansion/selector-work bounds remain open.
+
+Full integration passes in build/data-mux-control-use-final-full.log/.exit0,
+1228.810s wall: dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules and editor6 in281.764s. Five optional ANTLR tests remain
+skipped. Leak-enabled native scheduler/flatten/netlist/state/TAP/address and
+main49/clock41/client18/reset12 pass in build/data-mux-control-use-final-sanitizer-*.
+All three source/test SHA-256 values match the independently reviewed checkpoint
+and measured scale source. Naming/style and independent review pass. Strict
+coverage, full vendor certification and refreshed platform checks remain open.

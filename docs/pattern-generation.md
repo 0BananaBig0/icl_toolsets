@@ -3945,3 +3945,32 @@ No instrumented multi-TAP scale claim is made. Initial full exit2 and test-only
 metadata assumptions remain recorded. Naming/style and independent product/fixture
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+### Conditional DataMux matching control use (2026-11-14)
+
+Observed DataMux bits carrying Reset/CaptureEn/UpdateEn/TMS/TRST inputs now require
+matching control use. Per-bit masks propagate through aliases and DataMux data
+choices; selectors, Enable, ordinary ports, logic, storage and groups do not grant
+control context. Reset associations count as Reset/TRST uses. Unused bits and
+dangling chains remain accepted. A matching use still permits existing mixed data
+fanout under the documented standard-first interpretation; Tessent2026.2 rejects
+some such fanout. Port-specific structure, forcing/polarity and normal-operation
+sensitization remain separate required work.
+
+The pass runs only for special-control mux inputs. Dense masks use at most16MiB
+under the existing16M graph-bit limit; a deduplicated uint32 worklist is bounded
+by alias/mux bits and monotone family masks. Three interleaved baseline/changed
+source+flat measurements preserve output hashes:262144-bit control case changed
+0.4373–0.4849s versus0.4029–0.4434s, peak126616KiB RSS;4096 aliases changed
+0.0645–0.1259s versus0.0689–0.1230s. Exact evidence is in
+build/data-mux-control-use-scale/comparison.json. Aggregate mux expansion and
+selector dependency work still need their separate resource check.
+
+Full integration passes in build/data-mux-control-use-final-full.log/.exit0,
+1228.810s wall: dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules and editor6 in281.764s. Five optional ANTLR tests remain
+skipped. Leak-enabled native scheduler/flatten/netlist/state/TAP/address and
+main49/clock41/client18/reset12 pass in build/data-mux-control-use-final-sanitizer-*.
+All three source/test SHA-256 values match the independently reviewed checkpoint
+and measured scale source. Naming/style and independent review pass. Strict
+coverage, full vendor certification and refreshed platform checks remain open.

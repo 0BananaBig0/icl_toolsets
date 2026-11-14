@@ -1484,3 +1484,21 @@ No instrumented multi-TAP scale claim is made. Initial full exit2 and test-only
 metadata assumptions remain recorded. Naming/style and independent product/fixture
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+## Conditional DataMux matching use (2026-11-14)
+
+Observed special-control choice bits require matching typed control use, including
+reset associations and TRST-to-reset compatibility. Aliases/mux data chains carry
+per-bit context; other consumers only mark observation. Unused bits stay valid.
+Main49/native original/flat/mixed-fanout/boundary tests pass. Wide/deep overhead is
+measured with equal baseline/replay output hashes. This does not establish mux
+structure, polarity, forcing, operation or full vendor compatibility.
+
+Full integration passes in build/data-mux-control-use-final-full.log/.exit0,
+1228.810s wall: dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules and editor6 in281.764s. Five optional ANTLR tests remain
+skipped. Leak-enabled native scheduler/flatten/netlist/state/TAP/address and
+main49/clock41/client18/reset12 pass in build/data-mux-control-use-final-sanitizer-*.
+All three source/test SHA-256 values match the independently reviewed checkpoint
+and measured scale source. Naming/style and independent review pass. Strict
+coverage, full vendor certification and refreshed platform checks remain open.
