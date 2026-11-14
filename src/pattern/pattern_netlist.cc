@@ -228,7 +228,62 @@ ControlContexts FindMuxControlUses(const Netlist& netlist) {
   return result;
 }
 
-void CheckSignalSources(const Netlist& netlist) {
+class AliasResolver {
+ public:
+  explicit AliasResolver(const Netlist& netlist) : netlist_(netlist) {}
+
+  BitReference operator()(BitReference bit) {
+    std::vector<std::pair<Key, bool>> path;
+    bool inverted = bit.inverted;
+    while (bit.node != std::numeric_limits<size_t>::max()) {
+      const auto& node = netlist_.nodes.at(bit.node);
+      if (node.model != ModelKind::kAlias) break;
+      const Key key{bit.node, bit.index};
+      const auto found = aliases_.find(key);
+      if (found != aliases_.end()) {
+        if (!found->second) {
+          throw std::runtime_error(
+              node.origin + ": combinational cycle in alias " + node.name);
+        }
+        bit = *found->second;
+        inverted = inverted != bit.inverted;
+        break;
+      }
+      aliases_.emplace(key, std::nullopt);
+      path.emplace_back(key, inverted);
+      const size_t offset = node.left >= node.right ? node.left - bit.index
+                                                    : bit.index - node.left;
+      bit = node.inputs.at("Source").at(offset);
+      inverted = inverted != bit.inverted;
+    }
+    bit.inverted = inverted;
+    for (const auto& [key, incoming_inversion] : path) {
+      auto definition = bit;
+      definition.inverted = definition.inverted != incoming_inversion;
+      aliases_.at(key) = definition;
+    }
+    return bit;
+  }
+
+ private:
+  using Key = std::pair<size_t, int64_t>;
+  const Netlist& netlist_;
+  std::map<Key, std::optional<BitReference>> aliases_;
+};
+
+std::optional<bool> ResetPolarity(const Netlist& netlist,
+                                  AliasResolver& terminal, BitReference bit) {
+  bit = terminal(bit);
+  if (bit.node == std::numeric_limits<size_t>::max()) return std::nullopt;
+  const auto& node = netlist.nodes.at(bit.node);
+  if (node.kind != "ResetPort" && node.kind != "ToResetPort" &&
+      node.kind != "TRSTPort" && node.kind != "ToTRSTPort") {
+    return std::nullopt;
+  }
+  return node.active_low != bit.inverted;
+}
+
+void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
   enum class Kind {
     kOther,
     kData,
@@ -278,6 +333,11 @@ void CheckSignalSources(const Netlist& netlist) {
   std::vector<Kind> kinds;
   kinds.reserve(netlist.nodes.size());
   for (const auto& node : netlist.nodes) {
+    if ((node.kind == "TRSTPort" || node.kind == "ToTRSTPort") &&
+        !node.active_low) {
+      throw std::runtime_error(node.origin +
+                               ": invalid fixed-low TRST polarity");
+    }
     kinds.push_back(
         kDataKinds.count(node.kind) ? Kind::kData
         : node.kind == "DataInPort" || node.kind == "DataOutPort"
@@ -305,35 +365,6 @@ void CheckSignalSources(const Netlist& netlist) {
         : node.kind == "ToIRSelectPort" ? Kind::kIrSelect
                                         : Kind::kOther);
   }
-  using Key = std::pair<size_t, int64_t>;
-  std::map<Key, BitReference> aliases;
-  const auto terminal = [&](BitReference bit) {
-    std::vector<std::pair<Key, bool>> path;
-    bool inverted = bit.inverted;
-    while (bit.node != std::numeric_limits<size_t>::max()) {
-      const auto& node = netlist.nodes.at(bit.node);
-      if (node.model != ModelKind::kAlias) break;
-      const Key key{bit.node, bit.index};
-      const auto found = aliases.find(key);
-      if (found != aliases.end()) {
-        bit = found->second;
-        inverted = inverted != bit.inverted;
-        break;
-      }
-      path.emplace_back(key, inverted);
-      const size_t offset = node.left >= node.right ? node.left - bit.index
-                                                    : bit.index - node.left;
-      bit = node.inputs.at("Source").at(offset);
-      inverted = inverted != bit.inverted;
-    }
-    bit.inverted = inverted;
-    for (const auto& [key, incoming_inversion] : path) {
-      auto definition = bit;
-      definition.inverted = definition.inverted != incoming_inversion;
-      aliases.emplace(key, definition);
-    }
-    return bit;
-  };
   const auto classify = [&](BitReference bit) {
     bit = terminal(bit);
     if (bit.node == std::numeric_limits<size_t>::max()) {
@@ -371,6 +402,13 @@ void CheckSignalSources(const Netlist& netlist) {
                              family == Family::kReadEn;
       for (const auto& bit : bits) {
         const auto kind = classify(bit);
+        if (family == Family::kReset) {
+          const auto polarity = ResetPolarity(netlist, terminal, bit);
+          if (polarity && *polarity != node.active_low) {
+            throw std::runtime_error(node.origin + ": " + node.name +
+                                     ": inconsistent reset source polarity");
+          }
+        }
         const bool typed_control =
             (family == Family::kTck && kind == Kind::kTck) ||
             (family == Family::kCapture && kind == Kind::kCapture) ||
@@ -769,12 +807,17 @@ class Elaborator {
     }
     AddTopPorts();
     Connect();
-    if (!RestoreFlatOrigins(&netlist_)) InferResets();
+    const bool restored = RestoreFlatOrigins(&netlist_);
+    AliasResolver terminal(netlist_);
+    if (!restored) {
+      InferResetPolarities(terminal);
+      InferResets();
+    }
     CheckAliasConsumers();
     ConnectAddressedRegisters();
     ValidateInterfaces();
     CheckCombinationalConnections(netlist_);
-    CheckSignalSources(netlist_);
+    CheckSignalSources(netlist_, terminal);
     return std::move(netlist_);
   }
 
@@ -1919,7 +1962,35 @@ class Elaborator {
     }
     const auto& source = netlist_.nodes[candidates[0]];
     if (source.Width() != 1) throw std::runtime_error("ambiguous " + role);
-    return {candidates[0], source.left, 'x', ActiveLow(source)};
+    return {candidates[0], source.left, 'x', source.active_low};
+  }
+
+  void InferResetPolarities(AliasResolver& terminal) {
+    // Explicit parent bindings dictate omitted defaults; implied wiring
+    // normalizes.
+    for (size_t scope = 0; scope < netlist_.scopes.size(); ++scope) {
+      const auto found = kinds_.find({scope, "ResetPort"});
+      if (found == kinds_.end()) continue;
+      for (size_t id : found->second) {
+        auto& node = netlist_.nodes[id];
+        const auto source = node.inputs.find("Source");
+        if (source == node.inputs.end() ||
+            node.properties.count("ActivePolarity")) {
+          continue;
+        }
+        std::optional<bool> polarity;
+        for (const auto& bit : source->second) {
+          const auto driver = ResetPolarity(netlist_, terminal, bit);
+          if (!driver) continue;
+          if (polarity && *polarity != *driver) {
+            throw std::runtime_error(node.origin + ": " + node.name +
+                                     ": conflicting reset source polarity");
+          }
+          polarity = driver;
+        }
+        if (polarity) node.active_low = *polarity;
+      }
+    }
   }
 
   void InferResets() {
@@ -1960,7 +2031,7 @@ class Elaborator {
           }
           auto source = ResetSource(node.kind == input ? parent : node.scope,
                                     input, output, "source of " + node.name);
-          source.inverted = source.inverted != ActiveLow(node);
+          source.inverted = source.inverted != node.active_low;
           node.inputs["Source"].assign(node.Width(), source);
         }
       } catch (const std::exception& error) {

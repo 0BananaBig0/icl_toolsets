@@ -1632,3 +1632,35 @@ LSP62 and editor6 in173.740s. Optional ANTLR5 skipped; all5 hashes match.
 Rocky8 individual native7/dynamic41 and archive pass; transport124 and test-format
 snapshot differences remain explicit. Strict coverage, full vendor certification,
 remaining functionality and final platform qualification remain open.
+
+## Explicit reset-port polarity (2026-11-15)
+
+IEEE1687 6.4.6.13(a,b) dictates an omitted ResetPort polarity from its explicit
+canonical typed Reset/TRST source, including alias inversion. Uniform typed bits
+dictate one declared-port polarity; contradictory typed bits reject. Untyped/mux/
+literal/hole bits do not independently dictate polarity. Without a typed source
+the default stays high. ToResetPort retains its independent high default; direct
+reset mismatches reject. Implied connections keep automatic inversion. Register
+reset references use the resolved polarity; flat flags are validated, including
+fixed-low internal TRST semantics. Native hierarchy, aliases/cycles, vectors,
+implicit conversion and altered metadata plus main56 reset/write/read source/
+flat/generated replay and three-artifact rejection checks cover this boundary.
+
+Connected native7/main56/clock41/client18/reset12/multiple-TAP22/feedback10,
+format/naming and independent review pass. The review-driven TRST metadata fix
+has RED/GREEN evidence. All48 interleaved loading runs preserve pattern/flat hashes
+against525f1b6, including65536 reset bits,4096 aliases,4096 child scopes and655360
+ordinary references.82 vendor inputs/runners match:37load/31ICL64 polarity failures/
+14 existing grammar failures; vendor high default differs from primary inheritance.
+The manually fetched archive/individual exits are authoritative; the original
+transport124 and wrapper marker parsing failure remain recorded. No PDL proof.
+
+Final native7 and main56/clock41/client18/reset12 leak-enabled ASan/UBSan pass.
+Full serial make-j1check passes in build/reset-polarity-final-full.log/.exit0,
+1339.731s:41 dynamic and41 static generator suites,51 directional goldens,2523 ICL
+334/119 rules, LSP62 and editor6 in181.382s. Optional ANTLR5 skipped. All3 final
+production/test hashes match the reviewed snapshot. Additional current-source
+Rocky8 build/native/main56 and fetched archive pass with matched hashes and
+transport0; full platform/static/install qualification remains separate. Mux
+polarity/forcing/operation, remaining runtime/TAP/lifecycle, strict coverage and
+full vendor acceptance remain open.

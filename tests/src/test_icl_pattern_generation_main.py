@@ -191,6 +191,48 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 self.assertIn('reset or data signal', result.stdout + result.stderr)
                 self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
 
+    def test_inherited_reset_polarity_roundtrips(self):
+        (self.root / 'source.icl').write_text(
+            'Module Child { ResetPort rst; ScanInPort si; '
+            "ScanRegister r { ScanInSource si; ResetValue 1'b1; } "
+            'ScanOutPort so { Source r; } } Module Network { '
+            'ResetPort root { ActivePolarity 0; } ScanInPort si; '
+            'Alias first = ~root; Alias second = ~first; '
+            'Instance child Of Child { InputPort rst = second; InputPort si = si; } '
+            'ScanOutPort so { Source child.so; } }')
+        (self.root / 'source.pdl').write_text(
+            'iProcsForModule Network\niReset\niWrite child.r 0\niApply\n'
+            'iRead child.r 0\niApply\n')
+        self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                      '--output', 'result.pdl', '--debug')
+        output = (self.root / 'result.pdl').read_bytes()
+        self.assertIn(b'iWrite', output)
+        self.run_tool('--icl', 'debug/Network.icl', '--pdl', 'source.pdl',
+                      '--output', 'flat/result.pdl', '--debug')
+        self.assertEqual(output, (self.root / 'flat/result.pdl').read_bytes())
+        self.assertEqual((self.root / 'debug/Network.icl').read_bytes(),
+                         (self.root / 'flat/debug/Network.icl').read_bytes())
+        self.run_tool('--icl', 'source.icl', '--pdl', 'result.pdl', '--output', 'replay.pdl')
+        self.assertEqual(output, (self.root / 'replay.pdl').read_bytes())
+
+    def test_reset_polarity_conflicts_preserve_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for consumer in ('ToResetPort out { Source lo; }',
+                         'Instance child Of Child { InputPort rst = lo; }'):
+            (self.root / 'source.icl').write_text(
+                'Module Child { ResetPort rst { ActivePolarity 1; } } '
+                'Module Network { ResetPort lo { ActivePolarity 0; } ' + consumer + ' }')
+            for output in outputs:
+                (self.root / output).write_text('previous artifact\n')
+            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                   '--output', 'result.pdl', '--top_module', 'Network',
+                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+            self.assertIn('reset source polarity', result.stdout + result.stderr)
+            for output in outputs:
+                self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
+
     def test_scan_control_source_kinds(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family, diagnostic in [('CaptureEn', 'capture-enable'),

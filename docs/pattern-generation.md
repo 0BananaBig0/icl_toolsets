@@ -4222,3 +4222,40 @@ Rocky8 native7/dynamic41 individual results and archive also pass despite SSH
 transport124; production/Python sources match, native-test formatting differs.
 Full vendor, strict coverage, remaining models/runtime and final platform/install/
 static qualification remain open.
+
+### Explicit reset-port polarity (2026-11-15)
+
+An explicitly connected ResetPort with omitted ActivePolarity inherits its typed
+ResetPort/ToResetPort/TRSTPort/ToTRSTPort driver's effective polarity, including
+alias inversion, under IEEE1687 6.4.6.13(a,b). All dictating bits in a grouped port
+must agree. Data/mux/literal/unbound bits do not dictate a separate default; when
+no typed driver dictates it, the default remains high. ToResetPort keeps its
+independent high default; its explicit typed Source must match. Implied connections
+continue automatic polarity conversion. Flat replay preserves and validates the
+resolved flags, including fixed-low internal TRST metadata.
+
+Native hierarchy/vector/alias/implicit/flat checks and main56 exercise inherited-
+low reset/write/read, source/flat/generated replay and pattern/reset/debug atomic
+rejection. The TRST metadata review fix has RED/GREEN evidence. Connected native7
+and selected CLI suites, format/naming, independent review and all required
+leak-enabled native7/main56/clock41/client18/reset12 pass.48 interleaved loading
+runs preserve baseline525f1b6 output/flat hashes:65536 reset bits (156 bytes),4096
+aliases (88004 bytes),4096 child scopes (99383 bytes),655360 ordinary references
+(335 bytes). Wide source0.065–0.115s, peak54128KiB versus52916KiB. Commands,
+environment/compiler, hashes, repetitions and RSS are retained under
+build/reset-polarity-loading-scale. These whole empty-PDL CLI/debug measurements
+do not establish isolated guard cost or a speedup.
+
+Tessent2026.2 keeps omitted explicit-binding polarity high, differing from the
+primary inheritance exception.82 matched loading cases yield37accepted/45rejected
+(31ICL64 and14 existing grammar/property checks); no PDL/operation certificate.
+Evidence: build/reset-polarity-vendor-probe/comparison.json. The manual archive
+fetch succeeds; original transport124 and wrapper parse failure remain explicit.
+Current-source Rocky8 build/native/main56 pass with matched hashes and transport0.
+
+Final serial make-j1check passes in build/reset-polarity-final-full.log/.exit0,
+1339.731s,41 dynamic/static suites,51 directional goldens,2523 ICL334/119 rules,
+LSP62 and editor6 in181.382s. Optional ANTLR5 skipped; all3 production/test hashes
+match the reviewed snapshot. Mux-output polarity/forcing and reset operation,
+strict coverage, full vendor, remaining models/runtime and refreshed all-tools/
+platform/static/install qualification remain mandatory.

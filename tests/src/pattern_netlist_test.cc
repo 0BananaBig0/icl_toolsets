@@ -194,6 +194,153 @@ void TestResetSourceKinds() {
   flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
   pattern::Elaborate(flat, "M");
 }
+void TestResetPortPolarity() {
+  for (const std::string declaration :
+       {"ResetPort source { ActivePolarity 0; }", "TRSTPort source;",
+        "ToResetPort source { ActivePolarity 0; }", "ToTRSTPort source;"}) {
+    for (bool inverted : {false, true}) {
+      pattern::Design design;
+      design.AddIcl(
+          "reset_polarity.icl",
+          "Module Leaf { ResetPort rst; ScanInPort si; ScanRegister r { "
+          "ScanInSource si; ResetValue 1'b1; } } "
+          "Module Child { ResetPort rst; ScanInPort si; "
+          "Instance leaf Of Leaf { InputPort rst = rst; InputPort si = si; } } "
+          "Module M { " +
+              declaration +
+              " ScanInPort si; Alias first = ~source; Alias second = ~first; "
+              "Instance child Of Child { InputPort rst = " +
+              (inverted ? "~second" : "second") + "; InputPort si = si; } }");
+      const auto original = pattern::Elaborate(design, "M");
+      Require(original.NodeAt("child.rst").active_low == !inverted &&
+                  original.NodeAt("child.leaf.rst").active_low == !inverted &&
+                  original.NodeAt("child.leaf.r").reset->inverted == !inverted,
+              "explicit typed reset source dictates omitted polarity through "
+              "hierarchy");
+      pattern::Design replay;
+      const auto serialized = pattern::SerializeIcl(original);
+      replay.AddIcl("flat.icl", serialized);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(replay, "M")) == serialized,
+          "inherited reset polarity survives flat replay");
+    }
+  }
+  for (const std::string source :
+       {"lo, lo", "lo, ~hi", "lo, 1'b0", "lo, route"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "vector_polarity.icl",
+        "Module Child { ResetPort rst[1:0]; } Module M { "
+        "ResetPort lo { ActivePolarity 0; } ResetPort hi; DataInPort mode; "
+        "DataMux route SelectedBy mode { 1'b0: hi; 1'b1: 1'b1; } "
+        "Instance child Of Child { InputPort rst = " +
+            source + "; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    Require(original.NodeAt("child.rst").active_low,
+            "uniform typed bits dictate grouped reset polarity");
+    pattern::Design replay;
+    const auto serialized = pattern::SerializeIcl(original);
+    replay.AddIcl("flat.icl", serialized);
+    Require(
+        pattern::SerializeIcl(pattern::Elaborate(replay, "M")) == serialized,
+        "mixed reset vector survives flat replay");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("partial_polarity.icl",
+                  "Module Child { ResetPort rst[1:0]; } Module M { "
+                  "ResetPort lo { ActivePolarity 0; } "
+                  "Instance child Of Child { InputPort rst[1] = lo; } }");
+    const auto netlist = pattern::Elaborate(design, "M");
+    Require(
+        netlist.NodeAt("child.rst").active_low &&
+            netlist.NodeAt("child.rst").inputs.at("Source")[1].constant == '?',
+        "unbound vector bit does not dictate a separate polarity");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("untyped_polarity.icl",
+                  "Module Child { ResetPort rst; } Module M { "
+                  "Instance child Of Child { InputPort rst = 1'b0; } }");
+    Require(!pattern::Elaborate(design, "M").NodeAt("child.rst").active_low,
+            "literal alone leaves reset default high");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("flat_polarity.icl",
+                  "Module Child { ResetPort rst { ActivePolarity 0; } } "
+                  "Module M { ResetPort lo { ActivePolarity 0; } "
+                  "ToResetPort out { Source lo; ActivePolarity 0; } "
+                  "Instance child Of Child { InputPort rst = lo; } }");
+    auto original = pattern::Elaborate(design, "M");
+    original.nodes.at(original.node_ids.at("child.rst")).active_low = false;
+    pattern::Design altered;
+    altered.AddIcl("altered.icl", pattern::SerializeIcl(original));
+    Fails([&] { pattern::Elaborate(altered, "M"); }, "reset source polarity");
+  }
+  for (const std::string consumer :
+       {"Instance child Of Child { InputPort rst = lo; }",
+        "ToResetPort out { Source lo; }",
+        "ToResetPort out { Source ~hi; ActivePolarity 1; }"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "mismatch.icl",
+        "Module Child { ResetPort rst { ActivePolarity 1; } } "
+        "Module M { ResetPort lo { ActivePolarity 0; } ResetPort hi; " +
+            consumer + " }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "reset source polarity");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("mixed_polarity.icl",
+                  "Module Child { ResetPort rst[1:0]; } Module M { "
+                  "ResetPort lo { ActivePolarity 0; } ResetPort hi; "
+                  "Instance child Of Child { InputPort rst = lo, hi; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "reset source polarity");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("implicit_polarity.icl",
+                  "Module Child { ResetPort rst; ToResetPort out; } "
+                  "Module M { ResetPort lo { ActivePolarity 0; } "
+                  "Instance child Of Child; ToResetPort out; }");
+    const auto netlist = pattern::Elaborate(design, "M");
+    Require(!netlist.NodeAt("child.rst").active_low &&
+                netlist.NodeAt("child.rst").inputs.at("Source")[0].inverted &&
+                !netlist.NodeAt("out").active_low &&
+                netlist.NodeAt("out").inputs.at("Source")[0].inverted,
+            "implied reset connections preserve automatic polarity conversion");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl(
+        "bit_alias.icl",
+        "Module Child { ResetPort rst; } Module M { "
+        "ResetPort lo { ActivePolarity 0; } Alias bits[1:0] = bits[0], lo; "
+        "Instance child Of Child { InputPort rst = bits[1]; } }");
+    Require(pattern::Elaborate(design, "M").NodeAt("child.rst").active_low,
+            "cross-bit alias path is not a cycle");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl("cycle.icl",
+                  "Module Child { ResetPort rst; } Module M { "
+                  "Alias bits[1:0] = bits[0], bits[1]; "
+                  "Instance child Of Child { InputPort rst = bits[1]; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "combinational cycle");
+  }
+}
+void TestFlatTrstPolarity() {
+  pattern::Design design;
+  design.AddIcl("trst.icl",
+                "Module Child { TRSTPort rst; } Module M { TRSTPort root; "
+                "Instance child Of Child { InputPort rst = root; } }");
+  auto original = pattern::Elaborate(design, "M");
+  original.nodes.at(original.node_ids.at("child.rst")).active_low = false;
+  pattern::Design altered;
+  altered.AddIcl("altered.icl", pattern::SerializeIcl(original));
+  Fails([&] { pattern::Elaborate(altered, "M"); }, "TRST polarity");
+}
 void TestScanControlSourceKinds() {
   for (const std::string family : {"CaptureEn", "ShiftEn", "UpdateEn"}) {
     pattern::Design design;
@@ -2514,6 +2661,8 @@ int main() {
   for (const auto test : {TestClockSignalSources,
                           TestTckInputSources,
                           TestResetSourceKinds,
+                          TestResetPortPolarity,
+                          TestFlatTrstPolarity,
                           TestScanControlSourceKinds,
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,
