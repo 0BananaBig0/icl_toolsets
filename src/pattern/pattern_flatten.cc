@@ -353,6 +353,9 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                                  ? std::to_string(value->second.AsInteger())
                                  : Literal(value->second);
         result += name + " " + literal + ";\n";
+      } else if (name == "Period" && node.clock_period) {
+        result += "Period " + std::to_string(node.clock_period->magnitude) +
+                  " " + node.clock_period->unit + ";\n";
       } else if (name == "RefEnum" && node.enumeration) {
         result += "RefEnum " + FlatName(netlist.nodes[*node.enumeration].name) +
                   ";\n";

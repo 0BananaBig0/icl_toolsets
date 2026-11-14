@@ -222,13 +222,13 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
       break;
     }
     const auto& node = netlist_.nodes.at(bit.first);
-    if (node.properties.count("Period") ||
-        node.properties.count("DifferentialInvOf")) {
-      throw std::runtime_error(
-          node.origin + ": oscillator/differential clock path is unsupported");
+    if (node.properties.count("DifferentialInvOf")) {
+      throw std::runtime_error(node.origin +
+                               ": differential clock path is unsupported");
     }
-    if (node.kind == "ClockPort" && node.scope == 0 &&
-        !node.inputs.count("Source")) {
+    if ((node.kind == "ClockPort" && node.scope == 0 &&
+         !node.inputs.count("Source")) ||
+        (node.kind == "ToClockPort" && node.clock_period)) {
       route.root = bit;
       routes_.emplace(bit, route);
       break;
@@ -305,8 +305,7 @@ void SystemClocks::BuildSafety() {
     if (differential != node.properties.end()) {
       edges(netlist_.Resolve(differential->second), false);
     }
-    if (differential != node.properties.end() ||
-        node.properties.count("Period")) {
+    if (differential != node.properties.end()) {
       for (size_t i = 0; i < node.Width(); ++i) {
         unsafe_.emplace(id, Index(node, i));
       }

@@ -193,7 +193,6 @@ Module Top {
 
     def test_unsupported_clock_paths_and_invalid_factors(self):
         for body, diagnostic in [
-            ('ToClockPort out { Period 10ns; }', 'oscillator/differential'),
             ('ToClockPort out;', 'no supported system-clock source'),
             ('ClockPort root; ToClockPort out { Source ~root; }', 'inactive or inverted'),
             ('ClockPort root; ToClockPort out { Source root; FreqDivider 0; }', 'must be positive'),
@@ -450,6 +449,100 @@ Module Top { ClockPort root; ClockPort other;
                 begin = time.monotonic()
                 self.replay(source, commands)
                 print(f'system clocks wide={wide} bytes={len(source)} checks=1024 forms=5 seconds={time.monotonic()-begin:.6f}', flush=True)
+
+
+    def test_oscillator_period_forms_and_units(self):
+        for spelling, canonical in [('17', '17 ns'), ('1_024', '1024 ns')] + [
+                (f'10{gap}{unit}', f'10 {unit}')
+                for unit in ('s', 'ms', 'us', 'ns', 'ps', 'fs', 'as') for gap in ('', ' ')]:
+            with self.subTest(period=spelling):
+                result = self.replay(f'Module Top {{ ToClockPort osc {{ Period {spelling}; }} }}',
+                                     'iClock osc; iRunLoop 0 -sck osc; iRunLoop 7 -sck osc\n')
+                self.assertIn('iClock osc\niRunLoop 0 -sck osc\niRunLoop 7 -sck osc', result)
+                self.assertIn(f'Period {canonical};', (self.root / 'debug/Top.icl').read_text())
+
+    def test_oscillator_hierarchy_vectors_and_scaling(self):
+        source = '''Module Osc { ToClockPort osc[3:2] { Period 9223372036854775807 as; } }
+Module Top {
+  Instance child Of Osc;
+  ToClockPort slow { Source child.osc[2]; FreqMultiplier 3; FreqDivider 10; }
+}'''
+        result = self.replay(source, '''iProcsForModule Osc
+iProc wait {} { iClock osc(3); iRunLoop 9 -sck osc(3) }
+iProcsForModule Top
+iCall child.wait
+iClock slow; iRunLoop 2 -sck slow; iRunLoop 3 -sck slow
+''')
+        self.assertIn('iRunLoop 9 -sck child.osc(3)', result)
+        self.assertIn('iRunLoop 7 -sck child.osc(2)\niRunLoop 10 -sck child.osc(2)', result)
+
+    def test_oscillator_equal_period_roots_are_distinct(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ns; } }
+Module Top { Instance a Of Osc; Instance b Of Osc; DataInPort sel;
+  ClockMux mux SelectedBy sel { 1'b0: a.osc; 1'b1: b.osc; }
+  ToClockPort out { Source mux; }
+}'''
+        self.rejected(source, 'iState sel 0; iClock out; iState sel 1; iRunLoop 1 -sck out\n',
+                      'changed since iClock')
+        result = self.replay(source, '''iState sel 0; iClock out; iRunLoop 2 -sck out
+iState sel 1; iClock out; iRunLoop 3 -sck out
+''')
+        self.assertIn('iRunLoop 2 -sck a.osc', result)
+        self.assertIn('iRunLoop 3 -sck b.osc', result)
+
+    def test_oscillator_override_source_and_old_snapshot(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ps; } }
+Module Top { ClockPort root; Instance child Of Osc;
+  ToClockPort out { Source root; FreqDivider 2; }
+}'''
+        result = self.replay(source, '''iClock out
+iClockOverride out -source child.osc -freqDivider 3
+iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out
+''')
+        self.assertIn('iRunLoop 4 -sck root', result)
+        self.assertIn('iRunLoop 6 -sck child.osc', result)
+        self.rejected(source, 'iClockOverride child.osc -source root\n', 'unsupported')
+
+    def test_oscillator_invalid_period_and_conflicts(self):
+        for period, diagnostic in [('0', 'Period must be positive'),
+                                   ('0fs', 'Period must be positive'),
+                                   ('9223372036854775808ns', '64-bit limit')]:
+            with self.subTest(period=period):
+                self.rejected(f'Module Top {{ ToClockPort osc {{ Period {period}; }} }}',
+                              'iClock osc\n', diagnostic)
+        for extra in ('Source root;', 'FreqMultiplier 2;', 'FreqDivider 2;',
+                      'DifferentialInvOf root;'):
+            with self.subTest(extra=extra):
+                self.rejected('Module Top { ClockPort root; ToClockPort osc { Period 10ns; ' + extra + ' } }',
+                              'iClock osc\n', 'exclude other clock properties')
+
+    def test_oscillator_unsafe_fanout(self):
+        for extra in ('ToTCKPort observed { Source child.osc; }',
+                      'ClockPort negative { DifferentialInvOf child.osc; }',
+                      'Alias inverted = ~child.osc;'):
+            with self.subTest(extra=extra):
+                self.rejected('Module Osc { ToClockPort osc { Period 10ns; } }\n'
+                              'Module Top { Instance child Of Osc; ' + extra + ' }',
+                              'iClock child.osc\n', 'unsupported fanout')
+
+    def test_oscillator_scale(self):
+        for wide in (False, True):
+            if wide:
+                source = 'Module Top { ToClockPort osc[65535:0] { Period 1as; } }'
+                target = 'osc(65535)'
+            else:
+                source = 'Module Osc { ToClockPort osc { Period 10ns; } }\n'
+                source += 'Module Stage { ClockPort ck; ToClockPort out { Source ck; } }\n'
+                source += 'Module Top { Instance osc Of Osc;\n'
+                for i in range(4096):
+                    previous = 'osc.osc' if i == 0 else f'c{i-1}.out'
+                    source += f'Instance c{i} Of Stage {{ InputPort ck = {previous}; }}\n'
+                source += '}'
+                target = 'c4095.out'
+            begin = time.monotonic()
+            result = self.replay(source, f'iClock {target}; iRunLoop 2 -sck {target}\n' * 1024)
+            self.assertEqual(result.count('iRunLoop 2 -sck'), 1024)
+            print(f'oscillator wide={wide} bytes={len(source)} waits=1024 forms=5 seconds={time.monotonic()-begin:.6f}', flush=True)
 
 
 if __name__ == '__main__':

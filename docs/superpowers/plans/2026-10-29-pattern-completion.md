@@ -1350,3 +1350,21 @@ root10/other35/root10/root25 waits and restore ICL defaults; the no-option probe
 is rejected. Exact evidence and the older2023.4 documentation discrepancy are
 recorded in the guide. No new formal certificate, strict coverage or platform
 refresh is claimed. Oscillators and broader clock/time/event work remain open.
+
+## Task53: Embedded oscillator relative waits
+
+Completed [the focused plan](2026-11-14-oscillator-relative-waits.md). Positive
+Period ToClockPorts are distinct hierarchical/bit-specific roots. Typed positive
+signed64 magnitude/unit metadata preserves all seven units/default ns and canonical
+flat replay. Descendants scale once; existing fanout/reservation checks remain.
+Thirty-seven CLI methods and native source/flat state/held-bit cases pass.
+4096 stages/1024 waits/five forms take1.033372s;65536-bit oscillator .231470s.
+
+Final integration passes: build/oscillator-final-full.log/.exit0,999.946s wall,
+41 dynamic/static suites,51 directional/seven legacy goldens,2523 ICL334/119
+rules, editor6 in176.843s; five optional ANTLR tests skipped. Leak-enabled native
+scheduler/flatten/netlist and main35/clock37/client18/reset12 checks pass. Naming,
+formatting and independent source review pass. Tessent2026.2 source/normalized
+exports and our output have identical child.osc7/10 waits; fetched input hashes
+match. Evidence: build/oscillator-vendor-probe/comparison.json. Strict coverage
+and Rocky8 qualification remain open.

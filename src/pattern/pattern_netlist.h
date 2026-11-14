@@ -99,6 +99,11 @@ struct ScanInterface {
   std::vector<ScanChain> chains;
 };
 
+struct ClockPeriod {
+  int64_t magnitude = 0;
+  std::string unit = "ns";
+};
+
 struct NetlistNode {
   std::string name, kind, origin;
   ModelKind model = ModelKind::kPort;
@@ -108,6 +113,7 @@ struct NetlistNode {
   bool indexed = false;
   bool active_low = false;
   std::optional<size_t> enumeration;
+  std::optional<ClockPeriod> clock_period;
   std::map<std::string, Expression> properties;
   std::map<std::string, std::vector<BitReference>> inputs;
   std::map<std::string, Constant> constants;

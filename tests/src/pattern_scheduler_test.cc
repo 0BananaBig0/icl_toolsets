@@ -127,6 +127,57 @@ void TestClockOverrideScale() {
                    .count()
             << std::endl;
 }
+void TestOscillatorWaits() {
+  std::string source = R"(Module Osc {
+    ToClockPort clock[3:2] { Period 10ps; }
+  }
+  Module Top {
+    Instance a Of Osc; Instance b Of Osc;
+    ToClockPort out[0:1] { Source a.clock; FreqDivider 3; }
+    ScanInPort si; ScanRegister value[3:0] { ScanInSource si; }
+    ScanOutPort so { Source value[0]; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("oscillators.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("value", "1010");
+    const auto root = netlist.node_ids.at("a.clock");
+    const auto other = netlist.node_ids.at("b.clock");
+    const auto out = netlist.node_ids.at("out");
+    const auto& period = netlist.nodes[root].clock_period;
+    Require(period && period->magnitude == 10 && period->unit == "ps",
+            "typed oscillator period survives flat elaboration");
+    pattern::SystemClocks clocks(netlist);
+    Require(clocks.Check("out(0)", scheduler) == "a.clock(3)",
+            "oscillator root retains hierarchy and bit identity");
+    const auto before = scheduler.Value("a.clock");
+    for (const auto& held : std::vector<std::map<size_t, std::string>>{
+             {{root, "0x"}}, {{root, "1x"}}, {{out, "0x"}}, {{out, "1x"}}}) {
+      Require(clocks.Wait("out(0)", 0, scheduler, held).second == 0,
+              "zero oscillator wait permits held levels");
+      bool rejected = false;
+      try {
+        clocks.Wait("out(0)", 1, scheduler, held);
+      } catch (const std::runtime_error& error) {
+        rejected =
+            std::string(error.what()).find("held clock") != std::string::npos;
+      }
+      Require(rejected, "oscillator waits protect held root and descendant");
+    }
+    for (const auto& held : std::vector<std::map<size_t, std::string>>{
+             {}, {{root, "x0"}}, {{out, "x1"}}, {{other, "00"}}}) {
+      const auto wait = clocks.Wait("out(0)", 17, scheduler, held);
+      Require(wait.first == "a.clock(3)" && wait.second == 51,
+              "equal periods and adjacent bits remain independent roots");
+    }
+    Require(scheduler.Value("value") == "1010" &&
+                scheduler.Value("a.clock") == before,
+            "oscillator waits preserve storage and levels");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestRelativeSystemClocks() {
   const std::string source = R"(Module Top {
     ClockPort root[3:2]; ClockPort other;
@@ -2747,6 +2798,7 @@ int main() {
     TestClockOverrideSnapshots();
     TestClockOverrideScale();
     TestRelativeSystemClocks();
+    TestOscillatorWaits();
     TestMultipleTapResetSnapshot();
     TestStandaloneIdle();
     TestStandaloneIdleImplicitSelection();

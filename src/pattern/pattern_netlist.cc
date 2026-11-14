@@ -70,6 +70,30 @@ Constant Parameter(const InstanceScope& scope, const std::string& name) {
   return found->second;
 }
 
+ClockPeriod ReadClockPeriod(const Netlist& netlist,
+                            const Expression& expression) {
+  const auto& source = SourceTokens(netlist, expression.scope);
+  auto number = source.at(expression.begin);
+  ClockPeriod period;
+  const auto suffix = number.text.find_first_not_of("0123456789_");
+  if (suffix != std::string::npos) {
+    period.unit = number.text.substr(suffix);
+    number.text.resize(suffix);
+  } else if (expression.end > expression.begin + 1) {
+    period.unit = source.at(expression.begin + 1).text;
+  }
+  if (period.unit != "s" && period.unit != "ms" && period.unit != "us" &&
+      period.unit != "ns" && period.unit != "ps" && period.unit != "fs" &&
+      period.unit != "as") {
+    throw std::runtime_error("invalid Period time unit");
+  }
+  period.magnitude = EvaluateInteger({number}, 0, 1, {});
+  if (period.magnitude <= 0) {
+    throw std::runtime_error("Period must be positive");
+  }
+  return period;
+}
+
 std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
                                         const NetlistNode& node,
                                         const Expression& selection) {
@@ -1071,6 +1095,9 @@ class Elaborator {
         }
         for (const auto& property : node.properties) {
           const auto& name = property.first;
+          if (name == "Period") {
+            node.clock_period = ReadClockPeriod(netlist_, property.second);
+          }
           if (name == "ResetValue" || name == "DefaultLoadValue" ||
               name == "iApplyEndState") {
             node.constants.emplace(name, ConstantValue(node, property.second));
