@@ -3820,3 +3820,40 @@ checks pass in build/control-source-final-sanitizer-*. Final source/test hashes
 match the reviewed Task59 checkpoint. Naming/style and independent source/resource
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+### Scan source eligibility and alias-hidden register taps (2026-11-14)
+
+Child ScanInPort bindings, ScanOutPort Sources and ScanMux choices now require
+scan terminals, ordinary data/constants or their bit-specific aliases. ScanRegister
+middle bits remain ordinary data in concat-scan contexts. ScanMux selectors retain
+their data/ToIRSelect rules. OneHotScanGroup retains its stronger enabled-fan-in
+validation. Scan terminals do not become eligible in ordinary-data consumers.
+
+Bare ScanRegister ScanInSource instead requires a scan terminal, a rightmost
+ScanRegister bit or a constant. Ordinary-data terminals do not qualify there.
+Nested/inverted/sliced aliases cannot hide a middle-register tap in ScanInSource
+or ScanOutPort Source. Rightmost means the declared right endpoint, including
+ascending declarations. Omitted direct register indices retain the IEEE permission
+in §6.4.8(u). Legitimate mux/port terminals remain boundaries; the new check does
+not recursively apply downstream rules to their drivers. No generated TAP bypass
+or fixture exemption was needed. Hierarchy direction and contextual mux/control
+requirements remain separate acceptance work.
+
+Tessent2026.2 loading-only probes accept constants and explicit/implicit rightmost
+indices in both directions; reject non-scan data terminals and alias-hidden middle
+taps with source-specific diagnostics. Seven positive and12 negative cases have
+matched fetched input hashes under build/scan-terminal-qualified-vendor-probe.
+The earlier SI/SO-only interface batch failed ICL101 setup and supplies no source
+eligibility conclusion. No PDL, analysis or functional comparison ran in the
+qualified batch. Main46/native/flat/state/TAP/client/scheduler and source review
+pass;4096 aliases take0.0109507s,65536-bit/4096 consumers0.0230771s in the recorded
+native run (0.80s wall,120336KiB maximum RSS). No speedup is claimed.
+
+Full combined integration passes in build/scan-sources-final-full.log/.exit0,
+1121.542s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in198.149s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist/state/TAP and main46/clock41/client18/
+reset12 checks pass in build/scan-sources-final-sanitizer-*. Final three source/test
+hashes match the reviewed Task61 checkpoint. Naming/style and independent source
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

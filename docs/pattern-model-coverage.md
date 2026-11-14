@@ -1422,3 +1422,24 @@ checks pass in build/control-source-final-sanitizer-*. Final source/test hashes
 match the reviewed Task59 checkpoint. Naming/style and independent source/resource
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+## Scan source eligibility and alias-hidden taps (2026-11-14)
+
+Concat-scan consumers accept scan/data/constants; bare ScanInSource accepts only
+scan terminals, rightmost register bits and constants. Both register bit classes
+retain ordinary-data eligibility. Per-bit cached aliases expose invalid middle
+taps without traversing legitimate mux/port terminals. Explicit/implicit rightmost,
+ascending/descending and source/flat cases pass. Main46/native/state/TAP/client/
+scheduler checks and independent review pass. Vendor19 loading-only cases match
+submitted hashes; their seven accepted controls and12 source-specific rejections
+are not a functional equivalence certificate. Direction/context and broader
+scheduling/event requirements remain open.
+
+Full combined integration passes in build/scan-sources-final-full.log/.exit0,
+1121.542s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in198.149s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist/state/TAP and main46/clock41/client18/
+reset12 checks pass in build/scan-sources-final-sanitizer-*. Final three source/test
+hashes match the reviewed Task61 checkpoint. Naming/style and independent source
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

@@ -128,6 +128,9 @@ void CheckSignalSources(const Netlist& netlist) {
     kReset,
     kTrst,
     kTms,
+    kScan,
+    kScanRegister,
+    kIntermediateScanRegister,
     kGlobalReset,
     kAsyncReset,
     kCapture,
@@ -145,19 +148,24 @@ void CheckSignalSources(const Netlist& netlist) {
     kShift,
     kUpdate,
     kTms,
-    kTrst
+    kTrst,
+    kScan,
+    kScanInput
   };
   static const std::set<std::string> kDataKinds = {
-      "DataInPort",   "DataOutPort",  "SelectPort",
-      "ToSelectPort", "ScanRegister", "DataRegister",
-      "LogicSignal",  "DataMux",      "OneHotDataGroup"};
+      "DataInPort",   "DataOutPort", "SelectPort", "ToSelectPort",
+      "DataRegister", "LogicSignal", "DataMux",    "OneHotDataGroup"};
   static const std::set<std::string> kClockKinds = {"ClockPort", "ToClockPort",
                                                     "ClockMux"};
   std::vector<Kind> kinds;
   kinds.reserve(netlist.nodes.size());
   for (const auto& node : netlist.nodes) {
     kinds.push_back(
-        kDataKinds.count(node.kind) ? Kind::kData
+        kDataKinds.count(node.kind)   ? Kind::kData
+        : node.kind == "ScanRegister" ? Kind::kScanRegister
+        : node.kind == "ScanInPort" || node.kind == "ScanOutPort" ||
+                node.kind == "ScanMux" || node.kind == "OneHotScanGroup"
+            ? Kind::kScan
         : node.kind == "CaptureEnPort" || node.kind == "ToCaptureEnPort"
             ? Kind::kCapture
         : node.kind == "ShiftEnPort" || node.kind == "ToShiftEnPort"
@@ -191,6 +199,9 @@ void CheckSignalSources(const Netlist& netlist) {
       const auto& node = netlist.nodes.at(bit.node);
       if (node.model != ModelKind::kAlias) {
         kind = kinds.at(bit.node);
+        if (kind == Kind::kScanRegister && bit.index != node.right) {
+          kind = Kind::kIntermediateScanRegister;
+        }
         break;
       }
       const Key key{bit.node, bit.index};
@@ -215,7 +226,17 @@ void CheckSignalSources(const Netlist& netlist) {
                              bits.size() == 1 && node.choices.size() == 2;
       for (const auto& bit : bits) {
         const auto kind = classify(bit);
-        if (kind == Kind::kData || kind == Kind::kConstant ||
+        if (kind == Kind::kIntermediateScanRegister &&
+            (family == Family::kScanInput ||
+             (node.kind == "ScanOutPort" && role == "Source"))) {
+          throw std::runtime_error(
+              node.origin + ": " + node.name + ": " + role +
+              " must use the rightmost bit of a ScanRegister");
+        }
+        if ((family != Family::kScanInput &&
+             (kind == Kind::kData || kind == Kind::kScanRegister ||
+              kind == Kind::kIntermediateScanRegister)) ||
+            kind == Kind::kConstant ||
             (family == Family::kClock &&
              (kind == Kind::kClock || kind == Kind::kTck)) ||
             (family == Family::kTck && kind == Kind::kTck) ||
@@ -228,6 +249,8 @@ void CheckSignalSources(const Netlist& netlist) {
             (family == Family::kTms && kind == Kind::kTms) ||
             (family == Family::kTrst &&
              (kind == Kind::kTrst || kind == Kind::kAsyncReset)) ||
+            ((family == Family::kScan || family == Family::kScanInput) &&
+             (kind == Kind::kScan || kind == Kind::kScanRegister)) ||
             (ir_select && kind == Kind::kIrSelect)) {
           continue;
         }
@@ -242,12 +265,15 @@ void CheckSignalSources(const Netlist& netlist) {
                  ? " requires a shift-enable or data signal"
              : family == Family::kUpdate
                  ? " requires an update-enable or data signal"
-             : family == Family::kTms  ? " requires a TMS or data signal"
-             : family == Family::kTrst ? " requires a TRST or data signal"
-                                       : " requires a data signal"));
+             : family == Family::kTms       ? " requires a TMS or data signal"
+             : family == Family::kTrst      ? " requires a TRST or data signal"
+             : family == Family::kScan      ? " requires a scan or data signal"
+             : family == Family::kScanInput ? " requires a scan signal"
+                                            : " requires a data signal"));
       }
     };
     for (const auto& [role, bits] : node.inputs) {
+      if (role == "ScanInSource") check(role, bits, Family::kScanInput);
       if (role == "DifferentialInvOf" ||
           (role == "Source" &&
            (node.kind == "ClockPort" || node.kind == "ToClockPort"))) {
@@ -255,6 +281,10 @@ void CheckSignalSources(const Netlist& netlist) {
       }
       if (role == "Source" && node.kind == "TCKPort") {
         check(role, bits, Family::kTck);
+      }
+      if (role == "Source" &&
+          (node.kind == "ScanInPort" || node.kind == "ScanOutPort")) {
+        check(role, bits, Family::kScan);
       }
       if (role == "Source" &&
           (node.kind == "ResetPort" || node.kind == "ToResetPort")) {
@@ -287,6 +317,11 @@ void CheckSignalSources(const Netlist& netlist) {
     if (node.kind == "ClockMux") {
       for (const auto& choice : node.choices) {
         check("clock choice", choice.source, Family::kClock);
+      }
+    }
+    if (node.kind == "ScanMux") {
+      for (const auto& choice : node.choices) {
+        check("scan choice", choice.source, Family::kScan);
       }
     }
     for (const auto& instruction : node.logic) {

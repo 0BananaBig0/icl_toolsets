@@ -222,6 +222,141 @@ void TestScanControlSourceKinds() {
     }
   }
 }
+void TestConcatScanSourceKinds() {
+  pattern::Design design;
+  design.AddIcl(
+      "scan_sources.icl",
+      "Module Child { ScanInPort si[1:0]; ScanOutPort so[1:0] { "
+      "Source si; Enable 1'b1; } } Module M { ScanInPort si[1:0]; "
+      "DataInPort data[1:0]; ScanRegister reg[1:0] { ScanInSource si[0]; } "
+      "Alias mixed[1:0] = si[1], data[0]; Alias wrapped[1:0] = ~mixed; "
+      "Instance child Of Child { InputPort si = wrapped; } "
+      "Instance partial Of Child { InputPort si[1] = 1'bx; } "
+      "Instance middle Of Child { InputPort si = reg; } "
+      "ScanMux mux[1:0] SelectedBy data[0] { 1'b0 : reg; "
+      "1'b1 : child.so; } OneHotScanGroup group[1:0] { Port child.so; } "
+      "ScanOutPort out[1:0] { Source mux; } "
+      "ScanOutPort grouped[1:0] { Source group; } "
+      "ScanOutPort constants[1:0] { Source 2'b1x; } }");
+  const auto original = pattern::Elaborate(design, "M");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  const auto restored = pattern::Elaborate(flat, "M");
+  Require(
+      pattern::SerializeIcl(restored) == pattern::SerializeIcl(original) &&
+          restored.NodeAt("partial.si").inputs.at("Source").at(1).constant ==
+              '?',
+      "concat scan/data/constant/mixed alias and partial sources replay");
+  for (const auto reset : {pattern::VirtualSignal::kGlobalReset,
+                           pattern::VirtualSignal::kAsyncGlobalReset}) {
+    auto changed = original;
+    changed.nodes.at(changed.node_ids.at("out")).inputs.at("Source").at(0) = {
+        std::numeric_limits<size_t>::max(), 0, 'x', false, reset};
+    pattern::Design invalid;
+    invalid.AddIcl("invalid.icl", pattern::SerializeIcl(changed));
+    Fails([&] { pattern::Elaborate(invalid, "M"); }, "scan or data signal");
+  }
+  pattern::Design selector;
+  selector.AddIcl("selector.icl",
+                  "Module M { ScanInPort si; ScanMux mux SelectedBy si { "
+                  "1'b0 : 1'b0; 1'b1 : 1'b1; } }");
+  Fails([&] { pattern::Elaborate(selector, "M"); }, "requires a data signal");
+  for (bool invalid : {false, true}) {
+    pattern::Design mixed;
+    mixed.AddIcl(
+        "mixed_scan.icl",
+        "Module M { ScanInPort si; TCKPort tck; "
+        "Alias joined[1:0] = si, tck; Alias allowed = joined[1]; "
+        "ScanOutPort good { Source allowed; } " +
+            std::string(invalid ? "ScanOutPort bad { Source joined[0]; }"
+                                : "") +
+            " }");
+    if (invalid) {
+      Fails([&] { pattern::Elaborate(mixed, "M"); }, "scan or data signal");
+    } else {
+      pattern::Design replay;
+      replay.AddIcl("flat.icl",
+                    pattern::SerializeIcl(pattern::Elaborate(mixed, "M")));
+      pattern::Elaborate(replay, "M");
+    }
+  }
+}
+void TestStrictScanSources() {
+  pattern::Design wrong;
+  wrong.AddIcl("wrong_scan.icl",
+               "Module M { DataInPort data; Alias wrapped = data; "
+               "ScanRegister target { ScanInSource wrapped; } }");
+  Fails([&] { pattern::Elaborate(wrong, "M"); }, "requires a scan signal");
+  for (const std::string bounds : {"[3:0]", "[0:3]"}) {
+    const auto right = bounds == "[3:0]" ? "0" : "3";
+    const auto middle = bounds == "[3:0]" ? "2" : "1";
+    pattern::Design design;
+    design.AddIcl("strict_scan.icl",
+                  "Module M { ScanInPort si; ScanRegister upstream" + bounds +
+                      " { ScanInSource si; } Alias parts[1:0] = upstream[" +
+                      right + "], upstream[" + middle +
+                      "]; Alias right = ~parts[1]; ScanRegister target { "
+                      "ScanInSource right; } ScanRegister implicit { "
+                      "ScanInSource upstream; } "
+                      "DataOutPort data[3:0] { Source upstream; } "
+                      "ToClockPort clock[3:0] { Source upstream; } "
+                      "ToResetPort reset[3:0] { Source upstream; } "
+                      "ToCaptureEnPort capture[3:0] { Source upstream; } "
+                      "ToShiftEnPort shift[3:0] { Source upstream; } "
+                      "ToUpdateEnPort update[3:0] { Source upstream; } "
+                      "ToTMSPort tms[3:0] { Source upstream; } "
+                      "ToTRSTPort trst[3:0] { Source upstream; } "
+                      "ScanMux mux SelectedBy 1'b0 { 1'b0 : parts[0]; } "
+                      "ScanOutPort so { Source target; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    Require(original.NodeAt("implicit").inputs.at("ScanInSource").at(0).index ==
+                std::stoi(right),
+            "omitted scan register index selects the declared rightmost bit");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto restored = pattern::Elaborate(flat, "M");
+    Require(pattern::SerializeIcl(restored) == pattern::SerializeIcl(original),
+            "rightmost aliases and ordinary-data middle bits survive replay");
+  }
+  pattern::Design design;
+  design.AddIcl("scan_terminals.icl",
+                "Module Child { ScanInPort si; ScanRegister reg[1:0] { "
+                "ScanInSource si; } "
+                "ScanOutPort so { Source reg[0]; Enable 1'b1; } } Module M { "
+                "ScanInPort si; "
+                "Instance child Of Child { InputPort si = si; } "
+                "OneHotScanGroup group { Port child.so; } "
+                "ScanMux mux SelectedBy 1'b0 { 1'b0 : si; 1'b1 : group; } "
+                "ScanRegister a { ScanInSource child.so; } "
+                "ScanRegister b { ScanInSource group; } ScanRegister c { "
+                "ScanInSource mux; } "
+                "ScanRegister zero { ScanInSource 1'b0; } "
+                "ScanRegister one { ScanInSource 1'b1; } "
+                "ScanRegister unknown { ScanInSource 1'bx; } "
+                "ScanOutPort so { Source c; } }");
+  const auto original = pattern::Elaborate(design, "M");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  pattern::Elaborate(flat, "M");
+  for (const auto reset : {pattern::VirtualSignal::kGlobalReset,
+                           pattern::VirtualSignal::kAsyncGlobalReset}) {
+    auto changed = original;
+    changed.nodes.at(changed.node_ids.at("unknown"))
+        .inputs.at("ScanInSource")
+        .at(0) = {std::numeric_limits<size_t>::max(), 0, 'x', false, reset};
+    pattern::Design invalid;
+    invalid.AddIcl("invalid_scan_reset.icl", pattern::SerializeIcl(changed));
+    Fails([&] { pattern::Elaborate(invalid, "M"); }, "requires a scan signal");
+  }
+  auto changed = original;
+  changed.nodes.at(changed.node_ids.at("child.so"))
+      .inputs.at("Source")
+      .at(0)
+      .index = 1;
+  pattern::Design invalid;
+  invalid.AddIcl("invalid_flat.icl", pattern::SerializeIcl(changed));
+  Fails([&] { pattern::Elaborate(invalid, "M"); }, "rightmost bit");
+}
 void TestTmsTrstSourceKinds() {
   for (const std::string family : {"TMS", "TRST"}) {
     pattern::Design design;
@@ -1662,6 +1797,8 @@ int main() {
                           TestTckInputSources,
                           TestResetSourceKinds,
                           TestScanControlSourceKinds,
+                          TestConcatScanSourceKinds,
+                          TestStrictScanSources,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

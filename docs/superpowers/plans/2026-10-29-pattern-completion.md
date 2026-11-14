@@ -1460,3 +1460,23 @@ checks pass in build/control-source-final-sanitizer-*. Final source/test hashes
 match the reviewed Task59 checkpoint. Naming/style and independent source/resource
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+## Tasks60–61: Concat scan sources and strict register scan inputs
+
+Completed [concat-scan source eligibility](2026-11-14-concat-scan-source-kinds.md)
+and [bare-scan/alias tap checks](2026-11-14-strict-scan-source-kinds.md) in one
+reviewed final snapshot, retaining separate RED/GREEN checkpoints. Ordinary data
+remains valid in concat contexts; bare ScanInSource has the narrower scan union.
+Both register bit classifications remain ordinary data. Alias-hidden middle taps
+are rejected for bare inputs and ScanOut Sources, stopping at legitimate mux/port
+terminals. The omitted-index permission is preserved. Nineteen matched-input
+Tessent2026.2 loading cases support the eligibility scope; no PDL ran.
+
+Full combined integration passes in build/scan-sources-final-full.log/.exit0,
+1121.542s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in198.149s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist/state/TAP and main46/clock41/client18/
+reset12 checks pass in build/scan-sources-final-sanitizer-*. Final three source/test
+hashes match the reviewed Task61 checkpoint. Naming/style and independent source
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

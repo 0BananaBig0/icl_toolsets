@@ -226,6 +226,83 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                     self.assertIn(family + ' or data signal', result.stdout + result.stderr)
                     self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
 
+    def test_concat_scan_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        for family in ('TCK', 'Clock', 'Reset', 'CaptureEn', 'ShiftEn', 'UpdateEn', 'TMS', 'TRST'):
+            for consumer in ('ScanOutPort out { Source wrapped; }',
+                             'Instance child Of Child { InputPort si = wrapped; }',
+                             "ScanMux mux SelectedBy 1'b0 { 1'b0 : wrapped; }"):
+                with self.subTest(family=family, consumer=consumer):
+                    (self.root / 'source.icl').write_text(
+                        'Module Child { ScanInPort si; ScanOutPort so { Source si; } } '
+                        f'Module Network {{ {family}Port source; Alias wrapped = source; ' + consumer + ' }')
+                    for artifact in artifacts:
+                        artifact.write_text('previous artifact\n')
+                    result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                           '--top_module', 'Network', '--output', 'result.pdl',
+                                           '--local_reset', 'reset.pdl', '--debug', ok=False)
+                    self.assertIn('scan or data signal', result.stdout + result.stderr)
+                    for artifact in artifacts:
+                        self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
+    def test_bare_scan_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        declarations = ['DataInPort source;', 'SelectPort source;',
+                        "DataOutPort source { Source 1'b0; }",
+                        "ToSelectPort source { Source 1'b0; }",
+                        "DataRegister source { WriteDataSource 1'b0; WriteEnSource 1'b1; }",
+                        "LogicSignal source { 1'b0; }",
+                        "DataMux source SelectedBy 1'b0 { 1'b0 : 1'b0; }",
+                        'Instance data Of Data; OneHotDataGroup source { Port data.out; }']
+        declarations += [family + 'Port source;' for family in
+                         ('TCK', 'Clock', 'Reset', 'CaptureEn', 'ShiftEn', 'UpdateEn', 'TMS', 'TRST')]
+        for declaration in declarations:
+            for reference in ('source', 'wrapped'):
+                with self.subTest(declaration=declaration, reference=reference):
+                    (self.root / 'source.icl').write_text(
+                        "Module Data { DataOutPort out { Source 1'b0; Enable 1'b1; } } "
+                        'Module Network { ' + declaration + ' Alias wrapped = source; '
+                        'ScanRegister target { ScanInSource ' + reference + '; } '
+                        'ScanOutPort so { Source target; } }')
+                    for artifact in artifacts:
+                        artifact.write_text('previous artifact\n')
+                    result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                           '--top_module', 'Network', '--output', 'result.pdl',
+                                           '--local_reset', 'reset.pdl', '--debug', ok=False)
+                    self.assertIn('requires a scan signal', result.stdout + result.stderr)
+                    for artifact in artifacts:
+                        self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
+    def test_alias_scan_register_taps(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        for bounds, middle in (('[3:0]', 2), ('[0:3]', 1)):
+            for alias in (f'Alias wrapped = reg[{middle}];',
+                          f'Alias first = reg[{middle}]; Alias wrapped = ~first;',
+                          f'Alias first[1:0] = reg[{middle}], si; Alias wrapped = first[1];'):
+                for consumer in ('ScanOutPort so { Source wrapped; }',
+                                 'ScanRegister target { ScanInSource wrapped; }'):
+                    with self.subTest(bounds=bounds, alias=alias, consumer=consumer):
+                        (self.root / 'source.icl').write_text(
+                            'Module Network { ScanInPort si; ScanRegister reg' + bounds +
+                            ' { ScanInSource si; } ' + alias + consumer + ' }')
+                        for artifact in artifacts:
+                            artifact.write_text('previous artifact\n')
+                        result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                               '--top_module', 'Network', '--output', 'result.pdl',
+                                               '--local_reset', 'reset.pdl', '--debug', ok=False)
+                        self.assertIn('rightmost bit', result.stdout + result.stderr)
+                        for artifact in artifacts:
+                            self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_inferred_control_vector_roundtrips(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family in ('Reset', 'TRST', 'TMS'):
