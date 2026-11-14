@@ -433,17 +433,26 @@ Module Ports {
 void TestOneHotScanValues() {
   pattern::Design design;
   design.AddIcl("scan-values.icl", R"(
+Module EnabledScanOutput {
+  ScanInPort incoming;
+  DataInPort enable;
+  ScanOutPort out { Source incoming; Enable enable; }
+}
+Module ScanForward {
+  ScanInPort incoming;
+  ScanOutPort out { Source incoming; }
+}
 Module ScanValues {
   ScanInPort si;
   DataInPort ea; DataInPort eb; DataInPort ec;
   ScanRegister a { ScanInSource si; CaptureSource 1'b0; }
   ScanRegister b { ScanInSource si; CaptureSource 1'b1; }
-  ScanOutPort pa { Source a; Enable ea; }
-  ScanOutPort pb { Source b; Enable eb; }
-  ScanOutPort pc { Source si; Enable ec; }
-  OneHotScanGroup inner { Port pa; Port pb; }
-  ScanOutPort forwarded { Source inner; }
-  OneHotScanGroup outer { Port ~forwarded; Port pc; }
+  Instance pa Of EnabledScanOutput { InputPort incoming = a; InputPort enable = ea; }
+  Instance pb Of EnabledScanOutput { InputPort incoming = b; InputPort enable = eb; }
+  Instance pc Of EnabledScanOutput { InputPort incoming = si; InputPort enable = ec; }
+  OneHotScanGroup inner { Port pa.out; Port pb.out; }
+  Instance forwarded Of ScanForward { InputPort incoming = inner; }
+  OneHotScanGroup outer { Port ~forwarded.out; Port pc.out; }
   ScanOutPort so { Source outer; }
 })");
   const auto netlist = pattern::Elaborate(design, "ScanValues");

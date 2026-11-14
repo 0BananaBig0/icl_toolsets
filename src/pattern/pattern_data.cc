@@ -251,7 +251,7 @@ const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
       }
     }
     if (node.kind == "DataOutPort" || node.kind == "ScanOutPort" ||
-        node.model == ModelKind::kAlias) {
+        node.kind == "ScanInPort" || node.model == ModelKind::kAlias) {
       const auto input = node.inputs.find("Source");
       if (input != node.inputs.end()) {
         append(input->second);

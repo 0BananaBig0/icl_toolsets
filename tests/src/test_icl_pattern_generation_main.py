@@ -353,6 +353,25 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 for path in outputs:
                     self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
 
+    def test_onehot_scan_source_scope_preserves_outputs(self):
+        (self.root / 'source.icl').write_text(
+            "Module Network { ScanInPort si; ShiftEnPort se; "
+            "ScanRegister r { ScanInSource si; ResetValue 1'b0; } "
+            "ScanOutPort producer { Source r; Enable 1'b1; } "
+            "Alias wrapped = producer; OneHotScanGroup group { Port wrapped; } "
+            "ScanInterface client { Port si; Port producer; Port se; } }")
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for path in outputs:
+            (self.root / path).write_text('previous artifact\n')
+        result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                               '--top_module', 'Network', '--output', 'result.pdl',
+                               '--local_reset', 'reset.pdl', '--debug', ok=False)
+        self.assertIn('output must be referenced from an instance', result.stdout + result.stderr)
+        for path in outputs:
+            self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
+
     def test_ordinary_output_source_scope_preserves_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         (self.root / 'debug').mkdir()

@@ -602,9 +602,12 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
     for (const auto& instruction : node.logic) {
       check("LogicSignal operand", instruction.signals);
     }
-    if (node.kind == "OneHotDataGroup") {
+    if (node.kind == "OneHotDataGroup" || node.kind == "OneHotScanGroup") {
       for (const auto& source : node.one_hot_sources) {
-        if (source.kind == OneHotSourceKind::kPort) check("Port", source.bits);
+        if (source.kind == OneHotSourceKind::kPort) {
+          check("Port", source.bits,
+                node.kind == "OneHotScanGroup" ? Family::kScan : Family::kData);
+        }
       }
     }
   }

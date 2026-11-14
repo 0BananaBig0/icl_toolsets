@@ -3310,6 +3310,93 @@ void TestOneHotDataLimits() {
   Fails([&] { pattern::Elaborate(wide, "M"); }, "bit limit");
 }
 
+void TestOneHotScanSourceScope() {
+  for (bool child : {false, true}) {
+    for (bool alias : {false, true}) {
+      for (bool inverted : {false, true}) {
+        pattern::Design design;
+        const std::string source = alias   ? "wrapped"
+                                   : child ? "producer.out"
+                                           : "producer";
+        design.AddIcl(
+            "one_hot_scan_scope.icl",
+            "Module Producer { ScanInPort incoming[1:0]; DataInPort en; "
+            "ScanOutPort out[1:0] { Source incoming; Enable en; } } "
+            "Module M { ScanInPort incoming[1:0]; DataInPort en; " +
+                std::string(child ? "Instance producer Of Producer { InputPort "
+                                    "incoming = incoming; "
+                                    "InputPort en = en; } "
+                                  : "ScanOutPort producer[1:0] { Source "
+                                    "incoming; Enable en; } ") +
+                (alias ? "Alias wrapped[1:0] = " +
+                             std::string(child ? "producer.out" : "producer") +
+                             "; "
+                       : "") +
+                "OneHotScanGroup group[1:0] { Port " + (inverted ? "~" : "") +
+                source + "; } }");
+        if (!child) {
+          Fails([&] { pattern::Elaborate(design, "M"); },
+                "output must be referenced from an instance");
+        } else {
+          const auto text =
+              pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+          pattern::Design flat;
+          flat.AddIcl("flat.icl", text);
+          Require(
+              pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+              "child scan contributors preserve alias parity and flat scope");
+        }
+      }
+    }
+  }
+  pattern::Design alias_only;
+  alias_only.AddIcl(
+      "scan_alias_only.icl",
+      "Module M { ScanInPort incoming; ScanOutPort producer { Source incoming; "
+      "Enable 1'b1; } Alias wrapped = producer; }");
+  const auto text = pattern::SerializeIcl(pattern::Elaborate(alias_only, "M"));
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", text);
+  Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+          "unused own scan-output aliases remain available to PDL");
+  pattern::Design hierarchy;
+  hierarchy.AddIcl(
+      "scan_group_hierarchy.icl",
+      "Module Leaf { ScanInPort incoming; ScanOutPort out { Source incoming; "
+      "Enable 1'b1; } } Module Middle { ScanInPort incoming; Instance leaf Of "
+      "Leaf { "
+      "InputPort incoming = incoming; } ScanOutPort out { Source leaf.out; } "
+      "Alias wrapped = out; } Module M { ScanInPort incoming; Instance child "
+      "Of Middle { "
+      "InputPort incoming = incoming; } OneHotScanGroup group { Port "
+      "child.out; } }");
+  const auto original = pattern::Elaborate(hierarchy, "M");
+  for (const std::string source : {"child.leaf.out", "child.wrapped"}) {
+    auto changed = original;
+    changed.nodes.at(changed.node_ids.at("group")).one_hot_sources[0].bits[0] =
+        {changed.node_ids.at(source), 0};
+    pattern::Design altered;
+    altered.AddIcl("altered_scan_group.icl", pattern::SerializeIcl(changed));
+    Fails([&] { pattern::Elaborate(altered, "M"); }, source == "child.wrapped"
+                                                         ? "hierarchical source"
+                                                         : "reference scope");
+  }
+  for (const std::string source :
+       {"child.out[1], producer[0]", "producer[1], child.out[0]"}) {
+    pattern::Design mixed;
+    mixed.AddIcl(
+        "mixed_scan_group_scope.icl",
+        "Module Leaf { ScanInPort incoming[1:0]; ScanOutPort out[1:0] { "
+        "Source incoming; Enable 1'b1; } } Module M { ScanInPort "
+        "incoming[1:0]; "
+        "Instance child Of Leaf { InputPort incoming[1] = incoming[1]; } "
+        "ScanOutPort producer[1:0] { Source incoming; Enable 1'b1; } "
+        "OneHotScanGroup group[1:0] { Port " +
+            source + "; } }");
+    Fails([&] { pattern::Elaborate(mixed, "M"); },
+          "output must be referenced from an instance");
+  }
+}
 void TestOneHotScanMuxFanIn() {
   pattern::Design design;
   design.AddIcl("group_mux.icl", R"(
@@ -3422,6 +3509,7 @@ int main() {
                           TestRegisterRules,
                           TestInterfaceKinds,
                           TestOneHotScanErrors,
+                          TestOneHotScanSourceScope,
                           TestOneHotScanMuxFanIn,
                           TestOneHotScanLimits,
                           TestAddressedInstanceMetadata,

@@ -2005,3 +2005,38 @@ completed archives fetched0. Older TAP dumps with direct private references need
 regeneration from original ICL/BSDL. Remaining special port-source/association,
 alias, gating/selector, runtime/TAP/lifecycle, strict coverage and complete vendor/
 platform/static/install requirements stay mandatory; this is not full conformance.
+
+
+### OneHotScan contributor scope (2026-11-15)
+
+OneHotScanGroup Port contributors now use the shared scan/data source-kind and
+restored hardware-scope checks. Local inputs, registers, muxes and groups remain
+valid; output ports must belong to a direct child. Direct, alias-hidden and
+inverted own outputs are rejected. Deep restored outputs and hierarchical aliases
+cannot bypass that boundary. Unused aliases for PDL remain valid. Enabled fan-in,
+width and cycle validation retain their earlier diagnostics; middle-register
+concat-scan behavior is unchanged.
+
+Concrete and symbolic one-hot enable resolution now follows bound ScanInPort
+Sources across module boundaries. The original enabled outputs still determine
+selection; missing bindings remain unsupported and existing traversal budgets
+apply. This repairs a runtime gap exposed by making a nested scan fixture legal.
+The fixture retains all27 enable/unknown combinations and independent held/shift
+storage checks. No DataInPort traversal or other source-family expansion is added.
+
+Tessent2026.2 loads all8 legal child cases and rejects all8 own-output cases with
+ICL130; consumed own cases also report ICL103. The unused cases isolate scope.
+Actual16 model hashes are in build/special-source-context-vendor-probe; vendor
+loading does not establish pattern equivalence. ToIRSelect owner controls,
+differential association and the remaining event/reset work are separate tasks.
+
+
+Verified checkpoint: full serial make check exits0 in1345.595s, including41
+dynamic and41 static generator suites,51 directional goldens,2523-file ICL
+corpus (334/334 grammar and119/119 scanner rules),LSP62 and editor6 in175.874s.
+Five optional ANTLR tests are skipped. Required leak-enabled native7/main63/
+clock41/client18/reset12 all pass. Final remote native7/all41 CLI suites pass
+with all5 changed source/test hashes matched. Exact evidence is under
+build/onehot-scan-source-scope-final-{full,sanitizer-*} and
+build/onehot-scan-source-scope-final-remote/evidence. Loading measurements cover
+72 source/flat comparisons with equal output hashes; no speedup is claimed.
