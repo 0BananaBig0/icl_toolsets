@@ -339,6 +339,38 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                     for artifact in artifacts:
                         self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_capture_update_mux_structure_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        for family in ('CaptureEn', 'UpdateEn'):
+            prefix = (f'Module Network {{ {family}Port src; {family}Port other; '
+                      'DataInPort data; DataInPort mode[1:0]; Alias wrapped = src; ')
+            output = f'To{family}Port out {{ Source mux; }} }}'
+            models = {
+                'one force': prefix + "DataMux mux SelectedBy mode { 0 : 1'b1; 1 : src; } " + output,
+                'unknown force': prefix + "DataMux mux SelectedBy mode { 0 : 1'bx; 1 : src; } " + output,
+                'extra data': prefix + "DataMux mux SelectedBy mode { 0 : 1'b0; 1 : src; 2 : data; } " + output,
+                'extra control': prefix + "DataMux mux SelectedBy mode { 0 : 1'b0; 1 : src; 2 : other; } " + output,
+                'inverted distinct control': prefix + "DataMux mux SelectedBy mode { 0 : 1'b0; 1 : src; 2 : ~wrapped; } " + output,
+                'outer chain': (prefix + "DataMux inner SelectedBy mode { 0 : 1'b0; 1 : src; } "
+                                "Alias forwarded = inner; DataMux mux SelectedBy mode { 0 : 1'b1; 1 : forwarded; } " + output),
+                'unused gate': prefix + "DataMux mux SelectedBy mode { 0 : 1'b1; 1 : src; } }",
+            }
+            for label, source in models.items():
+                with self.subTest(family=family, label=label):
+                    (self.root / 'source.icl').write_text(source)
+                    for artifact in artifacts:
+                        artifact.write_text('previous artifact\n')
+                    result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                           '--top_module', 'Network', '--output', 'result.pdl',
+                                           '--local_reset', 'reset.pdl', '--debug', ok=False)
+                    self.assertIn('requires zero and one corresponding control input',
+                                  result.stdout + result.stderr)
+                    for artifact in artifacts:
+                        self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_mux_expansion_and_string_codes_preserve_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         debug = self.root / 'debug/Network.icl'

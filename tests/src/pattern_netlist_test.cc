@@ -752,6 +752,96 @@ void TestDataMuxMatchingControlUses() {
         "lowered reset association supplies matching reset use");
   }
 }
+void TestCaptureUpdateMuxStructure() {
+  for (const std::string family : {"CaptureEn", "UpdateEn"}) {
+    const auto prefix = "Module M { " + family + "Port src; " + family +
+                        "Port other; DataInPort data; DataInPort mode[1:0]; "
+                        "Alias wrapped = src; ";
+    const auto output = "To" + family + "Port out { Source mux; } }";
+    for (const std::string rows :
+         {"0 : 1'b1; 1 : src;", "0 : 1'bx; 1 : src;",
+          "0 : 1'b0; 1 : src; 2 : data;", "0 : 1'b0; 1 : src; 2 : other;",
+          "0 : 1'b0; 1 : src; 2 : ~wrapped;",
+          "0 : 1'b0; 1 : ~wrapped; 2 : wrapped;"}) {
+      pattern::Design design;
+      design.AddIcl(
+          "gate_shape.icl",
+          prefix + "DataMux mux SelectedBy mode { " + rows + " } " + output);
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            "requires zero and one corresponding control input");
+    }
+    for (const std::string rows :
+         {"0 : 1'b0; 1 : src;", "0 : 1'b0; 1 | 2 : src;",
+          "0 : 1'b0; 1 : src; 2 : wrapped;", "0 : src; 1 : wrapped;",
+          "0 : 1'b0; 1 : ~src;", "0 : 1'b0; 1 : src; 2 : 1'b0;",
+          "0 : ~1'b1; 1 : double_inverse; 2 : src;",
+          "0 : 1'b0; 1 : ~wrapped; 2 : inverse;",
+          "0 : 1'b0; 1 : inverse; 2 : ~wrapped;",
+          "0 : 1'b0; 1 : wrapped; 2 : ~inverse;"}) {
+      pattern::Design design;
+      design.AddIcl("gate_shape.icl",
+                    prefix +
+                        "Alias inverse = ~src; Alias double_inverse = "
+                        "~inverse; DataMux mux SelectedBy mode { " +
+                        rows + " } " + output);
+      const auto original = pattern::Elaborate(design, "M");
+      const auto flat = pattern::SerializeIcl(original);
+      pattern::Design replay;
+      replay.AddIcl("flat.icl", flat);
+      Require(pattern::SerializeIcl(pattern::Elaborate(replay, "M")) == flat,
+              "canonical control inputs survive flat replay");
+    }
+    for (const std::string force : {"1'b0", "1'b1"}) {
+      pattern::Design design;
+      design.AddIcl("gate_chain.icl",
+                    prefix +
+                        "DataMux inner SelectedBy mode { 0 : 1'b0; "
+                        "1 : src; } Alias forwarded = inner; "
+                        "DataMux mux SelectedBy mode { 0 : " +
+                        force + "; 1 : forwarded; } " + output);
+      if (force == "1'b1") {
+        Fails([&] { pattern::Elaborate(design, "M"); },
+              "requires zero and one corresponding control input");
+      } else {
+        pattern::Elaborate(design, "M");
+      }
+    }
+    pattern::Design unused;
+    unused.AddIcl(
+        "unused_gate.icl",
+        prefix + "DataMux mux SelectedBy mode { 0 : 1'b1; 1 : src; } }");
+    Fails([&] { pattern::Elaborate(unused, "M"); },
+          "requires zero and one corresponding control input");
+    pattern::Design partial;
+    partial.AddIcl("partial_gate.icl",
+                   prefix +
+                       "DataMux mux[1:0] SelectedBy mode { 0 : 2'b10; "
+                       "1 : data, src; } To" +
+                       family + "Port out { Source mux[0]; } }");
+    pattern::Elaborate(partial, "M");
+    for (const std::string range : {"[1:0]", "[0:1]"}) {
+      pattern::Design vector;
+      vector.AddIcl("vector_gate.icl",
+                    "Module M { " + family + "Port src" + range +
+                        "; DataInPort mode[1:0]; DataMux mux" + range +
+                        " SelectedBy mode { 0 : 2'b00; "
+                        "1 : src[1], 1'b0; 2 : 1'b0, src[0]; } To" +
+                        family + "Port out" + range + " { Source mux; } }");
+      const auto flat = pattern::SerializeIcl(pattern::Elaborate(vector, "M"));
+      pattern::Design replay;
+      replay.AddIcl("vector_flat.icl", flat);
+      Require(pattern::SerializeIcl(pattern::Elaborate(replay, "M")) == flat,
+              "scalar gate shape permits three distinct vector rows");
+    }
+  }
+  pattern::Design ordinary;
+  ordinary.AddIcl("ordinary.icl",
+                  "Module M { DataInPort mode; DataInPort data; "
+                  "DataMux mux SelectedBy mode { 0 : 1'b0; 1 : data; } "
+                  "ToCaptureEnPort out { Source mux; } }");
+  pattern::Elaborate(ordinary, "M");
+}
+
 void TestDataMuxControlSourceUnion() {
   for (const std::string family :
        {"Reset", "CaptureEn", "UpdateEn", "TMS", "TRST"}) {
@@ -2135,6 +2225,7 @@ int main() {
                           TestAddressPortSourceKinds,
                           TestDataMuxControlSourceUnion,
                           TestDataMuxMatchingControlUses,
+                          TestCaptureUpdateMuxStructure,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

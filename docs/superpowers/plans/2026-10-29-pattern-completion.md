@@ -1560,8 +1560,31 @@ sanitizers and main50/clock41/client18/reset12 pass. All8 source/test hashes mat
 the reviewed checkpoint. Naming/style and independent reviews pass. Initial full/
 solver failures are preserved, without weakened deadlines or assertions.
 
-Task66 actual CaptureEn/UpdateEn mux structure is drafted in its focused plan;
-main51/native checks and matched source/flat scale outputs pass in isolation.
+Task66 actual CaptureEn/UpdateEn mux structure is completed below.
 Direct reset/TMS/TRST data-driver constraints, remaining structural/operational
 conformance, runtime/TAP/lifecycle requirements, strict coverage, full vendor and
 platform qualification remain mandatory.
+
+## Task66: CaptureEn/UpdateEn DataMux input structure
+
+Completed [the focused plan](2026-11-14-capture-update-mux-structure.md). Canonical
+inversion-aware aliases and bounded per-bit provenance enforce one corresponding
+control path plus literal zero for actual CE/UE gates, including chains and unused
+gates. Repeated canonical control references, zero rows and identity gates remain
+valid. Standard-first differences from vendor duplicate-row/all-data-consumer
+restrictions are explicit; output polarity and operational sensitization remain open.
+Corrected34/boundary18 matched-hash loading probes and representative wide/deep/
+ordinary measurements are recorded without an operational conformance claim.
+
+Full integration passes in build/capture-update-mux-final-full.log/.exit0,
+1774.796s wall with make-j1check: dynamic/static generator suites,51 directional
+goldens,2523 ICL334/119 rules, LSP62 and editor6 in255.589s. Five optional ANTLR
+tests are skipped. Native7 leak-enabled ASan/UBSan and main51/clock41/client18/
+reset12 pass. All four final source/test hashes match the reviewed checkpoint.
+Strict coverage, full vendor certification and refreshed platform checks remain open.
+
+Task67 direct reset/TMS/TRST data-driver work is isolated, with RED/GREEN source
+checks and connected fixture migration underway. Arbitrary feedback transition
+checks must retain exact reset values in lowered native coverage. Remaining
+runtime/TAP/lifecycle, structural/operational, strict coverage, full vendor and
+platform requirements remain mandatory.

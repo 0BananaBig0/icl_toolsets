@@ -306,42 +306,49 @@ void CheckSignalSources(const Netlist& netlist) {
                                         : Kind::kOther);
   }
   using Key = std::pair<size_t, int64_t>;
-  std::map<Key, Kind> aliases;
-  const auto classify = [&](BitReference bit) {
-    std::vector<Key> path;
-    Kind kind;
-    while (true) {
-      if (bit.node == std::numeric_limits<size_t>::max()) {
-        // Missing input-binding holes retain their existing validation path.
-        kind =
-            bit.virtual_signal == VirtualSignal::kNone
-                ? (bit.constant == '?' ? Kind::kUnconnected : Kind::kConstant)
-            : bit.virtual_signal == VirtualSignal::kGlobalReset
-                ? Kind::kGlobalReset
-                : Kind::kAsyncReset;
-        break;
-      }
+  std::map<Key, BitReference> aliases;
+  const auto terminal = [&](BitReference bit) {
+    std::vector<std::pair<Key, bool>> path;
+    bool inverted = bit.inverted;
+    while (bit.node != std::numeric_limits<size_t>::max()) {
       const auto& node = netlist.nodes.at(bit.node);
-      if (node.model != ModelKind::kAlias) {
-        kind = kinds.at(bit.node);
-        if (kind == Kind::kScanRegister && bit.index != node.right) {
-          kind = Kind::kIntermediateScanRegister;
-        }
-        break;
-      }
+      if (node.model != ModelKind::kAlias) break;
       const Key key{bit.node, bit.index};
       const auto found = aliases.find(key);
       if (found != aliases.end()) {
-        kind = found->second;
+        bit = found->second;
+        inverted = inverted != bit.inverted;
         break;
       }
-      path.push_back(key);
+      path.emplace_back(key, inverted);
       const size_t offset = node.left >= node.right ? node.left - bit.index
                                                     : bit.index - node.left;
       bit = node.inputs.at("Source").at(offset);
+      inverted = inverted != bit.inverted;
     }
-    for (const auto& key : path) aliases.emplace(key, kind);
-    return kind;
+    bit.inverted = inverted;
+    for (const auto& [key, incoming_inversion] : path) {
+      auto definition = bit;
+      definition.inverted = definition.inverted != incoming_inversion;
+      aliases.emplace(key, definition);
+    }
+    return bit;
+  };
+  const auto classify = [&](BitReference bit) {
+    bit = terminal(bit);
+    if (bit.node == std::numeric_limits<size_t>::max()) {
+      // Missing input-binding holes retain their existing validation path.
+      return bit.virtual_signal == VirtualSignal::kNone
+                 ? (bit.constant == '?' ? Kind::kUnconnected : Kind::kConstant)
+             : bit.virtual_signal == VirtualSignal::kGlobalReset
+                 ? Kind::kGlobalReset
+                 : Kind::kAsyncReset;
+    }
+    const auto& node = netlist.nodes.at(bit.node);
+    const auto kind = kinds.at(bit.node);
+    return kind == Kind::kScanRegister && bit.index != node.right
+               ? Kind::kIntermediateScanRegister
+               : kind;
   };
   const auto control_use = [](Kind kind) -> unsigned char {
     return kind == Kind::kReset     ? kResetUse
@@ -351,7 +358,7 @@ void CheckSignalSources(const Netlist& netlist) {
            : kind == Kind::kTrst    ? kTrstUse
                                     : 0;
   };
-  bool mux_control_sources = false;
+  unsigned char mux_control_sources = 0;
   for (const auto& node : netlist.nodes) {
     const auto check = [&](const std::string& role,
                            const std::vector<BitReference>& bits,
@@ -371,7 +378,7 @@ void CheckSignalSources(const Netlist& netlist) {
               " must use the rightmost bit of a ScanRegister");
         }
         if (family == Family::kDataMux && control_use(kind)) {
-          mux_control_sources = true;
+          mux_control_sources |= control_use(kind);
           continue;
         }
         if ((family != Family::kScanInput &&
@@ -510,6 +517,96 @@ void CheckSignalSources(const Netlist& netlist) {
           throw std::runtime_error(
               node.origin + ": " + node.name + ": DataMux input for bit " +
               std::to_string(bit) + " requires matching control use");
+        }
+      }
+    }
+  }
+  constexpr unsigned char kGateFamilies = kCaptureUse | kUpdateUse;
+  if (!(mux_control_sources & kGateFamilies)) return;
+  constexpr unsigned char kUnknownOrigin = 128;
+  std::vector<unsigned char> origins(contexts.uses.size(), kUnknownOrigin);
+  const auto bit_id = [&](const BitReference& bit) {
+    const auto& node = netlist.nodes.at(bit.node);
+    const size_t position =
+        node.left >= node.right ? node.left - bit.index : bit.index - node.left;
+    return contexts.offsets[bit.node] + position;
+  };
+  struct GateVisit {
+    size_t node, position, next;
+    unsigned char families;
+  };
+  std::vector<GateVisit> pending;
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& node = netlist.nodes[id];
+    if (node.kind != "DataMux") continue;
+    for (size_t position = 0; position < node.Width(); ++position) {
+      if (origins[contexts.offsets[id] + position] != kUnknownOrigin) continue;
+      pending.push_back({id, position, 0, 0});
+      while (!pending.empty()) {
+        auto& visit = pending.back();
+        const auto& current = netlist.nodes[visit.node];
+        if (visit.next == current.choices.size()) {
+          origins[contexts.offsets[visit.node] + visit.position] =
+              visit.families;
+          pending.pop_back();
+          continue;
+        }
+        const auto source =
+            terminal(current.choices[visit.next].source[visit.position]);
+        if (source.node < netlist.nodes.size() &&
+            netlist.nodes[source.node].kind == "DataMux") {
+          const auto origin = origins[bit_id(source)];
+          if (origin == kUnknownOrigin) {
+            pending.push_back({source.node,
+                               bit_id(source) - contexts.offsets[source.node],
+                               0, 0});
+            continue;
+          }
+          visit.families |= origin;
+        } else {
+          visit.families |= control_use(classify(source)) & kGateFamilies;
+        }
+        ++visit.next;
+      }
+    }
+  }
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& node = netlist.nodes[id];
+    if (node.kind != "DataMux") continue;
+    for (size_t position = 0; position < node.Width(); ++position) {
+      const auto origin = origins[contexts.offsets[id] + position];
+      if (!origin) continue;
+      const auto families =
+          origin |
+          (contexts.uses[contexts.offsets[id] + position] & kGateFamilies);
+      for (const unsigned char family : {kCaptureUse, kUpdateUse}) {
+        if (!(families & family)) continue;
+        std::optional<BitReference> control;
+        for (const auto& choice : node.choices) {
+          const auto source = terminal(choice.source[position]);
+          if (source.node == std::numeric_limits<size_t>::max() &&
+              source.virtual_signal == VirtualSignal::kNone &&
+              source.constant == (source.inverted ? '1' : '0')) {
+            continue;
+          }
+          const bool corresponding =
+              source.node < netlist.nodes.size() &&
+              ((control_use(classify(source)) & family) ||
+               (netlist.nodes[source.node].kind == "DataMux" &&
+                (origins[bit_id(source)] & family)));
+          if (!corresponding ||
+              (control && (control->node != source.node ||
+                           control->index != source.index ||
+                           control->inverted != source.inverted))) {
+            const auto index = node.left + (node.left <= node.right ? 1 : -1) *
+                                               static_cast<int64_t>(position);
+            throw std::runtime_error(
+                node.origin + ": " + node.name + ": " +
+                (family == kCaptureUse ? "CaptureEn" : "UpdateEn") +
+                " DataMux bit " + std::to_string(index) +
+                " requires zero and one corresponding control input");
+          }
+          control = source;
         }
       }
     }

@@ -4027,3 +4027,37 @@ above measures its earlier reviewed checkpoint; the shared sizing and primary
 fixes were integrated afterward. Initial solver timeouts and diagnostic failures
 remain recorded, with no assertion/deadline/coverage waiver. Strict coverage, full
 vendor certification and refreshed platform qualification remain open.
+
+### CaptureEn/UpdateEn DataMux input structure (2026-11-14)
+
+DataMux bits with actual CaptureEn/UpdateEn provenance now admit only one distinct
+corresponding control input and literal zero. Aliases compose inversion before
+source comparison; duplicate rows referring to the same canonical control remain
+valid. Each upstream mux and each scalar vector bit is checked independently,
+including unused actual-control gates. Identity-only control muxes remain valid.
+The existing canonical source cache is reused, with one byte of provenance per
+real graph bit and bounded expanded mux references. No serialized format changes.
+
+This follows the standard-first interpretation of semantic inputs. Tessent2026.2
+loading accepts repeated zero rows, multiple selector alternatives in one control
+row and per-bit two-input vector shapes, but rejects duplicate control rows and
+ordinary-data-only mux outputs used as these controls. Those differences remain
+explicit: ordinary-data mux behavior is preserved here. Output inversion/polarity,
+normal-operation sensitization and the remaining reset/TMS/TRST rules are still
+open; loading probes do not establish operational conformance.
+
+Three interleaved baseline/source/flat measurements preserve output and flat
+hashes. The262144-bit CE case takes0.617–0.767s versus0.617–1.219s at3c9fd30,
+with peak135032KiB versus126500KiB. The65536-bit UE,4096-alias and ordinary
+655360-reference cases are recorded in build/capture-update-mux-scale/comparison.json,
+including commands, input/binary hashes, environment and memory. These are
+workload measurements under concurrent late editor checks, not a speedup claim.
+The final binary is byte-identical to the measured binary after a braces-only
+naming correction. Independent source review and focused checks pass.
+
+Full integration passes in build/capture-update-mux-final-full.log/.exit0,
+1774.796s wall with make-j1check: dynamic/static generator suites,51 directional
+goldens,2523 ICL334/119 rules, LSP62 and editor6 in255.589s. Five optional ANTLR
+tests are skipped. Native7 leak-enabled ASan/UBSan and main51/clock41/client18/
+reset12 pass. All four final source/test hashes match the reviewed checkpoint.
+Strict coverage, full vendor certification and refreshed platform checks remain open.

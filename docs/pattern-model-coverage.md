@@ -1526,3 +1526,27 @@ build/mux-resource-primary-final-sanitizer-*. All8 source/test hashes match the
 reviewed checkpoint. Naming/style and independent review pass. Initial solver
 failures remain recorded. Strict coverage, full vendor certification and refreshed
 platform qualification remain open.
+
+## CaptureEn/UpdateEn DataMux structure (2026-11-14)
+
+Actual CE/UE provenance through mux data inputs and aliases triggers per-bit
+validation: one distinct corresponding control path, with literal-zero forcing
+inputs. Canonical inversion-aware aliases, repeated references/zeros, identity
+muxes, chains and independent vector bits retain source/flat coverage. Unused
+actual-control gates are checked. Ordinary-data-only mux interpretation remains
+explicitly separate, as do output polarity and operational sensitization.
+
+Corrected34 and boundary18 Tessent2026.2 loading probes have12 and6 accepted
+controls; fetched model/runner hashes match. Initial36 cases were shared-fixture
+setup failures and supply no semantic evidence. Duplicate-control-row and
+ordinary-data-only consumer differences are documented standard-first choices,
+not vendor equivalence. Matched-output scale measurements and memory are in
+build/capture-update-mux-scale/comparison.json. Naming/style, independent review,
+native7 leak-enabled ASan/UBSan and main51/clock41/client18/reset12 pass.
+
+Full integration passes in build/capture-update-mux-final-full.log/.exit0,
+1774.796s wall with make-j1check: dynamic/static generator suites,51 directional
+goldens,2523 ICL334/119 rules, LSP62 and editor6 in255.589s. Five optional ANTLR
+tests are skipped. Native7 leak-enabled ASan/UBSan and main51/clock41/client18/
+reset12 pass. All four final source/test hashes match the reviewed checkpoint.
+Strict coverage, full vendor certification and refreshed platform checks remain open.
