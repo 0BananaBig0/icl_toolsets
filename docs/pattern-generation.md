@@ -4136,3 +4136,46 @@ Full serial make-j1check passes in build/direct-control-driver-final-full.log/
 goldens,2523 ICL334/119 rules, LSP62 and editor6 in220.236s. Five optional ANTLR
 tests are skipped. All29 final source/test hashes match the reviewed checkpoint.
 Strict coverage, full vendor certification and refreshed platform checks remain open.
+
+### Reset/TMS/TRST DataMux input shape (2026-11-14)
+
+Each mux bit directly supplying these six input/To* Source contexts requires a
+corresponding control path and at most two canonical data-input identities.
+Aliases preserve inversion; equivalent inverted literals share identity. Repeated
+selector rows are not extra input wires. Required control-bearing mux branches
+are checked independently. An ordinary data mux used only to compute a forcing
+value and an unused reset/TMS/TRST mux remain outside these port-source checks.
+Reset destinations retain the qualified TRST-family compatibility. No public API,
+serialized format or solver/scheduling limit changes.
+
+Identity gates, canonical duplicate rows and two matching controls retain the
+explicit semantic compatibility interpretation. The primary text's two-input
+rule rejects a third distinct source, even though Tessent2026.2 loads it. Of72
+matched-hash loading cases,30 load,12 missing-control/constant-only cases fail
+ICL65 and30 duplicate/special-selection cases fail ICL115. Single-row identities,
+control chains and ordinary-data forcing chains load. These restrictions differ
+from the standard-first input-identity rule; no PDL or operation was qualified.
+Evidence: build/reset-mux-structure-vendor-probe/comparison.json.
+
+Three interleaved repetitions cover five workloads and source/flat replay: all60
+runs pass with matching pattern and flat hashes against e156f88. For262144 reset
+bits (290 ICL bytes), source runs with debug output take0.667–0.868s versus0.566–0.617s;
+source/flat peak137084KiB versus134836KiB. The4096 shared mux/consumer model
+(392920 bytes) takes0.265–0.366s source and0.215–0.266s flat;4096 aliases and655360
+ordinary references are recorded separately. Native512/4096-stage source/flat
+identity checks take0.035/0.361s. Exact inputs, binaries/source hashes, commands,
+platform/compiler, wall/RSS and repetitions are in
+build/reset-mux-structure-loading-scale/comparison.json. Empty PDL measures loading;
+these are supported-scale observations, not worst-case or optimality claims.
+
+Local connected native7 and main53/clock41/client18/reset12/multiple-TAP22/feedback10,
+style/naming and independent review pass. A brace-only style correction produces
+byte-identical CLI/native/object files. Root native7 and main53/clock41/client18/
+reset12 leak-enabled ASan/UBSan pass. Final serial make-j1check passes in
+build/reset-mux-structure-final-full.log/.exit0,1618.418s:41 dynamic and41 static
+generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and editor6
+in211.728s. Optional ANTLR5 skipped; all3 source/test hashes match. Early Rocky8 native7/dynamic41 results belong to the retained pre-scale/pre-format
+snapshot. Its individual checks and completed archive pass despite SSH transport
+exit124; this is not final platform/install/static qualification.
+Hierarchy direction, forcing/polarity, normal-operation/TRST selection, strict
+coverage and remaining model/runtime/vendor/platform requirements stay open.

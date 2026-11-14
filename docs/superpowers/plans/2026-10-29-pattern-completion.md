@@ -1585,8 +1585,8 @@ Strict coverage, full vendor certification and refreshed platform checks remain 
 
 Tasks67/68 direct reset/TMS/TRST data drivers and the necessary reset-mux solver
 fix have completed focused/native/CLI/performance/review, leak-enabled SAN and
-full serial integration. Their reviewed29-file snapshot is imported unchanged. Task69 input shape is isolated, with a
-separate RED checkpoint and primary/vendor evidence. Remaining runtime/TAP/
+full serial integration. Their reviewed29-file snapshot is imported unchanged. Task69 input shape has completed its final full regression and leak checks from
+the reviewed3-file snapshot. Task70 inversion work remains isolated. Remaining runtime/TAP/
 lifecycle, structural/operational, strict coverage, full vendor and platform
 requirements remain mandatory.
 
@@ -1625,3 +1625,25 @@ mux controls and corrected constant inputs; it does not establish operation.
 Shape/direction/forcing/polarity, normal-operation and TRST selection, remaining
 runtime/TAP/lifecycle requirements, strict coverage, full vendor certification and
 refreshed platform qualification remain mandatory.
+
+## Task69: Reset/TMS/TRST DataMux input shape
+
+[The focused plan](2026-11-14-reset-mux-input-structure.md) records per-bit canonical
+max-two inputs and corresponding control paths, preserving ordinary-data forcing
+muxes, unused reset gates, compatibility interpretations and existing TRST-to-reset
+eligibility. Source/flat/atomic and512/4096 shared-chain coverage pass. All60
+interleaved loading measurements match baseline e156f88 outputs/flat hashes;
+wide/deep/ordinary overhead and72 matched-hash vendor loading cases are recorded.
+The style-only brace correction has identical CLI/native/object hashes.
+
+Local connected native7/main53/clock41/client18/reset12/multiple-TAP22/feedback10,
+format/naming and independent review pass. Root native7 and selected CLI leak
+checks pass; full serial regression passes in
+build/reset-mux-structure-final-full.log/.exit0,1618.418s:41 dynamic and41 static
+generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and editor6
+in211.728s. Optional ANTLR5 skipped. The immutable3-file snapshot under
+/tmp/reset-mux-structure-task69-reviewed-files remains unchanged in root.
+Early Rocky8 native7/dynamic41 individual checks and archive pass; transport124
+and the pre-scale/pre-format snapshot boundary are explicit. This is not final
+platform/static/install qualification. Remaining structural/operational, runtime/
+TAP/lifecycle, strict coverage and full vendor/platform work remain mandatory.

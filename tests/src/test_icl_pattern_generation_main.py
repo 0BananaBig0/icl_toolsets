@@ -366,6 +366,55 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                             for artifact in artifacts:
                                 self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_reset_mux_input_structure_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        for family in ('Reset', 'TMS', 'TRST'):
+            for output in (False, True):
+                for rows in ("2'd0 : d0; 2'd1 : d1;",
+                             "2'd0 : 1'b0; 2'd1 : 1'b1;",
+                             "2'd0 : ctl; 2'd1 : d0; 2'd2 : d1;"):
+                    for signal in ('mux', 'wrapped'):
+                        with self.subTest(family=family, output=output, rows=rows, signal=signal):
+                            child = '' if output else f'Module Child {{ {family}Port ctl; }} '
+                            consumer = (f'To{family}Port out {{ Source {signal}; }}' if output else
+                                        f'Instance child Of Child {{ InputPort ctl = {signal}; }}')
+                            (self.root / 'source.icl').write_text(
+                                child + f'Module Network {{ {family}Port ctl; '
+                                'DataInPort mode[1:0]; DataInPort d0; DataInPort d1; '
+                                f'DataMux mux SelectedBy mode {{ {rows} }} '
+                                'Alias wrapped = ~mux; ' + consumer + ' }')
+                            for artifact in artifacts:
+                                artifact.write_text('previous artifact\n')
+                            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+                            self.assertIn('requires a corresponding control path and at most two data inputs',
+                                          result.stdout + result.stderr)
+                            for artifact in artifacts:
+                                self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
+        for family in ('Reset', 'TMS', 'TRST'):
+            for output in (False, True):
+                child = '' if output else f'Module Child {{ {family}Port ctl; }} '
+                consumer = (f'To{family}Port out {{ Source mux; }}' if output else
+                            'Instance child Of Child { InputPort ctl = mux; }')
+                (self.root / 'source.icl').write_text(
+                    child + f'Module Network {{ {family}Port ctl; '
+                    'DataInPort mode[1:0]; DataInPort d0; DataInPort d1; '
+                    "DataMux local SelectedBy mode[0] { 1'b0 : d0; 1'b1 : d1; } "
+                    "DataMux unused SelectedBy mode { 2'd0 : ctl; 2'd1 : d0; 2'd2 : d1; } "
+                    "DataMux mux SelectedBy mode[1] { 1'b0 : local; 1'b1 : ctl; } " + consumer + ' }')
+                self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                              '--top_module', 'Network', '--output', 'result.pdl', '--debug')
+                expected = (self.root / 'result.pdl').read_bytes()
+                for model, pdl in (('debug/Network.icl', 'source.pdl'), ('source.icl', 'result.pdl')):
+                    self.run_tool('--icl', model, '--pdl', pdl, '--top_module', 'Network',
+                                  '--output', 'again.pdl')
+                    self.assertEqual((self.root / 'again.pdl').read_bytes(), expected)
+
     def test_capture_update_mux_structure_preserves_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         debug = self.root / 'debug/Network.icl'

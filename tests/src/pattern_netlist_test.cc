@@ -831,6 +831,124 @@ void TestDirectControlDataDrivers() {
   }
 }
 
+void TestResetMuxStructure() {
+  for (const std::string family : {"Reset", "TMS", "TRST"}) {
+    for (bool output : {false, true}) {
+      const auto child =
+          output ? "" : "Module Child { " + family + "Port ctl; } ";
+      const auto consumer = [&](const std::string& source) {
+        return output ? "To" + family + "Port out { Source " + source + "; }"
+                      : "Instance child Of Child { InputPort ctl = " + source +
+                            "; }";
+      };
+      const auto prefix = child + "Module M { " + family +
+                          "Port ctl; DataInPort mode[1:0]; DataInPort d0; "
+                          "DataInPort d1; ";
+      for (const std::string rows :
+           {"2'd0: d0; 2'd1: d1;", "2'd0: 1'b0; 2'd1: 1'b1;",
+            "2'd0: ctl; 2'd1: d0; 2'd2: d1;"}) {
+        for (const std::string source : {"mux", "wrapped"}) {
+          pattern::Design invalid;
+          invalid.AddIcl("reset_mux_shape.icl",
+                         prefix + "DataMux mux SelectedBy mode { " + rows +
+                             " } Alias wrapped = ~mux; " + consumer(source) +
+                             " }");
+          Fails([&] { pattern::Elaborate(invalid, "M"); },
+                "requires a corresponding control path and at most two data "
+                "inputs");
+        }
+      }
+      // A forcing value may itself be computed by an ordinary-data mux.
+      pattern::Design forcing;
+      forcing.AddIcl("reset_mux_data_branch.icl",
+                     prefix +
+                         "DataMux local SelectedBy mode[0] { "
+                         "1'b0: d0; 1'b1: d1; } "
+                         "DataMux unused SelectedBy mode { "
+                         "2'd0: ctl; 2'd1: d0; 2'd2: d1; } "
+                         "DataMux mux SelectedBy mode[1] { "
+                         "1'b0: local; 1'b1: ctl; } " +
+                         consumer("mux") + " }");
+      const auto text = pattern::SerializeIcl(pattern::Elaborate(forcing, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", text);
+      Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+              "ordinary data forcing mux survives source and flat replay");
+      for (const std::string rows :
+           {"2'd0: ctl;", "2'd0: ctl; 2'd1: ctl;",
+            "2'd0: ctl; 2'd1: same; 2'd2: d0;", "2'd0: ctl; 2'd1: ctl2;",
+            "2'd0: ctl; 2'd1: 1'b1; 2'd2: ~1'b0;"}) {
+        pattern::Design valid;
+        valid.AddIcl("reset_mux_semantic_inputs.icl",
+                     prefix + family +
+                         "Port ctl2; Alias inverted = ~ctl; "
+                         "Alias same = ~inverted; "
+                         "DataMux mux SelectedBy mode { " +
+                         rows + " } " + consumer("mux") + " }");
+        const auto serialized =
+            pattern::SerializeIcl(pattern::Elaborate(valid, "M"));
+        pattern::Design restored;
+        restored.AddIcl("flat.icl", serialized);
+        Require(pattern::SerializeIcl(pattern::Elaborate(restored, "M")) ==
+                    serialized,
+                "semantic mux inputs retain identity and canonical duplicates");
+      }
+      pattern::Design nested;
+      nested.AddIcl("nested_reset_mux_shape.icl",
+                    prefix +
+                        "DataMux inner SelectedBy mode { "
+                        "2'd0: ctl; 2'd1: d0; 2'd2: d1; } "
+                        "DataMux outer SelectedBy mode[0] { "
+                        "1'b0: inner; 1'b1: d0; } " +
+                        consumer("outer") + " }");
+      Fails(
+          [&] { pattern::Elaborate(nested, "M"); },
+          "requires a corresponding control path and at most two data inputs");
+      const auto vector_child =
+          output ? "" : "Module Child { " + family + "Port ctl[1:0]; } ";
+      for (const std::string first : {"ctl, d0", "d0, ctl"}) {
+        pattern::Design mixed;
+        const auto sink = output
+                              ? "To" + family + "Port out[1:0] { Source mux; }"
+                              : consumer("mux");
+        mixed.AddIcl("vector_reset_mux_shape.icl",
+                     vector_child + "Module M { " + family +
+                         "Port ctl; DataInPort mode; DataInPort d0; "
+                         "DataMux mux[1:0] SelectedBy mode { 1'b0: " +
+                         first + "; 1'b1: 2'b00; } " + sink + " }");
+        Fails([&] { pattern::Elaborate(mixed, "M"); },
+              "requires a corresponding control path and at most two data "
+              "inputs");
+      }
+    }
+  }
+  for (const size_t stages : {512, 4096}) {
+    const auto start = std::chrono::steady_clock::now();
+    std::string source = "Module M { ResetPort root; DataInPort mode; ";
+    for (size_t i = 0; i < stages; ++i) {
+      const auto name = "m" + std::to_string(i);
+      const auto previous = i ? "m" + std::to_string(i - 1) : "root";
+      source += "DataMux " + name + " SelectedBy mode { 1'b0: " + previous +
+                "; 1'b1: 1'b1; } ToResetPort out" + std::to_string(i) +
+                " { Source " + name + "; } ";
+    }
+    source += "}";
+    pattern::Design design;
+    design.AddIcl("reset_mux_chain.icl", source);
+    const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "shared deep reset muxes retain source and flat identity");
+    std::cout << "Reset mux shape: stages=" << stages << " ports=" << stages
+              << " bytes=" << source.size() << " source/flat seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - start)
+                     .count()
+              << '\n';
+  }
+}
+
 void TestCaptureUpdateMuxStructure() {
   for (const std::string family : {"CaptureEn", "UpdateEn"}) {
     const auto prefix = "Module M { " + family + "Port src; " + family +
@@ -2306,6 +2424,7 @@ int main() {
                           TestDataMuxMatchingControlUses,
                           TestCaptureUpdateMuxStructure,
                           TestDirectControlDataDrivers,
+                          TestResetMuxStructure,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

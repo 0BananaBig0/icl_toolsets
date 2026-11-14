@@ -1587,3 +1587,27 @@ build/direct-control-driver-final-full.log/.exit0,1808.878s, with41 dynamic/stat
 generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and editor6
 in220.236s. Optional ANTLR5 skipped; all29 reviewed source/test hashes match.
 Strict coverage, full vendor and platform qualification remain open.
+
+## Reset/TMS/TRST mux shape (2026-11-14)
+
+Per consumed bit, require a corresponding control path and at most two canonical
+mux inputs. Alias/inverted-literal identity, mixed vectors, nested control gates,
+ordinary-data forcing muxes and unused gates have native/CLI boundaries. Identity,
+duplicate-row and two-control cases retain the documented semantic interpretation;
+72 matched vendor loading cases distinguish it from vendor special-row limits.
+No operation or broad conformance is inferred. Current original/flat/generated and
+atomic pattern/reset/debug checks pass;512/4096 shared control chains retain flat
+identity. All60 interleaved wide/deep/ordinary loading runs pass with matched
+hashes. No API/metadata/deadline or dense-array addition is made; context storage
+is reused after earlier checks.
+
+Local native7/main53/clock41/client18/reset12/multiple-TAP22/feedback10, naming/style
+and independent review pass. Root native7 and selected main53/clock41/client18/
+reset12 leak checks pass. Final serial regression passes in
+build/reset-mux-structure-final-full.log/.exit0,1618.418s:41 dynamic/static generator
+suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and editor6 in211.728s.
+Optional ANTLR5 skipped; all3 source/test hashes match. Rocky8 evidence is
+an earlier candidate snapshot with native7/dynamic41 individual exits0 and a
+completed archive, despite transport124; no final platform qualification claim.
+Full directional/forcing/polarity/operational and remaining runtime/TAP/lifecycle,
+strict coverage, full vendor and refreshed platform requirements remain open.

@@ -359,6 +359,7 @@ void CheckSignalSources(const Netlist& netlist) {
                                     : 0;
   };
   unsigned char mux_control_sources = 0;
+  bool intercepted_control_mux = false;
   for (const auto& node : netlist.nodes) {
     const auto check = [&](const std::string& role,
                            const std::vector<BitReference>& bits,
@@ -393,6 +394,7 @@ void CheckSignalSources(const Netlist& netlist) {
                                      role + " data source " + driver.name +
                                      " requires a direct DataMux data driver");
           }
+          intercepted_control_mux = true;
         }
         if ((family != Family::kScanInput &&
              ((!addressed && kind == Kind::kData) || kind == Kind::kDataPort ||
@@ -515,8 +517,8 @@ void CheckSignalSources(const Netlist& netlist) {
       }
     }
   }
-  if (!mux_control_sources) return;
-  const auto contexts = FindMuxControlUses(netlist);
+  if (!mux_control_sources && !intercepted_control_mux) return;
+  auto contexts = FindMuxControlUses(netlist);
   for (size_t id = 0; id < netlist.nodes.size(); ++id) {
     const auto& node = netlist.nodes[id];
     if (node.kind != "DataMux") continue;
@@ -535,7 +537,10 @@ void CheckSignalSources(const Netlist& netlist) {
     }
   }
   constexpr unsigned char kGateFamilies = kCaptureUse | kUpdateUse;
-  if (!(mux_control_sources & kGateFamilies)) return;
+  constexpr unsigned char kShapeFamilies = kResetUse | kTmsUse | kTrstUse;
+  if (!(mux_control_sources & kGateFamilies) && !intercepted_control_mux) {
+    return;
+  }
   constexpr unsigned char kUnknownOrigin = 128;
   std::vector<unsigned char> origins(contexts.uses.size(), kUnknownOrigin);
   const auto bit_id = [&](const BitReference& bit) {
@@ -577,7 +582,7 @@ void CheckSignalSources(const Netlist& netlist) {
           }
           visit.families |= origin;
         } else {
-          visit.families |= control_use(classify(source)) & kGateFamilies;
+          visit.families |= control_use(classify(source));
         }
         ++visit.next;
       }
@@ -587,7 +592,8 @@ void CheckSignalSources(const Netlist& netlist) {
     const auto& node = netlist.nodes[id];
     if (node.kind != "DataMux") continue;
     for (size_t position = 0; position < node.Width(); ++position) {
-      const auto origin = origins[contexts.offsets[id] + position];
+      const auto origin =
+          origins[contexts.offsets[id] + position] & kGateFamilies;
       if (!origin) continue;
       const auto families =
           origin |
@@ -622,6 +628,108 @@ void CheckSignalSources(const Netlist& netlist) {
           control = source;
         }
       }
+    }
+  }
+  if (!intercepted_control_mux) return;
+  // Matching-use masks have finished; reuse their bounded storage for shape
+  // work.
+  std::fill(contexts.uses.begin(), contexts.uses.end(), 0);
+  constexpr unsigned char kQueued = 128;
+  std::vector<uint32_t> shape_pending;
+  const auto mark_shape = [&](const BitReference& source,
+                              unsigned char family) {
+    if (source.node >= netlist.nodes.size() ||
+        netlist.nodes[source.node].kind != "DataMux") {
+      return;
+    }
+    const auto id = bit_id(source);
+    auto& use = contexts.uses[id];
+    if ((use & family) == family) return;
+    const bool queued = use & kQueued;
+    use |= family;
+    if (!queued) {
+      use |= kQueued;
+      shape_pending.push_back(static_cast<uint32_t>(id));
+    }
+  };
+  for (const auto& node : netlist.nodes) {
+    const unsigned char family =
+        node.kind == "ResetPort" || node.kind == "ToResetPort" ? kResetUse
+        : node.kind == "TMSPort" || node.kind == "ToTMSPort"   ? kTmsUse
+        : node.kind == "TRSTPort" || node.kind == "ToTRSTPort" ? kTrstUse
+                                                               : 0;
+    const auto source = node.inputs.find("Source");
+    if (!family || source == node.inputs.end()) continue;
+    for (const auto& bit : source->second) mark_shape(terminal(bit), family);
+  }
+  const auto source_origins = [&](const BitReference& source) {
+    return source.node < netlist.nodes.size() &&
+                   netlist.nodes[source.node].kind == "DataMux"
+               ? origins[bit_id(source)]
+               : control_use(classify(source));
+  };
+  const auto same_source = [](const BitReference& a, const BitReference& b) {
+    return a.node == b.node && a.index == b.index && a.inverted == b.inverted &&
+           a.virtual_signal == b.virtual_signal &&
+           (a.node != std::numeric_limits<size_t>::max() ||
+            a.virtual_signal != VirtualSignal::kNone ||
+            a.constant == b.constant);
+  };
+  while (!shape_pending.empty()) {
+    const size_t bit = shape_pending.back();
+    shape_pending.pop_back();
+    const unsigned char families = contexts.uses[bit] & kShapeFamilies;
+    contexts.uses[bit] = families;
+    const size_t id =
+        static_cast<size_t>(std::upper_bound(contexts.offsets.begin(),
+                                             contexts.offsets.end(), bit) -
+                            contexts.offsets.begin() - 1);
+    const auto& node = netlist.nodes[id];
+    const size_t position = bit - contexts.offsets[id];
+    const auto fail = [&] {
+      const auto index = node.left + (node.left <= node.right ? 1 : -1) *
+                                         static_cast<int64_t>(position);
+      throw std::runtime_error(
+          node.origin + ": " + node.name + ": control DataMux bit " +
+          std::to_string(index) +
+          " requires a corresponding control path and at most two data inputs");
+    };
+    std::optional<BitReference> first, second;
+    unsigned char incoming = 0;
+    for (const auto& choice : node.choices) {
+      auto source = terminal(choice.source[position]);
+      const auto origin = source_origins(source);
+      incoming |= origin;
+      for (const unsigned char family : {kResetUse, kTmsUse, kTrstUse}) {
+        const auto corresponding =
+            family == kResetUse ? kResetUse | kTrstUse : family;
+        if ((families & family) && (origin & corresponding)) {
+          mark_shape(source, family);
+        }
+      }
+      if (source.node == std::numeric_limits<size_t>::max() &&
+          source.virtual_signal == VirtualSignal::kNone) {
+        if (source.inverted &&
+            (source.constant == '0' || source.constant == '1')) {
+          source.constant = source.constant == '0' ? '1' : '0';
+        }
+        source.index = 0;
+        source.inverted = false;
+      }
+      if (!first) {
+        first = source;
+      } else if (!same_source(*first, source)) {
+        if (!second) {
+          second = source;
+        } else if (!same_source(*second, source)) {
+          fail();
+        }
+      }
+    }
+    for (const unsigned char family : {kResetUse, kTmsUse, kTrstUse}) {
+      const auto corresponding =
+          family == kResetUse ? kResetUse | kTrstUse : family;
+      if ((families & family) && !(incoming & corresponding)) fail();
     }
   }
 }
