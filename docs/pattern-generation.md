@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, embedded oscillator relative waits passed the complete
+On 2026-11-14, explicit oscillator source overrides passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/oscillator-final-full.log/.exit. This includes all41 generator CLI suites
+build/oscillator-override-final-full.log/.exit. This includes all41 generator CLI suites
 under dynamic/static builds, native tests,51 directional and seven legacy Tessent
 standards, all334 parser and119 scanner rules across2523 ICL files, and six
-Vim/Neovim tests (176.843s). Full wall time was999.946s. Five optional ANTLR
+Vim/Neovim tests (181.938s). Full wall time was1086.789s. Five optional ANTLR
 integration tests were skipped because ICL_REF_DIR was unset.
 
 Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
-main35, clock37, client-control18 and reset-preview12 methods. Formatting, naming
+main35, clock41, client-control18 and reset-preview12 methods. Formatting, naming
 and independent source review pass. See
-[the scope and evidence](#embedded-oscillator-relative-waits-2026-11-14).
+[the scope and evidence](#explicit-oscillator-source-overrides-2026-11-14).
 The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
@@ -3674,3 +3674,33 @@ commands, logs and comparison.json are under build/oscillator-vendor-probe,
 with the remote run in lianghuaxiao /tmp/icl-oscillator-clocks-20261114. This
 is a direct probe, not a formal directional certificate. Strict coverage and
 Rocky8 qualification have not been refreshed.
+
+### Explicit oscillator source overrides (2026-11-14)
+
+An iClockOverride on a Period ToClockPort may supply an explicit replacement
+ClockPort/ToClockPort source and positive frequency factors. Previously checked
+versions retain their intrinsic oscillator duration; a new iClock follows the
+replacement source. Other vector bits remain independent roots. Each omitted
+factor returns to the ICL default, which is1 for a Period target. Original period
+metadata remains immutable, and current reservations follow current routing.
+
+Period targets require explicit -source on every invocation in this increment.
+Omitted-source restoration/factor-only semantics remain unresolved; no intrinsic
+self-reference or frequency multiplication is invented. Differential targets and
+absolute-time waits remain open.
+
+Three positive methods fail against the prior unsupported guard. All41 clock
+methods pass in11.277s (11.33s wall,94896KiB maximum RSS), together with native
+source/flat snapshot, held-bit, rollback and unchanged-state cases. Existing4096
+stages/1024 alternating-version waits take6.66197s during concurrent verification.
+Naming and independent review pass. Full integration passes in
+build/oscillator-override-final-full.log/.exit0 (1086.789s):41 dynamic/static
+suites,51 directional/seven legacy goldens,2523 ICL334/119 rules, editor6 in181.938s;
+five optional ANTLR tests skipped. Leak-enabled native scheduler/flatten/netlist
+and main35/clock41/client18/reset12 checks pass in
+build/oscillator-override-final-sanitizer-*. Tessent2026.2 accepts the probe: our normalized command trace exactly
+matches its export, retaining two child.osc2 waits then a root1 wait after the new
+check. Exact submitted hashes match fetched files; comparison.json and commands
+are under build/oscillator-override-vendor-probe, with the remote run under
+lianghuaxiao /tmp/icl-oscillator-overrides-20261114. No formal certificate, strict
+coverage or platform refresh is claimed.

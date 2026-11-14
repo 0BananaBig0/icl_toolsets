@@ -1368,3 +1368,19 @@ formatting and independent source review pass. Tessent2026.2 source/normalized
 exports and our output have identical child.osc7/10 waits; fetched input hashes
 match. Evidence: build/oscillator-vendor-probe/comparison.json. Strict coverage
 and Rocky8 qualification remain open.
+
+## Task54: Explicit oscillator source overrides
+
+Completed [the focused plan](2026-11-14-oscillator-source-overrides.md). Period
+targets accept an explicit replacement source; old checked versions retain their
+intrinsic oscillator duration while current reservations follow current routing.
+Other vector bits remain independent; each omitted factor restores its ICL default.
+Omitted-source/factor-only oscillator semantics remain unresolved.
+
+Full integration passes in build/oscillator-override-final-full.log/.exit0,
+1086.789s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules and editor6 in181.938s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main35/clock41/client18/reset12
+checks pass. Naming, formatting and independent source review pass. The exact
+Tessent2026.2 probe trace matches our normalized output; no formal certificate,
+strict coverage or platform refresh is claimed.

@@ -411,7 +411,7 @@ iRunLoop 1 -sck a.out
         ]:
             with self.subTest(command=command):
                 self.rejected(source, command + '\n', diagnostic)
-        for definition in ['Period 10ns;', 'DifferentialInvOf root;']:
+        for definition in ['DifferentialInvOf root;']:
             self.rejected('Module Top { ClockPort root; ToClockPort out { ' + definition + ' } }',
                           'iClockOverride out -source root\n', 'oscillator/differential')
 
@@ -501,7 +501,6 @@ iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out
 ''')
         self.assertIn('iRunLoop 4 -sck root', result)
         self.assertIn('iRunLoop 6 -sck child.osc', result)
-        self.rejected(source, 'iClockOverride child.osc -source root\n', 'unsupported')
 
     def test_oscillator_invalid_period_and_conflicts(self):
         for period, diagnostic in [('0', 'Period must be positive'),
@@ -543,6 +542,59 @@ iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out
             result = self.replay(source, f'iClock {target}; iRunLoop 2 -sck {target}\n' * 1024)
             self.assertEqual(result.count('iRunLoop 2 -sck'), 1024)
             print(f'oscillator wide={wide} bytes={len(source)} waits=1024 forms=5 seconds={time.monotonic()-begin:.6f}', flush=True)
+
+
+    def test_oscillator_target_source_override_snapshots(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ns; } }
+Module Top { ClockPort root; Instance child Of Osc; }'''
+        result = self.replay(source, '''iClock child.osc; iRunLoop 2 -sck child.osc
+iClockOverride child.osc -source root -freqMultiplier 2 -freqDivider 1
+iRunLoop 2 -sck child.osc; iClock child.osc; iRunLoop 2 -sck child.osc
+''')
+        self.assertEqual(result.count('iRunLoop 2 -sck child.osc'), 2)
+        self.assertIn('iClock root\niRunLoop 1 -sck root', result)
+
+    def test_oscillator_target_indexed_and_replacement_oscillator(self):
+        source = '''Module Osc { ToClockPort osc[0:1] { Period 10ps; } }
+Module Top { Instance a Of Osc; Instance b Of Osc; }'''
+        result = self.replay(source, '''iClock a.osc(0); iClock a.osc(1)
+iClockOverride a.osc(0) -source b.osc(1) -freqDivider 3
+iRunLoop 4 -sck a.osc(0); iClock a.osc(0)
+iRunLoop 4 -sck a.osc(0); iRunLoop 4 -sck a.osc(1)
+''')
+        self.assertIn('iRunLoop 4 -sck a.osc(0)', result)
+        self.assertIn('iRunLoop 12 -sck b.osc(1)', result)
+        self.assertIn('iRunLoop 4 -sck a.osc(1)', result)
+
+    def test_oscillator_target_omitted_factors_restore_defaults(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ns; } }
+Module Top { ClockPort root; Instance child Of Osc; }'''
+        result = self.replay(source, '''iClockOverride child.osc -source root -freqMultiplier 2 -freqDivider 3
+iClock child.osc; iRunLoop 2 -sck child.osc
+iClockOverride child.osc -source root -freqMultiplier 4
+iClock child.osc; iRunLoop 4 -sck child.osc
+iClockOverride child.osc -source root -freqDivider 5
+iClock child.osc; iRunLoop 2 -sck child.osc
+''')
+        for cycles in (3, 1, 10):
+            self.assertIn(f'iRunLoop {cycles} -sck root', result)
+
+    def test_oscillator_target_override_errors(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ns; } }
+Module Top { ClockPort root; Instance child Of Osc;
+  ToClockPort out { Source child.osc; }
+}'''
+        for options in ('', '-freqMultiplier 2', '-freqDivider 3'):
+            with self.subTest(options=options):
+                self.rejected(source, f'iClockOverride child.osc {options}\n',
+                              'oscillator override requires explicit -source')
+                self.rejected(source, 'iClockOverride child.osc -source root\n'
+                              f'iClockOverride child.osc {options}\n',
+                              'oscillator override requires explicit -source')
+        for replacement in ('child.osc', 'out'):
+            with self.subTest(replacement=replacement):
+                self.rejected(source, f'iClock child.osc; iClockOverride child.osc -source {replacement}\n',
+                              'cyclic')
 
 
 if __name__ == '__main__':

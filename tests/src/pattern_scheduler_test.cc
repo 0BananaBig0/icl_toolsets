@@ -127,6 +127,85 @@ void TestClockOverrideScale() {
                    .count()
             << std::endl;
 }
+void TestOscillatorSourceOverrides() {
+  std::string source = R"(Module Osc {
+    ToClockPort clock[0:1] { Period 10ps; }
+  }
+  Module Top {
+    ClockPort root; Instance a Of Osc; Instance b Of Osc;
+    ToClockPort out { Source a.clock[0]; }
+    ScanInPort si; ScanRegister value { ScanInSource si; }
+    ScanOutPort so { Source value; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("oscillator-overrides.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("value", "1");
+    pattern::SystemClocks clocks(netlist);
+    z3::context context;
+    const auto root = netlist.node_ids.at("root");
+    const auto oscillator = netlist.node_ids.at("a.clock");
+    const auto out = netlist.node_ids.at("out");
+    clocks.Check("a.clock(0)", scheduler);
+    clocks.Override({"iClockOverride",
+                     {"a.clock(0)", "-source", "root", "-freqDivider", "3"},
+                     "oscillator:1",
+                     {}},
+                    context);
+    const auto old = clocks.Wait("a.clock(0)", 2, scheduler,
+                                 {{oscillator, "0x"}, {out, "1"}});
+    Require(old.first == "a.clock(0)" && old.second == 2,
+            "old intrinsic duration is independent of current held route");
+    clocks.Check("root", scheduler);
+    for (const auto& held : std::vector<std::map<size_t, std::string>>{
+             {{oscillator, "0x"}}, {{out, "1"}}}) {
+      bool rejected = false;
+      try {
+        clocks.Wait("root", 1, scheduler, held);
+      } catch (const std::runtime_error& error) {
+        rejected =
+            std::string(error.what()).find("held clock") != std::string::npos;
+      }
+      Require(rejected, "replacement source protects held oscillator output");
+    }
+    Require(
+        clocks.Check("a.clock(1)", scheduler) == "a.clock(1)" &&
+            clocks.Wait("root", 2, scheduler, {{oscillator, "x0"}}).second == 2,
+        "untouched vector bit remains an independent oscillator");
+    clocks.Check("a.clock(0)", scheduler);
+    clocks.Override(
+        {"iClockOverride",
+         {"a.clock(0)", "-source", "b.clock(1)", "-freqMultiplier", "2"},
+         "oscillator:2",
+         {}},
+        context);
+    const auto previous =
+        clocks.Wait("a.clock(0)", 2, scheduler, {{oscillator, "0x"}});
+    Require(previous.first == "root" && previous.second == 6,
+            "oscillator replacement retains previous checked version");
+    bool rejected = false;
+    try {
+      clocks.Override({"iClockOverride",
+                       {"a.clock(0)", "-source", "out"},
+                       "oscillator:3",
+                       {}},
+                      context);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("cyclic") != std::string::npos;
+    }
+    Require(
+        rejected && clocks.Check("a.clock(0)", scheduler) == "b.clock(1)" &&
+            clocks.Wait("a.clock(0)", 2, scheduler, {{root, "0"}}).second == 1,
+        "failed oscillator cycle preserves replacement and default divider");
+    Require(netlist.nodes[oscillator].clock_period->magnitude == 10 &&
+                scheduler.Value("value") == "1" &&
+                scheduler.Value("root") == "x",
+            "oscillator overrides preserve original metadata and hardware");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestOscillatorWaits() {
   std::string source = R"(Module Osc {
     ToClockPort clock[3:2] { Period 10ps; }
@@ -2799,6 +2878,7 @@ int main() {
     TestClockOverrideScale();
     TestRelativeSystemClocks();
     TestOscillatorWaits();
+    TestOscillatorSourceOverrides();
     TestMultipleTapResetSnapshot();
     TestStandaloneIdle();
     TestStandaloneIdleImplicitSelection();

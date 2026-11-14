@@ -79,8 +79,7 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
     throw std::runtime_error(
         "iClockOverride target requires a ToClockPort bit");
   }
-  if (node.properties.count("Period") ||
-      node.properties.count("DifferentialInvOf")) {
+  if (node.properties.count("DifferentialInvOf")) {
     throw std::runtime_error(
         "oscillator/differential clock override is unsupported");
   }
@@ -119,6 +118,9 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
     } else {
       throw std::runtime_error("unknown iClockOverride option: " + option);
     }
+  }
+  if (node.clock_period && !options.count("-source")) {
+    throw std::runtime_error("oscillator override requires explicit -source");
   }
   if (source == node.inputs.end() && !options.count("-source")) {
     throw std::runtime_error("clock override requires a source");
@@ -228,7 +230,8 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
     }
     if ((node.kind == "ClockPort" && node.scope == 0 &&
          !node.inputs.count("Source")) ||
-        (node.kind == "ToClockPort" && node.clock_period)) {
+        (node.kind == "ToClockPort" && node.clock_period &&
+         !DefinitionAt(bit, version))) {
       route.root = bit;
       routes_.emplace(bit, route);
       break;
