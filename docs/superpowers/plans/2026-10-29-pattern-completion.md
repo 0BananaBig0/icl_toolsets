@@ -1583,8 +1583,45 @@ tests are skipped. Native7 leak-enabled ASan/UBSan and main51/clock41/client18/
 reset12 pass. All four final source/test hashes match the reviewed checkpoint.
 Strict coverage, full vendor certification and refreshed platform checks remain open.
 
-Task67 direct reset/TMS/TRST data-driver work is isolated, with RED/GREEN source
-checks and connected fixture migration underway. Arbitrary feedback transition
-checks must retain exact reset values in lowered native coverage. Remaining
-runtime/TAP/lifecycle, structural/operational, strict coverage, full vendor and
-platform requirements remain mandatory.
+Tasks67/68 direct reset/TMS/TRST data drivers and the necessary reset-mux solver
+fix have completed focused/native/CLI/performance/review, leak-enabled SAN and
+full serial integration. Their reviewed29-file snapshot is imported unchanged. Task69 input shape is isolated, with a
+separate RED checkpoint and primary/vendor evidence. Remaining runtime/TAP/
+lifecycle, structural/operational, strict coverage, full vendor and platform
+requirements remain mandatory.
+
+## Tasks67–68: Direct control data drivers and binary mux solver work
+
+Implementation and final verification are tracked in [direct-driver work](2026-11-14-direct-control-data-drivers.md)
+and [reset-mux performance](2026-11-14-physical-reset-mux-performance.md).
+Canonical per-bit aliases enforce direct DataMux drivers of ordinary-data Sources
+for Reset/TMS/TRST inputs and To* outputs. Typed forwarding, literals, virtual
+resets and binding holes remain eligible. Connected fixtures use real reset muxes;
+three exact arbitrary feedback/history cases retain native lowered transitions
+and failed-Apply storage rollback, without claiming their former frontend replay
+or CLI artifact coverage. Other production CLI artifact checks remain enabled.
+
+Fully known scalar0/1 binary mux evaluation reuses Select and identical knowledge
+masks, retaining generic consensus otherwise. Width guards preserve malformed
+backend rejection. Product scheduler and all deadlines/assertions are unchanged.
+Final27 implicit/physical/reversed32 source/flat/generated runs pass with matched
+successful baseline hashes. Deep512/4096 closed-form proofs,243 ternary vector
+cases and separate wide/deep/ordinary loading overhead measurements are recorded.
+Old selector4096 timed out after60s without a completed measurement. Diagnostic physical
+checks retain65 passes/34 objectives and reduce assertions4228/4227 to2148/2147.
+
+The29 reviewed source/test files hash-match on root import. Optimized connected
+native7 and main52/clock41/client18/reset12/multiple-TAP22/feedback10 pass. Native7
+and main52/clock41/client18/reset12 leak-enabled ASan/UBSan all pass in
+build/direct-control-driver-final-sanitizer-*. Naming/style and independent review
+pass. Full serial make-j1check passes in
+build/direct-control-driver-final-full.log/.exit0,1808.878s wall:41 dynamic and41
+static generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and
+editor6 in220.236s. Five optional ANTLR tests remain skipped. All29 final source/
+test hashes match the reviewed checkpoint; no deadlines or assertions changed.
+Matched-hash vendor loading evidence covers18 bare-data negatives, valid typed/
+mux controls and corrected constant inputs; it does not establish operation.
+
+Shape/direction/forcing/polarity, normal-operation and TRST selection, remaining
+runtime/TAP/lifecycle requirements, strict coverage, full vendor certification and
+refreshed platform qualification remain mandatory.

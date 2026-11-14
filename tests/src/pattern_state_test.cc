@@ -5,6 +5,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <stdexcept>
 
@@ -82,19 +83,27 @@ Module Cell {
  DataOutPort q[$W-1:0] { Source value; }
 }
 Module Feedback {
- Instance a Of Cell { InputPort rst=b.q; }
- Instance b Of Cell { InputPort rst=a.q; }
+ Instance a Of Cell { InputPort rst=1'b0; }
+ Instance b Of Cell { InputPort rst=1'b0; }
 }
 Module Transient {
  DataInPort reset;
- Instance gate Of Cell { InputPort rst=reset; }
+ Instance gate Of Cell { InputPort rst=1'b0; }
  LogicSignal asserted { gate.q & b.q; }
- Instance a Of Cell { InputPort rst=asserted; }
- Instance b Of Cell { InputPort rst=a.q; }
- Instance child Of Cell { Parameter W=4; InputPort rst=a.q; }
+ Instance a Of Cell { InputPort rst=1'b0; }
+ Instance b Of Cell { InputPort rst=1'b0; }
+ Instance child Of Cell { Parameter W=4; InputPort rst=1'b0; }
 }
 )");
-  const auto netlist = pattern::Elaborate(design, "Feedback");
+  auto netlist = pattern::Elaborate(design, "Feedback");
+  // Explicit lowered circuits retain arbitrary reset feedback and unknown
+  // state.
+  for (const auto& [target, source] :
+       std::map<std::string, std::string>{{"a.rst", "b.q"}, {"b.rst", "a.q"}}) {
+    netlist.nodes.at(netlist.node_ids.at(target)).inputs["Source"] = {
+        {netlist.node_ids.at(source), 0}};
+  }
+  pattern::CheckCombinationalConnections(netlist);
   const auto a = netlist.node_ids.at("a.value");
   const auto b = netlist.node_ids.at("b.value");
   for (const auto& initial :
@@ -111,7 +120,16 @@ Module Transient {
                 events.count(b) == (initial != "01"),
             "reset events include unchanged storage, never unknown assertions");
   }
-  const auto transient = pattern::Elaborate(design, "Transient");
+  auto transient = pattern::Elaborate(design, "Transient");
+  for (const auto& [target, source] :
+       std::map<std::string, std::string>{{"gate.rst", "reset"},
+                                          {"a.rst", "asserted"},
+                                          {"b.rst", "a.q"},
+                                          {"child.rst", "a.q"}}) {
+    transient.nodes.at(transient.node_ids.at(target)).inputs["Source"] = {
+        {transient.node_ids.at(source), 0}};
+  }
+  pattern::CheckCombinationalConnections(transient);
   pattern::NetworkState state(transient);
   for (const std::string name : {"gate.value", "a.value", "b.value"}) {
     state.Assume(transient.node_ids.at(name), "1");
@@ -408,9 +426,12 @@ Module Leaf {
 }
 Module Top {
   DataInPort reset_value; SelectPort selected;
-  Instance leaf Of Leaf { InputPort rst = reset_value; }
+  Instance leaf Of Leaf { InputPort rst = 1'b0; }
 })");
-  const auto netlist = pattern::Elaborate(design, "Top");
+  auto netlist = pattern::Elaborate(design, "Top");
+  netlist.nodes.at(netlist.node_ids.at("leaf.rst")).inputs["Source"] = {
+      {netlist.node_ids.at("reset_value"), 0}};
+  pattern::CheckCombinationalConnections(netlist);
   pattern::NetworkState state(netlist);
   const auto reg = netlist.node_ids.at("leaf.r");
   const auto pin = netlist.node_ids.at("reset_value");
@@ -480,9 +501,12 @@ Module Leaf {
 Module Top {
   DataInPort value; ScanInPort si;
   ScanRegister reset_control { ScanInSource si; CaptureSource value; }
-  Instance leaf Of Leaf { InputPort rst = reset_control; }
+  Instance leaf Of Leaf { InputPort rst = 1'b0; }
 })");
-  const auto netlist = pattern::Elaborate(design, "Top");
+  auto netlist = pattern::Elaborate(design, "Top");
+  netlist.nodes.at(netlist.node_ids.at("leaf.rst")).inputs["Source"] = {
+      {netlist.node_ids.at("reset_control"), 0}};
+  pattern::CheckCombinationalConnections(netlist);
   pattern::NetworkState state(netlist);
   const auto control = netlist.node_ids.at("reset_control"),
              target = netlist.node_ids.at("leaf.r");
@@ -886,13 +910,17 @@ void TestInstructionReset() {
   source.insert(
       source.find("ScanInSource si;") + std::string("ScanInSource si;").size(),
       " ResetValue 8'b0;");
-  source.insert(source.find("InputPort mode"),
-                "InputPort rst = tap.long_setup; ");
+  source.insert(source.find("InputPort mode"), "InputPort rst = 1'b0; ");
   pattern::Design design;
   design.AddIcl("instruction-reset.icl", source);
   design.AddBsdl("simple.bsdl", ReadFile(directory + "simple.bsdl"),
                  "AccessProbe");
-  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  // A lowered decode-driven reset isolates IR-event propagation from port
+  // rules.
+  network.netlist.nodes.at(network.netlist.node_ids.at("core.rst"))
+      .inputs["Source"] = {{network.netlist.node_ids.at("tap.long_setup"), 0}};
+  pattern::CheckCombinationalConnections(network.netlist);
   pattern::TapExecution run(network.netlist);
   run.Drive("TRST", "0");
   run.Drive("TRST", "1");

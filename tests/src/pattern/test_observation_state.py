@@ -212,7 +212,9 @@ class ObservationState(unittest.TestCase):
 Module Chains {
  ScanInPort si;
  ScanRegister gate { ScanInSource si; CaptureSource gate; ResetValue 0; }
- Instance c Of Child { InputPort si=gate; InputPort rst=gate; }
+ ResetPort global { ActivePolarity 0; }
+ DataMux gate_reset SelectedBy gate { 1'b0: 1'b0; 1'b1: global; }
+ Instance c Of Child { InputPort si=gate; InputPort rst=gate_reset; }
  ScanOutPort so { Source c.so; }
 }
 """

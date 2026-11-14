@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_symbolic.h"
 
+#include <chrono>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -13,6 +14,150 @@
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestBooleanMuxIdentity() {
+  pattern::Design design;
+  design.AddIcl("mux-identity.icl", R"(Module Identity {
+    ResetPort global; DataInPort select;
+    DataMux gate SelectedBy select { 1'b0: global; 1'b1: 1'b1; }
+    ToResetPort out { Source gate; }
+    DataInPort a[1:0]; DataInPort b[0:1];
+    DataMux vector[1:0] SelectedBy select { 1'b0: a; 1'b1: ~b; }
+    DataMux reversed[1:0] SelectedBy select { 1'b1: ~b; 1'b0: a; }
+  })");
+  const auto netlist = pattern::Elaborate(design, "Identity");
+  z3::context context;
+  for (bool fully_known : {false, true}) {
+    const auto bits = context.bv_const("select_bits", 1);
+    const auto known = fully_known ? context.bv_val(1, 1)
+                                   : context.bv_const("select_known", 1);
+    pattern::SymbolicNetwork values(
+        netlist, context,
+        {{netlist.node_ids.at("global"),
+          pattern::SymbolicValue::Literal(context, "0")},
+         {netlist.node_ids.at("select"), {bits, known}}});
+    const auto expected = values.Value(netlist.node_ids.at("select"));
+    const auto result = values.Value(netlist.node_ids.at("gate"));
+    z3::solver solver(context);
+    solver.add(result.bits != expected.bits || result.known != expected.known);
+    Require(solver.check() == z3::unsat,
+            "inactive global reset plus assert-one mux preserves select and X");
+  }
+  for (char select : std::string("01x")) {
+    for (char a0 : std::string("01x")) {
+      for (char a1 : std::string("01x")) {
+        for (char b0 : std::string("01x")) {
+          for (char b1 : std::string("01x")) {
+            const std::map<std::string, std::string> inputs{
+                {"select", {select}}, {"a", {a0, a1}}, {"b", {b0, b1}}};
+            pattern::NetworkState concrete(netlist);
+            std::map<size_t, pattern::SymbolicValue> assignments;
+            for (const auto& [name, input] : inputs) {
+              const auto id = netlist.node_ids.at(name);
+              concrete.Drive(id, input);
+              assignments.emplace(
+                  id, pattern::SymbolicValue::Literal(context, input));
+            }
+            pattern::SymbolicNetwork symbolic(netlist, context,
+                                              std::move(assignments));
+            for (const std::string name : {"vector", "reversed"}) {
+              const auto id = netlist.node_ids.at(name);
+              const auto expected =
+                  pattern::SymbolicValue::Literal(context, concrete.Value(id));
+              const auto result = symbolic.Value(id);
+              Require(
+                  z3::eq(result.bits.simplify(), expected.bits) &&
+                      z3::eq(result.known.simplify(), expected.known),
+                  "binary vector mux preserves inverted and unknown inputs");
+            }
+          }
+        }
+      }
+    }
+  }
+}
+void TestMalformedMuxWidth() {
+  pattern::Design design;
+  design.AddIcl("mux-width.icl", R"(Module Width {
+    DataInPort select;
+    DataMux gate SelectedBy select { 1'b0: 1'b0; 1'b1: 1'b1; }
+  })");
+  auto netlist = pattern::Elaborate(design, "Width");
+  const auto gate = netlist.node_ids.at("gate");
+  netlist.nodes.at(gate).left = 1;
+  netlist.nodes.at(gate).indexed = true;
+  z3::context context;
+  bool rejected = false;
+  try {
+    pattern::SymbolicNetwork symbolic(
+        netlist, context,
+        {{netlist.node_ids.at("select"),
+          pattern::SymbolicValue::Literal(context, "0")}});
+    symbolic.Value(gate);
+  } catch (const z3::exception&) {
+    rejected = true;
+  }
+  Require(rejected, "malformed mux branch widths cannot change declared width");
+}
+void TestMuxChainScale() {
+  for (bool selector_chain : {false, true}) {
+    for (unsigned stages : {512U, 4096U}) {
+      std::string source = "Module Scale { DataInPort value; ";
+      if (!selector_chain) {
+        source += "DataInPort mode[" + std::to_string(stages - 1) + ":0]; ";
+      }
+      std::string previous = "value";
+      for (unsigned i = 0; i < stages; ++i) {
+        const auto name = "m" + std::to_string(i);
+        source +=
+            "DataMux " + name + " SelectedBy " +
+            (selector_chain ? previous : "mode[" + std::to_string(i) + "]") +
+            " { 1'b0: " + (selector_chain ? "1'b0" : previous) +
+            "; 1'b1: " + (selector_chain ? "1'b1" : "1'b0") + "; }\n";
+        previous = name;
+      }
+      source += "DataOutPort out { Source " + previous + "; } }";
+      pattern::Design design;
+      design.AddIcl("mux-chain.icl", source);
+      const auto netlist = pattern::Elaborate(design, "Scale");
+      z3::context context;
+      const auto value = context.bv_const("value", 1);
+      const auto mode = context.bv_const("mode", stages);
+      std::map<size_t, pattern::SymbolicValue> assignments{
+          {netlist.node_ids.at("value"), {value, context.bv_val(1, 1)}}};
+      if (!selector_chain) {
+        assignments.emplace(
+            netlist.node_ids.at("mode"),
+            pattern::SymbolicValue{mode, ~context.bv_val(0, stages)});
+      }
+      const auto start = std::chrono::steady_clock::now();
+      pattern::SymbolicNetwork symbolic(netlist, context,
+                                        std::move(assignments));
+      const auto actual = symbolic.Value(netlist.node_ids.at("out"));
+      const auto built = std::chrono::steady_clock::now();
+      const auto expected = selector_chain
+                                ? value
+                                : z3::ite(mode == context.bv_val(0, stages),
+                                          value, context.bv_val(0, 1));
+      z3::solver solver(context);
+      z3::params parameters(context);
+      parameters.set("timeout", 2000U);
+      solver.set(parameters);
+      solver.add(actual.bits != expected ||
+                 actual.known != context.bv_val(1, 1));
+      Require(solver.check() == z3::unsat,
+              "deep binary mux chain agrees with independent closed form");
+      std::cout << "binary mux chain: selector=" << selector_chain
+                << " stages=" << stages << " bytes=" << source.size()
+                << " construct_seconds="
+                << std::chrono::duration<double>(built - start).count()
+                << " check_seconds="
+                << std::chrono::duration<double>(
+                       std::chrono::steady_clock::now() - built)
+                       .count()
+                << std::endl;
+    }
+  }
 }
 void TestMuxConsensus() {
   pattern::Design design;
@@ -496,8 +641,17 @@ Module Targets {
   }
 }
 }  // namespace
-int main() {
+int main(int argc, char* argv[]) {
   try {
+    if (argc != 1) {
+      Require(argc == 2 && std::string(argv[1]) == "--mux-scale",
+              "expected --mux-scale or no test arguments");
+      TestMuxChainScale();
+      return 0;
+    }
+    TestBooleanMuxIdentity();
+    TestMalformedMuxWidth();
+    TestMuxChainScale();
     TestMuxConsensus();
     TestMuxCoverageBudget();
     TestTernaryAgreement();

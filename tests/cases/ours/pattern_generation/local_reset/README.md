@@ -11,6 +11,11 @@ adds an explicit AccessLink/BSDL interface and a TRST reset binding. The
 reset sources use DataMux gating and ToResetPort forwarding across hierarchy.
 `vendor.pdl` exercises a preserved procedure call through that interface.
 
+`parallel.icl` retains its initially blocked selectors and uses real global-reset
+mux inputs. Both branches assert reset during global assertion. Normal operations
+select the global branch after releasing the selectors. This standalone fixture
+has no TRST function; the separate TRST assertion selection rule is not exercised.
+
 The separate `oracle_cases.json` runs through `tests/tessent_oracle.py` in
 comparison mode: our generator consumes the source PDL, while Tessent consumes
 the generated `local_reset.pdl`. Tessent 2026.2 accepted the explicit TAP case

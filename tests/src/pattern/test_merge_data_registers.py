@@ -31,10 +31,11 @@ RESET_DEPENDENCY = """Module Child {
  DataOutPort observed[3:0] { Source value; }
 }
 Module MergeNetwork {
- ScanInPort si; DataInPort data[3:0];
+ ScanInPort si; DataInPort data[3:0]; ResetPort global;
  ScanRegister root { ScanInSource si; ResetValue 1'b0; }
+ DataMux reset_gate SelectedBy root { 1'b0: 1'b1; 1'b1: global; }
  ScanOutPort so { Source root; }
- Instance child Of Child { InputPort rst = ~root; InputPort data = data; }
+ Instance child Of Child { InputPort rst = reset_gate; InputPort data = data; }
  DataOutPort observed[3:0] { Source child.observed; }
 }
 """

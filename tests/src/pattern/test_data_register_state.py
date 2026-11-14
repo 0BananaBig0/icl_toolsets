@@ -70,8 +70,9 @@ class DataState(unittest.TestCase):
  ScanInterface client{i} {{ Port si{i}; Port so{i}; Port sel{i}; Port se{i}; Port ce{i}; Port ue{i}; Port ck{i}; }}
 """
             source = child + """Module Chains {
- DataInPort data[3:0]; DataInPort enable; DataInPort reset;
- Instance c Of Child { InputPort data = data; InputPort enable = enable; InputPort rst = reset; }
+ DataInPort data[3:0]; DataInPort enable; DataInPort reset; ResetPort global;
+ DataMux reset_gate SelectedBy reset { 1'b0: global; 1'b1: 1'b1; }
+ Instance c Of Child { InputPort data = data; InputPort enable = enable; InputPort rst = reset_gate; }
  DataOutPort q[3:0] { Source c.q; }
 """ + scan + '}'
             output = self.replay(source, 'iState enable 0; iState reset 1; '
@@ -90,11 +91,12 @@ Module S {
  ScanOutPort so { Source value[0]; }
 }
 Module Chains {
- DataInPort data[3:0]; DataInPort enable; DataInPort reset;
- Instance d Of D { InputPort data=data; InputPort en=enable; InputPort rst=reset; }
+ DataInPort data[3:0]; DataInPort enable; DataInPort reset; ResetPort global;
+ DataMux reset_gate SelectedBy reset { 1'b0: global; 1'b1: 1'b1; }
+ Instance d Of D { InputPort data=data; InputPort en=enable; InputPort rst=reset_gate; }
  DataOutPort q[3:0] { Source d.q; }
  ScanInPort si; SelectPort sel; ShiftEnPort se;
- Instance s Of S { InputPort si=si; InputPort sel=sel; InputPort ce=1'b0; InputPort se=se; InputPort rst=reset; }
+ Instance s Of S { InputPort si=si; InputPort sel=sel; InputPort ce=1'b0; InputPort se=se; InputPort rst=reset_gate; }
  ScanOutPort so { Source s.so; }
 }
 """
@@ -110,7 +112,9 @@ Module Chains {
 Module Chains {
  ScanInPort si;
  DataRegister release { WriteDataSource 1'b0; WriteEnSource 1'b0; ResetValue 0; }
- Instance c Of Child { InputPort si = si; InputPort rst = release; }
+ ResetPort global { ActivePolarity 0; }
+ DataMux reset_gate SelectedBy release { 1'b0: 1'b0; 1'b1: global; }
+ Instance c Of Child { InputPort si = si; InputPort rst = reset_gate; }
  ScanOutPort so { Source c.so; }
 }
 """

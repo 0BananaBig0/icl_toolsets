@@ -9,10 +9,11 @@ Module ResetCallbackDataCell {
 }
 Module DataResetCallbacks {
  ScanInPort si;
- Instance a Of ResetCallbackScanCell { InputPort si=si; InputPort rst=z; }
- Instance d Of ResetCallbackDataCell { InputPort rst=a.q; }
+ // Native backend fixture: TestDataResetCallbacks restores z/a.q/rb drivers.
+ Instance a Of ResetCallbackScanCell { InputPort si=si; InputPort rst=1'b0; }
+ Instance d Of ResetCallbackDataCell { InputPort rst=1'b0; }
  DataRegister z { WriteDataSource 1'b1; WriteEnSource 1'b1; ResetValue 0; }
  LogicSignal rb { z & d.q; }
- Instance b Of ResetCallbackScanCell { Parameter W=4; Parameter R=0; InputPort si=a.so; InputPort rst=rb; }
+ Instance b Of ResetCallbackScanCell { Parameter W=4; Parameter R=0; InputPort si=a.so; InputPort rst=1'b0; }
  ScanOutPort so { Source b.so; }
 }

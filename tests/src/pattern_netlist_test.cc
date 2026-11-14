@@ -161,12 +161,19 @@ void TestResetSourceKinds() {
         "LogicSignal source { 1'b0; }"}) {
     const auto polarity =
         declaration.find("TRST") == std::string::npos ? "1" : "0";
+    const bool ordinary =
+        declaration.find("Data") == 0 || declaration.find("LogicSignal") == 0;
+    const std::string driver =
+        ordinary ? "ResetPort global; DataMux route SelectedBy "
+                   "1'b0 { 1'b0 : global; 1'b1 : source; } "
+                 : "";
     pattern::Design design;
     design.AddIcl(
         "reset_kinds.icl",
         "Module Child { ResetPort r { ActivePolarity " + std::string(polarity) +
-            "; } } Module M { " + declaration +
-            " Alias wrapped = source; "
+            "; } } Module M { " + declaration + " " + driver +
+            " Alias wrapped = " + (ordinary ? "route" : "source") +
+            "; "
             "ToResetPort out { Source wrapped; ActivePolarity " +
             polarity +
             "; } Instance child Of Child { InputPort r = wrapped; } }");
@@ -300,12 +307,9 @@ void TestStrictScanSources() {
                       "ScanInSource upstream; } "
                       "DataOutPort data[3:0] { Source upstream; } "
                       "ToClockPort clock[3:0] { Source upstream; } "
-                      "ToResetPort reset[3:0] { Source upstream; } "
                       "ToCaptureEnPort capture[3:0] { Source upstream; } "
                       "ToShiftEnPort shift[3:0] { Source upstream; } "
                       "ToUpdateEnPort update[3:0] { Source upstream; } "
-                      "ToTMSPort tms[3:0] { Source upstream; } "
-                      "ToTRSTPort trst[3:0] { Source upstream; } "
                       "ScanMux mux SelectedBy 1'b0 { 1'b0 : parts[0]; } "
                       "ScanOutPort so { Source target; } }");
     const auto original = pattern::Elaborate(design, "M");
@@ -431,16 +435,17 @@ void TestTmsTrstSourceKinds() {
             "Port input[1:0]; To" + family +
             "Port bare[1:0] { Source input; } To" + family +
             "Port output[1:0] { Source input; } DataInPort data; "
+            "DataMux gate SelectedBy data { 1'b0 : input[1]; 1'b1 : 1'b0; } "
             "Alias wrapped[1:0] = output; Instance direct Of Child { InputPort "
             "ctl = wrapped; } "
-            "Instance partial Of Child { InputPort ctl[1] = data; } "
+            "Instance partial Of Child { InputPort ctl[1] = gate; } "
             "Instance constants Of Child { InputPort ctl = 2'b1x; } }");
     const auto original = pattern::Elaborate(design, "M");
     pattern::Design flat;
     flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
     const auto restored = pattern::Elaborate(flat, "M");
     Require(pattern::SerializeIcl(restored) == pattern::SerializeIcl(original),
-            "TMS/TRST own/data/constant/partial and inferred output sources "
+            "TMS/TRST own/mux/constant/partial and inferred output sources "
             "survive flat replay");
   }
   pattern::Design design;
@@ -752,6 +757,80 @@ void TestDataMuxMatchingControlUses() {
         "lowered reset association supplies matching reset use");
   }
 }
+void TestDirectControlDataDrivers() {
+  for (const std::string family : {"Reset", "TMS", "TRST"}) {
+    const auto force = family == "Reset" ? "1'b1" : "1'b0";
+    for (bool output : {false, true}) {
+      const auto child =
+          output ? "" : "Module Child { " + family + "Port ctl; } ";
+      const auto consumer = [&](const std::string& source) {
+        return output ? "To" + family + "Port out { Source " + source + "; }"
+                      : "Instance child Of Child { InputPort ctl = " + source +
+                            "; }";
+      };
+      for (const std::string declaration :
+           {"DataInPort src;",
+            "DataInPort data; DataOutPort src { Source data; }",
+            "DataInPort data; LogicSignal src { data; }",
+            "DataRegister src { WriteDataSource 1'b0; WriteEnSource 1'b0; "
+            "ResetValue 0; }",
+            "ScanInPort si; ScanRegister src { ScanInSource si; ResetValue 0; "
+            "}",
+            "ScanInPort si; ScanRegister src[1:0] { ScanInSource si; "
+            "ResetValue 0; }"}) {
+        const std::string reference =
+            declaration.find("src[1:0]") == std::string::npos ? "src"
+                                                              : "src[1]";
+        for (const std::string source : {reference, std::string("wrapped")}) {
+          pattern::Design design;
+          design.AddIcl("direct_driver.icl",
+                        child + "Module M { " + declaration +
+                            " Alias wrapped = " + reference + "; " +
+                            consumer(source) + " }");
+          Fails([&] { pattern::Elaborate(design, "M"); },
+                "requires a direct DataMux data driver");
+        }
+        pattern::Design mux;
+        mux.AddIcl("mux_driver.icl",
+                   child + "Module M { " + declaration + " " + family +
+                       "Port ctrl; DataMux route SelectedBy " + reference +
+                       " { 1'b0 : ctrl; 1'b1 : " + force +
+                       "; } Alias forwarded = route; " + consumer("forwarded") +
+                       " }");
+        const auto flat = pattern::SerializeIcl(pattern::Elaborate(mux, "M"));
+        pattern::Design replay;
+        replay.AddIcl("flat.icl", flat);
+        Require(pattern::SerializeIcl(pattern::Elaborate(replay, "M")) == flat,
+                "direct mux through aliases survives flat replay");
+      }
+      for (const std::string source :
+           {std::string("typed"), std::string(force)}) {
+        pattern::Design valid;
+        valid.AddIcl("typed_driver.icl", child + "Module M { " + family +
+                                             "Port typed; " + consumer(source) +
+                                             " }");
+        pattern::Elaborate(valid, "M");
+      }
+      const auto vector_child =
+          output ? "" : "Module Child { " + family + "Port ctl[1:0]; } ";
+      for (const std::string source : {"mux, data", "data, mux"}) {
+        pattern::Design mixed;
+        const auto sink =
+            output ? "To" + family + "Port out[1:0] { Source wrapped; }"
+                   : "Instance child Of Child { InputPort ctl = wrapped; }";
+        mixed.AddIcl("mixed_driver.icl",
+                     vector_child + "Module M { " + family +
+                         "Port typed; DataInPort data; DataMux mux SelectedBy "
+                         "data { 1'b0: typed; 1'b1: " +
+                         force + "; } Alias wrapped[1:0] = " + source + "; " +
+                         sink + " }");
+        Fails([&] { pattern::Elaborate(mixed, "M"); },
+              "requires a direct DataMux data driver");
+      }
+    }
+  }
+}
+
 void TestCaptureUpdateMuxStructure() {
   for (const std::string family : {"CaptureEn", "UpdateEn"}) {
     const auto prefix = "Module M { " + family + "Port src; " + family +
@@ -2226,6 +2305,7 @@ int main() {
                           TestDataMuxControlSourceUnion,
                           TestDataMuxMatchingControlUses,
                           TestCaptureUpdateMuxStructure,
+                          TestDirectControlDataDrivers,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

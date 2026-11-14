@@ -324,26 +324,45 @@ SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
     const auto selector = Bits(node.inputs.at("SelectedBy"));
     const auto zero = context_.bv_val(0, selector.bits.get_sort().bv_size());
     const auto defined = selector.known == ~zero;
-    auto found = context_.bool_val(false);
-    for (const auto& choice : node.choices) {
-      auto match = context_.bool_val(false);
-      for (const auto& code : choice.codes) {
-        const auto pattern = SymbolicValue::Literal(context_, code.data);
-        match = match || ((selector.bits ^ pattern.bits) & pattern.known &
-                          selector.known) == zero;
+    const bool fully_known = defined.simplify().is_true();
+    if (selector.bits.get_sort().bv_size() == 1 && fully_known &&
+        node.choices.size() == 2 && node.choices[0].codes.size() == 1 &&
+        node.choices[1].codes.size() == 1 &&
+        node.choices[0].source.size() == node.Width() &&
+        node.choices[1].source.size() == node.Width() &&
+        ((node.choices[0].codes[0].data == "0" &&
+          node.choices[1].codes[0].data == "1") ||
+         (node.choices[0].codes[0].data == "1" &&
+          node.choices[1].codes[0].data == "0"))) {
+      const size_t first = node.choices[0].codes[0].data == "0" ? 0 : 1;
+      const auto when_zero = Bits(node.choices[first].source, serial);
+      const auto when_one = Bits(node.choices[1 - first].source, serial);
+      result = Select(selector.bits != zero, when_one, when_zero);
+      if (z3::eq(when_zero.known, when_one.known)) {
+        result.known = when_zero.known;
       }
-      const auto next = Bits(choice.source, serial);
-      result = Select(match, Select(found, Join(result, next), next), result);
-      found = found || match;
-    }
-    if (!defined.simplify().is_true()) {
-      auto uncovered = context_.bool_val(false);
-      for (const auto& code : UncoveredMuxCodes(node)) {
-        const auto pattern = SymbolicValue::Literal(context_, code);
-        uncovered = uncovered || ((selector.bits ^ pattern.bits) &
-                                  pattern.known & selector.known) == zero;
+    } else {
+      auto found = context_.bool_val(false);
+      for (const auto& choice : node.choices) {
+        auto match = context_.bool_val(false);
+        for (const auto& code : choice.codes) {
+          const auto pattern = SymbolicValue::Literal(context_, code.data);
+          match = match || ((selector.bits ^ pattern.bits) & pattern.known &
+                            selector.known) == zero;
+        }
+        const auto next = Bits(choice.source, serial);
+        result = Select(match, Select(found, Join(result, next), next), result);
+        found = found || match;
       }
-      result = Select(uncovered, unknown, result);
+      if (!fully_known) {
+        auto uncovered = context_.bool_val(false);
+        for (const auto& code : UncoveredMuxCodes(node)) {
+          const auto pattern = SymbolicValue::Literal(context_, code);
+          uncovered = uncovered || ((selector.bits ^ pattern.bits) &
+                                    pattern.known & selector.known) == zero;
+        }
+        result = Select(uncovered, unknown, result);
+      }
     }
   } else if (node.model == ModelKind::kGroup) {
     auto found = context_.bool_val(false), uncertain = context_.bool_val(false);

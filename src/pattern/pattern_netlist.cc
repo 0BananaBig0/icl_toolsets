@@ -381,6 +381,19 @@ void CheckSignalSources(const Netlist& netlist) {
           mux_control_sources |= control_use(kind);
           continue;
         }
+        if ((family == Family::kReset || family == Family::kTms ||
+             family == Family::kTrst) &&
+            (kind == Kind::kData || kind == Kind::kDataPort ||
+             kind == Kind::kScanRegister ||
+             kind == Kind::kIntermediateScanRegister)) {
+          const auto source = terminal(bit);
+          const auto& driver = netlist.nodes.at(source.node);
+          if (driver.kind != "DataMux") {
+            throw std::runtime_error(node.origin + ": " + node.name + ": " +
+                                     role + " data source " + driver.name +
+                                     " requires a direct DataMux data driver");
+          }
+        }
         if ((family != Family::kScanInput &&
              ((!addressed && kind == Kind::kData) || kind == Kind::kDataPort ||
               kind == Kind::kScanRegister ||

@@ -82,17 +82,23 @@ iRead c.value 6; iApply
     def test_reset_prerequisite_uses_other_interface(self):
         source = network().replace('SelectPort sel;',
                                    'SelectPort sel; ResetPort rst { ActivePolarity 0; }')
+        source = source.replace('Module Chains {', "Module Chains { ResetPort global { ActivePolarity 0; } "
+                                "DataMux reset_gate SelectedBy c0.q[0] { 1'b0: 1'b0; 1'b1: global; }")
         source = source.replace('Instance c1 Of Cell {',
-                                'Instance c1 Of Cell { InputPort rst = c0.q[0];')
+                                'Instance c1 Of Cell { InputPort rst = reset_gate;')
         output = self.replay(source, 'iReset; iWrite c1.value 9; iApply; iRead c1.value 9; iApply\n')
         self.assertIn(b'iWrite c0.value 0b0001', output)
 
     def test_interface_switch_applies_selection_driven_reset(self):
         source = network().replace('SelectPort sel;',
                                    'SelectPort sel; ResetPort rst { ActivePolarity 0; }')
+        source = source.replace('Module Chains {', 'Module Chains { ResetPort global { ActivePolarity 0; }')
         for i in range(2):
+            source = source.replace('Module Chains {',
+                                    f"Module Chains {{ DataMux reset_{i} SelectedBy sel[{i}] {{ "
+                                    "1'b0: 1'b0; 1'b1: global; }")
             source = source.replace(f'Instance c{i} Of Cell {{',
-                                    f'Instance c{i} Of Cell {{ InputPort rst = sel[{i}];')
+                                    f'Instance c{i} Of Cell {{ InputPort rst = reset_{i};')
         self.replay(source, 'iReset; iWrite c0.value 9; iApply; iWrite c1.value 6; iApply; '
                     'iRead c0.value 0; iApply; iRead c1.value 0; iApply\n')
 
@@ -104,8 +110,10 @@ iRead c.value 6; iApply
         source = (helpers.ROOT / 'tests/cases/ours/pattern_generation/multiple_client_reset_capture.icl').read_text()
         source = source.replace('InputPort d = c0.q', 'InputPort d = c1.q')
         source = source.replace('  ScanInPort si[1:0];',
-                                '  LogicSignal reset_b { sel[1] & c0.q[0]; }\n  ScanInPort si[1:0];')
-        source = source.replace("InputPort rst = 1'b0", 'InputPort rst = reset_b')
+                                "  LogicSignal reset_b { sel[1] & c0.q[0]; }\n"
+                                "  DataMux reset_gate_b SelectedBy reset_b { 1'b0: global; 1'b1: 1'b1; }\n"
+                                '  ScanInPort si[1:0];')
+        source = source.replace("InputPort rst = 1'b0", 'InputPort rst = reset_gate_b')
         self.replay(source, 'iReset; iWrite c1.value 6; iApply; iWrite c0.value 9; iApply; '
                     'iWrite c1.value 3; iApply\n')
 
@@ -119,7 +127,8 @@ iRead c.value 6; iApply
 """ + source.replace('Module Chains {', """Module Chains {
  DataInPort bus[3:0]; DataInPort enable;
  LogicSignal reset_d { sel[1] & c0.q[0]; }
- Instance d Of DataCell { InputPort d = bus; InputPort en = enable; InputPort rst = reset_d; }
+ DataMux reset_gate_d SelectedBy reset_d { 1'b0: global; 1'b1: 1'b1; }
+ Instance d Of DataCell { InputPort d = bus; InputPort en = enable; InputPort rst = reset_gate_d; }
  DataOutPort q[3:0] { Source d.q; }
 """)
         for initialize in (False, True):
@@ -127,6 +136,8 @@ iRead c.value 6; iApply
                 pdl = 'iReset; '
                 if initialize:
                     pdl += 'iWrite c0.value 0; iApply; '
+                else:
+                    pdl += 'iState c0.value 0bxxxx; '
                 pdl += ('iWrite bus 9; iWrite enable 1; iApply; iWrite enable 0; iApply; '
                         'iWrite c0.value 9; iApply; iWrite c1.value 3; iApply; iRead q 0; iApply\n')
                 self.replay(source, pdl)
@@ -168,13 +179,17 @@ iRead c.value 6; iApply
  ScanOutPort so { Source value; } DataOutPort q { Source value; }
 }
 Module Chains {
- ScanInPort si[1:0]; SelectPort sel[1:0];
+ ScanInPort si[1:0]; SelectPort sel[1:0]; ResetPort global;
  ScanMux input SelectedBy sel[0] { 1'b0: si[1]; 1'b1: si[0]; }
  LogicSignal selected { sel[0] | sel[1]; }
 """
         for i in range(512):
             scan = f'c{i-1}.so' if i else 'input'
             reset = f'c{i-1}.q' if i else "1'b0"
+            if i:
+                source += (f"DataMux reset_{i} SelectedBy {reset} {{ "
+                           "1'b0: global; 1'b1: 1'b1; }\n")
+                reset = f'reset_{i}'
             source += f'Instance c{i} Of Bit {{ InputPort si = {scan}; InputPort rst = {reset}; InputPort sel = selected; }}\n'
         source += """ScanOutPort so { Source c511.so; }
  ScanInterface a { Port si[0]; Port so; Port sel[0]; }
@@ -183,7 +198,8 @@ Module Chains {
 """
         icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
         icl.write_text(source)
-        pdl.write_text('iReset; iWrite c511.value 1; iApply\n')
+        unknown = ''.join(f'iState c{i}.value 0bx; ' for i in range(512))
+        pdl.write_text('iReset; ' + unknown + 'iWrite c511.value 1; iApply\n')
         (self.root / 'result.pdl').write_bytes(b'previous output\n')
         error = self.run_tool(icl, pdl, ok=False)
         self.assertIn('reset resource limit', error)

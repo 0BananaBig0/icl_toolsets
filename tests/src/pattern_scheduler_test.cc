@@ -1391,14 +1391,20 @@ Module Cell {
 }
 Module Feedback {
  ScanInPort si;
- Instance a Of Cell { InputPort si=si; InputPort rst=b.q; }
- Instance b Of Cell { InputPort si=a.so; InputPort rst=a.q; }
+ Instance a Of Cell { InputPort si=si; InputPort rst=1'b0; }
+ Instance b Of Cell { InputPort si=a.so; InputPort rst=1'b0; }
  LogicSignal ready { a.q & b.q; }
- Instance c Of Cell { Parameter W=4; InputPort si=b.so; InputPort rst=ready; }
+ Instance c Of Cell { Parameter W=4; InputPort si=b.so; InputPort rst=1'b0; }
  ScanOutPort so { Source c.so; }
 }
 )");
-  const auto netlist = pattern::Elaborate(design, "Feedback");
+  auto netlist = pattern::Elaborate(design, "Feedback");
+  for (const auto& [target, source] : std::map<std::string, std::string>{
+           {"a.rst", "b.q"}, {"b.rst", "a.q"}, {"c.rst", "ready"}}) {
+    netlist.nodes.at(netlist.node_ids.at(target)).inputs["Source"] = {
+        {netlist.node_ids.at(source), 0}};
+  }
+  pattern::CheckCombinationalConnections(netlist);
   pattern::ScanScheduler scheduler(netlist);
   scheduler.Assume("a.value", "0");
   scheduler.Assume("b.value", "0");
@@ -1461,9 +1467,10 @@ Module GreedyLeaf {
  ScanOutPort so { Source target[0]; }
 }
 Module GreedyRollback {
- ScanInPort si;
+ ScanInPort si; ResetPort global;
  ScanRegister release { ScanInSource si; ResetValue 1'b0; }
- Instance child Of GreedyLeaf { InputPort si = release; InputPort rst = ~release; }
+ DataMux reset_gate SelectedBy release { 1'b0: 1'b1; 1'b1: global; }
+ Instance child Of GreedyLeaf { InputPort si = release; InputPort rst = reset_gate; }
  ScanOutPort so { Source child.so; }
 )";
   for (size_t i = 0; i < 32; ++i) {
@@ -1685,25 +1692,116 @@ void TestDataResetCallbacks() {
   pattern::Design design;
   design.AddIcl("data-reset-callbacks.icl",
                 std::string(std::istreambuf_iterator<char>(file), {}));
-  const auto netlist = pattern::Elaborate(design, "DataResetCallbacks");
-  pattern::ScanScheduler scheduler(netlist);
-  scheduler.Reset();
-  scheduler.Assume("a.value", "0");
-  scheduler.Assume("b.value", "1001");
-  scheduler.Assume("d.value", "0");
-  scheduler.Assume("z", "0");
-  const auto steps = scheduler.Apply({{"iRead", {"b.value", "9"}, "test", {}}});
-  Require(scheduler.Value("a.value") == "1" &&
-              scheduler.Value("b.value") == "0000" &&
-              scheduler.Value("d.value") == "0" && scheduler.Value("z") == "1",
-          "post-update mixed reset passes preserve transient assertions");
-  Require(
-      steps.size() == 1 && !steps.front().writes.count("b.value") &&
-          steps.front().expected.at("b.value") == "1001",
-      "capture precedes callback reset and overwritten writes are not emitted");
-  scheduler.Apply({{"iWrite", {"b.value", "0bx"}, "test", {}}});
-  Require(scheduler.Value("b.value") == "0000",
-          "post-write reset controls the next X-filled scan");
+  auto netlist = pattern::Elaborate(design, "DataResetCallbacks");
+  // These arbitrary transient circuits exercise the lowered backend, not ICL
+  // reset-port conformance; retain their original transition functions.
+  for (const auto& [target, source] : std::map<std::string, std::string>{
+           {"a.rst", "z"}, {"d.rst", "a.q"}, {"b.rst", "rb"}}) {
+    netlist.nodes.at(netlist.node_ids.at(target)).inputs["Source"] = {
+        {netlist.node_ids.at(source), 0}};
+  }
+  pattern::CheckCombinationalConnections(netlist);
+  for (bool initialized : {false, true}) {
+    pattern::ScanScheduler scheduler(netlist);
+    if (initialized) scheduler.Reset();
+    scheduler.Assume("a.value", "0");
+    scheduler.Assume("b.value", "1001");
+    scheduler.Assume("d.value", "0");
+    scheduler.Assume("z", "0");
+    if (!initialized) {
+      bool rejected = false;
+      for (const auto& operation : std::vector<pattern::Operation>{
+               {"iRead", {"b.value", "9"}, "test", {}},
+               {"iWrite", {"b.value", "0bx"}, "test", {}}}) {
+        std::map<std::string, std::string> before;
+        for (const std::string name : {"a.value", "b.value", "d.value", "z"}) {
+          before.emplace(name, scheduler.Value(name));
+        }
+        try {
+          scheduler.Apply({operation});
+        } catch (const std::runtime_error& error) {
+          const std::string message = error.what();
+          rejected =
+              message.find("unrepresented scan load") != std::string::npos ||
+              message.find("reachability not proved") != std::string::npos;
+          for (const auto& [name, value] : before) {
+            Require(scheduler.Value(name) == value,
+                    "failed unknown-global apply preserves preceding state");
+          }
+          break;
+        }
+      }
+      Require(rejected,
+              "unknown global reset cannot invent controlling history");
+      continue;
+    }
+    const auto steps =
+        scheduler.Apply({{"iRead", {"b.value", "9"}, "test", {}}});
+    Require(scheduler.Value("a.value") == "1" &&
+                scheduler.Value("b.value") == "0000" &&
+                scheduler.Value("d.value") == "0" &&
+                scheduler.Value("z") == "1",
+            "post-update mixed reset passes preserve transient assertions");
+    Require(steps.size() == 1 && !steps.front().writes.count("b.value") &&
+                steps.front().expected.at("b.value") == "1001",
+            "capture precedes callback reset and overwritten writes are not "
+            "emitted");
+    scheduler.Apply({{"iWrite", {"b.value", "0bx"}, "test", {}}});
+    Require(scheduler.Value("b.value") == "0000",
+            "post-write reset controls the next X-filled scan");
+  }
+}
+void TestUnreleasedDataFeedback() {
+  for (bool mixed : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("unreleased-backend.icl",
+                  R"(
+Module Scan {
+ Parameter W=1; ScanInPort si; ResetPort rst { ActivePolarity 0; }
+ ScanRegister value[$W-1:0] { ScanInSource si; )" +
+                      std::string(mixed ? "" : "CaptureSource value; ") +
+                      R"(ResetValue 0; }
+ ScanOutPort so { Source value[0]; } DataOutPort q[$W-1:0] { Source value; }
+}
+Module Data {
+ ResetPort rst { ActivePolarity 0; }
+ DataRegister value { WriteDataSource 1'b0; WriteEnSource 1'b0; ResetValue 0; }
+ DataOutPort q { Source value; }
+}
+Module Feedback {
+ Parameter W=)" + std::string(mixed ? "1" : "4") +
+                      R"(; ScanInPort si;
+ Instance c Of Scan { Parameter W=$W; InputPort si=si; InputPort rst=1'b0; }
+ Instance d Of Data { InputPort rst=1'b0; }
+ ScanOutPort so { Source c.so; }
+}
+)");
+    auto netlist = pattern::Elaborate(design, "Feedback");
+    const auto id = [&](const std::string& name) {
+      return netlist.node_ids.at(name);
+    };
+    netlist.nodes.at(id("c.rst")).inputs["Source"] = {
+        {id(mixed ? "d.q" : "c.q"), 0}};
+    if (mixed) {
+      netlist.nodes.at(id("d.rst")).inputs["Source"] = {{id("c.q"), 0}};
+    }
+    pattern::CheckCombinationalConnections(netlist);
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const auto scan_before = scheduler.Value("c.value");
+    const auto data_before = scheduler.Value("d.value");
+    bool rejected = false;
+    try {
+      scheduler.Apply(
+          {{"iWrite", {"c.value", mixed ? "1" : "9"}, "feedback:1", {}}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("reachability not proved") !=
+                 std::string::npos;
+    }
+    Require(rejected && scheduler.Value("c.value") == scan_before &&
+                scheduler.Value("d.value") == data_before,
+            "unreleased self/mixed feedback fails without releasing the loop");
+  }
 }
 void TestDataResetDependencies() {
   std::ifstream file(
@@ -2538,11 +2636,14 @@ Module Child {
 Module Network {
  ScanInPort si;
  ScanRegister release { ScanInSource si; }
- Instance child Of Child { InputPort si = release; InputPort rst = ~release; }
+ ResetPort global;
+ DataMux reset_gate SelectedBy release { 1'b0: 1'b1; 1'b1: global; }
+ Instance child Of Child { InputPort si = release; InputPort rst = reset_gate; }
  ScanOutPort so { Source child.so; }
 })");
   const auto reset_netlist = pattern::Elaborate(reset_design, "Network");
   pattern::ScanScheduler reset(reset_netlist);
+  reset.Reset();
   reset.Assume("release", "0");
   const auto scans = reset.Apply({{"iWrite", {"release", "1"}, "reset:1", {}},
                                   {"iWrite", {"child.r", "0"}, "reset:2", {}}},
@@ -2653,12 +2754,15 @@ Module Child {
 Module Network {
  ScanInPort si;
  ScanRegister release { ScanInSource si; }
- Instance child Of Child { InputPort si = release; InputPort rst = ~release; }
+ ResetPort global;
+ DataMux reset_gate SelectedBy release { 1'b0: 1'b1; 1'b1: global; }
+ Instance child Of Child { InputPort si = release; InputPort rst = reset_gate; }
  ScanOutPort so { Source child.so; }
  Alias pair[1:0] = release, child.r { AccessTogether; }
 })");
   const auto reset_netlist = pattern::Elaborate(reset_design, "Network");
   pattern::ScanScheduler reset(reset_netlist);
+  reset.Reset();
   reset.Assume("release", "0");
   const auto scans =
       reset.Apply({{"iWrite", {"pair[1]", "1"}, "reset-group:1", {}}});
@@ -2710,12 +2814,15 @@ Module Network {
   ScanInPort si;
   ScanRegister gate { ScanInSource si; }
   ScanRegister reset { ScanInSource gate; }
-  Instance child Of Leaf { InputPort si = reset; InputPort rst = ~reset; }
+  ResetPort global;
+  DataMux reset_gate SelectedBy reset { 1'b0: 1'b1; 1'b1: global; }
+  Instance child Of Leaf { InputPort si = reset; InputPort rst = reset_gate; }
   ScanMux route SelectedBy gate { 1'b0: reset; 1'b1: child.so; }
   ScanOutPort so { Source route; }
 })");
   const auto netlist = pattern::Elaborate(design, "Network");
   pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
   scheduler.Assume("gate", "0");
   scheduler.Assume("reset", "0");
   const auto steps =
@@ -2739,6 +2846,7 @@ Module Network {
   flat_design.AddIcl("flat.icl", pattern::SerializeIcl(netlist));
   const auto flat = pattern::Elaborate(flat_design, "Network");
   pattern::ScanScheduler replay(flat);
+  replay.Reset();
   replay.Assume("gate", "0");
   replay.Assume("reset", "0");
   const auto repeated =
@@ -2833,11 +2941,14 @@ Module Child {
 }
 Module Network {
  ScanInPort si; ScanRegister reset { ScanInSource si; }
- Instance child Of Child { InputPort si = reset; InputPort rst = reset; }
+ ResetPort global;
+ DataMux reset_gate SelectedBy reset { 1'b0: global; 1'b1: 1'b1; }
+ Instance child Of Child { InputPort si = reset; InputPort rst = reset_gate; }
  ScanOutPort so { Source child.so; }
 })");
   const auto netlist = pattern::Elaborate(design, "Network");
   pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
   scheduler.Assume("reset", "0");
   scheduler.Assume("child.r", "1");
   scheduler.Apply({{"iWrite", {"reset", "1"}, "test:1", {}}});
@@ -2925,8 +3036,19 @@ Module Network {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
-      Require(argc == 2 && std::string(argv[1]) == "--primary-limits",
-              "expected --primary-limits or no test arguments");
+      if (argc == 2 && std::string(argv[1]) == "--reset-backend") {
+        TestDataResetCallbacks();
+        TestUnreleasedDataFeedback();
+        TestGreedyRollback();
+        TestApplyTogether();
+        TestAccessTogetherPrerequisites();
+        TestPrerequisites();
+        TestResetFill();
+        return 0;
+      }
+      Require(
+          argc == 2 && std::string(argv[1]) == "--primary-limits",
+          "expected --primary-limits, --reset-backend or no test arguments");
       TestPrimaryLimits();
       return 0;
     }
@@ -2943,6 +3065,7 @@ int main(int argc, char* argv[]) {
     TestStandaloneIdleClockGates();
     TestStandaloneIdleDataFill();
     TestDataResetCallbacks();
+    TestUnreleasedDataFeedback();
     TestDataResetDependencies();
     TestDataResetReleaseReplay();
     TestMultipleTapScheduling();

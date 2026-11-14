@@ -3765,8 +3765,9 @@ Strict coverage, vendor certification and platform qualification are not refresh
 ### Reset source terminal eligibility (2026-11-14)
 
 ResetPort input bindings and ToResetPort Sources now require reset-family/data/
-constant terminals and aliases. Inferred global reset remains eligible. Existing
-TRST-driven reset acceptance is preserved: the generic source list and specific
+constant terminals and aliases. Ordinary-data terminals now require a direct
+DataMux driver, with aliases transparent; see the direct-driver section below.
+Inferred global reset remains eligible. Existing TRST-driven reset acceptance is preserved: the generic source list and specific
 ResetPort prose differ, while Tessent2026.2 accepts both direct TRST-to-ResetPort
 and ToResetPort connections in the recorded loading probe. That probe exercises
 only a clock wait, not functional reset equivalence. Exact input hashes and fetched
@@ -3791,7 +3792,8 @@ vendor certification and platform qualification are not refreshed.
 
 CaptureEn, ShiftEn and UpdateEn input bindings and To* Sources accept their own
 family, ordinary data/constants and aliases. TMS/TRST follow the same family rule;
-TRST also accepts the inferred asynchronous global-reset function. Unrelated
+TRST also accepts the inferred asynchronous global-reset function. TMS/TRST
+ordinary-data Sources additionally require a direct DataMux driver. Unrelated
 control/clock/scan terminals and mismatched virtual reset functions are rejected.
 Generated TAP scan controls remain ordinary data and require no exemption.
 
@@ -4060,4 +4062,77 @@ Full integration passes in build/capture-update-mux-final-full.log/.exit0,
 goldens,2523 ICL334/119 rules, LSP62 and editor6 in255.589s. Five optional ANTLR
 tests are skipped. Native7 leak-enabled ASan/UBSan and main51/clock41/client18/
 reset12 pass. All four final source/test hashes match the reviewed checkpoint.
+Strict coverage, full vendor certification and refreshed platform checks remain open.
+
+### Direct data drivers of reset/TMS/TRST (2026-11-14)
+
+Ordinary-data bits bound to ResetPort/TMSPort/TRSTPort inputs or used in the
+corresponding To* Sources must be directly driven by DataMux. Aliases preserve
+canonical driver identity and inversion; ordinary ports, logic, storage and groups
+remain boundaries. Check every bit, including mixed vectors. Typed forwarding,
+TRST-to-reset compatibility, literals, virtual resets and binding holes retain
+their existing eligibility. Previously accepted bare data drivers now fail with a
+source-located diagnostic before replacing pattern/reset/debug artifacts.
+
+This enforces the direct-driver part of IEEE1687 clauses6.4.6.13/.14/.15/.16/.21/.22.
+It does not establish mux input shape, hierarchy direction, forcing/polarity,
+normal-operation sensitization or TRST-assertion selection. Those remain required
+work. In standalone models without any actual or inferred TRST function, retaining
+a locally asserted selector after global reset is distinct from TRST assertion.
+The global branch must still be selected for downstream normal operations. A
+source-less ToResetPort alone does not create a TRST/power-up function.
+
+Connected frontend fixtures now use real global/reset mux paths and preserve
+release ordering, common updates, reservations and source/flat/generated replay.
+Three deliberately arbitrary feedback/history cases moved to explicit native
+lowered-netlist checks, retaining reset values, CaptureSource and failed-Apply
+storage rollback. Their former source/flat/generated and CLI artifact coverage is
+not claimed for that migration. Other CLI artifact checks remain enabled.
+
+Tessent2026.2 loading rejects18 direct/aliased/logic source cases with ICL65. Typed
+and mux controls load. Three initial constant-input models lacked top ports;
+corrected inputs load in all three families, preserving literal eligibility.
+Submitted/fetched model and runner hashes match in
+build/direct-control-driver-{vendor,constant-vendor}-probe. No PDL or operational
+conformance claim follows from these probes.
+
+### Known binary mux values and reset solver work (2026-11-14)
+
+When a one-bit selector is provably known and exactly two single-code rows0/1
+cover it, symbolic evaluation selects the matching row directly. Either row order
+works, branch widths must match the declared mux, and identical knowledge masks
+are reused. Unknown selectors and overlapping, alternative, incomplete or wider
+code sets keep the existing consensus behavior. Enable and held/shift handling
+remain shared. There is no public API, metadata, scheduling-policy or limit change.
+
+This avoids redundant unknownness terms in cyclic reset snapshots. Diagnostic
+physical32 checks retain65 passes and34 objectives while reducing assertions
+4228/4227 to2148/2147; measured checks change from1629ms SAT/2005ms unknown
+to73ms/141ms SAT. Final three interleaved repetitions cover32 registers/64 storage bits and32
+forcing muxes with implicit, physical and reversed-row roots. All27 changed
+source/flat/generated runs pass; successful baseline output/flat hashes match.
+Changed source0.617–0.767s and flat0.566–0.668s leave the existing2s check and15s
+scheduling limits intact. Baseline failures remain recorded, not treated as passes.
+
+Variable-selector proofs,243 ternary/inverted/reversed vector combinations,
+malformed lowered widths and512/4096-stage data/selector chains protect the change.
+Final4096 selector construction0.026–0.031s/check0.003–0.004s, data construction
+0.132–0.139s/check0.473–0.942s; peak138856KiB. Old selector4096 did not complete
+within a60s process-group bound, leaving no completed measurement or peak-RSS claim. These are
+component/workload measurements, not a worst-case complexity or optimality claim.
+
+Direct-driver loading overhead is separately measured with empty PDL:262144 reset
+bits (290 ICL bytes) changed0.566–1.269s versus0.516–1.067s, peak134528KiB versus
+134780KiB;4096 aliases (83940 bytes) changed0.114–0.165s; ordinary655360 references
+changed0.165–0.166s. Source/flat hashes match. Exact inputs, source/binary hashes,
+commands, environment, wall and RSS are in build/direct-control-driver-
+{known-mux-confirmed-scale,deep-mux-confirmed-scale,loading-scale,scan-diagnostic-confirmed}.
+Independent source/fixture review, naming/style and focused proofs pass. All7
+native and main52/clock41/client18/reset12 leak-enabled ASan/UBSan checks pass in
+build/direct-control-driver-final-sanitizer-*.
+
+Full serial make-j1check passes in build/direct-control-driver-final-full.log/
+.exit0,1808.878s wall:41 dynamic and41 static generator suites,51 directional
+goldens,2523 ICL334/119 rules, LSP62 and editor6 in220.236s. Five optional ANTLR
+tests are skipped. All29 final source/test hashes match the reviewed checkpoint.
 Strict coverage, full vendor certification and refreshed platform checks remain open.

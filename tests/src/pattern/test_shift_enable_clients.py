@@ -79,8 +79,10 @@ class ShiftEnableClients(unittest.TestCase):
     def test_reset_prerequisite_from_other_client(self):
         source = network().replace('ShiftEnPort se;',
                                    'ShiftEnPort se; ResetPort rst { ActivePolarity 0; }')
+        source = source.replace('Module Chains {', "Module Chains { ResetPort global { ActivePolarity 0; } "
+                                "DataMux reset_gate SelectedBy c0.q[0] { 1'b0: 1'b0; 1'b1: global; }")
         source = source.replace('Instance c1 Of Cell {',
-                                'Instance c1 Of Cell { InputPort rst = c0.q[0];')
+                                'Instance c1 Of Cell { InputPort rst = reset_gate;')
         self.replay(source, 'iReset; iWrite c1.value 9; iApply; iRead c1.value 9; iApply;\n')
 
     def test_shared_storage_and_shared_output(self):

@@ -76,7 +76,9 @@ class QueuedState(unittest.TestCase):
 Module Chains {
  ScanInPort si;
  DataRegister release { ResetValue 0; }
- Instance c Of Child { InputPort si=si; InputPort rst=release; }
+ ResetPort global { ActivePolarity 0; }
+ DataMux release_reset SelectedBy release { 1'b0: 1'b0; 1'b1: global; }
+ Instance c Of Child { InputPort si=si; InputPort rst=release_reset; }
  ScanOutPort so { Source c.so; }
 }
 """
@@ -108,9 +110,12 @@ Module Chains {
 }
 Module Chains {
  ScanInPort si; DataRegister release { ResetValue 0; }
+ ResetPort global { ActivePolarity 0; }
+ DataMux release_reset SelectedBy release { 1'b0: 1'b0; 1'b1: global; }
  ScanRegister gate { ScanInSource si; CaptureSource gate; ResetValue 0; }
- Instance c Of Child { InputPort si=gate; InputPort rst=release; }
- Instance d Of Child { InputPort si=c.so; InputPort rst=gate; }
+ DataMux gate_reset SelectedBy gate { 1'b0: 1'b0; 1'b1: global; }
+ Instance c Of Child { InputPort si=gate; InputPort rst=release_reset; }
+ Instance d Of Child { InputPort si=c.so; InputPort rst=gate_reset; }
  ScanOutPort so { Source d.so; }
 }
 """

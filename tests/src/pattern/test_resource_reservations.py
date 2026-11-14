@@ -422,14 +422,15 @@ class Reservations(unittest.TestCase):
     def test_reset_planner_many_reserved_alternatives(self):
         fixtures = ROOT / 'tests/cases/ours/pattern_generation/local_reset'
         names = [f'r{i:02}' for i in range(40)]
-        source = 'Module ResetChoice { ScanInPort si;\n'
+        source = 'Module ResetChoice { ScanInPort si; ResetPort global;\n'
         previous = 'si'
         for name in names:
             source += f"ScanRegister {name} {{ ScanInSource {previous}; ResetValue 1'b0; }}\n"
             previous = name
         source += 'LogicSignal release_reset { ~(' + ' | '.join(names) + '); }\n'
+        source += "DataMux reset_gate SelectedBy release_reset { 1'b0: global; 1'b1: 1'b1; }\n"
         source += ('Instance child Of Leaf { InputPort si = ' + previous +
-                   '; InputPort rst = release_reset; }\nScanOutPort so { Source child.so; } }\n')
+                   '; InputPort rst = reset_gate; }\nScanOutPort so { Source child.so; } }\n')
         (self.root / 'source.icl').write_text(source)
         body = ''.join(f'iTake {n}; iWrite {n} 0; ' for n in names[1:])
         body += 'iApply; iWrite child.value 5; iApply'

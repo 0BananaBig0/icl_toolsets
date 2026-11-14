@@ -339,6 +339,33 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                     for artifact in artifacts:
                         self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_direct_control_data_drivers_preserve_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        declarations = ('DataInPort src;', 'DataInPort data; LogicSignal src { data; }',
+                        'DataRegister src { WriteDataSource 0; WriteEnSource 0; ResetValue 0; }')
+        for family in ('Reset', 'TMS', 'TRST'):
+            for output in (False, True):
+                for declaration in declarations:
+                    for signal in ('src', 'wrapped'):
+                        with self.subTest(family=family, output=output, declaration=declaration, signal=signal):
+                            child = '' if output else f'Module Child {{ {family}Port ctl; }} '
+                            consumer = (f'To{family}Port out {{ Source {signal}; }}' if output else
+                                        f'Instance child Of Child {{ InputPort ctl = {signal}; }}')
+                            (self.root / 'source.icl').write_text(
+                                child + 'Module Network { ' + declaration +
+                                ' Alias wrapped = src; ' + consumer + ' }')
+                            for artifact in artifacts:
+                                artifact.write_text('previous artifact\n')
+                            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+                            self.assertIn('requires a direct DataMux data driver', result.stdout + result.stderr)
+                            for artifact in artifacts:
+                                self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_capture_update_mux_structure_preserves_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         debug = self.root / 'debug/Network.icl'
@@ -459,11 +486,11 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                               'Instance child Of Child { InputPort ctl = outer; } }')
         models['enable'] = prefix + "DataOutPort observed { Source 1'b0; Enable mux; } }"
         models['logic'] = (prefix + 'LogicSignal logic { mux; } '
-                           'Instance child Of Child { InputPort ctl = logic; } }')
+                           'DataOutPort observed { Source logic; } }')
         models['data port'] = (
             'Module Forward { DataInPort d; DataOutPort out { Source d; } } ' + prefix +
             'Instance forward Of Forward { InputPort d = mux; } '
-            'Instance child Of Child { InputPort ctl = forward.out; } }')
+            'DataOutPort observed { Source forward.out; } }')
         models['observed vector bit'] = (
             'Module Child { ResetPort ctl; } Module Network { ResetPort source[1:0]; '
             "DataInPort mode; DataMux mux[1:0] SelectedBy mode { 1'b0 : 2'b11; 1'b1 : source; } "
@@ -891,7 +918,11 @@ Module Network {
             self.assertIn("cycle" if connection == "loop" else "unknown local-reset",
                           failure.stdout)
             self.assertFalse((self.root / "invalid-reset.pdl").exists())
-        source = source.replace("InputPort si = release;", "InputPort si = release; InputPort rst = ~release;")
+        source = source.replace(
+            'ScanRegister release { ScanInSource si; }',
+            "ScanRegister release { ScanInSource si; } "
+            "DataMux reset_gate SelectedBy release { 1'b0 : 1'b1; 1'b1 : rst; }")
+        source = source.replace("InputPort si = release;", "InputPort si = release; InputPort rst = reset_gate;")
         (self.root / "source.icl").write_text(source)
         (self.root / "reset.pdl").write_text("preserve reset output\n")
         (self.root / "result.pdl").write_text("preserve pattern output\n")

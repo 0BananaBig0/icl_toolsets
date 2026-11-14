@@ -40,6 +40,7 @@ Module Trigger {
   DataInPort mode;
   ScanRegister r[7:0] {
     ScanInSource si;
+    ResetValue 8'b00000000;
     CaptureSource 8'b00000001;
   }
   DataOutPort q[7:0] { Source r; }
@@ -93,7 +94,19 @@ Module Gate {
     Port clock;
   }
 }
+Module IdleGlobalReset {
+  ToResetPort reset;
+}
 Module AccessTop {
+  Instance global Of IdleGlobalReset;
+  DataMux gate_reset SelectedBy trigger.q[0] {
+    1'b0 : global.reset;
+    1'b1 : 1'b1;
+  }
+  DataMux core_reset SelectedBy gate.q[0] {
+    1'b0 : global.reset;
+    1'b1 : 1'b1;
+  }
   Instance trigger Of Trigger {
     InputPort mode = tap.long_setup;
     InputPort select = trigger.q[1];
@@ -107,10 +120,10 @@ Module AccessTop {
     InputPort capture = trigger.q[1];
     InputPort shift = 1'b0;
     InputPort update = trigger.q[1];
-    InputPort rst = trigger.q[0];
+    InputPort rst = gate_reset;
   }
   Instance core Of AccessInstrument {
-    InputPort rst = gate.q[0];
+    InputPort rst = core_reset;
     InputPort mode = tap.long_setup;
   }
   AccessLink tap Of STD_1149_1_2001 {

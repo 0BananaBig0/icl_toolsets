@@ -226,8 +226,9 @@ class ClientScanControls(unittest.TestCase):
     def test_local_reset_release_with_explicit_controls(self):
         source = self.nested().replace('Module Child {', 'Module Child { ResetPort rst;')
         source = source.replace('DataInPort enable;',
-                                "ScanRegister reset { ScanInSource si; ResetValue 1'b1; }")
-        source = source.replace('InputPort si = si;', 'InputPort si = reset; InputPort rst = reset;')
+                                "ResetPort global; ScanRegister reset { ScanInSource si; ResetValue 1'b1; } "
+                                "DataMux reset_gate SelectedBy reset { 1'b0: global; 1'b1: 1'b1; }")
+        source = source.replace('InputPort si = si;', 'InputPort si = reset; InputPort rst = reset_gate;')
         output = self.replay(source, PDL.replace(' value ', ' child.value '), reset=True)
         self.assertIn(b'iWrite reset 0b0', output)
         self.assertIn(b'iWrite reset 0b0', (self.root / 'reset.pdl').read_bytes())

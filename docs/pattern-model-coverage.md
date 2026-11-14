@@ -1407,7 +1407,9 @@ Strict coverage, formal vendor certification and platform refresh remain open.
 
 Matching capture/shift/update/TMS/TRST families, ordinary data/constants and
 bit-specific aliases are checked after origin restoration. TRST admits inferred
-asynchronous global reset. Unique scalar reset/TMS/TRST sources broadcast across
+asynchronous global reset. Ordinary data in TMS/TRST Source contexts now requires
+a direct DataMux driver; see the direct-driver section below. Unique scalar
+reset/TMS/TRST sources broadcast across
 grouped destinations; ambiguous vector candidates are rejected and explicit vector
 mapping is unchanged. A4M inferred-control-bit preflight bounds allocation.
 Main43/native/flat/TAP/client/reset checks and independent review pass. Vendor
@@ -1550,3 +1552,38 @@ goldens,2523 ICL334/119 rules, LSP62 and editor6 in255.589s. Five optional ANTLR
 tests are skipped. Native7 leak-enabled ASan/UBSan and main51/clock41/client18/
 reset12 pass. All four final source/test hashes match the reviewed checkpoint.
 Strict coverage, full vendor certification and refreshed platform checks remain open.
+
+## Direct reset/TMS/TRST data drivers and known binary muxes (2026-11-14)
+
+All six input/To* Source contexts require DataMux drivers for ordinary-data bits.
+Canonical aliases remain transparent; ordinary ports/storage/logic/groups do not.
+Native direct/aliased producers, mixed vectors, legal original/flat muxes and
+main52 artifact-preservation cases cover the rule. Typed controls, constants,
+virtual reset and holes remain eligible.18 source-specific vendor ICL65 cases,
+qualified typed/mux controls and corrected constant cases supply loading evidence
+with fetched hashes. Full shape, direction, forcing/polarity and operation remain
+open; no functional vendor certificate is inferred.
+
+Connected fixtures retain release/order/reservation/replay checks with real
+reset paths. Exact arbitrary feedback/history circuits have explicit lowered
+native coverage, including self CaptureSource and per-failed-Apply storage
+rollback; their former source/flat/CLI artifact dimensions are not claimed.
+No-TRST standalone global assertion is distinguished from TRST-specific selection.
+
+Fully known scalar binary muxes now use direct Select in either row order,
+with width guards and shared knowledge masks. Unknown/overlapping/incomplete/
+alternative/wider cases preserve consensus; shared Enable/held/shift paths stay
+unchanged. Variable-selector,243 ternary vector, malformed-width RED/GREEN and
+512/4096 closed-form proofs pass. Final27 interleaved32-register source/flat/
+generated cases pass for implicit/physical/reversed roots with matching hashes.
+Diagnostics retain65 reset passes/34 objectives, halve named constraints and
+measure73/141ms checks in the physical case. No deadlines or assertions weakened.
+Deep4096 selector0.026–0.031s construction and data0.132–0.139s construction are
+recorded; old4096 selector timed out after60s without a completed measurement. Loading overhead
+has separate wide/deep/ordinary matched-output measurements. Naming/style and
+independent reviews pass. Native7 and main52/clock41/client18/reset12 leak-enabled
+ASan/UBSan pass. Final full serial integration passes in
+build/direct-control-driver-final-full.log/.exit0,1808.878s, with41 dynamic/static
+generator suites,51 directional goldens,2523 ICL334/119 rules, LSP62 and editor6
+in220.236s. Optional ANTLR5 skipped; all29 reviewed source/test hashes match.
+Strict coverage, full vendor and platform qualification remain open.

@@ -85,7 +85,9 @@ class MultipleClientChains(unittest.TestCase):
 
     def test_other_group_releases_reset(self):
         source = network().replace('SelectPort sel;', 'SelectPort sel; ResetPort rst { ActivePolarity 0; }')
-        source = source.replace('Instance c1_0 Of Cell {', 'Instance c1_0 Of Cell { InputPort rst = c0_0.q[0];')
+        source = source.replace('Module Chains {', "Module Chains { ResetPort global { ActivePolarity 0; } "
+                                "DataMux reset_gate SelectedBy c0_0.q[0] { 1'b0: 1'b0; 1'b1: global; }")
+        source = source.replace('Instance c1_0 Of Cell {', 'Instance c1_0 Of Cell { InputPort rst = reset_gate;')
         self.replay(source, 'iReset; iWrite c1_0.value 9; iApply; iRead c1_0.value 9; iApply;\n')
 
     def test_wrong_chain_input_and_disabled_output_keep_artifacts(self):

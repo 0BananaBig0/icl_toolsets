@@ -85,7 +85,7 @@ class DataResetReleases(unittest.TestCase):
     def test_slice_preserves_other_taken_bits(self):
         source = BASE.replace('DataInPort data;', 'DataInPort data[3:0];')
         source = source.replace('DataRegister release {', 'DataRegister release[3:0] {')
-        source = source.replace('InputPort rst = release;', 'InputPort rst = release[0];')
+        source = source.replace('SelectedBy release {', 'SelectedBy release[0] {')
         reset = self.rewrite(source, 'iReset; iTake release[3:1]; '
                              'iWrite c.value 9; iApply;\n')
         self.assertIn('release[0]', reset)
@@ -117,9 +117,11 @@ class DataResetReleases(unittest.TestCase):
 }
 """
         source = BASE.replace(' Instance c Of Child',
-                              ' Instance g Of Gate { InputPort si=si; InputPort rst=release; }\n Instance c Of Child')
+                              ' Instance g Of Gate { InputPort si=si; InputPort rst=reset_gate; }\n Instance c Of Child')
         source = source.replace('InputPort si = si;', 'InputPort si = g.so;')
-        source = source.replace('InputPort rst = release;', 'InputPort rst = g.q;')
+        source = source.replace('InputPort rst = reset_gate;', 'InputPort rst = g_reset;')
+        source = source.replace(' Instance c Of Child',
+                                " DataMux g_reset SelectedBy g.q { 1'b0: 1'b0; 1'b1: global; }\n Instance c Of Child")
         reset = self.rewrite(gate + source, 'iReset; iWrite c.value 9; iApply;\n')
         self.assertLess(reset.index('iWrite release'), reset.index('iWrite g.value'))
         self.assertLess(reset.index('iWrite g.value'), reset.index('iWrite c.value'))
@@ -134,7 +136,7 @@ class DataResetReleases(unittest.TestCase):
         source = source.replace('DataRegister release {', 'DataRegister release[3:0] {')
         source = source.replace(' Instance c Of Child',
                                 " LogicSignal ready { (release == 4'b0010) | (release == 4'b1101); }\n Instance c Of Child")
-        source = source.replace('InputPort rst = release;', 'InputPort rst = ready;')
+        source = source.replace('SelectedBy release {', 'SelectedBy ready {')
         for initial, expected in ((0, '0010'), (15, '1101')):
             model = source.replace('WriteEnSource enable; ResetValue 0;',
                                    f'WriteEnSource enable; ResetValue {initial};')
@@ -145,7 +147,7 @@ class DataResetReleases(unittest.TestCase):
         for width in (64, 256):
             source = BASE.replace('DataInPort data;', f'DataInPort data[{width-1}:0];')
             source = source.replace('DataRegister release {', f'DataRegister release[{width-1}:0] {{')
-            source = source.replace('InputPort rst = release;', 'InputPort rst = release[0];')
+            source = source.replace('SelectedBy release {', 'SelectedBy release[0] {')
             start = time.monotonic()
             reset = self.rewrite(source, 'iReset; iWrite c.value 9; iApply;\n')
             self.assertIn('iWrite release 0b', reset)

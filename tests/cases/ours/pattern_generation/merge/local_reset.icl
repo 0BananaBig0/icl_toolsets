@@ -6,8 +6,10 @@ Module MergeLeaf {
 }
 Module MergeNetwork {
   ScanInPort si;
+  ResetPort global;
   ScanRegister reset { ScanInSource si; ResetValue 1'b1; }
-  Instance a Of MergeLeaf { InputPort si = reset; InputPort rst = reset; }
-  Instance b Of MergeLeaf { InputPort si = a.so; InputPort rst = reset; }
+  DataMux local_reset SelectedBy reset { 1'b0: global; 1'b1: 1'b1; }
+  Instance a Of MergeLeaf { InputPort si = reset; InputPort rst = local_reset; }
+  Instance b Of MergeLeaf { InputPort si = a.so; InputPort rst = local_reset; }
   ScanOutPort so { Source b.so; }
 }
