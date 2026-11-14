@@ -2162,8 +2162,7 @@ void TestStandaloneIdleResetEdges() {
     source.insert(source.find("ScanInPort si;"), "ResetPort rst; ");
     source.insert(source.find("ScanOutPort so"),
                   "DataOutPort q[2:0] { Source r; } ");
-    source.insert(source.find("InputPort si"),
-                  falling ? "InputPort rst = ~ck; " : "InputPort rst = ck; ");
+    source.insert(source.find("InputPort si"), "InputPort rst = 1'b0; ");
     const std::string output = "ScanOutPort so { Source core.so; }";
     source.replace(source.find(output), output.size(), R"(
   Instance observer Of Observer {
@@ -2184,7 +2183,11 @@ Module Observer {
 )";
     pattern::Design design;
     design.AddIcl("idle-reset-edge.icl", source);
-    const auto netlist = pattern::Elaborate(design, "Top");
+    auto netlist = pattern::Elaborate(design, "Top");
+    // A lowered event circuit tests TCK-derived reset without accepting invalid
+    // ICL.
+    netlist.nodes.at(netlist.node_ids.at("core.rst")).inputs.at("Source") = {
+        {netlist.node_ids.at("ck"), 0, 'x', falling}};
     pattern::ScanScheduler scheduler(netlist);
     scheduler.Reset();
     scheduler.Assume("sel", "1");

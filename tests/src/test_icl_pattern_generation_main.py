@@ -175,6 +175,22 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
             self.run_tool('--icl', 'debug/Network.icl', '--pdl', 'source.pdl',
                           '--output', 'again.pdl')
 
+    def test_reset_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        for declaration in ('TCKPort source;', 'ClockPort source;',
+                            'CaptureEnPort source;', 'ShiftEnPort source;',
+                            'UpdateEnPort source;', 'TMSPort source;', 'ScanInPort source;'):
+            for consumer in ('ToResetPort out { Source wrapped; }',
+                             'Instance child Of Child { InputPort reset = wrapped; }'):
+                (self.root / 'source.icl').write_text(
+                    'Module Child { ResetPort reset; } Module Network { ' + declaration +
+                    ' Alias wrapped = source; ' + consumer + ' }')
+                (self.root / 'result.pdl').write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--output', 'result.pdl', '--top_module', 'Network', ok=False)
+                self.assertIn('reset or data signal', result.stdout + result.stderr)
+                self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
+
     def test_round_trips(self):
         result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug", "--log", "run.log")
         self.assertIn("warning", result.stdout)

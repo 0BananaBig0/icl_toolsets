@@ -154,6 +154,39 @@ void TestTckInputSources() {
     pattern::Elaborate(design, "M");
   }
 }
+void TestResetSourceKinds() {
+  for (const std::string declaration :
+       {"ResetPort source;", "ToResetPort source;", "TRSTPort source;",
+        "ToTRSTPort source;", "DataInPort source;", "DataRegister source;",
+        "LogicSignal source { 1'b0; }"}) {
+    const auto polarity =
+        declaration.find("TRST") == std::string::npos ? "1" : "0";
+    pattern::Design design;
+    design.AddIcl(
+        "reset_kinds.icl",
+        "Module Child { ResetPort r { ActivePolarity " + std::string(polarity) +
+            "; } } Module M { " + declaration +
+            " Alias wrapped = source; "
+            "ToResetPort out { Source wrapped; ActivePolarity " +
+            polarity +
+            "; } Instance child Of Child { InputPort r = wrapped; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    pattern::Elaborate(flat, "M");
+  }
+  pattern::Design design;
+  design.AddIcl("inferred_reset.icl",
+                "Module Child { ResetPort r; } "
+                "Module M { ToResetPort out; Instance child Of Child; }");
+  const auto original = pattern::Elaborate(design, "M");
+  Require(original.NodeAt("child.r").inputs.at("Source").at(0).virtual_signal ==
+              pattern::VirtualSignal::kGlobalReset,
+          "inferred global reset remains an eligible Source");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  pattern::Elaborate(flat, "M");
+}
 void TestDataSignalSources() {
   const std::string prefix =
       "Module Sink { DataInPort data; SelectPort selected; } Module M {"
@@ -1430,6 +1463,7 @@ int main() {
   int failures = 0;
   for (const auto test : {TestClockSignalSources,
                           TestTckInputSources,
+                          TestResetSourceKinds,
                           TestDataSignalSources,
                           TestDataSignalAliasSlices,
                           TestDataSourceScale,

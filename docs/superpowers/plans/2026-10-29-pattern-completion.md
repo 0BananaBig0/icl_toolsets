@@ -1420,3 +1420,22 @@ checks pass in build/tck-source-confirmed-sanitizer-*. Original full exit2 and
 scheduler sanitizer exit1 are preserved. Source/fixture reviews, naming and style
 pass; no kind exemption or solver-budget change was introduced. Strict coverage,
 new vendor certification and later platform qualification remain open.
+
+## Task57: Reset source terminal eligibility
+
+Completed [the focused plan](2026-11-14-reset-source-kinds.md). ResetPort bindings
+and ToResetPort Sources accept reset/data/constants, preserved TRST paths and
+inferred global resets. Contextual forcing/direction/polarity remain separate.
+The native TCK-derived reset snapshot case explicitly constructs a lowered event
+circuit after valid elaboration, retaining rising/falling assertions. TRST/reset
+loading compatibility is measured with Tessent2026.2; its clock-only pattern does
+not establish functional reset equivalence.
+
+Confirmed full integration passes in build/reset-source-confirmed-full.log/.exit0,
+955.735s wall:41 dynamic/static suites,51 directional/seven legacy goldens,2523
+ICL334/119 rules and editor6 in182.967s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main40/clock41/client18/reset12
+checks pass in build/reset-source-confirmed-sanitizer-*. First full exit2 and
+scheduler sanitizer exit1 remain recorded. Corrected source/fixture reviews,
+naming/style and focused checks pass. No frontend exemption is introduced.
+Strict coverage, formal vendor certification and platform refresh remain open.

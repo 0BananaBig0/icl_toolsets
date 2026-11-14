@@ -120,8 +120,19 @@ std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
 }
 
 void CheckSignalSources(const Netlist& netlist) {
-  enum class Kind { kOther, kData, kClock, kTck, kConstant, kIrSelect };
-  enum class Family { kData, kClock, kTck };
+  enum class Kind {
+    kOther,
+    kData,
+    kClock,
+    kTck,
+    kReset,
+    kTrst,
+    kGlobalReset,
+    kAsyncReset,
+    kConstant,
+    kIrSelect
+  };
+  enum class Family { kData, kClock, kTck, kReset };
   static const std::set<std::string> kDataKinds = {
       "DataInPort",   "DataOutPort",  "SelectPort",
       "ToSelectPort", "ScanRegister", "DataRegister",
@@ -131,14 +142,16 @@ void CheckSignalSources(const Netlist& netlist) {
   std::vector<Kind> kinds;
   kinds.reserve(netlist.nodes.size());
   for (const auto& node : netlist.nodes) {
-    kinds.push_back(kDataKinds.count(node.kind) ? Kind::kData
-                    : node.kind == "TCKPort" || node.kind == "ToTCKPort"
-                        ? Kind::kTck
-                    : kClockKinds.count(node.kind) &&
-                            !node.properties.count("DifferentialInvOf")
-                        ? Kind::kClock
-                    : node.kind == "ToIRSelectPort" ? Kind::kIrSelect
-                                                    : Kind::kOther);
+    kinds.push_back(
+        kDataKinds.count(node.kind)                              ? Kind::kData
+        : node.kind == "ResetPort" || node.kind == "ToResetPort" ? Kind::kReset
+        : node.kind == "TRSTPort" || node.kind == "ToTRSTPort"   ? Kind::kTrst
+        : node.kind == "TCKPort" || node.kind == "ToTCKPort"     ? Kind::kTck
+        : kClockKinds.count(node.kind) &&
+                !node.properties.count("DifferentialInvOf")
+            ? Kind::kClock
+        : node.kind == "ToIRSelectPort" ? Kind::kIrSelect
+                                        : Kind::kOther);
   }
   using Key = std::pair<size_t, int64_t>;
   std::map<Key, Kind> aliases;
@@ -149,7 +162,9 @@ void CheckSignalSources(const Netlist& netlist) {
       if (bit.node == std::numeric_limits<size_t>::max()) {
         // Missing input-binding holes retain their existing validation path.
         kind = bit.virtual_signal == VirtualSignal::kNone ? Kind::kConstant
-                                                          : Kind::kOther;
+               : bit.virtual_signal == VirtualSignal::kGlobalReset
+                   ? Kind::kGlobalReset
+                   : Kind::kAsyncReset;
         break;
       }
       const auto& node = netlist.nodes.at(bit.node);
@@ -183,14 +198,18 @@ void CheckSignalSources(const Netlist& netlist) {
             (family == Family::kClock &&
              (kind == Kind::kClock || kind == Kind::kTck)) ||
             (family == Family::kTck && kind == Kind::kTck) ||
+            (family == Family::kReset &&
+             (kind == Kind::kReset || kind == Kind::kTrst ||
+              kind == Kind::kGlobalReset)) ||
             (ir_select && kind == Kind::kIrSelect)) {
           continue;
         }
         throw std::runtime_error(
             node.origin + ": " + node.name + ": " + role +
-            (family == Family::kClock ? " requires a clock or data signal"
-             : family == Family::kTck ? " requires a TCK or data signal"
-                                      : " requires a data signal"));
+            (family == Family::kClock   ? " requires a clock or data signal"
+             : family == Family::kTck   ? " requires a TCK or data signal"
+             : family == Family::kReset ? " requires a reset or data signal"
+                                        : " requires a data signal"));
       }
     };
     for (const auto& [role, bits] : node.inputs) {
@@ -201,6 +220,10 @@ void CheckSignalSources(const Netlist& netlist) {
       }
       if (role == "Source" && node.kind == "TCKPort") {
         check(role, bits, Family::kTck);
+      }
+      if (role == "Source" &&
+          (node.kind == "ResetPort" || node.kind == "ToResetPort")) {
+        check(role, bits, Family::kReset);
       }
       if (role == "CaptureSource" || role == "WriteDataSource" ||
           role == "ReadDataSource" || role == "WriteEnSource" ||

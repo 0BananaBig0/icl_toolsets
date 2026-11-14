@@ -1387,3 +1387,18 @@ checks pass in build/tck-source-confirmed-sanitizer-*. Original full exit2 and
 scheduler sanitizer exit1 are preserved. Source/fixture reviews, naming and style
 pass; no kind exemption or solver-budget change was introduced. Strict coverage,
 new vendor certification and later platform qualification remain open.
+
+## Reset source terminal eligibility (2026-11-14)
+
+Reset source families and virtual global reset are checked without generated
+exceptions; separate TRST acceptance is preserved pending the stated normative
+ambiguity. DataMux forcing and broader reset models remain open.
+
+Confirmed full integration passes in build/reset-source-confirmed-full.log/.exit0,
+955.735s wall:41 dynamic/static suites,51 directional/seven legacy goldens,2523
+ICL334/119 rules and editor6 in182.967s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main40/clock41/client18/reset12
+checks pass in build/reset-source-confirmed-sanitizer-*. First full exit2 and
+scheduler sanitizer exit1 remain recorded. Corrected source/fixture reviews,
+naming/style and focused checks pass. No frontend exemption is introduced.
+Strict coverage, formal vendor certification and platform refresh remain open.

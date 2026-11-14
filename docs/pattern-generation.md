@@ -9,18 +9,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-On 2026-11-14, child TCK input source kinds passed the complete
+On 2026-11-14, reset source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/tck-source-confirmed-full.log/.exit. This includes all41 generator CLI suites
+build/reset-source-confirmed-full.log/.exit. This includes all41 generator CLI suites
 under dynamic/static builds, native tests,51 directional and seven legacy Tessent
 standards, all334 parser and119 scanner rules across2523 ICL files, and six
-Vim/Neovim tests (182.718s). Full wall time was964.274s. Five optional ANTLR
+Vim/Neovim tests (182.967s). Full wall time was955.735s. Five optional ANTLR
 integration tests were skipped because ICL_REF_DIR was unset.
 
 Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
-main39, clock41, client-control18 and reset-preview12 methods. Formatting, naming
+main40, clock41, client-control18 and reset-preview12 methods. Formatting, naming
 and independent source review pass. See
-[the scope and evidence](#child-tck-input-source-kinds-2026-11-14).
+[the scope and evidence](#reset-source-terminal-eligibility-2026-11-14).
 The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
@@ -3761,3 +3761,28 @@ five optional ANTLR tests skipped. Leak-enabled native scheduler/flatten/netlist
 and main39/clock41/client18/reset12 checks pass in
 build/tck-source-confirmed-sanitizer-*. The corrected client18 suite passes.
 Strict coverage, vendor certification and platform qualification are not refreshed.
+
+### Reset source terminal eligibility (2026-11-14)
+
+ResetPort input bindings and ToResetPort Sources now require reset-family/data/
+constant terminals and aliases. Inferred global reset remains eligible. Existing
+TRST-driven reset acceptance is preserved: the generic source list and specific
+ResetPort prose differ, while Tessent2026.2 accepts both direct TRST-to-ResetPort
+and ToResetPort connections in the recorded loading probe. That probe exercises
+only a clock wait, not functional reset equivalence. Exact input hashes and fetched
+comparison evidence are under build/reset-source-vendor-probe.
+
+Kind validation leaves DataMux forcing/selection, hierarchy direction, polarity
+and broader reset events as separate requirements. Register reset associations
+retain their existing path. Main40, native source/flat/inferred-global, clock/client
+and reset-preview checks and source review pass. A native edge-snapshot fixture
+formerly encoded an invalid direct TCK reset source; it now elaborates legal ICL
+then constructs the synthetic lowered event circuit explicitly. Rising/falling
+snapshot/priority assertions pass without a frontend exception. First full and
+scheduler sanitizer failures remain under build/reset-source-final-*. Confirmed
+full integration passes in build/reset-source-confirmed-full.log/.exit0 (955.735s):
+41 dynamic/static suites,51 directional/seven legacy goldens,2523 ICL334/119 rules,
+editor6 in182.967s; five optional ANTLR tests skipped. Leak-enabled native
+scheduler/flatten/netlist and main40/clock41/client18/reset12 checks pass in
+build/reset-source-confirmed-sanitizer-*. Strict coverage, formal
+vendor certification and platform qualification are not refreshed.
