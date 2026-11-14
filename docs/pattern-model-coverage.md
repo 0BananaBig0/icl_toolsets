@@ -53,7 +53,7 @@ full model coverage or Tessent equivalence.
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters evaluate fully supplied explicit history and applied reads invalidate their target bits | Complete runtime command coverage and broader real-pair generation |
-| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
+| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; covered typed/data/scan/clock Sources reject own-scope output references after origin restoration | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain and canonical replay | Simultaneous vector scan-return lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
@@ -1820,3 +1820,107 @@ hashes match the independently reviewed snapshot. Current-source remote native7/
 dynamic41 all0, with actual6 hashes matching and completed archive fetched0.
 These results qualify this source-scope increment; the remaining model, strict
 coverage, vendor and full platform/static/install requirements stay open.
+
+
+### Ordinary-output reference scope (2026-11-15)
+
+The connected source validator applies the local-input/instance-output boundary
+of6.3.12(c–e) to eligible DataOut,ScanOut,ToSelect,ToClock and ToTCK terminals,
+including ordinary data fallbacks of typed Sources. Canonical aliases stop at
+ports, and original scopes are restored before comparison. Source bindings use
+the input's parent scope; other hardware expressions use the consumer scope.
+One shared accepted-terminal check retains wrong-kind, strict scan/rightmost,
+inversion and direct-DataMux diagnostic precedence. Constants, holes, virtual
+sources, PDL-only aliases, semantic reset associations and the two-input ScanMux
+ToIRSelect exception remain unchanged. DifferentialInvOf direction remains under
+its separate conversion interpretation; unchecked lowered ToTCK Source stays the
+existing extension. No ancestor/depth constraint or public metadata is added.
+
+Native direct/alias/consumer/choice matrices, mixed vectors in both orders,
+partial bindings, altered-flat rejection, own alias-only and differential-pair
+replay cover the boundary. Main61 preserves pattern/reset/debug atomic rejection.
+Older positives use child producers; enabled-data forwarding retains the9-case
+concrete/Z3 truth table, flat contributor names/slices and actual per-bit feedback.
+The3000-group/65wide-source and shared8/8192/zero-cache budget assertions remain.
+Independent implementation and each affected-fixture review report no findings.
+Local first connected main61/clock41/client18/reset12/multi22/feedback10 pass;
+all native suites pass after necessary fixture repairs. Product canonical-terminal
+reuse avoids duplicate alias-map lookup on the measured hot path; its connected
+rerun passes, while final integration is pending. It adds no array, cache or graph pass.
+
+All86 vendor input/runner hashes match.13 initial scan fixtures had unrelated
+ICL71 missing-interface failures and remain separate; qualified follow-up shows
+6 child scan cases load (2 mux rows warnICL68),6 own cases failICL130, and a scan
+alias-only model loads. Across valid ordinary/scan/OneHot scope probes,32 child
+hardware cases load,32 own cases failICL130 and5 alias-only cases load. Own scan
+Source rows also haveICL103. Specific6.4.15(d) restricts enabled contributor kinds,
+without overriding6.3.12 hierarchy; own OneHot direct/alias probes both fail,
+child equivalents both load, so no exemption is added. The same-module positive
+differential output pair loads; inverted or hierarchical associations failICL59.
+This is loading evidence, not PDL equivalence or full clock/ScanInterface proof.
+
+First valid serial84 comparisons preserve output/flat hashes versus1c28b14.
+Four8192-bit output families take0.05–0.09s; scalar scan0.02–0.04s;262144 Reset
+mux0.53–0.60s;4096 aliases0.05–0.12s;4096 shared outputs0.06–0.10s;CE-only262144
+bits0.30–0.33s. Ordinary655360 references0.16–0.18s versus0.12–0.15s baseline
+motivated terminal reuse. A retained pre-reuse binary/source supports the final
+interleaved comparison. Failed wide-scan/mixed-interface/scalar-index fixture
+pilots are retained outside valid timing claims. Wide scan-return scheduling
+remains an explicit requirement. Whole empty-PDL/debug CLI runs measure loading,
+not isolated guard time or general optimality. Final comparison, style, leak and
+full serial integration evidence are pending. Remaining source/alias rules,
+complete gating/selector operation, runtime/TAP/lifecycle, strict coverage and
+full vendor/platform/static/install qualification remain mandatory.
+
+
+Final canonical-reuse connected native7/main61/clock41/client18/reset12/multi22/
+feedback10 all0 (scheduler114.355s). All126 interleaved source/flat comparisons
+among1c28b14, retained pre-reuse76 and final76 preserve output/flat hashes. Four
+8192-bit families0.05–0.10s; scalar scan0.02–0.03s;262144 Reset mux0.52–0.55s;
+4096 aliases0.06–0.12s;4096 consumers0.06–0.09s;CE-only2621440.31–0.33s.
+Ordinary655360 references0.12–0.16s versus pre-reuse0.15–0.19s and baseline
+0.12–0.15s; before/final peak66716KiB, baseline66832KiB (no savings claim).
+Environment/compiler, exact commands/input/binary/source hashes, phase timing and
+RSS are retained in build/ordinary-output-scope-loading-scale-terminal-reuse/
+comparison.json. These are whole CLI source/flat runs, not isolated guard time.
+The earlier84 valid runs and failed fixture pilots remain separate and retained.
+Independent canonical-reuse review is clean. Required leak/full integration and
+current-source remote qualification remain pending.
+
+
+Final shared-output fixture qualification: prereuse remote native7 and40/41 CLI
+suites pass with actual8 hashes matching; shared-output gating/vector fixture
+used an own ScanOut Source. Reviewed child Forwarder repair retains Rootinner as
+an enabled observation, gated/inverted a[3:2], b and all original/flat/generated
+replay assertions. Normal9tests0 in1.418s; leak-enabled shared9tests0 in3.145s.
+All required leak ASan/UBSan native7/main61/clock41/client18/reset12/shared9 pass;
+aggregate build/ordinary-output-scope-final-sanitizer-complete.exit0. All7 changed
+source/test files match independent review snapshots. Final current-source9-file
+remote native7/all41 runs separately. Full serial integration is starting.
+
+
+First full integration stopped2 after76.961s at a further old own-output sparse
+OneHot benchmark fixture. Logs/exit/wall are retained as build/ordinary-output-
+scope-first-full-fixture-failure.*. Reviewed Producer child repair retains the
+1048576-bit group,10000 scalar contributors,5000-instance hierarchy/flat replay,
+wide parent bus mapping and unchanged10s script deadline. Focused build/benchmark/
+format all0; the complete optimized benchmark takes0.839s (sparse elaboration
+30.093ms). Production and prior7 changed source/test hashes are unchanged; no
+sanitizer rerun is needed for this independent benchmark-only fixture. Full serial
+integration restarts after this fix; no full-suite success is claimed yet.
+
+
+Final Task76 verification: full serial make-j1check0 in1318.863s, recorded in
+build/ordinary-output-scope-final-full.log/.exit/.wall, after the separately
+retained first benchmark-fixture failure.41 dynamic and41 static generator
+suites,51 directional goldens,2523 ICL files with334/119 grammar/scanner rules,
+LSP62 and editor6 in174.320s pass. Optional ANTLR5 skipped. Required leak-enabled
+ASan/UBSan native7/main61/clock41/client18/reset12/shared9 pass; aggregate
+build/ordinary-output-scope-final-sanitizer-complete.exit0. All8 changed source/
+test hashes match their independent review snapshots. Current generation code
+and native/CLI fixtures pass remote native7/all41, with actual9 submitted hashes
+matching and completed archive fetched0; the extra benchmark fixture is locally
+qualified0 under its unchanged10s deadline. No full platform/install or vendor
+PDL equivalence claim is made. Broader restored-scope, clock association, gating/
+selector, runtime/TAP/lifecycle, strict coverage and final vendor/platform/static/
+install requirements remain mandatory.

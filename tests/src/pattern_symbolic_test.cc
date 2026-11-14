@@ -382,13 +382,21 @@ Module Runs {
 void TestOneHotPortValues() {
   pattern::Design design;
   design.AddIcl("one_hot.icl", R"(
+Module Producer {
+ DataInPort value[1:0]; DataInPort enable;
+ DataOutPort out[1:0] { Source value; Enable enable; }
+}
+Module Forwarder {
+ DataInPort value[1:0]; DataInPort enable;
+ Instance producer Of Producer { InputPort value = value; InputPort enable = enable; }
+ DataOutPort forwarded[1:0] { Source producer.out; }
+}
 Module Ports {
  DataInPort a[1:0]; DataInPort b[1:0];
  DataInPort ea; DataInPort eb;
- DataOutPort pa[1:0] { Source a; Enable ea; }
- DataOutPort forwarded[1:0] { Source pa; }
- DataOutPort pb[1:0] { Source b; Enable eb; }
- OneHotDataGroup group[0:2] { Port forwarded; Port pb; }
+ Instance first Of Forwarder { InputPort value = a; InputPort enable = ea; }
+ Instance second Of Producer { InputPort value = b; InputPort enable = eb; }
+ OneHotDataGroup group[0:2] { Port first.forwarded; Port second.out; }
  DataOutPort out[2:0] { Source group; }
 })");
   const auto netlist = pattern::Elaborate(design, "Ports");

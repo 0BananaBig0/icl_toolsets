@@ -658,10 +658,15 @@ void TestFlatAddressBudget() {
 void TestOneHotDataGroups() {
   pattern::Design design;
   design.AddIcl("one_hot_data.icl", R"(
-Module Leaf {
+Module Producer {
   DataInPort d[7:0]; DataInPort en;
   DataOutPort raw[7:0] { Source d; Enable en; }
-  DataOutPort forwarded[7:0] { Source raw; }
+}
+Module Leaf {
+  DataInPort d[7:0]; DataInPort en;
+  Instance producer Of Producer { InputPort d = d; InputPort en = en; }
+  DataOutPort raw[7:0] { Source producer.raw; }
+  DataOutPort forwarded[7:0] { Source producer.raw; }
 }
 Module Top {
   DataInPort d[7:0]; DataInPort en;

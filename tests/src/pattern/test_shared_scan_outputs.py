@@ -109,8 +109,11 @@ Module SharedTop {
 
     def test_gated_forwarding_and_vectors(self):
         source = NETWORK.replace('ScanOutPort a { Source data[0]; }', '''
-  ScanOutPort inner { Source data[0]; Enable 1'b1; }
-  ScanOutPort a[3:2] { Source inner, ~inner; Enable 1'b0; }''')
+  Instance forwarder Of Forwarder { InputPort si = data[0]; }
+  ScanOutPort inner { Source forwarder.so; }
+  ScanOutPort a[3:2] { Source forwarder.so, ~forwarder.so; Enable 1'b0; }''')
+        source = ("Module Forwarder { ScanInPort si; "
+                  "ScanOutPort so { Source si; Enable 1'b1; } } " + source)
         self.replay(source)
 
     def test_no_observable_path_preserves_output(self):

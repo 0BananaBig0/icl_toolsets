@@ -64,9 +64,12 @@ Module Top {
     constexpr size_t kWidth = 1048576;
     constexpr size_t kContributors = 10000;
     std::string sparse_source =
-        "Module Sparse { DataInPort en; DataOutPort out { Source 1'b0; "
-        "Enable en; } OneHotDataGroup g[1048575:0] { ";
-    for (size_t i = 0; i < kContributors; ++i) sparse_source += "Port out; ";
+        "Module Producer { DataInPort en; DataOutPort out { Source 1'b0; "
+        "Enable en; } } Module Sparse { DataInPort en; "
+        "Instance producer Of Producer { InputPort en = en; } "
+        "OneHotDataGroup g[1048575:0] { ";
+    for (size_t i = 0; i < kContributors; ++i)
+      sparse_source += "Port producer.out; ";
     sparse_source += "} }";
     pattern::Design sparse_design;
     sparse_design.AddIcl("sparse_group.icl", sparse_source);
@@ -77,7 +80,7 @@ Module Top {
         group.one_hot_sources.size() != kContributors ||
         group.OneHotSourceBit(0, 0).constant != 'x' ||
         group.OneHotSourceBit(0, kWidth - 1).node !=
-            sparse.node_ids.at("out")) {
+            sparse.node_ids.at("producer.out")) {
       throw std::runtime_error("sparse one-hot group mapping mismatch");
     }
     std::cout << "sparse_width=" << kWidth << " contributors=" << kContributors

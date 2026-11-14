@@ -400,10 +400,32 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
       const bool addressed = family == Family::kAddress ||
                              family == Family::kWriteEn ||
                              family == Family::kReadEn;
+      const auto check_output_scope = [&](BitReference bit) {
+        if (role == "DifferentialInvOf") return;
+        if (bit.node == std::numeric_limits<size_t>::max()) return;
+        const auto& driver = netlist.nodes.at(bit.node);
+        if (driver.kind != "DataOutPort" && driver.kind != "ScanOutPort" &&
+            (driver.kind.compare(0, 2, "To") != 0 ||
+             driver.kind == "ToIRSelectPort")) {
+          return;
+        }
+        const auto parent = netlist.scopes.at(node.scope).parent;
+        const auto reference_scope =
+            role == "Source" && IsInputPort(node.kind) &&
+                    parent != std::numeric_limits<size_t>::max()
+                ? parent
+                : node.scope;
+        if (driver.scope == reference_scope) {
+          throw std::runtime_error(
+              node.origin + ": " + node.name + ": " + role +
+              ": output must be referenced from an instance: " + driver.name);
+        }
+      };
       for (const auto& bit : bits) {
-        const auto kind = classify(bit);
+        const auto resolved = terminal(bit);
+        const auto kind = classify(resolved);
         if (family == Family::kReset) {
-          const auto polarity = ResetPolarity(netlist, terminal, bit);
+          const auto polarity = ResetPolarity(netlist, terminal, resolved);
           if (polarity && *polarity != node.active_low) {
             throw std::runtime_error(node.origin + ": " + node.name +
                                      ": inconsistent reset source polarity");
@@ -416,7 +438,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
             (family == Family::kUpdate && kind == Kind::kUpdate) ||
             (family == Family::kTms && kind == Kind::kTms) ||
             (family == Family::kTrst && kind == Kind::kTrst);
-        if (typed_control && terminal(bit).inverted) {
+        if (typed_control && resolved.inverted) {
           throw std::runtime_error(
               node.origin + ": " + node.name + ": " + role +
               " requires a non-inverted typed control source");
@@ -428,28 +450,8 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
               node.origin + ": " + node.name + ": " + role +
               " must use the rightmost bit of a ScanRegister");
         }
-        if ((role == "Source" && (typed_control || (family == Family::kReset &&
-                                                    (kind == Kind::kReset ||
-                                                     kind == Kind::kTrst)))) ||
-            (family == Family::kDataMux && control_use(kind))) {
-          const auto source = terminal(bit);
-          const auto& driver = netlist.nodes.at(source.node);
-          if (driver.kind.compare(0, 2, "To") == 0) {
-            const auto parent = netlist.scopes.at(node.scope).parent;
-            const auto reference_scope =
-                role == "Source" && IsInputPort(node.kind) &&
-                        parent != std::numeric_limits<size_t>::max()
-                    ? parent
-                    : node.scope;
-            if (driver.scope == reference_scope) {
-              throw std::runtime_error(
-                  node.origin + ": " + node.name + ": " + role +
-                  ": control output must be referenced from an instance: " +
-                  driver.name);
-            }
-          }
-        }
         if (family == Family::kDataMux && control_use(kind)) {
+          check_output_scope(resolved);
           mux_control_sources |= control_use(kind);
           continue;
         }
@@ -458,7 +460,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
             (kind == Kind::kData || kind == Kind::kDataPort ||
              kind == Kind::kScanRegister ||
              kind == Kind::kIntermediateScanRegister)) {
-          const auto source = terminal(bit);
+          const auto source = resolved;
           const auto& driver = netlist.nodes.at(source.node);
           if (driver.kind != "DataMux") {
             throw std::runtime_error(node.origin + ": " + node.name + ": " +
@@ -491,6 +493,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
             ((family == Family::kScan || family == Family::kScanInput) &&
              (kind == Kind::kScan || kind == Kind::kScanRegister)) ||
             (ir_select && kind == Kind::kIrSelect)) {
+          check_output_scope(resolved);
           continue;
         }
         throw std::runtime_error(

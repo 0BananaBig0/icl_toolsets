@@ -318,10 +318,32 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
                                        '--top_module', 'Network', '--output', 'result.pdl',
                                        '--local_reset', 'reset.pdl', '--debug', ok=False)
-                self.assertIn('control output must be referenced from an instance',
+                self.assertIn('output must be referenced from an instance',
                               result.stdout + result.stderr)
                 for path in outputs:
                     self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
+
+    def test_ordinary_output_source_scope_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for output, incoming in (('DataOutPort', 'DataInPort'), ('ToSelectPort', 'DataInPort'),
+                                 ('ScanOutPort', 'ScanInPort'), ('ToClockPort', 'ClockPort'),
+                                 ('ToTCKPort', 'ClockPort')):
+            consumer = ('ToClockPort out { Source wrapped; }' if incoming == 'ClockPort' else
+                        'Instance sink Of Sink { InputPort ctl = wrapped; }')
+            (self.root / 'source.icl').write_text(
+                f'Module Sink {{ {incoming} ctl; }} Module Network {{ {incoming} incoming; '
+                f'{output} producer {{ Source incoming; }} Alias wrapped = producer; ' +
+                consumer + ' }')
+            for path in outputs:
+                (self.root / path).write_text('previous artifact\n')
+            result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                   '--top_module', 'Network', '--output', 'result.pdl',
+                                   '--local_reset', 'reset.pdl', '--debug', ok=False)
+            self.assertIn('output must be referenced from an instance', result.stdout + result.stderr)
+            for path in outputs:
+                self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
 
     def test_scan_control_source_kinds(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')

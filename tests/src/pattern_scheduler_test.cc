@@ -473,10 +473,14 @@ void TestMultipleTapScheduling() {
 void TestOneHotSharedAnalysisBudget() {
   pattern::Design design;
   design.AddIcl("one-hot-budget.icl", R"(
-Module Driver {
+Module Terminal {
   DataInPort data[4095:0]; DataInPort enable;
   DataOutPort terminal[4095:0] { Source data; Enable enable; }
-  DataOutPort forwarded[4095:0] { Source terminal; }
+}
+Module Driver {
+  DataInPort data[4095:0]; DataInPort enable;
+  Instance source Of Terminal { InputPort data = data; InputPort enable = enable; }
+  DataOutPort forwarded[4095:0] { Source source.terminal; }
 }
 Module OneHotBudget {
   DataInPort data[4095:0]; DataInPort enable;

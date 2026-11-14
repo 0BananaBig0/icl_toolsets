@@ -104,9 +104,23 @@ void TestClockSignalSources() {
       auto body = consumer;
       body.replace(body.find("SOURCE"), 6, "wrapped");
       pattern::Design design;
-      design.AddIcl("valid_clock_sources.icl",
-                    "Module Sink { ClockPort ck; } Module M {" + declaration +
-                        " Alias wrapped = source; " + body + "}");
+      const bool output = declaration.compare(0, 11, "ToClockPort") == 0 ||
+                          declaration.compare(0, 9, "ToTCKPort") == 0 ||
+                          declaration.compare(0, 11, "DataOutPort") == 0 ||
+                          declaration.compare(0, 12, "ToSelectPort") == 0;
+      const auto provider =
+          output ? "Module Provider { " +
+                       std::string(declaration == "ToTCKPort source;"
+                                       ? "TCKPort incoming; "
+                                       : "") +
+                       declaration + " } "
+                 : "";
+      design.AddIcl(
+          "valid_clock_sources.icl",
+          provider + "Module Sink { ClockPort ck; } Module M {" +
+              (output ? "Instance provider Of Provider;" : declaration) +
+              " Alias wrapped = " + (output ? "provider.source" : "source") +
+              "; " + body + "}");
       const auto model = pattern::Elaborate(design, "M");
       pattern::Design flat;
       flat.AddIcl("flat.icl", pattern::SerializeIcl(model));
@@ -739,7 +753,7 @@ void TestControlOutputSourceScope() {
             design.AddIcl("control_scope.icl", text);
             if (!child_source) {
               Fails([&] { pattern::Elaborate(design, "M"); },
-                    "control output must be referenced from an instance");
+                    "output must be referenced from an instance");
             } else {
               const auto serialized =
                   pattern::SerializeIcl(pattern::Elaborate(design, "M"));
@@ -783,7 +797,7 @@ void TestControlOutputSourceScope() {
     pattern::Design altered;
     altered.AddIcl("altered.icl", pattern::SerializeIcl(original));
     Fails([&] { pattern::Elaborate(altered, "M"); },
-          "control output must be referenced from an instance");
+          "output must be referenced from an instance");
   }
   for (const std::string binding : {"InputPort ctl = driver.out, producer;",
                                     "InputPort ctl = producer, driver.out;",
@@ -800,7 +814,7 @@ void TestControlOutputSourceScope() {
             binding + " } }");
     if (binding.find("producer") != std::string::npos) {
       Fails([&] { pattern::Elaborate(design, "M"); },
-            "control output must be referenced from an instance");
+            "output must be referenced from an instance");
     } else {
       const auto serialized =
           pattern::SerializeIcl(pattern::Elaborate(design, "M"));
@@ -830,6 +844,180 @@ void TestControlOutputSourceScope() {
                 pattern::SerializeIcl(replay) == serialized,
             "semantic reset associations are not hardware Source expressions");
   }
+}
+void TestOrdinaryOutputSourceScope() {
+  const std::vector<std::string> data_consumers = {
+      "DataOutPort result { Source SOURCE; }",
+      "ToSelectPort result { Source SOURCE; }",
+      "ScanRegister r { ScanInSource si; CaptureSource SOURCE; }",
+      "DataRegister r { WriteDataSource SOURCE; WriteEnSource 1'b1; }",
+      "DataRegister r { WriteDataSource 1'b0; WriteEnSource SOURCE; }",
+      "DataRegister r { ReadDataSource SOURCE; }",
+      "DataOutPort result { Source 1'b0; Enable SOURCE; }",
+      "ScanOutPort result { Source si; Enable SOURCE; }",
+      "DataMux route SelectedBy SOURCE { 1'b0: 1'b0; 1'b1: 1'b1; }",
+      "DataMux route SelectedBy 1'b0 { 1'b0: SOURCE; }",
+      "ScanMux route SelectedBy SOURCE { 1'b0: si; 1'b1: si; }",
+      "ClockMux route SelectedBy SOURCE { 1'b0: ck; 1'b1: ck; }",
+      "LogicSignal route { SOURCE == 1'b0; }",
+      "ToClockPort result { Source SOURCE; }",
+      "ToCaptureEnPort result { Source SOURCE; }",
+      "ToShiftEnPort result { Source SOURCE; }",
+      "ToUpdateEnPort result { Source SOURCE; }",
+      "ScanMux route SelectedBy 1'b0 { 1'b0: SOURCE; }",
+      "ClockMux route SelectedBy 1'b0 { 1'b0: SOURCE; }"};
+  for (const std::string output : {"DataOutPort", "ToSelectPort", "ScanOutPort",
+                                   "ToClockPort", "ToTCKPort"}) {
+    const bool data = output == "DataOutPort" || output == "ToSelectPort";
+    const bool scan = output == "ScanOutPort";
+    const std::string input = data                      ? "DataInPort"
+                              : scan                    ? "ScanInPort"
+                              : output == "ToClockPort" ? "ClockPort"
+                                                        : "TCKPort";
+    auto consumers = data ? data_consumers : std::vector<std::string>{};
+    consumers.push_back("Instance sink Of Sink { InputPort ctl = SOURCE; }");
+    if (scan) {
+      consumers.insert(consumers.end(),
+                       {"ScanOutPort result { Source SOURCE; }",
+                        "ScanRegister r { ScanInSource SOURCE; }",
+                        "ScanMux route SelectedBy 1'b0 { 1'b0: SOURCE; }"});
+    } else if (!data) {
+      consumers.insert(consumers.end(),
+                       {"ToClockPort result { Source SOURCE; }",
+                        "ClockMux route SelectedBy 1'b0 { 1'b0: SOURCE; }"});
+    }
+    const std::string prefix = "Module Driver { " + input + " incoming; " +
+                               output +
+                               " out { Source incoming; } } Module Sink { " +
+                               input + " ctl; } Module M { " + input +
+                               " incoming; ScanInPort si; ClockPort ck; ";
+    for (const auto& consumer : consumers) {
+      for (bool child : {false, true}) {
+        for (bool alias : {false, true}) {
+          const std::string producer = child ? "driver.out" : "producer";
+          auto body = consumer;
+          body.replace(body.find("SOURCE"), 6, alias ? "wrapped" : producer);
+          pattern::Design design;
+          design.AddIcl(
+              "ordinary_scope.icl",
+              prefix +
+                  (child ? "Instance driver Of Driver { InputPort incoming = "
+                           "incoming; } "
+                         : output + " producer { Source incoming; } ") +
+                  (alias ? "Alias wrapped = " + producer + "; " : "") + body +
+                  " }");
+          if (!child) {
+            Fails([&] { pattern::Elaborate(design, "M"); },
+                  "output must be referenced from an instance");
+          } else {
+            const auto text =
+                pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+            pattern::Design flat;
+            flat.AddIcl("flat.icl", text);
+            Require(
+                pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+                "ordinary child outputs preserve original/flat scope");
+          }
+        }
+      }
+    }
+    for (const std::string binding :
+         {"InputPort ctl = driver.out[0], producer[0];",
+          "InputPort ctl = producer[0], driver.out[0];",
+          "InputPort ctl[1] = driver.out[0];"}) {
+      pattern::Design design;
+      design.AddIcl(
+          "ordinary_vector_scope.icl",
+          "Module Driver { " + input + " incoming[1:0]; " + output +
+              " out[1:0] { Source incoming; } } Module Sink { " + input +
+              " ctl[1:0]; } Module M { " + input + " incoming[1:0]; " + output +
+              " producer[1:0] { Source incoming; } Instance driver Of Driver { "
+              "InputPort incoming = incoming; } Instance sink Of Sink { " +
+              binding + " } }");
+      if (binding.find("producer") != std::string::npos) {
+        Fails([&] { pattern::Elaborate(design, "M"); },
+              "output must be referenced from an instance");
+      } else {
+        const auto original = pattern::Elaborate(design, "M");
+        const auto serialized = pattern::SerializeIcl(original);
+        pattern::Design restored;
+        restored.AddIcl("flat.icl", serialized);
+        Require(
+            pattern::SerializeIcl(pattern::Elaborate(restored, "M")) ==
+                    serialized &&
+                original.NodeAt("sink.ctl").inputs.at("Source")[1].constant ==
+                    '?',
+            "ordinary partial child-output bindings preserve unbound holes");
+      }
+    }
+    pattern::Design alias_only;
+    alias_only.AddIcl(
+        "ordinary_alias.icl",
+        prefix + output +
+            " producer { Source incoming; } Alias wrapped = producer; }");
+    const auto text =
+        pattern::SerializeIcl(pattern::Elaborate(alias_only, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "own ordinary output aliases remain outside hardware consumption");
+    pattern::Design altered_source;
+    altered_source.AddIcl(
+        "ordinary_altered.icl",
+        prefix + output +
+            " producer { Source incoming; } Instance driver Of Driver { "
+            "InputPort incoming = incoming; } Instance sink Of Sink { "
+            "InputPort ctl = driver.out; } }");
+    auto original = pattern::Elaborate(altered_source, "M");
+    original.nodes.at(original.node_ids.at("sink.ctl"))
+        .inputs.at("Source")[0] = {original.node_ids.at("producer"), 0};
+    pattern::Design altered;
+    altered.AddIcl("altered.icl", pattern::SerializeIcl(original));
+    Fails([&] { pattern::Elaborate(altered, "M"); },
+          "output must be referenced from an instance");
+  }
+  for (bool child : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("one_hot_output_scope.icl",
+                  "Module Driver { DataInPort incoming; DataOutPort out { "
+                  "Source incoming; "
+                  "Enable 1'b1; } } Module M { DataInPort incoming; " +
+                      std::string(child ? "Instance driver Of Driver { "
+                                          "InputPort incoming = incoming; } "
+                                        : "DataOutPort producer { Source "
+                                          "incoming; Enable 1'b1; } ") +
+                      "Alias wrapped = " + (child ? "driver.out" : "producer") +
+                      "; OneHotDataGroup group { Port wrapped; } }");
+    if (!child) {
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            "output must be referenced from an instance");
+    } else {
+      const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", text);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+          "enabled child data contributor retains scope through flat replay");
+    }
+  }
+  pattern::Design wrong_scan;
+  wrong_scan.AddIcl(
+      "wrong_scan_scope.icl",
+      "Module M { DataInPort incoming; "
+      "DataOutPort producer { Source incoming; } ScanRegister r { "
+      "ScanInSource producer; } }");
+  Fails([&] { pattern::Elaborate(wrong_scan, "M"); }, "requires a scan signal");
+  pattern::Design differential;
+  differential.AddIcl("output_pair.icl",
+                      "Module M { ClockPort incoming; "
+                      "ToClockPort positive { Source incoming; } "
+                      "ToClockPort negative { DifferentialInvOf positive; } }");
+  const auto text =
+      pattern::SerializeIcl(pattern::Elaborate(differential, "M"));
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", text);
+  Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+          "differential associations retain separate conversion semantics");
 }
 void TestScanControlSourceKinds() {
   for (const std::string family : {"CaptureEn", "ShiftEn", "UpdateEn"}) {
@@ -1435,9 +1623,18 @@ void TestDirectControlDataDrivers() {
                 "requires a direct DataMux data driver");
         }
         pattern::Design mux;
+        const bool output_source =
+            declaration.find("DataOutPort src") != std::string::npos;
+        const auto provider =
+            output_source ? "Module Provider { " + declaration + " } " : "";
+        const auto local =
+            output_source ? "DataInPort data; Instance provider Of Provider { "
+                            "InputPort data = data; } "
+                          : declaration;
         mux.AddIcl("mux_driver.icl",
-                   child + "Module M { " + declaration + " " + family +
-                       "Port ctrl; DataMux route SelectedBy " + reference +
+                   provider + child + "Module M { " + local + " " + family +
+                       "Port ctrl; DataMux route SelectedBy " +
+                       (output_source ? "provider.src" : reference) +
                        " { 1'b0 : ctrl; 1'b1 : " + force +
                        "; } Alias forwarded = route; " + consumer("forwarded") +
                        " }");
@@ -3054,11 +3251,15 @@ void TestOneHotDataBitDependencies() {
     for (const bool cyclic : {false, true}) {
       const int source_bit = cyclic ? (ascending ? 1 : 0) : (ascending ? 0 : 1);
       pattern::Design design;
-      design.AddIcl("padding_dependencies.icl",
-                    "Module M { DataInPort en; OneHotDataGroup g" +
-                        std::string(ascending ? "[0:1]" : "[1:0]") +
-                        " { Port selected; } DataOutPort selected { Source g[" +
-                        std::to_string(source_bit) + "]; Enable en; } }");
+      design.AddIcl(
+          "padding_dependencies.icl",
+          "Module Producer { DataInPort value; DataInPort en; "
+          "DataOutPort selected { Source value; Enable en; } } "
+          "Module M { DataInPort en; OneHotDataGroup g" +
+              std::string(ascending ? "[0:1]" : "[1:0]") +
+              " { Port producer.selected; } Instance producer Of Producer { "
+              "InputPort value = g[" +
+              std::to_string(source_bit) + "]; InputPort en = en; } }");
       if (cyclic) {
         Fails([&] { pattern::Elaborate(design, "M"); }, "cycle");
       } else {
@@ -3086,10 +3287,12 @@ Module M {
 
 void TestOneHotDataLimits() {
   std::string source =
-      "Module M { DataInPort en; DataOutPort out { Source 1'b0; Enable en; } ";
+      "Module Producer { DataInPort en; DataOutPort out { Source 1'b0; "
+      "Enable en; } } Module M { DataInPort en; "
+      "Instance producer Of Producer { InputPort en = en; } ";
   for (size_t i = 0; i < 3000; ++i) {
     source += "OneHotDataGroup g" + std::to_string(i) + " { Port " +
-              (i ? "g" + std::to_string(i - 1) : "out") + "; } ";
+              (i ? "g" + std::to_string(i - 1) : "producer.out") + "; } ";
   }
   pattern::Design deep;
   deep.AddIcl("deep_data_group.icl", source + "}");
@@ -3097,10 +3300,11 @@ void TestOneHotDataLimits() {
       pattern::Elaborate(deep, "M").NodeAt("g2999").one_hot_sources.size() == 1,
       "data enable propagation traverses deep groups without recursion");
   source =
-      "Module M { DataInPort en; DataOutPort out[65535:0] { Source 0; Enable "
-      "en; } "
+      "Module Producer { DataInPort en; DataOutPort out[65535:0] { Source 0; "
+      "Enable en; } } Module M { DataInPort en; "
+      "Instance producer Of Producer { InputPort en = en; } "
       "OneHotDataGroup g[131071:0] { ";
-  for (size_t i = 0; i < 65; ++i) source += "Port out; ";
+  for (size_t i = 0; i < 65; ++i) source += "Port producer.out; ";
   pattern::Design wide;
   wide.AddIcl("wide_data_group.icl", source + "} }");
   Fails([&] { pattern::Elaborate(wide, "M"); }, "bit limit");
@@ -3171,6 +3375,7 @@ int main() {
                           TestTrstMuxPathPolarity,
                           TestControlMuxIdentityPaths,
                           TestControlOutputSourceScope,
+                          TestOrdinaryOutputSourceScope,
                           TestScanControlSourceKinds,
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,
