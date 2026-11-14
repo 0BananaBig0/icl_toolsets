@@ -4354,3 +4354,61 @@ fetched archive also pass with matched hashes; full platform/static/install
 qualification remains separate. Strict coverage, source direction, full gating/
 selector operation, remaining runtime/TAP/lifecycle and vendor certification
 remain mandatory.
+
+
+### Control-output reference scope (2026-11-15)
+
+Covered Reset/TCK/CaptureEn/ShiftEn/UpdateEn/TMS/TRST hardware Sources and
+conditional control DataMux choices reject a canonical To* terminal declared in
+the reference expression's own scope (6.3.12). Input bindings use their parent
+scope; output Sources and mux choices use their own scope. Resolution stops at
+ports and runs after flat-origin restoration, so aliases and serialized bindings
+cannot bypass the boundary. This reuses the terminal cache without another array,
+pass or public metadata. PDL-only aliases, semantic reset associations, ordinary
+data/clock direction, ToIRSelect and the existing lowered ToTCK Source extension
+retain their prior scope. Broader direction and ancestor restrictions remain open.
+
+Native family/direct/alias/consumer/mux matrices, mixed vectors in both orders,
+partial and original/flat positives, altered-flat rejection and main60 atomic
+pattern/reset/debug checks cover this boundary. Older positives now expose their
+To* producers through child instances. ClockForward fixtures retain the existing
+lowered extension and all clock-phase/unknown-gate/artifact assertions. Local
+connected native7/main60/clock41/client18/reset12/multiple-TAP22/feedback10 pass;
+the first native scheduler failure was another own-output fixture, repaired and
+rerun0 in115.012s. Independent code/test review and additional scheduler review
+report no findings. Remote GREEN2 native7/main60/client18/multiple-TAP22 pass on
+the earlier test snapshot. Final current-source remote native7 and official
+dynamic41 pass; all6 source/test hashes match the submitted reviewed snapshot,
+and the completed evidence archive was fetched successfully.
+
+All99 Tessent2026.2 models/runner hashes match:46 child-output hardware cases and
+7 alias-only cases load;46 own-output hardware references fail ICL130. This is
+loading evidence, not PDL equivalence. The first remote RED accepted invalid own
+outputs, followed by the guard's rejection. Vendor evidence remains under
+build/control-output-scope-vendor-probe/comparison.json.
+
+All72 serial interleaved source/flat loading comparisons against86e3da1 preserve
+output/flat hashes. Seven8192-bit families take0.08–0.13s (baseline0.07–0.11s);
+262144-bit child Reset mux0.51–0.57s (0.51–0.55s),128948 versus128996KiB peak.
+4096 aliases0.05–0.12s,4096 consumers0.06–0.09s,CE-only262144 bits0.31–0.34s and
+ordinary655360 references0.10–0.15s. Exact inputs, environment, compiler, commands,
+hashes, wall/RSS are retained in build/control-output-scope-loading-scale-serial/
+comparison.json. These are whole empty-PDL/debug CLI runs; no isolated guard cost
+or speedup is claimed. The earlier overlapping measurement remains archived and
+is excluded from timing claims. Final style/naming and required leak-enabled
+ASan/UBSan native7/main60/clock41/client18/reset12 checks pass; aggregate
+build/control-output-scope-final-sanitizer-all.exit0. Full serial integration
+passes against6 source/test files matching the reviewed snapshot. Strict coverage, complete gating/selector rules,
+remaining runtime/TAP/lifecycle requirements and full platform/vendor qualification
+remain mandatory.
+
+
+Final Task75 verification: required leak-enabled ASan/UBSan native7/main60/clock41/
+client18/reset12 all0. Full serial make-j1check0 in1340.802s, recorded in
+build/control-output-scope-final-full.log/.exit/.wall:41 dynamic and41 static
+suites,51 directional goldens,2523 ICL files with334/119 grammar/scanner rules,
+LSP62 and editor6 in175.279s. Optional ANTLR5 skipped. All6 final source/test
+hashes match the independently reviewed snapshot. Current-source remote native7/
+dynamic41 all0, with actual6 hashes matching and completed archive fetched0.
+These results qualify this source-scope increment; the remaining model, strict
+coverage, vendor and full platform/static/install requirements stay open.

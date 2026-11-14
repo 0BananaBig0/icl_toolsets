@@ -2355,11 +2355,15 @@ void TestStandaloneIdleClockGates() {
     source.insert(
         source.find("Module Top {") + std::string("Module Top {").size(),
         " DataInPort enabled; ClockMux gated SelectedBy enabled "
-        "{ 1'b0: 1'b0; 1'b1: ck; } ToTCKPort gated_tck { Source gated; } ");
+        "{ 1'b0: 1'b0; 1'b1: ck; } Instance clock_forward Of ClockForward "
+        "{ InputPort incoming = gated; } ");
+    source +=
+        "Module ClockForward { ClockPort incoming; "
+        "ToTCKPort out { Source incoming; } }";
     // Explicit ToTCKPort Source is the existing lowered-model gate extension.
     const std::string binding = "InputPort ck = ck;";
     source.replace(source.find(binding), binding.size(),
-                   "InputPort ck = gated_tck;");
+                   "InputPort ck = clock_forward.out;");
     pattern::Design design;
     design.AddIcl("idle-clock-gate.icl", source);
     const auto netlist = pattern::Elaborate(design, "Top");

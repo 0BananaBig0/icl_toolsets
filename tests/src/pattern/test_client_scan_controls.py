@@ -110,8 +110,10 @@ class ClientScanControls(unittest.TestCase):
         # Explicit ToTCKPort Source is the existing lowered-model gate extension.
         source = self.idle_network().replace('DataInPort enable;', '''DataInPort enable;
   ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }
-  ToTCKPort gated_tck { Source gated; }''')
-        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated_tck;')
+  Instance clock_forward Of ClockForward { InputPort incoming = gated; }''')
+        source = ('Module ClockForward { ClockPort incoming; ToTCKPort out { Source incoming; } } '
+                  + source)
+        source = source.replace('InputPort ck = ck;', 'InputPort ck = clock_forward.out;')
         body = ('iReset; iState enable 0; iState child.value 8; iRunLoop 2; '
                 'iRead observed 8; iApply; iState enable 1; iRunLoop 1; '
                 'iRead observed 1; iApply;\n')
@@ -123,8 +125,10 @@ class ClientScanControls(unittest.TestCase):
         # The explicit ToTCK Source extension retains the backend phase check.
         inverted = self.idle_network().replace(
             'DataInPort enable;',
-            'DataInPort enable; ToTCKPort inverted_tck { Source ~ck; }')
-        inverted = inverted.replace('InputPort ck = ck;', 'InputPort ck = inverted_tck;')
+            'DataInPort enable; Instance clock_forward Of ClockForward { InputPort incoming = ck; }')
+        inverted = ('Module ClockForward { ClockPort incoming; ToTCKPort out { Source ~incoming; } } '
+                    + inverted)
+        inverted = inverted.replace('InputPort ck = ck;', 'InputPort ck = clock_forward.out;')
         cases = (
             (self.idle_network(),
              'iReset; iTake child.value; iState child.value 8; iRunLoop 1;',
@@ -224,8 +228,10 @@ class ClientScanControls(unittest.TestCase):
         self.replay(source, body.replace('iReset', 'iReset\niWrite enable 0; iApply'))
         source = self.nested().replace('DataInPort enable;', '''DataInPort enable;
   ClockMux gated SelectedBy enable { 1'b0: 1'b0; 1'b1: ck; }
-  ToTCKPort gated_tck { Source gated; }''')
-        source = source.replace('InputPort ck = ck;', 'InputPort ck = gated_tck;')
+  Instance clock_forward Of ClockForward { InputPort incoming = gated; }''')
+        source = ('Module ClockForward { ClockPort incoming; ToTCKPort out { Source incoming; } } '
+                  + source)
+        source = source.replace('InputPort ck = ck;', 'InputPort ck = clock_forward.out;')
         self.replay(source, body.replace('iReset', 'iReset\niWrite enable 1; iApply'))
 
     def test_local_reset_release_with_explicit_controls(self):

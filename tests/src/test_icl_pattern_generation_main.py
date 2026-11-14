@@ -167,9 +167,15 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
         for declaration in ('TCKPort source;', 'ToTCKPort source;',
                             'DataInPort source;', "LogicSignal source { 1'b0; }"):
+            output = declaration.startswith('ToTCKPort')
+            provider = ('Module Provider { TCKPort incoming; ToTCKPort source; } '
+                        if output else '')
+            producer = ('TCKPort incoming; Instance provider Of Provider { '
+                        'InputPort incoming = incoming; } ' if output else declaration)
+            reference = 'provider.source' if output else 'source'
             (self.root / 'source.icl').write_text(
-                'Module Child { TCKPort ck; } Module Network { ' + declaration +
-                ' Alias wrapped = source; Instance child Of Child { InputPort ck = wrapped; } }')
+                provider + 'Module Child { TCKPort ck; } Module Network { ' + producer +
+                ' Alias wrapped = ' + reference + '; Instance child Of Child { InputPort ck = wrapped; } }')
             self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
                           '--output', 'result.pdl', '--debug')
             self.run_tool('--icl', 'debug/Network.icl', '--pdl', 'source.pdl',
@@ -291,6 +297,31 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 self.assertIn(f'{family} mux path polarity', result.stdout + result.stderr)
                 for output in outputs:
                     self.assertEqual((self.root / output).read_text(), 'previous artifact\n')
+
+    def test_control_output_source_scope_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for family in ('Reset', 'TCK', 'CaptureEn', 'ShiftEn', 'UpdateEn', 'TMS', 'TRST'):
+            port = family + 'Port'
+            for output in (False, True):
+                if output and family == 'TCK':
+                    continue
+                consumer = (f'To{port} out {{ Source wrapped; }}' if output else
+                            'Instance sink Of Sink { InputPort ctl = wrapped; }')
+                (self.root / 'source.icl').write_text(
+                    f'Module Sink {{ {port} ctl; }} Module Network {{ {port} incoming; '
+                    f'To{port} producer {{ Source incoming; }} Alias wrapped = producer; ' +
+                    consumer + ' }')
+                for path in outputs:
+                    (self.root / path).write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn('control output must be referenced from an instance',
+                              result.stdout + result.stderr)
+                for path in outputs:
+                    self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
 
     def test_scan_control_source_kinds(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')

@@ -131,11 +131,29 @@ void TestTckInputSources() {
            {"UpdateEnPort source;", false},
            {"TMSPort source;", false},
            {"ScanInPort source;", false}}) {
+    const bool output =
+        entry.second && entry.first.find("ToTCKPort") != std::string::npos;
+    const bool clock_extension =
+        entry.first.find("ClockPort ck;") != std::string::npos;
+    const std::string provider =
+        output
+            ? "Module Provider { " +
+                  (clock_extension ? "" : std::string("TCKPort incoming; ")) +
+                  entry.first + " } "
+            : "";
+    const std::string declaration =
+        !output           ? entry.first
+        : clock_extension ? "ClockPort ck; Instance provider Of Provider { "
+                            "InputPort ck = ck; } "
+                          : "TCKPort incoming; Instance provider Of Provider { "
+                            "InputPort incoming = incoming; } ";
     pattern::Design design;
-    design.AddIcl("tck_sources.icl",
-                  "Module Child { TCKPort ck; } Module M {" + entry.first +
-                      " Alias wrapped = source; Instance child Of Child { "
-                      "InputPort ck = wrapped; } }");
+    design.AddIcl(
+        "tck_sources.icl",
+        provider + "Module Child { TCKPort ck; } Module M {" + declaration +
+            " Alias wrapped = " + (output ? "provider.source" : "source") +
+            "; Instance child Of Child { "
+            "InputPort ck = wrapped; } }");
     if (entry.second) {
       const auto original = pattern::Elaborate(design, "M");
       pattern::Design flat;
@@ -167,12 +185,19 @@ void TestResetSourceKinds() {
         ordinary ? "ResetPort global; DataMux route SelectedBy "
                    "1'b0 { 1'b0 : global; 1'b1 : source; } "
                  : "";
+    const bool output = declaration.rfind("To", 0) == 0;
+    const std::string provider =
+        output ? "Module Provider { " + declaration + " } " : "";
     pattern::Design design;
     design.AddIcl(
         "reset_kinds.icl",
-        "Module Child { ResetPort r { ActivePolarity " + std::string(polarity) +
-            "; } } Module M { " + declaration + " " + driver +
-            " Alias wrapped = " + (ordinary ? "route" : "source") +
+        provider + "Module Child { ResetPort r { ActivePolarity " +
+            std::string(polarity) + "; } } Module M { " +
+            (output ? "Instance provider Of Provider; " : declaration) + " " +
+            driver + " Alias wrapped = " +
+            (ordinary ? "route"
+             : output ? "provider.source"
+                      : "source") +
             "; "
             "ToResetPort out { Source wrapped; ActivePolarity " +
             polarity +
@@ -199,16 +224,23 @@ void TestResetPortPolarity() {
        {"ResetPort source { ActivePolarity 0; }", "TRSTPort source;",
         "ToResetPort source { ActivePolarity 0; }", "ToTRSTPort source;"}) {
     for (bool inverted : {false, true}) {
+      const bool output = declaration.rfind("To", 0) == 0;
+      const std::string provider =
+          output ? "Module Provider { " + declaration + " } " : "";
       pattern::Design design;
       design.AddIcl(
           "reset_polarity.icl",
-          "Module Leaf { ResetPort rst; ScanInPort si; ScanRegister r { "
-          "ScanInSource si; ResetValue 1'b1; } } "
-          "Module Child { ResetPort rst; ScanInPort si; "
-          "Instance leaf Of Leaf { InputPort rst = rst; InputPort si = si; } } "
-          "Module M { " +
-              declaration +
-              " ScanInPort si; Alias first = ~source; Alias second = ~first; "
+          provider +
+              "Module Leaf { ResetPort rst; ScanInPort si; ScanRegister r { "
+              "ScanInSource si; ResetValue 1'b1; } } "
+              "Module Child { ResetPort rst; ScanInPort si; "
+              "Instance leaf Of Leaf { InputPort rst = rst; InputPort si = si; "
+              "} } "
+              "Module M { " +
+              (output ? "Instance provider Of Provider; " : declaration) +
+              " ScanInPort si; Alias first = ~" +
+              (output ? "provider.source" : "source") +
+              "; Alias second = ~first; "
               "Instance child Of Child { InputPort rst = " +
               (inverted ? "~second" : "second") + "; InputPort si = si; } }");
       const auto original = pattern::Elaborate(design, "M");
@@ -401,13 +433,19 @@ void TestResetMuxPathPolarity() {
             "nested inversions cancel without tracing forcing-only branches");
   }
   for (const std::string declaration : {"TRSTPort rst;", "ToTRSTPort rst;"}) {
+    const bool output = declaration.rfind("To", 0) == 0;
+    const std::string provider =
+        output ? "Module Provider { " + declaration + " } " : "";
     pattern::Design design;
     design.AddIcl(
         "trst_reset_mux.icl",
-        "Module Sink { ResetPort rst { ActivePolarity 0; } } Module M { " +
-            declaration +
+        provider +
+            "Module Sink { ResetPort rst { ActivePolarity 0; } } Module M { " +
+            (output ? "Instance provider Of Provider; " : declaration) +
             " DataInPort mode; DataMux route SelectedBy mode { "
-            "1'b0: rst; 1'b1: 1'b1; } ToResetPort out { Source route; "
+            "1'b0: " +
+            (output ? "provider.rst" : "rst") +
+            "; 1'b1: 1'b1; } ToResetPort out { Source route; "
             "ActivePolarity 0; } Instance sink Of Sink { InputPort rst = "
             "route; } }");
     const auto original = pattern::Elaborate(design, "M");
@@ -660,15 +698,152 @@ void TestControlMuxIdentityPaths() {
     }
   }
 }
+void TestControlOutputSourceScope() {
+  for (const std::string family :
+       {"Reset", "TCK", "CaptureEn", "ShiftEn", "UpdateEn", "TMS", "TRST"}) {
+    const std::string port = family + "Port";
+    for (bool child_source : {false, true}) {
+      for (bool alias : {false, true}) {
+        for (bool output : {false, true}) {
+          for (bool mux : {false, true}) {
+            if (output && family == "TCK") continue;
+            if (mux && (family == "TCK" || family == "ShiftEn")) continue;
+            std::string source = child_source ? "driver.out" : "producer";
+            std::string text = "Module Driver { " + port + " incoming; To" +
+                               port +
+                               " out { Source incoming; } } Module Sink { " +
+                               port + " ctl; } Module M { " + port +
+                               " incoming; DataInPort mode; DataInPort force; ";
+            text += child_source
+                        ? "Instance driver Of Driver { InputPort incoming = "
+                          "incoming; } "
+                        : "To" + port + " producer { Source incoming; } ";
+            if (alias) {
+              text += "Alias wrapped = " + source + "; ";
+              source = "wrapped";
+            }
+            if (mux) {
+              text +=
+                  "DataMux route SelectedBy mode { 1'b0: " + source +
+                  "; 1'b1: " +
+                  (family == "CaptureEn" || family == "UpdateEn" ? "1'b0"
+                                                                 : "force") +
+                  "; } ";
+              source = "route";
+            }
+            text += output
+                        ? "To" + port + " out { Source " + source + "; } }"
+                        : "Instance sink Of Sink { InputPort ctl = " + source +
+                              "; } }";
+            pattern::Design design;
+            design.AddIcl("control_scope.icl", text);
+            if (!child_source) {
+              Fails([&] { pattern::Elaborate(design, "M"); },
+                    "control output must be referenced from an instance");
+            } else {
+              const auto serialized =
+                  pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+              pattern::Design flat;
+              flat.AddIcl("flat.icl", serialized);
+              Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+                          serialized,
+                      "instance control outputs preserve original/flat "
+                      "reference scopes");
+            }
+          }
+        }
+      }
+    }
+    pattern::Design alias_only;
+    alias_only.AddIcl(
+        "pdl_control_alias.icl",
+        "Module M { " + port + " incoming; To" + port +
+            " producer { Source incoming; } Alias wrapped = producer; }");
+    const auto serialized =
+        pattern::SerializeIcl(pattern::Elaborate(alias_only, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", serialized);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+            "own output aliases remain available outside hardware consumption");
+  }
+  {
+    pattern::Design design;
+    design.AddIcl(
+        "altered_control_scope.icl",
+        "Module Driver { ResetPort incoming; ToResetPort out { Source "
+        "incoming; } } "
+        "Module Sink { ResetPort ctl; } Module M { ResetPort incoming; "
+        "ToResetPort producer { Source incoming; } "
+        "Instance driver Of Driver { InputPort incoming = incoming; } "
+        "Instance sink Of Sink { InputPort ctl = driver.out; } }");
+    auto original = pattern::Elaborate(design, "M");
+    original.nodes.at(original.node_ids.at("sink.ctl"))
+        .inputs.at("Source")[0]
+        .node = original.node_ids.at("producer");
+    pattern::Design altered;
+    altered.AddIcl("altered.icl", pattern::SerializeIcl(original));
+    Fails([&] { pattern::Elaborate(altered, "M"); },
+          "control output must be referenced from an instance");
+  }
+  for (const std::string binding : {"InputPort ctl = driver.out, producer;",
+                                    "InputPort ctl = producer, driver.out;",
+                                    "InputPort ctl[1] = driver.out;"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "vector_control_scope.icl",
+        "Module Driver { TMSPort incoming; ToTMSPort out { Source incoming; } "
+        "} "
+        "Module Sink { TMSPort ctl[1:0]; } Module M { TMSPort incoming; "
+        "ToTMSPort producer { Source incoming; } "
+        "Instance driver Of Driver { InputPort incoming = incoming; } "
+        "Instance sink Of Sink { " +
+            binding + " } }");
+    if (binding.find("producer") != std::string::npos) {
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            "control output must be referenced from an instance");
+    } else {
+      const auto serialized =
+          pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", serialized);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == serialized,
+          "partial instance-output binding retains unbound bits through flat "
+          "replay");
+    }
+  }
+  {
+    pattern::Design design;
+    design.AddIcl(
+        "semantic_reset_scope.icl",
+        "Module M { ResetPort rst; ToResetPort producer { Source rst; } "
+        "ScanInPort si; ScanRegister r { ScanInSource si; ResetValue 1'b0; } "
+        "}");
+    auto original = pattern::Elaborate(design, "M");
+    original.nodes.at(original.node_ids.at("r")).reset =
+        pattern::BitReference{original.node_ids.at("producer"), 0, 'x', false};
+    pattern::Design flat;
+    const auto serialized = pattern::SerializeIcl(original);
+    flat.AddIcl("flat.icl", serialized);
+    const auto replay = pattern::Elaborate(flat, "M");
+    Require(replay.NodeAt("r").reset->node == replay.node_ids.at("producer") &&
+                pattern::SerializeIcl(replay) == serialized,
+            "semantic reset associations are not hardware Source expressions");
+  }
+}
 void TestScanControlSourceKinds() {
   for (const std::string family : {"CaptureEn", "ShiftEn", "UpdateEn"}) {
     pattern::Design design;
     design.AddIcl(
         "control_sources.icl",
-        "Module Child { " + family + "Port ctl[1:0]; } Module M { " + family +
-            "Port input[1:0]; To" + family + "Port bare; To" + family +
+        "Module Provider { " + family + "Port input[1:0]; To" + family +
+            "Port output[1:0] { Source input; } } Module Child { " + family +
+            "Port ctl[1:0]; } Module M { " + family + "Port input[1:0]; To" +
+            family + "Port bare; To" + family +
             "Port output[1:0] { Source input; } DataInPort data; "
-            "Alias wrapped[1:0] = output; Instance direct Of Child { InputPort "
+            "Instance provider Of Provider { InputPort input = input; } "
+            "Alias wrapped[1:0] = provider.output; Instance direct Of Child { "
+            "InputPort "
             "ctl "
             "= wrapped; } "
             "Instance partial Of Child { InputPort ctl[1] = data; } "
@@ -897,12 +1072,15 @@ void TestTmsTrstSourceKinds() {
     pattern::Design design;
     design.AddIcl(
         "tap_pin_sources.icl",
-        "Module Child { " + family + "Port ctl[1:0]; } Module M { " + family +
-            "Port input[1:0]; To" + family +
-            "Port bare[1:0] { Source input; } To" + family +
+        "Module Provider { " + family + "Port input[1:0]; To" + family +
+            "Port output[1:0] { Source input; } } Module Child { " + family +
+            "Port ctl[1:0]; } Module M { " + family + "Port input[1:0]; To" +
+            family + "Port bare[1:0] { Source input; } To" + family +
             "Port output[1:0] { Source input; } DataInPort data; "
             "DataMux gate SelectedBy data { 1'b0 : input[1]; 1'b1 : 1'b0; } "
-            "Alias wrapped[1:0] = output; Instance direct Of Child { InputPort "
+            "Instance provider Of Provider { InputPort input = input; } "
+            "Alias wrapped[1:0] = provider.output; Instance direct Of Child { "
+            "InputPort "
             "ctl = wrapped; } "
             "Instance partial Of Child { InputPort ctl[1] = gate; } "
             "Instance constants Of Child { InputPort ctl = 2'b1x; } }");
@@ -2992,6 +3170,7 @@ int main() {
                           TestResetMuxPathPolarity,
                           TestTrstMuxPathPolarity,
                           TestControlMuxIdentityPaths,
+                          TestControlOutputSourceScope,
                           TestScanControlSourceKinds,
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,

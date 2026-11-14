@@ -166,12 +166,14 @@ class MultipleTaps(unittest.TestCase):
                                         'Module MultiTapTop { TCKPort extra_clock; '
                                         + f"LogicSignal gate {{ 1'b{gate if gate != 'inverted' else '1'}; }} "
                                         + "ClockMux gated SelectedBy gate { 1'b0: 1'b0; 1'b1: extra_clock; } "
-                                        + "ToTCKPort gated_tck { Source gated; }")
+                                        + "Instance clock_forward Of ClockForward { InputPort incoming = gated; }")
+                source = ('Module ClockForward { ClockPort incoming; ToTCKPort out { Source incoming; } } '
+                          + source)
                 # Existing lowered ToTCK Source extension forwards the gated clock.
                 if gate == 'inverted':
                     source = source.replace("1'b1: extra_clock;", "1'b1: ~extra_clock;")
                 source = source.replace('InputPort reset = TRST0;',
-                                        'InputPort reset = TRST0; InputPort clock = gated_tck;')
+                                        'InputPort reset = TRST0; InputPort clock = clock_forward.out;')
                 pdl = self.prepare(source, models, 1, 'iReset; iWrite c0.value 9; iApply;\n')
                 if gate == '1':
                     text = self.run_tool(pdl, extra=('--debug',))

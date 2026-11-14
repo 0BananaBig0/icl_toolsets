@@ -428,6 +428,27 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
               node.origin + ": " + node.name + ": " + role +
               " must use the rightmost bit of a ScanRegister");
         }
+        if ((role == "Source" && (typed_control || (family == Family::kReset &&
+                                                    (kind == Kind::kReset ||
+                                                     kind == Kind::kTrst)))) ||
+            (family == Family::kDataMux && control_use(kind))) {
+          const auto source = terminal(bit);
+          const auto& driver = netlist.nodes.at(source.node);
+          if (driver.kind.compare(0, 2, "To") == 0) {
+            const auto parent = netlist.scopes.at(node.scope).parent;
+            const auto reference_scope =
+                role == "Source" && IsInputPort(node.kind) &&
+                        parent != std::numeric_limits<size_t>::max()
+                    ? parent
+                    : node.scope;
+            if (driver.scope == reference_scope) {
+              throw std::runtime_error(
+                  node.origin + ": " + node.name + ": " + role +
+                  ": control output must be referenced from an instance: " +
+                  driver.name);
+            }
+          }
+        }
         if (family == Family::kDataMux && control_use(kind)) {
           mux_control_sources |= control_use(kind);
           continue;
