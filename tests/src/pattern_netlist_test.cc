@@ -357,6 +357,71 @@ void TestStrictScanSources() {
   invalid.AddIcl("invalid_flat.icl", pattern::SerializeIcl(changed));
   Fails([&] { pattern::Elaborate(invalid, "M"); }, "rightmost bit");
 }
+void TestAddressPortSourceKinds() {
+  pattern::Design wrong;
+  wrong.AddIcl("wrong_address.icl",
+               "Module Child { AddressPort a; } Module M { TCKPort ck; "
+               "Instance child Of Child { InputPort a = ck; } }");
+  Fails([&] { pattern::Elaborate(wrong, "M"); },
+        "AddressPort, DataInPort, DataOutPort or ScanRegister");
+  for (const std::string family : {"Address", "WriteEn", "ReadEn"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "address_sources.icl",
+        "Module Child { " + family +
+            "Port ctl; } Module Proxy { DataInPort d; DataOutPort out { "
+            "Source d; } } Module M { " +
+            family +
+            "Port parent; DataInPort data; ScanInPort si; "
+            "ScanRegister reg[1:0] { ScanInSource si; } "
+            "ClockPort forbidden; Alias mixed[1:0] = parent, forbidden; "
+            "Alias wrapped = mixed[1]; "
+            "Instance own Of Child { InputPort ctl = wrapped; } "
+            "Instance primary Of Child { InputPort ctl = data; } "
+            "Instance right Of Child { InputPort ctl = reg[0]; } "
+            "Instance middle Of Child { InputPort ctl = reg[1]; } "
+            "Instance proxy Of Proxy { InputPort d = data; } "
+            "Instance output Of Child { InputPort ctl = proxy.out; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    Require(
+        pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+            pattern::SerializeIcl(original),
+        "address families, data ports and register bits retain flat origins");
+    auto forbidden = original;
+    forbidden.nodes.at(forbidden.node_ids.at("primary.ctl"))
+        .inputs.at("Source")
+        .at(0) = {forbidden.node_ids.at("mixed"), 0};
+    pattern::Design invalid_slice;
+    invalid_slice.AddIcl("invalid_slice.icl", pattern::SerializeIcl(forbidden));
+    Fails([&] { pattern::Elaborate(invalid_slice, "M"); },
+          family + "Port, DataInPort, DataOutPort or ScanRegister");
+    for (const auto reset : {pattern::VirtualSignal::kGlobalReset,
+                             pattern::VirtualSignal::kAsyncGlobalReset}) {
+      auto changed = original;
+      changed.nodes.at(changed.node_ids.at("own.ctl"))
+          .inputs.at("Source")
+          .at(0) = {std::numeric_limits<size_t>::max(), 0, 'x', false, reset};
+      pattern::Design invalid;
+      invalid.AddIcl("invalid_address.icl", pattern::SerializeIcl(changed));
+      Fails([&] { pattern::Elaborate(invalid, "M"); },
+            family + "Port, DataInPort, DataOutPort or ScanRegister");
+    }
+  }
+  pattern::Design partial;
+  partial.AddIcl("partial_address.icl",
+                 "Module Child { AddressPort a[1:0]; } Module M { "
+                 "DataInPort data; Instance child Of Child { InputPort a[1] = "
+                 "data; } }");
+  const auto original = pattern::Elaborate(partial, "M");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  const auto restored = pattern::Elaborate(flat, "M");
+  Require(
+      restored.NodeAt("child.a").inputs.at("Source").at(1).constant == '?',
+      "eligibility preserves binding holes for contextual domain validation");
+}
 void TestTmsTrstSourceKinds() {
   for (const std::string family : {"TMS", "TRST"}) {
     pattern::Design design;
@@ -1799,6 +1864,7 @@ int main() {
                           TestScanControlSourceKinds,
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,
+                          TestAddressPortSourceKinds,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

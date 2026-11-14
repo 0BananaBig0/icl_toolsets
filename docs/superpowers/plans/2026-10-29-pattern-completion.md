@@ -1480,3 +1480,22 @@ reset12 checks pass in build/scan-sources-final-sanitizer-*. Final three source/
 hashes match the reviewed Task61 checkpoint. Naming/style and independent source
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+## Task62: Addressed-port source kinds
+
+Completed [the focused plan](2026-11-14-address-port-source-kinds.md). Matching
+address/write/read families, data ports and either register bit class remain
+eligible; other data primitives/constants/cross-family controls are rejected.
+Binding holes have a distinct cached kind. Native explicit/inherited/primary
+address domains and lowered resolver/cache-retry checks pass. Thirty-five vendor
+loading models distinguish17 accepted controls,15 source-specific negatives and
+three enabled-forwarding context failures, all with fetched input hashes matched.
+
+Full integration passes in build/address-port-source-final-full.log/.exit0,
+1094.305s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in180.025s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist/state/TAP/address and main47/clock41/
+client18/reset12 pass in build/address-port-source-final-sanitizer-*. Four final
+source/test hashes match the reviewed Task62 checkpoint. Naming/style and
+independent source/fixture review pass. Strict coverage, formal vendor certification
+and platform refresh remain open.

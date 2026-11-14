@@ -303,6 +303,42 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                         for artifact in artifacts:
                             self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_address_port_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        for family in ('Address', 'WriteEn', 'ReadEn'):
+            sources = [(kind, kind + 'Port source;') for kind in
+                       ('Address', 'WriteEn', 'ReadEn', 'TCK', 'Clock', 'Reset',
+                        'CaptureEn', 'ShiftEn', 'UpdateEn', 'TMS', 'TRST', 'ScanIn', 'Select')
+                       if kind != family]
+            sources += [('constant ' + value, '')
+                        for value in ("1'b0", "1'b1", "1'bx")]
+            sources += [('data register', "DataRegister source { WriteDataSource 1'b0; WriteEnSource 1'b1; }"),
+                        ('logic', "LogicSignal source { 1'b0; }"),
+                        ('data mux', "DataMux source SelectedBy 1'b0 { 1'b0 : 1'b0; }"),
+                        ('select output', "ToSelectPort source { Source 1'b0; }"),
+                        ('data group', 'Instance proxy Of Proxy; OneHotDataGroup source { Port proxy.out; }')]
+            for source_kind, declaration in sources:
+                with self.subTest(family=family, source_kind=source_kind):
+                    reference = 'wrapped' if declaration else source_kind[len('constant '):]
+                    alias = 'Alias wrapped = source;' if declaration else ''
+                    (self.root / 'source.icl').write_text(
+                        "Module Proxy { DataOutPort out { Source 1'b0; Enable 1'b1; } } "
+                        f'Module Child {{ {family}Port ctl; }} Module Network {{ '
+                        + declaration + alias + ' Instance child Of Child { InputPort ctl = '
+                        + reference + '; } }')
+                    for artifact in artifacts:
+                        artifact.write_text('previous artifact\n')
+                    result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                           '--top_module', 'Network', '--output', 'result.pdl',
+                                           '--local_reset', 'reset.pdl', '--debug', ok=False)
+                    self.assertIn(family + 'Port, DataInPort, DataOutPort or ScanRegister',
+                                  result.stdout + result.stderr)
+                    for artifact in artifacts:
+                        self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_inferred_control_vector_roundtrips(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family in ('Reset', 'TRST', 'TMS'):

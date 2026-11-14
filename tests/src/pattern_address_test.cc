@@ -156,9 +156,29 @@ Module Leaf {
   check("AddressPort a[1:0]; WriteEnPort we;",
         "InputPort a[0] = a[0]; InputPort we = we;",
         "disconnected or constant");
-  check("DataInPort a[1:0]; DataInPort we; LogicSignal logic { a[0]; }",
-        "InputPort a = logic, logic; InputPort we = we;",
-        "intervening address/control logic");
+  {
+    pattern::Design lowered;
+    lowered.AddIcl("lowered.icl",
+                   leaf +
+                       "Module Top { DataInPort a[1:0]; DataInPort d; "
+                       "DataInPort we; LogicSignal logic { a[0]; } "
+                       "Instance child Of Leaf { InputPort a = a; "
+                       "InputPort d = d; InputPort we = we; } }");
+    auto netlist = pattern::Elaborate(lowered, "Top");
+    // Exercise the lowered resolver after frontend source-kind validation.
+    for (auto& bit :
+         netlist.nodes.at(netlist.node_ids.at("child.a")).inputs.at("Source")) {
+      bit = {netlist.node_ids.at("logic"), 0};
+    }
+    pattern::AddressResolver resolver(netlist);
+    for (int attempt = 0; attempt < 2; ++attempt) {
+      Fails(
+          [&] {
+            resolver.Resolve("child.r", pattern::AddressOperation::kWrite);
+          },
+          "intervening address/control logic");
+    }
+  }
   const std::string scans =
       "ScanInPort si; ScanRegister a[1:0] { ScanInSource si; } "
       "ScanRegister b { ScanInSource a[0]; } ";

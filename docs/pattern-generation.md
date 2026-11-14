@@ -3857,3 +3857,44 @@ reset12 checks pass in build/scan-sources-final-sanitizer-*. Final three source/
 hashes match the reviewed Task61 checkpoint. Naming/style and independent source
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+### Address, write-enable and read-enable source kinds (2026-11-14)
+
+AddressPort, WriteEnPort and ReadEnPort bindings now require their matching parent
+family, DataInPort/DataOutPort terminals or ScanRegister bits, including aliases.
+Other data primitives, constants, cross-family ports and unrelated controls are
+rejected. Both rightmost and intermediate register bits remain valid here. Data
+ports retain their ordinary-data eligibility in existing consumers and remain
+invalid bare ScanInSource terminals. Unconnected `?` binding holes have a distinct
+cached classification; they remain available for contextual domain diagnostics.
+
+The specific addressed-port clauses preserve matching parent inheritance despite
+the generic instance-rule data list. Native tests retain explicit parent mappings,
+AddressValue inheritance, complete logical bus order and top-level DataInPort
+domains. AddressResolver checks contextual constraints when resolving addressed
+operations; complete elaboration-wide direction and no-intervening-logic validation
+remain open. Its logic-rejection/cache-retry unit now elaborates legal source then
+constructs the lowered graph explicitly, retaining both original assertions.
+
+Thirty-five matched-input Tessent2026.2 loading probes record17 accepted controls,
+15 source-specific ICL65 rejections and three enabled-DataOut contextual ICL81
+rejections. Separate unenabled DataOut forwarding cases load successfully. They
+establish loading compatibility, not inherited-offset or read-enable sequencing
+correctness. Evidence: build/address-port-source-{vendor, boundary-vendor,
+forwarding-vendor}-probe/comparison.json (actual directories use the complete
+address-port-source prefix). Original test-only constant Alias syntax failures
+remain recorded; corrected literal bindings reproduce all60 invalid acceptances.
+
+Main47 passes9.984s; native netlist/address/flat/scheduler, address CLI20 and scan-data
+CLI25 pass. Netlist native0.79s/120704KiB RSS;4096 clock aliases0.00985495s and
+65536-bit/4096 consumers0.0184732s. Native address0.68s/117048KiB RSS. These are
+measured checks, not a speedup claim or new performance mechanism.
+
+Full integration passes in build/address-port-source-final-full.log/.exit0,
+1094.305s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in180.025s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist/state/TAP/address and main47/clock41/
+client18/reset12 pass in build/address-port-source-final-sanitizer-*. Four final
+source/test hashes match the reviewed Task62 checkpoint. Naming/style and
+independent source/fixture review pass. Strict coverage, formal vendor certification
+and platform refresh remain open.

@@ -1443,3 +1443,22 @@ reset12 checks pass in build/scan-sources-final-sanitizer-*. Final three source/
 hashes match the reviewed Task61 checkpoint. Naming/style and independent source
 reviews pass. Strict coverage, formal vendor certification and platform refresh
 remain open.
+
+## Addressed-port source terminal eligibility (2026-11-14)
+
+Matching Address/WriteEn/ReadEn families, data ports and both ScanRegister bit
+classes are checked after restoration. Other data primitives/constants/controls
+are rejected; cached binding holes remain distinct. Existing explicit/inherited
+and top-level DataInPort domains pass. The lowered resolver logic/cache-retry case
+retains its assertions. Vendor35 matched-input loading cases distinguish eligible
+terminals from enabled-output context failures; no operation/equivalence claim.
+Contextual direction and complete elaboration-wide domain validation remain open.
+
+Full integration passes in build/address-port-source-final-full.log/.exit0,
+1094.305s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in180.025s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist/state/TAP/address and main47/clock41/
+client18/reset12 pass in build/address-port-source-final-sanitizer-*. Four final
+source/test hashes match the reviewed Task62 checkpoint. Naming/style and
+independent source/fixture review pass. Strict coverage, formal vendor certification
+and platform refresh remain open.
