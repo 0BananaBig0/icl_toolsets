@@ -339,6 +339,29 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                     for artifact in artifacts:
                         self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_data_mux_impossible_sources(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        debug = self.root / 'debug/Network.icl'
+        debug.parent.mkdir(exist_ok=True)
+        artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
+        declarations = [kind + 'Port source;' for kind in
+                        ('TCK', 'Clock', 'ShiftEn', 'ScanIn', 'Address', 'WriteEn', 'ReadEn', 'ToTCK')]
+        declarations += ["ToShiftEnPort source { Source 1'b1; }",
+                         'TMSPort tms; ToIRSelectPort source;']
+        for declaration in declarations:
+            with self.subTest(declaration=declaration):
+                (self.root / 'source.icl').write_text(
+                    'Module Network { ' + declaration +
+                    " Alias wrapped = source; DataMux mux SelectedBy 1'b0 { 1'b0 : wrapped; } }")
+                for artifact in artifacts:
+                    artifact.write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn('data signal or supported control source', result.stdout + result.stderr)
+                for artifact in artifacts:
+                    self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
     def test_inferred_control_vector_roundtrips(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for family in ('Reset', 'TRST', 'TMS'):

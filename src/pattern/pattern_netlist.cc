@@ -158,7 +158,8 @@ void CheckSignalSources(const Netlist& netlist) {
     kScanInput,
     kAddress,
     kWriteEn,
-    kReadEn
+    kReadEn,
+    kDataMux
   };
   static const std::set<std::string> kDataKinds = {
       "SelectPort",  "ToSelectPort", "DataRegister",
@@ -272,6 +273,10 @@ void CheckSignalSources(const Netlist& netlist) {
             (family == Family::kAddress && kind == Kind::kAddress) ||
             (family == Family::kWriteEn && kind == Kind::kWriteEn) ||
             (family == Family::kReadEn && kind == Kind::kReadEn) ||
+            (family == Family::kDataMux &&
+             (kind == Kind::kReset || kind == Kind::kCapture ||
+              kind == Kind::kUpdate || kind == Kind::kTms ||
+              kind == Kind::kTrst)) ||
             ((family == Family::kScan || family == Family::kScanInput) &&
              (kind == Kind::kScan || kind == Kind::kScanRegister)) ||
             (ir_select && kind == Kind::kIrSelect)) {
@@ -281,6 +286,8 @@ void CheckSignalSources(const Netlist& netlist) {
             node.origin + ": " + node.name + ": " + role +
             (addressed ? " requires " + node.kind +
                              ", DataInPort, DataOutPort or ScanRegister sources"
+             : family == Family::kDataMux
+                 ? " requires a data signal or supported control source"
              : family == Family::kClock ? " requires a clock or data signal"
              : family == Family::kTck   ? " requires a TCK or data signal"
              : family == Family::kReset ? " requires a reset or data signal"
@@ -354,6 +361,11 @@ void CheckSignalSources(const Netlist& netlist) {
     if (node.kind == "ScanMux") {
       for (const auto& choice : node.choices) {
         check("scan choice", choice.source, Family::kScan);
+      }
+    }
+    if (node.kind == "DataMux") {
+      for (const auto& choice : node.choices) {
+        check("data choice", choice.source, Family::kDataMux);
       }
     }
     for (const auto& instruction : node.logic) {

@@ -314,6 +314,32 @@ void TestRelativeSystemClocks() {
           scheduler.Value("out") == before_out,
       "accepted and rejected relative waits preserve storage and clock pins");
 }
+void TestLoweredClockDataFanout() {
+  for (bool derived : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("lowered_clock_fanout.icl", R"(Module Top {
+      ClockPort root; ClockPort other; DataInPort data;
+      ClockMux branch SelectedBy 1'b0 { 1'b0: other; 1'b1: root; }
+      DataMux observed SelectedBy 1'b0 { 1'b0: data; }
+    })");
+    auto netlist = pattern::Elaborate(design, "Top");
+    // Preserve engine guard coverage after frontend source-kind validation.
+    netlist.nodes.at(netlist.node_ids.at("observed"))
+        .choices.at(0)
+        .source.at(0) = {netlist.node_ids.at(derived ? "branch" : "root"), 0};
+    pattern::ScanScheduler scheduler(netlist);
+    pattern::SystemClocks clocks(netlist);
+    bool rejected = false;
+    try {
+      clocks.Check("root", scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("unsupported fanout") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "lowered data fanout remains unsafe through clock branches");
+  }
+}
 void TestMultipleTapResetSnapshot() {
   const std::string fixture =
       "tests/cases/ours/pattern_generation/multiple_taps/";
@@ -2884,6 +2910,7 @@ int main() {
     TestOscillatorWaits();
     TestOscillatorSourceOverrides();
     TestMultipleTapResetSnapshot();
+    TestLoweredClockDataFanout();
     TestStandaloneIdle();
     TestStandaloneIdleImplicitSelection();
     TestStandaloneIdleResetEdges();

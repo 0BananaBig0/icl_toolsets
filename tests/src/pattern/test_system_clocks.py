@@ -179,17 +179,19 @@ Module Top {
                               'target requires one ClockPort')
 
     def test_clock_only_fanout_boundary(self):
-        for extra in [
-            'ToTCKPort observed { Source root; }',
-            "DataMux observed SelectedBy 1'b0 { 1'b0: root; }",
-            "ClockMux branch SelectedBy 1'b0 { 1'b0: other; 1'b1: root; } "
-            "DataMux observed SelectedBy 1'b0 { 1'b0: branch; }",
-            'Alias bad = ~root;',
-            'ClockPort negative { DifferentialInvOf root; }',
+        for extra, diagnostic in [
+            ('ToTCKPort observed { Source root; }', 'unsupported fanout'),
+            ("DataMux observed SelectedBy 1'b0 { 1'b0: root; }",
+             'data signal or supported control source'),
+            ("ClockMux branch SelectedBy 1'b0 { 1'b0: other; 1'b1: root; } "
+             "DataMux observed SelectedBy 1'b0 { 1'b0: branch; }",
+             'data signal or supported control source'),
+            ('Alias bad = ~root;', 'unsupported fanout'),
+            ('ClockPort negative { DifferentialInvOf root; }', 'unsupported fanout'),
         ]:
             with self.subTest(extra=extra):
                 self.rejected('Module Top { ClockPort root; ClockPort other; ' + extra + ' }',
-                              'iClock root; iRunLoop 1 -sck root\n', 'unsupported fanout')
+                              'iClock root; iRunLoop 1 -sck root\n', diagnostic)
 
     def test_unsupported_clock_paths_and_invalid_factors(self):
         for body, diagnostic in [

@@ -1462,3 +1462,25 @@ client18/reset12 pass in build/address-port-source-final-sanitizer-*. Four final
 source/test hashes match the reviewed Task62 checkpoint. Naming/style and
 independent source/fixture review pass. Strict coverage, formal vendor certification
 and platform refresh remain open.
+
+## DataMux impossible terminal kinds (2026-11-14)
+
+Choice inputs now enforce the data/five-conditional-control permitted superset;
+selectors remain ordinary data. This is not full context/structural/forcing
+validation. Main48/native/state/TAP/client/clock and reviewed fixture checks pass.
+The wide655360-reference case measures0.137–0.167s source validation with equal
+baseline/replay output hashes. Context qualification preserves unused outputs and
+records standard/vendor mixed-fanout differences without an equivalence claim.
+Matching use and aggregate mux allocation/dependency-work bounds remain required.
+
+Confirmed full integration passes in build/data-mux-source-union-confirmed-full.log/
+.exit0,1061.125s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in187.584s; five optional ANTLR tests skipped.
+Selected leak-enabled native scheduler/flatten/netlist/state/TAP/address and
+main48/clock41/client18/reset12 pass in build/data-mux-source-union-final-sanitizer-*.
+The five selected source/test inputs hash-match that snapshot; the sixth corrected
+multi-TAP CLI fixture passes optimized22, including source/flat/generated replay.
+No instrumented multi-TAP scale claim is made. Initial full exit2 and test-only
+metadata assumptions remain recorded. Naming/style and independent product/fixture
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

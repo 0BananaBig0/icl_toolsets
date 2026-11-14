@@ -1499,3 +1499,29 @@ client18/reset12 pass in build/address-port-source-final-sanitizer-*. Four final
 source/test hashes match the reviewed Task62 checkpoint. Naming/style and
 independent source/fixture review pass. Strict coverage, formal vendor certification
 and platform refresh remain open.
+
+## Task63: Reject impossible DataMux input kinds
+
+Completed [the union-validation plan](2026-11-14-data-mux-source-union.md).
+Ordinary data/constants and the five conditional control families remain possible;
+unrelated signal kinds are rejected. Matching predicates and structural/operational
+constraints remain separate. Reviewed clock fixtures retain engine guard coverage
+and gated ToTCK forwarding assertions. Source/flat/native/main48 checks pass;
+655360-reference scale validation is measured with baseline/output hashes.
+
+Confirmed full integration passes in build/data-mux-source-union-confirmed-full.log/
+.exit0,1061.125s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in187.584s; five optional ANTLR tests skipped.
+Selected leak-enabled native scheduler/flatten/netlist/state/TAP/address and
+main48/clock41/client18/reset12 pass in build/data-mux-source-union-final-sanitizer-*.
+The five selected source/test inputs hash-match that snapshot; the sixth corrected
+multi-TAP CLI fixture passes optimized22, including source/flat/generated replay.
+No instrumented multi-TAP scale claim is made. Initial full exit2 and test-only
+metadata assumptions remain recorded. Naming/style and independent product/fixture
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.
+
+Task64 matching-use work is active in its separate focused plan. Task65 must bound
+aggregate mux source/code expansion and dependency work; node-bit limits alone do
+not bound those arrays. Previously listed runtime/clock/TAP, lifecycle, coverage,
+vendor and platform requirements remain open.

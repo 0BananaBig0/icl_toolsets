@@ -598,6 +598,7 @@ void TestDataSignalSources() {
       "DataOutPort result { Source 1'b0; Enable SOURCE; }",
       "ScanOutPort result { Source si; Enable SOURCE; }",
       "DataMux value SelectedBy SOURCE { 1'b0: 0; 1'b1: 1; }",
+      "DataMux value SelectedBy 1'b0 { 1'b0: SOURCE; }",
       "ScanMux value SelectedBy SOURCE { 1'b0: si; 1'b1: si; }",
       "ClockMux value SelectedBy SOURCE { 1'b0: clock; 1'b1: clock; }",
       "LogicSignal value { SOURCE == 1'b0; }",
@@ -631,6 +632,10 @@ void TestDataSignalSources() {
            {"SelectPort source;", "source"},
            {"ScanInPort si; ScanRegister source { ScanInSource si; }",
             "source"},
+           {"ScanInPort si; ScanRegister source[1:0] { ScanInSource si; }",
+            "source[0]"},
+           {"ScanInPort si; ScanRegister source[1:0] { ScanInSource si; }",
+            "source[1]"},
            {"DataRegister source;", "source"},
            {"LogicSignal source { 1'b1; }", "source"},
            {"DataMux source SelectedBy 1'b0 { 1'b0: 0; 1'b1: 1; }", "source"},
@@ -642,13 +647,53 @@ void TestDataSignalSources() {
            {"", "1'b0"},
            {"", "1'b1"},
            {"", "1'bX"}}) {
+    for (const std::string consumer :
+         {"DataOutPort result { Source " + entry.second + "; }",
+          "DataMux result SelectedBy 1'b0 { 1'b0 : " + entry.second + "; }"}) {
+      pattern::Design design;
+      design.AddIcl(
+          "valid_data.icl",
+          "Module Leaf { DataOutPort data { Source 1'b1; Enable 1'b1; }"
+          "ToSelectPort select { Source 1'b1; }} Module M {" +
+              entry.first + consumer + "}");
+      const auto original = pattern::Elaborate(design, "M");
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+      pattern::Elaborate(flat, "M");
+    }
+  }
+}
+
+void TestDataMuxControlSourceUnion() {
+  for (const std::string family :
+       {"Reset", "CaptureEn", "UpdateEn", "TMS", "TRST"}) {
     pattern::Design design;
-    design.AddIcl("valid_data.icl",
-                  "Module Leaf { DataOutPort data { Source 1'b1; Enable 1'b1; }"
-                  "ToSelectPort select { Source 1'b1; }} Module M {" +
-                      entry.first + "DataOutPort result { Source " +
-                      entry.second + "; }}");
-    pattern::Elaborate(design, "M");
+    design.AddIcl(
+        "mux_control_union.icl",
+        "Module Provider { " + family + "Port in; To" + family +
+            "Port out { Source in; } } Module M { " + family +
+            "Port input; DataInPort mode; Instance provider Of Provider { "
+            "InputPort in = input; } Alias wrapped = provider.out; "
+            "DataMux mux SelectedBy mode { 1'b0 : " +
+            (family == "Reset" ? "1'b1" : "1'b0") + "; 1'b1 : wrapped; } To" +
+            family + "Port out { Source mux; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) ==
+                pattern::SerializeIcl(original),
+            "conditional control source union survives alias/flat replay");
+    for (const auto reset : {pattern::VirtualSignal::kGlobalReset,
+                             pattern::VirtualSignal::kAsyncGlobalReset}) {
+      auto changed = original;
+      changed.nodes.at(changed.node_ids.at("mux"))
+          .inputs.at("SelectedBy")
+          .at(0) = {std::numeric_limits<size_t>::max(), 0, 'x', false, reset};
+      pattern::Design invalid;
+      invalid.AddIcl("invalid_mux.icl", pattern::SerializeIcl(changed));
+      Fails([&] { pattern::Elaborate(invalid, "M"); },
+            "requires a data signal");
+    }
   }
 }
 
@@ -656,14 +701,19 @@ void TestDataSignalAliasSlices() {
   const std::string body =
       "Module M { DataInPort data; TCKPort clock;"
       "Alias mixed[0:1] = data, clock; Alias wrapped[1:0] = ~mixed[1:0];";
-  pattern::Design valid;
-  valid.AddIcl("alias_data.icl",
-               body + "DataOutPort result { Source wrapped[0]; }}");
-  pattern::Elaborate(valid, "M");
-  pattern::Design invalid;
-  invalid.AddIcl("alias_clock.icl",
-                 body + "DataOutPort result { Source wrapped[1]; }}");
-  Fails([&] { pattern::Elaborate(invalid, "M"); }, "data signal");
+  for (const std::string consumer :
+       {"DataOutPort result { Source ",
+        "DataMux result SelectedBy 1'b0 { 1'b0 : "}) {
+    pattern::Design valid;
+    valid.AddIcl("alias_data.icl", body + consumer + "wrapped[0]; }}");
+    const auto original = pattern::Elaborate(valid, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    pattern::Elaborate(flat, "M");
+    pattern::Design invalid;
+    invalid.AddIcl("alias_clock.icl", body + consumer + "wrapped[1]; }}");
+    Fails([&] { pattern::Elaborate(invalid, "M"); }, "data signal");
+  }
 
   for (const std::string consumer :
        {"ScanMux route SelectedBy selected { 1'b0: si; 1'b1: si; }",
@@ -1865,6 +1915,7 @@ int main() {
                           TestConcatScanSourceKinds,
                           TestStrictScanSources,
                           TestAddressPortSourceKinds,
+                          TestDataMuxControlSourceUnion,
                           TestTmsTrstSourceKinds,
                           TestInferredControlVectors,
                           TestInferredControlBudget,

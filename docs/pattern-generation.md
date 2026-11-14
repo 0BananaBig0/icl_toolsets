@@ -3898,3 +3898,50 @@ client18/reset12 pass in build/address-port-source-final-sanitizer-*. Four final
 source/test hashes match the reviewed Task62 checkpoint. Naming/style and
 independent source/fixture review pass. Strict coverage, formal vendor certification
 and platform refresh remain open.
+
+### DataMux impossible source kinds (2026-11-14)
+
+DataMux choice inputs now reject ShiftEn, clock/TCK, scan-only, addressed-port and
+ToIRSelect terminals, including aliases. The permitted superset retains ordinary
+data/constants and conditional Reset/CaptureEn/UpdateEn/TMS/TRST families and To*
+ports. SelectedBy remains ordinary data. This excludes impossible terminals; it
+does not establish matching-output context, mux structure, forcing values or
+normal-operation sensitization. Those remain required follow-up work.
+
+Main48, native ordinary/conditional alias and flat cases, state/TAP/client/clock
+checks and independent review pass. Virtual-reset metadata negatives exercise
+SelectedBy, not unrepresented choice metadata. Two clock CLI cases now fail at
+the frontend; lowered native cases retain both direct and unselected-branch
+fanout guards. A further multi-TAP fixture uses ClockMux plus the existing explicit
+ToTCK Source extension, retaining1/0/X/inverted and replay assertions.
+
+The335-byte scale model has65536-bit data/alias/mux and10 choices (655360 source
+references). Three interleaved baseline/changed source+flat runs have equal output
+hashes. Source validation takes0.1369–0.1667s versus0.0595–0.1210s before this check;
+changed flat replay0.1191–0.1489s, peak67344KiB RSS. Exact commands/environment and
+hashes are in build/data-mux-source-union-scale/comparison.json. Native suite0.76s/
+120656KiB,4096 aliases0.0101215s and65536-bit/4096 consumers0.0182843s. These
+measure overhead; no speedup or new optimization mechanism is claimed.
+
+Loading-only context experiments are under build/data-mux-context-vendor-probe,
+build/data-mux-context-qualified-vendor-probe and build/data-mux-update-write-vendor-probe.
+They distinguish ICL65 consumer restrictions, ICL115 capture structure, ICL64
+polarity and ICL129 reset-state failures. Corrected cases accept aliases/chains,
+To* outputs, TRST-to-reset and unused/partly unused mux outputs. Tessent2026.2
+rejects the existing UE-to-ToUpdate plus DataRegister WriteEn fixture with ICL65,
+although the inspected IEEE generic DataMux data-signal list does not explicitly
+impose that gating exclusion. Keep the standard-first mixed-fanout interpretation
+separate from vendor compatibility; the matching-use plan records the distinction.
+No PDL or operational equivalence ran in these probes.
+
+Confirmed full integration passes in build/data-mux-source-union-confirmed-full.log/
+.exit0,1061.125s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in187.584s; five optional ANTLR tests skipped.
+Selected leak-enabled native scheduler/flatten/netlist/state/TAP/address and
+main48/clock41/client18/reset12 pass in build/data-mux-source-union-final-sanitizer-*.
+The five selected source/test inputs hash-match that snapshot; the sixth corrected
+multi-TAP CLI fixture passes optimized22, including source/flat/generated replay.
+No instrumented multi-TAP scale claim is made. Initial full exit2 and test-only
+metadata assumptions remain recorded. Naming/style and independent product/fixture
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.
