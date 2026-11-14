@@ -1439,3 +1439,24 @@ checks pass in build/reset-source-confirmed-sanitizer-*. First full exit2 and
 scheduler sanitizer exit1 remain recorded. Corrected source/fixture reviews,
 naming/style and focused checks pass. No frontend exemption is introduced.
 Strict coverage, formal vendor certification and platform refresh remain open.
+
+## Tasks58–59: Scan controls and TMS/TRST source eligibility
+
+Completed [scan-control source kinds](2026-11-14-scan-control-source-kinds.md) and
+[TMS/TRST source kinds](2026-11-14-tms-trst-source-kinds.md) as one reviewed final
+snapshot, retaining separate focused checkpoints. Shared kind checks preserve
+ordinary data/constants and matching families; TRST permits asynchronous virtual
+reset. Scalar/virtual inference broadcasts to grouped destinations, rejects
+ambiguous physical vectors and preflights a4M inferred-bit allocation budget.
+Independent review corrected the initial ordinal-vector interpretation; rejected
+vendor evidence and the unintegrated trial are preserved. The qualified scalar
+probe supports loading/analysis only, not functional control equivalence.
+
+Full combined integration passes in build/control-source-final-full.log/.exit0,
+1094.986s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in185.044s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main43/clock41/client18/reset12
+checks pass in build/control-source-final-sanitizer-*. Final source/test hashes
+match the reviewed Task59 checkpoint. Naming/style and independent source/resource
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

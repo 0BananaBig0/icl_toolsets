@@ -1402,3 +1402,23 @@ checks pass in build/reset-source-confirmed-sanitizer-*. First full exit2 and
 scheduler sanitizer exit1 remain recorded. Corrected source/fixture reviews,
 naming/style and focused checks pass. No frontend exemption is introduced.
 Strict coverage, formal vendor certification and platform refresh remain open.
+
+## Scan controls and TMS/TRST source eligibility (2026-11-14)
+
+Matching capture/shift/update/TMS/TRST families, ordinary data/constants and
+bit-specific aliases are checked after origin restoration. TRST admits inferred
+asynchronous global reset. Unique scalar reset/TMS/TRST sources broadcast across
+grouped destinations; ambiguous vector candidates are rejected and explicit vector
+mapping is unchanged. A4M inferred-control-bit preflight bounds allocation.
+Main43/native/flat/TAP/client/reset checks and independent review pass. Vendor
+scalar/grouped and rejected-vector evidence establishes loading compatibility,
+not functional control equivalence; see the guide and focused plans.
+
+Full combined integration passes in build/control-source-final-full.log/.exit0,
+1094.986s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in185.044s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main43/clock41/client18/reset12
+checks pass in build/control-source-final-sanitizer-*. Final source/test hashes
+match the reviewed Task59 checkpoint. Naming/style and independent source/resource
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

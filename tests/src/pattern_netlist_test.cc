@@ -187,6 +187,203 @@ void TestResetSourceKinds() {
   flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
   pattern::Elaborate(flat, "M");
 }
+void TestScanControlSourceKinds() {
+  for (const std::string family : {"CaptureEn", "ShiftEn", "UpdateEn"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "control_sources.icl",
+        "Module Child { " + family + "Port ctl[1:0]; } Module M { " + family +
+            "Port input[1:0]; To" + family + "Port bare; To" + family +
+            "Port output[1:0] { Source input; } DataInPort data; "
+            "Alias wrapped[1:0] = output; Instance direct Of Child { InputPort "
+            "ctl "
+            "= wrapped; } "
+            "Instance partial Of Child { InputPort ctl[1] = data; } "
+            "Instance constants Of Child { InputPort ctl = 2'b1x; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto restored = pattern::Elaborate(flat, "M");
+    Require(
+        restored.NodeAt("partial.ctl").inputs.at("Source").at(1).constant ==
+                '?' &&
+            pattern::SerializeIcl(restored) == pattern::SerializeIcl(original),
+        "scan control family, data, constants and partial bits survive flat "
+        "replay");
+    for (const auto reset : {pattern::VirtualSignal::kGlobalReset,
+                             pattern::VirtualSignal::kAsyncGlobalReset}) {
+      auto changed = original;
+      changed.nodes.at(changed.node_ids.at("partial.ctl"))
+          .inputs.at("Source")
+          .at(0) = {std::numeric_limits<size_t>::max(), 0, 'x', false, reset};
+      pattern::Design invalid;
+      invalid.AddIcl("invalid.icl", pattern::SerializeIcl(changed));
+      Fails([&] { pattern::Elaborate(invalid, "M"); }, "or data signal");
+    }
+  }
+}
+void TestTmsTrstSourceKinds() {
+  for (const std::string family : {"TMS", "TRST"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "tap_pin_sources.icl",
+        "Module Child { " + family + "Port ctl[1:0]; } Module M { " + family +
+            "Port input[1:0]; To" + family +
+            "Port bare[1:0] { Source input; } To" + family +
+            "Port output[1:0] { Source input; } DataInPort data; "
+            "Alias wrapped[1:0] = output; Instance direct Of Child { InputPort "
+            "ctl = wrapped; } "
+            "Instance partial Of Child { InputPort ctl[1] = data; } "
+            "Instance constants Of Child { InputPort ctl = 2'b1x; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto restored = pattern::Elaborate(flat, "M");
+    Require(pattern::SerializeIcl(restored) == pattern::SerializeIcl(original),
+            "TMS/TRST own/data/constant/partial and inferred output sources "
+            "survive flat replay");
+  }
+  pattern::Design design;
+  design.AddIcl(
+      "tap_pin_inference.icl",
+      "Module Child { TMSPort tm; TRSTPort tr; ToTMSPort forwarded; } "
+      "Module M { TMSPort input; ToTRSTPort powerup; "
+      "Instance child Of Child { InputPort tm = input; } }");
+  const auto original = pattern::Elaborate(design, "M");
+  const auto& async = original.NodeAt("powerup").inputs.at("Source").at(0);
+  Require(async.virtual_signal == pattern::VirtualSignal::kAsyncGlobalReset &&
+              async.inverted,
+          "inferred active-low TRST retains asynchronous reset polarity");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  pattern::Elaborate(flat, "M");
+  for (const std::string name : {"powerup", "child.forwarded"}) {
+    for (const auto reset : {pattern::VirtualSignal::kGlobalReset,
+                             pattern::VirtualSignal::kAsyncGlobalReset}) {
+      if (name == "powerup" &&
+          reset == pattern::VirtualSignal::kAsyncGlobalReset)
+        continue;
+      auto changed = original;
+      changed.nodes.at(changed.node_ids.at(name)).inputs.at("Source").at(0) = {
+          std::numeric_limits<size_t>::max(), 0, 'x', false, reset};
+      pattern::Design invalid;
+      invalid.AddIcl("invalid.icl", pattern::SerializeIcl(changed));
+      Fails([&] { pattern::Elaborate(invalid, "M"); }, "or data signal");
+    }
+  }
+}
+void TestInferredControlVectors() {
+  for (const std::string type : {"Reset", "TRST", "TMS"}) {
+    const std::string polarity =
+        type == "Reset" ? " { ActivePolarity 0; }" : ";";
+    pattern::Design design;
+    design.AddIcl("inferred_vectors.icl",
+                  "Module Child { " + type + "Port input[9:8]; To" + type +
+                      "Port forwarded[6:7] { Source input; } } Module M { " +
+                      type + "Port source[7]" + polarity + " To" + type +
+                      "Port bare[1:0]; Instance child Of Child; }");
+    const auto original = pattern::Elaborate(design, "M");
+    for (const std::string name : {"bare", "child.input"}) {
+      const auto& bits = original.NodeAt(name).inputs.at("Source");
+      Require(bits.size() == 2 && bits[0].index == 7 && bits[1].index == 7 &&
+                  bits[0].inverted == (type == "Reset") &&
+                  bits[1].inverted == (type == "Reset"),
+              "implicit ports repeat a unique scalar source with polarity");
+    }
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto restored = pattern::Elaborate(flat, "M");
+    Require(pattern::SerializeIcl(restored) == pattern::SerializeIcl(original),
+            "inferred scalar-to-vector sources survive flat replay");
+    for (bool wide_target : {false, true}) {
+      pattern::Design ambiguous;
+      ambiguous.AddIcl("ambiguous_inference.icl",
+                       "Module M { " + type + "Port source[4:5]; To" + type +
+                           "Port target" + (wide_target ? "[1:0]" : "") +
+                           "; }");
+      Fails([&] { pattern::Elaborate(ambiguous, "M"); }, "ambiguous source");
+    }
+    for (bool ascending : {false, true}) {
+      pattern::Design explicit_design;
+      explicit_design.AddIcl("explicit_vectors.icl",
+                             "Module M { " + type + "Port source" +
+                                 (ascending ? "[4:5]" : "[5:4]") + "; To" +
+                                 type +
+                                 "Port target[1:0] { Source source; } }");
+      const auto explicit_netlist = pattern::Elaborate(explicit_design, "M");
+      const auto& bits = explicit_netlist.NodeAt("target").inputs.at("Source");
+      Require(bits[0].index == (ascending ? 4 : 5) &&
+                  bits[1].index == (ascending ? 5 : 4),
+              "explicit vector references retain declaration order");
+    }
+  }
+  pattern::Design ambiguous_reset;
+  ambiguous_reset.AddIcl("ambiguous_register_reset.icl",
+                         "Module M { ResetPort rst[1:0]; ScanInPort si; "
+                         "ScanRegister r { ScanInSource si; ResetValue 0; } }");
+  Fails([&] { pattern::Elaborate(ambiguous_reset, "M"); },
+        "ambiguous register reset");
+  for (const std::string type : {"Reset", "TRST"}) {
+    pattern::Design design;
+    design.AddIcl("virtual_vectors.icl",
+                  "Module Child { " + type +
+                      "Port input[3:1]; } Module M { To" + type +
+                      "Port output[2:0]; Instance child Of Child; }");
+    const auto original = pattern::Elaborate(design, "M");
+    for (const std::string name : {"output", "child.input"}) {
+      const auto& bits = original.NodeAt(name).inputs.at("Source");
+      Require(bits.size() == 3,
+              "virtual reset function drives every declared bit");
+      for (const auto& bit : bits) {
+        Require(
+            bit.virtual_signal ==
+                    (type == "TRST" ? pattern::VirtualSignal::kAsyncGlobalReset
+                                    : pattern::VirtualSignal::kGlobalReset) &&
+                bit.inverted == (type == "TRST"),
+            "broadcast virtual reset preserves function and polarity");
+      }
+    }
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    pattern::Elaborate(flat, "M");
+  }
+  const auto start = std::chrono::steady_clock::now();
+  const std::string source =
+      "Module Child { TRSTPort tr[0:65535]; } Module M { TRSTPort x; "
+      "ToTRSTPort output[65535:0]; Instance child Of Child; }";
+  pattern::Design design;
+  design.AddIcl("wide_inferred.icl", source);
+  const auto original = pattern::Elaborate(design, "M");
+  Require(original.NodeAt("child.tr").inputs.at("Source").size() == 65536,
+          "wide inferred source retains every bit");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  pattern::Elaborate(flat, "M");
+  std::cout << "inferred control vectors: bits=65536 bytes=" << source.size()
+            << " source/flat seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+void TestInferredControlBudget() {
+  std::string source = "Module M { ";
+  for (size_t i = 0; i < 65; ++i) {
+    source += "ToTRSTPort port" + std::to_string(i) + "[65535:0];";
+  }
+  source += "}";
+  const auto start = std::chrono::steady_clock::now();
+  pattern::Design design;
+  design.AddIcl("inferred_budget.icl", source);
+  Fails([&] { pattern::Elaborate(design, "M"); },
+        "inferred control connection bit limit");
+  std::cout << "inferred control budget: ports=65 width=65536 bytes="
+            << source.size() << " seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
 void TestDataSignalSources() {
   const std::string prefix =
       "Module Sink { DataInPort data; SelectPort selected; } Module M {"
@@ -1464,6 +1661,10 @@ int main() {
   for (const auto test : {TestClockSignalSources,
                           TestTckInputSources,
                           TestResetSourceKinds,
+                          TestScanControlSourceKinds,
+                          TestTmsTrstSourceKinds,
+                          TestInferredControlVectors,
+                          TestInferredControlBudget,
                           TestDataSignalSources,
                           TestDataSignalAliasSlices,
                           TestDataSourceScale,

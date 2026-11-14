@@ -191,6 +191,52 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 self.assertIn('reset or data signal', result.stdout + result.stderr)
                 self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
 
+    def test_scan_control_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        for family, diagnostic in [('CaptureEn', 'capture-enable'),
+                                   ('ShiftEn', 'shift-enable'), ('UpdateEn', 'update-enable')]:
+            for source_kind in ('TCK', 'Clock', 'Reset', 'ScanIn', 'CaptureEn', 'ShiftEn', 'UpdateEn'):
+                if source_kind == family:
+                    continue
+                for consumer in (f'To{family}Port out {{ Source wrapped; }}',
+                                 'Instance child Of Child { InputPort ctl = wrapped; }'):
+                    (self.root / 'source.icl').write_text(
+                        f'Module Child {{ {family}Port ctl; }} Module Network {{ {source_kind}Port source; '
+                        'Alias wrapped = source; ' + consumer + ' }')
+                    (self.root / 'result.pdl').write_text('previous artifact\n')
+                    result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                           '--top_module', 'Network', '--output', 'result.pdl', ok=False)
+                    self.assertIn(diagnostic + ' or data signal', result.stdout + result.stderr)
+                    self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
+
+    def test_tms_trst_source_kinds(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        for family in ('TMS', 'TRST'):
+            for source_kind in ('TCK', 'Clock', 'Reset', 'ScanIn', 'CaptureEn', 'ShiftEn', 'UpdateEn', 'TMS', 'TRST'):
+                if source_kind == family:
+                    continue
+                for consumer in (f'To{family}Port out {{ Source wrapped; }}',
+                                 'Instance child Of Child { InputPort ctl = wrapped; }'):
+                    (self.root / 'source.icl').write_text(
+                        f'Module Child {{ {family}Port ctl; }} Module Network {{ {source_kind}Port source; '
+                        'Alias wrapped = source; ' + consumer + ' }')
+                    (self.root / 'result.pdl').write_text('previous artifact\n')
+                    result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                           '--top_module', 'Network', '--output', 'result.pdl', ok=False)
+                    self.assertIn(family + ' or data signal', result.stdout + result.stderr)
+                    self.assertEqual((self.root / 'result.pdl').read_text(), 'previous artifact\n')
+
+    def test_inferred_control_vector_roundtrips(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        for family in ('Reset', 'TRST', 'TMS'):
+            (self.root / 'source.icl').write_text(
+                f'Module Child {{ {family}Port ctl[4:5]; }} Module Network {{ '
+                f'{family}Port source[7]; To{family}Port output[1:0]; Instance child Of Child; }}')
+            self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                          '--output', 'result.pdl', '--debug')
+            self.run_tool('--icl', 'debug/Network.icl', '--pdl', 'source.pdl',
+                          '--output', 'again.pdl')
+
     def test_round_trips(self):
         result = self.run_tool("--icl", "source.icl", "--pdl", "source.pdl", "--debug", "--log", "run.log")
         self.assertIn("warning", result.stdout)

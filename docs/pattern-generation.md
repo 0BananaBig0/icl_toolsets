@@ -3786,3 +3786,37 @@ editor6 in182.967s; five optional ANTLR tests skipped. Leak-enabled native
 scheduler/flatten/netlist and main40/clock41/client18/reset12 checks pass in
 build/reset-source-confirmed-sanitizer-*. Strict coverage, formal
 vendor certification and platform qualification are not refreshed.
+
+### Scan controls and TMS/TRST source eligibility (2026-11-14)
+
+CaptureEn, ShiftEn and UpdateEn input bindings and To* Sources accept their own
+family, ordinary data/constants and aliases. TMS/TRST follow the same family rule;
+TRST also accepts the inferred asynchronous global-reset function. Unrelated
+control/clock/scan terminals and mismatched virtual reset functions are rejected.
+Generated TAP scan controls remain ordinary data and require no exemption.
+
+Omitted Reset/TRST/TMS bindings require one physical source bit (including indexed
+scalars), repeated across grouped destinations with polarity preserved. A vector
+input is multiple candidates, so implicit ordinal matching is ambiguous. Explicit
+vectors retain declaration-order mapping. Scalar register reset inference now
+rejects ambiguous vector sources. Preflight caps new inferred control Source
+buffers at4M bits; larger real models require a compact representation and renewed
+qualification. The compact65×65536 rejection takes0.000262s;65536-bit scalar
+broadcast/source-flat replay takes0.298485s on the recorded native run.
+
+Tessent2026.2 rejects vector-input inference with ICL123/124 and accepts unique
+scalar-source loading/analysis for grouped destinations. The source-only clock
+export agrees with ours; our output was not submitted in that run. This is no
+functional control-value equivalence claim. Exact inputs/hashes/logs are under
+build/inferred-control-vector-vendor-probe. The abandoned ordinal-inference trial
+and first fixture failures remain recorded. Contextual forcing/gating, direction,
+phase/polarity and broader event behavior remain separate acceptance work.
+
+Full combined integration passes in build/control-source-final-full.log/.exit0,
+1094.986s wall:41 dynamic/static suites,51 directional/seven legacy goldens,
+2523 ICL334/119 rules, editor6 in185.044s; five optional ANTLR tests skipped.
+Leak-enabled native scheduler/flatten/netlist and main43/clock41/client18/reset12
+checks pass in build/control-source-final-sanitizer-*. Final source/test hashes
+match the reviewed Task59 checkpoint. Naming/style and independent source/resource
+reviews pass. Strict coverage, formal vendor certification and platform refresh
+remain open.

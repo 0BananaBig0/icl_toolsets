@@ -127,12 +127,26 @@ void CheckSignalSources(const Netlist& netlist) {
     kTck,
     kReset,
     kTrst,
+    kTms,
     kGlobalReset,
     kAsyncReset,
+    kCapture,
+    kShift,
+    kUpdate,
     kConstant,
     kIrSelect
   };
-  enum class Family { kData, kClock, kTck, kReset };
+  enum class Family {
+    kData,
+    kClock,
+    kTck,
+    kReset,
+    kCapture,
+    kShift,
+    kUpdate,
+    kTms,
+    kTrst
+  };
   static const std::set<std::string> kDataKinds = {
       "DataInPort",   "DataOutPort",  "SelectPort",
       "ToSelectPort", "ScanRegister", "DataRegister",
@@ -143,9 +157,16 @@ void CheckSignalSources(const Netlist& netlist) {
   kinds.reserve(netlist.nodes.size());
   for (const auto& node : netlist.nodes) {
     kinds.push_back(
-        kDataKinds.count(node.kind)                              ? Kind::kData
+        kDataKinds.count(node.kind) ? Kind::kData
+        : node.kind == "CaptureEnPort" || node.kind == "ToCaptureEnPort"
+            ? Kind::kCapture
+        : node.kind == "ShiftEnPort" || node.kind == "ToShiftEnPort"
+            ? Kind::kShift
+        : node.kind == "UpdateEnPort" || node.kind == "ToUpdateEnPort"
+            ? Kind::kUpdate
         : node.kind == "ResetPort" || node.kind == "ToResetPort" ? Kind::kReset
         : node.kind == "TRSTPort" || node.kind == "ToTRSTPort"   ? Kind::kTrst
+        : node.kind == "TMSPort" || node.kind == "ToTMSPort"     ? Kind::kTms
         : node.kind == "TCKPort" || node.kind == "ToTCKPort"     ? Kind::kTck
         : kClockKinds.count(node.kind) &&
                 !node.properties.count("DifferentialInvOf")
@@ -201,6 +222,12 @@ void CheckSignalSources(const Netlist& netlist) {
             (family == Family::kReset &&
              (kind == Kind::kReset || kind == Kind::kTrst ||
               kind == Kind::kGlobalReset)) ||
+            (family == Family::kCapture && kind == Kind::kCapture) ||
+            (family == Family::kShift && kind == Kind::kShift) ||
+            (family == Family::kUpdate && kind == Kind::kUpdate) ||
+            (family == Family::kTms && kind == Kind::kTms) ||
+            (family == Family::kTrst &&
+             (kind == Kind::kTrst || kind == Kind::kAsyncReset)) ||
             (ir_select && kind == Kind::kIrSelect)) {
           continue;
         }
@@ -209,7 +236,15 @@ void CheckSignalSources(const Netlist& netlist) {
             (family == Family::kClock   ? " requires a clock or data signal"
              : family == Family::kTck   ? " requires a TCK or data signal"
              : family == Family::kReset ? " requires a reset or data signal"
-                                        : " requires a data signal"));
+             : family == Family::kCapture
+                 ? " requires a capture-enable or data signal"
+             : family == Family::kShift
+                 ? " requires a shift-enable or data signal"
+             : family == Family::kUpdate
+                 ? " requires an update-enable or data signal"
+             : family == Family::kTms  ? " requires a TMS or data signal"
+             : family == Family::kTrst ? " requires a TRST or data signal"
+                                       : " requires a data signal"));
       }
     };
     for (const auto& [role, bits] : node.inputs) {
@@ -224,6 +259,21 @@ void CheckSignalSources(const Netlist& netlist) {
       if (role == "Source" &&
           (node.kind == "ResetPort" || node.kind == "ToResetPort")) {
         check(role, bits, Family::kReset);
+      }
+      if (role == "Source") {
+        if (node.kind == "CaptureEnPort" || node.kind == "ToCaptureEnPort") {
+          check(role, bits, Family::kCapture);
+        } else if (node.kind == "ShiftEnPort" || node.kind == "ToShiftEnPort") {
+          check(role, bits, Family::kShift);
+        } else if (node.kind == "UpdateEnPort" ||
+                   node.kind == "ToUpdateEnPort") {
+          check(role, bits, Family::kUpdate);
+        }
+        if (node.kind == "TMSPort" || node.kind == "ToTMSPort") {
+          check(role, bits, Family::kTms);
+        } else if (node.kind == "TRSTPort" || node.kind == "ToTRSTPort") {
+          check(role, bits, Family::kTrst);
+        }
       }
       if (role == "CaptureSource" || role == "WriteDataSource" ||
           role == "ReadDataSource" || role == "WriteEnSource" ||
@@ -1405,10 +1455,30 @@ class Elaborator {
       return source;
     }
     const auto& source = netlist_.nodes[candidates[0]];
+    if (source.Width() != 1) throw std::runtime_error("ambiguous " + role);
     return {candidates[0], source.left, 'x', ActiveLow(source)};
   }
 
   void InferResets() {
+    constexpr size_t kMaxInferredControlBits = 4 * 1024 * 1024;
+    size_t inferred_bits = 0;
+    // Bound implicit expansion before allocating any per-bit source buffers.
+    for (const auto& node : netlist_.nodes) {
+      if (node.inputs.count("Source")) continue;
+      const bool input = node.kind == "ResetPort" || node.kind == "TRSTPort" ||
+                         node.kind == "TMSPort";
+      const bool output = node.kind == "ToResetPort" ||
+                          node.kind == "ToTRSTPort" || node.kind == "ToTMSPort";
+      if (!output && (!input || netlist_.scopes[node.scope].parent ==
+                                    std::numeric_limits<size_t>::max())) {
+        continue;
+      }
+      if (node.Width() > kMaxInferredControlBits - inferred_bits) {
+        throw std::runtime_error(
+            node.origin + ": inferred control connection bit limit exceeded");
+      }
+      inferred_bits += node.Width();
+    }
     for (auto& node : netlist_.nodes) {
       try {
         if ((node.kind == "ScanRegister" || node.kind == "DataRegister") &&
@@ -1428,7 +1498,7 @@ class Elaborator {
           auto source = ResetSource(node.kind == input ? parent : node.scope,
                                     input, output, "source of " + node.name);
           source.inverted = source.inverted != ActiveLow(node);
-          node.inputs["Source"] = {source};
+          node.inputs["Source"].assign(node.Width(), source);
         }
       } catch (const std::exception& error) {
         throw std::runtime_error(node.origin + ": " + error.what());
