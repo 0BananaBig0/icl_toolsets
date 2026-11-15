@@ -1,0 +1,8 @@
+iPDLLevel 0
+iProcsForModule ClientTop
+iReset
+iWrite cap_enable 0b1
+iApply
+iWrite child.value 0b0000
+iRead child.value 0b1010
+iApply

@@ -1,0 +1,178 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "update_mux_selector",
+    "top": "ClientTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/control_mux_operations/update.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/control_mux_operations/update.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/control_mux_operations/update.icl": "f68af0451cee9dc82d6ee21188d72357e15487e1bcdbc7e2e1faad36243f8049",
+    "tests/cases/ours/pattern_generation/control_mux_operations/update.pdl": "92520f85345d92c72c924a38c68c3557ea4dca034e58143ad2309ba20723c162"
+  },
+  "job": {
+    "id": "update_mux_selector",
+    "top": "ClientTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/control_mux_operations/update.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/control_mux_operations/update.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "f68af0451cee9dc82d6ee21188d72357e15487e1bcdbc7e2e1faad36243f8049",
+      "source_0.pdl": "92520f85345d92c72c924a38c68c3557ea4dca034e58143ad2309ba20723c162",
+      "run.tcl": "b401e80e6a1512a6e7133d25c3026c729a177a6d8a9f0a1c2fc4b335cb003114",
+      "ours.pdl": "e9c24b6232658f0692a2c2550bcf38d9f4aa99c5d16f29c5ef69a7940a6b4b79"
+    },
+    "generator_command": [
+      "/home/banana/cpp_workspace/icl-format/.worktrees/tap-edge-snapshot/build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/.worktrees/tap-edge-snapshot/build/control-mux-operation-forward/test_update_mux_selector/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/.worktrees/tap-edge-snapshot/build/control-mux-operation-forward/test_update_mux_selector/source_0.pdl",
+      "--top_module",
+      "ClientTop",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/.worktrees/tap-edge-snapshot/build/control-mux-operation-forward/test_update_mux_selector/ours.pdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.06439421500544995,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/control_mux_operations/update.icl": "f68af0451cee9dc82d6ee21188d72357e15487e1bcdbc7e2e1faad36243f8049",
+      "tests/cases/ours/pattern_generation/control_mux_operations/update.pdl": "92520f85345d92c72c924a38c68c3557ea4dca034e58143ad2309ba20723c162"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.680125092156231,
+    "outcome": "ok",
+    "result_sha256": "631e39be986d63f8f87671da7127dc182c5c287646d34f5487412582ca00f2d1",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "ClientTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "update_enable",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "0"
+          ],
+          [
+            "child.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "0"
+          ],
+          [
+            "child.value",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "0"
+          ],
+          [
+            "child.value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "bfba53eed0c4578513de4e1e048fd51f37c9865ab1bc292b9ae27c1cbecc3aec",
+  "vendor_console_sha256": "cfc7c748942c706e141e9b5207dc4c15fef55ee1bea412a05ef039d1ba91cc3b",
+  "artifacts": {
+    "flat.pdl": "e9c24b6232658f0692a2c2550bcf38d9f4aa99c5d16f29c5ef69a7940a6b4b79",
+    "vendor.pdl": "631e39be986d63f8f87671da7127dc182c5c287646d34f5487412582ca00f2d1"
+  }
+}

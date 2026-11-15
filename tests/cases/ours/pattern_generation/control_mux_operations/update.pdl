@@ -1,0 +1,7 @@
+iPDLLevel 1
+iProcsForModule ClientTop
+iReset
+iWrite child.value 9
+iApply
+iRead child.value 9
+iApply

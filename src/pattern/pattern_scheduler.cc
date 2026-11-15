@@ -2841,6 +2841,13 @@ class ScanScheduler::Impl {
     }
     return result;
   }
+  z3::expr CaptureReady(const Events& events, size_t id) {
+    if ((tap_ || client_controls_) && !instruction_registers_.count(id) &&
+        netlist_.nodes[id].inputs.count("CaptureSource")) {
+      return events.at("capture").at(id);
+    }
+    return context_.bool_val(true);
+  }
   void ConstrainEndStateFrames(z3::optimize& solver, const Frame& frame,
                                const Values& state, SymbolicNetwork& before,
                                const z3::expr& event) {
@@ -3884,7 +3891,8 @@ class ScanScheduler::Impl {
                           ("read_" + std::to_string(time) + "_" + node.name)
                               .c_str())
                     : context_.bool_val(true);
-            frame.read.emplace(id, active && ready && !read.at(id));
+            frame.read.emplace(id, active && ready && !read.at(id) &&
+                                       CaptureReady(scan_events, id));
             read.at(id) = read.at(id) || frame.read.at(id);
           }
           const auto loaded = context_.bv_const(
@@ -4008,7 +4016,9 @@ class ScanScheduler::Impl {
               if (output.reset) {
                 valid = valid && Known(values.Read(*output.reset), false);
               }
-              solver.add(z3::implies(selected, valid));
+              solver.add(z3::implies(
+                  selected,
+                  valid && CaptureReady(scan_events, path.output.node)));
               count = count + z3::ite(selected, context_.int_val(1),
                                       context_.int_val(0));
               const char compare = path.output.inverted && expected != 'x'

@@ -1,0 +1,10 @@
+iPDLLevel 0
+iProcsForModule ClientTop
+iReset
+iWrite update_enable 0b1
+iApply
+iWrite child.value 0b1001
+iApply
+iWrite child.value 0b1001
+iRead child.value 0b1001
+iApply

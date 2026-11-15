@@ -140,6 +140,46 @@ class Generator(unittest.TestCase):
                 for path in outputs:
                     self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
 
+
+    def test_clock_output_pair_scope_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        source = (
+            "Module Leaf { ToClockPort out { Period 10ns; } } "
+            "Module Middle { ClockPort incoming; Instance leaf Of Leaf; "
+            "ToClockPort out { Source incoming; } Alias wrapped = incoming; } "
+            "Module Network { ScanInPort si; ShiftEnPort se; "
+            "ScanRegister r { ScanInSource si; ResetValue 1'b0; } "
+            "ScanOutPort so { Source r; } "
+            "ScanInterface client { Port si; Port so; Port se; } "
+            "Instance child Of Middle; "
+            "ToClockPort negative { DifferentialInvOf child.out; } }")
+        (self.root / 'source.icl').write_text(source)
+        self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                      '--top_module', 'Network', '--output', 'seed.pdl', '--debug')
+        flat = (self.root / 'debug/Network.icl').read_text()
+        old = 'DifferentialInvOf n' + 'child.out'.encode().hex() + ';'
+        self.assertEqual(flat.count(old), 1)
+        for target, diagnostic in (
+                ('child.incoming', 'reference scope'),
+                ('child.leaf.out', 'reference scope'),
+                ('child.wrapped', 'hierarchical source')):
+            with self.subTest(target=target):
+                altered = flat.replace(
+                    old, 'DifferentialInvOf n' + target.encode().hex() + ';')
+                (self.root / 'altered.icl').write_text(altered)
+                for path in outputs:
+                    (self.root / path).write_text('previous artifact\n')
+                result = self.run_tool(
+                    '--icl', 'altered.icl', '--pdl', 'source.pdl',
+                    '--top_module', 'Network', '--output', 'result.pdl',
+                    '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                for path in outputs:
+                    self.assertEqual((self.root / path).read_text(),
+                                     'previous artifact\n')
+
     def test_clock_source_kinds_preserve_outputs(self):
         (self.root / "source.pdl").write_text("iProcsForModule Network\n")
         for source in ("bad", "wrapped"):

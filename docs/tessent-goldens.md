@@ -756,3 +756,10 @@ standalone-idle-observed-vendor-record.log/.exit(0). Remote source is
 lianghuaxiao@192.168.6.20:/tmp/icl-standalone-idle-20261113/
 standalone-idle-observed-forward-prepared. Vendor execution logs and exit0
 are retained locally as standalone-idle-observed-vendor-run.log/.exit.
+
+
+## Capture/update mux selectors,2026-11-15
+
+Two fresh Tessent2026.2 forward standards qualify nested standalone capture and update gating. The local generator prepares each selector before the requested register observation or write; Tessent re-exports the generated PDL with identical ordered apply groups under the unchanged comparator. CaptureSource1010 is distinct from reset0000. All19 staged file hashes match. The offline directional total is53.
+
+Reverse capture exported but failed exact group comparison; reverse update source export rejected automatic suppression-state assignment under the default vendor policy. Both failed attempts remain in build/control-mux-operation-vendor/evidence. No reverse certificate or general gating/TAP/clock claim is made. Source fixtures and limitations are maintained in tests/cases/ours/pattern_generation/control_mux_operations/README.md.

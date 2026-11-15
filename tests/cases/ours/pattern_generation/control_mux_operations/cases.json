@@ -1,0 +1,28 @@
+{
+  "cases": [
+    {
+      "id": "capture_mux_selector",
+      "top": "ClientTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/control_mux_operations/capture.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/control_mux_operations/capture.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "update_mux_selector",
+      "top": "ClientTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/control_mux_operations/update.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/control_mux_operations/update.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

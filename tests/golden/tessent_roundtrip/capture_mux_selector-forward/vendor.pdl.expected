@@ -1,0 +1,14 @@
+iProcsForModule ClientTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite cap_enable 0b1
+   iApply
+
+   iWrite child.value[3:0] 0b0000
+   iRead  child.value[3:0] 0b1010
+   iApply
+
+
+}

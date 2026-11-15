@@ -256,6 +256,104 @@ class ClientScanControls(unittest.TestCase):
                     'iState data 0; iWrite value 9; iApply; iWrite data 1; iApply; '
                     'iRead observed 0; iApply\n')
 
+
+    def capture_gate_network(self):
+        source = self.nested()
+        source = source.replace(
+            'ScanInSource si; ResetValue',
+            "ScanInSource si; CaptureSource 4'b1010; ResetValue", 1)
+        source = source.replace(
+            'DataInPort enable;',
+            "DataInPort enable; DataInPort cap_enable; "
+            "DataMux capture_gate SelectedBy cap_enable "
+            "{ 1'b0: 1'b0; 1'b1: ce; }")
+        return source.replace('InputPort ce = ce;',
+                              'InputPort ce = capture_gate;')
+
+    def test_capture_mux_selector_justification(self):
+        for wanted in (10, 5):
+            with self.subTest(wanted=wanted):
+                output = self.replay(
+                    self.capture_gate_network(),
+                    'iReset; iState child.value 0; '
+                    f'iRead child.value {wanted}; iApply;\n')
+                self.assertIn(b'iWrite cap_enable 0b1', output)
+                self.assertIn(f'iRead child.value 0b{wanted:04b}'.encode(),
+                              output)
+
+    def test_capture_mux_data_observation_requires_capture(self):
+        source = self.capture_gate_network().replace(
+            'Module Child {', 'Module Child { DataRegister status[3:0];', 1)
+        source = source.replace("CaptureSource 4'b1010;",
+                                'CaptureSource status;')
+        output = self.replay(
+            source,
+            'iReset; iState child.status 10; '
+            'iRead child.status 10; iApply;\n')
+        self.assertIn(b'iWrite cap_enable 0b1', output)
+
+
+    def test_scan_capture_selector_prerequisite(self):
+        source = self.capture_gate_network().replace(
+            'DataInPort cap_enable;',
+            "ScanRegister cap_enable { ScanInSource si; ResetValue 1'b0; }")
+        source = source.replace('InputPort si = si;',
+                                'InputPort si = cap_enable;')
+        output = self.replay(
+            source, 'iReset; iRead child.value 10; iApply;\n')
+        self.assertIn(b'iWrite cap_enable 0b1', output)
+        self.assertGreaterEqual(output.count(b'iApply'), 2)
+
+    def test_update_mux_selector_justification(self):
+        source = self.nested().replace(
+            'DataInPort enable;',
+            "DataInPort enable; DataInPort update_enable; "
+            "DataMux update_gate SelectedBy update_enable "
+            "{ 1'b0: 1'b0; 1'b1: ue; }")
+        source = source.replace('InputPort ue = ue;',
+                                'InputPort ue = update_gate;')
+        output = self.replay(
+            source,
+            'iReset; iState update_enable 0; iState child.value 0; '
+            'iWrite child.value 9; iApply; iRead child.value 9; iApply;\n')
+        self.assertIn(b'iWrite update_enable 0b1', output)
+
+    def test_reserved_capture_suppression_retains_shift(self):
+        output = self.replay(
+            self.capture_gate_network().replace("CaptureSource 4'b1010; ", ""),
+            'iReset; iTake cap_enable; iState cap_enable 0; '
+            'iWrite child.value 5; iApply; iRead child.value 5; iApply;\n')
+        self.assertNotIn(b'iWrite cap_enable 0b1', output)
+
+    def test_reserved_control_mux_failures_preserve_artifacts(self):
+        capture = self.capture_gate_network()
+        update = self.nested().replace(
+            'DataInPort enable;',
+            "DataInPort enable; DataInPort update_enable; "
+            "DataMux update_gate SelectedBy update_enable "
+            "{ 1'b0: 1'b0; 1'b1: ue; }").replace(
+                'InputPort ue = ue;', 'InputPort ue = update_gate;')
+        for source, commands in (
+                (capture, 'iReset; iTake cap_enable; iState cap_enable 0; '
+                 'iState child.value 0; iRead child.value 10; iApply;\n'),
+                (update, 'iReset; iTake update_enable; iState update_enable 0; '
+                 'iState child.value 0; iWrite child.value 9; iApply;\n')):
+            with self.subTest(commands=commands):
+                icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+                icl.write_text(source)
+                pdl.write_text(commands)
+                artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl',
+                             self.root / 'debug/ClientTop.icl')
+                artifacts[-1].parent.mkdir(exist_ok=True)
+                for path in artifacts:
+                    path.write_bytes(b'previous artifact\n')
+                error = self.run_tool(
+                    icl, pdl, extra=('--local_reset', self.root / 'reset.pdl'),
+                    ok=False)
+                self.assertTrue(error.strip())
+                for path in artifacts:
+                    self.assertEqual(path.read_bytes(), b'previous artifact\n')
+
     def test_controls_and_output_preservation(self):
         source = self.nested()
         for role in ('sel', 'ce', 'se', 'ue', 'ck'):

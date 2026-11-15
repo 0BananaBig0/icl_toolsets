@@ -408,8 +408,7 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
               : node.scope;
       const auto check_source_scope = [&](const BitReference& raw,
                                           const BitReference& bit) {
-        if (role == "DifferentialInvOf") {
-          if (node.kind != "ClockPort") return;
+        if (role == "DifferentialInvOf" && node.kind == "ClockPort") {
           if (bit.node == std::numeric_limits<size_t>::max() ||
               netlist.nodes.at(bit.node).kind != "ClockPort") {
             throw std::runtime_error(node.origin + ": " + node.name + ": " +
@@ -428,6 +427,10 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
         }
         if (bit.node == std::numeric_limits<size_t>::max()) return;
         const auto& driver = netlist.nodes.at(bit.node);
+        if (role == "DifferentialInvOf" && node.kind == "ToClockPort" &&
+            driver.kind == "ToClockPort" && driver.scope == reference_scope) {
+          return;
+        }
         if (driver.kind == "ToIRSelectPort" &&
             driver.scope == reference_scope) {
           return;

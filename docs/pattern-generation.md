@@ -4781,3 +4781,89 @@ Final source-matched remote integration:60 statuses; build/native7/all41CLI/aggr
 
 
 Verified Tasks85–87 checkpoint: required leak-enabled build/native7/main68/clock41/client18/reset12 all0. Full serial make check exits0 in1327.585s:41 dynamic and41 static generator suites,51 directional goldens,2523 ICL files with334/334 grammar and119/119 scanner rules,LSP62 and editor6 in177.462s. Five optional ANTLR tests remain skipped. Final remote native7/all41 and changed benchmark repetitions pass, with10 final and10 baseline source/test hashes verified; the3 deliberate memory-baseline failures are preserved. Reviewed source/test3 remain unchanged throughout. Commit this eight-file snapshot without push. ScopeTask88 and capture/updateTask89 remain isolated; broader clock/reset/events, resources, vendor, strict coverage and final platform requirements remain mandatory.
+
+
+### Differential output association ownership (2026-11-15)
+
+ToClockPort DifferentialInvOf now checks raw-alias ownership and terminal scope
+after flat origins are restored. Local input/data/clock terminals and direct-child
+outputs retain their existing clock/data eligibility. Restored child inputs,
+parent/sibling terminals, deep outputs, nonlocal aliases, and unrelated local
+output kinds cannot bypass those boundaries.
+
+The existing same-owner positive ToClockPort partner remains valid, including
+the supported vector, slice, alias and inversion forms. This preserves the
+conversion context and the direct local-pair Tessent loading evidence; it does
+not apply ClockPort input-pair restrictions to output conversion. Existing
+vendor alias/cross-kind differences remain documented. Differential clock
+execution remains outside the qualified SystemClocks routes.
+
+Native restored-scope and original/flat positive cases pass. All 69 main CLI
+tests and 41 clock tests pass, including atomic preservation of pattern, local
+reset and debug outputs. Independent review is clean. Original multilevel
+spelling retains the parser's existing Alias-only diagnostic; flattened deep
+references now receive the missing ownership check.
+
+All 60 remote source/flat measurements pass with equal PDL and canonical flat
+hashes. Baseline versus changed tool times: 65,536-bit local pair 0.04 seconds in
+both; 4,096 aliases and 4,096 consumers 0.19–0.23 seconds in both; 3,000 owners
+0.22–0.37 versus 0.22–0.36; 3,000 direct-child pairs 0.24–0.35 versus 0.25–0.34;
+720,896 ordinary data bits 0.11–0.12 versus 0.12 seconds. Input, binary/source
+hashes, environment, commands and memory measurements are retained in
+build/clock-output-scope-loading-remote/evidence. These are loading comparisons,
+not a generation-speed claim. Broad connected and final immutable integration
+evidence follows after the current root checkpoint is verified.
+
+
+### Capture selector observation readiness (2026-11-15)
+
+A direct ScanRegister read or routed data observation with a declared
+CaptureSource now requires the effective capture event. The existing event model
+includes clock edges, selection and enable gating. Pending reads can wait while
+a prerequisite scan writes their selector; presence on a scan path alone does
+not complete the observation.
+
+Write-only capture suppression and held reads without CaptureSource remain
+supported. Dedicated instruction-register handling and direct primary
+observations retain their existing paths. Expected read data remains a
+comparison: requesting 0101 against a modeled constant1010 still produces a
+pattern, with capture enabled.
+
+The reproduced failure previously emitted cap_enable0 while comparing the
+uncaptured source. Corrected tests establish ownership before assigning known
+reserved values. Direct and routed capture cases, a scan-driven prerequisite,
+update gating, suppression and atomic artifact failures now pass. All24 client
+methods and the connected native7/main69/clock41/reset12/multi22/feedback10 checks
+pass; independent review and format/naming checks are clean.
+
+Tessent2026.2 forward certificates pass unchanged ordered-apply comparison for
+capture_mux_selector and update_mux_selector. All19 actual staged file hashes
+match. Reverse capture exports but its round-trip groups differ; reverse update
+fails the vendor's default suppression-assignment policy. Those attempts are
+retained and neither reverse direction is certified. The two forward standards
+bring the offline directional total to53; all53 pass with the current candidate.
+
+Gated reads of16 four-bit registers take1.36–1.46 seconds from original/flat
+inputs and0.60 seconds for generated replay, with115368KiB peak RSS. At32
+registers, original/flat take13.47–13.72 seconds and generated replay5.86 seconds,
+with512236KiB peak RSS. These are supported measured cases near the bounded
+event planner's practical limit, not a broad scalability claim. Larger event
+histories and remaining optimization requirements stay open.
+
+Evidence: build/control-mux-operation-{baseline,baseline2,baseline3,green}-remote;
+build/control-mux-prerequisite-red-remote; WT/build/control-mux-final-client.*;
+build/control-mux-operation-vendor/evidence; the two maintained forward
+certificates; WT/build/control-mux-capture-scale/comparison.json. Source and
+binary hashes, commands, environment, wall time and RSS are retained.
+
+Final combined88/89 remote integration passes50 statuses: build/native7/all41CLI/aggregate all0, with actual12source/test hashes matching the submitted immutable snapshot. Required local leak-enabled build/native7/main69/clock41/client24/reset12 all0. Full serial regression remains running; no production/test/case/certificate changes during these final gates. Evidence: build/clock-output-control-final-remote/evidence and build/clock-output-control-final-{sanitizer-*,full.*}.
+
+Verified Tasks88/89 checkpoint: full serial make check exits0 in1381.145s,
+41 dynamic and41 static generator suites,53 directional goldens,2525 ICL files
+with334/334 grammar and119/119 scanner rules,LSP62 and editor6 in174.760s.
+Five optional ANTLR tests remain skipped. Required leak-enabled build/native7/
+main69/clock41/client24/reset12 all0. Final remote50 statuses all0 and actual12
+source/test hashes match. All26 production/test/case/certificate files remain
+unchanged from independent review through final gates. Commit this31-file
+checkpoint without push; Task90 remains isolated. Broader model, vendor, strict
+coverage and final platform requirements remain mandatory.

@@ -1,0 +1,17 @@
+iProcsForModule ClientTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite update_enable 0b1
+   iApply
+
+   iWrite child.value[3:0] 0b1001
+   iApply
+
+   iWrite child.value[3:0] 0b1001
+   iRead  child.value[3:0] 0b1001
+   iApply
+
+
+}

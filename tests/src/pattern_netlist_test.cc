@@ -7,6 +7,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "pattern/pattern_flatten.h"
@@ -195,6 +196,66 @@ void TestClockInputDifferentialAssociation() {
     flat.AddIcl("altered_input_pair.icl", pattern::SerializeIcl(altered));
     Fails([&] { pattern::Elaborate(flat, "M"); }, "reference scope");
   }
+}
+
+void TestClockOutputDifferentialScope() {
+  for (const std::string source :
+       {"positive[1:0]", "~positive[0:1]", "wrapped", "~wrapped"}) {
+    pattern::Design design;
+    design.AddIcl("output_pair_scope.icl",
+                  "Module M { ClockPort incoming[1:0]; "
+                  "ToClockPort positive[1:0] { Source incoming; } "
+                  "Alias wrapped[1:0] = positive[0:1]; "
+                  "ToClockPort negative[1:0] { DifferentialInvOf " +
+                      source + "; } }");
+    const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "same-owner clock output pairs preserve conversion and aliases");
+  }
+  pattern::Design hierarchy;
+  hierarchy.AddIcl(
+      "clock_output_scope.icl",
+      "Module Leaf { ToClockPort out { Period 10ns; } } "
+      "Module Child { ClockPort incoming; "
+      "ToClockPort out { Source incoming; } Alias wrapped = incoming; "
+      "ToClockPort negative { DifferentialInvOf incoming; } "
+      "Instance leaf Of Leaf; } "
+      "Module M { ClockPort root; Instance child Of Child; "
+      "Instance peer Of Child; DataOutPort local_data { Source 1'b0; } "
+      "ToClockPort local_clock { Source root; } "
+      "ToClockPort negative { DifferentialInvOf child.out; } }");
+  const auto original = pattern::Elaborate(hierarchy, "M");
+  for (const auto& [consumer, source, diagnostic] :
+       std::vector<std::tuple<std::string, std::string, std::string>>{
+           {"negative", "child.incoming", "reference scope"},
+           {"negative", "child.leaf.out", "reference scope"},
+           {"negative", "child.wrapped", "hierarchical source"},
+           {"negative", "local_data", "reference scope"},
+           {"child.negative", "root", "reference scope"},
+           {"child.negative", "peer.incoming", "reference scope"},
+           {"child.negative", "peer.out", "reference scope"},
+           {"child.negative", "local_clock", "reference scope"}}) {
+    auto altered = original;
+    altered.nodes.at(altered.node_ids.at(consumer))
+        .inputs.at("DifferentialInvOf")[0] = {altered.node_ids.at(source), 0};
+    pattern::Design flat;
+    flat.AddIcl("altered_clock_output.icl", pattern::SerializeIcl(altered));
+    Fails([&] { pattern::Elaborate(flat, "M"); }, diagnostic);
+  }
+  Fails(
+      [&] {
+        pattern::Design deep;
+        deep.AddIcl(
+            "deep_clock_output.icl",
+            "Module Leaf { ToClockPort out { Period 10ns; } } "
+            "Module Middle { Instance leaf Of Leaf; } "
+            "Module M { Instance child Of Middle; "
+            "ToClockPort negative { DifferentialInvOf child.leaf.out; } }");
+        pattern::Elaborate(deep, "M");
+      },
+      "multi-level hierarchy is allowed only in Alias");
 }
 
 void TestTckInputSources() {
@@ -3844,6 +3905,7 @@ void TestOneHotScanLimits() {
 int main() {
   int failures = 0;
   for (const auto test : {TestClockSignalSources,
+                          TestClockOutputDifferentialScope,
                           TestClockInputDifferentialAssociation,
                           TestTckInputSources,
                           TestLoweredToTckSources,
