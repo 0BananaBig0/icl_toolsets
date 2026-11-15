@@ -1,0 +1,14 @@
+iPDLLevel 0
+iProcsForModule ReservedRawTop
+iReset
+iWrite value 0b00001000
+iRead value 0b00000000
+iApply
+iScan client 8 -si 0b10100101 -so 0b00001000
+iApply
+iWrite value 0b10100111
+iRead value 0b10100101
+iApply
+iWrite value 0b10100111
+iRead value 0b10100111
+iApply

@@ -1,0 +1,22 @@
+iProcsForModule ReservedRawTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite value[7:0] 0b00001000
+   iRead  value[7:0] 0b00000000
+   iApply
+
+   iScan client -chain default 8 -si 0b10100101 -so 0b00001000
+   iApply
+
+   iWrite value[7:0] 0b10100111
+   iRead  value[7:0] 0b10100101
+   iApply
+
+   iWrite value[7:0] 0b10100111
+   iRead  value[7:0] 0b10100111
+   iApply
+
+
+}

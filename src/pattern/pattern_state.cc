@@ -359,6 +359,10 @@ std::string NetworkState::Value(size_t node, bool scan) const {
 char NetworkState::Read(const BitReference& bit, bool scan) const {
   return SignalEvaluator(*this).Read(bit, scan);
 }
+std::string NetworkState::ReadBits(const std::vector<BitReference>& bits,
+                                   bool scan) const {
+  return SignalEvaluator(*this).Bits(bits, scan);
+}
 bool NetworkState::IsDriven(size_t node) const {
   return !driven_.at(node).empty();
 }

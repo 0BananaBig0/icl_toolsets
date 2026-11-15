@@ -1049,7 +1049,9 @@ class ScanScheduler::Impl {
     }
     return result;
   }
-  Operation ApplyScans(const std::vector<Operation>& operations) {
+  Operation ApplyScans(const std::vector<Operation>& operations,
+                       const std::map<size_t, std::string>& preserved,
+                       std::set<size_t>* assigned) {
     if (operations.empty()) throw std::runtime_error("raw scan queue is empty");
     std::map<std::string, Operation> latest;
     size_t queued = 0;
@@ -1100,8 +1102,20 @@ class ScanScheduler::Impl {
     }
     bool stable = true;
     std::set<size_t> stable_clients;
+    std::set<size_t> explicit_registers;
     for (const auto& [name, operation] : latest) {
       const auto& slice = RawSubchain(name);
+      if (!preserved.empty() || assigned) {
+        const auto client = netlist_.node_ids.at(name);
+        const size_t first =
+            client == root.client ? 0 : raw_segments_.at(client).first;
+        const size_t count = client == root.client
+                                 ? root.registers.size()
+                                 : raw_segments_.at(client).count;
+        for (size_t i = 0; i < count; ++i) {
+          explicit_registers.insert(root.registers.at(first + i).first);
+        }
+      }
       input.replace(
           slice.offset, slice.width,
           invert(operation.arguments[3].substr(2), slice.input_inverted));
@@ -1120,10 +1134,15 @@ class ScanScheduler::Impl {
                           "-so",
                           "0b" + expected};
     if (stable) physical.arguments.push_back("-stable");
-    return ReplayScan(physical, stable_clients);
+    auto result =
+        ReplayScan(physical, stable_clients, preserved, explicit_registers);
+    if (assigned) *assigned = std::move(explicit_registers);
+    return result;
   }
   Operation ReplayScan(const Operation& normalized,
-                       const std::set<size_t>& stable_clients) {
+                       const std::set<size_t>& stable_clients,
+                       const std::map<size_t, std::string>& preserved,
+                       const std::set<size_t>& explicit_registers) {
     const auto& profile = RawChain();
     if (global_resets_ != "00") {
       throw std::runtime_error(
@@ -1151,6 +1170,25 @@ class ScanScheduler::Impl {
       loads.emplace(id, std::move(bits));
       active.insert(id);
     }
+    auto desired = DesiredPreserved(preserved, {}, false, {});
+    for (auto& [id, mask] : desired) {
+      if (netlist_.nodes.at(id).kind != "ScanRegister") {
+        throw std::runtime_error(
+            "raw scan reservations require ScanRegister storage");
+      }
+      if (!explicit_registers.count(id)) continue;
+      const auto& bits = loads.at(id);
+      for (size_t i = 0; i < mask.size(); ++i) {
+        if (mask[i] == 'x') continue;
+        if (bits[i] == 'x') {
+          throw std::runtime_error(
+              "raw assignment of reserved resource is unknown: " +
+              netlist_.nodes[id].name);
+        }
+        mask[i] = bits[i];
+      }
+    }
+    auto held = preserved;
     NetworkState replay(state_);
     replay.TakeControlEvents();
     replay.TakeResetEvents();
@@ -1196,7 +1234,9 @@ class ScanScheduler::Impl {
       }
       return result;
     };
+    CheckPreserved(replay, held, desired);
     replay.Clock(controls(&replay, "capture", active), true);
+    CheckPreserved(replay, held, desired);
     replay.Drive(profile.input, input.substr(0, 1));
     auto shift_controls = controls(&replay, "shift", active);
     for (auto it = shift_controls.begin(); it != shift_controls.end();) {
@@ -1207,9 +1247,12 @@ class ScanScheduler::Impl {
       }
     }
     replay.ShiftComplete(loads, shift_controls);
+    CheckPreserved(replay, held, desired);
     replay.Clock(controls(&replay, "update", active), false);
+    CheckPreserved(replay, held, desired);
     for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
     replay.Reset();
+    CheckPreserved(replay, held, desired);
     bool root_stable = true;
     if (profile.dynamic && !stable_clients.empty()) {
       try {
@@ -1524,11 +1567,7 @@ class ScanScheduler::Impl {
     }
   }
   std::string Value(const std::string& target) const {
-    std::string value;
-    for (const auto& bit : ResolvePdlTarget(netlist_, target).bits) {
-      value += state_.Read(bit);
-    }
-    return value;
+    return state_.ReadBits(ResolvePdlTarget(netlist_, target).bits);
   }
   std::vector<ScanStep> Apply(const std::vector<Operation>& operations,
                               bool together,
@@ -5568,11 +5607,16 @@ void ScanScheduler::CheckLocalResets(
 Operation ScanScheduler::NormalizeScan(const Operation& operation) {
   return impl_->NormalizeScan(operation);
 }
-Operation ScanScheduler::ApplyScan(const Operation& operation) {
-  return impl_->ApplyScans({operation});
+Operation ScanScheduler::ApplyScan(
+    const Operation& operation, const std::map<size_t, std::string>& preserved,
+    std::set<size_t>* assigned) {
+  return impl_->ApplyScans({operation}, preserved, assigned);
 }
-Operation ScanScheduler::ApplyScans(const std::vector<Operation>& operations) {
-  return impl_->ApplyScans(operations);
+Operation ScanScheduler::ApplyScans(
+    const std::vector<Operation>& operations,
+    const std::map<size_t, std::string>& preserved,
+    std::set<size_t>* assigned) {
+  return impl_->ApplyScans(operations, preserved, assigned);
 }
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);

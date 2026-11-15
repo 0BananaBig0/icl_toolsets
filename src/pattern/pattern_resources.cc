@@ -142,23 +142,33 @@ void ResourceReservations::Assigned(const std::vector<Operation>& operations,
                                                     : bit.index - node.left;
       if (found->second.at(offset)) {
         auto [entry, inserted] =
-            written.try_emplace(bit.node, node.Width(), '0');
+            written.try_emplace(bit.node, node.Width(), 'x');
         entry->second[offset] = '1';
       }
     }
   }
   for (const auto& [id, mask] : written) {
-    const auto& name = netlist_.nodes[id].name;
-    const auto value = scheduler.Value(name);
-    auto [entry, inserted] = values_.try_emplace(id, mask.size(), 'x');
-    for (size_t i = 0; i < mask.size(); ++i) {
-      if (mask[i] != '1') continue;
-      if (value[i] != '0' && value[i] != '1') {
-        throw std::runtime_error("applied reserved resource is unknown: " +
-                                 name);
-      }
-      entry->second[i] = value[i];
+    Assign(id, mask, scheduler);
+  }
+}
+void ResourceReservations::AssignedScans(const std::set<size_t>& registers,
+                                         const ScanScheduler& scheduler) {
+  for (const auto id : registers) {
+    const auto found = values_.find(id);
+    if (found != values_.end()) Assign(id, found->second, scheduler);
+  }
+}
+void ResourceReservations::Assign(size_t id, const std::string& mask,
+                                  const ScanScheduler& scheduler) {
+  const auto& name = netlist_.nodes[id].name;
+  const auto value = scheduler.Value(name);
+  auto [entry, inserted] = values_.try_emplace(id, mask.size(), 'x');
+  for (size_t i = 0; i < mask.size(); ++i) {
+    if (mask[i] == 'x') continue;
+    if (value[i] != '0' && value[i] != '1') {
+      throw std::runtime_error("applied reserved resource is unknown: " + name);
     }
+    entry->second[i] = value[i];
   }
 }
 std::map<size_t, std::string> ResourceReservations::UnwrittenBits() const {

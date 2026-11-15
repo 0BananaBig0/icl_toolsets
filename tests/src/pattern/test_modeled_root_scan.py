@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Modeled root iScan state and later ordinary-access replay."""
 import unittest
+import subprocess
 
 import test_opaque_root_scan as opaque
 
@@ -89,10 +90,109 @@ class ModeledRootScan(unittest.TestCase):
                                     "Alias idle[7:0] = value { iApplyEndState 8'b0; } ScanOutPort so")]:
             with self.subTest(model=model):
                 self.rejected('iReset; iScan client 8; iApply\n', 'scan', model)
-        for command in ['iTake value', 'iState value 0',
-                        'iMerge -begin; iMerge -end']:
+        for command in ['iMerge -begin; iMerge -end']:
             with self.subTest(command=command):
                 self.rejected('iReset; ' + command + '; iScan client 8; iApply\n', 'scan')
+
+    def test_raw_reserved_explicit_update_refreshes_partial_history(self):
+        result = self.replay('iReset; iTake value[3]; iWrite value 8; iApply\n'
+                             'iScan client 8 -si 0xa5; iApply\n'
+                             'iWrite value[1] 1; iApply; iRead value 0xa7; iApply\n')
+        self.assertIn('iWrite value 0b10100111', result)
+        self.assertNotIn('iTake', result)
+
+    def test_raw_reserved_surrounding_storage_and_default_input(self):
+        result = self.replay('iReset; iTake head; iState head 5; '
+                             'iTake tail; iState tail 21; '
+                             'iTake child.value; iState child.value 255; '
+                             'iScan child.local 8; iApply; '
+                             'iRead head 5; iRead tail 21; iRead child.value 0; iApply\n', CHILD)
+        self.assertIn('-si 0b1010000000010101', result)
+        self.assertIn('iRead child.value 0b00000000', result)
+
+    def test_raw_unwritten_take_and_pre_take_writes_remain_free(self):
+        for prefix in ['iTake open;', 'iWrite open 0; iApply; iTake open;']:
+            with self.subTest(prefix=prefix):
+                self.replay('iReset; ' + prefix + 'iScan client 1 -si 0; iApply; '
+                            'iWrite child.value 5; iApply\n', SIB)
+        protected = 'iReset; iTake open; iWrite open 0; iApply; iScan client 1; iApply; '
+        self.rejected(protected + 'iWrite child.value 5; iApply\n', 'reserv', SIB)
+        self.replay(protected + 'iRelease open; iWrite child.value 5; iApply\n', SIB)
+        self.replay(protected + 'iScan client 1 -si 1; iApply; '
+                    'iWrite child.value 5; iApply\n', SIB)
+
+    def test_raw_reserved_unknown_atomic_and_overwritten_setup(self):
+        prefix = 'iReset; iTake value[7]; iState value 128; '
+        self.rejected(prefix + 'iScan client 8 -si 0bxxxxxxxx; iApply\n', 'reserved')
+        self.replay(prefix + 'iScan client 8 -si 0bxxxxxxxx; '
+                    'iScan client 8 -si 0x5a; iApply; '
+                    'iWrite value[0] 1; iApply; iRead value 0x5b; iApply\n')
+        self.replay(prefix + 'iScan client 8 -si 0b0xxxxxxx; iApply\n')
+        self.replay(prefix + 'iRelease value[7]; iScan client 8 -si 0bxxxxxxxx; iApply\n')
+        self.rejected(prefix + 'iScan client 8 -si 256; iScan client 8 -si 0; iApply\n', 'scan')
+
+    def test_raw_reservation_scope_release_and_reset(self):
+        for take, locked in [('iTake open', False), ('iTake open -persistent', True)]:
+            with self.subTest(take=take):
+                commands = ('iProc own {} {' + take + '; iState open 0; '
+                            'iScan client 1; iApply}\n'
+                            'iReset; iCall own; iWrite child.value 5; iApply\n')
+                if locked:
+                    self.rejected(commands, 'reserv', SIB)
+                else:
+                    self.replay(commands, SIB)
+        self.replay('iProc scan {} {iScan client 1; iApply}\n'
+                    'iReset; iTake open; iState open 0; iCall scan; '
+                    'iReset; iWrite child.value 5; iApply\n', SIB)
+        self.rejected('iProc scan {} {iScan client 1; iApply}\n'
+                      'iReset; iTake open; iState open 0; iCall scan; '
+                      'iWrite child.value 5; iApply\n', 'reserv', SIB)
+
+    def test_raw_established_port_ownership_is_explicitly_unsupported(self):
+        self.rejected('iReset; iTake sel; iState sel 0; '
+                      'iScan client 8; iApply\n', 'storage')
+
+    def test_raw_reserved_inverted_ascending_alias(self):
+        model = MODEL.replace('ScanOutPort so',
+                              'Alias reversed[0:7] = ~value; ScanOutPort so')
+        model = model.replace('ScanInSource si;', 'ScanInSource ~si;')
+        self.replay('iReset; iTake reversed[4]; iWrite reversed[4] 0; iApply; '
+                    'iScan client 8 -si 0x5a; iApply; '
+                    'iWrite value[1] 1; iApply; iRead value 0xa7; iApply\n', model)
+
+    def test_raw_pending_state_revalidates_route_and_call_ownership(self):
+        self.replay('iReset; iScan client 1 -si 1; iState open 0; iApply; '
+                    'iRead open 1; iApply\n', SIB)
+        self.rejected('iReset; iScan client 1 -si 1; iState open 1; iApply\n',
+                      'length', SIB)
+        # A take established inside a returned call has expired at caller Apply.
+        self.replay('iProc own {} {iTake value; iState value 0; '
+                    'iScan client 8 -si 0bxxxxxxxx}\n'
+                    'iReset; iCall own; iApply\n')
+        self.replay('iReset; iTake value; iState value 0 -LastReadValue; '
+                    'iScan client 8 -si 0bxxxxxxxx -so 0; iApply\n')
+        self.rejected('iReset; iScan client 1 -si 0bx; iApply; '
+                      'iState open 0 -LastReadValue; iScan client 1 -so 0; iApply\n',
+                      'scan', SIB)
+
+    def test_raw_pending_child_footprint_after_same_length_route_change(self):
+        model = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/local_stability.icl').read_text()
+        self.replay('iReset; iTake sibling.value; iState sibling.value 0x5a; '
+                    'iScan child.local 8 -si 0xa5; iState child.value 1; iApply; '
+                    'iRead sibling.value 0x5a; iRead child.value 0xa5; iApply\n', model)
+
+    def test_raw_wide_reservation_setup_and_explicit_refresh(self):
+        width = 1048576
+        model = MODEL.replace('[7:0]', f'[{width - 1}:0]')
+        model = model.replace("ResetValue 8'b0", f"ResetValue {width}'b0")
+        model = model.replace("DefaultLoadValue 8'b00000000", f"DefaultLoadValue {width}'b0")
+        payload = '10100101' * (width // 8)
+        try:
+            result = self.replay('iReset; iTake value; iState value 0; '
+                                 f'iScan client {width} -si 0b{payload}; iApply\n', model)
+        except subprocess.TimeoutExpired:
+            self.fail('one-million-bit reservation setup/explicit refresh exceeds the 15s CLI budget')
+        self.assertIn('-si 0b' + payload, result)
 
     def test_serial_input_alias_polarity(self):
         cases = [

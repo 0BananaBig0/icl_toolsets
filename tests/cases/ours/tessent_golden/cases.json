@@ -561,6 +561,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "raw_scan_reservations",
+      "top": "ReservedRawTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/raw_scan_reservations/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/raw_scan_reservations/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

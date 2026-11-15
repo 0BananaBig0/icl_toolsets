@@ -33,6 +33,8 @@ class NetworkState {
   void Assume(size_t node, const std::string& value);
   std::string Value(size_t node, bool scan = false) const;
   char Read(const BitReference& bit, bool scan = false) const;
+  std::string ReadBits(const std::vector<BitReference>& bits,
+                       bool scan = false) const;
   void Clock(const std::map<size_t, ScanControl>& controls, bool rising);
   // Fast-forward a caller-proven complete chain overwrite. Controls/resets must
   // remain invariant with no omitted side effects. All local preconditions are

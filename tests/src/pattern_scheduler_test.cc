@@ -49,6 +49,111 @@ Module Top {
 }
 )ICL";
 }
+void TestRawScanReservations() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
+  std::string source((std::istreambuf_iterator<char>(file)), {});
+  Require(!source.empty(), "raw reservation fixture exists");
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("reserved-raw.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto head = netlist.node_ids.at("head");
+    const auto child = netlist.node_ids.at("child.value");
+    const auto tail = netlist.node_ids.at("tail");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume("head", "101");
+    scheduler.Assume("child.value", "00001000");
+    scheduler.Assume("tail", "10101");
+    const std::map<size_t, std::string> preserved{
+        {head, "101"}, {child, "xxxx1xxx"}, {tail, "10101"}};
+    std::set<size_t> assigned{head, tail};
+    const pattern::Operation scan{
+        "iScan", {"child.local", "8", "-si", "0xa5"}, "reserve:scan", {}};
+    scheduler.ApplyScan(scan, preserved, &assigned);
+    Require(assigned == std::set<size_t>{child} &&
+                scheduler.Value("head") == "101" &&
+                scheduler.Value("tail") == "10101" &&
+                scheduler.Value("child.value") == "10100101",
+            "explicit child footprint and preserved surrounding loads");
+    pattern::ResourceReservations resources(netlist);
+    resources.Change({"iTake", {"child.value[3]"}, "reserve:take", {}});
+    resources.Assigned(
+        {{"iState", {"child.value[3]", "0"}, "reserve:state", {}}}, scheduler);
+    scheduler.ApplyScan(
+        {"iScan", {"child.local", "8", "-si", "0x3c"}, "reserve:replace", {}},
+        resources.Values(), &assigned);
+    resources.AssignedScans(assigned, scheduler);
+    Require(resources.Values().at(child) == "xxxx1xxx",
+            "raw assignment refreshes only established taken bits");
+    for (const auto& invalid : std::vector<std::map<size_t, std::string>>{
+             {{head, "01"}},
+             {{head, "q01"}},
+             {{netlist.node_ids.at("sel"), "0"}},
+             {{head, "000"}}}) {
+      assigned = {tail};
+      bool rejected = false;
+      try {
+        scheduler.ApplyScan(scan, invalid, &assigned);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected && assigned == std::set<size_t>{tail} &&
+                  scheduler.Value("head") == "101" &&
+                  scheduler.Value("child.value") == "00111100",
+              "invalid masks, port ownership and wrong initial protection "
+              "reject atomically");
+    }
+    std::map<std::string, std::string> before;
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        before.emplace(node.name, scheduler.Value(node.name));
+      }
+    }
+    assigned = {head, tail};
+    bool rejected = false;
+    try {
+      scheduler.ApplyScan({"iScan",
+                           {"child.local", "8", "-si", "0bxxxxxx01"},
+                           "reserve:unknown",
+                           {}},
+                          resources.Values(), &assigned);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("reserved") != std::string::npos;
+    }
+    Require(rejected && assigned == std::set<size_t>{head, tail},
+            "protected X leaves caller footprint unchanged");
+    for (const auto& [name, value] : before) {
+      Require(scheduler.Value(name) == value,
+              "failed raw preservation is atomic");
+    }
+    scheduler.ApplyScan(scan, resources.Values(), &assigned);
+    resources.AssignedScans(assigned, scheduler);
+    Require(resources.Values().at(child) == "xxxx0xxx",
+            "known retry refreshes history after failed unknown assignment");
+    scheduler.ApplyScan(
+        {"iScan", {"client", "16", "-si", "0"}, "reserve:root", {}}, {},
+        &assigned);
+    Require(assigned == std::set<size_t>{head, child, tail},
+            "root scan explicitly addresses all pre-route storage");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+  pattern::Design design;
+  design.AddIcl("reserved-sib.icl", RawSibModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  std::set<size_t> assigned;
+  scheduler.ApplyScan(
+      {"iScan", {"client", "1", "-si", "1"}, "reserve:opening", {}}, {},
+      &assigned);
+  Require(
+      assigned == std::set<size_t>{netlist.node_ids.at("open")},
+      "newly enabled post-route storage is absent from assignment footprint");
+}
 void TestGatedSibRawScans() {
   std::string source = RawSibModel();
   for (bool flat : {false, true}) {
@@ -4155,6 +4260,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawScanReservations();
     TestDynamicChildRawScans();
     TestActiveChildRawScans();
     TestGatedSibRawScans();

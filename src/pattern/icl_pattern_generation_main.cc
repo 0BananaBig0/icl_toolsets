@@ -417,7 +417,12 @@ std::string Generate(
           std::vector<pattern::Operation> scans;
           scans.reserve(pending_scans.size());
           for (const auto& [name, scan] : pending_scans) scans.push_back(scan);
-          result += OperationText(scheduler.ApplyScans(scans));
+          std::set<size_t> assigned;
+          const auto scan = scheduler.ApplyScans(
+              scans, reservations.Values(),
+              reservations.Values().empty() ? nullptr : &assigned);
+          reservations.AssignedScans(assigned, scheduler);
+          result += OperationText(scan);
           result += together ? "iApply -together\n" : "iApply\n";
           clocks.Invalidate();
           pending_scans.clear();
@@ -567,7 +572,8 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
                   [](const auto& node) { return node.kind == "ScanRegister"; });
   if (raw && modeled) {
     const std::set<std::string> allowed = {
-        "iScan", "iApply", "iReset", "iRunLoop", "iNote", "iRead", "iWrite"};
+        "iScan", "iApply", "iReset", "iRunLoop", "iNote",
+        "iRead", "iWrite", "iTake",  "iRelease", "iState"};
     for (const auto& op : operations) {
       if (!allowed.count(op.command)) {
         throw std::runtime_error(

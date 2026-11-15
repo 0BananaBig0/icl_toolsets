@@ -47,8 +47,13 @@ class ScanScheduler {
   // Raw scans target a known root route or disjoint accessible child
   // intervals.
   Operation NormalizeScan(const Operation& operation);
-  Operation ApplyScan(const Operation& operation);
-  Operation ApplyScans(const std::vector<Operation>& operations);
+  // Assigned reports explicitly addressed pre-CSU registers only on success.
+  Operation ApplyScan(const Operation& operation,
+                      const std::map<size_t, std::string>& preserved = {},
+                      std::set<size_t>* assigned = nullptr);
+  Operation ApplyScans(const std::vector<Operation>& operations,
+                       const std::map<size_t, std::string>& preserved = {},
+                       std::set<size_t>* assigned = nullptr);
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.

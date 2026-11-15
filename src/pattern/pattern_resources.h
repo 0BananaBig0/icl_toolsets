@@ -3,6 +3,7 @@
 #ifndef ICL_TOOLSETS_SRC_PATTERN_PATTERN_RESOURCES_H_
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_RESOURCES_H_
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -19,11 +20,15 @@ class ResourceReservations {
   std::map<size_t, std::string> UnwrittenBits() const;
   void Assigned(const std::vector<Operation>& operations,
                 const ScanScheduler& scheduler);
+  void AssignedScans(const std::set<size_t>& registers,
+                     const ScanScheduler& scheduler);
   const std::map<size_t, std::string>& Values() const { return values_; }
 
  private:
   std::map<size_t, std::string> Targets(const std::string& name) const;
   void Prune(size_t id);
+  void Assign(size_t id, const std::string& mask,
+              const ScanScheduler& scheduler);
   const Netlist& netlist_;
   std::map<std::string, size_t> scopes_;
   std::vector<std::vector<size_t>> resources_;
