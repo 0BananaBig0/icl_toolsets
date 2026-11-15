@@ -34,6 +34,11 @@ class NetworkState {
   std::string Value(size_t node, bool scan = false) const;
   char Read(const BitReference& bit, bool scan = false) const;
   void Clock(const std::map<size_t, ScanControl>& controls, bool rising);
+  // Fast-forward a caller-proven complete chain overwrite. Controls/resets must
+  // remain invariant with no omitted side effects. All local preconditions are
+  // checked before mutation; update storage changes only at its later edge.
+  void ShiftComplete(const std::map<size_t, std::string>& loads,
+                     const std::map<size_t, ScanControl>& controls);
   // A parallel apply changes all primary pins simultaneously, then settles
   // data-register updates and resets. Failure leaves the snapshot unchanged.
   void ApplyInputs(const std::map<size_t, std::string>& values);

@@ -5078,3 +5078,57 @@ whilemodeledreferenceexports0; -stableignored byTessent, no opaquevendorcertific
 Commit21files on taskbranch, fast-forwardmaster, deletecompletedbranch andpreserve
 the nextmodeled-scan draft. Broader retargeted/parallel/TAP scan, phases/reset/
 resources/vendor/strictcoverage/finalplatform requirements remain open. No push.
+
+## Modeled root scans (Task94)
+
+Raw iScan also supports a complete static, non-inverted modeled chain behind one
+explicit root client. Scalar controls and resets must be direct root pins (or
+released virtual global resets), with an unconditional SO and every ScanRegister
+on the path. An explicit iReset is required before applying a modeled raw scan.
+The supplied length must equal the full chain width, up to1048576bits and the
+existing4096-register structural limit. Hierarchy, TAP, mux/alias routes, internal
+reset cones, conditional SO and end-state directives remain outside this subset.
+
+Native capture, update and idle handling preserve register and pin state. A
+qualified complete shift uses one native bookkeeping edge and replaces fully
+overwritten shift vectors; it does not perform one vector-wide operation per bit.
+The shared bulk primitive validates every load, control and inactive reset before
+mutation, and is tested against literal per-bit replay with complete snapshots
+and event histories. The scheduler adopts its transaction copy only on success.
+Known input bits update controlling fill even when other bits are X. Expected SO
+is never assumed to be hardware readback. Empty applies with no end-state work
+return before event-proof construction, using the same existing Solve condition.
+
+Raw and ordinary register read/write accesses may occur on successive Applies.
+They cannot share one pending Apply. Reservations, merges, state, clock and
+interface override operations remain explicitly rejected in a modeled raw-scan
+program for this increment. Existing local-reset rewriting preserves source order.
+The standard-library maps introduce logarithmic lookups in register count; work
+scales with payload and model size, without quadratic wide-register shifting.
+
+The mixed vendor probe alternates raw scans and ordinary reads/writes. Tessent2026.2
+accepts original and generated forms and exports byte-identical PDL; actual7
+submitted and10prepared hashes match. It still ignores -stable and exports a
+synthetic -chain default, so this is recorded as a probe, not a strict directional
+round-trip certificate. Broader retargeting, parallel/TAP and ownership semantics
+remain required follow-up work.
+
+Verified Task94: fullserial make check0 in1411.913s;43dynamic and43static
+generator suites,53directional goldens,2530ICL files with334/119grammar/scanner
+rules,LSP62 andeditor6 in184.300s. OptionalANTLR5 remain skipped. Required
+leak-enabled build/native7/main69/modeled9/opaque12/clock51/client25/reset12 all0.
+Finalremote52statusesall0 andactual29source/test/fixture hashes match. Local15
+connectedchecks, formatting/naming and53offline certificates pass. Fifteen scale
+commands0:65536bits .05s/~51548KiB;1048576bits .30-.36s/~103940KiB;4096registers
+.16-.23s/~86300KiB, canonicalreplayhashesequal. Vendororiginal/normalizedboth0 and
+byte-identical exports, actual7submitted+10preparedhashesmatch; -stableignored
+and synthetic-chain policy prevents a strictcertificate claim.
+The million-bit maintained RED exposed unnecessary event proof before Solve's
+existing empty/no-end-goal return. Moving that condition after fill update and
+before NeedsScanEvents passed GREEN and focused independent equivalence review;
+no reset limit was widened and no transaction is skipped. Native bulk shifting
+retains update shadows, final SI, event behavior and partial-X controlling fill.
+Commit21files on taskbranch, fast-forwardmaster, deletecompletedbranch andpreserve
+only the next static-alias draft. General retargeting/parallel/TAP scans, phase/
+reset/resource/clock/pattern lifecycle, broader vendor, strictcoverage andfinal
+platform requirements remain open. No push.

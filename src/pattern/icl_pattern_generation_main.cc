@@ -108,6 +108,12 @@ std::string Command(const std::vector<std::string>& words) {
   Tcl_DStringFree(&list);
   return result;
 }
+std::string OperationText(const pattern::Operation& operation) {
+  std::vector<std::string> words{operation.command};
+  words.insert(words.end(), operation.arguments.begin(),
+               operation.arguments.end());
+  return Command(words);
+}
 std::optional<std::string> GenerateOpaque(
     const pattern::Netlist& netlist,
     const std::vector<pattern::Operation>& operations) {
@@ -116,10 +122,7 @@ std::optional<std::string> GenerateOpaque(
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
   for (const auto& operation : *lowered) {
-    std::vector<std::string> words{operation.command};
-    words.insert(words.end(), operation.arguments.begin(),
-                 operation.arguments.end());
-    result += Command(words);
+    result += OperationText(operation);
   }
   const pdl::Document validated(result);
   if (!validated.ok()) {
@@ -247,6 +250,7 @@ std::string Generate(
       initial_clocks ? *initial_clocks : pattern::SystemClocks(netlist);
   z3::context context;
   QueuedAccesses pending;
+  std::optional<pattern::Operation> pending_scan;
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
   const auto append_steps = [&](const std::vector<pattern::ScanStep>& steps) {
@@ -371,6 +375,10 @@ std::string Generate(
       }
       if (rewritten) rewritten->push_back(operation);
       if (operation.command == "iWrite" || operation.command == "iRead") {
+        if (pending_scan) {
+          throw std::runtime_error(
+              "raw scan cannot share an Apply with modeled accesses");
+        }
         // Reset may discard this queue, but malformed operands still fail.
         const auto target =
             pattern::ResolvePdlTarget(netlist, operation.arguments.at(0));
@@ -381,11 +389,24 @@ std::string Generate(
                                                       operation.arguments.at(1))
                               : std::string(target.bits.size(), 'x');
         pending.Add(operation, target, bits);
+      } else if (operation.command == "iScan") {
+        if (!pending.Empty()) {
+          throw std::runtime_error(
+              "raw scan cannot share an Apply with modeled accesses");
+        }
+        pending_scan = scheduler.NormalizeScan(operation);
       } else if (operation.command == "iApply") {
         const bool together =
             operation.arguments == std::vector<std::string>{"-together"};
         if (!operation.arguments.empty() && !together) {
           throw std::runtime_error("unsupported iApply option");
+        }
+        if (pending_scan) {
+          result += OperationText(scheduler.ApplyScan(*pending_scan));
+          result += together ? "iApply -together\n" : "iApply\n";
+          clocks.Invalidate();
+          pending_scan.reset();
+          continue;
         }
         const auto& accesses = pending.Operations();
         if (edits) scheduler.CheckLocalResets(accesses);
@@ -402,6 +423,7 @@ std::string Generate(
         clocks.Invalidate();
         reservations.Reset();
         pending.Clear();
+        pending_scan.reset();
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iClockOverride") {
         clocks.Override(operation, context);
@@ -492,7 +514,9 @@ std::string Generate(
       throw std::runtime_error(message);
     }
   }
-  if (!pending.Empty()) throw std::runtime_error("unapplied PDL operations");
+  if (!pending.Empty() || pending_scan) {
+    throw std::runtime_error("unapplied PDL operations");
+  }
   const bool had_transaction = std::any_of(
       operations.begin(), operations.end(), [](const auto& operation) {
         return operation.command == "iApply" || operation.command == "iReset" ||
@@ -518,6 +542,23 @@ std::string Generate(
 }
 std::string GenerateMerged(const pattern::Netlist& netlist,
                            const std::vector<pattern::Operation>& operations) {
+  const bool raw =
+      std::any_of(operations.begin(), operations.end(),
+                  [](const auto& op) { return op.command == "iScan"; });
+  const bool modeled =
+      std::any_of(netlist.nodes.begin(), netlist.nodes.end(),
+                  [](const auto& node) { return node.kind == "ScanRegister"; });
+  if (raw && modeled) {
+    const std::set<std::string> allowed = {"iScan", "iApply", "iReset",
+                                           "iNote", "iRead",  "iWrite"};
+    for (const auto& op : operations) {
+      if (!allowed.count(op.command)) {
+        throw std::runtime_error(
+            op.origin +
+            ": unsupported operation with modeled raw scans: " + op.command);
+      }
+    }
+  }
   // Inspect raw operations before merging can erase unsupported interactions.
   if (const auto opaque = GenerateOpaque(netlist, operations)) return *opaque;
   if (std::none_of(operations.begin(), operations.end(),

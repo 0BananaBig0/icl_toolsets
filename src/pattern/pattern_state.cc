@@ -435,6 +435,30 @@ void NetworkState::Clock(const std::map<size_t, ScanControl>& controls,
   next.UpdateDataRegisters(data_update);
   Restore(next);
 }
+void NetworkState::ShiftComplete(
+    const std::map<size_t, std::string>& loads,
+    const std::map<size_t, ScanControl>& controls) {
+  if (loads.empty() || loads.size() != controls.size()) {
+    throw std::runtime_error(
+        "complete shift requires matching loads and controls");
+  }
+  for (const auto& [id, bits] : loads) {
+    const auto& node = netlist_.nodes.at(id);
+    const auto control = controls.find(id);
+    if (node.kind != "ScanRegister" || control == controls.end() ||
+        control->second.capture != '0' || control->second.shift != '1' ||
+        control->second.update != '0' || control->second.select != '1' ||
+        (node.reset && Read(*node.reset) != '0')) {
+      throw std::runtime_error(
+          "complete shift requires active shifting and inactive resets");
+    }
+    Validate(bits, node.Width());
+  }
+  // A real native edge retires update shadows before replacing the fully
+  // overwritten shift data. The caller drives the final serial input first.
+  Clock(controls, true);
+  for (const auto& [id, bits] : loads) SetRegister(id, bits, Value(id));
+}
 void NetworkState::ClockRegisters(const std::map<size_t, ScanControl>& controls,
                                   bool rising) {
   SignalEvaluator values(*this);

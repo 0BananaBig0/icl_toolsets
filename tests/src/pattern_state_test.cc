@@ -18,6 +18,86 @@ void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestCompleteShift() {
+  pattern::Design design;
+  design.AddIcl("complete-shift.icl", R"(Module Top {
+    ScanInPort si; ResetPort reset;
+    ScanRegister a[0:1] { ScanInSource si; ResetValue 2'b01; }
+    ScanRegister b[2:0] { ScanInSource a[1]; ResetValue 3'b010; }
+    ScanOutPort so { Source b[0]; }
+  })");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto a = netlist.node_ids.at("a"), b = netlist.node_ids.at("b");
+  const auto si = netlist.node_ids.at("si"),
+             reset = netlist.node_ids.at("reset");
+  pattern::NetworkState serial(netlist), bulk(netlist);
+  const std::map<size_t, pattern::ScanControl> shift{{a, {'0', '1', '0', '1'}},
+                                                     {b, {'0', '1', '0', '1'}}};
+  const std::map<size_t, pattern::ScanControl> update{
+      {a, {'0', '0', '1', '1'}}, {b, {'0', '0', '1', '1'}}};
+  for (auto* state : {&serial, &bulk}) {
+    state->SetGlobalReset('0', '0');
+    state->Drive(reset, "1");
+    state->Reset();
+    state->Drive(reset, "0");
+    state->Reset();
+  }
+  for (const std::string payload : {"10110", "0x1x0", "11111", "00000"}) {
+    for (auto it = payload.rbegin(); it != payload.rend(); ++it) {
+      serial.Drive(si, std::string(1, *it));
+      serial.Clock(shift, true);
+    }
+    bulk.Drive(si, payload.substr(0, 1));
+    bulk.ShiftComplete({{a, payload.substr(0, 2)}, {b, payload.substr(2)}},
+                       shift);
+    Require(serial.SameState(bulk),
+            "bulk full-chain shift matches every native snapshot field");
+    Require(serial.TakeControlEvents() == bulk.TakeControlEvents() &&
+                serial.TakeResetEvents() == bulk.TakeResetEvents(),
+            "bulk shift retains native event histories");
+    serial.Clock(update, false);
+    bulk.Clock(update, false);
+    Require(serial.SameState(bulk),
+            "bulk shift updates and repeated shadow bookkeeping match");
+  }
+  const pattern::NetworkState before(bulk);
+  for (const std::map<size_t, std::string>& loads :
+       {std::map<size_t, std::string>{{a, "01"}, {b, "10"}},
+        std::map<size_t, std::string>{{a, "01"}},
+        std::map<size_t, std::string>{{a, "0z"}, {b, "101"}}}) {
+    bool rejected = false;
+    try {
+      bulk.ShiftComplete(loads, shift);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && before.SameState(bulk),
+            "all bulk loads validate before any shift mutation");
+  }
+  auto inactive = shift;
+  inactive.at(b).select = '0';
+  bool invalid_control = false;
+  try {
+    bulk.ShiftComplete({{a, "01"}, {b, "101"}}, inactive);
+  } catch (const std::runtime_error&) {
+    invalid_control = true;
+  }
+  Require(invalid_control && before.SameState(bulk),
+          "bulk control validation precedes native or vector mutation");
+  for (const std::string reset_value : {"1", "x"}) {
+    bulk.Drive(reset, reset_value);
+    const pattern::NetworkState snapshot(bulk);
+    bool rejected = false;
+    try {
+      bulk.ShiftComplete({{a, "01"}, {b, "101"}}, shift);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && snapshot.SameState(bulk),
+            "inactive reset is a precondition of complete-shift batching");
+  }
+}
+
 void TestImpliedToTckValues() {
   pattern::Design design;
   design.AddIcl("implied_clock_values.icl",
@@ -1014,6 +1094,7 @@ void TestLongChain() {
 }  // namespace
 int main() {
   try {
+    TestCompleteShift();
     TestImpliedToTckValues();
     TestEquivalentClockBatch();
     for (const auto* control : {"capture", "shift", "update"}) {

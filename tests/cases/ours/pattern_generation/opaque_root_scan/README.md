@@ -11,5 +11,6 @@ ScanRegister. Tessent2026.2 exports visible_stable successfully; all three opaqu
 cases fail with an unconfigured scan-path diagnostic and -stable is ignored.
 Prepared input hashes and raw logs are retained under Root build/opaque-root-reference-remote
 and build/visible-root-reference-remote. These are probes, not certificates.
-The first local implementation supports only the genuine opaque fixture; visible
-storage is explicitly rejected until its model state can be replayed correctly.
+The dedicated opaque path remains separate from modeled scanning. The visible
+fixture also has a static modeled chain; ../modeled_root_scan exercises native
+modeled replay and later ordinary register accesses.

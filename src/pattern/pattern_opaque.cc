@@ -96,12 +96,13 @@ std::string ScanData(z3::context& context, const std::string& text,
     throw std::runtime_error(std::string("invalid scan data: ") + error.what());
   }
 }
-Operation Scan(z3::context& context, const NetlistNode& client,
-               const Operation& operation) {
+}  // namespace
+
+Operation NormalizeScan(z3::context& context, const std::string& target,
+                        const Operation& operation) {
   const auto& args = operation.arguments;
-  if (args.size() < 2 || args[0] != client.name) {
-    throw std::runtime_error("scan target must be the opaque root client " +
-                             client.name);
+  if (args.size() < 2 || args[0] != target) {
+    throw std::runtime_error("scan target must be the root client " + target);
   }
   if (args[1] == "-chain") {
     throw std::runtime_error("unsupported opaque scan chain selection");
@@ -125,17 +126,20 @@ Operation Scan(z3::context& context, const NetlistNode& client,
     }
   }
   auto result = operation;
-  result.arguments = {client.name, std::to_string(width), "-si", "0b" + input,
-                      "-so",       "0b" + expected};
+  result.arguments = {target, std::to_string(width), "-si", "0b" + input,
+                      "-so",  "0b" + expected};
   if (stable) result.arguments.push_back("-stable");
   return result;
 }
-}  // namespace
-
 std::optional<std::vector<Operation>> LowerOpaqueScans(
     const Netlist& netlist, const std::vector<Operation>& operations) {
   if (std::none_of(operations.begin(), operations.end(),
                    [](const auto& op) { return op.command == "iScan"; })) {
+    return std::nullopt;
+  }
+  if (std::any_of(
+          netlist.nodes.begin(), netlist.nodes.end(),
+          [](const auto& node) { return node.kind == "ScanRegister"; })) {
     return std::nullopt;
   }
   const auto& client = OpaqueClient(netlist);
@@ -147,7 +151,7 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
       if (operation.command == "iScan") {
         // Validate before replacement: even a discarded assignment must be
         // valid.
-        pending = Scan(context, client, operation);
+        pending = NormalizeScan(context, client.name, operation);
       } else if (operation.command == "iApply") {
         if (!operation.arguments.empty() &&
             operation.arguments != std::vector<std::string>{"-together"}) {

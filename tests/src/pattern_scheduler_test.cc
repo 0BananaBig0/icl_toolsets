@@ -22,6 +22,83 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestModeledRootScans() {
+  std::string source = R"(Module Top {
+    ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+    UpdateEnPort ue; TCKPort tck; ResetPort reset;
+    ScanRegister value[7:0] {
+      ScanInSource si; CaptureSource value; ResetValue 8'b0;
+    }
+    ScanOutPort so { Source value[0]; }
+    ScanInterface client {
+      Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck;
+      Port reset; DefaultLoadValue 8'b0;
+    }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("modeled-root-scans.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const auto normalized = scheduler.NormalizeScan(
+        {"iScan", {"client", "8", "-si", "0xa5", "-so", "0x3c"}, "raw:1", {}});
+    Require(scheduler.Value("value") == "00000000",
+            "normalizing a queued raw scan does not execute it");
+    scheduler.ApplyScan(normalized);
+    Require(
+        scheduler.Value("value") == "10100101" && scheduler.Value("si") == "1",
+        "raw SI updates native state and retains the final SI pin");
+    Require(scheduler.Value("tck") == "0" && scheduler.Value("sel") == "1" &&
+                scheduler.Value("ce") == "0" && scheduler.Value("se") == "0" &&
+                scheduler.Value("ue") == "0" && scheduler.Value("reset") == "0",
+            "modeled raw replay retains ordinary client idle pin levels");
+    Require(scheduler.Value("value") != "00111100",
+            "expected SO comparison does not assign hardware readback");
+    auto control = scheduler;
+    bool rejected = false;
+    try {
+      scheduler.ApplyScan({"iScan", {"client", "7"}, "raw:bad", {}});
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("value") == control.Value("value") &&
+                scheduler.Value("si") == control.Value("si"),
+            "failed raw scan does not adopt partial state");
+    const std::vector<pattern::Operation> write{
+        {"iWrite", {"value[1]", "1"}, "ordinary:1", {}}};
+    scheduler.Apply(write);
+    control.Apply(write);
+    Require(scheduler.Value("value") == "10100111" &&
+                scheduler.Value("value") == control.Value("value"),
+            "ordinary masked writes use raw scan controlling fill");
+    scheduler.Reset();
+    scheduler.ApplyScan(
+        {"iScan", {"client", "8", "-si", "0b10x01x01"}, "raw:x", {}});
+    Require(scheduler.Value("value") == "10x01x01",
+            "unknown raw data stays unknown in native hardware state");
+    scheduler.Apply(write);
+    Require(scheduler.Value("value") == "10001011",
+            "partial-X raw updates retain newly assigned controlling bits");
+    auto unsafe = netlist;
+    unsafe.nodes.at(unsafe.node_ids.at("value")).reset =
+        pattern::BitReference{unsafe.node_ids.at("value"), 0};
+    pattern::ScanScheduler unsafe_scheduler(unsafe);
+    unsafe_scheduler.Reset();
+    rejected = false;
+    try {
+      unsafe_scheduler.NormalizeScan(
+          {"iScan", {"client", "8"}, "raw:reset", {}});
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("raw scan") != std::string::npos;
+    }
+    Require(
+        rejected,
+        "released global reset does not qualify a register reset dependency");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestInvertedClockDurations() {
   std::string source = R"(Module Top {
     ClockPort root;
@@ -3190,6 +3267,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestModeledRootScans();
     TestInvertedClockDurations();
     TestDifferentialClockDurations();
     TestClockOverrideSnapshots();

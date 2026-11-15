@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "pattern/pattern_data.h"
+#include "pattern/pattern_opaque.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_symbolic.h"
 #include "pattern/pattern_tap_execution.h"
@@ -595,6 +596,166 @@ class ScanScheduler::Impl {
     run->FallingEdge(tap_clocks_);
     if (check) check(run->State());
   }
+  struct RawProfile {
+    size_t client = 0, input = 0, width = 0;
+    std::vector<size_t> registers;
+  };
+  const RawProfile& RawChain() {
+    if (raw_profile_) return *raw_profile_;
+    const auto fail = [] {
+      throw std::runtime_error(
+          "raw scan requires a complete static root client with direct pins "
+          "and resets");
+    };
+    if (tap_ || netlist_.scopes.size() != 1 || registers_.empty()) fail();
+    const std::set<std::string> pins = {
+        "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
+        "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
+    std::map<std::string, size_t> ports;
+    size_t client = kMissing;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.scope != 0 || node.constants.count("iApplyEndState")) fail();
+      if (node.scan_interface) {
+        if (client != kMissing ||
+            node.scan_interface->kind != ScanInterfaceKind::kClient ||
+            !node.scan_interface->chains.empty()) {
+          fail();
+        }
+        client = id;
+      } else if (node.kind == "ScanRegister") {
+        if (node.reset) {
+          const auto ref = *node.reset;
+          if (ref.node == kMissing) {
+            if (ref.virtual_signal == VirtualSignal::kNone) fail();
+          } else {
+            const auto& reset = netlist_.nodes.at(ref.node);
+            if (reset.kind != "ResetPort" || reset.scope != 0 ||
+                reset.Width() != 1 || !reset.inputs.empty()) {
+              fail();
+            }
+          }
+        }
+      } else {
+        if (node.model != ModelKind::kPort || !pins.count(node.kind) ||
+            node.Width() != 1 || !ports.emplace(node.kind, id).second ||
+            node.reset) {
+          fail();
+        }
+        if (node.kind == "ScanOutPort") {
+          if (node.inputs.size() != 1 || !node.inputs.count("Source") ||
+              node.inputs.at("Source").size() != 1) {
+            fail();
+          }
+        } else if (!node.inputs.empty()) {
+          fail();
+        }
+      }
+    }
+    if (client == kMissing || !ports.count("ScanInPort") ||
+        !ports.count("ScanOutPort") ||
+        EffectiveScanInterfaces(netlist_).size() != 1) {
+      fail();
+    }
+    std::set<size_t> interface_pins;
+    for (const auto& pin : netlist_.nodes[client].scan_interface->ports) {
+      if (pin.node == kMissing || pin.inverted ||
+          !interface_pins.insert(pin.node).second) {
+        fail();
+      }
+    }
+    if (!interface_pins.count(ports.at("ScanInPort")) ||
+        !interface_pins.count(ports.at("ScanOutPort"))) {
+      fail();
+    }
+    RawProfile result{client, ports.at("ScanInPort"), 0, {}};
+    auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
+    std::set<size_t> seen;
+    while (true) {
+      if (bit.inverted || bit.node == kMissing) fail();
+      if (bit.node == result.input) break;
+      const auto& node = netlist_.nodes.at(bit.node);
+      if (node.kind != "ScanRegister" || bit.index != node.right ||
+          !seen.insert(bit.node).second || !node.inputs.count("ScanInSource") ||
+          node.inputs.at("ScanInSource").size() != 1 ||
+          node.Width() > 1024 * 1024 - result.width) {
+        fail();
+      }
+      result.width += node.Width();
+      result.registers.push_back(bit.node);
+      bit = node.inputs.at("ScanInSource")[0];
+    }
+    if (seen.size() != registers_.size()) fail();
+    raw_profile_ = std::move(result);
+    return *raw_profile_;
+  }
+  Operation NormalizeScan(const Operation& operation) {
+    const auto& profile = RawChain();
+    const auto result = pattern::NormalizeScan(
+        context_, netlist_.nodes[profile.client].name, operation);
+    if (result.arguments[1] != std::to_string(profile.width)) {
+      throw std::runtime_error(
+          "raw scan length differs from the modeled chain length");
+    }
+    return result;
+  }
+  Operation ApplyScan(const Operation& operation) {
+    const auto normalized = NormalizeScan(operation);
+    const auto& profile = RawChain();
+    if (global_resets_ != "00") {
+      throw std::runtime_error(
+          "modeled raw scan requires an explicit iReset first");
+    }
+    for (size_t id : profile.registers) {
+      const auto& node = netlist_.nodes[id];
+      if (node.reset && state_.Read(*node.reset) != '0') {
+        throw std::runtime_error("raw scan requires inactive direct resets");
+      }
+    }
+    const auto input = normalized.arguments[3].substr(2);
+    std::map<size_t, std::string> loads;
+    size_t position = input.size();
+    for (size_t id : profile.registers) {
+      const auto width = netlist_.nodes[id].Width();
+      position -= width;
+      loads.emplace(id, input.substr(position, width));
+    }
+    NetworkState replay(state_);
+    replay.TakeControlEvents();
+    replay.TakeResetEvents();
+    const std::set<size_t> active(profile.registers.begin(),
+                                  profile.registers.end());
+    const auto controls = [&](const std::string& phase) {
+      auto result = ClientControls(&replay, active, phase, {});
+      for (const auto& [id, control] : result) {
+        if (control.select != '1' ||
+            control.capture != (phase == "capture" ? '1' : '0') ||
+            control.shift != (phase == "shift" ? '1' : '0') ||
+            control.update != (phase == "update" ? '1' : '0')) {
+          throw std::runtime_error(
+              "raw scan requires unconditional native control events");
+        }
+      }
+      return result;
+    };
+    replay.Clock(controls("capture"), true);
+    replay.Drive(profile.input, input.substr(0, 1));
+    replay.ShiftComplete(loads, controls("shift"));
+    replay.Clock(controls("update"), false);
+    for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
+    replay.Reset();
+    auto fill = fill_;
+    for (const auto& [id, bits] : loads) {
+      for (size_t offset = 0; offset < bits.size(); ++offset) {
+        if (bits[offset] != 'x') fill.at(id)[offset] = bits[offset];
+      }
+    }
+    replay.TakeControlEvents();
+    replay.TakeResetEvents();
+    state_.Restore(replay);
+    fill_ = std::move(fill);
+    return normalized;
+  }
   void Reset(bool synchronous) {
     if (tap_) {
       auto run = std::make_unique<TapExecution>(*execution_);
@@ -868,6 +1029,8 @@ class ScanScheduler::Impl {
           if (bits[i] != 'x') fill_.at(id)[i] = bits[i];
         }
       }
+      // Match Solve's empty-apply exit before constructing an event proof.
+      if (operations.empty() && !NeedsEndState(end_states_)) return {};
       const bool events = (tap_ || client_controls_) && NeedsScanEvents();
       if (events) {
         auto regular =
@@ -4818,6 +4981,7 @@ class ScanScheduler::Impl {
   std::set<size_t> tap_data_registers_, tap_pins_, tap_clocks_;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
+  std::optional<RawProfile> raw_profile_;
   bool parallel_chains_ = false;
   bool data_reset_dependencies_ = false, feedback_resets_ = false;
   size_t reset_passes_ = 0, reset_work_ = 0;
@@ -4873,6 +5037,12 @@ std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(
 void ScanScheduler::CheckLocalResets(
     const std::vector<Operation>& operations) const {
   impl_->CheckLocalResets(operations);
+}
+Operation ScanScheduler::NormalizeScan(const Operation& operation) {
+  return impl_->NormalizeScan(operation);
+}
+Operation ScanScheduler::ApplyScan(const Operation& operation) {
+  return impl_->ApplyScan(operation);
 }
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);

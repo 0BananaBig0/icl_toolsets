@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "modeled_root_scan",
+      "top": "Modeled",
+      "icl": [
+        "tests/cases/ours/pattern_generation/modeled_root_scan/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/modeled_root_scan/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

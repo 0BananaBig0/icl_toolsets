@@ -1,0 +1,13 @@
+iPDLLevel 1
+iProcsForModule Modeled
+iReset
+iScan client 8 -si 0xa5 -so 0xXX -stable
+iApply
+iRead value 0xa5
+iApply
+iWrite value 0x3c
+iApply
+iScan client 8 -si 0x5a -so 0x3c -stable
+iApply
+iRead value 0x5a
+iApply
