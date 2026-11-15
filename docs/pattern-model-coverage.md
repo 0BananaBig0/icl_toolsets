@@ -2079,3 +2079,32 @@ build/source-context-associations-{connected,loading-scale},
 build/source-context-associations-final-{full,sanitizer-*}, and
 build/source-context-associations-connected-remote/evidence. Remaining output
 association, lowered ToTCK, forcing and event requirements are not waived.
+
+
+### Lowered test-clock sources and IR selector boundaries (2026-11-15)
+
+Explicit Source properties on the project’s lowered ToTCKPort extension now use
+the existing clock/data terminal validator. ClockPort, ClockMux, TCK, ordinary
+data, constants, aliases and inversions retain their behavior. Unsupported typed
+control/scan sources are rejected; output references require direct-child ports.
+Restored child inputs, deep outputs and nonlocal aliases cannot bypass scope.
+IEEE1687 6.4.6.18 defines no Source property; this extension is not represented
+as vendor-standard syntax. Source-less ToTCK owner/equivalence remains separate.
+
+ToIRSelectPort retains its special local ScanMux-selector permission. Nonlocal
+producers must be direct-child outputs, and raw aliases must belong to the
+expression scope. Restored parent/sibling/grandchild references and child aliases
+are rejected. The existing one-bit/two-input selector rule and PDL-only alias
+behavior remain intact. This checks wiring boundaries; controller association
+and active-chain behavior under6.4.6.23(c) require separate qualification.
+
+
+Verified checkpoint: required leak-enabled native7/main67/clock41/client18/reset12
+all pass. Full serial make check exits0 in1338.568s:41 dynamic and41 static
+generator suites,51 directional goldens,2523 ICL files (334/334 grammar and
+119/119 scanner rules),LSP62 and editor6 in174.998s; five optional ANTLR tests
+are skipped. Broad remote native7/all41 suites pass with4 snapshot source/test
+hashes checked, including the unchanged clock fixture. Loading60 comparisons
+pass with equal PDL/flat hashes. Evidence: build/lowered-source-boundaries-
+{connected,loading-scale,final-full,final-sanitizer-*} and the final connected
+remote archive. Source-less test-clock inference remains the next task.

@@ -255,6 +255,108 @@ void TestTckInputSources() {
     pattern::Elaborate(design, "M");
   }
 }
+
+void TestLoweredToTckSources() {
+  for (const std::string declaration :
+       {"ClockPort source[1:0];", "TCKPort source[1:0];",
+        "DataInPort source[1:0];", "DataRegister source[1:0];",
+        "LogicSignal first { 1'b1; } LogicSignal second { 1'b0; } "
+        "Alias source[1:0] = first, second;",
+        "DataMux source[1:0] SelectedBy 1'b0 { 1'b0: 2'b10; }",
+        "ClockPort ck[1:0]; ClockMux source[1:0] SelectedBy 1'b0 { 1'b0: ck; "
+        "}"}) {
+    for (const std::string source : {"source", "wrapped", "~wrapped"}) {
+      pattern::Design design;
+      design.AddIcl("lowered_tck_source.icl",
+                    "Module M { " + declaration +
+                        " Alias wrapped[1:0] = source; "
+                        "ToTCKPort out[1:0] { Source " +
+                        source + "; } }");
+      const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", text);
+      Require(
+          pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+          "lowered ToTCK extension keeps clock/data sources and inversions");
+    }
+  }
+  for (const std::string declaration :
+       {"ShiftEnPort source[1:0];", "CaptureEnPort source[1:0];",
+        "UpdateEnPort source[1:0];", "ResetPort source[1:0];",
+        "TMSPort source[1:0];", "TRSTPort source[1:0];",
+        "ScanInPort source[1:0];",
+        "TMSPort tms; ToIRSelectPort source[1:0];"}) {
+    for (const std::string source : {"source", "wrapped", "~wrapped"}) {
+      pattern::Design design;
+      design.AddIcl("invalid_lowered_tck.icl",
+                    "Module M { " + declaration +
+                        " Alias wrapped[1:0] = source; "
+                        "ToTCKPort out[1:0] { Source " +
+                        source + "; } }");
+      Fails([&] { pattern::Elaborate(design, "M"); }, "clock or data signal");
+    }
+  }
+  for (const std::string source : {"ck[1], bad[0]", "bad[1], ck[0]"}) {
+    pattern::Design mixed;
+    mixed.AddIcl("mixed_lowered_tck.icl",
+                 "Module M { ClockPort ck[1:0]; ShiftEnPort bad[1:0]; "
+                 "ToTCKPort out[1:0] { Source " +
+                     source + "; } }");
+    Fails([&] { pattern::Elaborate(mixed, "M"); }, "clock or data signal");
+  }
+  for (bool child : {false, true}) {
+    pattern::Design design;
+    design.AddIcl(
+        "lowered_tck_output_scope.icl",
+        "Module P { ClockPort ck; ToClockPort out { Source ck; } } "
+        "Module M { ClockPort ck; " +
+            std::string(child ? "Instance p Of P { InputPort ck = ck; } "
+                              : "ToClockPort producer { Source ck; } ") +
+            "ToTCKPort out { Source " + (child ? "p.out" : "producer") +
+            "; } }");
+    if (child) {
+      const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+      pattern::Design flat;
+      flat.AddIcl("flat.icl", text);
+      Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+              "lowered ToTCK accepts child output boundaries");
+    } else {
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            "output must be referenced from an instance");
+    }
+  }
+  pattern::Design hierarchy;
+  hierarchy.AddIcl(
+      "lowered_tck_hierarchy.icl",
+      "Module Leaf { ClockPort ck; ToClockPort out { Source ck; } } "
+      "Module P { ClockPort ck; Instance leaf Of Leaf { InputPort ck = ck; } "
+      "ToClockPort out { Source leaf.out; } Alias wrapped = out; } "
+      "Module M { ClockPort ck; Instance p Of P { InputPort ck = ck; } "
+      "ToTCKPort out { Source p.out; } }");
+  const auto original = pattern::Elaborate(hierarchy, "M");
+  for (const std::string source : {"p.ck", "p.leaf.out", "p.wrapped"}) {
+    auto changed = original;
+    changed.nodes.at(changed.node_ids.at("out")).inputs.at("Source")[0] = {
+        changed.node_ids.at(source), 0};
+    pattern::Design flat;
+    flat.AddIcl("altered_lowered_tck.icl", pattern::SerializeIcl(changed));
+    Fails([&] { pattern::Elaborate(flat, "M"); },
+          source == "p.wrapped" ? "hierarchical source" : "reference scope");
+  }
+  pattern::Design constants;
+  constants.AddIcl("lowered_tck_constants.icl",
+                   "Module M { ToTCKPort out[1:0] { Source 2'b01; } }");
+  pattern::Elaborate(constants, "M");
+  pattern::Design source_less;
+  source_less.AddIcl("totck_without_source.icl",
+                     "Module M { TCKPort ck; ToTCKPort out; }");
+  const auto text = pattern::SerializeIcl(pattern::Elaborate(source_less, "M"));
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", text);
+  Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+          "source-less ToTCK retains its existing flat model");
+}
+
 void TestResetSourceKinds() {
   for (const std::string declaration :
        {"ResetPort source;", "ToResetPort source;", "TRSTPort source;",
@@ -2170,6 +2272,58 @@ void TestIrSelectOwnerControls() {
   pattern::Elaborate(unrelated, "M");
 }
 
+void TestIrSelectorSourceScope() {
+  const std::string modules =
+      "Module Leaf { TMSPort tms; ToIRSelectPort ir; } "
+      "Module Owner { TMSPort tms; ScanInPort si; ToIRSelectPort ir; Alias "
+      "wrapped = ir; "
+      "Instance leaf Of Leaf { InputPort tms = tms; } "
+      "ScanMux route SelectedBy ir { 1'b0: si; 1'b1: si; } } ";
+  for (const std::string selected :
+       {"local", "local_alias", "owner.ir", "child_alias"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "ir_selector_scope.icl",
+        modules +
+            "Module M { TMSPort tms; ScanInPort si; ToIRSelectPort local; "
+            "Instance owner Of Owner { InputPort tms = tms; InputPort si = si; "
+            "} "
+            "Alias local_alias = local; Alias child_alias = owner.ir; "
+            "ScanMux route SelectedBy " +
+            selected + " { 1'b0: si; 1'b1: si; } }");
+    const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "local and child IR selectors preserve their distinct scope "
+            "permissions");
+  }
+  pattern::Design hierarchy;
+  hierarchy.AddIcl(
+      "ir_selector_hierarchy.icl",
+      modules +
+          "Module M { TMSPort tms; ScanInPort si; ToIRSelectPort local; "
+          "Instance owner Of Owner { InputPort tms = tms; InputPort si = si; } "
+          "Instance peer Of Owner { InputPort tms = tms; InputPort si = si; } "
+          "ScanMux route SelectedBy owner.ir { 1'b0: si; 1'b1: si; } }");
+  const auto original = pattern::Elaborate(hierarchy, "M");
+  for (const auto& [consumer, source] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"route", "owner.leaf.ir"},
+           {"route", "owner.wrapped"},
+           {"owner.route", "local"},
+           {"owner.route", "peer.ir"}}) {
+    auto altered = original;
+    altered.nodes.at(altered.node_ids.at(consumer))
+        .inputs.at("SelectedBy")[0] = {altered.node_ids.at(source), 0};
+    pattern::Design flat;
+    flat.AddIcl("altered_ir_selector.icl", pattern::SerializeIcl(altered));
+    Fails([&] { pattern::Elaborate(flat, "M"); }, source == "owner.wrapped"
+                                                      ? "hierarchical source"
+                                                      : "reference scope");
+  }
+}
+
 void TestDataSignalAliasSlices() {
   const std::string body =
       "Module M { DataInPort data; TCKPort clock;"
@@ -3608,6 +3762,7 @@ int main() {
   for (const auto test : {TestClockSignalSources,
                           TestClockInputDifferentialAssociation,
                           TestTckInputSources,
+                          TestLoweredToTckSources,
                           TestResetSourceKinds,
                           TestResetPortPolarity,
                           TestFlatTrstPolarity,
@@ -3662,6 +3817,7 @@ int main() {
                           TestRegisterRules,
                           TestInterfaceKinds,
                           TestIrSelectOwnerControls,
+                          TestIrSelectorSourceScope,
                           TestOneHotScanErrors,
                           TestOneHotScanSourceScope,
                           TestOneHotScanMuxFanIn,

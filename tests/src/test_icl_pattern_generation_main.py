@@ -207,6 +207,31 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                                    '--output', 'invalid.pdl', ok=False)
             self.assertIn(diagnostic, result.stdout + result.stderr)
 
+
+    def test_lowered_totck_source_preserves_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for declaration, diagnostic in (
+                ('ShiftEnPort bad; ToTCKPort out { Source bad; }', 'clock or data signal'),
+                ('ClockPort ck; ToClockPort producer { Source ck; } '
+                 'ToTCKPort out { Source producer; }', 'output must be referenced from an instance')):
+            with self.subTest(declaration=declaration):
+                (self.root / 'source.icl').write_text(
+                    'Module Owner { ' + declaration + ' } '
+                    "Module Network { ScanInPort si; ShiftEnPort se; "
+                    "ScanRegister r { ScanInSource si; ResetValue 1'b0; } "
+                    "ScanOutPort so { Source r; } Instance owner Of Owner; "
+                    "ScanInterface client { Port si; Port so; Port se; } }")
+                for path in outputs:
+                    (self.root / path).write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                for path in outputs:
+                    self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
+
     def test_tck_input_source_kinds(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         for declaration in ('ClockPort source;', 'ToClockPort source;',
@@ -379,6 +404,38 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
                 for path in outputs:
                     self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
 
+
+
+    def test_flat_ir_selector_scope_preserves_outputs(self):
+        (self.root / 'source.icl').write_text(
+            'Module Leaf { TMSPort tms; ToIRSelectPort ir; } '
+            'Module Owner { TMSPort tms; ToIRSelectPort ir; Alias wrapped = ir; '
+            'Instance leaf Of Leaf { InputPort tms = tms; } } '
+            "Module Network { ScanInPort si; ShiftEnPort se; "
+            "ScanRegister r { ScanInSource si; ResetValue 1'b0; } "
+            "ScanOutPort so { Source r; } Instance owner Of Owner { InputPort tms = 1'b0; } "
+            "ScanMux unused SelectedBy owner.ir { 1'b0: si; 1'b1: si; } "
+            "ScanInterface client { Port si; Port so; Port se; } }")
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                      '--top_module', 'Network', '--output', 'result.pdl', '--debug')
+        flat = (self.root / 'debug/Network.icl').read_text()
+        old = 'SelectedBy n' + 'owner.ir'.encode().hex() + ' {'
+        self.assertIn(old, flat)
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for source, diagnostic in (('owner.leaf.ir', 'reference scope'),
+                                    ('owner.wrapped', 'hierarchical source')):
+            with self.subTest(source=source):
+                (self.root / 'invalid.icl').write_text(
+                    flat.replace(old, 'SelectedBy n' + source.encode().hex() + ' {'))
+                for path in outputs:
+                    (self.root / path).write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'invalid.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                for path in outputs:
+                    self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
 
     def test_ir_select_owner_controls_preserve_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')

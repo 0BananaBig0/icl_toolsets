@@ -416,10 +416,6 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
                                      role + ": requires a positive ClockPort");
           }
         }
-        if (bit.node != std::numeric_limits<size_t>::max() &&
-            netlist.nodes.at(bit.node).kind == "ToIRSelectPort") {
-          return;
-        }
         if (raw.node != std::numeric_limits<size_t>::max()) {
           const auto& reference = netlist.nodes.at(raw.node);
           if (reference.model == ModelKind::kAlias &&
@@ -432,6 +428,10 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
         }
         if (bit.node == std::numeric_limits<size_t>::max()) return;
         const auto& driver = netlist.nodes.at(bit.node);
+        if (driver.kind == "ToIRSelectPort" &&
+            driver.scope == reference_scope) {
+          return;
+        }
         const bool output = driver.kind == "DataOutPort" ||
                             driver.kind == "ScanOutPort" ||
                             driver.kind.compare(0, 2, "To") == 0;
@@ -546,7 +546,8 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
       if (role == "ScanInSource") check(role, bits, Family::kScanInput);
       if (role == "DifferentialInvOf" ||
           (role == "Source" &&
-           (node.kind == "ClockPort" || node.kind == "ToClockPort"))) {
+           (node.kind == "ClockPort" || node.kind == "ToClockPort" ||
+            node.kind == "ToTCKPort"))) {
         check(role, bits, Family::kClock);
       }
       if (role == "Source" && node.kind == "TCKPort") {
