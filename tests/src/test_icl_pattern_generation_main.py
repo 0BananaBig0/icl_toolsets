@@ -208,6 +208,30 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
             self.assertIn(diagnostic, result.stdout + result.stderr)
 
 
+
+    def test_implied_totck_errors_preserve_outputs(self):
+        (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
+        (self.root / 'debug').mkdir()
+        outputs = ('result.pdl', 'reset.pdl', 'debug/Network.icl')
+        for declarations, diagnostic in (
+                ('ToTCKPort out;', 'requires a local TCKPort'),
+                ('TCKPort ck[1:0]; ToTCKPort out;', 'unsupported implicit TCK mapping')):
+            with self.subTest(declarations=declarations):
+                (self.root / 'source.icl').write_text(
+                    'Module Owner { ' + declarations + ' } '
+                    "Module Network { ScanInPort si; ShiftEnPort se; "
+                    "ScanRegister r { ScanInSource si; ResetValue 1'b0; } "
+                    "ScanOutPort so { Source r; } Instance owner Of Owner; "
+                    "ScanInterface client { Port si; Port so; Port se; } }")
+                for path in outputs:
+                    (self.root / path).write_text('previous artifact\n')
+                result = self.run_tool('--icl', 'source.icl', '--pdl', 'source.pdl',
+                                       '--top_module', 'Network', '--output', 'result.pdl',
+                                       '--local_reset', 'reset.pdl', '--debug', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                for path in outputs:
+                    self.assertEqual((self.root / path).read_text(), 'previous artifact\n')
+
     def test_lowered_totck_source_preserves_outputs(self):
         (self.root / 'source.pdl').write_text('iProcsForModule Network\n')
         (self.root / 'debug').mkdir()
@@ -838,8 +862,9 @@ Instance child Of Child { InputPort p = root; InputPort n = group; }
         debug.parent.mkdir(exist_ok=True)
         artifacts = (self.root / 'result.pdl', self.root / 'reset.pdl', debug)
         declarations = [kind + 'Port source;' for kind in
-                        ('TCK', 'Clock', 'ShiftEn', 'ScanIn', 'Address', 'WriteEn', 'ReadEn', 'ToTCK')]
-        declarations += ["ToShiftEnPort source { Source 1'b1; }",
+                        ('TCK', 'Clock', 'ShiftEn', 'ScanIn', 'Address', 'WriteEn', 'ReadEn')]
+        declarations += ["TCKPort owner_tck; ToTCKPort source;",
+                         "ToShiftEnPort source { Source 1'b1; }",
                          'TMSPort tms; ToIRSelectPort source;']
         for declaration in declarations:
             with self.subTest(declaration=declaration):

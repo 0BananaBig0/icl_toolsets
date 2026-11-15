@@ -1610,6 +1610,8 @@ void TestSerialNetworkErrors() {
                            "UpdateEnPort", "TCKPort"}) {
     host = Replace(host, role, "To" + std::string(role));
   }
+  host = Replace(host, "ToTCKPort clock;",
+                 "TCKPort owner_clock; ToTCKPort clock;");
   reject(host, "supports only IJTAG client ScanInterfaces");
 }
 

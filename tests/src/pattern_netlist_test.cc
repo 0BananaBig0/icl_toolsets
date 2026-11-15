@@ -357,6 +357,90 @@ void TestLoweredToTckSources() {
           "source-less ToTCK retains its existing flat model");
 }
 
+void TestImpliedToTckModels() {
+  for (const std::string span : {"", "[7]", "[1:0]", "[0:1]"}) {
+    pattern::Design missing;
+    missing.AddIcl("missing_tck_owner.icl",
+                   "Module M { ToTCKPort out" + span + "; }");
+    Fails([&] { pattern::Elaborate(missing, "M"); },
+          "requires a local TCKPort");
+    for (const std::string inputs :
+         {"TCKPort a[1:0];", "TCKPort a[0:1]; TCKPort b[1:0];"}) {
+      pattern::Design vector;
+      vector.AddIcl("vector_tck_owner.icl",
+                    "Module M { " + inputs + "ToTCKPort out" + span + "; }");
+      Fails([&] { pattern::Elaborate(vector, "M"); },
+            "unsupported implicit TCK mapping");
+    }
+  }
+  for (const std::string inputs :
+       {"TCKPort ck;", "TCKPort ck[7];",
+        "TCKPort first[1:0]; TCKPort ck; TCKPort other;"}) {
+    pattern::Design design;
+    design.AddIcl("implied_tck_replay.icl",
+                  "Module M { " + inputs + " ToTCKPort out[0:3]; }");
+    auto original = pattern::Elaborate(design, "M");
+    const auto& source = original.NodeAt("out").inputs.at("Source");
+    Require(source.size() == 4, "implied clock populates every output bit");
+    for (const auto& bit : source) {
+      const auto& driver = original.nodes.at(bit.node);
+      Require(driver.kind == "TCKPort" && driver.Width() == 1 &&
+                  driver.scope == original.NodeAt("out").scope && !bit.inverted,
+              "implied clocks use a local scalar representative with unchanged "
+              "polarity");
+    }
+    const auto text = pattern::SerializeIcl(original);
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "new implied clock connections replay");
+    original.nodes.at(original.node_ids.at("out")).inputs.erase("Source");
+    pattern::Design legacy;
+    legacy.AddIcl("legacy_source_less.icl", pattern::SerializeIcl(original));
+    Require(pattern::SerializeIcl(pattern::Elaborate(legacy, "M")) == text,
+            "restored source-less defaults use reconstructed owner types");
+  }
+  for (const std::string source :
+       {"Module Child { ToTCKPort out; } Module M { TCKPort ck; Instance child "
+        "Of Child; }",
+        "Module Child { TCKPort ck; } Module M { Instance child Of Child; "
+        "ToTCKPort out; }",
+        "Module Clock { TCKPort ck; } Module Child { ToTCKPort out; } Module M "
+        "{ Instance clock Of Clock; Instance child Of Child; }"}) {
+    pattern::Design nonlocal;
+    nonlocal.AddIcl("nonlocal_tck_owner.icl", source);
+    Fails([&] { pattern::Elaborate(nonlocal, "M"); },
+          "requires a local TCKPort");
+  }
+  pattern::Design cycle;
+  cycle.AddIcl("implied_tck_cycle.icl",
+               "Module Child { TCKPort ck; ToTCKPort out; } Module M { "
+               "Instance child Of Child { InputPort ck = child.out; } }");
+  Fails([&] { pattern::Elaborate(cycle, "M"); },
+        "combinational connection cycle");
+}
+void TestImpliedToTckBudget() {
+  for (bool shared : {true, false}) {
+    std::string source = "Module M { TCKPort ck; ";
+    if (shared) source += "ResetPort rst; ToResetPort reset_out[65535:0]; ";
+    for (size_t i = 0; i < (shared ? 64 : 65); ++i) {
+      source += "ToTCKPort out" + std::to_string(i) + "[65535:0]; ";
+    }
+    source += "}";
+    pattern::Design design;
+    design.AddIcl("implied_tck_budget.icl", source);
+    const auto started = std::chrono::steady_clock::now();
+    Fails([&] { pattern::Elaborate(design, "M"); },
+          "inferred control connection bit limit");
+    std::cout << "implied TCK preflight: shared=" << shared
+              << " bytes=" << source.size() << " seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - started)
+                     .count()
+              << '\n';
+  }
+}
+
 void TestResetSourceKinds() {
   for (const std::string declaration :
        {"ResetPort source;", "ToResetPort source;", "TRSTPort source;",
@@ -1625,10 +1709,10 @@ void TestDataSignalSources() {
        {"ScanInPort source;", "ScanOutPort source { Source 1'b0; }",
         "TCKPort source;", "ClockPort source;", "ResetPort source;",
         "CaptureEnPort source;", "ShiftEnPort source;", "UpdateEnPort source;",
-        "TMSPort source;", "TRSTPort source;", "ToTCKPort source;",
-        "ToResetPort source;", "ToCaptureEnPort source;",
-        "ToShiftEnPort source;", "ToUpdateEnPort source;",
-        "ToTRSTPort source;"}) {
+        "TMSPort source;", "TRSTPort source;",
+        "TCKPort owner_tck; ToTCKPort source;", "ToResetPort source;",
+        "ToCaptureEnPort source;", "ToShiftEnPort source;",
+        "ToUpdateEnPort source;", "ToTRSTPort source;"}) {
     pattern::Design design;
     design.AddIcl(
         "wrong_kind.icl",
@@ -3763,6 +3847,8 @@ int main() {
                           TestClockInputDifferentialAssociation,
                           TestTckInputSources,
                           TestLoweredToTckSources,
+                          TestImpliedToTckModels,
+                          TestImpliedToTckBudget,
                           TestResetSourceKinds,
                           TestResetPortPolarity,
                           TestFlatTrstPolarity,

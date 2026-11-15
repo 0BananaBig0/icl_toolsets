@@ -17,6 +17,41 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+
+void TestImpliedToTckValues() {
+  pattern::Design design;
+  design.AddIcl("implied_clock_values.icl",
+                "Module Child { TCKPort ck[3]; ToTCKPort out[0:1]; } "
+                "Module M { TCKPort ck[7]; ToTCKPort out[3:0]; "
+                "Instance child Of Child { InputPort ck[3] = ck[7]; } }");
+  const auto original = pattern::Elaborate(design, "M");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(original));
+  const auto replay = pattern::Elaborate(flat, "M");
+  auto legacy = original;
+  legacy.nodes.at(legacy.node_ids.at("out")).inputs.erase("Source");
+  legacy.nodes.at(legacy.node_ids.at("child.out")).inputs.erase("Source");
+  pattern::Design old_flat;
+  old_flat.AddIcl("legacy_clock.icl", pattern::SerializeIcl(legacy));
+  const auto restored_legacy = pattern::Elaborate(old_flat, "M");
+  for (const auto* netlist : {&original, &replay, &restored_legacy}) {
+    const auto& child_source = netlist->NodeAt("child.out").inputs.at("Source");
+    Require(
+        child_source.size() == 2 &&
+            netlist->nodes.at(child_source[0].node).name == "child.ck",
+        "restored implicit clocks reconnect within their original child scope");
+    pattern::NetworkState state(*netlist);
+    for (char clock : std::string("01x10")) {
+      state.Drive(netlist->node_ids.at("ck"), std::string(1, clock));
+      Require(
+          state.Value(netlist->node_ids.at("out")) == std::string(4, clock) &&
+              state.Value(netlist->node_ids.at("child.out")) ==
+                  std::string(2, clock),
+          "implied ToTCK connections carry concrete parent clock transitions");
+    }
+  }
+}
+
 void TestRegisterEvents() {
   pattern::Design design;
   design.AddIcl("events.icl", R"(
@@ -979,6 +1014,7 @@ void TestLongChain() {
 }  // namespace
 int main() {
   try {
+    TestImpliedToTckValues();
     TestEquivalentClockBatch();
     for (const auto* control : {"capture", "shift", "update"}) {
       TestSharedTapEdge(true, control);

@@ -4700,3 +4700,37 @@ hashes checked, including the unchanged clock fixture. Loading60 comparisons
 pass with equal PDL/flat hashes. Evidence: build/lowered-source-boundaries-
 {connected,loading-scale,final-full,final-sanitizer-*} and the final connected
 remote archive. Source-less test-clock inference remains the next task.
+
+
+### Source-less test-clock forwarding (2026-11-15)
+
+A source-less ToTCKPort now requires a TCKPort in its owning module and gains
+real same-polarity Source connections. Scalar and indexed-scalar inputs supply
+all output bits. Multiple scalar definitions are equivalent under IEEE1687
+6.4.6.17(a); a local scalar is used as a representative, including mixed scalar/
+vector owners. Vector-only input declarations receive an unsupported implicit
+mapping diagnostic; explicit lowered Sources retain their existing mappings.
+Parent, child and sibling declarations cannot replace the local owner requirement.
+New and legacy source-less flat dumps reconstruct connections from restored port
+types/scopes. Inferred edges receive the existing cycle and source checks.
+
+One shared4M allowance bounds newly inferred Reset/TRST/TMS/TCK references before
+allocation. Existing explicit bindings remain under their existing limits.
+Concrete and symbolic parent/child tests cover0/1/X transitions and legacy replay.
+Symbolic repeated references now use compact bitvector repetition while retaining
+slice ordering, masks, inversion and held/shift views. The matched20s benchmark
+previously timed out during65536 bits; all six cases now complete, with the two
+65536-bit cases at0.780/1.137s under unchanged3s proof limits. This is the measured
+symbolic case, not a global generation-speed claim.
+
+Tessent2026.2 probes34 model/runner pairs: all load, but only unique scalar/
+indexed inputs expose fan-ins to every output bit. Missing owners also load;
+this tool follows the stricter explicit IEEE6.4.6.18(a) rule. Multiple-scalar/
+mixed representative inference is standards-derived; no ordinal vector mapping
+or vendor waveform equivalence is claimed. Query data and exact input hashes are
+in build/totck-association-vendor-probe. Flat export records inferred connections
+using the project's existing explicit-Source extension. Root TAP scalar limits
+and broader clock/reset scheduling requirements remain separate.
+
+
+Verified checkpoint: required leak-enabled build/native7/main68/clock41/client18/reset12 all pass. Full serial make check exits0 in1346.653s:41 dynamic and41 static generator suites,51 directional goldens,2523 ICL files with334/334 grammar and119/119 scanner rules,LSP62 and editor6 in174.913s; five optional ANTLR tests remain skipped. Final corrected remote build/native7/all41CLI/aggregate all pass, with9 source/test hashes matched. Reviewed source/test8 remain unchanged. Loading60 comparisons and the bounded repeated-source benchmark are recorded above. Evidence: build/implied-totck-final-{full,sanitizer-*}, build/implied-totck-final-remote/evidence, build/implied-totck-loading-scale and build/implied-totck-repeat-{red,green}-remote. Remaining clock/reset/forcing/scheduler/vendor/coverage requirements are not waived.

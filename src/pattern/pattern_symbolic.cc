@@ -128,7 +128,7 @@ SymbolicValue SymbolicNetwork::Read(const BitReference& bit, bool scan) {
 SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits,
                                     bool scan) {
   if (bits.empty()) throw std::runtime_error("empty symbolic signal");
-  // Preserve vector slices so the solver sees direct wide equalities.
+  // Preserve slices and repeated bits as compact solver expressions.
   size_t position = 0;
   const auto read_run = [&]() {
     const auto& bit = bits[position++];
@@ -136,7 +136,15 @@ SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits,
     const auto& node = netlist_.nodes.at(bit.node);
     const unsigned high = BitOffset(node, bit.index);
     unsigned low = high;
+    unsigned repeats = 1;
     while (position < bits.size() && bits[position].node == bit.node &&
+           bits[position].index == bit.index &&
+           bits[position].inverted == bit.inverted) {
+      ++repeats;
+      ++position;
+    }
+    while (repeats == 1 && position < bits.size() &&
+           bits[position].node == bit.node &&
            bits[position].inverted == bit.inverted) {
       const unsigned next = BitOffset(node, bits[position].index);
       if (next + 1 != low) break;
@@ -144,8 +152,11 @@ SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits,
       ++position;
     }
     const auto source = Value(bit.node, scan);
-    const SymbolicValue value{source.bits.extract(high, low),
-                              source.known.extract(high, low)};
+    SymbolicValue value{source.bits.extract(high, low),
+                        source.known.extract(high, low)};
+    if (repeats > 1) {
+      value = {value.bits.repeat(repeats), value.known.repeat(repeats)};
+    }
     return bit.inverted ? Invert(value) : value;
   };
   auto result = read_run();

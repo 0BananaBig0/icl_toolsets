@@ -15,6 +15,71 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+
+void TestImpliedToTckValues() {
+  pattern::Design design;
+  design.AddIcl("implied_clock_values.icl",
+                "Module Child { TCKPort ck[3]; ToTCKPort out[0:1]; } "
+                "Module M { TCKPort ck[7]; ToTCKPort out[3:0]; "
+                "Instance child Of Child { InputPort ck[3] = ck[7]; } }");
+  const auto netlist = pattern::Elaborate(design, "M");
+  z3::context context;
+  for (char clock : std::string("01x")) {
+    pattern::SymbolicNetwork state(
+        netlist, context,
+        {{netlist.node_ids.at("ck"),
+          pattern::SymbolicValue::Literal(context, std::string(1, clock))}});
+    for (const std::string name : {"out", "child.out"}) {
+      const auto id = netlist.node_ids.at(name);
+      const auto got = state.Value(id);
+      const auto want = pattern::SymbolicValue::Literal(
+          context, std::string(netlist.nodes.at(id).Width(), clock));
+      z3::solver solver(context);
+      solver.add(got.bits != want.bits || got.known != want.known);
+      Require(solver.check() == z3::unsat,
+              "implied ToTCK scalar forwarding preserves symbolic values and "
+              "unknowns");
+    }
+  }
+}
+
+void TestRepeatedSignalRuns() {
+  for (size_t width : {size_t{512}, size_t{8192}, size_t{65536}}) {
+    pattern::Design design;
+    design.AddIcl("repeated_signal.icl",
+                  "Module M { DataInPort source; DataOutPort out[" +
+                      std::to_string(width - 1) + ":0] { Source " +
+                      std::to_string(width) + "'b0; } }");
+    auto netlist = pattern::Elaborate(design, "M");
+    const auto input = netlist.node_ids.at("source");
+    const auto output = netlist.node_ids.at("out");
+    for (bool inverted : {false, true}) {
+      netlist.nodes.at(output).inputs.at("Source").assign(
+          width, {input, 0, 'x', inverted});
+      z3::context context;
+      const auto bit = context.bv_const("repeated_bit", 1);
+      pattern::SymbolicNetwork values(netlist, context,
+                                      {{input, {bit, context.bv_val(1, 1)}}});
+      const auto started = std::chrono::steady_clock::now();
+      const auto got = values.Value(output);
+      const auto want = (inverted ? ~bit : bit).repeat(width);
+      z3::solver solver(context);
+      solver.set("timeout", 3000u);
+      solver.add(got.bits != want ||
+                 got.known != ~context.bv_val(0, static_cast<unsigned>(width)));
+      const auto result = solver.check();
+      const auto seconds = std::chrono::duration<double>(
+                               std::chrono::steady_clock::now() - started)
+                               .count();
+      std::cout << "repeated signal: bits=" << width << " inverted=" << inverted
+                << " seconds=" << seconds << " result=" << result << '\n';
+      Require(result == z3::unsat,
+              "repeated scalar references retain symbolic values within the "
+              "proof budget");
+    }
+  }
+}
+
 void TestBooleanMuxIdentity() {
   pattern::Design design;
   design.AddIcl("mux-identity.icl", R"(Module Identity {
@@ -551,6 +616,22 @@ Module ShiftState {
                 "contiguous register runs preserve distinct held/shift views");
       }
     }
+    const std::vector<pattern::BitReference> mixed{
+        {a, 1}, {a, 1}, {a, 0}, {a, 0, 'x', true}, {a, 0, 'x', true},
+        {b, 1}, {b, 0}, {a, 1}};
+    auto individual = symbolic.Read(mixed.front(), scan);
+    for (size_t i = 1; i < mixed.size(); ++i) {
+      const auto next = symbolic.Read(mixed[i], scan);
+      individual = {z3::concat(individual.bits, next.bits),
+                    z3::concat(individual.known, next.known)};
+    }
+    const auto grouped = symbolic.Bits(mixed, scan);
+    z3::solver grouped_solver(context);
+    grouped_solver.add(grouped.bits != individual.bits ||
+                       grouped.known != individual.known);
+    Require(grouped_solver.check() == z3::unsat,
+            "repeat/slice/inversion boundaries preserve individual held/shift "
+            "reads");
     for (const auto* name : {"a", "b", "inverted", "mux", "so", "data"}) {
       const size_t id = netlist.node_ids.at(name);
       const auto actual = symbolic.Value(id, scan);
@@ -661,11 +742,18 @@ Module Targets {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
-      Require(argc == 2 && std::string(argv[1]) == "--mux-scale",
-              "expected --mux-scale or no test arguments");
-      TestMuxChainScale();
+      Require(argc == 2 && (std::string(argv[1]) == "--mux-scale" ||
+                            std::string(argv[1]) == "--repeat-scale"),
+              "expected --mux-scale, --repeat-scale or no test arguments");
+      if (std::string(argv[1]) == "--repeat-scale") {
+        TestRepeatedSignalRuns();
+      } else {
+        TestMuxChainScale();
+      }
       return 0;
     }
+    TestImpliedToTckValues();
+    TestRepeatedSignalRuns();
     TestBooleanMuxIdentity();
     TestMalformedMuxWidth();
     TestMuxChainScale();

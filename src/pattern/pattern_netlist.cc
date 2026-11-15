@@ -1503,13 +1503,47 @@ class Elaborator {
 
   void ValidateInterfaces() {
     std::map<std::pair<size_t, std::string>, std::vector<size_t>> ports;
+    size_t tck_bits = 0;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
       if (node.model == ModelKind::kPort) {
         ports[{node.scope, node.kind}].push_back(id);
       }
+      if (node.kind == "ToTCKPort" && !node.inputs.count("Source")) {
+        if (node.Width() > inferred_control_bits_remaining_ - tck_bits) {
+          throw std::runtime_error(
+              node.origin + ": inferred control connection bit limit exceeded");
+        }
+        tck_bits += node.Width();
+      }
+    }
+    inferred_control_bits_remaining_ -= tck_bits;
+    for (auto& [key, candidates] : ports) {
+      if (key.second != "TCKPort") continue;
+      const auto scalar = std::find_if(
+          candidates.begin(), candidates.end(),
+          [&](size_t id) { return netlist_.nodes[id].Width() == 1; });
+      if (scalar != candidates.end()) {
+        std::iter_swap(candidates.begin(), scalar);
+      }
     }
     for (auto& node : netlist_.nodes) {
+      if (node.kind == "ToTCKPort" && !node.inputs.count("Source")) {
+        const auto& candidates = ports[{node.scope, "TCKPort"}];
+        if (candidates.empty()) {
+          throw std::runtime_error(
+              node.origin + ": " + node.name +
+              ": source-less ToTCKPort requires a local TCKPort");
+        }
+        const auto& source = netlist_.nodes[candidates.front()];
+        if (source.Width() != 1) {
+          throw std::runtime_error(
+              node.origin + ": " + node.name +
+              ": unsupported implicit TCK mapping; provide an explicit Source");
+        }
+        node.inputs["Source"].assign(node.Width(),
+                                     {candidates.front(), source.left});
+      }
       if (node.kind == "ToIRSelectPort") {
         if (ports[{node.scope, "TMSPort"}].size() != 1) {
           throw std::runtime_error(node.origin + ": " + node.name +
@@ -2122,25 +2156,29 @@ class Elaborator {
   }
 
   void InferResets() {
-    constexpr size_t kMaxInferredControlBits = 4 * 1024 * 1024;
     size_t inferred_bits = 0;
+    size_t tck_bits = 0;
     // Bound implicit expansion before allocating any per-bit source buffers.
     for (const auto& node : netlist_.nodes) {
       if (node.inputs.count("Source")) continue;
       const bool input = node.kind == "ResetPort" || node.kind == "TRSTPort" ||
                          node.kind == "TMSPort";
       const bool output = node.kind == "ToResetPort" ||
-                          node.kind == "ToTRSTPort" || node.kind == "ToTMSPort";
+                          node.kind == "ToTRSTPort" ||
+                          node.kind == "ToTMSPort" || node.kind == "ToTCKPort";
       if (!output && (!input || netlist_.scopes[node.scope].parent ==
                                     std::numeric_limits<size_t>::max())) {
         continue;
       }
-      if (node.Width() > kMaxInferredControlBits - inferred_bits) {
+      if (node.Width() > inferred_control_bits_remaining_ - inferred_bits) {
         throw std::runtime_error(
             node.origin + ": inferred control connection bit limit exceeded");
       }
       inferred_bits += node.Width();
+      if (node.kind == "ToTCKPort") tck_bits += node.Width();
     }
+    // ToTCK wiring uses the restored port index; debit only early allocations.
+    inferred_control_bits_remaining_ -= inferred_bits - tck_bits;
     for (auto& node : netlist_.nodes) {
       try {
         if ((node.kind == "ScanRegister" || node.kind == "DataRegister") &&
@@ -2176,6 +2214,7 @@ class Elaborator {
   size_t address_bits_remaining_ = kMaxAddressBits;
   size_t one_hot_bits_remaining_ = 4 * 1024 * 1024;
   size_t mux_bits_remaining_ = kMaxMuxBits;
+  size_t inferred_control_bits_remaining_ = 4 * 1024 * 1024;
   std::map<std::string, Template> templates_;
   std::map<std::string, size_t> scope_ids_;
   std::map<std::pair<size_t, std::string>, std::vector<size_t>> kinds_;
