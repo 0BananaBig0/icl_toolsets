@@ -619,11 +619,13 @@ class ScanScheduler::Impl {
     bool inverted = false;
   };
   const RawProfile& RawChain() {
-    if (raw_profile_) {
-      if (!raw_profile_->dynamic) return *raw_profile_;
-      if (!raw_current_) raw_current_ = RawRoute(*raw_profile_, state_);
-      return *raw_current_;
-    }
+    const auto& profile = RawTemplate();
+    if (!profile.dynamic) return profile;
+    if (!raw_current_) raw_current_ = RawRoute(profile, state_);
+    return *raw_current_;
+  }
+  const RawProfile& RawTemplate() {
+    if (raw_profile_) return *raw_profile_;
     const auto fail = [] {
       throw std::runtime_error(
           "raw scan requires a complete static root client with bound scalar "
@@ -850,11 +852,10 @@ class ScanScheduler::Impl {
     result.output = ports.at("ScanOutPort");
     result.dynamic = raw_gated_ || !raw_selectors_.empty();
     if (result.dynamic) {
-      raw_current_ = RawRoute(result, state_);
       raw_profile_ = std::move(result);
-      return *raw_current_;
+    } else {
+      raw_profile_ = RawRoute(result, state_);
     }
-    raw_profile_ = RawRoute(result, state_);
     return *raw_profile_;
   }
   RawProfile RawRoute(RawProfile result, const NetworkState& snapshot) {
@@ -1036,9 +1037,19 @@ class ScanScheduler::Impl {
     segment.inverted = inverted;
     return segment;
   }
-  Operation NormalizeScan(const Operation& operation) {
+  Operation NormalizeScan(const Operation& operation,
+                          bool defer_root_length = false) {
     if (operation.arguments.empty()) {
       throw std::runtime_error("raw scan has no target");
+    }
+    if (defer_root_length) {
+      const auto& root = RawTemplate();
+      if (operation.arguments[0] != netlist_.nodes[root.client].name) {
+        throw std::runtime_error(
+            "mixed raw scan preparation requires the root client");
+      }
+      return pattern::NormalizeScan(context_, operation.arguments[0],
+                                    operation);
     }
     const auto& slice = RawSubchain(operation.arguments[0]);
     const auto result =
@@ -5604,8 +5615,9 @@ void ScanScheduler::CheckLocalResets(
     const std::vector<Operation>& operations) const {
   impl_->CheckLocalResets(operations);
 }
-Operation ScanScheduler::NormalizeScan(const Operation& operation) {
-  return impl_->NormalizeScan(operation);
+Operation ScanScheduler::NormalizeScan(const Operation& operation,
+                                       bool defer_root_length) {
+  return impl_->NormalizeScan(operation, defer_root_length);
 }
 Operation ScanScheduler::ApplyScan(
     const Operation& operation, const std::map<size_t, std::string>& preserved,

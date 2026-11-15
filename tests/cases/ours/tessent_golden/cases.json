@@ -573,6 +573,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "mixed_root_raw_preparation",
+      "top": "MixedRawTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/mixed_root_raw_preparation/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/mixed_root_raw_preparation/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

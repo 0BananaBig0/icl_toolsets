@@ -46,7 +46,9 @@ class ScanScheduler {
       bool explicit_writes = true);
   // Raw scans target a known root route or disjoint accessible child
   // intervals.
-  Operation NormalizeScan(const Operation& operation);
+  // An ordinary queue may prepare the root route before its length is checked.
+  Operation NormalizeScan(const Operation& operation,
+                          bool defer_root_length = false);
   // Assigned reports explicitly addressed pre-CSU registers only on success.
   Operation ApplyScan(const Operation& operation,
                       const std::map<size_t, std::string>& preserved = {},

@@ -1,0 +1,10 @@
+iPDLLevel 1
+iProcsForModule MixedRawTop
+iReset
+iWrite open 1
+iRead open 0
+iScan client 9 -si 0b101001011 -so 1
+iApply
+iRead child.value 0xa5
+iRead open 1
+iApply

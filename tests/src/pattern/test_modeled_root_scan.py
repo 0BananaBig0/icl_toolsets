@@ -75,10 +75,78 @@ class ModeledRootScan(unittest.TestCase):
         self.rejected('iReset; iScan client 8 -si 256; iReset\n', 'scan')
 
     def test_mixed_pending_accesses_are_explicit(self):
-        for commands in ['iScan client 8; iWrite value 1',
-                         'iRead value 1; iScan client 8']:
+        for commands in ['iScan client 8; iWrite value 1']:
             with self.subTest(commands=commands):
                 self.rejected('iReset; ' + commands + '; iApply\n', 'scan')
+
+    def test_mixed_root_raw_prepares_future_route(self):
+        mixed = ('iReset; iWrite open 1; iRead open 0; '
+                 'iScan client 9 -si 0b101001011 -so 1; iApply; '
+                 'iRead child.value 0xa5; iRead open 1; iApply\n')
+        reference = mixed.replace('iRead open 0; iScan', 'iRead open 0; iApply; iScan')
+        self.assertEqual(self.replay(mixed, SIB), self.replay(reference, SIB))
+
+    def test_mixed_root_raw_static_read_and_write_preparation(self):
+        for setup, expected in [('iWrite value 0x3c', '0x3c'),
+                                ('iRead value 0', '0')]:
+            with self.subTest(setup=setup):
+                mixed = f'iReset; {setup}; iScan client 8 -si 0xa5 -so {expected}; iApply\n'
+                reference = mixed.replace('; iScan', '; iApply; iScan')
+                self.assertEqual(self.replay(mixed), self.replay(reference))
+
+    def test_mixed_root_raw_reservations_and_atomic_failures(self):
+        # The preparation establishes protection before the raw assignment replaces it.
+        prefix = 'iReset; iTake open; iWrite open 1; '
+        result = self.replay(prefix + 'iScan client 9 -si 0b101001010; iApply; '
+                             'iRelease open; iWrite child.value 5; iApply\n', SIB)
+        self.assertIn('-si 0b101001010', result)
+        self.rejected(prefix + 'iScan client 9 -si 0b101001010; iApply; '
+                      'iWrite child.value 5; iApply\n', 'reserv', SIB)
+        self.rejected(prefix + 'iScan client 9 -si 0b10100101x; iApply\n', 'reserved', SIB)
+        self.rejected(prefix + 'iScan client 8 -si 0; iApply\n', 'length', SIB)
+        self.rejected(prefix + 'iScan client 9 -si 0b101001010 -stable; iApply\n', 'stable', SIB)
+        self.rejected('iReset; iTake open; iState open 0; iWrite child.value 5; '
+                      'iScan client 9; iApply\n', 'reserv', SIB)
+
+    def test_mixed_root_raw_cancellation_and_discarded_validation(self):
+        self.replay('iReset; iWrite open 1; iScan client 9 -si 0; iReset; iApply\n', SIB)
+        self.replay('iWrite open 1; iScan client 9 -si 0; iReset; iApply\n', SIB)
+        self.replay('iReset; iWrite open 1; iScan client 8 -si 0; '
+                    'iScan client 9 -si 0b101001011; iApply\n', SIB)
+        for scan in ['iScan client 9 -si 512', 'iScan missing 9',
+                     'iScan client -chain other 9', 'iScan client 1048577']:
+            with self.subTest(scan=scan):
+                self.rejected('iReset; iWrite open 1; ' + scan + '; iReset\n', 'scan', SIB)
+        invalid = MODEL.replace('ScanRegister value',
+                                "ScanMux routing SelectedBy sel { 1'b0: si; 1'b1: si; } ScanRegister value")
+        invalid = invalid.replace('ScanInSource si;', 'ScanInSource routing;')
+        self.rejected('iReset; iWrite value 1; iScan client 8; iReset\n', 'scan', invalid)
+
+    def test_mixed_root_raw_pending_state_and_cross_call_queue(self):
+        self.rejected('iReset; iWrite open 1; iScan client 9; '
+                      'iState open 0; iApply\n', 'length', SIB)
+        definitions = ('iProc prepare {} {iWrite open 1}\n'
+                       'iProc scan {} {iScan client 9 -si 0b101001011}\n')
+        mixed = definitions + 'iReset; iCall prepare; iCall scan; iApply\n'
+        reference = definitions + 'iReset; iCall prepare; iApply; iCall scan; iApply\n'
+        self.assertEqual(self.replay(mixed, SIB), self.replay(reference, SIB))
+
+    def test_mixed_root_raw_explicit_scope_boundaries(self):
+        self.rejected('iReset; iRead value 0; iScan client 8; iApply -together\n', 'together')
+        self.rejected('iReset; iWrite open 1; iScan child.local 8; iApply\n', 'root', SIB)
+
+    def test_mixed_root_raw_pending_ownership_lifetime(self):
+        for persistent in ['', ' -persistent']:
+            with self.subTest(persistent=persistent):
+                definitions = 'iProc prepare {} {iTake open' + persistent + '; iWrite open 1}\n'
+                body = definitions + 'iReset; iCall prepare; iScan client 9 -si 0b00000000x; iApply\n'
+                if persistent:
+                    self.rejected(body, 'reserved', SIB)
+                else:
+                    self.replay(body, SIB)
+        self.rejected('iProc prepare {} {iWrite open 1}\n'
+                      'iReset; iTake open; iCall prepare; '
+                      'iScan client 9 -si 0b00000000x; iApply\n', 'reserved', SIB)
 
     def test_unqualified_topology_and_directives(self):
         for model in [MODEL.replace('ScanRegister value',

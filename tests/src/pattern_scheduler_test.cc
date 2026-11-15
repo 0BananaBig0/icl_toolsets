@@ -49,6 +49,64 @@ Module Top {
 }
 )ICL";
 }
+void TestMixedRootRawPreparation() {
+  pattern::Design design;
+  design.AddIcl("mixed-raw.icl", RawSibModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const pattern::Operation raw{
+      "iScan", {"client", "9", "-si", "0b101001011"}, "mixed:raw", {}};
+  auto setup = scheduler.NormalizeScan(raw, true);
+  Require(setup.arguments[1] == "9" && scheduler.Value("open") == "0" &&
+              scheduler.Value("child.value") == "00000000",
+          "deferred root setup validates operands without preparing hardware");
+  bool rejected = false;
+  try {
+    scheduler.NormalizeScan(raw);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("length") != std::string::npos;
+  }
+  Require(rejected, "strict raw setup keeps its current-length validation");
+  pattern::ScanScheduler copy(scheduler);
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"open", "1"}, "mixed:prepare", {}}});
+  Require(!steps.empty() && scheduler.Value("open") == "1" &&
+              copy.Value("open") == "0",
+          "ordinary preparation changes only its own scheduler snapshot");
+  scheduler.NormalizeScan(raw);
+  rejected = false;
+  try {
+    copy.NormalizeScan(raw);
+  } catch (const std::runtime_error&) {
+    rejected = true;
+  }
+  Require(rejected, "cold copy cannot acquire prepared root geometry");
+  rejected = false;
+  try {
+    scheduler.NormalizeScan({"iScan", {"child.local", "8"}, "mixed:child", {}},
+                            true);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("root") != std::string::npos;
+  }
+  Require(rejected, "deferred preparation targets only the qualified root");
+  rejected = false;
+  try {
+    scheduler.ApplyScan({"iScan",
+                         {"client", "9", "-si", "0b101001010", "-stable"},
+                         "mixed:bad-stable",
+                         {}});
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("stable") != std::string::npos;
+  }
+  Require(rejected && scheduler.Value("open") == "1" &&
+              scheduler.Value("child.value") == "00000000",
+          "native raw failure retains separately successful preparation");
+  scheduler.ApplyScan(setup);
+  Require(scheduler.Value("child.value") == "10100101" &&
+              scheduler.Value("open") == "1",
+          "raw replay uses the prepared route after a failed trial");
+}
 void TestRawScanReservations() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
@@ -4260,6 +4318,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestMixedRootRawPreparation();
     TestRawScanReservations();
     TestDynamicChildRawScans();
     TestActiveChildRawScans();

@@ -391,11 +391,7 @@ std::string Generate(
                               : std::string(target.bits.size(), 'x');
         pending.Add(operation, target, bits);
       } else if (operation.command == "iScan") {
-        if (!pending.Empty()) {
-          throw std::runtime_error(
-              "raw scan cannot share an Apply with modeled accesses");
-        }
-        auto scan = scheduler.NormalizeScan(operation);
+        auto scan = scheduler.NormalizeScan(operation, !pending.Empty());
         const auto old = pending_scans.find(scan.arguments[0]);
         const size_t replaced = old == pending_scans.end()
                                     ? 0
@@ -414,6 +410,20 @@ std::string Generate(
           throw std::runtime_error("unsupported iApply option");
         }
         if (!pending_scans.empty()) {
+          if (!pending.Empty()) {
+            if (together) {
+              throw std::runtime_error(
+                  "mixed root raw preparation cannot use iApply -together");
+            }
+            const auto& accesses = pending.Operations();
+            if (edits) scheduler.CheckLocalResets(accesses);
+            const auto steps =
+                scheduler.Apply(accesses, false, reservations.Values());
+            clocks.Invalidate();
+            reservations.Assigned(accesses, scheduler);
+            append_steps(steps);
+            pending.Clear();
+          }
           std::vector<pattern::Operation> scans;
           scans.reserve(pending_scans.size());
           for (const auto& [name, scan] : pending_scans) scans.push_back(scan);

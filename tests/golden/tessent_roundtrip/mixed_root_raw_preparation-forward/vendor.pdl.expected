@@ -1,0 +1,20 @@
+iProcsForModule MixedRawTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite open 0b1
+   iRead  open 0b0
+   iApply
+
+   iScan client -chain default 9 -si 0b101001011 -so 0b000000001
+   iApply
+
+   iWrite child.value[7:0] 0b10100101
+   iRead  child.value[7:0] 0b10100101
+   iWrite open 0b1
+   iRead  open 0b1
+   iApply
+
+
+}
