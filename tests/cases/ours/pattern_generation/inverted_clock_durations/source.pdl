@@ -1,0 +1,11 @@
+iPDLLevel 1
+iProcsForModule Top
+iClock child.out
+iRunLoop 10 -sck child.out
+iClock out
+iRunLoop 4 -sck out
+iClockOverride child.out -freqMultiplier 2 -freqDivider 1
+iRunLoop 10 -sck child.out
+iClock child.out
+iRunLoop 10 -sck child.out
+iRunLoop 4 -sck out

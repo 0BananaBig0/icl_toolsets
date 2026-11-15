@@ -22,6 +22,65 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestInvertedClockDurations() {
+  std::string source = R"(Module Top {
+    ClockPort root;
+    Alias inverse = ~root;
+    ToClockPort out { Source inverse; FreqDivider 3; }
+    ScanInPort si; ScanRegister value { ScanInSource si; }
+    ScanOutPort so { Source value; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("inverted-durations.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("value", "1");
+    pattern::SystemClocks clocks(netlist);
+    z3::context context;
+    Require(clocks.Check("out", scheduler) == "root" &&
+                clocks.Wait("out", 2, scheduler).second == 6,
+            "clock inversion preserves source frequency and duration ratios");
+    for (const std::string held : {"root", "out"}) {
+      const std::map<size_t, std::string> preserved{
+          {netlist.node_ids.at(held), "0"}};
+      bool rejected = false;
+      try {
+        clocks.Wait("out", 1, scheduler, preserved);
+      } catch (const std::runtime_error& error) {
+        rejected =
+            std::string(error.what()).find("held clock") != std::string::npos;
+      }
+      Require(
+          rejected && clocks.Wait("out", 0, scheduler, preserved).second == 0,
+          "inverted inputs and outputs remain protected when held");
+    }
+    clocks.Override(
+        {"iClockOverride", {"out", "-freqDivider", "5"}, "inverted:1", {}},
+        context);
+    Require(clocks.Wait("out", 2, scheduler).second == 6 &&
+                clocks.Check("out", scheduler) == "root" &&
+                clocks.Wait("out", 2, scheduler).second == 10,
+            "an inverted ICL default survives old and new override snapshots");
+    auto unsafe = netlist;
+    unsafe.nodes[unsafe.node_ids.at("value")].inputs["CaptureSource"] = {
+        {unsafe.node_ids.at("out"), 0}};
+    pattern::ScanScheduler unsafe_scheduler(unsafe);
+    pattern::SystemClocks unsafe_clocks(unsafe);
+    bool rejected = false;
+    try {
+      unsafe_clocks.Check("root", unsafe_scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("unsupported fanout") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "non-clock consumers remain unsafe through inverted aliases");
+    Require(scheduler.Value("value") == "1" && scheduler.Value("root") == "x",
+            "inverted duration tracing does not alter hardware state");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestDifferentialClockDurations() {
   std::string source = R"(Module Top {
     ClockPort positive;
@@ -3131,6 +3190,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestInvertedClockDurations();
     TestDifferentialClockDurations();
     TestClockOverrideSnapshots();
     TestClockOverrideScale();

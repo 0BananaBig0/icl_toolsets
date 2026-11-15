@@ -250,9 +250,8 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
     }
     path.push_back(bit);
     const auto source = Source(bit, scheduler, version);
-    if (source.inverted || source.node >= netlist_.nodes.size()) {
-      throw std::runtime_error(node.origin +
-                               ": inactive or inverted system-clock path");
+    if (source.node >= netlist_.nodes.size()) {
+      throw std::runtime_error(node.origin + ": inactive system-clock path");
     }
     bit = {source.node, source.index};
   }
@@ -292,7 +291,7 @@ void SystemClocks::BuildSafety() {
           upstream[destination].emplace_back(source.node, source.index);
           fanout_[{source.node, source.index}].insert(destination);
         }
-        if (!routing || source.inverted) mark(source);
+        if (!routing) mark(source);
       }
     };
     for (const auto& [role, bits] : node.inputs) {

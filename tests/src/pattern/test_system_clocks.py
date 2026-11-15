@@ -165,7 +165,7 @@ Module Top {
     def test_uncovered_disabled_and_invalid_targets(self):
         for choice, state, diagnostic in [
             ("1'b0: clk;", 1, 'uncovered clock selector'),
-            ("1'b0: 1'b0; 1'b1: clk;", 0, 'inactive or inverted')]:
+            ("1'b0: 1'b0; 1'b1: clk;", 0, 'inactive system-clock')]:
             with self.subTest(choice=choice):
                 source = f"""Module Top {{ ClockPort clk; DataInPort sel;
   ClockMux mux SelectedBy sel {{ {choice} }}
@@ -186,7 +186,6 @@ Module Top {
             ("ClockMux branch SelectedBy 1'b0 { 1'b0: other; 1'b1: root; } "
              "DataMux observed SelectedBy 1'b0 { 1'b0: branch; }",
              'data signal or supported control source'),
-            ('Alias bad = ~root;', 'unsupported fanout'),
         ]:
             with self.subTest(extra=extra):
                 self.rejected('Module Top { ClockPort root; ClockPort other; ' + extra + ' }',
@@ -246,9 +245,6 @@ Module Top {
                       'ClockPort negative { DifferentialInvOf positive; } '
                       'ToTCKPort observed { Source negative; } }',
                       'iClock positive\n', 'requires a clock or data signal')
-        self.rejected('Module Top { ClockPort positive; '
-                      'ToClockPort negative { DifferentialInvOf ~positive; } }',
-                      'iClock negative\n', 'inactive or inverted')
         source = ('Module Pair { ClockPort positive; '
                   'ClockPort negative { DifferentialInvOf positive; } } '
                   'Module Top { ClockPort root; Instance pair Of Pair { '
@@ -256,6 +252,72 @@ Module Top {
         self.rejected(source, 'iClock pair.negative\n', 'bound differential')
         result = self.replay(source, 'iClock root; iRunLoop 2 -sck root\n')
         self.assertIn('iRunLoop 2 -sck root', result)
+
+    def test_inverted_clock_duration_routes(self):
+        cases = [
+            ('ToClockPort out { Source ~root; FreqDivider 3; }', 6),
+            ('Alias inverse = ~root; ToClockPort out { Source inverse; FreqDivider 3; }', 6),
+            ('Alias one = ~root; Alias two = ~one; ToClockPort out { Source two; }', 2),
+            ('ToClockPort out { DifferentialInvOf ~root; }', 2),
+        ]
+        for body, count in cases:
+            with self.subTest(body=body):
+                result = self.replay('Module Top { ClockPort root; ' + body + ' }',
+                                     'iClock out; iRunLoop 2 -sck out\n')
+                self.assertIn(f'iClock root\niRunLoop {count} -sck root', result)
+        result = self.replay('Module Top { ClockPort root; Alias inverse = ~root; }',
+                             'iClock root; iRunLoop 2 -sck root\n')
+        self.assertIn('iRunLoop 2 -sck root', result)
+        result = self.replay(
+            'Module Osc { ToClockPort osc { Period 10ns; } } '
+            'Module Top { Instance child Of Osc; Alias inverse = ~child.osc; '
+            'ToClockPort out { Source inverse; } }',
+            'iClock out; iRunLoop 2 -sck out\n')
+        self.assertIn('iClock child.osc\niRunLoop 2 -sck child.osc', result)
+
+    def test_inverted_clock_mux_vector_and_hierarchy(self):
+        source = """Module Top {
+  ClockPort root[1:0]; DataInPort mode;
+  Alias inverse[0:1] = ~root[0], ~root[1];
+  ClockMux mux SelectedBy mode { 1'b0: inverse[0]; 1'b1: inverse[1]; }
+  ToClockPort out { Source mux; FreqDivider 3; }
+}"""
+        result = self.replay(source, 'iState mode 0; iClock out; iRunLoop 2 -sck out; '
+                             'iState mode 1; iClock out; iRunLoop 3 -sck out\n')
+        self.assertIn('iRunLoop 6 -sck root(0)', result)
+        self.assertIn('iRunLoop 9 -sck root(1)', result)
+        result = self.replay(
+            "Module Top { ClockPort root; DataInPort mode; "
+            "ClockMux mux SelectedBy mode { 1'b0: root; 1'b1: ~root; } "
+            "ToClockPort out { Source mux; } }",
+            'iState mode 0; iClock out; iState mode 1; iRunLoop 2 -sck out\n')
+        self.assertIn('iRunLoop 2 -sck root', result)
+        source = """Module Stage {
+  ClockPort input;
+  ToClockPort out { Source ~input; FreqMultiplier 3; FreqDivider 2; }
+}
+Module Top { ClockPort root; Instance child Of Stage { InputPort input = ~root; } }
+"""
+        result = self.replay(source, 'iClock child.out; iRunLoop 10 -sck child.out\n')
+        self.assertIn('iRunLoop 7 -sck root', result)
+
+    def test_literal_clock_paths_remain_inactive(self):
+        for value in ("1'b0", "1'b1", "1'bx", "~1'b0", "~1'b1"):
+            with self.subTest(value=value):
+                self.rejected('Module Top { ToClockPort out { Source ' + value + '; } }',
+                              'iClock out; iRunLoop 0 -sck out\n', 'inactive system-clock')
+
+    def test_inverted_clock_override_snapshots(self):
+        source = ('Module Top { ClockPort root; ClockPort other; '
+                  'ToClockPort out { Source ~root; FreqDivider 2; } }')
+        result = self.replay(source, 'iClock out; '
+                             'iClockOverride out -freqMultiplier 3; iRunLoop 6 -sck out; '
+                             'iClock out; iRunLoop 6 -sck out; '
+                             'iClockOverride out -source other; iRunLoop 6 -sck out; '
+                             'iClock out; iRunLoop 6 -sck out\n')
+        waits = [line for line in result.splitlines() if line.startswith('iRunLoop')]
+        self.assertEqual(waits, ['iRunLoop 12 -sck root', 'iRunLoop 4 -sck root',
+                                 'iRunLoop 4 -sck root', 'iRunLoop 12 -sck other'])
 
     def test_differential_clock_scale(self):
         for wide in (False, True):
@@ -298,7 +360,6 @@ Module Top {
     def test_unsupported_clock_paths_and_invalid_factors(self):
         for body, diagnostic in [
             ('ToClockPort out;', 'no supported system-clock source'),
-            ('ClockPort root; ToClockPort out { Source ~root; }', 'inactive or inverted'),
             ('ClockPort root; ToClockPort out { Source root; FreqDivider 0; }', 'must be positive'),
             ('ClockPort root; ToClockPort out { Source root; FreqMultiplier 0; }', 'must be positive'),
         ]:
@@ -620,8 +681,7 @@ iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out
                               'iClock osc\n', 'exclude other clock properties')
 
     def test_oscillator_unsafe_fanout(self):
-        for extra in ('ToTCKPort observed { Source child.osc; }',
-                      'Alias inverted = ~child.osc;'):
+        for extra in ('ToTCKPort observed { Source child.osc; }',):
             with self.subTest(extra=extra):
                 self.rejected('Module Osc { ToClockPort osc { Period 10ns; } }\n'
                               'Module Pair { ClockPort positive; ClockPort negative { '
