@@ -313,6 +313,23 @@ class ModeledRootScan(unittest.TestCase):
                 self.rejected('iReset; iScan client 8; iApply; ' + command + '\n', diagnostic, HIER)
         self.rejected('iReset; iScan client 8; iApply; iRunLoop 1\n', 'opaque', opaque.MODEL)
 
+    def test_default_chain_root_and_child_replay(self):
+        result = self.replay('iReset; iScan client -chain default 8 -si 0xa5; iApply\n'
+                             'iScan child.local -chain default 8 -si 0x5a -so 0xa5; iApply\n'
+                             'iRead child.value 0x5a; iApply\n', HIER)
+        self.assertEqual(result.count('iScan client 8'), 2)
+        self.assertNotIn('-chain', result)
+        self.assertIn('iRead child.value 0b01011010', result)
+
+    def test_default_chain_invalid_discarded_and_tap_atomic(self):
+        for selection, diagnostic in [('-chain other 8', 'chain'),
+                                      ('-chain default', 'length'),
+                                      ('-chain default 7', 'length'),
+                                      ('-chain default 8 -si 0x100', 'scan')]:
+            with self.subTest(selection=selection):
+                self.rejected('iScan child.local ' + selection + '; iReset\n', diagnostic, HIER)
+        self.rejected('iScan -ir client -chain default 8; iReset\n', 'scan', HIER)
+
     def test_large_modeled_scan(self):
         width = 1048576
         model = MODEL.replace('[7:0]', '[' + str(width - 1) + ':0]')

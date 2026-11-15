@@ -1,0 +1,12 @@
+iPDLLevel 1
+iProcsForModule RawRoundtrip
+iReset
+iScan client 8 -si 0xa5 -so 0xXX
+iApply
+iWrite payload 0x3c
+iRead payload 0xa5
+iApply
+iScan client 8 -si 0x5a -so 0x3c
+iApply
+iRead payload 0x5a
+iApply

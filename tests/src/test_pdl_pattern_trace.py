@@ -28,6 +28,45 @@ class Trace(unittest.TestCase):
                                    '--apply-groups', 'M', '--icl', str(root / 'input.icl')],
                                   capture_output=True, text=True, timeout=10)
 
+    def test_raw_default_chain_numeric_and_unknown_spelling(self):
+        design = ("Module M { ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset; ScanRegister r[7:0] { ScanInSource si; } "
+                  "ScanOutPort so { Source r[0]; } ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; } }")
+        a = self.grouped('iScan client 8 -si 5 -so 0bx; iApply', design)
+        b = self.grouped('iScan client -chain default 0x8 -si 0x05 -so 0xXX; iApply', design)
+        self.assertEqual(a.returncode, 0, a.stderr)
+        self.assertEqual(b.returncode, 0, b.stderr)
+        self.assertEqual(json.loads(a.stdout), json.loads(b.stdout))
+        for command in ['iScan client 8 -si 4 -so 0bx; iApply',
+                        'iScan client 8 -si 5 -so 1; iApply',
+                        'iScan client 8 -si 5 -so 0bx -stable; iApply',
+                        'iScan client 8 -si 5 -so 0bx; iApply -together',
+                        'iScan client 8 -si 5 -so 0bx; iApply; iRunLoop 1 -tck']:
+            other = self.grouped(command, design)
+            self.assertEqual(other.returncode, 0, other.stderr)
+            self.assertNotEqual(json.loads(a.stdout), json.loads(other.stdout))
+
+    def test_raw_eligible_malformed_does_not_fall_back(self):
+        design = ("Module M { ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset; ScanOutPort so; "
+                  "ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; DefaultLoadValue 8'b0; } }")
+        for command in ['iScan client -chain other 8',
+                        'iScan client -chain default',
+                        'iScan client 8 -si 0x100']:
+            run = self.grouped(command + '; iApply', design)
+            self.assertNotEqual(run.returncode, 0, run.stdout)
+            self.assertEqual(run.stdout, '')
+        legacy = self.grouped('iScan -ir tap 8 -si 0xa5; iApply', design)
+        self.assertEqual(legacy.returncode, 0, legacy.stderr)
+        self.assertEqual(json.loads(legacy.stdout)['operations'][0],
+                         ['iScan', '-ir', 'tap', '8', '-si', '0xa5'])
+
+    def test_raw_charges_both_payloads_to_aggregate_budget(self):
+        design = ("Module M { ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset; ScanRegister r[65535:0] { ScanInSource si; } "
+                  "ScanOutPort so { Source r[0]; } ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; } }")
+        run = self.grouped('iScan client 65536 -si 1; iApply; ' * 3, design)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn('bit expansion limit', run.stderr)
+        self.assertEqual(run.stdout, '')
+
     def test_apply_group_write_order_and_bit_spelling(self):
         a = self.grouped('iWrite r 5; iRead s 3; iWrite s 9; iApply')
         b = self.grouped('iWrite s 0x9; iWrite r[0] 1; iWrite r[3:1] 0b010; '

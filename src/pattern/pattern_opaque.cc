@@ -104,14 +104,19 @@ Operation NormalizeScan(z3::context& context, const std::string& target,
   if (args.size() < 2 || args[0] != target) {
     throw std::runtime_error("scan target must be the root client " + target);
   }
+  size_t length = 1;
+  // Tessent names the sole unnamed chain "default" in exported PDL.
   if (args[1] == "-chain") {
-    throw std::runtime_error("unsupported opaque scan chain selection");
+    if (args.size() < 4 || args[2] != "default") {
+      throw std::runtime_error("unsupported opaque scan chain selection");
+    }
+    length = 3;
   }
-  const size_t width = ScanLength(context, args[1]);
+  const size_t width = ScanLength(context, args[length]);
   std::string input(width, '0'), expected(width, 'x');
   bool stable = false;
   std::set<std::string> seen;
-  for (size_t i = 2; i < args.size(); ++i) {
+  for (size_t i = length + 1; i < args.size(); ++i) {
     const auto option = args[i];
     if (!seen.insert(option).second) {
       throw std::runtime_error("duplicate opaque scan option");

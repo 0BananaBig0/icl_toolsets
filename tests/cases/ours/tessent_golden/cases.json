@@ -501,6 +501,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "raw_default_chain",
+      "top": "RawRoundtrip",
+      "icl": [
+        "tests/cases/ours/pattern_generation/raw_default_chain/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/raw_default_chain/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

@@ -1,6 +1,7 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
 // Static operation comparison only; this never executes input Tcl.
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -9,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "pattern/pattern_opaque.h"
 #include "pattern/pattern_tap.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -21,29 +23,38 @@ using icl::Json;
 std::string ReadFile(const std::string& path) {
   std::ifstream input(path, std::ios::binary);
   std::string text;
-  if (!input || !toolsets::ReadTextStream(input, &text))
+  if (!input || !toolsets::ReadTextStream(input, &text)) {
     throw std::runtime_error("cannot read input: " + path);
+  }
   return text;
 }
 
 using BitValues = std::map<std::pair<std::string, int64_t>, char>;
 Json BitRows(const BitValues& values) {
   Json::Elements rows;
-  for (const auto& [key, value] : values)
+  for (const auto& [key, value] : values) {
     rows.push_back(Json::Array({Json::String(key.first), Json::Int(key.second),
                                 Json::String(std::string(1, value))}));
+  }
   return Json::Array(std::move(rows));
 }
 
 Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
                  const std::string& top) {
   const auto binding = trace.Find("binding")->string_value();
-  if (!binding.empty() && binding != top)
+  if (!binding.empty() && binding != top) {
     throw std::runtime_error("trace binding differs from comparison top");
+  }
   z3::context context;
   BitValues writes, reads, states;
   Json::Elements events;
   size_t expanded = 0;
+  const bool single_root =
+      netlist.taps.empty() &&
+      std::count_if(netlist.nodes.begin(), netlist.nodes.end(),
+                    [](const pattern::NetlistNode& node) {
+                      return node.scope == 0 && node.scan_interface.has_value();
+                    }) == 1;
   const auto flush_states = [&] {
     if (!states.empty()) {
       events.push_back(Json::Object({{"iState", BitRows(states)}}));
@@ -57,18 +68,23 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
     if (name == "iWrite" || name == "iRead" || name == "iState") {
       if (words.size() < 2 || words.size() > (name == "iState" ? 4U : 3U) ||
           (words.size() == 2 && name != "iRead") ||
-          (words.size() == 4 && words[3].string_value() != "-LastWrittenValue"))
+          (words.size() == 4 &&
+           words[3].string_value() != "-LastWrittenValue")) {
         throw std::runtime_error("unsupported apply-group assignment options");
-      if (name == "iState" && (!writes.empty() || !reads.empty()))
+      }
+      if (name == "iState" && (!writes.empty() || !reads.empty())) {
         throw std::runtime_error("state assumption with pending actions");
+      }
       const auto target =
           pattern::ResolvePdlTarget(netlist, words[1].string_value());
-      if (!target.access_together.empty())
+      if (!target.access_together.empty()) {
         throw std::runtime_error(
             "AccessTogether obligations need explicit comparison support");
+      }
       expanded += target.bits.size();
-      if (expanded > 256 * 1024)
+      if (expanded > 256 * 1024) {
         throw std::runtime_error("apply-group bit expansion limit exceeded");
+      }
       const auto bits = words.size() == 2
                             ? std::string(target.bits.size(), 'x')
                             : pattern::PdlDataValue(context, netlist, target,
@@ -78,8 +94,9 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
                                             : states;
       for (size_t i = 0; i < bits.size(); ++i) {
         const auto& bit = target.bits[i];
-        if (bit.node == std::numeric_limits<size_t>::max())
+        if (bit.node == std::numeric_limits<size_t>::max()) {
           throw std::runtime_error("constant target in apply-group comparison");
+        }
         const auto key =
             std::make_pair(netlist.nodes.at(bit.node).name, bit.index);
         char value = bits[i];
@@ -88,8 +105,9 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
         // including repeated physical bits within one alias.
         if (name == "iState" && states.count(key)) flush_states();
         // X writes retain earlier controlling assignments in the same queue.
-        if (name != "iWrite" || value != 'x' || !destination.count(key))
+        if (name != "iWrite" || value != 'x' || !destination.count(key)) {
           destination.insert_or_assign(key, value);
+        }
       }
     } else if (name == "iApply") {
       events.push_back(Json::Object({{"writes", BitRows(writes)},
@@ -98,14 +116,46 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
       writes.clear();
       reads.clear();
     } else {
-      if (!writes.empty() || !reads.empty())
+      if (!writes.empty() || !reads.empty()) {
         throw std::runtime_error("unapplied actions before " + name);
+      }
+      if (single_root && name == "iScan" && words.size() > 1) {
+        const auto target = netlist.node_ids.find(words[1].string_value());
+        if (target != netlist.node_ids.end()) {
+          const auto& node = netlist.nodes[target->second];
+          if (node.scope == 0 && node.scan_interface &&
+              node.scan_interface->kind ==
+                  pattern::ScanInterfaceKind::kClient &&
+              node.scan_interface->chains.empty()) {
+            pattern::Operation scan;
+            scan.command = name;
+            for (size_t i = 1; i < words.size(); ++i) {
+              scan.arguments.push_back(words[i].string_value());
+            }
+            const auto normalized =
+                pattern::NormalizeScan(context, node.name, scan);
+            const size_t width = normalized.arguments[3].size() - 2;
+            if (width > (256 * 1024 - expanded) / 2) {
+              throw std::runtime_error(
+                  "apply-group bit expansion limit exceeded");
+            }
+            expanded += 2 * width;
+            Json::Elements canonical{Json::String(name)};
+            for (const auto& argument : normalized.arguments) {
+              canonical.push_back(Json::String(argument));
+            }
+            events.push_back(Json::Array(std::move(canonical)));
+            continue;
+          }
+        }
+      }
       events.push_back(operation);
     }
   }
   flush_states();
-  if (!writes.empty() || !reads.empty())
+  if (!writes.empty() || !reads.empty()) {
     throw std::runtime_error("unapplied actions at end of trace");
+  }
   return Json::Object({{"binding", Json::String(top)},
                        {"operations", Json::Array(std::move(events))}});
 }
@@ -185,8 +235,9 @@ int main(int argc, char** argv) {
     }
     auto trace = Trace(pdl::Document(ReadFile(argv[1])), argv[2]);
     if (argc > 3) {
-      if (argc < 7 || std::string(argv[3]) != "--apply-groups")
+      if (argc < 7 || std::string(argv[3]) != "--apply-groups") {
         throw std::runtime_error("expected --apply-groups TOP --icl FILE");
+      }
       const std::string top = argv[4];
       pattern::Design design;
       for (int i = 5; i < argc;) {

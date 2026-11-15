@@ -13,6 +13,7 @@
 
 namespace pattern {
 // Shared single-chain request validation, padding and canonical binary data.
+// Caller proves a single unnamed client; accepts Tessent -chain default.
 Operation NormalizeScan(z3::context& context, const std::string& target,
                         const Operation& operation);
 // No result without iScan. Otherwise validate a root opaque client and lower

@@ -783,7 +783,8 @@ tessent-golden-check: $(BIN) $(PDL_BIN) $(BUILD_DIR)/icl-pattern-generation $(BU
 
 $(BUILD_DIR)/pdl_pattern_trace: tests/src/pdl_pattern_trace.cc \
     $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/utility/json.o \
-    $(PATTERN_OBJECTS) $(BUILD_DIR)/pattern/pattern_values.o | check-z3
+    $(PATTERN_OBJECTS) $(BUILD_DIR)/pattern/pattern_values.o \
+    $(BUILD_DIR)/pattern/pattern_opaque.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 $(BUILD_DIR)/icl_corpus_inventory: tests/icl_corpus_inventory.cc \

@@ -1,0 +1,284 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "raw_default_chain",
+    "top": "RawRoundtrip",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_default_chain/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_default_chain/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/raw_default_chain/model.icl": "eba9aabfad6dd12da777ee770f669ffbf2a34dde6e6a084c7a5b6e877e406121",
+    "tests/cases/ours/pattern_generation/raw_default_chain/source.pdl": "077657db8ee234b30775040ee285cf6d600d1a49c7cfad76f8d5602f557e8a94"
+  },
+  "job": {
+    "id": "raw_default_chain",
+    "top": "RawRoundtrip",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_default_chain/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_default_chain/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "eba9aabfad6dd12da777ee770f669ffbf2a34dde6e6a084c7a5b6e877e406121",
+      "source_0.pdl": "077657db8ee234b30775040ee285cf6d600d1a49c7cfad76f8d5602f557e8a94",
+      "run.tcl": "137bb73b7e513020c825a63bcd86c921ec96a40f4bd3d83bb69089fadbd07a34"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/raw_default_chain/model.icl": "eba9aabfad6dd12da777ee770f669ffbf2a34dde6e6a084c7a5b6e877e406121",
+      "tests/cases/ours/pattern_generation/raw_default_chain/source.pdl": "077657db8ee234b30775040ee285cf6d600d1a49c7cfad76f8d5602f557e8a94"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.780050322879106,
+    "outcome": "ok",
+    "result_sha256": "7e4b47c276551c510a046e4c26993ea8006e5b777ab0cdf1958437d23e19d1a8",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "RawRoundtrip",
+    "operations": [
+      [
+        "iReset"
+      ],
+      [
+        "iScan",
+        "client",
+        "8",
+        "-si",
+        "0b10100101",
+        "-so",
+        "0bxxxxxxxx"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "payload",
+            0,
+            "0"
+          ],
+          [
+            "payload",
+            1,
+            "0"
+          ],
+          [
+            "payload",
+            2,
+            "1"
+          ],
+          [
+            "payload",
+            3,
+            "1"
+          ],
+          [
+            "payload",
+            4,
+            "1"
+          ],
+          [
+            "payload",
+            5,
+            "1"
+          ],
+          [
+            "payload",
+            6,
+            "0"
+          ],
+          [
+            "payload",
+            7,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "payload",
+            0,
+            "1"
+          ],
+          [
+            "payload",
+            1,
+            "0"
+          ],
+          [
+            "payload",
+            2,
+            "1"
+          ],
+          [
+            "payload",
+            3,
+            "0"
+          ],
+          [
+            "payload",
+            4,
+            "0"
+          ],
+          [
+            "payload",
+            5,
+            "1"
+          ],
+          [
+            "payload",
+            6,
+            "0"
+          ],
+          [
+            "payload",
+            7,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "client",
+        "8",
+        "-si",
+        "0b01011010",
+        "-so",
+        "0b00111100"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "payload",
+            0,
+            "0"
+          ],
+          [
+            "payload",
+            1,
+            "1"
+          ],
+          [
+            "payload",
+            2,
+            "0"
+          ],
+          [
+            "payload",
+            3,
+            "1"
+          ],
+          [
+            "payload",
+            4,
+            "1"
+          ],
+          [
+            "payload",
+            5,
+            "0"
+          ],
+          [
+            "payload",
+            6,
+            "1"
+          ],
+          [
+            "payload",
+            7,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "payload",
+            0,
+            "0"
+          ],
+          [
+            "payload",
+            1,
+            "1"
+          ],
+          [
+            "payload",
+            2,
+            "0"
+          ],
+          [
+            "payload",
+            3,
+            "1"
+          ],
+          [
+            "payload",
+            4,
+            "1"
+          ],
+          [
+            "payload",
+            5,
+            "0"
+          ],
+          [
+            "payload",
+            6,
+            "1"
+          ],
+          [
+            "payload",
+            7,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "ac6912fa7284caa7110a8cbfde9be6fc0778b372c957e5a754cdb15f0ceb715e",
+  "vendor_console_sha256": "863b7774b7f6142567d8f3257f41b799ea5503ff1d88c3316f12159b521ec4ff",
+  "artifacts": {
+    "flat.pdl": "a5fb4a90af16d17772e7c107b9109e15ff4a57ecc9e8286076de4e221b630752",
+    "vendor.pdl": "7e4b47c276551c510a046e4c26993ea8006e5b777ab0cdf1958437d23e19d1a8"
+  }
+}

@@ -5278,3 +5278,36 @@ source/flat/generated hashes:1M root/child .27-.33s peak108172KiB;1024children
 Required final gates and integration evidence follow when complete.
 
 Verified Task98: required leak-enabled build/native7/main69/modeled27/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1369.6011084119673s; editor6 in182.739s. Final remote52 statuses all0 and actual45 source/test/fixture hashes match. Local15 connected checks, early corpus audit, formatting/naming and53 fresh offline directional goldens pass. Independent final review found no blocking defect or missing coverage. The whitelist-only product change reuses native idle/fixed-point behavior; native literal edges cover eight polarity combinations in source/flat, CLI checks exact counts through UINT64MAX, implicit controls, partial-X fill and atomic invalid cases. Twenty maximal-wait scale commands pass with equal replay hashes: root/child1M .27-.33s/~108172KiB,1024children .19-.37s/~102420KiB,97levels .06-.13s/~64020KiB. Positive-wait vendor original/normalized0 with byte-identical exports, actual9submitted/10preparedhashes match. Tessent zero-count rejection and ignored-stable/default-chain limits remain recorded; no strict certificate claim for this stable fixture. Copied build inputs received fresh mtimes before required builds. Commit11 files, fast-forward master, delete merged branch and preserve the default-chain draft and genuine certificates for its later verified integration. Remaining general models/events/ownership/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.
+
+## Default-chain compatibility and strict raw certificates (Task99)
+
+For already qualified single unnamed clients, the shared raw normalizer accepts
+Tessent's exact -chain default spelling and emits the existing canonical form.
+This is a documented vendor extension; other chain names, named/parallel contexts
+and IR/TAP support are unchanged. Length, payload, X padding, stable flags,
+validation-before-discard and native transactional replay retain their checks.
+
+The static comparison tool reuses that pure normalizer only after qualifying an
+explicit root non-TAP single unnamed client. It preserves every raw event, SI/SO,
+stable flag, order and Apply boundary. Malformed eligible operations fail; legacy
+unsupported contexts remain verbatim. Both payload widths count toward its
+262144-bit aggregate expansion limit. One normalization may allocate within the
+shared1Mbit bound before charging; the aggregate limit is not a peak-memory cap.
+Source Tcl is never executed by the comparison tool. Its Makefile target links
+the existing helper object directly; no dependency or solver model is added.
+
+The unique RawRoundtrip fixture, without stable, passed genuine Tessent2026.2
+FORWARD and REVERSE run/strict record/strict check, using the unchanged certificate
+harness and policy. Source/artifact/vendor-console hashes were reviewed, and all
+vendor-added reads and writes remain present. Two schema3 snapshots are registered;
+all55 directional goldens pass with the rebuilt local tools. This qualifies that
+specific modeled-root fixture, not broader raw portability or genuinely opaque,
+child, IR/TAP or parallel certification. Existing stable/zero-wait vendor limits
+remain recorded. Independent final review found no blocking defect or required
+coverage gap. Local16 connected checks, corpus audit, formatting/naming and
+original/flat/generated/local-reset default spelling checks pass. Required final
+gates and integration evidence follow when complete.
+
+Ten source-matched1Mbit parsing commands pass: plain .30-.36s peak106200KiB, default .30-.37s peak106132KiB. All source repetitions, flat and generated forms share the same canonical hash across both spellings. This measures compatibility overhead, with no speedup claim.
+
+Verified Task99: leak-enabled build/native7/main69/modeled29/opaque13/clock51/client25/reset12/comparison16/all55offline certificates all0. Full serial make check passes in 1474.1217212839983s. Final remote54 statuses all0 and actual68 source/test/certificate hashes match. Local16 connected checks, corpus audit, style/naming and55 fresh offline certificates pass. Independent source/certificate review found no blocker or gap and verified21forward/18reverse hash/content comparisons. Genuine Tessent2026.2 FORWARD and REVERSE run/strict record/strict check0 for the unique no-stable RawRoundtrip fixture, unchanged harness/policy, all exported reads/writes and comparison bits retained. Two schema3 snapshots registered. Exact synthetic-default-chain compatibility is documented as a vendor extension for qualified unnamed clients; no new TAP/parallel model. Ten1Mbit scale commands0: plain .30-.36s/~106200KiB, default .30-.37s/~106132KiB, canonical hashes equal across spellings/replay forms. The comparator charges both payloads to its262144-bit aggregate budget and does not execute Tcl. Added only its necessary existing-helper link dependency; pre-existing braces fixed mechanically. Commit29 files, fast-forward master, delete merged branch and preserve next mux design/work. Broader raw topology/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.

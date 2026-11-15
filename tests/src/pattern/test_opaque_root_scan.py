@@ -54,6 +54,18 @@ class OpaqueRootScan(unittest.TestCase):
         for artifact in artifacts:
             self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def test_default_chain_vendor_spelling(self):
+        result = self.replay('iReset; iScan client -chain default 0x8 -si 0xa5 -so 0xXX -stable; iApply\n')
+        self.assertIn('iScan client 8 -si 0b10100101 -so 0bxxxxxxxx -stable', result)
+        self.assertNotIn('-chain', result)
+        for selection, diagnostic in [('-chain other 8', 'chain'),
+                                      ('-chain Default 8', 'chain'),
+                                      ('-chain default', 'length'),
+                                      ('8 -chain default', 'option'),
+                                      ('-chain default 8 -chain default', 'option')]:
+            with self.subTest(selection=selection):
+                self.rejected('iScan client ' + selection + '; iReset\n', diagnostic)
+
     def test_payloads_and_padding(self):
         result = self.replay('iReset; iScan client 8 -si 0xa5 -so 0x3c -stable; iApply\n'
                              'iScan client 8 -si 3 -so 0b1; iApply\n'
@@ -120,7 +132,7 @@ iScan client 12 -so 0xXXX -si { 0xA
 
     def test_target_and_unsupported_interactions(self):
         for command in ['iScan missing 8', 'iScan si 8', 'iScan -ir client 8',
-                        'iScan client -chain default 8', 'iScan client 8 -skip_model_state_simulation']:
+                        'iScan client -chain other 8', 'iScan client 8 -skip_model_state_simulation']:
             with self.subTest(command=command):
                 self.rejected(command + '; iApply\n', 'scan')
         for command in ['iTake client', 'iState sel 1', 'iClock tck',

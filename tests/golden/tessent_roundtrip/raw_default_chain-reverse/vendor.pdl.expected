@@ -1,0 +1,21 @@
+iProcsForModule RawRoundtrip
+
+iProc oracle {} {
+
+   iReset
+   iScan client -chain default 8 -si 0b10100101 -so 0bXXXXXXXX
+   iApply
+
+   iWrite payload[7:0] 0b00111100
+   iRead  payload[7:0] 0b10100101
+   iApply
+
+   iScan client -chain default 8 -si 0b01011010 -so 0b00111100
+   iApply
+
+   iWrite payload[7:0] 0b01011010
+   iRead  payload[7:0] 0b01011010
+   iApply
+
+
+}
