@@ -61,8 +61,12 @@ void SystemClocks::CheckCycle(Bit target, BitReference source) const {
     }
     const auto& node = netlist_.nodes[bit.node];
     const size_t offset = Offset(node, bit.index);
-    const auto input = node.inputs.find("Source");
-    if (input != node.inputs.end()) pending.push_back(input->second.at(offset));
+    for (const auto* role : {"Source", "DifferentialInvOf"}) {
+      const auto input = node.inputs.find(role);
+      if (input != node.inputs.end()) {
+        pending.push_back(input->second.at(offset));
+      }
+    }
     for (const auto& choice : node.choices) {
       pending.push_back(choice.source.at(offset));
     }
@@ -163,6 +167,14 @@ BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler,
   }
   const auto& node = netlist_.nodes.at(bit.first);
   const size_t offset = Offset(node, bit.second);
+  const auto differential = node.inputs.find("DifferentialInvOf");
+  if (differential != node.inputs.end()) {
+    if (node.kind == "ClockPort" && node.inputs.count("Source")) {
+      throw std::runtime_error(
+          node.origin + ": bound differential clock input is unsupported");
+    }
+    return differential->second.at(offset);
+  }
   if (node.kind == "ClockMux") {
     std::string selected;
     for (const auto& signal : node.inputs.at("SelectedBy")) {
@@ -224,12 +236,9 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
       break;
     }
     const auto& node = netlist_.nodes.at(bit.first);
-    if (node.properties.count("DifferentialInvOf")) {
-      throw std::runtime_error(node.origin +
-                               ": differential clock path is unsupported");
-    }
     if ((node.kind == "ClockPort" && node.scope == 0 &&
-         !node.inputs.count("Source")) ||
+         !node.inputs.count("Source") &&
+         !node.inputs.count("DifferentialInvOf")) ||
         (node.kind == "ToClockPort" && node.clock_period &&
          !DefinitionAt(bit, version))) {
       route.root = bit;
@@ -287,7 +296,7 @@ void SystemClocks::BuildSafety() {
       }
     };
     for (const auto& [role, bits] : node.inputs) {
-      edges(bits, role == "Source" &&
+      edges(bits, (role == "Source" || role == "DifferentialInvOf") &&
                       (ClockPort(node) || node.model == ModelKind::kAlias));
     }
     for (const auto& choice : node.choices) {
@@ -302,12 +311,6 @@ void SystemClocks::BuildSafety() {
       edges(node.scan_interface->ports, false);
       for (const auto& chain : node.scan_interface->chains) {
         edges(chain.ports, false);
-      }
-    }
-    const auto differential = node.properties.find("DifferentialInvOf");
-    if (differential != node.properties.end()) {
-      for (size_t i = 0; i < node.Width(); ++i) {
-        unsafe_.emplace(id, Index(node, i));
       }
     }
   }

@@ -1,0 +1,8 @@
+iPDLLevel 1
+iProcsForModule Top
+iClock root_n
+iRunLoop 3 -sck root_n
+iClock child.negative
+iRunLoop 10 -sck child.negative
+iClock osc.negative
+iRunLoop 4 -sck osc.negative

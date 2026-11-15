@@ -22,6 +22,77 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestDifferentialClockDurations() {
+  std::string source = R"(Module Top {
+    ClockPort positive;
+    ClockPort negative { DifferentialInvOf positive; }
+    ToClockPort divided { Source positive; FreqDivider 3; }
+    ToClockPort divided_n { DifferentialInvOf divided; }
+    ScanInPort si; ScanRegister value { ScanInSource si; }
+    ScanOutPort so { Source value; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("differential-durations.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("value", "1");
+    pattern::SystemClocks clocks(netlist);
+    z3::context context;
+    for (const std::string target : {"positive", "negative"}) {
+      Require(clocks.Check(target, scheduler) == "positive",
+              "differential halves share a duration root");
+      for (const std::string held : {"positive", "negative"}) {
+        const std::map<size_t, std::string> preserved{
+            {netlist.node_ids.at(held), "0"}};
+        bool rejected = false;
+        try {
+          clocks.Wait(target, 1, scheduler, preserved);
+        } catch (const std::runtime_error& error) {
+          rejected =
+              std::string(error.what()).find("held clock") != std::string::npos;
+        }
+        Require(rejected &&
+                    clocks.Wait(target, 0, scheduler, preserved).second == 0,
+                "held positive or negative half forbids only nonzero waits");
+      }
+    }
+    clocks.Check("divided_n", scheduler);
+    bool rejected = false;
+    try {
+      clocks.Override({"iClockOverride",
+                       {"divided", "-source", "divided_n"},
+                       "differential:1",
+                       {}},
+                      context);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("cyclic system-clock override") !=
+          std::string::npos;
+    }
+    Require(rejected && clocks.Wait("divided_n", 2, scheduler).second == 6 &&
+                clocks.Check("divided_n", scheduler) == "positive",
+            "a differential override cycle cannot publish a new version");
+    auto unsafe = netlist;
+    unsafe.nodes[unsafe.node_ids.at("value")].inputs["CaptureSource"] = {
+        {unsafe.node_ids.at("negative"), 0}};
+    pattern::ScanScheduler unsafe_scheduler(unsafe);
+    pattern::SystemClocks unsafe_clocks(unsafe);
+    rejected = false;
+    try {
+      unsafe_clocks.Check("positive", unsafe_scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("unsupported fanout") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "native non-clock use propagates through differential association");
+    Require(
+        scheduler.Value("value") == "1" && scheduler.Value("positive") == "x",
+        "clock duration declarations and checks do not change hardware state");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestClockOverrideSnapshots() {
   pattern::Design design;
   design.AddIcl("overrides.icl", R"(Module Top {
@@ -3060,6 +3131,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestDifferentialClockDurations();
     TestClockOverrideSnapshots();
     TestClockOverrideScale();
     TestRelativeSystemClocks();

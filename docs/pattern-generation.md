@@ -4921,3 +4921,67 @@ integration and deleting its merged branch. Commit thissixfile snapshot on the
 Task90 branch, fast-forward master and delete that branch; restore only Task91
 future files onto its own active branch. No push. Broader event/clock/resource,
 vendor, strict coverage and final platform requirements remain mandatory.
+
+
+### Differential clock duration routes (2026-11-15)
+
+Relative iClock/-sck waits can trace a declared negative ClockPort at the root
+or a negative ToClockPort to its positive partner. Direct hierarchical targets,
+indexed vectors, local output aliases, clock muxes, ratios and oscillator roots
+retain original/flat/generated/reset-only replay. This traces cycle counts on
+clock-only routes; it does not simulate phases or add hardware clock events.
+
+Generic ICL Source references to negative clock terminals retain the existing
+6.3.12(e) restriction. Explicit inverted expression edges remain unsupported.
+A negative input with both an external binding and a local differential partner
+still needs a consistency decision and receives a specific bound-input error;
+its unused association does not by itself make a positive clock-only root unsafe.
+Differential override targets retain their existing diagnostic.
+
+Association edges participate in the shared route, unsafe-fanout, reservation
+and cycle walks. Holding either half forbids a nonzero wait on either half;
+zero waits remain valid. An introduced override cycle through a negative partner
+fails before publishing its version, including after an earlier checked clock.
+Native source/flat tests also verify unchanged hardware state and propagation
+from a lowered non-clock consumer through the differential association.
+
+All47 clock CLI methods, connected native7/main69/client25/reset12/multipleTAP22/
+feedback10, formatting/naming and53 offline directional standards pass. Independent
+design and final source reviews are clean.24 interleaved scale commands preserve
+identical PDL and canonical flat hashes per case: ordinary4096-stage source/flat
+baseline0.27–0.38s and candidate0.27–0.38s; new4096-stage differential paths
+0.34–0.53s,123196KiB peak;65536-bit paired inputs0.10s,72720KiB peak. Each input
+has1024 checked waits and three source/flat repetitions. New paths have no
+supported old functional baseline; no speedup claim is made for them.
+
+Tessent2026.2 rejects negative ports as direct iClock targets, a recorded difference
+from this valid-port interpretation of7.9.15. The normalized positive-clock
+sequence exports successfully after declaring both physical inputs as clocks
+and their inverse equivalence. All3 ordered wait commands match; Tessent drops
+one redundant repeated iClock root. This is a direct probe, not a strict
+certificate. Actual5 submitted/6 staged pilot hashes and3 qualified hashes match;
+source rejection and both diagnosed physical-setup failures are preserved.
+
+Evidence: build/differential-duration-{red,red2,green,green2,scale}-remote/evidence;
+build/differential-duration-vendor{-qualified,-qualified2,}-probe; maintained
+fixtures and probe runner. Commands, input/source/binary hashes, environment,
+wall time and RSS are retained. Final immutable integration checks follow.
+
+Final help rebuild0, format0 and naming0. First main naming invocation omitted build macro ICL_FORMAT_VERSION; failed pilot retained, corrected invocation0 with no production fix. Core clock source/performance provenance and final3GREEN2source/tests verified. Local connected/native/main69/clock47/client25/reset12/multipleTAP22/feedback10,53offline,24matched scale commands and independent review pass. Integrate11reviewed files onto6702646 and freeze8non-document files for required leak/full checks. Final19hashremote native7/all41 running. Commit on task branch, fast-forward master and delete completed branch after verification.
+
+Required Task91 leak-enabled build/native7/main69/clock47/client25/reset12 all0. Root8non-document files remain hash-identical to the reviewed snapshot; full serial regression is running in build/differential-duration-final-full.*. Final19hashremote verification remains pending.
+
+Final Task91 remote50 statuses all0: build/native7/all41CLI/aggregate, with actual19source/test/fixture hashes matching the frozen submission. Required local leakall0; fullserial stillrunning. No production/test/fixture changes to Root8frozen files.
+
+Verified Task91 checkpoint: full serial make check0 in1418.426s,41 dynamic and
+41 static generator suites,53 directional goldens,2526ICL334/119rules,LSP62 and
+editor6 in202.606s. OptionalANTLR5 remain skipped. Required leak-enabled build/
+native7/main69/clock47/client25/reset12 all0. Final remote50 statuses all0 and
+actual19source/test/fixture hashes match. All8non-document files stayed immutable
+through the final gates. Connected, style/naming,53offline,24matched scale,
+independent review and qualified normalized vendor direct probe pass; vendor
+negative-target rejection and redundant-check export difference remain recorded.
+Commit this11file snapshot on its task branch, fast-forward master and delete
+that completed branch. Preserve only Task92future files and its new docsection
+on the next active branch. No push. Remaining phase/event/absolute-time/resource,
+vendor, strict coverage and final platform requirements remain mandatory.
