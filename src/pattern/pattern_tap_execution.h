@@ -3,6 +3,8 @@
 #ifndef ICL_TOOLSETS_SRC_PATTERN_PATTERN_TAP_EXECUTION_H_
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_TAP_EXECUTION_H_
 
+#include <functional>
+
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_tap.h"
 
@@ -58,6 +60,7 @@ ScanControl EffectiveScanControl(
     const Netlist& netlist, const NetworkState& state,
     const std::vector<TapExecution::InterfacePorts>& interfaces,
     const ScanControl& fallback,
-    const std::map<std::pair<size_t, int64_t>, char>& clocks);
+    const std::map<std::pair<size_t, int64_t>, char>& clocks,
+    const std::function<char(const BitReference&)>& read = {});
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_TAP_EXECUTION_H_

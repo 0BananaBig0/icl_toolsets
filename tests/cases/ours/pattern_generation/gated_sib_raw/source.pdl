@@ -1,0 +1,13 @@
+iPDLLevel 1
+iProcsForModule Top
+iReset
+iScan client 1 -si 1
+iApply
+iScan client 9 -si 0b101001011 -stable
+iApply
+iScan client 9 -si 0b001111000
+iApply
+iScan client 1 -si 1
+iApply
+iRead child.value 0x3c
+iApply

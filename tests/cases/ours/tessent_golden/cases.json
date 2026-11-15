@@ -513,6 +513,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "gated_sib_raw_roundtrip",
+      "top": "Top",
+      "icl": [
+        "tests/cases/ours/pattern_generation/gated_sib_raw/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/gated_sib_raw/roundtrip.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

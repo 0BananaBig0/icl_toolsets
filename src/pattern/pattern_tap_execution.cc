@@ -258,7 +258,8 @@ ScanControl EffectiveScanControl(
     const Netlist& netlist, const NetworkState& state,
     const std::vector<TapExecution::InterfacePorts>& interfaces,
     const ScanControl& fallback,
-    const std::map<std::pair<size_t, int64_t>, char>& clocks) {
+    const std::map<std::pair<size_t, int64_t>, char>& clocks,
+    const std::function<char(const BitReference&)>& read) {
   ScanControl combined{'0', '0', '0', '1'};
   const auto accumulate = [&](const TapExecution::InterfacePorts& interface) {
     const auto control = [&](const std::string& kind, char missing) {
@@ -269,7 +270,7 @@ ScanControl EffectiveScanControl(
         const auto& node = netlist.nodes.at(port);
         const char driven =
             (node.inputs.count("Source") || state.IsDriven(port))
-                ? state.Read({port, index})
+                ? (read ? read({port, index}) : state.Read({port, index}))
                 : missing;
         value = And(value, driven);
       }

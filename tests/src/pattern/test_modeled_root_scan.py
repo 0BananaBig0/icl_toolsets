@@ -20,6 +20,8 @@ HIER = (opaque.ROOT / 'tests/cases/ours/pattern_generation/hierarchical_root_sca
 
 CHILD = (opaque.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text()
 
+SIB = (opaque.ROOT / 'tests/cases/ours/pattern_generation/gated_sib_raw/model.icl').read_text()
+
 
 class ModeledRootScan(unittest.TestCase):
     # Reuse the existing real CLI replay and atomic publication assertions.
@@ -329,6 +331,62 @@ class ModeledRootScan(unittest.TestCase):
             with self.subTest(selection=selection):
                 self.rejected('iScan child.local ' + selection + '; iReset\n', diagnostic, HIER)
         self.rejected('iScan -ir client -chain default 8; iReset\n', 'scan', HIER)
+
+    def test_sib_raw_open_close_reopen_retains_child(self):
+        result = self.replay('iReset; iScan client 1 -si 1; iApply\n'
+                             'iScan client 9 -si 0b101001011 -stable; iApply\n'
+                             'iScan client 9 -si 0b001111000; iApply\n'
+                             'iScan client 1 -si 1; iApply\n'
+                             'iRead child.value 0x3c; iApply\n', SIB)
+        self.assertEqual(result.count('iScan '), 4)
+        self.assertIn('iScan client 9 -si 0b101001011', result)
+        self.assertIn('iRead child.value 0b00111100', result)
+
+    def test_sib_raw_partial_x_and_current_state_after_ordinary_write(self):
+        result = self.replay('iReset; iWrite open 1; iApply\n'
+                             'iScan client 9 -si 0b101001011 -stable; iApply\n'
+                             'iScan client 9 -si 0b10x01x011 -stable; iApply\n'
+                             'iWrite child.value[1] 1; iApply\n'
+                             'iRead child.value 0xaf; iApply\n', SIB)
+        self.assertIn('iWrite child.value 0b10101111', result)
+
+    def test_sib_raw_invalid_stability_and_length_atomic(self):
+        self.rejected('iReset; iScan client 1 -si 1 -stable; iApply\n', 'stable', SIB)
+        self.rejected('iReset; iScan client 9; iApply\n', 'length', SIB)
+        self.rejected('iScan client 1; iReset\n', 'iReset', SIB)
+        self.rejected('iReset; iScan child.local 8; iApply\n', 'root', SIB)
+        self.rejected('iReset; iScan client 1 -si 1; iApply\n'
+                      'iScan client 9 -si 0 -stable; iApply\n', 'stable', SIB)
+
+    def test_sib_raw_bypass_is_not_event_gating(self):
+        ungated = SIB.replace('InputPort sel = open;', 'InputPort sel = sel;')
+        self.rejected('iReset; iScan client 1 -si 1; iApply\n', 'raw scan', ungated)
+        serial = SIB.replace('SelectedBy open', 'SelectedBy child.so')
+        self.rejected('iReset; iScan client 1; iApply\n', '', serial)
+
+    def test_sib_raw_same_width_route_change_is_not_stable(self):
+        other = SIB[SIB.index(' Instance child Of'):SIB.index(' ScanMux route')]
+        other = other.replace('Instance child Of', 'Instance other Of')
+        other = other.replace('InputPort sel = open;', 'InputPort sel = ~open;')
+        model = SIB.replace(' ScanMux route', other + ' ScanMux route')
+        model = model.replace("1'b0: si;", "1'b0: other.so;")
+        self.rejected('iReset; iScan client 9 -si 1 -stable; iApply\n',
+                      'stable', model)
+        result = self.replay('iReset; iScan client 9 -si 1; iApply\n'
+                             'iScan client 9 -si 0b101001011 -stable; iApply\n'
+                             'iRead child.value 0xa5; iApply\n', model)
+        self.assertIn('iRead child.value 0b10100101', result)
+
+    def test_sib_raw_held_forwarding_and_unknown_route(self):
+        model = SIB.replace(' ScanMux route', ' Alias gate = open;\n ScanMux route')
+        model = model.replace('SelectedBy open', 'SelectedBy gate')
+        model = model.replace('InputPort sel = open;', 'InputPort sel = gate;')
+        self.replay('iReset; iScan client 1 -si 1; iApply\n'
+                    'iScan client 9 -si 0b101001011 -stable; iApply\n', model)
+        self.rejected('iReset; iScan client 1 -si 0bx; iApply\n'
+                      'iScan client 1; iApply\n', 'known', model)
+        self.rejected('iReset; iScan client 1 -si 0bx -stable; iApply\n',
+                      'stable', model)
 
     def test_large_modeled_scan(self):
         width = 1048576

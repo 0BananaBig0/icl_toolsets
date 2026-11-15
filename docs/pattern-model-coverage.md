@@ -2720,3 +2720,67 @@ gates and integration evidence follow when complete.
 Ten source-matched1Mbit parsing commands pass: plain .30-.36s peak106200KiB, default .30-.37s peak106132KiB. All source repetitions, flat and generated forms share the same canonical hash across both spellings. This measures compatibility overhead, with no speedup claim.
 
 Verified Task99: leak-enabled build/native7/main69/modeled29/opaque13/clock51/client25/reset12/comparison16/all55offline certificates all0. Full serial make check passes in 1474.1217212839983s. Final remote54 statuses all0 and actual68 source/test/certificate hashes match. Local16 connected checks, corpus audit, style/naming and55 fresh offline certificates pass. Independent source/certificate review found no blocker or gap and verified21forward/18reverse hash/content comparisons. Genuine Tessent2026.2 FORWARD and REVERSE run/strict record/strict check0 for the unique no-stable RawRoundtrip fixture, unchanged harness/policy, all exported reads/writes and comparison bits retained. Two schema3 snapshots registered. Exact synthetic-default-chain compatibility is documented as a vendor extension for qualified unnamed clients; no new TAP/parallel model. Ten1Mbit scale commands0: plain .30-.36s/~106200KiB, default .30-.37s/~106132KiB, canonical hashes equal across spellings/replay forms. The comparator charges both payloads to its262144-bit aggregate budget and does not execute Tcl. Added only its necessary existing-helper link dependency; pre-existing braces fixed mechanically. Commit29 files, fast-forward master, delete merged branch and preserve next mux design/work. Broader raw topology/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.
+
+### Gated binary root raw routes (Task100)
+
+A root modeled iScan may traverse scalar binary ScanMux routes selected by known
+held ScanRegister update data, constants or pure data forwarding. Descendant
+SelectPort gating may use the same held data; capture/shift/update/TCK/reset
+connections must retain direct root forwarding. Explicit reset is required before
+setup, and the supplied length must match the current active route. Child raw
+targets through dynamic routing remain rejected.
+
+The route and inversion parity are fixed for each CSU. Native controls must
+activate every register on that route and produce no capture, shift or update
+events for bypassed storage. Opening a SIB preserves the previously disabled
+child; closing updates the previously enabled child on the common update edge.
+A -stable scan must retain the same ordered route, parity and eligible controls,
+even when another possible route has the same width. Failed checks preserve held
+and shift state, pins, events and controlling fill. Partial-X data retains the
+existing controlling-fill rules. Serial-valued or computed selectors, DataRegister,
+TAP/IR, parallel chains and arbitrary clock/reset logic remain outside this model.
+
+Maintained tests cover source/flat/generated/local-reset replay, literal per-bit
+native equivalence, opening/closing/reopening, inactive storage/reset rejection,
+ordinary writes before raw setup, failed stable rollback and partial-X fill,
+equal-width route changes, held aliases and unknown selection. Native scheduler
+and modeled35 checks pass locally; final immutable gates and vendor/performance
+evidence remain pending.
+
+Independent review found no semantic blocker and identified repeated native phase
+reads through shared forwarding. The bounded fix supplies the existing native
+control algebra with qualified terminal identities and one held-register copy per
+phase; primary pin reads stay live across the edge. Ordinary and TAP callers keep
+their default reader. A maintained native equivalence test exercises the hook.
+Remote baseline1025 registers: wide1040384-bit selector/1M active bits1.04–1.05s,
+peak144036KiB;512 aliases shared across1024 children2.31–2.33s, peak78416KiB.
+Equivalent post-fix measurements and remaining final gates are pending.
+
+The review fix passes the maintained native hook-equivalence check, complete native
+scheduler suite and modeled35 tests locally and remotely (actual26 submitted
+hashes match). Formatting/naming pass. Initial16 connected checks and55 offline
+certificates also pass; final broad gates cover the optional-reader change.
+All25 post-fix scale commands pass across three source repetitions, flat and
+generated forms, with equal canonical hashes. Equivalent source measurements:
+wide shared selector1.04–1.05s before versus .77s after (peak147380KiB after);
+shared512 aliases across1024 children2.31–2.33s before versus .38s after
+(peak78916KiB after). Wide gated1Mbit payload .31–.32s, static1Mbit baseline
+.36s,128 open/write/close repetitions .05s. Peak168188KiB covers the larger
+flattened wide-selector form. Raw output hashes match the pre-fix baseline.
+A first flat benchmark command incorrectly reused --debug, colliding with its
+input; the corrected25-command run passed without production changes.
+Genuine Tessent2026.2 accepted the stable fixture in both directions. Strict
+reverse run/record/check pass; strict forward record rejects a dropped -stable
+flag and vendor-added selector comparison. That evidence and checker policy are
+preserved. A separate no-stable source explicitly compares the selector and child
+value; its genuine two-direction qualification remains pending.
+
+The separate explicit-comparison gated_sib_raw_roundtrip fixture passes genuine
+Tessent2026.2 FORWARD and REVERSE run/strict record/strict check, all0 using the
+unchanged harness and policy. Both schema3 snapshots are registered; all source,
+artifact and submitted-input hashes were checked before import. The original
+stable fixture and its rejected forward certificate evidence remain separate.
+This qualifies the stated no-stable observation contract, not general vendor
+stable preservation or child/IR/TAP/parallel portability.
+
+Verified Task100: leak-enabled native7/main69/modeled35/opaque13/clocks51/client25/reset12/trace16/all57offline certificates all0. Full serial make check passes in 1487.5529853680055s. Final remote54 statuses all0, actual88 source/test/certificate inputs match. Independent review found no semantic blocker and one Important shared-control evaluation cost; bounded optional reader fix has maintained RED missing-hook compile, GREEN native equivalence/literal source-flat tests and complete suites. Equivalent wide-selector source1.04-1.05s before/.77s after; shared512aliases/1024children2.31-2.33s before/.38s after; canonical hashes unchanged. All25 scale commands pass across source repetitions/flat/generated, gated1Mbit .30-.33s and128 open/write/close repetitions .05s; peak168188KiB includes wide flattened selector form. Stable fixture accepted by Tessent but strict forward mismatch retained (dropped stable and added selector read); reverse0. Separate no-stable explicit-comparison fixture passes genuine Tessent2026.2 BOTH directions run/strict record/strict check0, unchanged policy, two schema3 certificates imported with all hashes checked. Source tree audit/style and initial16 connected checks passed; final broader gates cover the reader fix. Cached held-data selection, full-map inactive phase proof, pre-update eligibility and separate-copy stable proof preserve all state/fill rollback. Native helper hook is the necessary scope ruling beyond the initial scheduler-only file list; no separate state engine. Commit28 files, fast-forward master and delete merged branch, preserve next accessible-child work. Closed-child preparation, broader raw/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.

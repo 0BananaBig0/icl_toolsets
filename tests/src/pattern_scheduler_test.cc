@@ -18,10 +18,193 @@
 #include "pattern/pattern_resources.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_tap.h"
+#include "pattern/pattern_tap_execution.h"
 
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestGatedSibRawScans() {
+  std::string source = R"ICL(Module RawSibLeaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[7:0] { ScanInSource si; CaptureSource value; ResetValue 8'b0; }
+ ScanOutPort so { Source value[0]; }
+ ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; }
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of RawSibLeaf {
+  InputPort si = si; InputPort sel = open; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanMux route SelectedBy open { 1'b0: si; 1'b1: child.so; }
+ ScanRegister open { ScanInSource route; CaptureSource open; ResetValue 1'b0; }
+ ScanOutPort so { Source open; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 1'b0;
+ }
+}
+)ICL";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("gated-sib-raw.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto id = [&](const std::string& name) {
+      return netlist.node_ids.at(name);
+    };
+    const auto sib = id("open"), child = id("child.value");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    std::map<std::string, std::string> before;
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        before.emplace(node.name, scheduler.Value(node.name));
+      }
+    }
+    bool rejected = false;
+    try {
+      scheduler.ApplyScan({"iScan",
+                           {"client", "1", "-si", "1", "-stable"},
+                           "sib:bad-stable",
+                           {}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("stable") != std::string::npos;
+    }
+    Require(rejected, "opening a longer route cannot claim stable");
+    for (const auto& [name, value] : before) {
+      Require(scheduler.Value(name) == value,
+              "failed stable scan preserves held, shift-observable and driven "
+              "pin state");
+    }
+    pattern::NetworkState literal(netlist);
+    const auto pin = [&](const std::string& name, char bit) {
+      literal.Drive(id(name), std::string(1, bit));
+    };
+    pin("reset", '1');
+    literal.SetGlobalReset('1', '1');
+    literal.Reset();
+    pin("reset", '0');
+    literal.SetGlobalReset('0', '0');
+    literal.Reset();
+    // The optional reader must preserve native interface control algebra.
+    pattern::NetworkState probe(literal);
+    probe.Assume(sib, "1");
+    probe.Drive(id("ce"), "1");
+    probe.Drive(id("se"), "0");
+    probe.Drive(id("ue"), "0");
+    const std::vector<pattern::TapExecution::InterfacePorts> interfaces{
+        {{"SelectPort", {{id("child.sel"), 0}}},
+         {"CaptureEnPort", {{id("child.ce"), 0}}},
+         {"ShiftEnPort", {{id("child.se"), 0}}},
+         {"UpdateEnPort", {{id("child.ue"), 0}}}}};
+    size_t reads = 0;
+    const auto observed = pattern::EffectiveScanControl(
+        netlist, probe, interfaces, {}, {}, [&](const auto& bit) {
+          ++reads;
+          return probe.Read(bit);
+        });
+    const auto native =
+        pattern::EffectiveScanControl(netlist, probe, interfaces, {}, {});
+    Require(reads == 4 && observed.capture == '1' &&
+                observed.capture == native.capture &&
+                observed.shift == native.shift &&
+                observed.update == native.update &&
+                observed.select == native.select,
+            "scoped signal reader preserves native scan controls");
+    const auto phase = [&](char capture, char shift, char update, char clock) {
+      pin("sel", '1');
+      pin("ce", capture);
+      pin("se", shift);
+      pin("ue", update);
+      pin("tck", clock);
+      literal.Reset();
+    };
+    const auto controls = [&](char capture, char shift, char update) {
+      return std::map<size_t, pattern::ScanControl>{
+          {sib, {capture, shift, update, '1'}},
+          {child, {capture, shift, update, literal.Value(sib)[0]}}};
+    };
+    for (const auto& payload : {std::string("1"), std::string("101001011"),
+                                std::string("001111000"), std::string("1")}) {
+      const auto old_child = literal.Value(child);
+      const auto old_sib = literal.Value(sib);
+      phase('1', '0', '0', '0');
+      pin("tck", '1');
+      literal.Clock(controls('1', '0', '0'), true);
+      for (auto bit = payload.rbegin(); bit != payload.rend(); ++bit) {
+        phase('0', '1', '0', '0');
+        pin("si", *bit);
+        pin("tck", '1');
+        literal.Clock(controls('0', '1', '0'), true);
+      }
+      phase('0', '0', '1', '1');
+      pin("tck", '0');
+      literal.Clock(controls('0', '0', '1'), false);
+      phase('0', '0', '0', '0');
+      scheduler.ApplyScan(
+          {"iScan",
+           {"client", std::to_string(payload.size()), "-si", "0b" + payload},
+           "sib:scan",
+           {}});
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          Require(scheduler.Value(node.name) == literal.Value(id(node.name)),
+                  "gated SIB bulk matches every literal register and "
+                  "scan/control pin");
+        }
+      }
+      if (old_sib == "0") {
+        Require(scheduler.Value("child.value") == old_child,
+                "opening uses pre-update inactive child eligibility");
+      }
+    }
+    Require(
+        scheduler.Value("child.value") == "00111100",
+        "closing updates the previously active child and reopening retains it");
+    scheduler.ApplyScan({"iScan",
+                         {"client", "9", "-si", "0b101001011", "-stable"},
+                         "sib:known",
+                         {}});
+    rejected = false;
+    try {
+      scheduler.ApplyScan({"iScan",
+                           {"client", "9", "-si", "0", "-stable"},
+                           "sib:bad-close",
+                           {}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("stable") != std::string::npos;
+    }
+    Require(rejected && scheduler.Value("open") == "1" &&
+                scheduler.Value("child.value") == "10100101",
+            "failed closing-stable scan rolls back target and selector");
+    scheduler.ApplyScan({"iScan",
+                         {"client", "9", "-si", "0b10x01x011", "-stable"},
+                         "sib:partial",
+                         {}});
+    scheduler.Apply({{"iWrite", {"child.value[1]", "1"}, "sib:write", {}}});
+    Require(scheduler.Value("child.value") == "10101111",
+            "failed stable trial cannot pollute partial-X controlling fill");
+    auto bad_reset = netlist;
+    bad_reset.nodes.at(child).reset->inverted =
+        !bad_reset.nodes.at(child).reset->inverted;
+    pattern::ScanScheduler inactive_reset(bad_reset);
+    inactive_reset.Reset();
+    rejected = false;
+    try {
+      inactive_reset.ApplyScan(
+          {"iScan", {"client", "1", "-si", "0"}, "sib:inactive-reset", {}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("reset") != std::string::npos;
+    }
+    Require(rejected,
+            "inactive child reset must be inactive before raw replay");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
 }
 void TestStaticChildScans() {
   const std::string original = R"ICL(Module ChildLeaf {
@@ -3658,6 +3841,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestGatedSibRawScans();
     TestStaticChildScans();
     TestHierarchicalRootScans();
     TestRawSerialAliases();

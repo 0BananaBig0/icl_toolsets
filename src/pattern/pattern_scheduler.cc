@@ -598,7 +598,8 @@ class ScanScheduler::Impl {
     if (check) check(run->State());
   }
   struct RawProfile {
-    size_t client = 0, input = 0, width = 0;
+    size_t client = 0, input = 0, output = 0, width = 0;
+    bool dynamic = false;
     // Register output-to-SO parity; total parity also includes the SI side.
     std::vector<std::pair<size_t, bool>> registers;
     bool inverted = false;
@@ -610,7 +611,11 @@ class ScanScheduler::Impl {
     bool input_inverted = false, output_inverted = false;
   };
   const RawProfile& RawChain() {
-    if (raw_profile_) return *raw_profile_;
+    if (raw_profile_) {
+      if (!raw_profile_->dynamic) return *raw_profile_;
+      raw_current_ = RawRoute(*raw_profile_, state_);
+      return *raw_current_;
+    }
     const auto fail = [] {
       throw std::runtime_error(
           "raw scan requires a complete static root client with bound scalar "
@@ -620,9 +625,9 @@ class ScanScheduler::Impl {
     const std::set<std::string> inputs = {
         "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
         "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
-    const std::set<std::string> outputs = {"ToSelectPort",  "ToCaptureEnPort",
-                                           "ToShiftEnPort", "ToUpdateEnPort",
-                                           "ToTCKPort",     "ToResetPort"};
+    const std::set<std::string> outputs = {
+        "ToSelectPort", "ToCaptureEnPort", "ToShiftEnPort", "ToUpdateEnPort",
+        "ToTCKPort",    "ToResetPort",     "DataOutPort"};
     std::map<std::string, size_t> ports;
     size_t client = kMissing;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
@@ -642,6 +647,22 @@ class ScanScheduler::Impl {
             !node.inputs.count("Source") ||
             node.inputs.at("Source").size() != node.Width()) {
           fail();
+        }
+      } else if (node.kind == "ScanMux") {
+        if (node.Width() != 1 || node.reset || node.inputs.size() != 1 ||
+            !node.inputs.count("SelectedBy") ||
+            node.inputs.at("SelectedBy").size() != 1 ||
+            node.choices.size() != 2) {
+          fail();
+        }
+        std::set<char> codes;
+        for (const auto& choice : node.choices) {
+          if (choice.source.size() != 1 || choice.codes.size() != 1 ||
+              choice.codes[0].data.size() != 1 ||
+              (choice.codes[0].data != "0" && choice.codes[0].data != "1") ||
+              !codes.insert(choice.codes[0].data[0]).second) {
+            fail();
+          }
         }
       } else if (node.kind != "ScanRegister") {
         if (node.model != ModelKind::kPort || node.Width() != 1 || node.reset ||
@@ -725,6 +746,54 @@ class ScanScheduler::Impl {
       }
       return result;
     };
+    // Held selectors may traverse data forwarding, never serial-valued ports.
+    std::map<Key, BitReference> held_terminals;
+    const auto held = [&](BitReference bit) {
+      std::vector<std::pair<Key, bool>> trail;
+      std::set<Key> visited;
+      bool inverse = false;
+      BitReference end;
+      while (true) {
+        inverse = inverse != bit.inverted;
+        bit.inverted = false;
+        if (bit.node == kMissing) {
+          if (bit.virtual_signal != VirtualSignal::kNone ||
+              (bit.constant != '0' && bit.constant != '1')) {
+            fail();
+          }
+          end = bit;
+          end.inverted = inverse;
+          break;
+        }
+        const Key key{bit.node, bit.index};
+        const auto cached = held_terminals.find(key);
+        if (cached != held_terminals.end()) {
+          end = cached->second;
+          end.inverted = end.inverted != inverse;
+          break;
+        }
+        if (!visited.insert(key).second) fail();
+        const auto& node = netlist_.nodes.at(bit.node);
+        if (node.kind == "ScanRegister") {
+          end = bit;
+          end.inverted = inverse;
+          break;
+        }
+        if ((node.model != ModelKind::kAlias && node.kind != "DataOutPort" &&
+             node.kind != "ToSelectPort" && node.kind != "SelectPort") ||
+            !node.inputs.count("Source")) {
+          fail();
+        }
+        trail.emplace_back(key, inverse);
+        bit = node.inputs.at("Source").at(Offset(node, bit.index));
+      }
+      for (const auto& [key, prefix] : trail) {
+        auto value = end;
+        value.inverted = value.inverted != prefix;
+        held_terminals.emplace(key, value);
+      }
+      return end;
+    };
     const auto endpoint = [&](BitReference bit, const std::string& role,
                               bool positive) {
       const auto end = terminal(bit);
@@ -744,20 +813,52 @@ class ScanScheduler::Impl {
       if (node.kind == "ScanRegister" && node.reset) {
         endpoint(*node.reset, "ResetPort", false);
       }
+      if (node.kind == "ScanMux") {
+        raw_selectors_.emplace(id, held(node.inputs.at("SelectedBy")[0]));
+      }
       if (node.model != ModelKind::kPort) continue;
       const auto role =
           node.kind.compare(0, 2, "To") == 0 ? node.kind.substr(2) : node.kind;
       if (role == "SelectPort" || role == "CaptureEnPort" ||
           role == "ShiftEnPort" || role == "UpdateEnPort" ||
           role == "TCKPort" || role == "ResetPort") {
-        endpoint({id, node.left}, role, role != "ResetPort");
+        const BitReference pin{id, node.left};
+        const auto end = terminal(pin);
+        raw_control_terminals_.insert_or_assign(Key{id, node.left}, end);
+        if (role == "SelectPort" && node.scope != 0 &&
+            (end.node == kMissing ||
+             netlist_.nodes.at(end.node).kind == "ScanRegister")) {
+          held(pin);
+          raw_gated_ = true;
+        } else {
+          endpoint(pin, role, role != "ResetPort");
+        }
       }
     }
 
     RawProfile result;
     result.client = client;
     result.input = ports.at("ScanInPort");
-    auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
+    result.output = ports.at("ScanOutPort");
+    result.dynamic = raw_gated_ || !raw_selectors_.empty();
+    if (result.dynamic) {
+      raw_current_ = RawRoute(result, state_);
+      raw_profile_ = std::move(result);
+      return *raw_current_;
+    }
+    raw_profile_ = RawRoute(result, state_);
+    return *raw_profile_;
+  }
+  RawProfile RawRoute(RawProfile result, const NetworkState& snapshot) {
+    const auto fail = [] {
+      throw std::runtime_error("raw scan requires a known complete root route");
+    };
+    if (result.dynamic && global_resets_ != "00") {
+      throw std::runtime_error(
+          "modeled raw scan requires an explicit iReset first");
+    }
+    auto bit = netlist_.nodes[result.output].inputs.at("Source")[0];
+    std::map<size_t, std::string> selector_values;
     std::set<size_t> seen;
     std::set<Key> visited;
     bool inverted = false;
@@ -778,6 +879,25 @@ class ScanScheduler::Impl {
         bit = node.inputs.at("Source").at(Offset(node, bit.index));
         continue;
       }
+      if (node.kind == "ScanMux") {
+        const auto& selector = raw_selectors_.at(bit.node);
+        char value = selector.constant;
+        if (selector.node != kMissing) {
+          auto cached = selector_values.find(selector.node);
+          if (cached == selector_values.end()) {
+            cached = selector_values
+                         .emplace(selector.node, snapshot.Value(selector.node))
+                         .first;
+          }
+          value = cached->second.at(
+              Offset(netlist_.nodes[selector.node], selector.index));
+        }
+        if (selector.inverted && value != 'x') value = value == '1' ? '0' : '1';
+        if (value != '0' && value != '1') fail();
+        const auto selected = node.choices[0].codes[0].data[0] == value ? 0 : 1;
+        bit = node.choices[selected].source[0];
+        continue;
+      }
       if (node.kind != "ScanRegister" || bit.index != node.right ||
           !seen.insert(bit.node).second || !node.inputs.count("ScanInSource") ||
           node.inputs.at("ScanInSource").size() != 1 ||
@@ -788,7 +908,9 @@ class ScanScheduler::Impl {
       result.registers.emplace_back(bit.node, inverted);
       bit = node.inputs.at("ScanInSource")[0];
     }
-    if (seen.size() != registers_.size()) fail();
+    if (seen.empty() || (!result.dynamic && seen.size() != registers_.size())) {
+      fail();
+    }
     result.inverted = inverted;
     size_t offset = result.width;
     for (size_t i = 0; i < result.registers.size(); ++i) {
@@ -797,8 +919,7 @@ class ScanScheduler::Impl {
       result.indices.emplace(id, i);
       result.offsets.push_back(offset);
     }
-    raw_profile_ = std::move(result);
-    return *raw_profile_;
+    return result;
   }
   const RawSlice& RawSubchain(const std::string& target) {
     const auto& root = RawChain();
@@ -808,6 +929,14 @@ class ScanScheduler::Impl {
                                target);
     }
     const auto id = found->second;
+    if (root.dynamic) {
+      if (id != root.client) {
+        throw std::runtime_error("dynamic raw scan requires the root client: " +
+                                 target);
+      }
+      raw_dynamic_slice_ = {root.width, 0, false, false};
+      return raw_dynamic_slice_;
+    }
     const auto cached = raw_slices_.find(id);
     if (cached != raw_slices_.end()) return cached->second;
     if (id == root.client) {
@@ -973,7 +1102,7 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "modeled raw scan requires an explicit iReset first");
     }
-    for (const auto& [id, suffix] : profile.registers) {
+    for (const auto id : registers_) {
       const auto& node = netlist_.nodes[id];
       if (node.reset && state_.Read(*node.reset) != '0') {
         throw std::runtime_error("raw scan requires inactive direct resets");
@@ -998,25 +1127,77 @@ class ScanScheduler::Impl {
     NetworkState replay(state_);
     replay.TakeControlEvents();
     replay.TakeResetEvents();
-    const auto controls = [&](const std::string& phase) {
-      auto result = ClientControls(&replay, active, phase, {});
+    const auto controls = [&](NetworkState* trial, const std::string& phase) {
+      // Resolve qualified forwarding once and copy shared held storage once per
+      // phase. Primary pin reads stay live across ClientControls' clock edge.
+      std::map<size_t, std::string> held_values;
+      const auto read = [&](const BitReference& bit) {
+        const auto& terminal = raw_control_terminals_.at({bit.node, bit.index});
+        char value;
+        if (terminal.node != kMissing &&
+            netlist_.nodes[terminal.node].kind == "ScanRegister") {
+          auto cached = held_values.find(terminal.node);
+          if (cached == held_values.end()) {
+            cached =
+                held_values.emplace(terminal.node, trial->Value(terminal.node))
+                    .first;
+          }
+          value = cached->second.at(
+              Offset(netlist_.nodes[terminal.node], terminal.index));
+        } else {
+          auto direct = terminal;
+          direct.inverted = false;
+          value = trial->Read(direct);
+        }
+        if ((terminal.inverted != bit.inverted) && value != 'x') {
+          value = value == '1' ? '0' : '1';
+        }
+        return value;
+      };
+      auto result = ClientControls(trial, active, phase, {}, read);
       for (const auto& [id, control] : result) {
-        if (control.select != '1' ||
-            control.capture != (phase == "capture" ? '1' : '0') ||
-            control.shift != (phase == "shift" ? '1' : '0') ||
-            control.update != (phase == "update" ? '1' : '0')) {
+        const bool loaded = active.count(id);
+        if ((loaded && control.select != '1') ||
+            control.capture != (loaded && phase == "capture" ? '1' : '0') ||
+            control.shift != (loaded && phase == "shift" ? '1' : '0') ||
+            control.update != (loaded && phase == "update" ? '1' : '0')) {
           throw std::runtime_error(
-              "raw scan requires unconditional native control events");
+              "raw scan requires unconditional native control events for its "
+              "route");
         }
       }
       return result;
     };
-    replay.Clock(controls("capture"), true);
+    replay.Clock(controls(&replay, "capture"), true);
     replay.Drive(profile.input, input.substr(0, 1));
-    replay.ShiftComplete(loads, controls("shift"));
-    replay.Clock(controls("update"), false);
+    auto shift_controls = controls(&replay, "shift");
+    for (auto it = shift_controls.begin(); it != shift_controls.end();) {
+      if (!active.count(it->first)) {
+        it = shift_controls.erase(it);
+      } else {
+        ++it;
+      }
+    }
+    replay.ShiftComplete(loads, shift_controls);
+    replay.Clock(controls(&replay, "update"), false);
     for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
     replay.Reset();
+    if (profile.dynamic && normalized.arguments.back() == "-stable") {
+      try {
+        const auto after = RawRoute(*raw_profile_, replay);
+        if (profile.registers != after.registers ||
+            profile.inverted != after.inverted) {
+          throw std::runtime_error("changed route");
+        }
+        NetworkState proof(replay);
+        for (const auto& phase : {"capture", "shift", "update"}) {
+          controls(&proof, phase);
+        }
+      } catch (const std::runtime_error&) {
+        throw std::runtime_error(
+            "raw scan -stable changes the eligible ordered route");
+      }
+    }
     auto fill = fill_;
     for (const auto& [id, bits] : loads) {
       for (size_t offset = 0; offset < bits.size(); ++offset) {
@@ -4960,22 +5141,26 @@ class ScanScheduler::Impl {
   }
   std::map<size_t, ScanControl> ClientControls(
       NetworkState* state, const std::set<size_t>& active,
-      const std::string& phase, const std::map<Key, char>& selections) const {
+      const std::string& phase, const std::map<Key, char>& selections,
+      const std::function<char(const BitReference&)>& read = {}) const {
     const bool falling = phase == "update";
     const auto pins = ClientPins(phase, false, selections);
     for (const auto& [id, bits] : ClientPins(phase, true, selections)) {
       state->Drive(id, bits);
     }
     state->Reset();
+    const auto value = [&](const BitReference& bit) {
+      return read ? read(bit) : state->Read(bit);
+    };
     std::map<Key, char> clocks;
     for (const auto& pin : client_clocks_) {
-      clocks.emplace(pin, state->Read({pin.first, pin.second}));
+      clocks.emplace(pin, value({pin.first, pin.second}));
     }
     for (const auto& [id, bits] : pins) {
       if (client_pins_.at(id) == "clock") state->Drive(id, bits);
     }
     for (auto& [pin, before] : clocks) {
-      const char after = state->Read({pin.first, pin.second});
+      const char after = value({pin.first, pin.second});
       const char from = falling ? '1' : '0', to = falling ? '0' : '1';
       if (before == to && after == from) {
         throw std::runtime_error("inverted client TCK phase is not supported");
@@ -4994,7 +5179,7 @@ class ScanScheduler::Impl {
                   found == register_ports_.end() ? empty : found->second,
                   {phase == "capture" ? '1' : '0', phase == "shift" ? '1' : '0',
                    falling ? '1' : '0', active.count(id) ? '1' : '0'},
-                  clocks));
+                  clocks, read));
     }
     return controls;
   }
@@ -5254,7 +5439,11 @@ class ScanScheduler::Impl {
   std::set<size_t> tap_data_registers_, tap_pins_, tap_clocks_;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
-  std::optional<RawProfile> raw_profile_;
+  std::optional<RawProfile> raw_profile_, raw_current_;
+  std::map<size_t, BitReference> raw_selectors_;
+  std::map<Key, BitReference> raw_control_terminals_;
+  RawSlice raw_dynamic_slice_;
+  bool raw_gated_ = false;
   std::map<size_t, RawSlice> raw_slices_;
   size_t raw_profile_work_ = 0;
   bool parallel_chains_ = false;
