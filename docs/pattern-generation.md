@@ -5215,3 +5215,38 @@ match, original/normalized exits0 and byte-identical exports. Local15 connected
 checks, formatting/naming and53offline directional goldens pass.
 
 Verified Task96: required leak-enabled build/native7/main69/modeled19/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1364.230889235041s. Final remote52 statuses all0 and actual37 source/test/fixture hashes match. Local15 connected checks, formatting/naming and53 offline directional goldens pass. Independent final review found no concrete defect. Native literal replay checks original/flat nested register and pin state plus partial-X controlling fill. Fifteen source-matched scale commands pass:1M leaf .26-.33s/~104796KiB,1024 leaves .19-.32s/~99296KiB,97 levels .05-.11s/~64580KiB; canonical replay hashes match per scenario. Vendor original/normalized exits0, byte-identical exports and actual6 submitted/10 prepared hashes match. Existing Tessent stable/default-chain differences prevent a strict certificate claim. Commit11 files, fast-forward master, delete completed task branch and preserve only the next child-scan draft. General child/opaque/mux/TAP/parallel/resource/event/reset/clock/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.
+
+## Static child-interface scans (Task97)
+
+Raw scans may target explicit child clients whose complete static paths are
+contiguous intervals of the qualified root chain. Logical length/SI/SO are local
+to that interface. At Apply the generator inserts the child payload into a full
+root scan, retaining surrounding controlling values. Separate SI and SO inversion
+conversions preserve actual register loads and expected comparison placement.
+Expected SO never supplies scan-in values or live hardware observations.
+
+Setup is queued per interface: a later setup replaces that target only; disjoint
+child requests share one native root transaction. Overlapping targets fail before
+replay and identify the conflict. Reset clears the queue, and malformed discarded
+setups still reject. Mixed ordinary/raw pending accesses remain unsupported.
+Compact cached intervals avoid per-interface register-vector copies. Existing
+1Mbit/4096register/depth128 limits apply, with total queued payload1Mbit and
+aggregate profile traversal16M steps. Original local-reset source order is retained.
+
+Native literal full-root shifts cover unequal surrounding widths, eight SI/child-
+SO/root-SO polarity combinations in source/flat forms, exact SI/SO placement,
+bound pin state and rollback. Twenty-four modeled CLI cases cover multiple queued
+children, overwrite, overlap, procedures/prefixes, partial X and replay. Independent
+review found no blocking defect or required coverage gap.
+
+Tessent2026.2 rejects internal child iScan in this ordinary pattern mode, while
+accepting generated full-root output. A separately calculated physical root
+reference passes and exports byte-identically to generated child lowering.
+Actual9submitted/10prepared/4physical-reference hashes match. This is a reference
+probe, not a strict child-interface directional certificate. Twenty source-matched
+scale commands pass with equal replay hashes: root/child1M .31-.37s, peak106092KiB;
+1024queued children .19-.37s, peak99604KiB;97levels .06-.12s, peak64064KiB.
+No unsupported-path speedup is claimed. Broader opaque/mux/TAP/parallel/resource,
+phase/reset/clock/lifecycle, strict coverage and final vendor/platform work remain.
+
+Verified Task97: required leak-enabled build/native7/main69/modeled24/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1346.48929021199s. Final remote52 statuses all0 and actual41 source/test/fixture hashes match the corrected immutable snapshot. Local15 connected checks, formatting/naming and53 fresh offline directional goldens pass. Independent review found no blocking defect. Native literal shifts check unequal widths and eight SI/child-SO/root-SO polarity combinations in original/flat, exact comparison offsets, register/pin state and rollback. Twenty scale commands pass with matched hashes: root/child1M .31-.37s/~106092KiB,1024queued children .19-.37s/~99604KiB,97levels .06-.12s/~64064KiB. Tessent rejects original internal-child iScan in this mode (exit1 retained), accepts generated root output0; a separate hand-calculated physical root reference also passes0 with byte-identical exports. Actual9 submitted/10 prepared/4 physical-reference hashes match; no strict child directional certificate claim. Commit13 files, fast-forward master, delete completed branch and preserve the next raw-idle draft. Initial fullserial failed corpuscheck because the new fixture duplicated Leaf; renamed only the new fixture/native helper to ChildLeaf, corpus audit0 and affected leak checks plus fullserial rerun0, no policy exception. General mixed/opaque/mux/TAP/parallel/resource/event/reset/clock/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.

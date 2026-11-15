@@ -23,6 +23,151 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestStaticChildScans() {
+  const std::string original = R"ICL(Module ChildLeaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[7:0] { ScanInSource si; CaptureSource value; ResetValue 8'b0; }
+ ScanOutPort so { Source value[0]; }
+ ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; }
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister head[2:0] { ScanInSource si; CaptureSource head; ResetValue 3'b0; }
+ Instance child Of ChildLeaf {
+  InputPort si = head[0]; InputPort sel = sel; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanRegister tail[4:0] { ScanInSource child.so; CaptureSource tail; ResetValue 5'b0; }
+ ScanOutPort so { Source tail[0]; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 16'b0;
+ }
+}
+)ICL";
+  const auto invert = [](std::string bits, bool inverse) {
+    if (inverse) {
+      for (char& bit : bits) {
+        if (bit != 'x') bit = bit == '1' ? '0' : '1';
+      }
+    }
+    return bits;
+  };
+  for (bool input_inverse : {false, true}) {
+    for (bool child_output_inverse : {false, true}) {
+      for (bool root_output_inverse : {false, true}) {
+        std::string source = original;
+        const auto replace = [&](const std::string& from,
+                                 const std::string& to) {
+          source.replace(source.find(from), from.size(), to);
+        };
+        if (input_inverse) replace("= head[0]", "= ~head[0]");
+        if (child_output_inverse) {
+          replace("Source value[0]", "Source ~value[0]");
+        }
+        if (root_output_inverse) replace("Source tail[0]", "Source ~tail[0]");
+        for (bool flat : {false, true}) {
+          pattern::Design design;
+          design.AddIcl("static-child-scans.icl", source);
+          const auto netlist = pattern::Elaborate(design, "Top");
+          const auto id = [&](const std::string& name) {
+            return netlist.node_ids.at(name);
+          };
+          const auto head = id("head"), child = id("child.value"),
+                     tail = id("tail");
+          const auto tail_input =
+              invert("10011", input_inverse != child_output_inverse);
+          const auto input =
+              "101" + invert("10100101", input_inverse) + tail_input;
+          pattern::ScanScheduler scheduler(netlist);
+          scheduler.Reset();
+          scheduler.ApplyScan(
+              {"iScan",
+               {"client", "16", "-si",
+                "0b101" + invert("00000000", input_inverse) + tail_input},
+               "child:initial",
+               {}});
+          pattern::NetworkState literal(netlist);
+          literal.SetRegister(head, "101", "101");
+          literal.SetRegister(child, "00000000", "00000000");
+          literal.SetRegister(tail, "10011", "10011");
+          literal.SetGlobalReset('0', '0');
+          const auto pin = [&](const std::string& name, char bit) {
+            literal.Drive(id(name), std::string(1, bit));
+          };
+          pin("reset", '0');
+          const auto phase = [&](char capture, char shift, char update,
+                                 char clock) {
+            pin("sel", '1');
+            pin("ce", capture);
+            pin("se", shift);
+            pin("ue", update);
+            pin("tck", clock);
+            literal.Reset();
+          };
+          const auto controls = [&](char capture, char shift, char update) {
+            std::map<size_t, pattern::ScanControl> result;
+            for (size_t reg : {head, child, tail}) {
+              result.emplace(reg,
+                             pattern::ScanControl{capture, shift, update, '1'});
+            }
+            return result;
+          };
+          phase('1', '0', '0', '0');
+          pin("tck", '1');
+          literal.Clock(controls('1', '0', '0'), true);
+          for (auto bit = input.rbegin(); bit != input.rend(); ++bit) {
+            phase('0', '1', '0', '0');
+            pin("si", *bit);
+            pin("tck", '1');
+            literal.Clock(controls('0', '1', '0'), true);
+          }
+          phase('0', '0', '1', '1');
+          pin("tck", '0');
+          literal.Clock(controls('0', '0', '1'), false);
+          phase('0', '0', '0', '0');
+          const auto result = scheduler.ApplyScan(
+              {"iScan",
+               {"child.local", "8", "-si", "0xa5", "-so", "0x3c"},
+               "child:scan",
+               {}});
+          Require(result.arguments[0] == "client" &&
+                      result.arguments[1] == "16" &&
+                      result.arguments[3] == "0b" + input &&
+                      result.arguments[5] ==
+                          "0bxxx" + invert("00111100", root_output_inverse) +
+                              "xxxxx",
+                  "child-local load and expected comparison use separate "
+                  "physical root parities and offsets");
+          for (const auto& node : netlist.nodes) {
+            if (node.model == pattern::ModelKind::kPort ||
+                node.model == pattern::ModelKind::kRegister) {
+              Require(
+                  scheduler.Value(node.name) == literal.Value(id(node.name)),
+                  "child bulk replay matches literal full-root shifts and "
+                  "bound pins");
+            }
+          }
+          bool rejected = false;
+          try {
+            scheduler.ApplyScan(
+                {"iScan", {"child.local", "7"}, "child:bad", {}});
+          } catch (const std::runtime_error&) {
+            rejected = true;
+          }
+          Require(rejected && scheduler.Value("head") == "101" &&
+                      scheduler.Value("child.value") == "10100101" &&
+                      scheduler.Value("tail") == "10011",
+                  "failed child scan preserves actual surrounding and target "
+                  "state");
+          if (!flat) source = pattern::SerializeIcl(netlist);
+        }
+      }
+    }
+  }
+}
 void TestHierarchicalRootScans() {
   std::string source = R"ICL(Module Leaf {
  ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
@@ -3497,6 +3642,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestStaticChildScans();
     TestHierarchicalRootScans();
     TestRawSerialAliases();
     TestModeledRootScans();

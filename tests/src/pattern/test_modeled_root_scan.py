@@ -18,6 +18,8 @@ ScanOutPort so { Source b[0]; }""").replace("DefaultLoadValue 8'b00000000", "Def
 
 HIER = (opaque.ROOT / 'tests/cases/ours/pattern_generation/hierarchical_root_scan/model.icl').read_text()
 
+CHILD = (opaque.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text()
+
 
 class ModeledRootScan(unittest.TestCase):
     # Reuse the existing real CLI replay and atomic publication assertions.
@@ -225,6 +227,55 @@ class ModeledRootScan(unittest.TestCase):
         foreign = HIER.replace('Module Top {', 'Module Top { TCKPort other;')
         foreign = foreign.replace('InputPort tck = tck;', 'InputPort tck = other;')
         self.rejected('iReset; iScan client 8; iApply\n', 'interface', foreign)
+
+    def test_child_scan_preserves_surrounding_controlling_values(self):
+        result = self.replay('iReset; iWrite head 5; iWrite tail 0x13; iApply\n'
+                             'iScan child.local 8 -si 0xa5 -so 0x3c -stable; iApply\n'
+                             'iRead head 5; iRead tail 0x13; iRead child.value 0xa5; iApply\n', CHILD)
+        self.assertIn('iScan client 16 -si 0b1011010010110011 -so 0bxxx00111100xxxxx -stable', result)
+        self.assertIn('iRead child.value 0b10100101', result)
+
+    def test_child_whole_chain_prefix_procedure_and_partial_x(self):
+        commands = ("iProcsForModule Leaf\n"
+                    "iProc raw {} { iScan local 8 -si 0xa5; iApply }\n"
+                    "iProcsForModule Top\niReset; iCall child.raw\n"
+                    "iPrefix child; iScan local 8 -si 0b10x01x01; iApply\n"
+                    "iWrite value[1] 1; iApply\n")
+        result = self.replay(commands, HIER)
+        self.assertIn('iScan client 8 -si 0b10100101', result)
+        self.assertIn('iWrite child.value 0b10101111', result)
+
+    def test_child_disjoint_queue_and_same_target_overwrite(self):
+        start, end = HIER.index(' Instance child Of Leaf'), HIER.index(' ScanOutPort so { Source child.so; }')
+        block = HIER[start:end]
+        model = HIER[:start] + block.replace('Instance child', 'Instance first')
+        model += block.replace('Instance child', 'Instance second').replace('InputPort si = si;', 'InputPort si = first.so;') + HIER[end:]
+        model = model.replace('Source child.so', 'Source second.so').replace("DefaultLoadValue 8'b0", "DefaultLoadValue 16'b0")
+        result = self.replay('iReset; iScan first.local 8 -si 0xa5 -so 0x12 -stable\n'
+                             'iScan second.local 8 -si 0x5a -so 0x34 -stable\n'
+                             'iScan first.local 8 -si 0x3c -so 0x56 -stable; iApply\n'
+                             'iRead first.value 0x3c; iRead second.value 0x5a; iApply\n', model)
+        self.assertIn('iScan client 16 -si 0b0011110001011010 -so 0b0101011000110100 -stable', result)
+        self.assertEqual(result.count('iScan '), 1)
+
+    def test_child_local_load_and_root_comparison_polarity(self):
+        model = CHILD.replace('InputPort si = head[0];', 'InputPort si = ~head[0];')
+        model = model.replace('Source value[0]', 'Source ~value[0]')
+        for output_inverse in [False, True]:
+            with self.subTest(output_inverse=output_inverse):
+                icl = model.replace('Source tail[0]', 'Source ~tail[0]') if output_inverse else model
+                expected = '11000011' if output_inverse else '00111100'
+                result = self.replay('iReset; iWrite head 5; iWrite tail 0x13; iApply\n'
+                                     'iScan child.local 8 -si 0xa5 -so 0x3c; iApply\n'
+                                     'iRead child.value 0xa5; iApply\n', icl)
+                self.assertIn('iScan client 16 -si 0b1010101101010011 -so 0bxxx' + expected + 'xxxxx', result)
+
+    def test_child_invalid_discarded_and_overlap_atomic(self):
+        for target, width in [('missing', 8), ('child.value', 8), ('child.local', 7)]:
+            with self.subTest(target=target, width=width):
+                self.rejected('iScan ' + target + ' ' + str(width) + '; iReset\n', 'scan', CHILD)
+        self.rejected('iReset; iScan client 16; iScan child.local 8; iApply\n', 'overlap', CHILD)
+        self.replay('iReset; iScan child.local 8; iReset; iApply\n', CHILD)
 
     def test_large_modeled_scan(self):
         width = 1048576

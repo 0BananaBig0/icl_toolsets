@@ -44,9 +44,10 @@ class ScanScheduler {
       const std::vector<Operation>& operations, bool together = false,
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true);
-  // Raw scans currently require a complete static modeled root client chain.
+  // Raw scans target a complete root chain or disjoint static child intervals.
   Operation NormalizeScan(const Operation& operation);
   Operation ApplyScan(const Operation& operation);
+  Operation ApplyScans(const std::vector<Operation>& operations);
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.

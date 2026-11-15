@@ -1,0 +1,12 @@
+iPDLLevel 1
+iProcsForModule Top
+iReset
+iWrite head 5
+iWrite tail 0x13
+iApply
+iScan child.local 8 -si 0xa5 -so 0x3c -stable
+iApply
+iRead head 5
+iRead tail 0x13
+iRead child.value 0xa5
+iApply

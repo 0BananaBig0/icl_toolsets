@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <functional>
+#include <iterator>
 #include <set>
 #include <stdexcept>
 #include <tuple>
@@ -601,6 +602,12 @@ class ScanScheduler::Impl {
     // Register output-to-SO parity; total parity also includes the SI side.
     std::vector<std::pair<size_t, bool>> registers;
     bool inverted = false;
+    std::map<size_t, size_t> indices;
+    std::vector<size_t> offsets;
+  };
+  struct RawSlice {
+    size_t width = 0, offset = 0;
+    bool input_inverted = false, output_inverted = false;
   };
   const RawProfile& RawChain() {
     if (raw_profile_) return *raw_profile_;
@@ -747,7 +754,9 @@ class ScanScheduler::Impl {
       }
     }
 
-    RawProfile result{client, ports.at("ScanInPort"), 0, {}};
+    RawProfile result;
+    result.client = client;
+    result.input = ports.at("ScanInPort");
     auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
     std::set<size_t> seen;
     std::set<Key> visited;
@@ -781,21 +790,184 @@ class ScanScheduler::Impl {
     }
     if (seen.size() != registers_.size()) fail();
     result.inverted = inverted;
+    size_t offset = result.width;
+    for (size_t i = 0; i < result.registers.size(); ++i) {
+      const auto id = result.registers[i].first;
+      offset -= netlist_.nodes[id].Width();
+      result.indices.emplace(id, i);
+      result.offsets.push_back(offset);
+    }
     raw_profile_ = std::move(result);
     return *raw_profile_;
   }
+  const RawSlice& RawSubchain(const std::string& target) {
+    const auto& root = RawChain();
+    const auto found = netlist_.node_ids.find(target);
+    if (found == netlist_.node_ids.end()) {
+      throw std::runtime_error("raw scan target is not a client interface: " +
+                               target);
+    }
+    const auto id = found->second;
+    const auto cached = raw_slices_.find(id);
+    if (cached != raw_slices_.end()) return cached->second;
+    if (id == root.client) {
+      return raw_slices_.emplace(id, RawSlice{root.width, 0, false, false})
+          .first->second;
+    }
+    const auto fail = [&] {
+      throw std::runtime_error(
+          "raw scan requires a contiguous static child client: " + target);
+    };
+    const auto& client = netlist_.nodes[id];
+    if (!client.scan_interface ||
+        client.scan_interface->kind != ScanInterfaceKind::kClient ||
+        !client.scan_interface->chains.empty()) {
+      fail();
+    }
+    std::map<std::string, size_t> ports;
+    for (const auto& pin : client.scan_interface->ports) {
+      if (pin.node == kMissing || pin.inverted) fail();
+      const auto& node = netlist_.nodes.at(pin.node);
+      if (node.scope != client.scope || pin.index != node.left ||
+          !ports.emplace(node.kind, pin.node).second) {
+        fail();
+      }
+    }
+    if (!ports.count("ScanInPort") || !ports.count("ScanOutPort")) fail();
+    const auto input = ports.at("ScanInPort");
+    auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
+    std::set<Key> visited;
+    size_t next = kMissing;
+    bool inverted = false;
+    RawSlice slice;
+    while (true) {
+      if (++raw_profile_work_ > 16 * 1024 * 1024) {
+        throw std::runtime_error("raw scan profile traversal resource limit");
+      }
+      if (bit.node == kMissing ||
+          !visited.insert({bit.node, bit.index}).second) {
+        fail();
+      }
+      inverted = inverted != bit.inverted;
+      if (bit.node == input) {
+        if (bit.index != netlist_.nodes[input].left) fail();
+        break;
+      }
+      const auto& node = netlist_.nodes.at(bit.node);
+      if (node.model == ModelKind::kAlias ||
+          (node.model == ModelKind::kPort &&
+           (node.kind == "ScanInPort" || node.kind == "ScanOutPort"))) {
+        bit = node.inputs.at("Source").at(Offset(node, bit.index));
+        continue;
+      }
+      const auto position = root.indices.find(bit.node);
+      if (node.kind != "ScanRegister" || bit.index != node.right ||
+          position == root.indices.end()) {
+        fail();
+      }
+      const bool output_inverted =
+          inverted != root.registers[position->second].second;
+      if (next == kMissing) {
+        next = position->second;
+        slice.output_inverted = output_inverted;
+      }
+      if (position->second != next ||
+          output_inverted != slice.output_inverted) {
+        fail();
+      }
+      ++next;
+      slice.width += node.Width();
+      slice.offset = root.offsets[position->second];
+      bit = node.inputs.at("ScanInSource")[0];
+    }
+    if (!slice.width) fail();
+    slice.input_inverted = inverted != (root.inverted != slice.output_inverted);
+    return raw_slices_.emplace(id, slice).first->second;
+  }
   Operation NormalizeScan(const Operation& operation) {
-    const auto& profile = RawChain();
-    const auto result = pattern::NormalizeScan(
-        context_, netlist_.nodes[profile.client].name, operation);
-    if (result.arguments[1] != std::to_string(profile.width)) {
+    if (operation.arguments.empty()) {
+      throw std::runtime_error("raw scan has no target");
+    }
+    const auto& slice = RawSubchain(operation.arguments[0]);
+    const auto result =
+        pattern::NormalizeScan(context_, operation.arguments[0], operation);
+    if (result.arguments[1] != std::to_string(slice.width)) {
       throw std::runtime_error(
           "raw scan length differs from the modeled chain length");
     }
     return result;
   }
-  Operation ApplyScan(const Operation& operation) {
-    const auto normalized = NormalizeScan(operation);
+  Operation ApplyScans(const std::vector<Operation>& operations) {
+    if (operations.empty()) throw std::runtime_error("raw scan queue is empty");
+    std::map<std::string, Operation> latest;
+    size_t queued = 0;
+    for (const auto& operation : operations) {
+      auto normalized = NormalizeScan(operation);
+      const auto old = latest.find(normalized.arguments[0]);
+      if (old != latest.end()) queued -= old->second.arguments[3].size() - 2;
+      queued += normalized.arguments[3].size() - 2;
+      if (queued > 1024 * 1024) {
+        throw std::runtime_error("raw scan queued payload resource limit");
+      }
+      latest[normalized.arguments[0]] = std::move(normalized);
+    }
+    std::map<size_t, std::pair<size_t, std::string>> intervals;
+    for (const auto& [name, operation] : latest) {
+      const auto& slice = RawSubchain(name);
+      const auto next = intervals.lower_bound(slice.offset);
+      const auto conflict = [&](const std::string& other) {
+        throw std::runtime_error("overlapping raw scan interfaces: " + name +
+                                 " and " + other);
+      };
+      if (next != intervals.end() && next->first < slice.offset + slice.width) {
+        conflict(next->second.second);
+      }
+      if (next != intervals.begin()) {
+        const auto previous = std::prev(next);
+        if (previous->second.first > slice.offset) {
+          conflict(previous->second.second);
+        }
+      }
+      intervals.emplace(slice.offset,
+                        std::make_pair(slice.offset + slice.width, name));
+    }
+    const auto invert = [](std::string bits, bool inverse) {
+      if (inverse) {
+        for (char& bit : bits) {
+          if (bit != 'x') bit = bit == '1' ? '0' : '1';
+        }
+      }
+      return bits;
+    };
+    const auto& root = RawChain();
+    std::string input(root.width, 'x'), expected(root.width, 'x');
+    for (size_t i = 0; i < root.registers.size(); ++i) {
+      const auto [id, suffix] = root.registers[i];
+      input.replace(root.offsets[i], netlist_.nodes[id].Width(),
+                    invert(fill_.at(id), root.inverted != suffix));
+    }
+    bool stable = true;
+    for (const auto& [name, operation] : latest) {
+      const auto& slice = RawSubchain(name);
+      input.replace(
+          slice.offset, slice.width,
+          invert(operation.arguments[3].substr(2), slice.input_inverted));
+      expected.replace(
+          slice.offset, slice.width,
+          invert(operation.arguments[5].substr(2), slice.output_inverted));
+      stable = stable && operation.arguments.back() == "-stable";
+    }
+    auto physical = operations.front();
+    physical.arguments = {netlist_.nodes[root.client].name,
+                          std::to_string(root.width),
+                          "-si",
+                          "0b" + input,
+                          "-so",
+                          "0b" + expected};
+    if (stable) physical.arguments.push_back("-stable");
+    return ReplayScan(physical);
+  }
+  Operation ReplayScan(const Operation& normalized) {
     const auto& profile = RawChain();
     if (global_resets_ != "00") {
       throw std::runtime_error(
@@ -5083,6 +5255,8 @@ class ScanScheduler::Impl {
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
   std::optional<RawProfile> raw_profile_;
+  std::map<size_t, RawSlice> raw_slices_;
+  size_t raw_profile_work_ = 0;
   bool parallel_chains_ = false;
   bool data_reset_dependencies_ = false, feedback_resets_ = false;
   size_t reset_passes_ = 0, reset_work_ = 0;
@@ -5143,7 +5317,10 @@ Operation ScanScheduler::NormalizeScan(const Operation& operation) {
   return impl_->NormalizeScan(operation);
 }
 Operation ScanScheduler::ApplyScan(const Operation& operation) {
-  return impl_->ApplyScan(operation);
+  return impl_->ApplyScans({operation});
+}
+Operation ScanScheduler::ApplyScans(const std::vector<Operation>& operations) {
+  return impl_->ApplyScans(operations);
 }
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);

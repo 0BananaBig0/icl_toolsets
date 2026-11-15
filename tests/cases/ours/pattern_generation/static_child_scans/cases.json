@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "static_child_scans",
+      "top": "Top",
+      "icl": [
+        "tests/cases/ours/pattern_generation/static_child_scans/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/static_child_scans/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

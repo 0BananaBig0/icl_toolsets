@@ -250,7 +250,8 @@ std::string Generate(
       initial_clocks ? *initial_clocks : pattern::SystemClocks(netlist);
   z3::context context;
   QueuedAccesses pending;
-  std::optional<pattern::Operation> pending_scan;
+  std::map<std::string, pattern::Operation> pending_scans;
+  size_t pending_scan_bits = 0;
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
   const auto append_steps = [&](const std::vector<pattern::ScanStep>& steps) {
@@ -375,7 +376,7 @@ std::string Generate(
       }
       if (rewritten) rewritten->push_back(operation);
       if (operation.command == "iWrite" || operation.command == "iRead") {
-        if (pending_scan) {
+        if (!pending_scans.empty()) {
           throw std::runtime_error(
               "raw scan cannot share an Apply with modeled accesses");
         }
@@ -394,18 +395,33 @@ std::string Generate(
           throw std::runtime_error(
               "raw scan cannot share an Apply with modeled accesses");
         }
-        pending_scan = scheduler.NormalizeScan(operation);
+        auto scan = scheduler.NormalizeScan(operation);
+        const auto old = pending_scans.find(scan.arguments[0]);
+        const size_t replaced = old == pending_scans.end()
+                                    ? 0
+                                    : old->second.arguments[3].size() - 2;
+        const size_t size =
+            pending_scan_bits - replaced + scan.arguments[3].size() - 2;
+        if (size > 1024 * 1024) {
+          throw std::runtime_error("raw scan queued payload resource limit");
+        }
+        pending_scan_bits = size;
+        pending_scans[scan.arguments[0]] = std::move(scan);
       } else if (operation.command == "iApply") {
         const bool together =
             operation.arguments == std::vector<std::string>{"-together"};
         if (!operation.arguments.empty() && !together) {
           throw std::runtime_error("unsupported iApply option");
         }
-        if (pending_scan) {
-          result += OperationText(scheduler.ApplyScan(*pending_scan));
+        if (!pending_scans.empty()) {
+          std::vector<pattern::Operation> scans;
+          scans.reserve(pending_scans.size());
+          for (const auto& [name, scan] : pending_scans) scans.push_back(scan);
+          result += OperationText(scheduler.ApplyScans(scans));
           result += together ? "iApply -together\n" : "iApply\n";
           clocks.Invalidate();
-          pending_scan.reset();
+          pending_scans.clear();
+          pending_scan_bits = 0;
           continue;
         }
         const auto& accesses = pending.Operations();
@@ -423,7 +439,8 @@ std::string Generate(
         clocks.Invalidate();
         reservations.Reset();
         pending.Clear();
-        pending_scan.reset();
+        pending_scans.clear();
+        pending_scan_bits = 0;
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iClockOverride") {
         clocks.Override(operation, context);
@@ -514,7 +531,7 @@ std::string Generate(
       throw std::runtime_error(message);
     }
   }
-  if (!pending.Empty() || pending_scan) {
+  if (!pending.Empty() || !pending_scans.empty()) {
     throw std::runtime_error("unapplied PDL operations");
   }
   const bool had_transaction = std::any_of(
