@@ -1,0 +1,13 @@
+iPDLLevel 1
+iProcsForModule Leaf
+iProc check {expected} { iRead value $expected; iApply }
+iProcsForModule Top
+iReset
+iScan client 8 -si 0xa5 -stable
+iApply
+iCall child.check 0xa5
+iWrite child.value 0x3c
+iApply
+iScan client 8 -si 0x5a -so 0x3c -stable
+iApply
+iCall child.check 0x5a

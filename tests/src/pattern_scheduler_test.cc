@@ -23,6 +23,113 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestHierarchicalRootScans() {
+  std::string source = R"ICL(Module Leaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[7:0] { ScanInSource si; CaptureSource value; ResetValue 8'b0; }
+ ScanOutPort so { Source value[0]; }
+ ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; }
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of Leaf {
+  InputPort si = si; InputPort sel = sel; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanOutPort so { Source child.so; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 8'b0;
+ }
+}
+)ICL";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("hierarchical-root-scans.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto id = [&](const std::string& name) {
+      return netlist.node_ids.at(name);
+    };
+    const auto value = id("child.value");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    pattern::NetworkState literal(netlist);
+    const auto pin = [&](const std::string& name, char bit) {
+      literal.Drive(id(name), std::string(1, bit));
+    };
+    pin("reset", '1');
+    literal.SetGlobalReset('1', '1');
+    literal.Reset();
+    pin("reset", '0');
+    literal.SetGlobalReset('0', '0');
+    literal.Reset();
+    const auto phase = [&](char capture, char shift, char update, char clock) {
+      pin("sel", '1');
+      pin("ce", capture);
+      pin("se", shift);
+      pin("ue", update);
+      pin("tck", clock);
+      literal.Reset();
+    };
+    for (const std::string payload : {"10100101", "10x01x01"}) {
+      phase('1', '0', '0', '0');
+      pin("tck", '1');
+      literal.Clock({{value, {'1', '0', '0', '1'}}}, true);
+      for (auto it = payload.rbegin(); it != payload.rend(); ++it) {
+        phase('0', '1', '0', '0');
+        pin("si", *it);
+        pin("tck", '1');
+        literal.Clock({{value, {'0', '1', '0', '1'}}}, true);
+      }
+      phase('0', '0', '1', '1');
+      pin("tck", '0');
+      literal.Clock({{value, {'0', '0', '1', '1'}}}, false);
+      phase('0', '0', '0', '0');
+      scheduler.ApplyScan(
+          {"iScan", {"client", "8", "-si", "0b" + payload}, "hier:1", {}});
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          Require(scheduler.Value(node.name) == literal.Value(id(node.name)),
+                  "hierarchical bulk replay matches literal register and bound "
+                  "pin values");
+        }
+      }
+    }
+    scheduler.Apply({{"iWrite", {"child.value[1]", "1"}, "hier:write", {}}});
+    Require(
+        scheduler.Value("child.value") == "10101111",
+        "hierarchical partial-X raw fill retains earlier known assignments");
+    auto unbound = netlist;
+    unbound.nodes.at(id("child.tck")).inputs.erase("Source");
+    pattern::ScanScheduler bad_clock(unbound);
+    bool rejected = false;
+    try {
+      bad_clock.NormalizeScan({"iScan", {"client", "8"}, "hier:clock", {}});
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("raw scan") != std::string::npos;
+    }
+    Require(rejected,
+            "native auto-driven child TCK cannot qualify an unbound physical "
+            "root path");
+    auto dependent = netlist;
+    dependent.nodes.at(value).reset = pattern::BitReference{value, 0};
+    pattern::ScanScheduler bad_reset(dependent);
+    rejected = false;
+    try {
+      bad_reset.NormalizeScan({"iScan", {"client", "8"}, "hier:reset", {}});
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("raw scan") != std::string::npos;
+    }
+    Require(rejected,
+            "nested storage-dependent reset remains outside the static proof");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestRawSerialAliases() {
   for (bool input_inverse : {false, true}) {
     for (bool bridge_inverse : {false, true}) {
@@ -3390,6 +3497,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestHierarchicalRootScans();
     TestRawSerialAliases();
     TestModeledRootScans();
     TestInvertedClockDurations();

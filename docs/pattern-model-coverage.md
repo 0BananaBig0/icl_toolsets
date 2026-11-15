@@ -58,6 +58,7 @@ full model coverage or Tessent equivalence.
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
+| Raw scans | Genuine opaque root-client lowering with explicit sized reset default, setup validation/overwrite/reset discard and canonical SI/SO data; complete static modeled root chains through nested instances, pure serial aliases/inversion, bound scalar control/TCK forwarding and inferred/direct resets; transactional native capture/bulk-shift/update/idle, partial-X controlling fill and later ordinary accesses | Child-interface retargeting, mixed pending accesses, opaque child networks, mux/TAP/IR/parallel paths, resource ownership and strict vendor qualification |
 | Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
 | Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots and root-relative replay | General implicit selection, inverted child clock phases, oscillator overrides without explicit source, bound differential-input consistency, absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
@@ -2587,3 +2588,39 @@ byte matches,61masterhistory matches and10olderstatus-onlyplandrafts; no unique
 unfinishedbehavior, archiveintact at/tmp/icl-branch-cleanup-20261115/content-review.json.
 General retargeting/parallel/TAP, phase/reset/resource/clock/lifecycle, broader
 vendor, strictcoverage andfinalplatform requirements remain open. No push.
+
+## Hierarchical static root scans (Task96)
+
+A full root iScan may traverse nested static modeled instances. The target stays
+an explicit root client, and every ScanRegister must lie on its complete serial
+path. Pure aliases and scalar scan/control/reset forwarding preserve their actual
+terminal identities and inversion. Child controls and TCK must trace to the
+corresponding physical root pins; undriven native fallback controls and auto-driven
+child clocks do not qualify. Reset checks include elaborator-inferred parent
+connections and active-low normalization, followed by the native inactive check.
+
+The existing transactional capture/bulk-shift/update/idle path is unchanged.
+Native literal per-bit comparisons cover source and flat forms, bound pin values
+and later partial-X controlling fill. CLI checks cover nested and repeated
+parameterized leaves, implicit local interfaces/reset forwarding, procedures,
+serial inversion, active-low reset and forwarded TCK. Invalid bindings remain
+atomic failures. Child-interface scans, partial-chain insertion, muxes, TAP/IR,
+parallel chains and resource ownership remain separate requirements.
+
+Independent final source review found no concrete defect. Source-matched native
+state/scheduler, nineteen modeled CLI cases and twelve opaque CLI cases pass.
+Tessent2026.2 accepts original and generated hierarchical PDL with byte-identical
+exports. Its ignored -stable option and synthetic default-chain spelling still
+prevent a strict directional certificate claim. Required final gates and scale
+measurements are recorded below when complete.
+
+Scale evidence: fifteen commands pass on the source-matched remote candidate.
+The1048576-bit leaf takes .26-.33s with peak104796KiB;1024 repeated8-bit leaves
+take .19-.32s with peak99296KiB;97 levels take .05-.11s with peak64580KiB.
+Source repetitions, flat input and generated-PDL replay have identical canonical
+output hashes within each scenario. These qualify newly supported shapes; no
+old unsupported-path speedup is claimed. Vendoractual6submitted/10preparedhashes
+match, original/normalized exits0 and byte-identical exports. Local15 connected
+checks, formatting/naming and53offline directional goldens pass.
+
+Verified Task96: required leak-enabled build/native7/main69/modeled19/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1364.230889235041s. Final remote52 statuses all0 and actual37 source/test/fixture hashes match. Local15 connected checks, formatting/naming and53 offline directional goldens pass. Independent final review found no concrete defect. Native literal replay checks original/flat nested register and pin state plus partial-X controlling fill. Fifteen source-matched scale commands pass:1M leaf .26-.33s/~104796KiB,1024 leaves .19-.32s/~99296KiB,97 levels .05-.11s/~64580KiB; canonical replay hashes match per scenario. Vendor original/normalized exits0, byte-identical exports and actual6 submitted/10 prepared hashes match. Existing Tessent stable/default-chain differences prevent a strict certificate claim. Commit11 files, fast-forward master, delete completed task branch and preserve only the next child-scan draft. General child/opaque/mux/TAP/parallel/resource/event/reset/clock/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.

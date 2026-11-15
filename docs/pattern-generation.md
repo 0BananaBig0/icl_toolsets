@@ -5179,3 +5179,39 @@ byte matches,61masterhistory matches and10olderstatus-onlyplandrafts; no unique
 unfinishedbehavior, archiveintact at/tmp/icl-branch-cleanup-20261115/content-review.json.
 General retargeting/parallel/TAP, phase/reset/resource/clock/lifecycle, broader
 vendor, strictcoverage andfinalplatform requirements remain open. No push.
+
+## Hierarchical static root scans (Task96)
+
+A full root iScan may traverse nested static modeled instances. The target stays
+an explicit root client, and every ScanRegister must lie on its complete serial
+path. Pure aliases and scalar scan/control/reset forwarding preserve their actual
+terminal identities and inversion. Child controls and TCK must trace to the
+corresponding physical root pins; undriven native fallback controls and auto-driven
+child clocks do not qualify. Reset checks include elaborator-inferred parent
+connections and active-low normalization, followed by the native inactive check.
+
+The existing transactional capture/bulk-shift/update/idle path is unchanged.
+Native literal per-bit comparisons cover source and flat forms, bound pin values
+and later partial-X controlling fill. CLI checks cover nested and repeated
+parameterized leaves, implicit local interfaces/reset forwarding, procedures,
+serial inversion, active-low reset and forwarded TCK. Invalid bindings remain
+atomic failures. Child-interface scans, partial-chain insertion, muxes, TAP/IR,
+parallel chains and resource ownership remain separate requirements.
+
+Independent final source review found no concrete defect. Source-matched native
+state/scheduler, nineteen modeled CLI cases and twelve opaque CLI cases pass.
+Tessent2026.2 accepts original and generated hierarchical PDL with byte-identical
+exports. Its ignored -stable option and synthetic default-chain spelling still
+prevent a strict directional certificate claim. Required final gates and scale
+measurements are recorded below when complete.
+
+Scale evidence: fifteen commands pass on the source-matched remote candidate.
+The1048576-bit leaf takes .26-.33s with peak104796KiB;1024 repeated8-bit leaves
+take .19-.32s with peak99296KiB;97 levels take .05-.11s with peak64580KiB.
+Source repetitions, flat input and generated-PDL replay have identical canonical
+output hashes within each scenario. These qualify newly supported shapes; no
+old unsupported-path speedup is claimed. Vendoractual6submitted/10preparedhashes
+match, original/normalized exits0 and byte-identical exports. Local15 connected
+checks, formatting/naming and53offline directional goldens pass.
+
+Verified Task96: required leak-enabled build/native7/main69/modeled19/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1364.230889235041s. Final remote52 statuses all0 and actual37 source/test/fixture hashes match. Local15 connected checks, formatting/naming and53 offline directional goldens pass. Independent final review found no concrete defect. Native literal replay checks original/flat nested register and pin state plus partial-X controlling fill. Fifteen source-matched scale commands pass:1M leaf .26-.33s/~104796KiB,1024 leaves .19-.32s/~99296KiB,97 levels .05-.11s/~64580KiB; canonical replay hashes match per scenario. Vendor original/normalized exits0, byte-identical exports and actual6 submitted/10 prepared hashes match. Existing Tessent stable/default-chain differences prevent a strict certificate claim. Commit11 files, fast-forward master, delete completed task branch and preserve only the next child-scan draft. General child/opaque/mux/TAP/parallel/resource/event/reset/clock/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.

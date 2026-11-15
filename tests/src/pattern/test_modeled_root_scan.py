@@ -16,6 +16,8 @@ ScanRegister b[2:0] {
 }
 ScanOutPort so { Source b[0]; }""").replace("DefaultLoadValue 8'b00000000", "DefaultLoadValue 5'b0")
 
+HIER = (opaque.ROOT / 'tests/cases/ours/pattern_generation/hierarchical_root_scan/model.icl').read_text()
+
 
 class ModeledRootScan(unittest.TestCase):
     # Reuse the existing real CLI replay and atomic publication assertions.
@@ -149,6 +151,80 @@ class ModeledRootScan(unittest.TestCase):
         model = MODEL.replace('ScanOutPort so', 'Alias output[0:7] = value; ScanOutPort so')
         model = model.replace('Source value[0]', 'Source output[0]')
         self.rejected('iReset; iScan client 8; iApply\n', 'rightmost', model)
+
+    def test_hierarchical_root_state_and_procedure(self):
+        commands = ("iProcsForModule Leaf\n"
+                    "iProc check {expected} { iRead value $expected; iApply }\n"
+                    "iProcsForModule Top\n"
+                    "iReset; iScan client 8 -si 0xa5; iApply\n"
+                    "iCall child.check 0xa5; iWrite child.value[7] 0; iApply\n"
+                    "iRead child.value 0x25; iApply\n")
+        result = self.replay(commands, HIER)
+        self.assertIn('iWrite child.value 0b00100101', result)
+        self.assertIn('iRead child.value 0b10100101', result)
+
+    def test_hierarchical_nested_and_implicit_client(self):
+        leaf, root = HIER.split('Module Top ', 1)
+        wrapper = 'Module Wrapper ' + root.replace('Instance child Of Leaf', 'Instance inner Of Leaf')
+        wrapper = wrapper.replace('Source child.so', 'Source inner.so')
+        nested = leaf + wrapper + 'Module Top ' + root.replace('Instance child Of Leaf', 'Instance child Of Wrapper')
+        result = self.replay('iReset; iScan client 8 -si 0xa5; iApply\n'
+                             'iRead child.inner.value 0xa5; iApply\n', nested)
+        self.assertIn('iRead child.inner.value 0b10100101', result)
+        implicit = HIER.replace(' ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; }\n', '')
+        self.assertIn('iScan client', self.replay('iReset; iScan client 8 -si 0xa5; iApply\n', implicit))
+
+    def test_hierarchical_repeated_parameterized_leaf(self):
+        parameterized = HIER.replace('Module Leaf {', 'Module Leaf { Parameter W = 8;')
+        parameterized = parameterized.replace('value[7:0]', 'value[$W-1:0]')
+        parameterized = parameterized.replace("ResetValue 8'b0", "ResetValue 0")
+        parameterized = parameterized.replace('Instance child Of Leaf {', 'Instance child Of Leaf { Parameter W = 12;')
+        parameterized = parameterized.replace("DefaultLoadValue 8'b0", "DefaultLoadValue 12'b0")
+        result = self.replay('iReset; iScan client 12 -si 0xa55; iApply\n'
+                             'iRead child.value 0xa55; iApply\n', parameterized)
+        self.assertIn('iRead child.value 0b101001010101', result)
+        start, end = HIER.index(' Instance child Of Leaf'), HIER.index(' ScanOutPort so { Source child.so; }')
+        block = HIER[start:end]
+        repeated = HIER[:start] + block.replace('Instance child', 'Instance first')
+        repeated += block.replace('Instance child', 'Instance second').replace('InputPort si = si;', 'InputPort si = first.so;') + HIER[end:]
+        repeated = repeated.replace('Source child.so', 'Source second.so').replace("DefaultLoadValue 8'b0", "DefaultLoadValue 16'b0")
+        result = self.replay('iReset; iScan client 16 -si 0xa55a; iApply\n'
+                             'iWrite first.value[7] 0; iApply\n'
+                             'iRead first.value 0x25; iRead second.value 0x5a; iApply\n', repeated)
+        self.assertIn('iWrite first.value 0b00100101', result)
+        self.assertIn('iRead second.value 0b01011010', result)
+
+    def test_hierarchical_binding_polarity_and_active_low_reset(self):
+        model = HIER.replace('InputPort si = si;', 'InputPort si = ~si;')
+        result = self.replay('iReset; iScan client 8 -si 0xa5; iApply\n'
+                             'iWrite child.value[7] 1; iApply\n', model)
+        self.assertIn('iWrite child.value 0b11011010', result)
+        active_low = HIER.replace('ResetPort reset;', 'ResetPort reset { ActivePolarity 0; }')
+        self.assertIn('iScan client', self.replay('iReset; iScan client 8 -si 0xa5; iApply\n', active_low))
+        driver = 'Module Driver { TCKPort tck; ToTCKPort forwarded { Source tck; } }\n'
+        forwarded = driver + HIER.replace(' Instance child Of Leaf',
+                                          ' Instance driver Of Driver { InputPort tck = tck; }\n Instance child Of Leaf')
+        forwarded = forwarded.replace('InputPort tck = tck; InputPort reset',
+                                      'InputPort tck = driver.forwarded; InputPort reset')
+        self.assertIn('iScan client', self.replay('iReset; iScan client 8 -si 0xa5; iApply\n', forwarded))
+
+    def test_hierarchical_declared_unbound_inputs_rejected_before_reset(self):
+        for name in ['tck', 'ce', 'se', 'ue', 'sel']:
+            with self.subTest(name=name):
+                model = HIER.replace('InputPort ' + name + ' = ' + name + ';', '')
+                self.rejected('iScan client 8; iReset\n', 'scan', model)
+        implicit_reset = HIER.replace('InputPort reset = reset;', '')
+        self.assertIn('iScan client', self.replay(
+            'iReset; iScan client 8 -si 0xa5; iApply\n', implicit_reset))
+        for name in ['tck', 'ce', 'se', 'ue', 'sel']:
+            with self.subTest(inverted=name):
+                model = HIER.replace('InputPort ' + name + ' = ' + name + ';',
+                                     'InputPort ' + name + ' = ~' + name + ';')
+                self.rejected('iScan client 8; iReset\n',
+                              'scan' if name == 'sel' else 'non-inverted', model)
+        foreign = HIER.replace('Module Top {', 'Module Top { TCKPort other;')
+        foreign = foreign.replace('InputPort tck = tck;', 'InputPort tck = other;')
+        self.rejected('iReset; iScan client 8; iApply\n', 'interface', foreign)
 
     def test_large_modeled_scan(self):
         width = 1048576

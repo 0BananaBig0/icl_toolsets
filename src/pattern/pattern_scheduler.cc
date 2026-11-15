@@ -606,68 +606,67 @@ class ScanScheduler::Impl {
     if (raw_profile_) return *raw_profile_;
     const auto fail = [] {
       throw std::runtime_error(
-          "raw scan requires a complete static root client with direct pins "
-          "and resets");
+          "raw scan requires a complete static root client with bound scalar "
+          "pins and resets");
     };
-    if (tap_ || netlist_.scopes.size() != 1 || registers_.empty()) fail();
-    const std::set<std::string> pins = {
+    if (tap_ || registers_.empty()) fail();
+    const std::set<std::string> inputs = {
         "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
         "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
+    const std::set<std::string> outputs = {"ToSelectPort",  "ToCaptureEnPort",
+                                           "ToShiftEnPort", "ToUpdateEnPort",
+                                           "ToTCKPort",     "ToResetPort"};
     std::map<std::string, size_t> ports;
     size_t client = kMissing;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
-      if (node.scope != 0 || node.constants.count("iApplyEndState")) fail();
+      if (node.constants.count("iApplyEndState")) fail();
       if (node.scan_interface) {
-        if (client != kMissing ||
-            node.scan_interface->kind != ScanInterfaceKind::kClient ||
+        if (node.scan_interface->kind != ScanInterfaceKind::kClient ||
             !node.scan_interface->chains.empty()) {
           fail();
         }
-        client = id;
+        if (node.scope == 0) {
+          if (client != kMissing) fail();
+          client = id;
+        }
       } else if (node.model == ModelKind::kAlias) {
         if (node.reset || node.inputs.size() != 1 ||
             !node.inputs.count("Source") ||
             node.inputs.at("Source").size() != node.Width()) {
           fail();
         }
-      } else if (node.kind == "ScanRegister") {
-        if (node.reset) {
-          const auto ref = *node.reset;
-          if (ref.node == kMissing) {
-            if (ref.virtual_signal == VirtualSignal::kNone) fail();
-          } else {
-            const auto& reset = netlist_.nodes.at(ref.node);
-            if (reset.kind != "ResetPort" || reset.scope != 0 ||
-                reset.Width() != 1 || !reset.inputs.empty()) {
-              fail();
-            }
-          }
-        }
-      } else {
-        if (node.model != ModelKind::kPort || !pins.count(node.kind) ||
-            node.Width() != 1 || !ports.emplace(node.kind, id).second ||
-            node.reset) {
+      } else if (node.kind != "ScanRegister") {
+        if (node.model != ModelKind::kPort || node.Width() != 1 || node.reset ||
+            (!inputs.count(node.kind) && !outputs.count(node.kind))) {
           fail();
         }
-        if (node.kind == "ScanOutPort") {
-          if (node.inputs.size() != 1 || !node.inputs.count("Source") ||
-              node.inputs.at("Source").size() != 1) {
-            fail();
-          }
-        } else if (!node.inputs.empty()) {
+        const bool physical = node.scope == 0 && inputs.count(node.kind);
+        if (physical && !ports.emplace(node.kind, id).second) fail();
+        if (physical && node.kind != "ScanOutPort") {
+          if (!node.inputs.empty()) fail();
+        } else if (node.inputs.size() != 1 || !node.inputs.count("Source") ||
+                   node.inputs.at("Source").size() != 1) {
           fail();
         }
       }
     }
-    if (client == kMissing || !ports.count("ScanInPort") ||
-        !ports.count("ScanOutPort") ||
-        EffectiveScanInterfaces(netlist_).size() != 1) {
+    size_t root_clients = 0;
+    for (const auto& binding : EffectiveScanInterfaces(netlist_)) {
+      if (binding.interface.kind != ScanInterfaceKind::kClient ||
+          !binding.interface.chains.empty()) {
+        fail();
+      }
+      if (binding.scope == 0) ++root_clients;
+    }
+    if (client == kMissing || root_clients != 1 || !ports.count("ScanInPort") ||
+        !ports.count("ScanOutPort")) {
       fail();
     }
     std::set<size_t> interface_pins;
     for (const auto& pin : netlist_.nodes[client].scan_interface->ports) {
       if (pin.node == kMissing || pin.inverted ||
+          netlist_.nodes.at(pin.node).scope != 0 ||
           !interface_pins.insert(pin.node).second) {
         fail();
       }
@@ -676,6 +675,78 @@ class ScanScheduler::Impl {
         !interface_pins.count(ports.at("ScanOutPort"))) {
       fail();
     }
+
+    // Memoized pure forwarding, independent of the role checked by each user.
+    std::map<Key, BitReference> terminals;
+    const auto terminal = [&](BitReference bit) {
+      std::vector<std::pair<Key, bool>> trail;
+      std::set<Key> visited;
+      bool inverted = false;
+      BitReference result;
+      while (true) {
+        inverted = inverted != bit.inverted;
+        bit.inverted = false;
+        if (bit.node == kMissing) {
+          result = bit;
+          result.inverted = inverted;
+          break;
+        }
+        const Key key{bit.node, bit.index};
+        const auto cached = terminals.find(key);
+        if (cached != terminals.end()) {
+          result = cached->second;
+          result.inverted = result.inverted != inverted;
+          break;
+        }
+        if (!visited.insert(key).second) fail();
+        const auto& node = netlist_.nodes.at(bit.node);
+        const auto source = node.inputs.find("Source");
+        if ((node.model != ModelKind::kAlias &&
+             node.model != ModelKind::kPort) ||
+            source == node.inputs.end()) {
+          result = bit;
+          result.inverted = inverted;
+          break;
+        }
+        trail.emplace_back(key, inverted);
+        bit = source->second.at(Offset(node, bit.index));
+      }
+      for (const auto& [key, prefix] : trail) {
+        auto value = result;
+        value.inverted = value.inverted != prefix;
+        terminals.emplace(key, value);
+      }
+      return result;
+    };
+    const auto endpoint = [&](BitReference bit, const std::string& role,
+                              bool positive) {
+      const auto end = terminal(bit);
+      if (role == "ResetPort" && end.node == kMissing &&
+          end.virtual_signal != VirtualSignal::kNone) {
+        return;
+      }
+      const auto physical = ports.find(role);
+      if (physical == ports.end() || end.node != physical->second ||
+          end.index != netlist_.nodes[physical->second].left ||
+          (positive && end.inverted)) {
+        fail();
+      }
+    };
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.kind == "ScanRegister" && node.reset) {
+        endpoint(*node.reset, "ResetPort", false);
+      }
+      if (node.model != ModelKind::kPort) continue;
+      const auto role =
+          node.kind.compare(0, 2, "To") == 0 ? node.kind.substr(2) : node.kind;
+      if (role == "SelectPort" || role == "CaptureEnPort" ||
+          role == "ShiftEnPort" || role == "UpdateEnPort" ||
+          role == "TCKPort" || role == "ResetPort") {
+        endpoint({id, node.left}, role, role != "ResetPort");
+      }
+    }
+
     RawProfile result{client, ports.at("ScanInPort"), 0, {}};
     auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
     std::set<size_t> seen;
@@ -692,7 +763,9 @@ class ScanScheduler::Impl {
         break;
       }
       const auto& node = netlist_.nodes.at(bit.node);
-      if (node.model == ModelKind::kAlias) {
+      if (node.model == ModelKind::kAlias ||
+          (node.model == ModelKind::kPort &&
+           (node.kind == "ScanInPort" || node.kind == "ScanOutPort"))) {
         bit = node.inputs.at("Source").at(Offset(node, bit.index));
         continue;
       }
