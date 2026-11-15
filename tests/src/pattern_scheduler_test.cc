@@ -150,6 +150,22 @@ Module Top {
                   "bound pins");
             }
           }
+          scheduler.Idle(7);
+          for (size_t cycle = 0; cycle < 7; ++cycle) {
+            pin("tck", '1');
+            literal.Clock(controls('0', '0', '0'), true);
+            pin("tck", '0');
+            literal.Clock(controls('0', '0', '0'), false);
+          }
+          for (const auto& node : netlist.nodes) {
+            if (node.model == pattern::ModelKind::kPort ||
+                node.model == pattern::ModelKind::kRegister) {
+              Require(
+                  scheduler.Value(node.name) == literal.Value(id(node.name)),
+                  "raw child scan followed by native idle matches literal "
+                  "edges and pin state");
+            }
+          }
           bool rejected = false;
           try {
             scheduler.ApplyScan(

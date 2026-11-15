@@ -88,7 +88,7 @@ class ModeledRootScan(unittest.TestCase):
             with self.subTest(model=model):
                 self.rejected('iReset; iScan client 8; iApply\n', 'scan', model)
         for command in ['iTake value', 'iState value 0',
-                        'iMerge -begin; iMerge -end', 'iRunLoop 1']:
+                        'iMerge -begin; iMerge -end']:
             with self.subTest(command=command):
                 self.rejected('iReset; ' + command + '; iScan client 8; iApply\n', 'scan')
 
@@ -276,6 +276,42 @@ class ModeledRootScan(unittest.TestCase):
                 self.rejected('iScan ' + target + ' ' + str(width) + '; iReset\n', 'scan', CHILD)
         self.rejected('iReset; iScan client 16; iScan child.local 8; iApply\n', 'overlap', CHILD)
         self.replay('iReset; iScan child.local 8; iReset; iApply\n', CHILD)
+
+    def test_raw_tck_idle_counts_and_following_accesses(self):
+        for count in [0, 1, 7, 18446744073709551615]:
+            with self.subTest(count=count):
+                result = self.replay('iReset; iScan client 8 -si 0xa5; iApply\n'
+                                     'iRunLoop ' + str(count) + ' -tck\n'
+                                     'iWrite child.value[7] 0; iApply\n'
+                                     'iRead child.value 0x25; iApply\n', HIER)
+                self.assertIn('iRunLoop ' + str(count) + ' -tck', result)
+                self.assertIn('iWrite child.value 0b00100101', result)
+
+    def test_raw_tck_idle_child_implicit_and_partial_x(self):
+        for implicit in [False, True]:
+            with self.subTest(implicit=implicit):
+                model = HIER
+                target = 'child.local'
+                if implicit:
+                    model = model.replace(' ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; }\n', '')
+                    target = 'client'
+                result = self.replay('iReset; iScan client 8 -si 0xa5; iApply; iRunLoop 3\n'
+                                     'iScan ' + target + ' 8 -si 0b10x01x01; iApply\n'
+                                     'iRunLoop 5 -tck; iWrite child.value[1] 1; iApply\n'
+                                     'iRead child.value 0xaf; iApply\n', model)
+                self.assertIn('iWrite child.value 0b10101111', result)
+                self.assertIn('iRunLoop 3 -tck', result)
+                self.assertIn('iRunLoop 5 -tck', result)
+
+    def test_raw_tck_idle_pending_and_invalid_atomic(self):
+        self.rejected('iReset; iScan client 8; iRunLoop 0; iReset\n', 'unapplied', HIER)
+        for command, diagnostic in [('iRunLoop 0bx', 'known'),
+                                    ('iRunLoop 18446744073709551616', 'truncates'),
+                                    ('iRunLoop 1 -sck tck', 'ClockPort'),
+                                    ('iRunLoop -time 1ns', 'absolute')]:
+            with self.subTest(command=command):
+                self.rejected('iReset; iScan client 8; iApply; ' + command + '\n', diagnostic, HIER)
+        self.rejected('iReset; iScan client 8; iApply; iRunLoop 1\n', 'opaque', opaque.MODEL)
 
     def test_large_modeled_scan(self):
         width = 1048576

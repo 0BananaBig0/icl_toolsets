@@ -5250,3 +5250,31 @@ No unsupported-path speedup is claimed. Broader opaque/mux/TAP/parallel/resource
 phase/reset/clock/lifecycle, strict coverage and final vendor/platform work remain.
 
 Verified Task97: required leak-enabled build/native7/main69/modeled24/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1346.48929021199s. Final remote52 statuses all0 and actual41 source/test/fixture hashes match the corrected immutable snapshot. Local15 connected checks, formatting/naming and53 fresh offline directional goldens pass. Independent review found no blocking defect. Native literal shifts check unequal widths and eight SI/child-SO/root-SO polarity combinations in original/flat, exact comparison offsets, register/pin state and rollback. Twenty scale commands pass with matched hashes: root/child1M .31-.37s/~106092KiB,1024queued children .19-.37s/~99604KiB,97levels .06-.12s/~64064KiB. Tessent rejects original internal-child iScan in this mode (exit1 retained), accepts generated root output0; a separate hand-calculated physical root reference also passes0 with byte-identical exports. Actual9 submitted/10 prepared/4 physical-reference hashes match; no strict child directional certificate claim. Commit13 files, fast-forward master, delete completed branch and preserve the next raw-idle draft. Initial fullserial failed corpuscheck because the new fixture duplicated Leaf; renamed only the new fixture/native helper to ChildLeaf, corpus audit0 and affected leak checks plus fullserial rerun0, no policy exception. General mixed/opaque/mux/TAP/parallel/resource/event/reset/clock/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.
+
+## TCK idle cycles in modeled raw programs (Task98)
+
+Qualified modeled root and child raw scans may be separated by iRunLoop TCK
+waits. The existing runtime queue validation and native idle engine are reused;
+no clock/event or topology model is added. Unapplied raw setup still fails before
+any wait, including zero cycles. Count validation, transactional state/fill replay
+and complete-state fixed-point acceleration retain their existing limits.
+Opaque raw programs, system-clock/time extensions and independent TAP phases
+remain outside this increment.
+
+Native tests compare seven literal idle cycles after raw shifts for all eight
+SI/child-SO/root-SO polarity combinations in source and flat forms. Twenty-seven
+modeled CLI cases include exact0/one/many/UINT64MAX output counts, child/implicit
+controls, partial-X fill followed by masked writes, and atomic pending/unknown/
+overflow/wrong-clock/time/opaque failures. Independent review found no blocker.
+The production delta only admits iRunLoop through the modeled-raw whitelist.
+
+Tessent2026.2 accepts original/generated positive7/3cycle programs with
+byte-identical exports, actual9submitted/10preparedhashes match. It rejects zero
+TCK waits in both forms; that negative evidence and local zero-count tests are
+retained. Existing ignored-stable/default-chain differences remain separate from
+strict certification. Twenty maximal-count scale commands pass with matching
+source/flat/generated hashes:1M root/child .27-.33s peak108172KiB;1024children
+.19-.37s peak102420KiB;97levels .06-.13s peak64020KiB. No speedup is claimed.
+Required final gates and integration evidence follow when complete.
+
+Verified Task98: required leak-enabled build/native7/main69/modeled27/opaque12/clock51/client25/reset12 all0. Full serial make check passes in 1369.6011084119673s; editor6 in182.739s. Final remote52 statuses all0 and actual45 source/test/fixture hashes match. Local15 connected checks, early corpus audit, formatting/naming and53 fresh offline directional goldens pass. Independent final review found no blocking defect or missing coverage. The whitelist-only product change reuses native idle/fixed-point behavior; native literal edges cover eight polarity combinations in source/flat, CLI checks exact counts through UINT64MAX, implicit controls, partial-X fill and atomic invalid cases. Twenty maximal-wait scale commands pass with equal replay hashes: root/child1M .27-.33s/~108172KiB,1024children .19-.37s/~102420KiB,97levels .06-.13s/~64020KiB. Positive-wait vendor original/normalized0 with byte-identical exports, actual9submitted/10preparedhashes match. Tessent zero-count rejection and ignored-stable/default-chain limits remain recorded; no strict certificate claim for this stable fixture. Copied build inputs received fresh mtimes before required builds. Commit11 files, fast-forward master, delete merged branch and preserve the default-chain draft and genuine certificates for its later verified integration. Remaining general models/events/ownership/lifecycle, strict coverage and final vendor/platform requirements remain open. No push.

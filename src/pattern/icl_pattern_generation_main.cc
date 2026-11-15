@@ -566,8 +566,8 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
       std::any_of(netlist.nodes.begin(), netlist.nodes.end(),
                   [](const auto& node) { return node.kind == "ScanRegister"; });
   if (raw && modeled) {
-    const std::set<std::string> allowed = {"iScan", "iApply", "iReset",
-                                           "iNote", "iRead",  "iWrite"};
+    const std::set<std::string> allowed = {
+        "iScan", "iApply", "iReset", "iRunLoop", "iNote", "iRead", "iWrite"};
     for (const auto& op : operations) {
       if (!allowed.count(op.command)) {
         throw std::runtime_error(
