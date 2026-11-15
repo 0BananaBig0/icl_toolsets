@@ -9,6 +9,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -18,6 +19,7 @@
 #include "pattern/pattern_clock.h"
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_merge.h"
+#include "pattern/pattern_opaque.h"
 #include "pattern/pattern_resources.h"
 #include "pattern/pattern_runtime.h"
 #include "pattern/pattern_scheduler.h"
@@ -104,6 +106,26 @@ std::string Command(const std::vector<std::string>& words) {
   for (const auto& word : words) Tcl_DStringAppendElement(&list, word.c_str());
   const std::string result = std::string(Tcl_DStringValue(&list)) + "\n";
   Tcl_DStringFree(&list);
+  return result;
+}
+std::optional<std::string> GenerateOpaque(
+    const pattern::Netlist& netlist,
+    const std::vector<pattern::Operation>& operations) {
+  const auto lowered = pattern::LowerOpaqueScans(netlist, operations);
+  if (!lowered) return std::nullopt;
+  std::string result =
+      "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
+  for (const auto& operation : *lowered) {
+    std::vector<std::string> words{operation.command};
+    words.insert(words.end(), operation.arguments.begin(),
+                 operation.arguments.end());
+    result += Command(words);
+  }
+  const pdl::Document validated(result);
+  if (!validated.ok()) {
+    throw std::runtime_error("generated opaque PDL failed shared parser: " +
+                             validated.error_message());
+  }
   return result;
 }
 // Validate forwarding paths before solving instrument-driven reset cones.
@@ -212,6 +234,10 @@ std::string Generate(
     const pattern::ResourceReservations* initial_reservations = nullptr,
     bool finalize = true,
     const pattern::SystemClocks* initial_clocks = nullptr) {
+  if (const auto opaque = GenerateOpaque(netlist, operations)) {
+    if (rewritten) *rewritten = operations;
+    return *opaque;
+  }
   pattern::ScanScheduler scheduler = initial ? pattern::ScanScheduler(*initial)
                                              : pattern::ScanScheduler(netlist);
   pattern::ResourceReservations reservations =
@@ -492,6 +518,8 @@ std::string Generate(
 }
 std::string GenerateMerged(const pattern::Netlist& netlist,
                            const std::vector<pattern::Operation>& operations) {
+  // Inspect raw operations before merging can erase unsupported interactions.
+  if (const auto opaque = GenerateOpaque(netlist, operations)) return *opaque;
   if (std::none_of(operations.begin(), operations.end(),
                    [](const auto& op) { return op.command == "iMerge"; })) {
     return Generate(netlist, operations);

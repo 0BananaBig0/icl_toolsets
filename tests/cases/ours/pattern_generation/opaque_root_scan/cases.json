@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "id": "opaque_root_stable",
+      "top": "Opaque",
+      "icl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/stable.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "opaque_root_changing",
+      "top": "Opaque",
+      "icl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/changing.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "opaque_root_no_reset",
+      "top": "Opaque",
+      "icl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/no_reset.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

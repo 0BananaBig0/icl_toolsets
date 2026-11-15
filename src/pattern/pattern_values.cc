@@ -69,7 +69,7 @@ void ValidatePdlAccessTarget(const Netlist& netlist, const PdlTarget& target,
 }
 std::string PdlNumber(z3::context& context, const std::string& text,
                       size_t width) {
-  if (!width || width > kMaxBits || text.size() > kMaxBits ||
+  if (!width || width > kMaxBits || text.size() > kMaxBits + 2 ||
       !pdl::IsNumberLiteral(text)) {
     throw std::runtime_error("invalid or oversized PDL numeric value: " +
                              text.substr(0, 80));

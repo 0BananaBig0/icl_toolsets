@@ -1,0 +1,7 @@
+iPDLLevel 1
+iProcsForModule Visible
+iReset
+iScan client 8 -si 0xa5 -so 0xXX -stable
+iApply
+iScan client 8 -si {0b0101 1010} -stable
+iApply

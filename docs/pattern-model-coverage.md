@@ -2446,3 +2446,43 @@ redundanticlockchecksremoved, no strictdirectionalcertificateclaimed. Commit9fil
 on taskbranch, fast-forwardmaster anddeletecompletedbranch. Preserve only the
 new opaque-root fixtures on the next active branch. No push. Broader scan/clock/
 phase/reset/resource, fullvendor, strictcoverage andfinalplatform work remains.
+
+## Opaque root iScan subset (Task93)
+
+The generator lowers raw scans for one explicit root client with scalar,
+unconditional, directly driven pins and an unsourced ScanOutPort. Its
+DefaultLoadValue must be numeric, explicitly sized, and between1 and1048576bits;
+explicit sizing is a supported-subset restriction. Each supplied scan validates
+its interface, length, options and data even if overwritten or reset before Apply.
+Binary/hex grouped data uses the shared PDL grammar. SI defaults to zero and SO
+to X; shorter data pads, longer explicitly based payloads fail without truncation.
+Lengths may be decimal, binary or hex. Canonical output uses binary payloads.
+
+The latest queued scan is emitted once at its explicit Apply. Reset discards
+pending scans. Empty applies add no scan and are omitted consistently with ordinary
+scheduling. Expected SO stays comparison data and is never treated as live readback.
+The subset does not automatically repeat stable/default payloads; it preserves
+explicit -stable declarations without claiming general blackbox retargeting.
+Source, flat-model, generated and unchanged local-reset PDL replay are checked.
+
+Modeled storage, hierarchy, TAP/IR, parallel chains, computed or enabled interface
+pins, reservations, merges, clock/state/override operations and mixed modeled
+accesses remain explicit unsupported combinations on this path. The separate
+visible-register fixture is a vendor reference probe, not supported by this subset.
+Tessent2026.2 accepts that fixture but rejects the genuinely opaque unsourced path
+at Apply and warns that -stable is ignored. No opaque vendor certificate is claimed.
+
+Verified Task93: fullserial make check0 in1320.089s;42dynamic and42static
+generator suites,53directional goldens,2529ICL files with334/119grammar/scanner
+rules,LSP62 andeditor6 in186.379s. OptionalANTLR5 remain skipped. Required
+leak-enabled build/native7/main69/opaque12/clock51/client25/reset12 all0.
+Finalremote51statusesall0 withactual17source/test/fixture hashes matching;
+supplementalcoverage7tests0 andactualsubmittedhashesmatch. Firstfullrun2 at
+1021.167s caught the missing coverage source entry; tests/coverage.py now measures
+pattern_opaque.cc, with no exclusion or waiver. Reviewed production/test/fixture
+bytes stayed immutable. Sixlocal scale commands0 at65536/1048576bits; maximum
+.07-.08s/~38636KiB, repeatedoutputhashesequal. Opaquevendorpathfailsconfiguration
+whilemodeledreferenceexports0; -stableignored byTessent, no opaquevendorcertificate.
+Commit21files on taskbranch, fast-forwardmaster, deletecompletedbranch andpreserve
+the nextmodeled-scan draft. Broader retargeted/parallel/TAP scan, phases/reset/
+resources/vendor/strictcoverage/finalplatform requirements remain open. No push.

@@ -185,6 +185,8 @@ FormatOutcome FormatDocument(const std::string& source,
                              const FormatRequest& request);
 const std::vector<std::string>& Keywords();
 int ClampIndentWidth(int requested);
+// Remove IEEE1687 iScan digit whitespace; reject whitespace in its prefix.
+std::string NormalizeScanData(const std::string& text);
 // Literal PDL numeric syntax; excludes argument/variable references.
 bool IsNumberLiteral(const std::string& text);
 

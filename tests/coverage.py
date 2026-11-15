@@ -40,7 +40,7 @@ SOURCES = ['icl_driver.cc', 'format_tree.cc', 'format_job.cc', 'json.cc',
            'pattern_runtime.cc', 'pattern_flatten.cc']
 SOURCES += ['pattern_data.cc', 'pattern_data.h', 'pattern_merge.cc',
             'pattern_resources.cc', 'pattern_resources.h', 'pattern_symbolic.h',
-            'pattern_clock.cc', 'pattern_clock.h']
+            'pattern_clock.cc', 'pattern_clock.h', 'pattern_opaque.cc']
 
 
 SOURCE_PATHS = {path.name: path for path in

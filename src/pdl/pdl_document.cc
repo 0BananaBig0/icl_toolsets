@@ -9,6 +9,7 @@
 #include <functional>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string_view>
 
 #include "icl/icl_semantics.h"
@@ -1177,29 +1178,11 @@ void Document::Analyze(std::vector<Command>* commands, Context context,
       }
       std::string value = literal(index);
       if (scan) {
-        std::string digits;
-        digits.reserve(value.size());
-        for (size_t j = 0; j < value.size(); ++j) {
-          const char c = value[j];
-          if (c == '\\' && j + 1 < value.size() &&
-              (value[j + 1] == '\n' ||
-               (value[j + 1] == '\r' && j + 2 < value.size() &&
-                value[j + 2] == '\n'))) {
-            continue;
-          }
-          if (c != ' ' && c != '\t' && c != '\r' && c != '\n') digits += c;
+        try {
+          value = NormalizeScanData(value);
+        } catch (const std::runtime_error& error) {
+          Error(words[index].range, error.what());
         }
-        // Scan whitespace may separate digits, never the prefix characters.
-        const auto prefix = value.find_first_not_of(" \t\r\n");
-        if (digits != value &&
-            (prefix == std::string::npos || value.size() - prefix < 2 ||
-             value[prefix] != '0' ||
-             (value[prefix + 1] != 'x' && value[prefix + 1] != 'X' &&
-              value[prefix + 1] != 'b' && value[prefix + 1] != 'B'))) {
-          Error(words[index].range,
-                "multiline iScan data requires a binary or hex prefix");
-        }
-        value = std::move(digits);
       }
       if (!IsNumber(value) && !(enumeration && IsScalar(value))) {
         Error(words[index].range, "invalid PDL value for " + name);
@@ -1798,6 +1781,32 @@ FormatOutcome FormatParsedDocument(const Document& document,
 FormatOutcome FormatDocument(const std::string& source,
                              const FormatRequest& request) {
   return FormatParsedDocument(Document(source), request);
+}
+
+std::string NormalizeScanData(const std::string& value) {
+  std::string digits;
+  digits.reserve(value.size());
+  for (size_t j = 0; j < value.size(); ++j) {
+    const char c = value[j];
+    if (c == '\\' && j + 1 < value.size() &&
+        (value[j + 1] == '\n' ||
+         (value[j + 1] == '\r' && j + 2 < value.size() &&
+          value[j + 2] == '\n'))) {
+      continue;
+    }
+    if (c != ' ' && c != '\t' && c != '\r' && c != '\n') digits += c;
+  }
+  // Scan whitespace may separate digits, never the prefix characters.
+  const auto prefix = value.find_first_not_of(" \t\r\n");
+  if (digits != value &&
+      (prefix == std::string::npos || value.size() - prefix < 2 ||
+       value[prefix] != '0' ||
+       (value[prefix + 1] != 'x' && value[prefix + 1] != 'X' &&
+        value[prefix + 1] != 'b' && value[prefix + 1] != 'B'))) {
+    throw std::runtime_error(
+        "multiline iScan data requires a binary or hex prefix");
+  }
+  return digits;
 }
 
 bool IsNumberLiteral(const std::string& text) {

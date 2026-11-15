@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "visible_root_stable",
+      "top": "Visible",
+      "icl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/visible_model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/opaque_root_scan/visible_stable.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}

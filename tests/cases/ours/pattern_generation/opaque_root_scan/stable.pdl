@@ -1,0 +1,5 @@
+iPDLLevel 1
+iProcsForModule Opaque
+iReset
+iScan client 8 -si 0xa5 -so 0x3c -stable
+iApply
