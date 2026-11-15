@@ -399,6 +399,47 @@ class ScanScheduler::Impl {
       execution_ = std::make_unique<TapExecution>(*other.execution_);
     }
   }
+  std::optional<std::vector<ScanStep>> TryRegularReads(
+      const std::vector<Operation>& operations, bool together,
+      const std::map<size_t, std::string>& preserved, bool explicit_writes) {
+    if (tap_ || global_resets_ != "00" || operations.empty() ||
+        std::any_of(operations.begin(), operations.end(),
+                    [](const Operation& operation) {
+                      return operation.command != "iRead";
+                    })) {
+      return std::nullopt;
+    }
+    for (const auto& node : netlist_.nodes) {
+      if (node.model == ModelKind::kRegister && node.reset &&
+          (node.reset->node != kMissing ||
+           node.reset->virtual_signal == VirtualSignal::kNone ||
+           node.reset->inverted)) {
+        return std::nullopt;
+      }
+    }
+    // Phase snapshots suffice only when serial activity cannot change controls.
+    for (const auto& [id, index] : control_seen_) {
+      const auto& node = netlist_.nodes[id];
+      if (node.model == ModelKind::kRegister || node.kind == "ScanInPort") {
+        return std::nullopt;
+      }
+    }
+    Impl trial(*this);
+    std::vector<ScanStep> steps;
+    try {
+      steps = trial.Solve(operations, together, 2, {}, false, preserved,
+                          explicit_writes, false);
+    } catch (const std::runtime_error&) {
+      return std::nullopt;
+    }
+    state_.Restore(trial.state_);
+    fill_ = std::move(trial.fill_);
+    execution_ = std::move(trial.execution_);
+    control_masks_ = std::move(trial.control_masks_);
+    data_control_masks_ = std::move(trial.data_control_masks_);
+    control_seen_ = std::move(trial.control_seen_);
+    return steps;
+  }
   BitReference EndStateSource(BitReference bit) const {
     std::set<Key> visited;
     while (bit.node != kMissing) {
@@ -828,6 +869,11 @@ class ScanScheduler::Impl {
         }
       }
       const bool events = (tap_ || client_controls_) && NeedsScanEvents();
+      if (events) {
+        auto regular =
+            TryRegularReads(operations, together, preserved, explicit_writes);
+        if (regular) return std::move(*regular);
+      }
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
                    explicit_writes, events);
     } catch (const std::exception& error) {

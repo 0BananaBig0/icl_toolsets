@@ -4867,3 +4867,57 @@ source/test hashes match. All26 production/test/case/certificate files remain
 unchanged from independent review through final gates. Commit this31-file
 checkpoint without push; Task90 remains isolated. Broader model, vendor, strict
 coverage and final platform requirements remain mandatory.
+
+
+### Stable-control read scheduling (2026-11-15)
+
+Pure reads on standalone clients can use the existing regular scan model when
+all control, enable and route dependencies remain stable within each phase.
+Storage-derived and serial-input-derived controls, TAPs and physical reset paths
+retain the full event model. Direct deasserted virtual resets can qualify. A
+bounded isolated attempt publishes its complete result only after successful
+concrete replay; failed attempts fall back with live scheduling state intact.
+Mixed writes retain their existing path, including generated PDL with explicit
+primary-input preparation. No public option, dependency or solver-limit change.
+
+The maintained32-register capture-gated read test checks automatic enable
+selection, each comparison and identical original/flat/generated PDL. Original
+and flat pure reads have a five-second command budget; generated mixed-write
+replay retains the normal correctness timeout. ReservedCE0 held reads without
+CaptureSource also exercise a failed regular attempt followed by successful
+full-event scheduling. Reset-bearing and no-reset variants remain covered.
+
+On the same remote host, all26 interleaved commands preserve identical PDL and
+canonical flat hashes for each input size.16 four-bit registers take1.58–1.62s
+with the previous solver and0.14s with the candidate.32 take15.43–15.59s and
+0.26s respectively; peak RSS falls from512256KiB to80496KiB.64 candidate
+registers take0.60–0.61s,98328KiB peak; no64-register baseline was measured.
+Three candidate source/flat repetitions and three baseline source repetitions
+are recorded; baseline flat is checked once per size. These results qualify
+stable-control pure reads, not arbitrary event histories or global optimality.
+
+The exact initial32-register baseline times out at5.02s; final focused25client
+methods pass with actual source/test hashes verified. Independent design and
+source reviews are clean. Earlier guard-exclusion and generated-timeout pilots
+remain recorded. Evidence: build/regular-event-read-{red,test-red,test-red2,
+green,green2,green3,comparison}-remote/evidence. The comparison report records
+commands, environment/compiler, input/source/binary hashes, wall time and RSS.
+Connected, style, offline and final immutable integration checks follow.
+
+Local connected native7/main69/clock41/client25/reset12/multipleTAP22/feedback10 all0; format/naming0 and53offline directional certificates0. Independent final reviewclean. Integrate thisfivefile snapshot onto41a2fa0 and freeze production/tests for required leak-enabled sanitizer/full gates. Final12hashremote verification remains in progress.
+
+Final Task90 remote50 statuses all0 with actual12 source/test hashes matching frozen submission. Required leak-enabled build/native7/main69/clock41/client25/reset12 all0. Root source/test2 unchanged; full serial check now running in build/regular-event-read-final-full.*.
+
+Verified Task90 checkpoint: required leak-enabled build/native7/main69/clock41/
+client25/reset12 all0. Full serial make check exits0 in1345.397s,41 dynamic and
+41 static generator suites,53 directional goldens,2525ICL334/119rules,LSP62 and
+editor6 in181.414s. Five optional ANTLR tests remain skipped. Remote50 statuses
+all0 with actual12 source/test hashes matching. Source/test2 stayed immutable
+through final gates. Connected, style/naming,53offline certificates, independent
+review and26 matched performance commands pass. Branch cleanup removed44 already
+integrated task references and preserved116 draft files; all old draft paths and
+plans exist in master. The developer guide now requires completing each task by
+integration and deleting its merged branch. Commit thissixfile snapshot on the
+Task90 branch, fast-forward master and delete that branch; restore only Task91
+future files onto its own active branch. No push. Broader event/clock/resource,
+vendor, strict coverage and final platform requirements remain mandatory.

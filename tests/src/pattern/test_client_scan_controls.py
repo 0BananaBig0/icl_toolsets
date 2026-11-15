@@ -36,10 +36,10 @@ class ClientScanControls(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = pathlib.Path(temporary.name)
 
-    def run_tool(self, icl, pdl, output='result.pdl', extra=(), ok=True):
+    def run_tool(self, icl, pdl, output='result.pdl', extra=(), ok=True, timeout=45):
         result = subprocess.run([str(BIN), '--icl', str(icl), '--pdl', str(pdl),
                                  '--top_module', 'ClientTop', '--output', str(self.root / output),
-                                 '--debug', *map(str, extra)], text=True, capture_output=True, timeout=45)
+                                 '--debug', *map(str, extra)], text=True, capture_output=True, timeout=timeout)
         self.assertEqual(result.returncode == 0, ok, result.stdout + result.stderr)
         return (self.root / output).read_bytes() if ok else result.stdout + result.stderr
 
@@ -319,11 +319,14 @@ class ClientScanControls(unittest.TestCase):
         self.assertIn(b'iWrite update_enable 0b1', output)
 
     def test_reserved_capture_suppression_retains_shift(self):
-        output = self.replay(
-            self.capture_gate_network().replace("CaptureSource 4'b1010; ", ""),
-            'iReset; iTake cap_enable; iState cap_enable 0; '
-            'iWrite child.value 5; iApply; iRead child.value 5; iApply;\n')
-        self.assertNotIn(b'iWrite cap_enable 0b1', output)
+        source = self.capture_gate_network().replace("CaptureSource 4'b1010; ", "")
+        for reset in (True, False):
+            with self.subTest(reset=reset):
+                model = source if reset else source.replace("ResetValue 4'b0;", "")
+                output = self.replay(
+                    model, 'iReset; iTake cap_enable; iState cap_enable 0; '
+                    'iWrite child.value 5; iApply; iRead child.value 5; iApply;\n')
+                self.assertNotIn(b'iWrite cap_enable 0b1', output)
 
     def test_reserved_control_mux_failures_preserve_artifacts(self):
         capture = self.capture_gate_network()
@@ -380,6 +383,35 @@ class ClientScanControls(unittest.TestCase):
         (self.root / 'result.pdl').write_bytes(b'previous result\n')
         self.run_tool(icl, commands, ok=False)
         self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
+
+    def test_capture_gated_read_scale(self):
+        count = 32
+        source = self.capture_gate_network().split('Module ClientTop {', 1)[0]
+        source += f'Module ClientTop {{ {PORTS} DataInPort enables[{count - 1}:0]; '
+        previous = 'si'
+        for i in range(count):
+            source += (f"DataMux gate{i} SelectedBy enables[{i}] "
+                       "{ 1'b0: 1'b0; 1'b1: ce; } "
+                       f'Instance child{i} Of Child {{ InputPort si = {previous}; '
+                       f'InputPort sel = sel; InputPort ce = gate{i}; '
+                       'InputPort se = se; InputPort ue = ue; InputPort ck = ck; } ')
+            previous = f'child{i}.so'
+        source += f'ScanOutPort so {{ Source {previous}; }} {INTERFACE} }}'
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(source)
+        pdl.write_text('iReset;\n' + ''.join(
+            f'iRead child{i}.value 10;\n' for i in range(count)) + 'iApply;\n')
+        try:
+            original = self.run_tool(icl, pdl, timeout=5)
+        except subprocess.TimeoutExpired:
+            self.fail('32 gated reads exceeded the five-second command budget')
+        self.assertIn(('iWrite enables 0b' + '1' * count).encode(), original)
+        for i in range(count):
+            self.assertIn(f'iRead child{i}.value 0b1010'.encode(), original)
+        self.assertEqual(original, self.run_tool(
+            self.root / 'debug/ClientTop.icl', pdl, 'flat/result.pdl', timeout=5))
+        self.assertEqual(original, self.run_tool(
+            icl, self.root / 'result.pdl', 'replay/result.pdl'))
 
     def test_controlled_chain_scale(self):
         registers = []

@@ -224,6 +224,12 @@ notifications are ignored. Keep diagnostics off protocol stdout.
 
 ### Local workspace layout
 
+Finish each task by committing its verified changes on the task branch and
+merging into the appropriate integration branch, normally `master`. Delete the
+merged task branch with `git branch -d`; do not accumulate completed branches.
+Before worktree cleanup, preserve any uncommitted drafts and move continuing
+work onto its active task branch. Retain only branches needed for unfinished work.
+
 Use `.worktrees/` as the single ignored location for local Git worktrees and
 retained reports. Local contents may include:
 
