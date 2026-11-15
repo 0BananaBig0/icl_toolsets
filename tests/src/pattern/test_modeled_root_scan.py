@@ -74,7 +74,9 @@ class ModeledRootScan(unittest.TestCase):
                 self.rejected('iReset; ' + commands + '; iApply\n', 'scan')
 
     def test_unqualified_topology_and_directives(self):
-        for model in [MODEL.replace('ScanInSource si;', 'ScanInSource ~si;'),
+        for model in [MODEL.replace('ScanRegister value',
+                                    "ScanMux routing SelectedBy sel { 1'b0: si; 1'b1: si; } ScanRegister value")
+                           .replace('ScanInSource si;', 'ScanInSource routing;'),
                       MODEL.replace('ScanOutPort so { Source value[0]; }',
                                     'ScanOutPort so { Source value[0]; Enable sel; }'),
                       MODEL.replace('ScanOutPort so',
@@ -85,6 +87,68 @@ class ModeledRootScan(unittest.TestCase):
                         'iMerge -begin; iMerge -end', 'iRunLoop 1']:
             with self.subTest(command=command):
                 self.rejected('iReset; ' + command + '; iScan client 8; iApply\n', 'scan')
+
+    def test_serial_input_alias_polarity(self):
+        cases = [
+            (MODEL.replace('ScanInSource si;', 'ScanInSource ~si;'), '01011010', '11011010'),
+            (MODEL.replace('ScanInPort si;', 'ScanInPort si; Alias input = ~si;')
+                  .replace('ScanInSource si;', 'ScanInSource input;'), '01011010', '11011010'),
+            (MODEL.replace('ScanInPort si;',
+                           'ScanInPort si; Alias first = ~si; Alias input = ~first;')
+                  .replace('ScanInSource si;', 'ScanInSource input;'), '10100101', '10100101')]
+        for model, captured, written in cases:
+            with self.subTest(model=model):
+                result = self.replay('iReset; iScan client 8 -si 0xa5; iApply\n'
+                                     'iRead value 0b' + captured + '; iApply\n'
+                                     'iWrite value[7] 1; iApply\n', model)
+                self.assertIn('iScan client 8 -si 0b10100101', result)
+                self.assertIn('iRead value 0b' + captured, result)
+                self.assertIn('iWrite value 0b' + written, result)
+
+    def test_serial_output_alias_ordering(self):
+        cases = [
+            MODEL.replace('Source value[0]', 'Source ~value[0]'),
+            MODEL.replace('ScanOutPort so', 'Alias output[7:0] = ~value; ScanOutPort so')
+                 .replace('Source value[0]', 'Source output[0]'),
+            MODEL.replace('ScanOutPort so', 'Alias output[0:7] = value; ScanOutPort so')
+                 .replace('Source value[0]', 'Source output[7]'),
+            MODEL.replace('ScanOutPort so',
+                          'Alias output[1:0] = value[0], value[7]; ScanOutPort so')
+                 .replace('Source value[0]', 'Source output[1]')]
+        for model in cases:
+            with self.subTest(model=model):
+                result = self.replay('iReset; iScan client 8 -si 0xa5 -so 0xXX; iApply\n'
+                                     'iRead value 0xa5; iApply; iWrite value[7] 0; iApply\n', model)
+                self.assertIn('iScan client 8 -si 0b10100101 -so 0bxxxxxxxx', result)
+                self.assertIn('iWrite value 0b00100101', result)
+
+    def test_serial_midchain_parity(self):
+        inverted = CHAIN.replace('ScanInSource a[1];', 'ScanInSource ~a[1];')
+        aliased = CHAIN.replace('ScanRegister b', 'Alias bridge = ~a[1]; ScanRegister b')
+        aliased = aliased.replace('ScanInSource a[1];', 'ScanInSource bridge;')
+        cases = [(inverted, '10', '001'), (aliased, '10', '001'),
+                 (inverted.replace('Source b[0]', 'Source ~b[0]'), '10', '001'),
+                 (inverted.replace('ScanInSource si;', 'ScanInSource ~si;')
+                          .replace('Source b[0]', 'Source ~b[0]'), '01', '110')]
+        for model, a, b in cases:
+            with self.subTest(model=model):
+                result = self.replay('iReset; iScan client 5 -si 0b10110; iApply\n'
+                                     'iRead a 0b' + a + '; iRead b 0b' + b + '; iApply\n', model)
+                self.assertIn('iRead a 0b' + a, result)
+                self.assertIn('iRead b 0b' + b, result)
+
+    def test_serial_alias_partial_unknown_fill(self):
+        model = MODEL.replace('ScanInPort si;', 'ScanInPort si; Alias input = ~si;')
+        model = model.replace('ScanInSource si;', 'ScanInSource input;')
+        result = self.replay('iReset; iScan client 8 -si 0b10x01x01; iApply\n'
+                             'iWrite value[0] 1; iApply\n', model)
+        self.assertIn('iScan client 8 -si 0b10x01x01', result)
+        self.assertIn('iWrite value 0b01010011', result)
+
+    def test_serial_alias_wrong_tap_atomic(self):
+        model = MODEL.replace('ScanOutPort so', 'Alias output[0:7] = value; ScanOutPort so')
+        model = model.replace('Source value[0]', 'Source output[0]')
+        self.rejected('iReset; iScan client 8; iApply\n', 'rightmost', model)
 
     def test_large_modeled_scan(self):
         width = 1048576

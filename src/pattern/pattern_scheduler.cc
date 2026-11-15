@@ -598,7 +598,9 @@ class ScanScheduler::Impl {
   }
   struct RawProfile {
     size_t client = 0, input = 0, width = 0;
-    std::vector<size_t> registers;
+    // Register output-to-SO parity; total parity also includes the SI side.
+    std::vector<std::pair<size_t, bool>> registers;
+    bool inverted = false;
   };
   const RawProfile& RawChain() {
     if (raw_profile_) return *raw_profile_;
@@ -623,6 +625,12 @@ class ScanScheduler::Impl {
           fail();
         }
         client = id;
+      } else if (node.model == ModelKind::kAlias) {
+        if (node.reset || node.inputs.size() != 1 ||
+            !node.inputs.count("Source") ||
+            node.inputs.at("Source").size() != node.Width()) {
+          fail();
+        }
       } else if (node.kind == "ScanRegister") {
         if (node.reset) {
           const auto ref = *node.reset;
@@ -671,10 +679,23 @@ class ScanScheduler::Impl {
     RawProfile result{client, ports.at("ScanInPort"), 0, {}};
     auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
     std::set<size_t> seen;
+    std::set<Key> visited;
+    bool inverted = false;
     while (true) {
-      if (bit.inverted || bit.node == kMissing) fail();
-      if (bit.node == result.input) break;
+      if (bit.node == kMissing ||
+          !visited.insert({bit.node, bit.index}).second) {
+        fail();
+      }
+      inverted = inverted != bit.inverted;
+      if (bit.node == result.input) {
+        if (bit.index != netlist_.nodes[result.input].left) fail();
+        break;
+      }
       const auto& node = netlist_.nodes.at(bit.node);
+      if (node.model == ModelKind::kAlias) {
+        bit = node.inputs.at("Source").at(Offset(node, bit.index));
+        continue;
+      }
       if (node.kind != "ScanRegister" || bit.index != node.right ||
           !seen.insert(bit.node).second || !node.inputs.count("ScanInSource") ||
           node.inputs.at("ScanInSource").size() != 1 ||
@@ -682,10 +703,11 @@ class ScanScheduler::Impl {
         fail();
       }
       result.width += node.Width();
-      result.registers.push_back(bit.node);
+      result.registers.emplace_back(bit.node, inverted);
       bit = node.inputs.at("ScanInSource")[0];
     }
     if (seen.size() != registers_.size()) fail();
+    result.inverted = inverted;
     raw_profile_ = std::move(result);
     return *raw_profile_;
   }
@@ -706,7 +728,7 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "modeled raw scan requires an explicit iReset first");
     }
-    for (size_t id : profile.registers) {
+    for (const auto& [id, suffix] : profile.registers) {
       const auto& node = netlist_.nodes[id];
       if (node.reset && state_.Read(*node.reset) != '0') {
         throw std::runtime_error("raw scan requires inactive direct resets");
@@ -714,17 +736,23 @@ class ScanScheduler::Impl {
     }
     const auto input = normalized.arguments[3].substr(2);
     std::map<size_t, std::string> loads;
+    std::set<size_t> active;
     size_t position = input.size();
-    for (size_t id : profile.registers) {
+    for (const auto& [id, suffix] : profile.registers) {
       const auto width = netlist_.nodes[id].Width();
       position -= width;
-      loads.emplace(id, input.substr(position, width));
+      auto bits = input.substr(position, width);
+      if (profile.inverted != suffix) {
+        for (char& bit : bits) {
+          if (bit != 'x') bit = bit == '1' ? '0' : '1';
+        }
+      }
+      loads.emplace(id, std::move(bits));
+      active.insert(id);
     }
     NetworkState replay(state_);
     replay.TakeControlEvents();
     replay.TakeResetEvents();
-    const std::set<size_t> active(profile.registers.begin(),
-                                  profile.registers.end());
     const auto controls = [&](const std::string& phase) {
       auto result = ClientControls(&replay, active, phase, {});
       for (const auto& [id, control] : result) {

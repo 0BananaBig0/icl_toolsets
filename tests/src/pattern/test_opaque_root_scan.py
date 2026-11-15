@@ -134,7 +134,9 @@ iScan client 12 -so 0xXXX -si { 0xA
                                 "ScanRegister value[7:0] { ScanInSource si; ResetValue 8'b0; }\n"
                                 'ScanOutPort so { Source value[0]; }')
         self.rejected('iReset; iScan client 8; iApply\n', 'scan',
-                      visible.replace('ScanInSource si;', 'ScanInSource ~si;'))
+                      visible.replace('ScanRegister value',
+                                      "ScanMux routing SelectedBy sel { 1'b0: si; 1'b1: si; } ScanRegister value")
+                             .replace('ScanInSource si;', 'ScanInSource routing;'))
         computed = MODEL.replace('ResetPort reset;', 'ResetPort reset { ActivePolarity 0; }')
         self.rejected('iScan client 8; iApply\n', 'opaque',
                       MODEL.replace('ScanOutPort so;', 'ScanOutPort so { Enable sel; }'))

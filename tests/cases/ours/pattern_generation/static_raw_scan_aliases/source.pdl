@@ -1,0 +1,15 @@
+iPDLLevel 1
+iProcsForModule AliasedRoot
+iReset
+iScan client 5 -si 0b10110 -so 0b00111 -stable
+iApply
+iRead a 1
+iRead b 6
+iApply
+iWrite b 5
+iApply
+iScan client 5 -si 0b01001 -so 0b01010 -stable
+iApply
+iRead a 2
+iRead b 1
+iApply

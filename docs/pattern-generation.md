@@ -5132,3 +5132,50 @@ Commit21files on taskbranch, fast-forwardmaster, deletecompletedbranch andpreser
 only the next static-alias draft. General retargeting/parallel/TAP scans, phase/
 reset/resource/clock/pattern lifecycle, broader vendor, strictcoverage andfinal
 platform requirements remain open. No push.
+
+## Static raw-scan aliases and inversion (Task95)
+
+The modeled root path now accepts pure aliases and inversion on serial links.
+Selected alias bits are traced to their actual terminal, retaining the rightmost
+register-bit and complete-chain requirements. The iterative walk checks bit keys,
+register uniqueness and the terminal SI index. Direct root control/reset and all
+other static-path restrictions remain unchanged.
+
+Each register load uses total SI-to-SO parity XOR its register-to-SO parity.
+Known bits invert when that parity is odd; X stays unknown. Physical iScan SI/SO
+payloads and the final SI pin retain their original values. SO-only inversion
+changes no register load; double inversions cancel. Native phases and controlling
+fill use actual register values. Source, flat-model, generated and unchanged
+local-reset replay are tested, with literal per-bit native comparisons across
+all input/bridge/output inversion combinations and alias forms.
+
+The asymmetric two-register vendor probe passes for original and generated PDL,
+with byte-identical exports and actual6submitted/10prepared hashes matching.
+The wrong-alias-tap atomic test passes. Fifteen scale commands pass: the ordinary
+million-bit path retains its previous canonical output and .30-.36s timing range;
+inverted wide aliases take .35-.43s with peak130452KiB;4095alias depth takes
+.06-.10s with peak64976KiB. Replay hashes match per scenario. These measurements
+qualify the added paths; no unsupported old-path speedup is claimed. Tessent still
+ignores -stable and uses its synthetic default-chain spelling, so strict round-trip
+certification remains separate. Hierarchy, muxes, TAP/IR, parallelism, ownership
+and the remaining general event/lifecycle work are still required.
+
+Verified Task95: fullserial make check0 in1427.583s;43dynamic and43static
+generator suites,53directional goldens,2531ICL files with334/119grammar/scanner
+rules,LSP62 andeditor6 in184.278s. OptionalANTLR5 remain skipped. Required
+leak-enabled build/native7/main69/modeled14/opaque12/clock51/client25/reset12 all0.
+Finalremote52statusesall0 andactual33source/test/fixture hashes match. Local15
+connectedchecks, formatting/naming and53offline certificates pass. Independent
+review foundno consequential issue. Native per-bit replay validates16polarity/
+alias combinations inoriginal/flat, actualregister/pinvalues andpartial-X fill.
+Fifteen scalecommands0: ordinary1M .30-.36s matchesTask94canonicalhash andtiming;
+inversewide1M .35-.43s/~130452KiB;4095aliasdepth .06-.10s/~64976KiB, canonical
+replayhashesmatch. Vendororiginal/normalizedboth0 withbyte-identicalexports,
+actual6submitted+10preparedhashesmatch, wrongalias-tapatomic0. Tessent-stable/
+synthetic-chain discrepancies remain, no strictcertificate claim.
+Commit12files on taskbranch, fast-forwardmaster anddeletecompletedbranch. Preserve
+only the next hierarchy draft. The old116-file preserved-draft audit found45current
+byte matches,61masterhistory matches and10olderstatus-onlyplandrafts; no unique
+unfinishedbehavior, archiveintact at/tmp/icl-branch-cleanup-20261115/content-review.json.
+General retargeting/parallel/TAP, phase/reset/resource/clock/lifecycle, broader
+vendor, strictcoverage andfinalplatform requirements remain open. No push.

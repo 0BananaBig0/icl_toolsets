@@ -16,11 +16,131 @@
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_merge.h"
 #include "pattern/pattern_resources.h"
+#include "pattern/pattern_state.h"
 #include "pattern/pattern_tap.h"
 
 namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
+}
+void TestRawSerialAliases() {
+  for (bool input_inverse : {false, true}) {
+    for (bool bridge_inverse : {false, true}) {
+      for (bool output_inverse : {false, true}) {
+        for (bool aliases : {false, true}) {
+          const std::string input =
+              (input_inverse ? "~" : "") + std::string("si");
+          const std::string bridge =
+              (bridge_inverse ? "~" : "") + std::string("a[1]");
+          const std::string output =
+              (output_inverse ? "~" : "") + std::string("b");
+          std::string source = R"(Module Top {
+            ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+            UpdateEnPort ue; TCKPort tck; ResetPort reset;
+          )";
+          if (aliases) source += "Alias input = " + input + ";";
+          source += "ScanRegister a[0:1] { ScanInSource " +
+                    (aliases ? "input" : input) +
+                    "; CaptureSource a; ResetValue 2'b0; }";
+          if (aliases) source += "Alias bridge = " + bridge + ";";
+          source += "ScanRegister b[2:0] { ScanInSource " +
+                    (aliases ? "bridge" : bridge) +
+                    "; CaptureSource b; ResetValue 3'b0; }";
+          if (aliases) source += "Alias output[0:2] = " + output + ";";
+          source += "ScanOutPort so { Source " +
+                    (aliases ? std::string("output[2]")
+                             : (output_inverse ? "~b[0]" : "b[0]")) +
+                    R"(; } ScanInterface client {
+                      Port si; Port so; Port sel; Port ce; Port se; Port ue;
+                      Port tck; Port reset; DefaultLoadValue 5'b0;
+                    } })";
+          for (bool flat : {false, true}) {
+            pattern::Design design;
+            design.AddIcl("raw-serial-aliases.icl", source);
+            const auto netlist = pattern::Elaborate(design, "Top");
+            pattern::ScanScheduler scheduler(netlist);
+            scheduler.Reset();
+            pattern::NetworkState literal(netlist);
+            const auto id = [&](const std::string& name) {
+              return netlist.node_ids.at(name);
+            };
+            const auto pin = [&](const std::string& name, char value) {
+              literal.Drive(id(name), std::string(1, value));
+            };
+            pin("reset", '1');
+            literal.SetGlobalReset('1', '1');
+            literal.Reset();
+            pin("reset", '0');
+            literal.SetGlobalReset('0', '0');
+            literal.Reset();
+            const auto controls = [&](char capture, char shift, char update) {
+              return std::map<size_t, pattern::ScanControl>{
+                  {id("a"), {capture, shift, update, '1'}},
+                  {id("b"), {capture, shift, update, '1'}}};
+            };
+            const auto phase = [&](char capture, char shift, char update,
+                                   char clock) {
+              pin("sel", '1');
+              pin("ce", capture);
+              pin("se", shift);
+              pin("ue", update);
+              pin("tck", clock);
+              literal.Reset();
+            };
+            std::string fill_a = "00", fill_b = "000";
+            for (const std::string payload : {"10110", "0x1x0"}) {
+              phase('1', '0', '0', '0');
+              pin("tck", '1');
+              literal.Clock(controls('1', '0', '0'), true);
+              std::string expected;
+              for (auto it = payload.rbegin(); it != payload.rend(); ++it) {
+                expected += literal.Read({id("so"), 0}, true);
+                phase('0', '1', '0', '0');
+                pin("si", *it);
+                pin("tck", '1');
+                literal.Clock(controls('0', '1', '0'), true);
+              }
+              phase('0', '0', '1', '1');
+              pin("tck", '0');
+              literal.Clock(controls('0', '0', '1'), false);
+              phase('0', '0', '0', '0');
+              const std::string expected_bits(expected.rbegin(),
+                                              expected.rend());
+              const auto lowered =
+                  scheduler.ApplyScan({"iScan",
+                                       {"client", "5", "-si", "0b" + payload,
+                                        "-so", "0b" + expected_bits},
+                                       "alias:1",
+                                       {}});
+              Require(lowered.arguments[3] == "0b" + payload &&
+                          lowered.arguments[5] == "0b" + expected_bits,
+                      "raw scan keeps physical SI and SO payloads unchanged");
+              for (const std::string name : {"a", "b", "si", "so", "sel", "ce",
+                                             "se", "ue", "tck", "reset"}) {
+                Require(scheduler.Value(name) == literal.Value(id(name)),
+                        "bulk alias/polarity replay matches literal native "
+                        "hardware");
+              }
+              const auto a = literal.Value(id("a")), b = literal.Value(id("b"));
+              for (size_t i = 0; i < a.size(); ++i) {
+                if (a[i] != 'x') fill_a[i] = a[i];
+              }
+              for (size_t i = 0; i < b.size(); ++i) {
+                if (b[i] != 'x') fill_b[i] = b[i];
+              }
+            }
+            fill_b[2] = '1';
+            scheduler.Apply({{"iWrite", {"b[0]", "1"}, "alias:write", {}}});
+            Require(scheduler.Value("a") == fill_a &&
+                        scheduler.Value("b") == fill_b,
+                    "known physical raw loads retain controlling fill through "
+                    "aliases and X bits");
+            if (!flat) source = pattern::SerializeIcl(netlist);
+          }
+        }
+      }
+    }
+  }
 }
 void TestModeledRootScans() {
   std::string source = R"(Module Top {
@@ -2118,8 +2238,9 @@ void TestDataReservationRollback() {
         {netlist.node_ids.at("value"), "0101"}};
     std::vector<pattern::Operation> indirect{
         {"iWrite", {driver, serial ? "25" : "9"}, "data-resource:2", {}}};
-    if (!serial)
+    if (!serial) {
       indirect.push_back({"iWrite", {"enable", "1"}, "data-resource:3", {}});
+    }
     const std::vector<pattern::Operation> replacement{
         {"iWrite", {"value", "9"}, "data-resource:4", {}}};
     for (bool automatic : {false, true}) {
@@ -3223,14 +3344,16 @@ Module Network {
               const State destination{next_a, next_b, read || (a && b)};
               const size_t total = cost + (a ? (b ? 6 : 2) : 1);
               const auto old = next.find(destination);
-              if (old == next.end() || total < old->second)
+              if (old == next.end() || total < old->second) {
                 next[destination] = total;
+              }
             }
           }
         }
         cycles = static_cast<size_t>(-1);
-        for (const auto& [state, cost] : next)
+        for (const auto& [state, cost] : next) {
           if (std::get<2>(state)) cycles = std::min(cycles, cost);
+        }
         if (cycles != static_cast<size_t>(-1)) break;
         frontier = std::move(next);
         Require(scans < 4, "finite reference search must converge");
@@ -3267,6 +3390,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawSerialAliases();
     TestModeledRootScans();
     TestInvertedClockDurations();
     TestDifferentialClockDurations();

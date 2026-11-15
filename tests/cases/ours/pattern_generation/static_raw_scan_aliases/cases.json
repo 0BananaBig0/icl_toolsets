@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "static_raw_scan_aliases",
+      "top": "AliasedRoot",
+      "icl": [
+        "tests/cases/ours/pattern_generation/static_raw_scan_aliases/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/static_raw_scan_aliases/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}
