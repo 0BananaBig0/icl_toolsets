@@ -229,12 +229,14 @@ class SignalEvaluator {
         uncertain = uncertain || enable == 'x';
         if (enable != '1') continue;
         ++selected;
-        value.clear();
-        for (size_t bit = 0; bit < node.Width(); ++bit) {
-          value += Read(node.OneHotSourceBit(source, bit), serial);
-        }
+        node.OneHotSourceBit(source, 0);
+        value = Bits(node.one_hot_sources[source].bits, serial);
       }
-      if (selected != 1 || uncertain) value = unknown;
+      if (selected != 1 || uncertain) {
+        value = unknown;
+      } else {
+        value.insert(0, node.Width() - value.size(), 'x');
+      }
     } else {
       const auto source = node.inputs.find("Source");
       if (source != node.inputs.end()) {

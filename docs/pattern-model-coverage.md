@@ -2142,3 +2142,50 @@ and broader clock/reset scheduling requirements remain separate.
 
 
 Verified checkpoint: required leak-enabled build/native7/main68/clock41/client18/reset12 all pass. Full serial make check exits0 in1346.653s:41 dynamic and41 static generator suites,51 directional goldens,2523 ICL files with334/334 grammar and119/119 scanner rules,LSP62 and editor6 in174.913s; five optional ANTLR tests remain skipped. Final corrected remote build/native7/all41CLI/aggregate all pass, with9 source/test hashes matched. Reviewed source/test8 remain unchanged. Loading60 comparisons and the bounded repeated-source benchmark are recorded above. Evidence: build/implied-totck-final-{full,sanitizer-*}, build/implied-totck-final-remote/evidence, build/implied-totck-loading-scale and build/implied-totck-repeat-{red,green}-remote. Remaining clock/reset/forcing/scheduler/vendor/coverage requirements are not waived.
+
+
+### Symbolic literal and sparse one-hot runtime (2026-11-15)
+
+Literal/reset runs now build one symbolic value per contiguous run. Physical
+slices and repeated references retain their existing behavior. Single-bit reads
+and run reads share the interpretation of 0/1/X, unspecified bits, inversion,
+and synchronous/asynchronous Global Reset.
+
+One-hot evaluation uses actual contributor payloads and adds unknown leading
+lanes at the result boundary. Symbolic evaluation accumulates narrower payloads
+first; concrete evaluation still validates every active payload. No selection,
+multiple selections, and unknown enables retain their unknown-result behavior.
+Tests include all 27 enable combinations for mixed 1/3/7-bit contributors,
+inverted sources, opposite vector directions, unsorted runtime descriptors,
+empty-contributor rejection, and existing held/shift OneHotScan behavior.
+
+The matched sparse benchmark previously timed out at 65,536 declared bits and
+512 scalar contributors under a 20-second command bound. The changed benchmark
+completed in 0.05 seconds at 42,112 KiB peak RSS; that symbolic case took
+0.00851 seconds. Its proof limit remains three seconds. These figures describe
+the recorded isolated workload, not arbitrary solver problems.
+
+Literal construction also avoids Z3 4.13.3's cache of every power of two through
+the requested exponent. It packs at most 64 bits at a time and folds each word
+to a numeral before adding the next. Word-window tests independently verify
+order and known masks at partial-word and odd-word boundaries. Growing numeral
+copies remain a cost; arithmetic work is not claimed to be linear.
+
+The original eight-case literal profile needed about 4.3 GiB after run batching.
+A 512 MiB virtual-memory check failed at 262,144 bits. Word construction passes
+the same bound: eight cases finish in 0.71 seconds at 49,436 KiB. An extended
+ten-case profile through 1,048,576 bits finishes in 8.67 seconds at 64,072 KiB;
+the two largest cases take 3.95 seconds each. Both retain the 20-second command
+and three-second proof limits. This qualifies the measured inputs; the 4M-bit
+allocation limit does not establish a latency guarantee at that maximum.
+
+Independent reviews of all three changes are clean. Final connected, immutable
+sanitizer/full and source-matched remote integration results are recorded next.
+Existing clock/reset/event, resource, vendor and strict coverage requirements
+remain open.
+
+
+Final source-matched remote integration:60 statuses; build/native7/all41CLI/aggregate and all3 changed literal/onehot benchmark repetitions pass. Only3 intentionally failing bounded-memory baseline repetitions return1 (outofmemory). Actual10 final and10 baseline source/test hashes match manifests. Identical final benchmark program uses512MiB VM/20s command/3s proof; baseline fails at262144 in1.12s/457980–458192KiB, changed ten-case profile through1M completes13.46–13.50s/65008–65148KiB on the remote host; largest pair6.080–6.104s. Onehot three runs .09s/42128KiB,65536/512 symbolic .02847–.02861s. Host/compiler/binary hashes and commands are retained; these remote figures are distinct from local measurements. All required local leak-enabled build/native7/main68/clock41/client18/reset12 pass; full serial check is still running with source/test3 unchanged. Evidence: build/symbolic-runtime-final-remote/evidence, build/symbolic-runtime-final-sanitizer-* and build/symbolic-runtime-final-full.*.
+
+
+Verified Tasks85–87 checkpoint: required leak-enabled build/native7/main68/clock41/client18/reset12 all0. Full serial make check exits0 in1327.585s:41 dynamic and41 static generator suites,51 directional goldens,2523 ICL files with334/334 grammar and119/119 scanner rules,LSP62 and editor6 in177.462s. Five optional ANTLR tests remain skipped. Final remote native7/all41 and changed benchmark repetitions pass, with10 final and10 baseline source/test hashes verified; the3 deliberate memory-baseline failures are preserved. Reviewed source/test3 remain unchanged throughout. Commit this eight-file snapshot without push. ScopeTask88 and capture/updateTask89 remain isolated; broader clock/reset/events, resources, vendor, strict coverage and final platform requirements remain mandatory.

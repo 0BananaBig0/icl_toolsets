@@ -3,7 +3,7 @@
 #include "pattern/pattern_symbolic.h"
 
 #include <algorithm>
-#include <memory>
+#include <cstdint>
 #include <stdexcept>
 #include <utility>
 
@@ -11,6 +11,18 @@ namespace pattern {
 namespace {
 constexpr size_t kMissing = std::numeric_limits<size_t>::max();
 constexpr size_t kMaxBits = 4 * 1024 * 1024;
+char LiteralBit(const BitReference& bit, const std::string& global_resets) {
+  char value = bit.constant == '?' ? 'x' : bit.constant;
+  if (bit.virtual_signal != VirtualSignal::kNone) {
+    value =
+        global_resets[bit.virtual_signal == VirtualSignal::kGlobalReset ? 0
+                                                                        : 1];
+  }
+  if (bit.inverted && (value == '0' || value == '1')) {
+    value = value == '0' ? '1' : '0';
+  }
+  return value;
+}
 z3::expr BoolBit(const z3::expr& value) {
   return z3::ite(value, value.ctx().bv_val(1, 1), value.ctx().bv_val(0, 1));
 }
@@ -44,14 +56,26 @@ SymbolicValue SymbolicValue::Literal(z3::context& context,
     throw std::runtime_error(
         "symbolic literal requires bounded nonempty 0/1/x bits");
   }
-  auto bits = std::make_unique<bool[]>(value.size());
-  auto known = std::make_unique<bool[]>(value.size());
-  for (size_t i = 0; i < value.size(); ++i) {
-    bits[i] = value[value.size() - 1 - i] == '1';
-    known[i] = value[value.size() - 1 - i] != 'x';
+  std::vector<SymbolicValue> words;
+  words.reserve((value.size() + 63) / 64);
+  for (size_t begin = 0; begin < value.size(); begin += 64) {
+    const auto end = std::min(begin + 64, value.size());
+    uint64_t bits = 0, known = 0;
+    for (size_t i = begin; i < end; ++i) {
+      bits = (bits << 1) | (value[i] == '1');
+      known = (known << 1) | (value[i] != 'x');
+    }
+    words.push_back({context.bv_val(bits, end - begin),
+                     context.bv_val(known, end - begin)});
   }
-  return {context.bv_val(static_cast<unsigned>(value.size()), bits.get()),
-          context.bv_val(static_cast<unsigned>(value.size()), known.get())};
+  auto result = words.front();
+  // Keep each numeral shift at most64 bits; Z3 caches every smaller power of
+  // two.
+  for (size_t i = 1; i < words.size(); ++i) {
+    const auto combined = Concat(result, words[i]);
+    result = {combined.bits.simplify(), combined.known.simplify()};
+  }
+  return result;
 }
 SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
                                  std::map<size_t, SymbolicValue> assignments,
@@ -103,36 +127,32 @@ SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
   }
 }
 SymbolicValue SymbolicNetwork::Read(const BitReference& bit, bool scan) {
-  auto result = SymbolicValue::Literal(context_, "x");
   if (bit.node == kMissing) {
-    if (bit.virtual_signal == VirtualSignal::kNone && bit.constant != '?') {
-      result = SymbolicValue::Literal(context_, std::string(1, bit.constant));
-    } else if (bit.virtual_signal != VirtualSignal::kNone) {
-      result = SymbolicValue::Literal(
-          context_,
-          std::string(
-              1,
-              global_resets_[bit.virtual_signal == VirtualSignal::kGlobalReset
-                                 ? 0
-                                 : 1]));
-    }
-  } else {
-    const auto& node = netlist_.nodes.at(bit.node);
-    const unsigned offset = BitOffset(node, bit.index);
-    const auto source = Value(bit.node, scan);
-    result = {source.bits.extract(offset, offset),
-              source.known.extract(offset, offset)};
+    return SymbolicValue::Literal(
+        context_, std::string(1, LiteralBit(bit, global_resets_)));
   }
+  const auto& node = netlist_.nodes.at(bit.node);
+  const unsigned offset = BitOffset(node, bit.index);
+  const auto source = Value(bit.node, scan);
+  const SymbolicValue result{source.bits.extract(offset, offset),
+                             source.known.extract(offset, offset)};
   return bit.inverted ? Invert(result) : result;
 }
 SymbolicValue SymbolicNetwork::Bits(const std::vector<BitReference>& bits,
                                     bool scan) {
   if (bits.empty()) throw std::runtime_error("empty symbolic signal");
-  // Preserve slices and repeated bits as compact solver expressions.
+  // Preserve literal runs, slices and repeated bits as compact solver
+  // expressions.
   size_t position = 0;
   const auto read_run = [&]() {
     const auto& bit = bits[position++];
-    if (bit.node == kMissing) return Read(bit, scan);
+    if (bit.node == kMissing) {
+      std::string literal(1, LiteralBit(bit, global_resets_));
+      while (position < bits.size() && bits[position].node == kMissing) {
+        literal += LiteralBit(bits[position++], global_resets_);
+      }
+      return SymbolicValue::Literal(context_, literal);
+    }
     const auto& node = netlist_.nodes.at(bit.node);
     const unsigned high = BitOffset(node, bit.index);
     unsigned low = high;
@@ -377,19 +397,29 @@ SymbolicValue SymbolicNetwork::Compute(size_t id, bool scan) {
     }
   } else if (node.model == ModelKind::kGroup) {
     auto found = context_.bool_val(false), uncertain = context_.bool_val(false);
-    for (size_t source = 0; source < node.one_hot_sources.size(); ++source) {
-      const auto enabled = OneHotActive(node.one_hot_sources[source]);
+    const auto pad = [&](const SymbolicValue& value, unsigned width) {
+      const auto size = value.bits.get_sort().bv_size();
+      if (size == width) return value;
+      const auto zero = context_.bv_val(0, width - size);
+      return Concat({zero, zero}, value);
+    };
+    result = {unknown.bits.extract(0, 0), unknown.known.extract(0, 0)};
+    // Sources are sorted widest first; accumulate narrow payloads before
+    // padding.
+    for (size_t source = node.one_hot_sources.size(); source-- > 0;) {
+      const auto& descriptor = node.one_hot_sources[source];
+      const auto enabled = OneHotActive(descriptor);
       const auto known = enabled.known == context_.bv_val(1, 1);
       const auto active = known && enabled.bits == context_.bv_val(1, 1);
       uncertain = uncertain || !known || (found && active);
-      auto next = Read(node.OneHotSourceBit(source, 0), serial);
-      for (size_t bit = 1; bit < node.Width(); ++bit) {
-        next = Concat(next, Read(node.OneHotSourceBit(source, bit), serial));
-      }
-      result = Select(active, next, result);
+      node.OneHotSourceBit(source, 0);
+      const auto next = Bits(descriptor.bits, serial);
+      const auto width = std::max(result.bits.get_sort().bv_size(),
+                                  next.bits.get_sort().bv_size());
+      result = Select(active, pad(next, width), pad(result, width));
       found = found || active;
     }
-    result = Select(found && !uncertain, result, unknown);
+    result = Select(found && !uncertain, pad(result, node.Width()), unknown);
   } else {
     const auto source = node.inputs.find("Source");
     if (source != node.inputs.end()) result = Bits(source->second, serial);

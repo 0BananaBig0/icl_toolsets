@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_symbolic.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_state.h"
@@ -76,6 +79,321 @@ void TestRepeatedSignalRuns() {
       Require(result == z3::unsat,
               "repeated scalar references retain symbolic values within the "
               "proof budget");
+    }
+  }
+}
+
+void TestLiteralWordBoundaries() {
+  z3::context context;
+  for (size_t width :
+       {size_t{1}, size_t{63}, size_t{64}, size_t{65}, size_t{127}, size_t{128},
+        size_t{129}, size_t{257}, size_t{8193}}) {
+    for (const std::string pattern : {"0", "1", "x", "01x", "10x0011"}) {
+      std::string input;
+      for (size_t i = 0; i < width; ++i) input += pattern[i % pattern.size()];
+      const auto got = pattern::SymbolicValue::Literal(context, input);
+      z3::expr_vector different(context);
+      for (size_t begin = 0; begin < width; begin += 64) {
+        const unsigned size = std::min(size_t{64}, width - begin);
+        uint64_t bits = 0, known = 0;
+        for (size_t i = begin; i < begin + size; ++i) {
+          bits = (bits << 1) | (input[i] == '1');
+          known = (known << 1) | (input[i] != 'x');
+        }
+        const unsigned high = width - begin - 1;
+        const unsigned low = width - begin - size;
+        different.push_back(got.bits.extract(high, low) !=
+                            context.bv_val(bits, size));
+        different.push_back(got.known.extract(high, low) !=
+                            context.bv_val(known, size));
+      }
+      z3::solver solver(context);
+      solver.add(z3::mk_or(different));
+      Require(
+          solver.check() == z3::unsat,
+          "literal word boundaries retain bit order, masks and odd lengths");
+    }
+  }
+}
+
+void TestSparseOneHotAgreement() {
+  std::string text;
+  for (size_t width : {size_t{1}, size_t{3}, size_t{7}}) {
+    text += "Module P" + std::to_string(width) + " { DataInPort value[" +
+            std::to_string(width - 1) +
+            ":0]; DataInPort enabled; DataOutPort out[" +
+            std::to_string(width - 1) +
+            ":0] { Source value; Enable enabled; } } ";
+  }
+  text += "Module M { DataInPort data[6:0]; DataInPort enable[2:0]; ";
+  size_t lane = 0;
+  for (size_t width : {size_t{1}, size_t{3}, size_t{7}}) {
+    text += "Instance p" + std::to_string(width) + " Of P" +
+            std::to_string(width) + " { InputPort value = data[" +
+            std::to_string(width - 1) + ":0]; InputPort enabled = enable[" +
+            std::to_string(lane++) + "]; } ";
+  }
+  text +=
+      "OneHotDataGroup down[9:0] { Port p3.out; Port p1.out; Port ~p7.out; } "
+      "OneHotDataGroup up[0:9] { Port ~p7.out; Port p1.out; Port p3.out; } }";
+  pattern::Design design;
+  design.AddIcl("sparse_onehot_values.icl", text);
+  auto netlist = pattern::Elaborate(design, "M");
+  auto& unsorted = netlist.nodes.at(netlist.node_ids.at("up")).one_hot_sources;
+  std::reverse(unsorted.begin(), unsorted.end());
+  z3::context context;
+  for (const std::string data : {"10x0011", "0000000", "1111111", "xxxxxxx"}) {
+    for (char a : std::string("01x")) {
+      for (char b : std::string("01x")) {
+        for (char c : std::string("01x")) {
+          const std::string enables{c, b, a};
+          std::string expected(10, 'x');
+          if (enables.find('x') == std::string::npos &&
+              std::count(enables.begin(), enables.end(), '1') == 1) {
+            const size_t width = a == '1' ? 1 : b == '1' ? 3 : 7;
+            auto payload = data.substr(data.size() - width);
+            if (c == '1') {
+              for (auto& bit : payload) {
+                bit = bit == '0' ? '1' : bit == '1' ? '0' : 'x';
+              }
+            }
+            expected = std::string(10 - width, 'x') + payload;
+          }
+          pattern::NetworkState concrete(netlist);
+          concrete.Drive(netlist.node_ids.at("data"), data);
+          concrete.Drive(netlist.node_ids.at("enable"), enables);
+          pattern::SymbolicNetwork symbolic(
+              netlist, context,
+              {{netlist.node_ids.at("data"),
+                pattern::SymbolicValue::Literal(context, data)},
+               {netlist.node_ids.at("enable"),
+                pattern::SymbolicValue::Literal(context, enables)}});
+          for (const std::string group : {"up", "down"}) {
+            const auto id = netlist.node_ids.at(group);
+            Require(
+                concrete.Value(id) == expected,
+                "mixed-width one-hot concrete values retain sparse padding");
+            const auto got = symbolic.Value(id);
+            const auto want =
+                pattern::SymbolicValue::Literal(context, expected);
+            z3::solver solver(context);
+            solver.add(got.bits != want.bits || got.known != want.known);
+            Require(solver.check() == z3::unsat,
+                    "mixed-width one-hot symbolic values retain enables, masks "
+                    "and order");
+          }
+        }
+      }
+    }
+  }
+  pattern::Design empty_design;
+  empty_design.AddIcl(
+      "empty_onehot.icl",
+      "Module Empty {} Module M { "
+      "OneHotDataGroup group[9:0] { Instance child Of Empty; } }");
+  const auto empty = pattern::Elaborate(empty_design, "M");
+  for (bool symbolic : {false, true}) {
+    bool rejected = false;
+    try {
+      if (symbolic) {
+        pattern::SymbolicNetwork values(empty, context, {});
+        values.Value(empty.node_ids.at("group"));
+      } else {
+        pattern::NetworkState values(empty);
+        values.Value(empty.node_ids.at("group"));
+      }
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("no selection condition") !=
+                 std::string::npos;
+    }
+    Require(rejected, "empty one-hot contributors retain selection validation");
+  }
+}
+
+void TestSparseOneHotScale() {
+  for (const auto [width, count] :
+       {std::pair<size_t, size_t>{512, 8}, {8192, 64}, {65536, 512}}) {
+    std::string text =
+        "Module Producer { DataInPort value; DataInPort enabled; "
+        "DataOutPort out { Source value; Enable enabled; } } Module M { "
+        "DataInPort data[" +
+        std::to_string(count - 1) + ":0]; DataInPort enable[" +
+        std::to_string(count - 1) + ":0]; ";
+    for (size_t i = 0; i < count; ++i) {
+      text += "Instance p" + std::to_string(i) +
+              " Of Producer { InputPort value = data[" + std::to_string(i) +
+              "]; InputPort enabled = enable[" + std::to_string(i) + "]; } ";
+    }
+    text += "OneHotDataGroup group[" + std::to_string(width - 1) + ":0] { ";
+    for (size_t i = 0; i < count; ++i) {
+      text += "Port p" + std::to_string(i) + ".out; ";
+    }
+    text += "} }";
+    pattern::Design design;
+    design.AddIcl("sparse_onehot.icl", text);
+    const auto netlist = pattern::Elaborate(design, "M");
+    const auto data = netlist.node_ids.at("data");
+    const auto enable = netlist.node_ids.at("enable");
+    const auto group = netlist.node_ids.at("group");
+    std::string selected(count, '0');
+    selected.back() = '1';
+    pattern::NetworkState concrete(netlist);
+    concrete.Drive(data, std::string(count, '1'));
+    concrete.Drive(enable, selected);
+    const auto concrete_started = std::chrono::steady_clock::now();
+    Require(concrete.Value(group) == std::string(width - 1, 'x') + "1",
+            "sparse one-hot concrete selection retains unknown padding");
+    concrete.Drive(enable, std::string(count, '1'));
+    Require(concrete.Value(group) == std::string(width, 'x'),
+            "multiple enabled one-hot contributors remain unknown");
+    std::cout << "sparse onehot concrete: width=" << width << " count=" << count
+              << " bytes=" << text.size() << " seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - concrete_started)
+                     .count()
+              << '\n';
+    z3::context context;
+    const auto data_bits = context.bv_const("onehot_data", count);
+    pattern::SymbolicNetwork symbolic(
+        netlist, context,
+        {{data, {data_bits, ~context.bv_val(0, count)}},
+         {enable, pattern::SymbolicValue::Literal(context, selected)}});
+    const auto symbolic_started = std::chrono::steady_clock::now();
+    const auto got = symbolic.Value(group);
+    const auto want =
+        z3::concat(context.bv_val(0, width - 1), data_bits.extract(0, 0));
+    z3::solver solver(context);
+    solver.set("timeout", 3000u);
+    solver.add(got.bits != want || got.known != context.bv_val(1, width));
+    const auto result = solver.check();
+    std::cout << "sparse onehot symbolic: width=" << width << " count=" << count
+              << " seconds="
+              << std::chrono::duration<double>(
+                     std::chrono::steady_clock::now() - symbolic_started)
+                     .count()
+              << " result=" << result << '\n';
+    Require(result == z3::unsat,
+            "sparse one-hot symbolic selection retains data and masks within "
+            "proof budget");
+  }
+}
+
+void TestLiteralRunAgreement() {
+  pattern::Design design;
+  design.AddIcl("literal_runs.icl", "Module M { DataInPort a[2:0]; }");
+  const auto netlist = pattern::Elaborate(design, "M");
+  const auto input = netlist.node_ids.at("a");
+  const size_t missing = std::numeric_limits<size_t>::max();
+  z3::context context;
+  for (char synchronous : std::string("01x")) {
+    for (char asynchronous : std::string("01x")) {
+      pattern::SymbolicNetwork values(
+          netlist, context,
+          {{input, pattern::SymbolicValue::Literal(context, "10x")}},
+          std::string{synchronous, asynchronous});
+      const std::vector<pattern::BitReference> references{
+          {input, 2},
+          {missing, 0, '0'},
+          {missing, 0, '0', true},
+          {missing, 0, 'x', true},
+          {missing, 0, '?', false, pattern::VirtualSignal::kGlobalReset},
+          {missing, 0, '1', true, pattern::VirtualSignal::kAsyncGlobalReset},
+          {input, 1},
+          {missing, 0, '?', true},
+          {input, 0}};
+      const char inverted_async = asynchronous == 'x'   ? 'x'
+                                  : asynchronous == '0' ? '1'
+                                                        : '0';
+      const std::string expected =
+          std::string("101x") + synchronous + inverted_async + "0xx";
+      for (bool scan : {false, true}) {
+        const auto got = values.Bits(references, scan);
+        const auto want = pattern::SymbolicValue::Literal(context, expected);
+        z3::solver solver(context);
+        solver.add(got.bits != want.bits || got.known != want.known);
+        Require(solver.check() == z3::unsat,
+                "literal runs retain physical boundaries and all reset states");
+        for (size_t i = 0; i < references.size(); ++i) {
+          const auto bit = values.Read(references[i], scan);
+          const auto wanted = pattern::SymbolicValue::Literal(
+              context, std::string(1, expected[i]));
+          z3::solver scalar(context);
+          scalar.add(bit.bits != wanted.bits || bit.known != wanted.known);
+          Require(
+              scalar.check() == z3::unsat,
+              "single-bit literal and virtual reset reads retain semantics");
+        }
+      }
+      for (bool inverted : {false, true}) {
+        const pattern::BitReference invalid{missing, 0, 'q', inverted};
+        for (bool run : {false, true}) {
+          bool rejected = false;
+          try {
+            if (run) {
+              values.Bits({{missing, 0, '0'}, invalid, {missing, 0, '1'}});
+            } else {
+              values.Read(invalid);
+            }
+          } catch (const std::runtime_error& error) {
+            rejected = std::string(error.what()).find("0/1/x bits") !=
+                       std::string::npos;
+          }
+          Require(rejected, "literal grouping retains invalid-value rejection");
+        }
+      }
+    }
+  }
+}
+
+void TestLiteralSignalRuns(bool large = false) {
+  const size_t missing = std::numeric_limits<size_t>::max();
+  const std::vector<pattern::BitReference> mixed{
+      {missing, 0, '0'},
+      {missing, 0, '1', true},
+      {missing, 0, 'x'},
+      {missing, 0, '?', true},
+      {missing, 0, '?', false, pattern::VirtualSignal::kGlobalReset},
+      {missing, 0, '?', true, pattern::VirtualSignal::kAsyncGlobalReset},
+      {missing, 0, '0', true},
+      {missing, 0, '1'}};
+  std::vector<size_t> widths{512, 8192, 65536, 262144};
+  if (large) widths.push_back(1048576);
+  for (size_t width : widths) {
+    pattern::Design design;
+    design.AddIcl("literal_signal.icl",
+                  "Module M { DataOutPort out[" + std::to_string(width - 1) +
+                      ":0] { Source " + std::to_string(width) + "'b0; } }");
+    auto netlist = pattern::Elaborate(design, "M");
+    const auto output = netlist.node_ids.at("out");
+    for (bool virtual_resets : {false, true}) {
+      auto& source = netlist.nodes.at(output).inputs.at("Source");
+      std::string expected;
+      expected.reserve(width);
+      for (size_t i = 0; i < width; ++i) {
+        source[i] = virtual_resets
+                        ? mixed[i % mixed.size()]
+                        : pattern::BitReference{missing, 0, "01x"[i % 3]};
+        expected +=
+            virtual_resets ? "00xx1111"[i % mixed.size()] : "01x"[i % 3];
+      }
+      z3::context context;
+      pattern::SymbolicNetwork values(netlist, context, {}, "10");
+      const auto started = std::chrono::steady_clock::now();
+      const auto got = values.Value(output);
+      const auto want = pattern::SymbolicValue::Literal(context, expected);
+      z3::solver solver(context);
+      solver.set("timeout", 3000u);
+      solver.add(got.bits != want.bits || got.known != want.known);
+      const auto result = solver.check();
+      const auto seconds = std::chrono::duration<double>(
+                               std::chrono::steady_clock::now() - started)
+                               .count();
+      std::cout << "literal signal: bits=" << width
+                << " virtual_resets=" << virtual_resets
+                << " seconds=" << seconds << " result=" << result << '\n';
+      Require(result == z3::unsat,
+              "literal and virtual reset runs preserve values within the proof "
+              "budget");
     }
   }
 }
@@ -743,15 +1061,28 @@ int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
       Require(argc == 2 && (std::string(argv[1]) == "--mux-scale" ||
-                            std::string(argv[1]) == "--repeat-scale"),
-              "expected --mux-scale, --repeat-scale or no test arguments");
-      if (std::string(argv[1]) == "--repeat-scale") {
+                            std::string(argv[1]) == "--repeat-scale" ||
+                            std::string(argv[1]) == "--literal-scale" ||
+                            std::string(argv[1]) == "--onehot-scale"),
+              "expected --mux-scale, --repeat-scale, --literal-scale, "
+              "--onehot-scale or no "
+              "test arguments");
+      if (std::string(argv[1]) == "--onehot-scale") {
+        TestSparseOneHotScale();
+      } else if (std::string(argv[1]) == "--literal-scale") {
+        TestLiteralSignalRuns(true);
+      } else if (std::string(argv[1]) == "--repeat-scale") {
         TestRepeatedSignalRuns();
       } else {
         TestMuxChainScale();
       }
       return 0;
     }
+    TestLiteralWordBoundaries();
+    TestSparseOneHotAgreement();
+    TestSparseOneHotScale();
+    TestLiteralRunAgreement();
+    TestLiteralSignalRuns();
     TestImpliedToTckValues();
     TestRepeatedSignalRuns();
     TestBooleanMuxIdentity();
