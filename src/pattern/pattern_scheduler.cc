@@ -613,7 +613,7 @@ class ScanScheduler::Impl {
   const RawProfile& RawChain() {
     if (raw_profile_) {
       if (!raw_profile_->dynamic) return *raw_profile_;
-      raw_current_ = RawRoute(*raw_profile_, state_);
+      if (!raw_current_) raw_current_ = RawRoute(*raw_profile_, state_);
       return *raw_current_;
     }
     const auto fail = [] {
@@ -921,7 +921,14 @@ class ScanScheduler::Impl {
     }
     return result;
   }
-  const RawSlice& RawSubchain(const std::string& target) {
+  // Dynamic routes and child positions are valid only until a state mutation.
+  void InvalidateRawRoute() {
+    if (!raw_profile_ || !raw_profile_->dynamic) return;
+    raw_current_.reset();
+    raw_slices_.clear();
+    raw_profile_work_ = 0;
+  }
+  RawSlice RawSubchain(const std::string& target) {
     const auto& root = RawChain();
     const auto found = netlist_.node_ids.find(target);
     if (found == netlist_.node_ids.end()) {
@@ -929,13 +936,8 @@ class ScanScheduler::Impl {
                                target);
     }
     const auto id = found->second;
-    if (root.dynamic) {
-      if (id != root.client) {
-        throw std::runtime_error("dynamic raw scan requires the root client: " +
-                                 target);
-      }
-      raw_dynamic_slice_ = {root.width, 0, false, false};
-      return raw_dynamic_slice_;
+    if (root.dynamic && id == root.client) {
+      return {root.width, 0, false, false};
     }
     const auto cached = raw_slices_.find(id);
     if (cached != raw_slices_.end()) return cached->second;
@@ -945,7 +947,9 @@ class ScanScheduler::Impl {
     }
     const auto fail = [&] {
       throw std::runtime_error(
-          "raw scan requires a contiguous static child client: " + target);
+          "raw scan requires a contiguous static child client on the root "
+          "route: " +
+          target);
     };
     const auto& client = netlist_.nodes[id];
     if (!client.scan_interface ||
@@ -1075,7 +1079,7 @@ class ScanScheduler::Impl {
       input.replace(root.offsets[i], netlist_.nodes[id].Width(),
                     invert(fill_.at(id), root.inverted != suffix));
     }
-    bool stable = true;
+    bool stable = true, require_stable = false;
     for (const auto& [name, operation] : latest) {
       const auto& slice = RawSubchain(name);
       input.replace(
@@ -1084,7 +1088,9 @@ class ScanScheduler::Impl {
       expected.replace(
           slice.offset, slice.width,
           invert(operation.arguments[5].substr(2), slice.output_inverted));
-      stable = stable && operation.arguments.back() == "-stable";
+      const bool claimed = operation.arguments.back() == "-stable";
+      stable = stable && claimed;
+      require_stable = require_stable || claimed;
     }
     auto physical = operations.front();
     physical.arguments = {netlist_.nodes[root.client].name,
@@ -1094,9 +1100,9 @@ class ScanScheduler::Impl {
                           "-so",
                           "0b" + expected};
     if (stable) physical.arguments.push_back("-stable");
-    return ReplayScan(physical);
+    return ReplayScan(physical, require_stable);
   }
-  Operation ReplayScan(const Operation& normalized) {
+  Operation ReplayScan(const Operation& normalized, bool require_stable) {
     const auto& profile = RawChain();
     if (global_resets_ != "00") {
       throw std::runtime_error(
@@ -1182,7 +1188,7 @@ class ScanScheduler::Impl {
     replay.Clock(controls(&replay, "update"), false);
     for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
     replay.Reset();
-    if (profile.dynamic && normalized.arguments.back() == "-stable") {
+    if (profile.dynamic && require_stable) {
       try {
         const auto after = RawRoute(*raw_profile_, replay);
         if (profile.registers != after.registers ||
@@ -1208,6 +1214,7 @@ class ScanScheduler::Impl {
     replay.TakeResetEvents();
     state_.Restore(replay);
     fill_ = std::move(fill);
+    InvalidateRawRoute();
     return normalized;
   }
   void Reset(bool synchronous) {
@@ -5442,7 +5449,6 @@ class ScanScheduler::Impl {
   std::optional<RawProfile> raw_profile_, raw_current_;
   std::map<size_t, BitReference> raw_selectors_;
   std::map<Key, BitReference> raw_control_terminals_;
-  RawSlice raw_dynamic_slice_;
   bool raw_gated_ = false;
   std::map<size_t, RawSlice> raw_slices_;
   size_t raw_profile_work_ = 0;
@@ -5479,17 +5485,23 @@ ScanScheduler::ScanScheduler(const Netlist& netlist)
 ScanScheduler::ScanScheduler(const ScanScheduler& other)
     : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
-void ScanScheduler::Reset(bool synchronous) { impl_->Reset(synchronous); }
+void ScanScheduler::Reset(bool synchronous) {
+  impl_->InvalidateRawRoute();
+  impl_->Reset(synchronous);
+}
 void ScanScheduler::Idle(uint64_t cycles,
                          const std::map<size_t, std::string>& preserved) {
+  impl_->InvalidateRawRoute();
   impl_->Idle(cycles, preserved);
 }
 void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
+  impl_->InvalidateRawRoute();
   impl_->Assume(target, bits);
 }
 std::vector<ScanStep> ScanScheduler::Apply(
     const std::vector<Operation>& operations, bool together,
     const std::map<size_t, std::string>& preserved, bool explicit_writes) {
+  impl_->InvalidateRawRoute();
   return impl_->Apply(operations, together, preserved, explicit_writes);
 }
 std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(

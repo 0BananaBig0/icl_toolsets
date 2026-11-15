@@ -24,8 +24,8 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
-void TestGatedSibRawScans() {
-  std::string source = R"ICL(Module RawSibLeaf {
+std::string RawSibModel() {
+  return R"ICL(Module RawSibLeaf {
  ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
  UpdateEnPort ue; TCKPort tck; ResetPort reset;
  ScanRegister value[7:0] { ScanInSource si; CaptureSource value; ResetValue 8'b0; }
@@ -48,6 +48,9 @@ Module Top {
  }
 }
 )ICL";
+}
+void TestGatedSibRawScans() {
+  std::string source = RawSibModel();
   for (bool flat : {false, true}) {
     pattern::Design design;
     design.AddIcl("gated-sib-raw.icl", source);
@@ -205,6 +208,145 @@ Module Top {
             "inactive child reset must be inactive before raw replay");
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
+}
+void TestActiveChildRawScans() {
+  std::string source = RawSibModel();
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("active-child-raw.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler child(netlist), physical(netlist);
+    child.Reset();
+    physical.Reset();
+    const pattern::Operation open{
+        "iScan", {"client", "1", "-si", "1"}, "child:open", {}};
+    child.ApplyScan(open);
+    physical.ApplyScan(open);
+    const pattern::Operation known{
+        "iScan",
+        {"client", "9", "-si", "0b101001011", "-stable"},
+        "child:known",
+        {}};
+    child.ApplyScan(known);
+    physical.ApplyScan(known);
+    const auto actual = child.ApplyScan(
+        {"iScan",
+         {"child.local", "8", "-si", "0b10x01x01", "-so", "0x3c", "-stable"},
+         "child:partial",
+         {}});
+    const auto expected = physical.ApplyScan(
+        {"iScan",
+         {"client", "9", "-si", "0b10x01x011", "-so", "0b00111100x", "-stable"},
+         "child:physical",
+         {}});
+    Require(actual.arguments == expected.arguments,
+            "child raw SI/SO retarget to the same physical root CSU");
+    child.Apply({{"iWrite", {"child.value[1]", "1"}, "child:fill", {}}});
+    physical.Apply({{"iWrite", {"child.value[1]", "1"}, "child:fill", {}}});
+    Require(child.Value("child.value") == "10101111",
+            "child partial-X preserves surrounding controlling fill");
+    const auto same = [&](const pattern::ScanScheduler& left,
+                          const pattern::ScanScheduler& right) {
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          Require(left.Value(node.name) == right.Value(node.name),
+                  "child retarget matches physical held/shift/control state");
+        }
+      }
+    };
+    same(child, physical);
+    const pattern::Operation setup{
+        "iScan",
+        {"child.local", "8", "-si", "0x3c", "-stable"},
+        "child:setup",
+        {}};
+    child.NormalizeScan(setup);
+    child.Assume("open", "0");
+    bool rejected = false;
+    try {
+      child.NormalizeScan(setup);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected, "Assume invalidates accessible-child route cache");
+    child.Assume("open", "1");
+    child.NormalizeScan(setup);
+    pattern::ScanScheduler copied(child);
+    child.Assume("open", "0");
+    Require(copied.NormalizeScan(setup).arguments[1] == "8",
+            "warm-cache copy retains its own accessible route after original "
+            "changes");
+    child.Assume("open", "1");
+    child.Idle(1);
+    physical.Idle(1);
+    copied.Idle(1);
+    copied.ApplyScan(setup);
+    child.ApplyScan(setup);
+    physical.ApplyScan({"iScan",
+                        {"client", "9", "-si", "0b001111001", "-stable"},
+                        "child:physical",
+                        {}});
+    same(child, physical);
+    same(copied, child);
+    child.NormalizeScan(setup);
+    child.Apply({{"iWrite", {"open", "0"}, "child:close", {}}});
+    rejected = false;
+    try {
+      child.NormalizeScan(setup);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected, "ordinary Apply invalidates a warm child interval cache");
+    child.Apply({{"iWrite", {"open", "1"}, "child:reopen", {}}});
+    child.NormalizeScan(setup);
+    child.Reset();
+    rejected = false;
+    try {
+      child.NormalizeScan(setup);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected,
+            "Reset invalidates child slices and dynamic ordered root profile");
+    Require(child.NormalizeScan(open).arguments[1] == "1",
+            "reset returns raw root width to closed SIB length");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+  // Equal widths cannot establish that a cached child remains accessible.
+  source = RawSibModel();
+  const auto start = source.find(" Instance child Of");
+  const auto end = source.find(" ScanMux route");
+  auto other = source.substr(start, end - start);
+  other.replace(other.find("Instance child"),
+                std::string("Instance child").size(), "Instance other");
+  other.replace(other.find("InputPort sel = open;"),
+                std::string("InputPort sel = open;").size(),
+                "InputPort sel = ~open;");
+  source.insert(end, other);
+  source.replace(source.find("1'b0: si;"), std::string("1'b0: si;").size(),
+                 "1'b0: other.so;");
+  pattern::Design design;
+  design.AddIcl("same-width-child.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler switched(netlist);
+  switched.Reset();
+  const pattern::Operation old_child{
+      "iScan", {"other.local", "8"}, "child:old", {}};
+  switched.NormalizeScan(old_child);
+  switched.Assume("open", "1");
+  bool rejected = false;
+  try {
+    switched.NormalizeScan(old_child);
+  } catch (const std::runtime_error&) {
+    rejected = true;
+  }
+  Require(rejected,
+          "same-width route switch invalidates the old child interval");
+  Require(
+      switched.NormalizeScan({"iScan", {"child.local", "8"}, "child:new", {}})
+              .arguments[1] == "8",
+      "same-width route switch exposes the new child interval");
 }
 void TestStaticChildScans() {
   const std::string original = R"ICL(Module ChildLeaf {
@@ -3841,6 +3983,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestActiveChildRawScans();
     TestGatedSibRawScans();
     TestStaticChildScans();
     TestHierarchicalRootScans();

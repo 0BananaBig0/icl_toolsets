@@ -44,7 +44,8 @@ class ScanScheduler {
       const std::vector<Operation>& operations, bool together = false,
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true);
-  // Raw scans target a complete root chain or disjoint static child intervals.
+  // Raw scans target a known root route or disjoint accessible static child
+  // intervals.
   Operation NormalizeScan(const Operation& operation);
   Operation ApplyScan(const Operation& operation);
   Operation ApplyScans(const std::vector<Operation>& operations);

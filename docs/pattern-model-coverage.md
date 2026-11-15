@@ -2784,3 +2784,59 @@ This qualifies the stated no-stable observation contract, not general vendor
 stable preservation or child/IR/TAP/parallel portability.
 
 Verified Task100: leak-enabled native7/main69/modeled35/opaque13/clocks51/client25/reset12/trace16/all57offline certificates all0. Full serial make check passes in 1487.5529853680055s. Final remote54 statuses all0, actual88 source/test/certificate inputs match. Independent review found no semantic blocker and one Important shared-control evaluation cost; bounded optional reader fix has maintained RED missing-hook compile, GREEN native equivalence/literal source-flat tests and complete suites. Equivalent wide-selector source1.04-1.05s before/.77s after; shared512aliases/1024children2.31-2.33s before/.38s after; canonical hashes unchanged. All25 scale commands pass across source repetitions/flat/generated, gated1Mbit .30-.33s and128 open/write/close repetitions .05s; peak168188KiB includes wide flattened selector form. Stable fixture accepted by Tessent but strict forward mismatch retained (dropped stable and added selector read); reverse0. Separate no-stable explicit-comparison fixture passes genuine Tessent2026.2 BOTH directions run/strict record/strict check0, unchanged policy, two schema3 certificates imported with all hashes checked. Source tree audit/style and initial16 connected checks passed; final broader gates cover the reader fix. Cached held-data selection, full-map inactive phase proof, pre-update eligibility and separate-copy stable proof preserve all state/fill rollback. Native helper hook is the necessary scope ruling beyond the initial scheduler-only file list; no separate state engine. Commit28 files, fast-forward master and delete merged branch, preserve next accessible-child work. Closed-child preparation, broader raw/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.
+
+### Accessible child raw scans inside a gated route (Task101)
+
+An unnamed child with a static local chain may be scanned when its complete
+register interval is already part of the known active root route. The scheduler
+reuses the interval/parity proof and emits one physical root CSU for disjoint
+queued children. It preserves surrounding controlling fill, translates SI and SO
+parity separately, validates discarded setup and rejects overlapping targets.
+Closed/incomplete children and children whose own local chain contains a mux remain
+atomic errors; this increment does not insert preparatory opening scans.
+
+Current dynamic route/slice caches live only until Reset, Idle, Assume, ordinary
+Apply or successful raw adoption. Copies/speculative schedulers start cold.
+Immutable qualification and static-child caches persist. A changed route recomputes
+child positions, including equal-width switches and offsets shifted by another
+SIB. Setup/queue validation reuses one current profile rather than rebuilding it
+for each child.
+
+Any latest stable claim on a dynamic child requires the full physical root route
+and native phase eligibility to remain stable in this bounded increment. That
+proof is separate from the emitted -stable flag, which remains the conjunction
+of latest flags. Mixed stable/nonstable siblings are accepted when the physical
+route stays unchanged. Local-only stability while another sibling changes the
+root route remains future work. Existing static child behavior is unchanged.
+
+Maintained native reference tests and modeled43 pass locally. They cover physical
+root equivalence, expected SO, partial-X fill, sibling coalescing/latest setup,
+mutation/copy lifetime, changed offsets, equal-width switches and all8 SI/child-SO/
+root-SO inversion combinations, with source/flat/generated/local-reset replay.
+The unique ActiveRawLeaf fixture preserves child SO and final child/selector
+comparisons. Independent final review and connected/vendor/scale/final gates are
+pending. Broader raw topology/ownership, closed-child preparation, opaque/IR/TAP/
+parallel behavior, strict coverage and final release qualification remain open.
+
+Task101 evidence: initial16 connected checks/corpus audit and57 offline
+certificates pass; corpus2550 files, zero duplicate-file groups,26 reviewed
+module groups. Independent review finds no production defect. Its two test gaps
+were strengthened: warm ordinary Apply/copy cache states and independent expected
+SO polarity. Fault injection removing Apply invalidation and SO parity produces
+the exact native warm-cache failure and4 SO assertions; exact reviewed source
+7b0b0a6c is restored, native scheduler and modeled43 pass. No mutation ships.
+All26 source-matched scale commands pass:1M active bits via child .29–.30s
+(source),1024 queued children with512 shared aliases .37–.38s,97-level child
+.10s,128 reopen/write/close repetitions .04s. Peaks107052KiB overall. Three
+Task100 physical-reference repetitions .24–.27s wide and .20s queued-network
+provide equivalent output hashes; this measures retargeting overhead, not speedup.
+Source/flat/generated forms share the same canonical hashes.
+Genuine Tessent2026.2 forward run/strict record/strict check0 using unchanged
+harness/policy; one schema3 certificate imported after source/artifact/input/
+console hash checks. Reverse original source1 reports that child.local is an
+internal ScanInterface and iScan is unsupported in this tested context; retained
+evidence is not a reverse certificate. All child SO and final child/selector
+comparisons remain present. Existing and new forward snapshots total58; final
+immutable sanitizer/fullserial/remote/style/offline gates remain pending.
+
+Verified Task101: leak-enabled native7/main69/modeled43/opaque13/clocks51/client25/reset12/trace16/all58offline certificates all0. Full serial make check passes in 1496.6201768030296s. Final remote54 statuses all0 and actual99 source/test/fixture/certificate inputs match. Independent source review found no production defect; two required test-strength refinements are fixed with mutation RED (missing warm-Apply invalidation and SO parity), exact production-byte restoration and GREEN native/model43 suites. Warm-copy isolation, changed offsets, same-width switches and8 inversion/expected-SO combinations are maintained. Existing interval/parity/root-CSU logic reused with constant-sized cached child slices, by-value return and audited dynamic cache lifetime. Any latest stable claim on a dynamic route still requires whole physical-root stability in this bounded increment; OR proof is separate from AND emitted flag. Local-only stable scope and inner child muxes remain next work, with no waiver. All26 scale commands0:1M active bits via child .28-.31s,1024 queued children/512shared aliases .20-.38s,97-level child .04-.10s,128 reopen/write/close .04s;107052KiB peak, hashes equal to equivalent Task100 physical reference runs and across source/flat/generated forms. Source audit2550 files/zero duplicate groups/26reviewed module groups;16 connected/style/naming/offline pass. Genuine Tessent2026.2 FORWARD run/strict record/strict check0 for unique ActiveRawLeaf source; schema3 certificate imported with source/artifact/input/console hashes checked, all child SO and final child/selector comparisons retained. Reverse original source1 explicitly rejects internal ScanInterface in tested context; no reverse certificate claimed and checker policy unchanged. Commit20 files, fast-forward master, delete merged branch and preserve next dynamic-child work. Closed-child preparation, broader raw/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.

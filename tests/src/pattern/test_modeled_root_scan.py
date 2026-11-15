@@ -388,6 +388,143 @@ class ModeledRootScan(unittest.TestCase):
         self.rejected('iReset; iScan client 1 -si 0bx -stable; iApply\n',
                       'stable', model)
 
+    def test_active_child_raw_retargets_current_sib_route(self):
+        result = self.replay('iReset; iScan client 1 -si 1; iApply\n'
+                             'iScan child.local 8 -si 0xa5 -so 0x3c -stable; iApply\n'
+                             'iRead child.value 0xa5; iApply\n', SIB)
+        self.assertIn('iScan client 9 -si 0b101001011 -so 0b00111100x -stable', result)
+        self.assertIn('iRead child.value 0b10100101', result)
+
+    def test_active_child_raw_cache_after_ordinary_route_change(self):
+        self.replay('iReset; iWrite open 1; iApply\n'
+                    'iScan child.local 8 -si 0xa5; iApply\n'
+                    'iWrite open 0; iApply; iWrite open 1; iApply\n'
+                    'iScan child.local 8 -si 0x3c -stable; iApply\n'
+                    'iRead child.value 0x3c; iApply\n', SIB)
+        self.rejected('iReset; iWrite open 1; iApply\n'
+                      'iScan child.local 8 -si 0xa5; iApply\n'
+                      'iWrite open 0; iApply; iScan child.local 8; iApply\n',
+                      'contiguous', SIB)
+
+    def test_active_child_raw_closed_overlap_and_discarded_setup_atomic(self):
+        self.rejected('iReset; iScan child.local 8; iApply\n', 'contiguous', SIB)
+        self.rejected('iReset; iScan client 1 -si 1; iApply\n'
+                      'iScan child.local 7; iApply\n', 'length', SIB)
+        self.rejected('iReset; iScan client 1 -si 1; iApply\n'
+                      'iScan client 9; iScan child.local 8; iApply\n',
+                      'overlapping', SIB)
+        self.rejected('iReset; iScan client 1 -si 1; iApply\n'
+                      'iScan child.local 8 -bad; iScan child.local 8; iApply\n',
+                      'option', SIB)
+
+    def test_active_child_raw_disjoint_siblings_and_latest_assignment(self):
+        block = SIB[SIB.index(' Instance child Of'):SIB.index(' ScanMux route')]
+        sibling = block.replace('Instance child Of', 'Instance sibling Of')
+        sibling = sibling.replace('InputPort si = si;', 'InputPort si = child.so;')
+        model = SIB.replace(' ScanMux route', sibling + ' ScanMux route')
+        model = model.replace("1'b1: child.so;", "1'b1: sibling.so;")
+        result = self.replay('iReset; iScan client 1 -si 1; iApply\n'
+                             'iScan child.local 8 -si 0x12 -stable\n'
+                             'iScan child.local 8 -si 0xa5 -stable\n'
+                             'iScan sibling.local 8 -si 0x3c\niApply\n'
+                             'iRead child.value 0xa5; iRead sibling.value 0x3c; iApply\n',
+                             model)
+        scans = [line for line in result.splitlines() if line.startswith('iScan ')]
+        self.assertEqual(len(scans), 2)
+        self.assertIn('iScan client 17 -si 0b10100101001111001', scans[1])
+        self.assertNotIn('-stable', scans[1])
+
+    def test_active_child_raw_mixed_stability_requires_root_proof(self):
+        block = SIB[SIB.index(' Instance child Of'):SIB.index(' ScanMux route')]
+        sibling = block.replace('Instance child Of', 'Instance sibling Of')
+        sibling = sibling.replace('InputPort sel = open;', 'InputPort sel = child.gate;')
+        model = SIB.replace(block, block.replace('InputPort si = si;', 'InputPort si = route;')
+                            .replace('InputPort sel = open;', 'InputPort sel = sel;') + sibling)
+        model = model.replace('SelectedBy open', 'SelectedBy child.gate')
+        model = model.replace("1'b1: child.so;", "1'b1: sibling.so;")
+        model = model.replace(' ScanRegister open { ScanInSource route; CaptureSource open; ResetValue 1\'b0; }\n', '')
+        model = model.replace('Source open;', 'Source child.so;')
+        model = model.replace(' ScanOutPort so { Source value[0]; }',
+                              ' DataOutPort gate { Source value[0]; }\n'
+                              ' ScanOutPort so { Source value[0]; }')
+        self.rejected('iReset; iScan child.local 8 -si 1 -stable; iApply\n',
+                      'stable', model)
+        self.rejected('iReset; iScan client 8 -si 1; iApply\n'
+                      'iScan child.local 8 -si 0 -stable\n'
+                      'iScan sibling.local 8 -si 0xa5\niApply\n', 'stable', model)
+        result = self.replay('iReset; iScan client 8 -si 1; iApply\n'
+                             'iScan child.local 8 -si 1 -stable\n'
+                             'iScan sibling.local 8 -si 0xa5\niApply\n'
+                             'iRead child.value 1; iRead sibling.value 0xa5; iApply\n', model)
+        scans = [line for line in result.splitlines() if line.startswith('iScan ')]
+        self.assertIn('iScan client 16 -si 0b1010010100000001', scans[1])
+        self.assertNotIn('-stable', scans[1])
+
+    def test_active_child_raw_offset_changes_with_other_sib(self):
+        leaf = SIB[:SIB.index('Module Top')]
+        model = leaf + """Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance a Of RawSibLeaf {
+  InputPort si = si; InputPort sel = a_en; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanMux a_route SelectedBy a_en { 1'b0: si; 1'b1: a.so; }
+ ScanRegister a_en { ScanInSource a_route; CaptureSource a_en; ResetValue 1'b0; }
+ Instance b Of RawSibLeaf {
+  InputPort si = a_en; InputPort sel = b_en; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanMux b_route SelectedBy b_en { 1'b0: a_en; 1'b1: b.so; }
+ ScanRegister b_en { ScanInSource b_route; CaptureSource b_en; ResetValue 1'b0; }
+ ScanOutPort so { Source b_en; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 1'b0;
+ }
+}
+"""
+        result = self.replay('iReset; iScan client 2 -si 3; iApply\n'
+                             'iScan b.local 8 -si 0x3c -stable; iApply\n'
+                             'iScan client 18 -si 0b000000000001111001; iApply\n'
+                             'iScan b.local 8 -si 0xa5; iApply\n'
+                             'iRead b.value 0xa5; iApply\n', model)
+        self.assertIn('iScan client 10 -si 0b0101001011', result)
+        self.assertIn('iRead b.value 0b10100101', result)
+
+    def test_active_child_raw_inversion_parity_and_partial_x(self):
+        for input_inverse in (False, True):
+            for child_inverse in (False, True):
+                for root_inverse in (False, True):
+                    model = SIB
+                    if input_inverse:
+                        model = model.replace('InputPort si = si;', 'InputPort si = ~si;')
+                    if child_inverse:
+                        model = model.replace('Source value[0];', 'Source ~value[0];')
+                    if root_inverse:
+                        model = model.replace('Source open;', 'Source ~open;')
+                    with self.subTest(input_inverse=input_inverse,
+                                      child_inverse=child_inverse,
+                                      root_inverse=root_inverse):
+                        result = self.replay('iReset; iScan client 1 -si 1; iApply\n'
+                                    'iScan child.local 8 -si 0xa5 -so 0x3c -stable; iApply\n'
+                                    'iScan child.local 8 -si 0b10x01x01 -stable; iApply\n'
+                                    'iWrite child.value[1] 1; iApply\n'
+                                    'iRead child.value 0xaf; iApply\n', model)
+
+                        expected = ('11000011' if root_inverse else '00111100') + 'x'
+                        scans = [line for line in result.splitlines()
+                                 if line.startswith('iScan ')]
+                        self.assertIn('-so 0b' + expected + ' -stable', scans[1])
+
+    def test_active_child_raw_fixture(self):
+        folder = opaque.ROOT / 'tests/cases/ours/pattern_generation/active_child_raw'
+        commands = 'iReset' + (folder / 'source.pdl').read_text().split('iReset', 1)[1]
+        result = self.replay(commands, (folder / 'model.icl').read_text())
+        self.assertIn('iScan client 9 -si 0b101001011 -so 0b00000000x', result)
+        self.assertIn('iRead child.value 0b10100101', result)
+        self.assertIn('iRead open 0b1', result)
+
     def test_large_modeled_scan(self):
         width = 1048576
         model = MODEL.replace('[7:0]', '[' + str(width - 1) + ':0]')

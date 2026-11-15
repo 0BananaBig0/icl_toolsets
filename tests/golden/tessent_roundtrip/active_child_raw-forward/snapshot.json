@@ -1,0 +1,219 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "active_child_raw",
+    "top": "Top",
+    "icl": [
+      "tests/cases/ours/pattern_generation/active_child_raw/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/active_child_raw/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/active_child_raw/model.icl": "a74f35eabf6c61d5ab837afab0d22d52d89d149565657b28fefa695480b3da83",
+    "tests/cases/ours/pattern_generation/active_child_raw/source.pdl": "127f7ce9f6458848615d0b3d0caeee1f5ab2bf728e607e4d159db09228d4a717"
+  },
+  "job": {
+    "id": "active_child_raw",
+    "top": "Top",
+    "icl": [
+      "tests/cases/ours/pattern_generation/active_child_raw/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/active_child_raw/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "a74f35eabf6c61d5ab837afab0d22d52d89d149565657b28fefa695480b3da83",
+      "source_0.pdl": "127f7ce9f6458848615d0b3d0caeee1f5ab2bf728e607e4d159db09228d4a717",
+      "run.tcl": "d31178e07c14c556658d984c374a5d06bfa5e4d40fc24176ca011b26e3c55ebc",
+      "ours.pdl": "65ae23ed865c4a34d42fa16ef775dd165eff4e354593938d4ade37bad1d193b2"
+    },
+    "generator_command": [
+      "/tmp/icl-typed-control-inversion-candidate-20261114/build/icl-pattern-generation",
+      "--icl",
+      "/tmp/icl-active-child-raw-roundtrip-20261115/forward/test_active_child_raw/design_0.icl",
+      "--pdl",
+      "/tmp/icl-active-child-raw-roundtrip-20261115/forward/test_active_child_raw/source_0.pdl",
+      "--top_module",
+      "Top",
+      "--output",
+      "/tmp/icl-active-child-raw-roundtrip-20261115/forward/test_active_child_raw/ours.pdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.03397190710529685,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/active_child_raw/model.icl": "a74f35eabf6c61d5ab837afab0d22d52d89d149565657b28fefa695480b3da83",
+      "tests/cases/ours/pattern_generation/active_child_raw/source.pdl": "127f7ce9f6458848615d0b3d0caeee1f5ab2bf728e607e4d159db09228d4a717"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.6803715717978776,
+    "outcome": "ok",
+    "result_sha256": "6277d029fbf5104e0f31e49b15804d0bc1d587a03c30a6da294f7ce136db69f4",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "Top",
+    "operations": [
+      [
+        "iReset"
+      ],
+      [
+        "iScan",
+        "client",
+        "1",
+        "-si",
+        "0b1",
+        "-so",
+        "0bx"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "client",
+        "9",
+        "-si",
+        "0b101001011",
+        "-so",
+        "0b00000000x"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "fbf5f24922b1ed69b85f148d67f98a5cf8eedbfdedac8a69652e39b7d79922d6",
+  "vendor_console_sha256": "34c5df4754a109a15a50ec962b957cb3f1e7e4f780ec6b257106abff9550521e",
+  "artifacts": {
+    "flat.pdl": "65ae23ed865c4a34d42fa16ef775dd165eff4e354593938d4ade37bad1d193b2",
+    "vendor.pdl": "6277d029fbf5104e0f31e49b15804d0bc1d587a03c30a6da294f7ce136db69f4"
+  }
+}
