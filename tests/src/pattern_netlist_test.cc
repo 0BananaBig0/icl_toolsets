@@ -75,7 +75,7 @@ void TestClockSignalSources() {
         "UpdateEnPort source;", "TMSPort source;", "TRSTPort source;",
         "ToResetPort source;", "ToCaptureEnPort source;",
         "ToShiftEnPort source;", "ToUpdateEnPort source;",
-        "ToIRSelectPort source;", "ToTRSTPort source;",
+        "TMSPort owner_tms; ToIRSelectPort source;", "ToTRSTPort source;",
         "ClockPort positive; ClockPort source { DifferentialInvOf positive; }",
         "ClockPort positive; ToClockPort source { DifferentialInvOf positive; "
         "}"}) {
@@ -121,6 +121,12 @@ void TestClockSignalSources() {
               (output ? "Instance provider Of Provider;" : declaration) +
               " Alias wrapped = " + (output ? "provider.source" : "source") +
               "; " + body + "}");
+      if (consumer == "ClockPort out { DifferentialInvOf SOURCE; }" &&
+          declaration != "ClockPort source;") {
+        Fails([&] { pattern::Elaborate(design, "M"); },
+              "requires a positive ClockPort");
+        continue;
+      }
       const auto model = pattern::Elaborate(design, "M");
       pattern::Design flat;
       flat.AddIcl("flat.icl", pattern::SerializeIcl(model));
@@ -128,6 +134,69 @@ void TestClockSignalSources() {
     }
   }
 }
+
+void TestClockInputDifferentialAssociation() {
+  for (const std::string source :
+       {"positive[1:0]", "~positive[0:1]", "wrapped", "~wrapped"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "input_clock_pair.icl",
+        "Module M { ClockPort positive[1:0]; ClockPort other[0:1]; "
+        "Alias wrapped[1:0] = ~positive[0:1]; ClockPort negative[1:0] { "
+        "DifferentialInvOf " +
+            source +
+            "; } ClockPort second[0:1] { DifferentialInvOf other; } }");
+    const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "local clock pairs preserve aliases, vector order and inversion "
+            "syntax");
+  }
+  for (const std::string declaration :
+       {"DataInPort bad[1:0];", "TCKPort bad[1:0];", "DataRegister bad[1:0];",
+        "ToClockPort bad[1:0] { Period 10ns; }",
+        "ClockPort ck[1:0]; ClockMux bad[1:0] SelectedBy 1'b0 { 1'b0: ck; }"}) {
+    for (const std::string source : {"bad", "wrapped", "~wrapped"}) {
+      pattern::Design design;
+      design.AddIcl("invalid_input_clock_pair.icl",
+                    "Module M { " + declaration +
+                        " Alias wrapped[1:0] = bad; "
+                        "ClockPort negative[1:0] { DifferentialInvOf " +
+                        source + "; } }");
+      Fails([&] { pattern::Elaborate(design, "M"); },
+            "requires a positive ClockPort");
+    }
+  }
+  for (const std::string source :
+       {"2'b00", "positive[1], bad[0]", "bad[1], positive[0]", "mixed"}) {
+    pattern::Design design;
+    design.AddIcl("mixed_input_clock_pair.icl",
+                  "Module M { ClockPort positive[1:0]; DataInPort bad[1:0]; "
+                  "Alias mixed[1:0] = positive[1], bad[0]; "
+                  "ClockPort negative[1:0] { DifferentialInvOf " +
+                      source + "; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); },
+          "requires a positive ClockPort");
+  }
+  pattern::Design hierarchy;
+  hierarchy.AddIcl(
+      "input_clock_pair_scope.icl",
+      "Module Child { ClockPort p; ClockPort n { DifferentialInvOf p; } } "
+      "Module M { ClockPort root; Instance child Of Child { InputPort p = "
+      "root; } "
+      "Instance peer Of Child { InputPort p = root; } }");
+  const auto original = pattern::Elaborate(hierarchy, "M");
+  for (const std::string source : {"root", "peer.p"}) {
+    auto altered = original;
+    altered.nodes.at(altered.node_ids.at("child.n"))
+        .inputs.at("DifferentialInvOf")[0] = {altered.node_ids.at(source), 0};
+    pattern::Design flat;
+    flat.AddIcl("altered_input_pair.icl", pattern::SerializeIcl(altered));
+    Fails([&] { pattern::Elaborate(flat, "M"); }, "reference scope");
+  }
+}
+
 void TestTckInputSources() {
   for (const auto& entry : std::vector<std::pair<std::string, bool>>{
            {"TCKPort source;", true},
@@ -2018,6 +2087,89 @@ void TestDataMuxControlSourceUnion() {
   }
 }
 
+void TestIrSelectOwnerControls() {
+  for (int tms = 0; tms <= 2; ++tms) {
+    for (int trst = 0; trst <= 2; ++trst) {
+      std::string source = "Module M { ToIRSelectPort selector; ";
+      for (int i = 0; i < tms; ++i)
+        source += "TMSPort t" + std::to_string(i) + "; ";
+      for (int i = 0; i < trst; ++i)
+        source += "TRSTPort r" + std::to_string(i) + "; ";
+      source += "}";
+      pattern::Design design;
+      design.AddIcl("ir_owner_counts.icl", source);
+      if (tms != 1 || trst > 1) {
+        Fails([&] { pattern::Elaborate(design, "M"); },
+              tms != 1 ? "exactly one TMSPort declaration"
+                       : "at most one TRSTPort declaration");
+      } else {
+        const auto text =
+            pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+        pattern::Design flat;
+        flat.AddIcl("flat.icl", text);
+        Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+                "valid unused ToIRSelect owner controls replay");
+      }
+    }
+  }
+  for (const std::string range : {"[7]", "[1:0]", "[0:1]"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "ir_owner_vectors.icl",
+        "Module M { TMSPort tms" + range + "; TRSTPort trst" + range +
+            "; ToIRSelectPort selector[1:0]; ToIRSelectPort another; }");
+    const auto text = pattern::SerializeIcl(pattern::Elaborate(design, "M"));
+    pattern::Design flat;
+    flat.AddIcl("flat.icl", text);
+    Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+            "owner controls count definitions rather than vector bits or "
+            "selectors");
+  }
+  for (const std::string source :
+       {"Module Owner { ToIRSelectPort ir; } Module M { TMSPort tms; Instance "
+        "owner Of Owner; }",
+        "Module Controls { TMSPort tms; } Module M { ToIRSelectPort ir; "
+        "Instance controls Of Controls { InputPort tms = 1'b0; } }",
+        "Module Controls { TMSPort tms; } Module Owner { ToIRSelectPort ir; } "
+        "Module M { Instance controls Of Controls { InputPort tms = 1'b0; } "
+        "Instance owner Of Owner; "
+        "}"}) {
+    pattern::Design design;
+    design.AddIcl("ir_owner_scope.icl", source);
+    Fails([&] { pattern::Elaborate(design, "M"); },
+          "exactly one TMSPort declaration");
+  }
+  pattern::Design owners;
+  owners.AddIcl("ir_owner_restored.icl",
+                "Module Owner { TMSPort tms; TRSTPort trst; DataInPort extra; "
+                "ToIRSelectPort ir; } "
+                "Module M { Instance first Of Owner { InputPort tms = 1'b0; } "
+                "Instance second Of Owner { InputPort tms = 1'b0; } }");
+  const auto original = pattern::Elaborate(owners, "M");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", text);
+  Require(pattern::SerializeIcl(pattern::Elaborate(flat, "M")) == text,
+          "sibling owners retain independent declaration counts after flat "
+          "restoration");
+  for (const std::string name : {"first.tms", "first.extra"}) {
+    auto altered = original;
+    auto& node = altered.nodes.at(altered.node_ids.at(name));
+    node.kind = name == "first.tms" ? "DataInPort" : "TRSTPort";
+    node.active_low = name != "first.tms";
+    pattern::Design changed;
+    changed.AddIcl("altered_owner.icl", pattern::SerializeIcl(altered));
+    Fails([&] { pattern::Elaborate(changed, "M"); },
+          name == "first.tms" ? "exactly one TMSPort declaration"
+                              : "at most one TRSTPort declaration");
+  }
+  pattern::Design unrelated;
+  unrelated.AddIcl(
+      "no_ir_owner.icl",
+      "Module M { TMSPort a; TMSPort b; TRSTPort c; TRSTPort d; }");
+  pattern::Elaborate(unrelated, "M");
+}
+
 void TestDataSignalAliasSlices() {
   const std::string body =
       "Module M { DataInPort data; TCKPort clock;"
@@ -3454,6 +3606,7 @@ void TestOneHotScanLimits() {
 int main() {
   int failures = 0;
   for (const auto test : {TestClockSignalSources,
+                          TestClockInputDifferentialAssociation,
                           TestTckInputSources,
                           TestResetSourceKinds,
                           TestResetPortPolarity,
@@ -3508,6 +3661,7 @@ int main() {
                           TestDataRegisterControls,
                           TestRegisterRules,
                           TestInterfaceKinds,
+                          TestIrSelectOwnerControls,
                           TestOneHotScanErrors,
                           TestOneHotScanSourceScope,
                           TestOneHotScanMuxFanIn,

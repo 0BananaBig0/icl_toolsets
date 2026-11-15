@@ -519,10 +519,12 @@ iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out
 
     def test_oscillator_unsafe_fanout(self):
         for extra in ('ToTCKPort observed { Source child.osc; }',
-                      'ClockPort negative { DifferentialInvOf child.osc; }',
+                      'Instance pair Of Pair { InputPort positive = child.osc; }',
                       'Alias inverted = ~child.osc;'):
             with self.subTest(extra=extra):
                 self.rejected('Module Osc { ToClockPort osc { Period 10ns; } }\n'
+                              'Module Pair { ClockPort positive; ClockPort negative { '
+                              'DifferentialInvOf positive; } }\n'
                               'Module Top { Instance child Of Osc; ' + extra + ' }',
                               'iClock child.osc\n', 'unsupported fanout')
 

@@ -408,7 +408,14 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
               : node.scope;
       const auto check_source_scope = [&](const BitReference& raw,
                                           const BitReference& bit) {
-        if (role == "DifferentialInvOf") return;
+        if (role == "DifferentialInvOf") {
+          if (node.kind != "ClockPort") return;
+          if (bit.node == std::numeric_limits<size_t>::max() ||
+              netlist.nodes.at(bit.node).kind != "ClockPort") {
+            throw std::runtime_error(node.origin + ": " + node.name + ": " +
+                                     role + ": requires a positive ClockPort");
+          }
+        }
         if (bit.node != std::numeric_limits<size_t>::max() &&
             netlist.nodes.at(bit.node).kind == "ToIRSelectPort") {
           return;
@@ -1502,6 +1509,18 @@ class Elaborator {
       }
     }
     for (auto& node : netlist_.nodes) {
+      if (node.kind == "ToIRSelectPort") {
+        if (ports[{node.scope, "TMSPort"}].size() != 1) {
+          throw std::runtime_error(node.origin + ": " + node.name +
+                                   ": ToIRSelectPort requires exactly one "
+                                   "TMSPort declaration in its module");
+        }
+        if (ports[{node.scope, "TRSTPort"}].size() > 1) {
+          throw std::runtime_error(node.origin + ": " + node.name +
+                                   ": ToIRSelectPort requires at most one "
+                                   "TRSTPort declaration in its module");
+        }
+      }
       if (!node.scan_interface) continue;
       try {
         auto& interface = *node.scan_interface;

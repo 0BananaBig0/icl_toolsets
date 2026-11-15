@@ -4632,3 +4632,42 @@ with all5 changed source/test hashes matched. Exact evidence is under
 build/onehot-scan-source-scope-final-{full,sanitizer-*} and
 build/onehot-scan-source-scope-final-remote/evidence. Loading measurements cover
 72 source/flat comparisons with equal output hashes; no speedup is claimed.
+
+
+### Controller owners and differential clock inputs (2026-11-15)
+
+A module declaring ToIRSelectPort must declare exactly one TMSPort and at most
+one TRSTPort, as required by IEEE1687 6.4.6.23(a,b). Counts are declarations,
+including indexed/vector ports; separate interface, implicit-binding and runtime
+ambiguity checks still apply. Parent, child and sibling declarations do not
+satisfy the owner. Validation uses restored scopes and the existing port index.
+Unused selectors are subject to the same rule. Generated BSDL selectors retain
+their separate data-port model.
+
+ClockPort DifferentialInvOf associations now require a positive ClockPort in
+the same module, following6.4.6.19(b). Aliases, slices, concatenations and inversion
+syntax retain canonical per-bit validation. Multiple clock pairs and unrelated
+clock declarations may coexist. The negative input's parent Source binding is
+independent: constants, inversion and partially unspecified bindings keep their
+existing behavior. Restored parent/sibling associations cannot bypass ownership.
+ToClockPort conversion associations retain their separate6.4.6.20 behavior.
+
+Tessent2026.2 owner probes reject missing TMS but accept extra TMS/TRST declarations;
+this tool follows the stricter explicit declaration-count clauses. Differential
+probes accept direct same-kind pairs but reject tested aliases, whereas the
+standard clock-signal grammar permits aliases. These are documented dialect
+boundaries, not vendor pattern-equivalence claims. Inputs/hashes/logs are under
+build/special-source-context-vendor-probe. General output associations, lowered
+ToTCK handling, control forcing and broader clock/reset events remain separate.
+
+
+Verified checkpoint: required leak-enabled native7/main65/clock41/client18/reset12
+all pass. Full serial make check exits0 in1335.271s:41 dynamic and41 static
+generator suites,51 directional goldens,2523 ICL files covering334/334 grammar
+and119/119 scanner rules,LSP62 and editor6 in174.677s; five optional ANTLR tests
+are skipped. Broad remote native7/all41 CLI suites pass with4 source/test hashes
+matched. Loading comparisons60 all pass with equal PDL/flat hashes. Exact evidence:
+build/source-context-associations-{connected,loading-scale},
+build/source-context-associations-final-{full,sanitizer-*}, and
+build/source-context-associations-connected-remote/evidence. Remaining output
+association, lowered ToTCK, forcing and event requirements are not waived.
