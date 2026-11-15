@@ -1,0 +1,20 @@
+iPDLLevel 0
+iProcsForModule Top
+iReset
+iScan client 1 -si 0b1 -so 0bx
+iApply
+iScan client 2 -si 0b11 -so 0b0x
+iApply
+iScan client 10 -si 0b1010010111 -so 0b000000001x
+iApply
+iScan client 10 -si 0b0011110001 -so 0bxxxxxxxxxx
+iApply
+iScan client 2 -si 0b11 -so 0bxx
+iApply
+iWrite child.enable 0b1
+iWrite child.leaf.value 0b00111100
+iWrite open 0b1
+iRead child.enable 0b1
+iRead child.leaf.value 0b00111100
+iRead open 0b1
+iApply

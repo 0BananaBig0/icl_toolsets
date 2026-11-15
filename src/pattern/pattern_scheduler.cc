@@ -603,12 +603,20 @@ class ScanScheduler::Impl {
     // Register output-to-SO parity; total parity also includes the SI side.
     std::vector<std::pair<size_t, bool>> registers;
     bool inverted = false;
-    std::map<size_t, size_t> indices;
+    std::map<size_t, size_t> indices, muxes;
     std::vector<size_t> offsets;
   };
   struct RawSlice {
     size_t width = 0, offset = 0;
     bool input_inverted = false, output_inverted = false;
+  };
+  struct RawSegment {
+    RawSlice slice;
+    // The contiguous root span gives exact local IDs and suffix parities
+    // without duplicating register vectors for overlapping/nested client
+    // interfaces.
+    size_t first = 0, count = 0;
+    bool inverted = false;
   };
   const RawProfile& RawChain() {
     if (raw_profile_) {
@@ -895,6 +903,7 @@ class ScanScheduler::Impl {
         if (selector.inverted && value != 'x') value = value == '1' ? '0' : '1';
         if (value != '0' && value != '1') fail();
         const auto selected = node.choices[0].codes[0].data[0] == value ? 0 : 1;
+        result.muxes.emplace(bit.node, selected);
         bit = node.choices[selected].source[0];
         continue;
       }
@@ -925,7 +934,7 @@ class ScanScheduler::Impl {
   void InvalidateRawRoute() {
     if (!raw_profile_ || !raw_profile_->dynamic) return;
     raw_current_.reset();
-    raw_slices_.clear();
+    raw_segments_.clear();
     raw_profile_work_ = 0;
   }
   RawSlice RawSubchain(const std::string& target) {
@@ -936,20 +945,20 @@ class ScanScheduler::Impl {
                                target);
     }
     const auto id = found->second;
-    if (root.dynamic && id == root.client) {
-      return {root.width, 0, false, false};
-    }
-    const auto cached = raw_slices_.find(id);
-    if (cached != raw_slices_.end()) return cached->second;
-    if (id == root.client) {
-      return raw_slices_.emplace(id, RawSlice{root.width, 0, false, false})
-          .first->second;
-    }
+    if (id == root.client) return {root.width, 0, false, false};
+    const auto cached = raw_segments_.find(id);
+    if (cached != raw_segments_.end()) return cached->second.slice;
+    return raw_segments_
+        .emplace(id, RawSegmentFor(id, root, &raw_profile_work_))
+        .first->second.slice;
+  }
+  RawSegment RawSegmentFor(size_t id, const RawProfile& root,
+                           size_t* work) const {
     const auto fail = [&] {
       throw std::runtime_error(
-          "raw scan requires a contiguous static child client on the root "
+          "raw scan requires a contiguous modeled child client on the root "
           "route: " +
-          target);
+          netlist_.nodes.at(id).name);
     };
     const auto& client = netlist_.nodes[id];
     if (!client.scan_interface ||
@@ -972,9 +981,10 @@ class ScanScheduler::Impl {
     std::set<Key> visited;
     size_t next = kMissing;
     bool inverted = false;
-    RawSlice slice;
+    RawSegment segment;
+    auto& slice = segment.slice;
     while (true) {
-      if (++raw_profile_work_ > 16 * 1024 * 1024) {
+      if (++*work > 16 * 1024 * 1024) {
         throw std::runtime_error("raw scan profile traversal resource limit");
       }
       if (bit.node == kMissing ||
@@ -993,6 +1003,12 @@ class ScanScheduler::Impl {
         bit = node.inputs.at("Source").at(Offset(node, bit.index));
         continue;
       }
+      if (node.kind == "ScanMux") {
+        const auto choice = root.muxes.find(bit.node);
+        if (choice == root.muxes.end()) fail();
+        bit = node.choices.at(choice->second).source.at(0);
+        continue;
+      }
       const auto position = root.indices.find(bit.node);
       if (node.kind != "ScanRegister" || bit.index != node.right ||
           position == root.indices.end()) {
@@ -1002,6 +1018,7 @@ class ScanScheduler::Impl {
           inverted != root.registers[position->second].second;
       if (next == kMissing) {
         next = position->second;
+        segment.first = position->second;
         slice.output_inverted = output_inverted;
       }
       if (position->second != next ||
@@ -1009,13 +1026,15 @@ class ScanScheduler::Impl {
         fail();
       }
       ++next;
+      ++segment.count;
       slice.width += node.Width();
       slice.offset = root.offsets[position->second];
       bit = node.inputs.at("ScanInSource")[0];
     }
     if (!slice.width) fail();
     slice.input_inverted = inverted != (root.inverted != slice.output_inverted);
-    return raw_slices_.emplace(id, slice).first->second;
+    segment.inverted = inverted;
+    return segment;
   }
   Operation NormalizeScan(const Operation& operation) {
     if (operation.arguments.empty()) {
@@ -1079,7 +1098,8 @@ class ScanScheduler::Impl {
       input.replace(root.offsets[i], netlist_.nodes[id].Width(),
                     invert(fill_.at(id), root.inverted != suffix));
     }
-    bool stable = true, require_stable = false;
+    bool stable = true;
+    std::set<size_t> stable_clients;
     for (const auto& [name, operation] : latest) {
       const auto& slice = RawSubchain(name);
       input.replace(
@@ -1090,7 +1110,7 @@ class ScanScheduler::Impl {
           invert(operation.arguments[5].substr(2), slice.output_inverted));
       const bool claimed = operation.arguments.back() == "-stable";
       stable = stable && claimed;
-      require_stable = require_stable || claimed;
+      if (claimed) stable_clients.insert(netlist_.node_ids.at(name));
     }
     auto physical = operations.front();
     physical.arguments = {netlist_.nodes[root.client].name,
@@ -1100,9 +1120,10 @@ class ScanScheduler::Impl {
                           "-so",
                           "0b" + expected};
     if (stable) physical.arguments.push_back("-stable");
-    return ReplayScan(physical, require_stable);
+    return ReplayScan(physical, stable_clients);
   }
-  Operation ReplayScan(const Operation& normalized, bool require_stable) {
+  Operation ReplayScan(const Operation& normalized,
+                       const std::set<size_t>& stable_clients) {
     const auto& profile = RawChain();
     if (global_resets_ != "00") {
       throw std::runtime_error(
@@ -1133,7 +1154,8 @@ class ScanScheduler::Impl {
     NetworkState replay(state_);
     replay.TakeControlEvents();
     replay.TakeResetEvents();
-    const auto controls = [&](NetworkState* trial, const std::string& phase) {
+    const auto controls = [&](NetworkState* trial, const std::string& phase,
+                              const std::set<size_t>& phase_active) {
       // Resolve qualified forwarding once and copy shared held storage once per
       // phase. Primary pin reads stay live across ClientControls' clock edge.
       std::map<size_t, std::string> held_values;
@@ -1160,9 +1182,9 @@ class ScanScheduler::Impl {
         }
         return value;
       };
-      auto result = ClientControls(trial, active, phase, {}, read);
+      auto result = ClientControls(trial, phase_active, phase, {}, read);
       for (const auto& [id, control] : result) {
-        const bool loaded = active.count(id);
+        const bool loaded = phase_active.count(id);
         if ((loaded && control.select != '1') ||
             control.capture != (loaded && phase == "capture" ? '1' : '0') ||
             control.shift != (loaded && phase == "shift" ? '1' : '0') ||
@@ -1174,9 +1196,9 @@ class ScanScheduler::Impl {
       }
       return result;
     };
-    replay.Clock(controls(&replay, "capture"), true);
+    replay.Clock(controls(&replay, "capture", active), true);
     replay.Drive(profile.input, input.substr(0, 1));
-    auto shift_controls = controls(&replay, "shift");
+    auto shift_controls = controls(&replay, "shift", active);
     for (auto it = shift_controls.begin(); it != shift_controls.end();) {
       if (!active.count(it->first)) {
         it = shift_controls.erase(it);
@@ -1185,24 +1207,53 @@ class ScanScheduler::Impl {
       }
     }
     replay.ShiftComplete(loads, shift_controls);
-    replay.Clock(controls(&replay, "update"), false);
+    replay.Clock(controls(&replay, "update", active), false);
     for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
     replay.Reset();
-    if (profile.dynamic && require_stable) {
+    bool root_stable = true;
+    if (profile.dynamic && !stable_clients.empty()) {
       try {
         const auto after = RawRoute(*raw_profile_, replay);
-        if (profile.registers != after.registers ||
-            profile.inverted != after.inverted) {
-          throw std::runtime_error("changed route");
+        root_stable = profile.registers == after.registers &&
+                      profile.inverted == after.inverted;
+        if (stable_clients.count(profile.client) && !root_stable) {
+          throw std::runtime_error("changed root route");
+        }
+        size_t proof_work = 0;
+        for (const auto client : stable_clients) {
+          if (client == profile.client) continue;
+          const auto& before = raw_segments_.at(client);
+          const auto next = RawSegmentFor(client, after, &proof_work);
+          if (before.count != next.count || before.inverted != next.inverted) {
+            throw std::runtime_error("changed local route");
+          }
+          for (size_t i = 0; i < before.count; ++i) {
+            const auto& left = profile.registers.at(before.first + i);
+            const auto& right = after.registers.at(next.first + i);
+            if (left.first != right.first ||
+                (left.second != before.slice.output_inverted) !=
+                    (right.second != next.slice.output_inverted)) {
+              throw std::runtime_error(
+                  "changed local register order or parity");
+            }
+          }
+        }
+        std::set<size_t> after_active;
+        for (const auto& [id, suffix] : after.registers) {
+          after_active.insert(id);
         }
         NetworkState proof(replay);
         for (const auto& phase : {"capture", "shift", "update"}) {
-          controls(&proof, phase);
+          controls(&proof, phase, after_active);
         }
       } catch (const std::runtime_error&) {
         throw std::runtime_error(
-            "raw scan -stable changes the eligible ordered route");
+            "raw scan -stable changes the eligible ordered interface route");
       }
+    }
+    auto result = normalized;
+    if (!root_stable && result.arguments.back() == "-stable") {
+      result.arguments.pop_back();
     }
     auto fill = fill_;
     for (const auto& [id, bits] : loads) {
@@ -1215,7 +1266,7 @@ class ScanScheduler::Impl {
     state_.Restore(replay);
     fill_ = std::move(fill);
     InvalidateRawRoute();
-    return normalized;
+    return result;
   }
   void Reset(bool synchronous) {
     if (tap_) {
@@ -5450,7 +5501,7 @@ class ScanScheduler::Impl {
   std::map<size_t, BitReference> raw_selectors_;
   std::map<Key, BitReference> raw_control_terminals_;
   bool raw_gated_ = false;
-  std::map<size_t, RawSlice> raw_slices_;
+  std::map<size_t, RawSegment> raw_segments_;
   size_t raw_profile_work_ = 0;
   bool parallel_chains_ = false;
   bool data_reset_dependencies_ = false, feedback_resets_ = false;

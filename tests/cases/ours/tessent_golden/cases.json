@@ -537,6 +537,30 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "dynamic_child_raw",
+      "top": "Top",
+      "icl": [
+        "tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/dynamic_child_raw/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "dynamic_child_local_stability",
+      "top": "Top",
+      "icl": [
+        "tests/cases/ours/pattern_generation/dynamic_child_raw/local_stability.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/dynamic_child_raw/local_stability.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

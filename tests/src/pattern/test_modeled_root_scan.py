@@ -434,7 +434,7 @@ class ModeledRootScan(unittest.TestCase):
         self.assertIn('iScan client 17 -si 0b10100101001111001', scans[1])
         self.assertNotIn('-stable', scans[1])
 
-    def test_active_child_raw_mixed_stability_requires_root_proof(self):
+    def test_active_child_raw_local_stability_across_other_route_change(self):
         block = SIB[SIB.index(' Instance child Of'):SIB.index(' ScanMux route')]
         sibling = block.replace('Instance child Of', 'Instance sibling Of')
         sibling = sibling.replace('InputPort sel = open;', 'InputPort sel = child.gate;')
@@ -447,17 +447,20 @@ class ModeledRootScan(unittest.TestCase):
         model = model.replace(' ScanOutPort so { Source value[0]; }',
                               ' DataOutPort gate { Source value[0]; }\n'
                               ' ScanOutPort so { Source value[0]; }')
-        self.rejected('iReset; iScan child.local 8 -si 1 -stable; iApply\n',
+        self.rejected('iReset; iScan client 8 -si 1 -stable; iApply\n',
                       'stable', model)
-        self.rejected('iReset; iScan client 8 -si 1; iApply\n'
-                      'iScan child.local 8 -si 0 -stable\n'
-                      'iScan sibling.local 8 -si 0xa5\niApply\n', 'stable', model)
-        result = self.replay('iReset; iScan client 8 -si 1; iApply\n'
-                             'iScan child.local 8 -si 1 -stable\n'
-                             'iScan sibling.local 8 -si 0xa5\niApply\n'
+        opened = 'iReset; iScan child.local 8 -si 1 -stable; iApply\n'
+        result = self.replay(opened + 'iScan sibling.local 8 -si 0xa5; iApply\n'
                              'iRead child.value 1; iRead sibling.value 0xa5; iApply\n', model)
         scans = [line for line in result.splitlines() if line.startswith('iScan ')]
+        self.assertIn('iScan client 8 -si 0b00000001', scans[0])
+        self.assertNotIn('-stable', scans[0])
         self.assertIn('iScan client 16 -si 0b1010010100000001', scans[1])
+        result = self.replay(opened + 'iScan child.local 8 -si 0 -stable\n'
+                             'iScan sibling.local 8 -si 0xa5\niApply\n'
+                             'iRead child.value 0; iApply\n', model)
+        scans = [line for line in result.splitlines() if line.startswith('iScan ')]
+        self.assertIn('iScan client 16 -si 0b1010010100000000', scans[1])
         self.assertNotIn('-stable', scans[1])
 
     def test_active_child_raw_offset_changes_with_other_sib(self):
@@ -524,6 +527,110 @@ class ModeledRootScan(unittest.TestCase):
         self.assertIn('iScan client 9 -si 0b101001011 -so 0b00000000x', result)
         self.assertIn('iRead child.value 0b10100101', result)
         self.assertIn('iRead open 0b1', result)
+
+    def test_dynamic_child_raw_fixture_and_local_widths(self):
+        folder = opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw'
+        model = (folder / 'model.icl').read_text()
+        commands = 'iReset' + (folder / 'source.pdl').read_text().split('iReset', 1)[1]
+        result = self.replay(commands, model)
+        self.assertIn('iScan client 2 -si 0b11 -so 0b0x', result)
+        self.assertIn('iScan client 10 -si 0b1010010111 -so 0b000000001x', result)
+        self.assertIn('iRead child.leaf.value 0b00111100', result)
+
+    def test_dynamic_child_raw_stable_local_change_and_unknown_atomic(self):
+        model = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()
+        opened = 'iReset; iScan client 1 -si 1; iApply\n'
+        self.rejected(opened + 'iScan child.local 1 -si 1 -stable; iApply\n', 'stable', model)
+        self.rejected(opened + 'iScan child.local 9; iApply\n', 'length', model)
+        self.rejected(opened + 'iScan client 2 -si 3 -stable; iApply\n', 'stable', model)
+        self.replay(opened + 'iScan child.local 1 -si 0bx; iApply\n', model)
+        self.rejected(opened + 'iScan child.local 1 -si 0bx; iApply\n'
+                      'iScan child.local 1; iApply\n', 'known', model)
+        self.rejected('iReset; iScan child.local 1; iApply\n', 'contiguous', model)
+
+    def test_dynamic_child_raw_compensated_root_width_is_not_local_stability(self):
+        model = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()
+        start = model.index(' Instance child Of')
+        end = model.index(' ScanMux route', start)
+        block = model[start:end]
+        first = block.replace('Instance child Of', 'Instance r0 Of')
+        second = block.replace('Instance child Of', 'Instance r1 Of')
+        second = second.replace('InputPort si = si;', 'InputPort si = r0.so;')
+        model = model[:start] + first + second + model[end:]
+        model = model.replace("1'b1: child.so;", "1'b1: r1.so;")
+        opened = ('iReset; iScan client 1 -si 1; iApply\n'
+                  'iScan r1.local 1 -si 1; iApply\n'
+                  'iScan r1.local 9 -si 0b101001011 -stable; iApply\n')
+        self.rejected(opened + 'iScan r0.local 1 -si 1 -stable\n'
+                      'iScan r1.local 9 -si 0b001111000\niApply\n', 'stable', model)
+        self.replay(opened + 'iScan r0.local 1 -si 0 -stable\n'
+                    'iScan r1.local 9 -si 0b101001011\niApply\n', model)
+
+    def test_dynamic_child_raw_inversion_and_expected_so(self):
+        original = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()
+        for input_inverse in (False, True):
+            for child_inverse in (False, True):
+                for root_inverse in (False, True):
+                    prefix, top = original.split('Module Top', 1)
+                    if input_inverse:
+                        top = top.replace('InputPort si = si;', 'InputPort si = ~si;')
+                    if child_inverse:
+                        prefix = prefix.replace('Source enable;', 'Source ~enable;')
+                    if root_inverse:
+                        top = top.replace('Source open;', 'Source ~open;')
+                    with self.subTest(input_inverse=input_inverse,
+                                      child_inverse=child_inverse,
+                                      root_inverse=root_inverse):
+                        result = self.replay('iReset; iScan client 1 -si 1; iApply\n'
+                                             'iScan child.local 1 -si 1; iApply\n'
+                                             'iScan child.local 9 -si 0b101001011 '
+                                             '-so 0b000000001 -stable; iApply\n'
+                                             'iRead child.leaf.value 0xa5; iApply\n',
+                                             prefix + 'Module Top' + top)
+                        scans = [line for line in result.splitlines() if line.startswith('iScan ')]
+                        expected = ('111111110' if root_inverse else '000000001') + 'x'
+                        self.assertIn('-so 0b' + expected + ' -stable', scans[2])
+
+    def test_dynamic_child_raw_equal_count_ids_and_suffix_parity_stable(self):
+        original = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()
+        prefix = original.split('Module Top', 1)[0]
+        top = """Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of DynamicRawBranch {
+  InputPort si = si; InputPort sel = sel; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanOutPort so { Source child.so; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 9'b0;
+ }
+}
+"""
+        start = prefix.index(' Instance leaf Of')
+        end = prefix.index(' ScanMux inner_route', start)
+        block = prefix[start:end]
+        left = block.replace('Instance leaf Of', 'Instance left Of')
+        left = left.replace('InputPort sel = enable;', 'InputPort sel = ~enable;')
+        right = block.replace('Instance leaf Of', 'Instance right Of')
+        switched = prefix[:start] + left + right + prefix[end:]
+        switched = switched.replace("1'b0: si; 1'b1: leaf.so;", "1'b0: left.so; 1'b1: right.so;")
+        parity = prefix.replace('InputPort si = si; InputPort sel = enable;',
+                                'InputPort si = input_route; InputPort sel = sel;')
+        parity = parity.replace(' ScanMux inner_route',
+                                " ScanMux input_route SelectedBy enable { 1'b0: si; 1'b1: ~si; }\n ScanMux inner_route")
+        parity = parity.replace("1'b0: si; 1'b1: leaf.so;", "1'b0: leaf.so; 1'b1: ~leaf.so;")
+        for name, branch, observed, data in [('ids', switched, 'child.right.value', '0b101001011'),
+                                             ('suffix', parity, 'child.leaf.value', '0b010110101')]:
+            with self.subTest(change=name):
+                model = branch + top
+                self.rejected('iReset; iScan child.local 9 -si 0b101001011 -stable; iApply\n',
+                              'stable', model)
+                result = self.replay('iReset; iScan child.local 9 -si 0b101001011; iApply\n'
+                                     'iScan child.local 9 -si ' + data + ' -stable; iApply\n'
+                                     'iRead ' + observed + ' 0xa5; iApply\n', model)
+                self.assertIn('iRead ' + observed + ' 0b10100101', result)
 
     def test_large_modeled_scan(self):
         width = 1048576

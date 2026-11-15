@@ -209,6 +209,178 @@ void TestGatedSibRawScans() {
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
 }
+std::string DynamicSibModel() {
+  return R"ICL(Module DynamicRawLeaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[7:0] { ScanInSource si; CaptureSource value; ResetValue 8'b0; }
+ ScanOutPort so { Source value[0]; }
+ ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; }
+}
+Module DynamicRawBranch {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance leaf Of DynamicRawLeaf {
+  InputPort si = si; InputPort sel = enable; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanMux inner_route SelectedBy enable { 1'b0: si; 1'b1: leaf.so; }
+ ScanRegister enable { ScanInSource inner_route; CaptureSource enable; ResetValue 1'b0; }
+ ScanOutPort so { Source enable; }
+ ScanInterface local {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 1'b0;
+ }
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of DynamicRawBranch {
+  InputPort si = si; InputPort sel = open; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanMux route SelectedBy open { 1'b0: si; 1'b1: child.so; }
+ ScanRegister open { ScanInSource route; CaptureSource open; ResetValue 1'b0; }
+ ScanOutPort so { Source open; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 1'b0;
+ }
+}
+)ICL";
+}
+void TestDynamicChildRawScans() {
+  std::string source = DynamicSibModel();
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("dynamic-child-raw.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto id = [&](const std::string& name) {
+      return netlist.node_ids.at(name);
+    };
+    const auto outer = id("open"), inner = id("child.enable"),
+               leaf = id("child.leaf.value");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.ApplyScan(
+        {"iScan", {"client", "1", "-si", "1"}, "dynamic:outer", {}});
+    std::map<std::string, std::string> before;
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        before.emplace(node.name, scheduler.Value(node.name));
+      }
+    }
+    bool rejected = false;
+    try {
+      scheduler.ApplyScan({"iScan",
+                           {"child.local", "1", "-si", "1", "-stable"},
+                           "dynamic:bad-open",
+                           {}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("stable") != std::string::npos;
+    }
+    Require(rejected, "changing local binary child length cannot claim stable");
+    for (const auto& [name, value] : before) {
+      Require(scheduler.Value(name) == value,
+              "failed local stable leaves held/shift/pin state unchanged");
+    }
+    pattern::NetworkState literal(netlist);
+    const auto pin = [&](const std::string& name, char bit) {
+      literal.Drive(id(name), std::string(1, bit));
+    };
+    pin("reset", '1');
+    literal.SetGlobalReset('1', '1');
+    literal.Reset();
+    pin("reset", '0');
+    literal.SetGlobalReset('0', '0');
+    literal.Reset();
+    const auto phase = [&](char capture, char shift, char update, char clock) {
+      pin("sel", '1');
+      pin("ce", capture);
+      pin("se", shift);
+      pin("ue", update);
+      pin("tck", clock);
+      literal.Reset();
+    };
+    const auto controls = [&](char capture, char shift, char update) {
+      return std::map<size_t, pattern::ScanControl>{
+          {outer, {capture, shift, update, '1'}},
+          {inner, {capture, shift, update, literal.Value(outer)[0]}},
+          {leaf, {capture, shift, update, literal.Value(inner)[0]}}};
+    };
+    const auto scan = [&](const std::string& payload) {
+      phase('1', '0', '0', '0');
+      pin("tck", '1');
+      literal.Clock(controls('1', '0', '0'), true);
+      for (auto bit = payload.rbegin(); bit != payload.rend(); ++bit) {
+        phase('0', '1', '0', '0');
+        pin("si", *bit);
+        pin("tck", '1');
+        literal.Clock(controls('0', '1', '0'), true);
+      }
+      phase('0', '0', '1', '1');
+      pin("tck", '0');
+      literal.Clock(controls('0', '0', '1'), false);
+      phase('0', '0', '0', '0');
+    };
+    scan("1");
+    const std::vector<pattern::Operation> operations{
+        {"iScan", {"child.local", "1", "-si", "1"}, "dynamic:open", {}},
+        {"iScan",
+         {"child.local", "9", "-si", "0b101001011", "-stable"},
+         "dynamic:load",
+         {}},
+        {"iScan",
+         {"child.local", "9", "-si", "0b001111000"},
+         "dynamic:close",
+         {}},
+        {"iScan", {"child.local", "1", "-si", "1"}, "dynamic:reopen", {}}};
+    size_t index = 0;
+    for (const auto& payload : {std::string("11"), std::string("1010010111"),
+                                std::string("0011110001"), std::string("11")}) {
+      scan(payload);
+      const auto result = scheduler.ApplyScan(operations[index++]);
+      Require(result.arguments[1] == std::to_string(payload.size()) &&
+                  result.arguments[3] == "0b" + payload,
+              "dynamic child emits the literal root CSU geometry and SI");
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          Require(scheduler.Value(node.name) == literal.Value(id(node.name)),
+                  "dynamic child bulk matches literal held/shift/control pins");
+        }
+      }
+    }
+    Require(scheduler.Value("child.leaf.value") == "00111100",
+            "inner closing updates leaf and reopening preserves it");
+    scheduler.ApplyScan({"iScan",
+                         {"child.local", "9", "-si", "0b101001011", "-stable"},
+                         "dynamic:known",
+                         {}});
+    rejected = false;
+    try {
+      scheduler.ApplyScan({"iScan",
+                           {"child.local", "9", "-si", "0", "-stable"},
+                           "dynamic:bad-close",
+                           {}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("stable") != std::string::npos;
+    }
+    Require(rejected && scheduler.Value("child.enable") == "1" &&
+                scheduler.Value("child.leaf.value") == "10100101",
+            "failed local stable closing preserves selectors and leaf data");
+    scheduler.ApplyScan({"iScan",
+                         {"child.local", "9", "-si", "0b10x01x011", "-stable"},
+                         "dynamic:partial",
+                         {}});
+    scheduler.Apply(
+        {{"iWrite", {"child.leaf.value[1]", "1"}, "dynamic:fill", {}}});
+    Require(scheduler.Value("child.leaf.value") == "10101111",
+            "failed local trial cannot poison partial-X controlling fill");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestActiveChildRawScans() {
   std::string source = RawSibModel();
   for (bool flat : {false, true}) {
@@ -3983,6 +4155,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestDynamicChildRawScans();
     TestActiveChildRawScans();
     TestGatedSibRawScans();
     TestStaticChildScans();

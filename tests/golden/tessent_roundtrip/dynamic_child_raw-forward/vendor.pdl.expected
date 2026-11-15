@@ -1,0 +1,30 @@
+iProcsForModule Top
+
+iProc oracle {} {
+
+   iReset
+   iScan client -chain default 1 -si 0b1 -so 0bX
+   iApply
+
+   iScan client -chain default 2 -si 0b11 -so 0b0X
+   iApply
+
+   iScan client -chain default 10 -si 0b1010010111 -so 0b000000001X
+   iApply
+
+   iScan client -chain default 10 -si 0b0011110001 -so 0bXXXXXXXXXX
+   iApply
+
+   iScan client -chain default 2 -si 0b11 -so 0bXX
+   iApply
+
+   iWrite child.leaf.value[7:0] 0b00111100
+   iRead  child.leaf.value[7:0] 0b00111100
+   iWrite child.enable 0b1
+   iRead  child.enable 0b1
+   iWrite open 0b1
+   iRead  open 0b1
+   iApply
+
+
+}

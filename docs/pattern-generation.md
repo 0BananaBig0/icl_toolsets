@@ -5431,3 +5431,63 @@ comparisons remain present. Existing and new forward snapshots total58; final
 immutable sanitizer/fullserial/remote/style/offline gates remain pending.
 
 Verified Task101: leak-enabled native7/main69/modeled43/opaque13/clocks51/client25/reset12/trace16/all58offline certificates all0. Full serial make check passes in 1496.6201768030296s. Final remote54 statuses all0 and actual99 source/test/fixture/certificate inputs match. Independent source review found no production defect; two required test-strength refinements are fixed with mutation RED (missing warm-Apply invalidation and SO parity), exact production-byte restoration and GREEN native/model43 suites. Warm-copy isolation, changed offsets, same-width switches and8 inversion/expected-SO combinations are maintained. Existing interval/parity/root-CSU logic reused with constant-sized cached child slices, by-value return and audited dynamic cache lifetime. Any latest stable claim on a dynamic route still requires whole physical-root stability in this bounded increment; OR proof is separate from AND emitted flag. Local-only stable scope and inner child muxes remain next work, with no waiver. All26 scale commands0:1M active bits via child .28-.31s,1024 queued children/512shared aliases .20-.38s,97-level child .04-.10s,128 reopen/write/close .04s;107052KiB peak, hashes equal to equivalent Task100 physical reference runs and across source/flat/generated forms. Source audit2550 files/zero duplicate groups/26reviewed module groups;16 connected/style/naming/offline pass. Genuine Tessent2026.2 FORWARD run/strict record/strict check0 for unique ActiveRawLeaf source; schema3 certificate imported with source/artifact/input/console hashes checked, all child SO and final child/selector comparisons retained. Reverse original source1 explicitly rejects internal ScanInterface in tested context; no reverse certificate claimed and checker policy unchanged. Commit20 files, fast-forward master, delete merged branch and preserve next dynamic-child work. Closed-child preparation, broader raw/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.
+
+### Binary routes inside an accessible child (Task102)
+
+A modeled child raw scan can follow the current qualified binary mux/SIB path
+inside that child. For example, after its ancestor is open, a one-bit child scan
+may open an inner leaf and the next child scan uses nine bits. One physical root
+CSU retains surrounding controlling fill and independently translated SO masks.
+The current root profile records selected mux choices; cached child segments refer
+to contiguous spans of that profile rather than copying register vectors.
+
+Stable claims apply to the named interface. The implementation proves local
+ordered registers, SI/SO parity, accessibility and native post-route eligibility;
+this is a deliberately stronger modeled criterion than IEEE1687-2014 §7.9.12's
+minimum repeatable-length rule. A child may remain stable while an unrelated
+sibling route changes. The physical root output then omits -stable and retains
+the completed scan's original length/data. Explicit root stable claims still
+require the whole root geometry to remain stable. Mixed source flags never gain
+a physical stable flag. A child path change is rejected even when another sibling
+compensates so the total root width stays equal.
+
+Pre-update controls determine opening/closing effects. Post proof derives a fresh
+profile from trial state, compares compact local spans using a private traversal
+budget, and checks the post-route active set on another state copy. Failed proof
+never enters live caches or adopts data/fill/events. Wholly nonstable scans retain
+existing behavior when their post route becomes unknown. Closed ancestors still
+need separate access preparation; no new TAP/parallel/reset/clock/selector model.
+
+Maintained nested literal native reference and modeled47 tests pass remotely
+(actual30 submitted hashes match). Tests include child1/9/9/1 open/load/close/
+reopen, retained leaf data, partial-X retry after failed stable, explicit SO masks,
+all8 inversion cases, unknown selection, root-vs-local scope and compensated-width
+failure. Existing static child/root/opaque tests pass. Style-only braces are being
+normalized; connected58offline/corpus, scale, vendor and final gates remain pending.
+
+Task102 evidence: source-matched remote native/state/opaque13/modeled47 pass after
+formatting. Local16 connected checks, corpus2551 files/zero duplicate groups/26
+reviewed module groups and58 offline certificates pass before new vendor data.
+Independent final review found no production defect and one Important regression
+gap. Equal-count/equal-total-parity ID-swap and same-ID suffix-parity changes with
+compensating inversions now have negative and legal-repeat tests. Disabling only
+the comparison loop produces2 failures; exact reviewed source31b31ef6 is restored
+and all48 CLI methods pass. A first mutation harness formatting anchor failed
+before any source write; corrected brace anchor supplied the intended mutation.
+No mutation or checker exception ships; no re-review loop.
+All26 scale commands pass. Source repetitions:1M active bits .32s,1024 queued
+dynamic children/2049 registers/512 shared aliases .85–.86s,97-level incremental
+opening .48–.49s,128 nested open/write/close cycles .06s. Peak165192KiB includes
+the flattened2049-register form. Equivalent Task100 physical references .27s
+wide/.46–.47s many; hashes match between references and child/source/flat/generated
+forms. Measurements describe overhead, not a speedup claim.
+Genuine Tessent2026.2 FORWARD run/strict record/strict check0 for BOTH nested
+dynamic_child_raw and local-stability projection fixtures. The second case keeps
+a child stable while the physical root grows8->16, preserving explicit SO masks
+and final child/sibling observations. Two schema3 forward snapshots imported with
+all hashes checked; total directional offline snapshots60. Both reverse original
+source runs1 explicitly reject internal ScanInterfaces in this tested context;
+no reverse certificate is claimed. Policy/harness remain unchanged. Final style/
+60offline/leak/fullserial/remote gates and integration remain pending.
+
+Verified Task102: leak-enabled native7/main69/modeled48/opaque13/clocks51/client25/reset12/trace16/all60offline certificates all0. Full serial make check passes in 1400.9289951249957s. Final remote54 statuses all0 and actual119 source/test/fixture/certificate inputs match. Independent final source review found no production defect; its Important equal-count ID/suffix-parity test gap is fixed. Disabling only the per-register comparison produces2 failures; exact31b31ef6 production bytes restored and all48 CLI methods pass. Local stable proof compares ordered register IDs and parity, with immutable pre/post segment spans and bounded shared proof work; full native eligibility retains pre-update versus post-proof active sets. AND emitted stable is removed when local geometry stays stable but the physical root changes. All26 scale commands0:1M active bits .32s source/.33s flat/.31s generated;1024 dynamic children/2049 registers/512shared aliases .85-.86s source/.90s flat/.45s generated;97levels .48-.49s source,128reopens .06s. Peak165192KiB. Hashes equal across forms and equivalent Task100 physical references (.27s wide/.46-.47s many); no speedup claimed. Source audit2552 files/zero duplicate groups/26reviewed module groups;16 connected/style/naming/offline pass. Genuine Tessent2026.2 FORWARD run/strict record/strict check0 for both dynamic_child_raw and dynamic_child_local_stability, with two schema3 certificates and all source/artifact/input/console hashes checked. Explicit SO and final reads retained, including local-stable root8->16 projection. Both reverse originals1 reject internal ScanInterfaces in tested context; no reverse certificate claimed and checker unchanged. Commit29 files, fast-forward master, delete merged branch and preserve Task103 reservations work. Closed-child preparation, broader raw/ownership/events/reset/clock/lifecycle, strict coverage and final platform/vendor requirements remain open. No push.
