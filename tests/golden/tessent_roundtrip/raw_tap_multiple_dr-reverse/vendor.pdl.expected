@@ -1,0 +1,29 @@
+iProcsForModule MultipleDrTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite tap.INSTRUCTION[3:0] 0b0011
+   iRead  tap.INSTRUCTION[3:0] 0b0001
+   iApply
+
+   iScan jtag -chain default 8 -si 0b10010110 -so 0b00000000
+   iApply
+
+   iWrite core.a[2:0] 0b100
+   iRead  core.a[2:0] 0b100
+   iWrite core.b[4:0] 0b10110
+   iRead  core.b[4:0] 0b10110
+   iApply
+
+   iWrite core.a[2:0] 0b101
+   iRead  core.a[2:0] 0b100
+   iWrite core.b[4:0] 0b10110
+   iRead  core.b[4:0] 0b10110
+   iApply
+
+   iScan jtag -chain default 8 -si 0b00111100 -so 0b10110110
+   iApply
+
+
+}

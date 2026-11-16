@@ -663,6 +663,20 @@
       "bsdl_entity": "BuiltinDrProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "raw_tap_multiple_dr",
+      "top": "MultipleDrTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/source.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.bsdl",
+      "bsdl_entity": "MultipleDrProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

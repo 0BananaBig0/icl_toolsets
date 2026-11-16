@@ -1110,26 +1110,43 @@ class ScanScheduler::Impl {
       if (!seen.count(kind)) fail();
     }
   }
-  size_t RawDataRegister() const {
+  struct ConcretePath {
+    BitReference input;
+    std::vector<std::pair<size_t, bool>> registers;
+    bool inverted = false;
+    size_t width = 0;
+  };
+  ConcretePath RawDataPath() {
     if (!tap_ready_) {
       throw std::runtime_error("TAP raw data scan requires iReset first");
     }
-    size_t result = kMissing;
-    for (const auto& [id, selected] :
-         execution_->ActiveDataRegisters(netlist_.taps.begin()->first)) {
-      if (selected == '0') continue;
-      if (selected != '1' || result != kMissing ||
-          netlist_.nodes[id].kind != "ScanRegister") {
-        throw std::runtime_error(
-            "raw TAP data requires one fully selected modeled register");
-      }
-      result = id;
-    }
-    if (result == kMissing) {
+    const auto fail = [] {
       throw std::runtime_error(
-          "raw TAP data requires one fully selected modeled register");
+          "raw TAP data requires a known complete register route");
+    };
+    auto snapshot = state_;
+    snapshot.Drive(tap_->ir_select, "0");
+    const auto output = tap_->pins.at("tap_scan_out");
+    ConcretePath path;
+    try {
+      path = TraceSerialPath(
+          snapshot, ids_.at({output, netlist_.nodes[output].left}), true);
+    } catch (const std::runtime_error&) {
+      fail();
     }
-    return result;
+    const auto input = tap_->pins.at("tap_scan_in");
+    if (path.registers.empty() || path.width > 1024 * 1024 ||
+        Key{path.input.node, path.input.index} !=
+            Key{input, netlist_.nodes[input].left}) {
+      fail();
+    }
+    const auto active =
+        execution_->ActiveDataRegisters(netlist_.taps.begin()->first);
+    for (const auto& [id, suffix] : path.registers) {
+      const auto found = active.find(id);
+      if (found == active.end() || found->second != '1') fail();
+    }
+    return path;
   }
   Operation NormalizeTapScan(const Operation& operation, bool defer_length) {
     const bool instruction =
@@ -1145,10 +1162,10 @@ class ScanScheduler::Impl {
       throw std::runtime_error("raw TAP scan input requires known binary data");
     }
     if (!defer_length) {
-      const auto id =
-          instruction ? tap_->instruction_register : RawDataRegister();
-      if (normalized.arguments[1] !=
-          std::to_string(netlist_.nodes[id].Width())) {
+      const auto width =
+          instruction ? netlist_.nodes[tap_->instruction_register].Width()
+                      : RawDataPath().width;
+      if (normalized.arguments[1] != std::to_string(width)) {
         throw std::runtime_error(
             "raw TAP scan length differs from bound register length");
       }
@@ -1162,8 +1179,11 @@ class ScanScheduler::Impl {
     Operation operation;
     bool instruction = false;
     std::vector<Operation> accesses;
-    size_t id = 0;
-    std::string name, input, output;
+    size_t width = 0;
+    std::set<size_t> assigned;
+    std::optional<size_t> permitted;
+    std::map<std::string, std::string> loads, expected;
+    std::string input, output;
   };
   std::optional<RawTapRequest> TapScans(
       const std::vector<Operation>& operations) {
@@ -1177,27 +1197,61 @@ class ScanScheduler::Impl {
     RawTapRequest request;
     request.instruction = instruction;
     const size_t offset = instruction ? 1 : 0;
+    std::vector<std::string> widths;
     for (const auto& operation : operations) {
       if (ir(operation) != instruction) {
         throw std::runtime_error("mixed raw IR and data scans are unsupported");
       }
-      auto normalized = NormalizeTapScan(operation, false);
+      auto normalized = NormalizeTapScan(operation, true);
+      widths.push_back(normalized.arguments[1 + offset]);
       if (!request.operation.arguments.empty() &&
           request.operation.arguments[offset] != normalized.arguments[offset]) {
         throw std::runtime_error("overlapping raw TAP client interfaces");
       }
       request.operation = std::move(normalized);
     }
-    request.id = instruction ? tap_->instruction_register : RawDataRegister();
-    request.name = netlist_.nodes[request.id].name;
-    for (const auto& [command, index] :
-         std::vector<std::pair<std::string, size_t>>{{"iWrite", 3},
-                                                     {"iRead", 5}}) {
-      auto access = request.operation;
-      access.command = command;
-      access.arguments = {request.name,
-                          request.operation.arguments[index + offset]};
-      request.accesses.push_back(std::move(access));
+    ConcretePath path;
+    if (instruction) {
+      path.registers = {{tap_->instruction_register, false}};
+      path.width = netlist_.nodes[tap_->instruction_register].Width();
+    } else {
+      path = RawDataPath();
+    }
+    for (const auto& width : widths) {
+      if (width != std::to_string(path.width)) {
+        throw std::runtime_error(
+            "raw TAP scan length differs from bound register length");
+      }
+    }
+    request.width = path.width;
+    const auto input = request.operation.arguments[3 + offset].substr(2);
+    const auto expected = request.operation.arguments[5 + offset].substr(2);
+    size_t begin = path.width;
+    for (const auto& [id, suffix] : path.registers) {
+      if (tap_data_registers_.count(id)) {
+        if (path.registers.size() != 1) {
+          throw std::runtime_error(
+              "mixed builtin raw TAP paths are unsupported");
+        }
+        request.permitted = id;
+      }
+      request.assigned.insert(id);
+      const auto& node = netlist_.nodes[id];
+      begin -= node.Width();
+      const auto load = InvertBits(input.substr(begin, node.Width()),
+                                   path.inverted != suffix);
+      const auto compare =
+          InvertBits(expected.substr(begin, node.Width()), suffix);
+      request.loads.emplace(node.name, load);
+      request.expected.emplace(node.name, compare);
+      for (const auto& [command, bits] :
+           std::vector<std::pair<std::string, std::string>>{
+               {"iWrite", load}, {"iRead", compare}}) {
+        auto access = request.operation;
+        access.command = command;
+        access.arguments = {node.name, "0b" + bits};
+        request.accesses.push_back(std::move(access));
+      }
     }
     const auto endpoint = [&](const std::string& role) {
       const auto& node = netlist_.nodes[tap_->pins.at(role)];
@@ -1211,11 +1265,9 @@ class ScanScheduler::Impl {
   std::vector<ScanStep> ApplyTapScan(
       const RawTapRequest& request,
       const std::map<size_t, std::string>& preserved) {
-    const auto permitted = tap_data_registers_.count(request.id)
-                               ? std::optional<size_t>{request.id}
-                               : std::nullopt;
     InvalidateRawRoute();
-    auto steps = Apply(request.accesses, false, preserved, true, permitted);
+    auto steps =
+        Apply(request.accesses, false, preserved, true, request.permitted);
     InvalidateRawRoute();
     return steps;
   }
@@ -1225,22 +1277,12 @@ class ScanScheduler::Impl {
       return;
     }
     try {
-      const auto id = RawDataRegister();
-      auto snapshot = state_;
-      // Select the data route for the next DR phase without executing it.
-      snapshot.Drive(tap_->ir_select, "0");
-      const auto input = tap_->pins.at("tap_scan_in");
-      const auto path =
-          ActivePath(snapshot, Key{input, netlist_.nodes[input].left});
-      if (netlist_.nodes[id].Width() == netlist_.nodes[request.id].Width() &&
-          path && *path == std::set<size_t>{id}) {
-        return;
-      }
+      if (RawDataPath().width == request.width) return;
     } catch (const std::runtime_error&) {
       // Unsupported/unknown post-route cannot establish the stable contract.
     }
     throw std::runtime_error(
-        "raw TAP stable data route requires one unchanged-length register");
+        "raw TAP stable data route requires unchanged length");
   }
   Operation NormalizeScan(const Operation& operation,
                           bool defer_length = false) {
@@ -3394,45 +3436,60 @@ class ScanScheduler::Impl {
       }
     }
   }
-  std::optional<std::set<size_t>> ActivePath(
-      const NetworkState& snapshot,
-      std::optional<Key> raw_input = std::nullopt) {
-    if (roots_.size() != 1) return std::nullopt;
-    std::set<size_t> active;
-    size_t vertex = roots_.front();
+  ConcretePath TraceSerialPath(const NetworkState& snapshot, size_t root,
+                               bool check_enables) {
+    std::vector<std::pair<size_t, bool>> registers;
     bool inverted = false;
+    size_t vertex = root;
     while (!graph_[vertex].input) {
       const auto& current = graph_[vertex];
-      if (current.bit.node == kMissing) return std::nullopt;
-      const auto& node = netlist_.nodes[current.bit.node];
+      if (current.bit.node == kMissing) {
+        throw std::runtime_error("solver chose disconnected serial input");
+      }
+      const auto& node = netlist_.nodes.at(current.bit.node);
       const auto enable = node.inputs.find("Enable");
-      if (enable != node.inputs.end() &&
+      if (check_enables && enable != node.inputs.end() &&
           snapshot.Read(enable->second.at(0)) != '1') {
-        return std::nullopt;
+        throw std::runtime_error("unknown or disconnected replay scan path");
       }
       if (node.kind == "ScanRegister") {
-        if (raw_input && inverted) return std::nullopt;
-        active.insert(current.bit.node);
+        registers.emplace_back(current.bit.node, inverted);
       }
       size_t selected = kMissing;
       for (size_t e = 0; e < current.edges.size(); ++e) {
         const auto& edge = current.edges[e];
-        const bool matches =
+        const bool active =
             edge.choice == kMissing || Match(snapshot, node, edge.choice);
-        if (matches) {
-          if (selected != kMissing) return std::nullopt;
+        if (active) {
+          if (selected != kMissing) {
+            throw std::runtime_error("ambiguous replay scan path");
+          }
           selected = e;
         }
       }
-      if (selected == kMissing) return std::nullopt;
+      if (selected == kMissing) {
+        throw std::runtime_error("unknown or disconnected replay scan path");
+      }
       inverted = inverted != current.edges[selected].inverted;
       vertex = current.edges[selected].next;
     }
-    const auto& input = graph_[vertex].bit;
-    if (raw_input && (inverted || Key{input.node, input.index} != *raw_input)) {
+    const auto input_bit = graph_[vertex].bit;
+    size_t width = 0;
+    for (const auto& [id, suffix] : registers) {
+      width += netlist_.nodes[id].Width();
+    }
+    return {input_bit, std::move(registers), inverted, width};
+  }
+  std::optional<std::set<size_t>> ActivePath(const NetworkState& snapshot) {
+    if (roots_.size() != 1) return std::nullopt;
+    try {
+      const auto path = TraceSerialPath(snapshot, roots_.front(), true);
+      std::set<size_t> active;
+      for (const auto& [id, suffix] : path.registers) active.insert(id);
+      return active;
+    } catch (const std::runtime_error&) {
       return std::nullopt;
     }
-    return active;
   }
   std::optional<std::vector<ScanStep>> TryAddressedWrites(
       const std::map<size_t, std::string>& goals,
@@ -5661,37 +5718,10 @@ class ScanScheduler::Impl {
                (node.indexed ? "[" + std::to_string(bit.index) + "]" : "");
       };
       lane.output = endpoint(graph_[root].bit);
-      std::vector<std::pair<size_t, bool>> registers;
-      bool inverted = false;
-      size_t vertex = root;
-      while (!graph_[vertex].input) {
-        const auto& current = graph_[vertex];
-        if (current.bit.node == kMissing) {
-          throw std::runtime_error("solver chose disconnected serial input");
-        }
-        const auto& node = netlist_.nodes.at(current.bit.node);
-        if (node.kind == "ScanRegister") {
-          registers.emplace_back(current.bit.node, inverted);
-        }
-        size_t selected = kMissing;
-        for (size_t e = 0; e < current.edges.size(); ++e) {
-          const auto& edge = current.edges[e];
-          const bool active =
-              edge.choice == kMissing || Match(*replay, node, edge.choice);
-          if (active) {
-            if (selected != kMissing) {
-              throw std::runtime_error("ambiguous replay scan path");
-            }
-            selected = e;
-          }
-        }
-        if (selected == kMissing) {
-          throw std::runtime_error("unknown or disconnected replay scan path");
-        }
-        inverted = inverted != current.edges[selected].inverted;
-        vertex = current.edges[selected].next;
-      }
-      const auto input_bit = graph_[vertex].bit;
+      const auto path = TraceSerialPath(*replay, root, false);
+      const auto& registers = path.registers;
+      const bool inverted = path.inverted;
+      const auto input_bit = path.input;
       lane.input = endpoint(input_bit);
       for (const auto& [id, suffix] : registers) {
         const auto bits = Decode(model, frame.loads.at(id));
@@ -5939,16 +5969,13 @@ Operation ScanScheduler::ApplyScans(
   if (!tap) return impl_->ApplyScans(operations, preserved, assigned);
   ScanScheduler trial(*this);
   const auto steps = trial.impl_->ApplyTapScan(*tap, preserved);
-  const auto& name = tap->name;
   const size_t offset = tap->instruction ? 1 : 0;
   const auto input = tap->operation.arguments[3 + offset].substr(2);
   const auto expected = tap->operation.arguments[5 + offset].substr(2);
-  const std::map<std::string, std::string> loads{{name, input}};
-  const std::map<std::string, std::string> reads{{name, expected}};
   if (steps.size() != 1 || steps[0].instruction != tap->instruction ||
       !steps[0].lanes.empty() || steps[0].input != tap->input ||
-      steps[0].output != tap->output || steps[0].loads != loads ||
-      steps[0].writes != loads || steps[0].expected != reads ||
+      steps[0].output != tap->output || steps[0].loads != tap->loads ||
+      steps[0].writes != tap->loads || steps[0].expected != tap->expected ||
       steps[0].serial != std::string(input.rbegin(), input.rend()) ||
       steps[0].serial_expected !=
           std::string(expected.rbegin(), expected.rend())) {
@@ -5956,7 +5983,7 @@ Operation ScanScheduler::ApplyScans(
   }
   trial.impl_->CheckRawTapStable(*tap);
   auto result = tap->operation;
-  std::set<size_t> written{tap->id};
+  auto written = tap->assigned;
   impl_.swap(trial.impl_);
   if (assigned) *assigned = std::move(written);
   return result;
