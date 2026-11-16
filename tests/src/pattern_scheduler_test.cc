@@ -824,6 +824,191 @@ void TestRawTapIrScans() {
               literal.Value("tap.INSTRUCTION") == "0011",
           "IR scan returns to idle and retains instruction on following wait");
 }
+void TestRawTapUnknownInput() {
+  for (bool instruction : {false, true}) {
+    const std::string folder =
+        std::string("tests/cases/ours/pattern_generation/raw_tap_") +
+        (instruction ? "ir/" : "dr/");
+    const auto read = [&](const std::string& name) {
+      std::ifstream file(folder + name);
+      return std::string((std::istreambuf_iterator<char>(file)), {});
+    };
+    const std::string top = instruction ? "RawIrTop" : "RawDrTop";
+    pattern::Design design;
+    design.AddIcl("unknown.icl", read("model.icl"));
+    design.AddBsdl("unknown.bsdl", read("model.bsdl"),
+                   instruction ? "RawIrProbe" : "RawDrProbe");
+    const auto original = pattern::ElaborateTapNetwork(design, top).netlist;
+    pattern::Design flat;
+    flat.AddIcl("unknown-flat.icl", pattern::SerializeIcl(original));
+    const auto serialized = pattern::Elaborate(flat, top);
+    for (const auto* model : {&original, &serialized}) {
+      const auto& netlist = *model;
+      const auto& tap = netlist.taps.begin()->second;
+      const auto id = instruction ? tap.instruction_register
+                                  : netlist.node_ids.at("core.r");
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Reset();
+      pattern::TapExecution literal(netlist);
+      literal.Drive({{tap.pins.at("tap_scan_reset"), "0"}});
+      literal.Drive({{tap.pins.at("tap_scan_reset"), "1"}});
+      size_t clocks = 0;
+      const auto cycle = [&](char tms, char tdi = '0') {
+        literal.Drive({{tap.pins.at("tap_scan_mode"), std::string(1, tms)},
+                       {tap.pins.at("tap_scan_in"), std::string(1, tdi)}});
+        literal.RisingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+        literal.FallingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+        ++clocks;
+      };
+      const auto scan = [&](bool ir, const std::string& bits) {
+        clocks = 0;
+        for (char tms : std::string(ir ? "1100" : "100")) cycle(tms);
+        const std::string serial(bits.rbegin(), bits.rend());
+        for (size_t i = 0; i < serial.size(); ++i) {
+          cycle(i + 1 == serial.size() ? '1' : '0', serial[i]);
+        }
+        cycle('1');
+        cycle('0');
+        Require(clocks == bits.size() + (ir ? 6 : 5),
+                "literal unknown input includes final exit-bit shift");
+      };
+      cycle('0');
+      if (!instruction) {
+        scheduler.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "x:select", {}}});
+        scan(true, "0011");
+      }
+      const std::string bits = instruction ? "x011" : "10x101x0";
+      pattern::Operation request{
+          "iScan",
+          {"jtag", instruction ? "4" : "8", "-si", "0b" + bits},
+          "x:raw",
+          {}};
+      if (instruction)
+        request.arguments.insert(request.arguments.begin(), "-ir");
+      std::set<size_t> assigned{netlist.nodes.size() + 100};
+      std::vector<pattern::ScanStep> preparations(1);
+      preparations[0].serial = "sentinel";
+      const auto physical =
+          scheduler.ApplyScan(request, {}, &assigned, &preparations);
+      scan(instruction, bits);
+      Require(assigned == std::set<size_t>{id} && preparations.empty() &&
+                  scheduler.Value(netlist.nodes[id].name) == bits &&
+                  physical.arguments[instruction ? 4 : 3] == "0b" + bits,
+              "raw TAP input remains unknown in hardware and emitted packet");
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          Require(scheduler.Value(node.name) == literal.Value(node.name),
+                  "unknown raw TAP matches literal original/flat endpoints");
+        }
+      }
+      if (!instruction) {
+        scheduler.Apply({{"iWrite", {"core.r[1]", "1"}, "x:partial", {}},
+                         {"iRead", {"core.r", "0b10x101x0"}, "x:compare", {}}});
+        Require(scheduler.Value("core.r") == "10010110",
+                "later partial write retains known-only controlling fill");
+      }
+      scheduler.Reset();
+      if (!instruction) {
+        scheduler.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "x:select", {}}});
+      }
+      std::map<std::string, std::string> before;
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          before[node.name] = scheduler.Value(node.name);
+        }
+      }
+      assigned = {netlist.nodes.size() + 100};
+      preparations.resize(1);
+      preparations[0].serial = "sentinel";
+      bool rejected = false;
+      try {
+        scheduler.ApplyScan(request,
+                            {{id, scheduler.Value(netlist.nodes[id].name)}},
+                            &assigned, &preparations);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected &&
+                  assigned == std::set<size_t>{netlist.nodes.size() + 100} &&
+                  preparations.size() == 1 &&
+                  preparations[0].serial == "sentinel",
+              "protected unknown assignment preserves both caller outputs");
+      for (const auto& [name, value] : before) {
+        Require(scheduler.Value(name) == value,
+                "failed literal unknown transaction preserves every endpoint");
+      }
+      request.arguments[instruction ? 4 : 3] = instruction ? "3" : "0x96";
+      scheduler.ApplyScan(request, {}, &assigned, &preparations);
+      Require(assigned == std::set<size_t>{id} && preparations.empty(),
+              "known transaction retries after unknown reservation failure");
+    }
+  }
+}
+void TestRawTapUnknownStableRollback() {
+  const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_dr/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(folder + name);
+    return std::string((std::istreambuf_iterator<char>(file)), {});
+  };
+  auto model = read("model.icl");
+  const std::string from = "  ScanRegister r[7:0] { ScanInSource si;";
+  const auto pos = model.find(from);
+  Require(pos != std::string::npos,
+          "unknown stable fixture replacement exists");
+  model.replace(pos, from.size(),
+                "  ScanRegister extra {ScanInSource si; CaptureSource extra; "
+                "ResetValue 0;}\n"
+                "  ScanMux feedback SelectedBy r[0] {1'b0: si; 1'b1: extra;}\n"
+                "  ScanRegister r[7:0] { ScanInSource feedback;");
+  pattern::Design design;
+  design.AddIcl("unknown-stable.icl", model);
+  design.AddBsdl("unknown-stable.bsdl", read("model.bsdl"), "RawDrProbe");
+  const auto original =
+      pattern::ElaborateTapNetwork(design, "RawDrTop").netlist;
+  pattern::Design flat;
+  flat.AddIcl("unknown-stable-flat.icl", pattern::SerializeIcl(original));
+  const auto serialized = pattern::Elaborate(flat, "RawDrTop");
+  for (const auto* netlist : {&original, &serialized}) {
+    pattern::ScanScheduler scheduler(*netlist);
+    scheduler.Reset();
+    scheduler.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "x:select", {}}});
+    std::map<std::string, std::string> before;
+    for (const auto& node : netlist->nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        before[node.name] = scheduler.Value(node.name);
+      }
+    }
+    const auto sentinel = netlist->nodes.size() + 100;
+    std::set<size_t> assigned{sentinel};
+    std::vector<pattern::ScanStep> preparations(1);
+    preparations[0].serial = "sentinel";
+    pattern::Operation request{
+        "iScan", {"jtag", "8", "-si", "0b0000000x", "-stable"}, "x:stable", {}};
+    bool rejected = false;
+    try {
+      scheduler.ApplyScan(request, {}, &assigned, &preparations);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("stable") != std::string::npos;
+    }
+    Require(rejected && assigned == std::set<size_t>{sentinel} &&
+                preparations.size() == 1 &&
+                preparations[0].serial == "sentinel",
+            "post-replay unknown stable failure retains caller outputs");
+    for (const auto& [name, bits] : before) {
+      Require(scheduler.Value(name) == bits,
+              "post-replay unknown stable failure rolls back all endpoints");
+    }
+    request.arguments[3] = "0b10x101x0";
+    scheduler.ApplyScan(request, {}, &assigned, &preparations);
+    Require(
+        scheduler.Value("core.r") == "10x101x0" && preparations.empty() &&
+            assigned == std::set<size_t>{netlist->node_ids.at("core.r")},
+        "stable retry with a known route bit preserves literal unknown data");
+  }
+}
 void TestMixedChildFallbackPreparation() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl");
@@ -5378,6 +5563,8 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawTapUnknownInput();
+    TestRawTapUnknownStableRollback();
     TestAutomaticChildRawPreparation();
     TestRawTapMultipleDrScans();
     TestRawTapBuiltinDrScans();

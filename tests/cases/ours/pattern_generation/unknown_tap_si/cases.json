@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "id": "unknown_tap_dr_si",
+      "top": "RawDrTop",
+      "icl": ["tests/cases/ours/pattern_generation/raw_tap_dr/model.icl"],
+      "pdl": ["tests/cases/ours/pattern_generation/unknown_tap_si/dr.pdl"],
+      "bsdl": "tests/cases/ours/pattern_generation/raw_tap_dr/model.bsdl",
+      "bsdl_entity": "RawDrProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    {
+      "id": "unknown_tap_ir_si",
+      "top": "RawIrTop",
+      "icl": ["tests/cases/ours/pattern_generation/raw_tap_ir/model.icl"],
+      "pdl": ["tests/cases/ours/pattern_generation/unknown_tap_si/ir.pdl"],
+      "bsdl": "tests/cases/ours/pattern_generation/raw_tap_ir/model.bsdl",
+      "bsdl_entity": "RawIrProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}
