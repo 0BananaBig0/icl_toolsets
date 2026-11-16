@@ -1,0 +1,406 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "root_raw_queue_order",
+    "top": "RootQueueTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/root_raw_queue_order/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/root_raw_queue_order/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/root_raw_queue_order/model.icl": "968617d4dc7d86713435e4d353015f5c26dbc1d2304673d351bbc72093dc8014",
+    "tests/cases/ours/pattern_generation/root_raw_queue_order/source.pdl": "16e394716892b43bdbc25de112a1fd40cb94a72364b105e841e484a51aa3551a"
+  },
+  "job": {
+    "id": "root_raw_queue_order",
+    "top": "RootQueueTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/root_raw_queue_order/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/root_raw_queue_order/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "968617d4dc7d86713435e4d353015f5c26dbc1d2304673d351bbc72093dc8014",
+      "source_0.pdl": "16e394716892b43bdbc25de112a1fd40cb94a72364b105e841e484a51aa3551a",
+      "run.tcl": "388443cb18e998103e907c59c1c59dfbb55e024f2e07ffe5e16551f6523286b2"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/root_raw_queue_order/model.icl": "968617d4dc7d86713435e4d353015f5c26dbc1d2304673d351bbc72093dc8014",
+      "tests/cases/ours/pattern_generation/root_raw_queue_order/source.pdl": "16e394716892b43bdbc25de112a1fd40cb94a72364b105e841e484a51aa3551a"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.730213732924312,
+    "outcome": "ok",
+    "result_sha256": "61d817452f05b0daeaebe6224fa4485df87f9258624bbf2e45c96b1a2d05d640",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "RootQueueTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "open",
+            0,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "client",
+        "9",
+        "-si",
+        "0b101001011",
+        "-so",
+        "0b000000001"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "c27b5929389a2f695254fb2b8a96409cef74ef02d268c578941b6684e96a172f",
+  "vendor_console_sha256": "1f6db8129b3e6e2b8fd3d6e48aeee92652a820fdf579431a567582e4ecb01c4b",
+  "artifacts": {
+    "flat.pdl": "d9254453a962fd5db78b5ba761533fa8da31238a12b2d5df9437a007888a195f",
+    "vendor.pdl": "61d817452f05b0daeaebe6224fa4485df87f9258624bbf2e45c96b1a2d05d640"
+  }
+}

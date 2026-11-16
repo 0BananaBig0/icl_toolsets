@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {
+      "id": "root_raw_queue_order",
+      "top": "RootQueueTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/root_raw_queue_order/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/root_raw_queue_order/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    }
+  ]
+}
