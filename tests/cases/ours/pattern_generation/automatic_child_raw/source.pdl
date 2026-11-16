@@ -1,0 +1,7 @@
+iPDLLevel 1
+iProcsForModule AutomaticChildRawTop
+iReset
+iScan child.local 8 -si 0x96 -so 0; iApply
+iRead child.value 0x96; iApply
+iWrite child.value[0] 1; iRead child.value 0x96; iApply
+iScan child.local 8 -si 0x3c -so 0x97; iApply

@@ -1318,14 +1318,13 @@ class ScanScheduler::Impl {
     }
     return result;
   }
-  Operation ApplyScans(const std::vector<Operation>& operations,
-                       const std::map<size_t, std::string>& preserved,
-                       std::set<size_t>* assigned) {
+  std::map<std::string, Operation> RawRequests(
+      const std::vector<Operation>& operations, bool defer_length = false) {
     if (operations.empty()) throw std::runtime_error("raw scan queue is empty");
     std::map<std::string, Operation> latest;
     size_t queued = 0;
     for (const auto& operation : operations) {
-      auto normalized = NormalizeScan(operation);
+      auto normalized = NormalizeScan(operation, defer_length);
       const auto old = latest.find(normalized.arguments[0]);
       if (old != latest.end()) queued -= old->second.arguments[3].size() - 2;
       queued += normalized.arguments[3].size() - 2;
@@ -1334,6 +1333,50 @@ class ScanScheduler::Impl {
       }
       latest[normalized.arguments[0]] = std::move(normalized);
     }
+    return latest;
+  }
+  std::vector<ScanStep> PrepareScans(
+      const std::map<std::string, Operation>& requests,
+      const std::map<size_t, std::string>& preserved) {
+    const auto& root = RawTemplate();
+    std::set<size_t> required;
+    std::vector<Operation> operations;
+    for (const auto& [name, operation] : requests) {
+      operations.push_back(operation);
+      const auto id = netlist_.node_ids.at(name);
+      if (id == root.client) continue;
+      const auto [input, output] = RawClientPorts(id);
+      RawProfile local;
+      local.client = id;
+      local.input = input;
+      local.output = output;
+      local.dynamic = true;
+      for (const auto& [reg, suffix] : RawRoute(local, state_).registers) {
+        required.insert(reg);
+      }
+    }
+    if (required.empty()) return {};
+    for (size_t id : registers_) {
+      const auto& reset = netlist_.nodes[id].reset;
+      if (reset && state_.Read(*reset) != '0') {
+        throw std::runtime_error(
+            "raw preparation requires inactive bound reset sources");
+      }
+    }
+    auto prefix = TryGreedy(operations, {}, required, false, preserved,
+                            preserved, false, false, true);
+    if (!prefix) {
+      throw std::runtime_error(
+          "raw child preparation requires reachable unreserved parent "
+          "controls");
+    }
+    InvalidateRawRoute();
+    return std::move(*prefix);
+  }
+  Operation ApplyScans(const std::vector<Operation>& operations,
+                       const std::map<size_t, std::string>& preserved,
+                       std::set<size_t>* assigned) {
+    const auto latest = RawRequests(operations);
     std::map<size_t, std::pair<size_t, std::string>> intervals;
     for (const auto& [name, operation] : latest) {
       const auto& slice = RawSubchain(name);
@@ -3740,7 +3783,7 @@ class ScanScheduler::Impl {
       const std::set<size_t>& required, bool together,
       const std::map<size_t, std::string>& preserved,
       const std::map<size_t, std::string>& desired_preserved,
-      bool explicit_writes, bool events) {
+      bool explicit_writes, bool events, bool prepare_only = false) {
     // shortcut: multi-TAP planning stays joint until greedy has a multi-path
     // proof.
     if (netlist_.taps.size() > 1) return std::nullopt;
@@ -3755,6 +3798,7 @@ class ScanScheduler::Impl {
                  (!node.reset || current.Read(*node.reset) == '0');
         })) {
       // Already expanded patterns need no prerequisite configuration solve.
+      if (prepare_only) return std::vector<ScanStep>{};
       try {
         return Solve(operations, together, 1, {}, false, preserved,
                      explicit_writes, events);
@@ -3819,7 +3863,8 @@ class ScanScheduler::Impl {
     if (client_controls_) {
       assignments = EventPins(assignments, frame, "capture");
     }
-    SettleResets(&assignments, nullptr, nullptr, &solver);
+    // Qualified raw preparation has only immutable inactive root resets.
+    if (!prepare_only) SettleResets(&assignments, nullptr, nullptr, &solver);
     SymbolicNetwork values(netlist_, context_, assignments, global_resets_);
     SelectScan(solver, values, 0, frame);
     for (size_t id : required) {
@@ -3879,6 +3924,12 @@ class ScanScheduler::Impl {
       };
       const bool ready =
           std::all_of(required.begin(), required.end(), writable);
+      if (ready && prepare_only) {
+        state_.Restore(trial.state_);
+        fill_ = std::move(trial.fill_);
+        execution_ = std::move(trial.execution_);
+        return steps;
+      }
       auto fixed = configuration;
       std::vector<Operation> next;
       size_t pending = 0;
@@ -3913,8 +3964,8 @@ class ScanScheduler::Impl {
               if (mask[bit] != 'x') load[bit] = desired[bit];
             }
           }
-          if (satisfied) continue;
-          ++pending;
+          if (satisfied && !prepare_only) continue;
+          if (!satisfied) ++pending;
           if (writable(id)) {
             const auto& node = netlist_.nodes[id];
             next.push_back(
@@ -3925,8 +3976,12 @@ class ScanScheduler::Impl {
         previous_pending = pending;
       }
       try {
-        auto scans = trial.Solve(next, ready && together, tap_ ? 2 : 1, fixed,
-                                 false, held, explicit_writes, events);
+        if (prepare_only) trial.InvalidateRawRoute();
+        auto scans = prepare_only ? trial.Apply(next, false, held, false)
+                                  : trial.Solve(next, ready && together,
+                                                tap_ ? 2 : 1, fixed, false,
+                                                held, explicit_writes, events);
+        if (prepare_only) trial.InvalidateRawRoute();
         for (auto& [id, value] : held) {
           value = Masked(trial.state_.Value(id), value);
         }
@@ -6130,15 +6185,31 @@ Operation ScanScheduler::NormalizeScan(const Operation& operation,
 }
 Operation ScanScheduler::ApplyScan(
     const Operation& operation, const std::map<size_t, std::string>& preserved,
-    std::set<size_t>* assigned) {
-  return ApplyScans({operation}, preserved, assigned);
+    std::set<size_t>* assigned, std::vector<ScanStep>* preparations) {
+  return ApplyScans({operation}, preserved, assigned, preparations);
 }
 Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
-    const std::map<size_t, std::string>& preserved,
-    std::set<size_t>* assigned) {
+    const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
+    std::vector<ScanStep>* preparations) {
   const auto tap = impl_->TapScans(operations);
-  if (!tap) return impl_->ApplyScans(operations, preserved, assigned);
+  if (!tap) {
+    if (!preparations) {
+      return impl_->ApplyScans(operations, preserved, assigned);
+    }
+    ScanScheduler trial(*this);
+    const auto requests = trial.impl_->RawRequests(operations, true);
+    auto prefix = trial.impl_->PrepareScans(requests, preserved);
+    std::vector<Operation> latest;
+    for (const auto& [name, operation] : requests) latest.push_back(operation);
+    std::set<size_t> written;
+    auto result = trial.impl_->ApplyScans(latest, preserved,
+                                          assigned ? &written : nullptr);
+    impl_.swap(trial.impl_);
+    if (assigned) *assigned = std::move(written);
+    *preparations = std::move(prefix);
+    return result;
+  }
   ScanScheduler trial(*this);
   const auto steps = trial.impl_->ApplyTapScan(*tap, preserved);
   const size_t offset = tap->instruction ? 1 : 0;
@@ -6158,6 +6229,7 @@ Operation ScanScheduler::ApplyScans(
   auto written = tap->assigned;
   impl_.swap(trial.impl_);
   if (assigned) *assigned = std::move(written);
+  if (preparations) preparations->clear();
   return result;
 }
 std::string ScanScheduler::Value(const std::string& target) const {

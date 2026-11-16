@@ -51,12 +51,15 @@ class ScanScheduler {
   Operation NormalizeScan(const Operation& operation,
                           bool defer_length = false);
   // Assigned reports explicitly addressed pre-CSU registers only on success.
+  // A preparations output opts into child setup and receives every prefix CSU.
   Operation ApplyScan(const Operation& operation,
                       const std::map<size_t, std::string>& preserved = {},
-                      std::set<size_t>* assigned = nullptr);
+                      std::set<size_t>* assigned = nullptr,
+                      std::vector<ScanStep>* preparations = nullptr);
   Operation ApplyScans(const std::vector<Operation>& operations,
                        const std::map<size_t, std::string>& preserved = {},
-                       std::set<size_t>* assigned = nullptr);
+                       std::set<size_t>* assigned = nullptr,
+                       std::vector<ScanStep>* preparations = nullptr);
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.

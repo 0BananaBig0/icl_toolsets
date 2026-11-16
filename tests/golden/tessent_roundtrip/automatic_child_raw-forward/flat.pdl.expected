@@ -1,0 +1,17 @@
+iPDLLevel 0
+iProcsForModule AutomaticChildRawTop
+iReset
+iWrite open 0b1
+iApply
+iScan client 9 -si 0b100101101 -so 0b00000000x
+iApply
+iWrite child.value 0b10010110
+iWrite open 0b1
+iRead child.value 0b10010110
+iApply
+iWrite child.value 0b10010111
+iWrite open 0b1
+iRead child.value 0b10010110
+iApply
+iScan client 9 -si 0b001111001 -so 0b10010111x
+iApply

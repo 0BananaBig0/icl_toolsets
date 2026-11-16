@@ -49,6 +49,186 @@ Module Top {
 }
 )ICL";
 }
+void TestAutomaticChildRawPreparation() {
+  std::string source = RawSibModel();
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("automatic-child.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto id = [&](const std::string& name) {
+      return netlist.node_ids.at(name);
+    };
+    const auto open = id("open"), value = id("child.value");
+    pattern::ScanScheduler scheduler(netlist), manual(netlist);
+    scheduler.Reset();
+    manual.Reset();
+    const pattern::Operation raw{
+        "iScan",
+        {"child.local", "8", "-si", "0x96", "-so", "0", "-stable"},
+        "automatic:raw",
+        {}};
+    bool strict = false;
+    try {
+      scheduler.ApplyScan(raw);
+    } catch (const std::runtime_error&) {
+      strict = true;
+    }
+    Require(strict, "default native child apply remains accessible-only");
+    std::map<std::string, std::string> before;
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        before.emplace(node.name, scheduler.Value(node.name));
+      }
+    }
+    pattern::ScanStep sentinel;
+    sentinel.writes.emplace("sentinel", "1");
+    std::vector<pattern::ScanStep> preparations{sentinel};
+    std::set<size_t> assigned{open};
+    auto invalid = raw;
+    invalid.arguments = {"child.local", "7", "-si", "0"};
+    for (bool protected_parent : {false, true}) {
+      bool rejected = false;
+      try {
+        scheduler.ApplyScan(protected_parent ? raw : invalid,
+                            protected_parent
+                                ? std::map<size_t, std::string>{{open, "0"}}
+                                : std::map<size_t, std::string>{},
+                            &assigned, &preparations);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected && assigned == std::set<size_t>{open} &&
+                  preparations.size() == 1 &&
+                  preparations[0].writes == sentinel.writes,
+              "failed automatic setup leaves both caller outputs untouched");
+      for (const auto& [name, bits] : before) {
+        Require(scheduler.Value(name) == bits,
+                "failed prefix/raw validation adopts no hardware state");
+      }
+    }
+    const auto physical =
+        scheduler.ApplyScan(raw, {}, &assigned, &preparations);
+    Require(
+        preparations.size() == 1 &&
+            preparations[0].writes ==
+                std::map<std::string, std::string>{{"open", "1"}} &&
+            preparations[0].expected.empty() && preparations[0].serial == "1" &&
+            physical.arguments[0] == "client" && physical.arguments[1] == "9" &&
+            physical.arguments[3] == "0b100101101" &&
+            physical.arguments[5] == "0b00000000x" &&
+            assigned == std::set<size_t>{value},
+        "opt-in returns parent setup and exact child-only raw footprint");
+    manual.Apply({{"iWrite", {"open", "1"}, "manual:setup", {}}});
+    Require(manual.ApplyScan(raw).arguments == physical.arguments,
+            "automatic child packet matches explicit manual preparation");
+    pattern::NetworkState literal(netlist);
+    const auto pin = [&](const std::string& name, char bit) {
+      literal.Drive(id(name), std::string(1, bit));
+    };
+    pin("reset", '1');
+    literal.SetGlobalReset('1', '1');
+    literal.Reset();
+    pin("reset", '0');
+    literal.SetGlobalReset('0', '0');
+    literal.Reset();
+    const auto phase = [&](char capture, char shift, char update, char clock) {
+      pin("sel", '1');
+      pin("ce", capture);
+      pin("se", shift);
+      pin("ue", update);
+      pin("tck", clock);
+      literal.Reset();
+    };
+    const auto controls = [&](char capture, char shift, char update) {
+      return std::map<size_t, pattern::ScanControl>{
+          {open, {capture, shift, update, '1'}},
+          {value, {capture, shift, update, literal.Value(open)[0]}}};
+    };
+    const auto scan = [&](const std::string& payload,
+                          const std::string& expected) {
+      phase('1', '0', '0', '0');
+      pin("tck", '1');
+      literal.Clock(controls('1', '0', '0'), true);
+      for (size_t i = 0; i < payload.size(); ++i) {
+        phase('0', '1', '0', '0');
+        pin("si", payload[payload.size() - 1 - i]);
+        const char mask = expected[expected.size() - 1 - i];
+        Require(mask == 'x' || literal.Read({id("so"), 0}, true) == mask,
+                "literal child capture masks use actual physical SO order");
+        pin("tck", '1');
+        literal.Clock(controls('0', '1', '0'), true);
+      }
+      phase('0', '0', '1', '0');
+      literal.Clock(controls('0', '0', '1'), false);
+      phase('0', '0', '0', '0');
+    };
+    scan("1", "x");
+    scan("100101101", "00000000x");
+    Require(literal.Value(value) == "10010110" && literal.Value(open) == "1",
+            "literal prefix/raw execution retains parent and loads child96");
+    for (const auto& [name, bits] : before) {
+      Require(scheduler.Value(name) == manual.Value(name) &&
+                  scheduler.Value(name) == literal.Value(id(name)),
+              "automatic/manual/literal agree on every public endpoint");
+    }
+    scheduler.Apply({{"iWrite", {"child.value[0]", "1"}, "auto:partial", {}}});
+    Require(scheduler.Value("child.value") == "10010111",
+            "raw controlling fill supports following partial child write");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl");
+  const std::string nested((std::istreambuf_iterator<char>(file)), {});
+  Require(!nested.empty(), "automatic nested stable fixture exists");
+  pattern::Design design;
+  design.AddIcl("automatic-stable.icl", nested);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  std::map<std::string, std::string> before;
+  for (const auto& node : netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      before.emplace(node.name, scheduler.Value(node.name));
+    }
+  }
+  pattern::ScanStep sentinel;
+  sentinel.writes.emplace("sentinel", "1");
+  std::vector<pattern::ScanStep> preparations{sentinel};
+  const auto open = netlist.node_ids.at("open");
+  std::set<size_t> assigned{open};
+  bool rejected = false;
+  try {
+    scheduler.ApplyScan({"iScan",
+                         {"child.local", "1", "-si", "1", "-stable"},
+                         "automatic:stable-failure",
+                         {}},
+                        {}, &assigned, &preparations);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("stable") != std::string::npos;
+  }
+  Require(rejected && preparations.size() == 1 &&
+              preparations[0].writes == sentinel.writes &&
+              assigned == std::set<size_t>{open},
+          "post-setup stable failure publishes no prefix or assigned output");
+  for (const auto& [name, bits] : before) {
+    Require(scheduler.Value(name) == bits,
+            "post-setup stable failure restores every caller-visible value");
+  }
+  scheduler.ApplyScan({"iScan",
+                       {"child.leaf.local", "8", "-si", "0x96", "-stable"},
+                       "automatic:retry",
+                       {}},
+                      {}, &assigned, &preparations);
+  Require(preparations.size() == 2 &&
+              assigned ==
+                  std::set<size_t>{netlist.node_ids.at("child.leaf.value")} &&
+              scheduler.Value("open") == "1" &&
+              scheduler.Value("child.enable") == "1" &&
+              scheduler.Value("child.leaf.value") == "10010110",
+          "valid retry returns both parent CSUs and exact leaf footprint");
+}
 void TestRawTapMultipleDrScans() {
   const std::string folder =
       "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/";
@@ -5198,6 +5378,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestAutomaticChildRawPreparation();
     TestRawTapMultipleDrScans();
     TestRawTapBuiltinDrScans();
     TestRawTapDrScans();

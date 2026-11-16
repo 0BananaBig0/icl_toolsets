@@ -1,0 +1,327 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "automatic_child_raw",
+    "top": "AutomaticChildRawTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/gated_sib_raw/model.icl",
+      "tests/cases/ours/pattern_generation/automatic_child_raw/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/automatic_child_raw/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/gated_sib_raw/model.icl": "ecb82b40ab1b10a4354f7f88cd54a0d695c1c46501599ca3a5956e93e096c87c",
+    "tests/cases/ours/pattern_generation/automatic_child_raw/model.icl": "c769b7a5c170c7db5a226d27d83d4580ffa4cf9f60c6f02ad097004195f2a3ac",
+    "tests/cases/ours/pattern_generation/automatic_child_raw/source.pdl": "a7e25939889687a92e78ed9056b18c36eda2f514d34a8ee41c902ce9e92950e4"
+  },
+  "job": {
+    "id": "automatic_child_raw",
+    "top": "AutomaticChildRawTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/gated_sib_raw/model.icl",
+      "tests/cases/ours/pattern_generation/automatic_child_raw/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/automatic_child_raw/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "ecb82b40ab1b10a4354f7f88cd54a0d695c1c46501599ca3a5956e93e096c87c",
+      "design_1.icl": "c769b7a5c170c7db5a226d27d83d4580ffa4cf9f60c6f02ad097004195f2a3ac",
+      "source_0.pdl": "a7e25939889687a92e78ed9056b18c36eda2f514d34a8ee41c902ce9e92950e4",
+      "run.tcl": "0fb80f71710a1573ab81244634cc506f661d47d9fd8328b24ce34915119593cd",
+      "ours.pdl": "1bcb8ca76e0b741d195b9c26e20741e099e08b7ddf1eb84898783293cfb88da3"
+    },
+    "generator_command": [
+      "/tmp/icl-typed-control-inversion-candidate-20261114/build/icl-pattern-generation",
+      "--icl",
+      "/tmp/icl-automatic-child-raw-roundtrip2-20261116/automatic_child_raw/forward/test_automatic_child_raw/design_0.icl",
+      "/tmp/icl-automatic-child-raw-roundtrip2-20261116/automatic_child_raw/forward/test_automatic_child_raw/design_1.icl",
+      "--pdl",
+      "/tmp/icl-automatic-child-raw-roundtrip2-20261116/automatic_child_raw/forward/test_automatic_child_raw/source_0.pdl",
+      "--top_module",
+      "AutomaticChildRawTop",
+      "--output",
+      "/tmp/icl-automatic-child-raw-roundtrip2-20261116/automatic_child_raw/forward/test_automatic_child_raw/ours.pdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.1167718549259007,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/gated_sib_raw/model.icl": "ecb82b40ab1b10a4354f7f88cd54a0d695c1c46501599ca3a5956e93e096c87c",
+      "tests/cases/ours/pattern_generation/automatic_child_raw/model.icl": "c769b7a5c170c7db5a226d27d83d4580ffa4cf9f60c6f02ad097004195f2a3ac",
+      "tests/cases/ours/pattern_generation/automatic_child_raw/source.pdl": "a7e25939889687a92e78ed9056b18c36eda2f514d34a8ee41c902ce9e92950e4"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.730179792735726,
+    "outcome": "ok",
+    "result_sha256": "974f330b783db1645bc9c6ce2176266b55d5f895ae91dcbed098b0b65f4f332f",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "AutomaticChildRawTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "client",
+        "9",
+        "-si",
+        "0b100101101",
+        "-so",
+        "0b00000000x"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "0"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "1"
+          ],
+          [
+            "child.value",
+            5,
+            "0"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "0"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "1"
+          ],
+          [
+            "child.value",
+            5,
+            "0"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "1"
+          ],
+          [
+            "child.value",
+            5,
+            "0"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "0"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "1"
+          ],
+          [
+            "child.value",
+            5,
+            "0"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "client",
+        "9",
+        "-si",
+        "0b001111001",
+        "-so",
+        "0b10010111x"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "c9b1ac6d5f30801672d0b403657942bc4acbc70d339bf560aea01e740547d655",
+  "vendor_console_sha256": "e77c4eb7f82e7d5e82a84618527e54270656ce365c0b427c6956c8ebb27fedd6",
+  "artifacts": {
+    "flat.pdl": "1bcb8ca76e0b741d195b9c26e20741e099e08b7ddf1eb84898783293cfb88da3",
+    "vendor.pdl": "974f330b783db1645bc9c6ce2176266b55d5f895ae91dcbed098b0b65f4f332f"
+  }
+}

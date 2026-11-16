@@ -164,8 +164,8 @@ class ModeledRootScan(unittest.TestCase):
                        'iProcsForModule Top\n')
         self.assertEqual(self.replay(definitions + 'iReset; iCall child.load; ' +
                                     prepare + 'iApply; ' + observe, SIB), reference)
-        self.rejected('iReset; ' + raw + 'iApply\n', 'root', SIB)
-        self.rejected('iReset; ' + raw + prepare + 'iState open 0; iApply\n', 'root', SIB)
+        self.replay('iReset; ' + raw + 'iApply; ' + observe, SIB)
+        self.replay('iReset; ' + raw + prepare + 'iState open 0; iApply; ' + observe, SIB)
 
     def test_mixed_child_raw_preserves_surrounding_and_refreshes_child(self):
         prefix = ('iReset; iWrite head 5; iWrite tail 21; iApply; '
@@ -685,7 +685,7 @@ class ModeledRootScan(unittest.TestCase):
         self.rejected('iReset; iScan client 9; iApply\n', 'length', SIB)
         self.replay('iScan client 1; iReset\n', SIB)
         self.rejected('iScan client 1; iApply\n', 'iReset', SIB)
-        self.rejected('iReset; iScan child.local 8; iApply\n', 'root', SIB)
+        self.replay('iReset; iScan child.local 8; iApply; iRead open 1; iApply\n', SIB)
         self.rejected('iReset; iScan client 1 -si 1; iApply\n'
                       'iScan client 9 -si 0 -stable; iApply\n', 'stable', SIB)
 
@@ -732,13 +732,13 @@ class ModeledRootScan(unittest.TestCase):
                     'iWrite open 0; iApply; iWrite open 1; iApply\n'
                     'iScan child.local 8 -si 0x3c -stable; iApply\n'
                     'iRead child.value 0x3c; iApply\n', SIB)
-        self.rejected('iReset; iWrite open 1; iApply\n'
-                      'iScan child.local 8 -si 0xa5; iApply\n'
-                      'iWrite open 0; iApply; iScan child.local 8; iApply\n',
-                      'contiguous', SIB)
+        self.replay('iReset; iWrite open 1; iApply\n'
+                    'iScan child.local 8 -si 0xa5; iApply\n'
+                    'iWrite open 0; iApply; iScan child.local 8; iApply\n'
+                    'iRead open 1; iRead child.value 0; iApply\n', SIB)
 
     def test_active_child_raw_closed_overlap_and_discarded_setup_atomic(self):
-        self.rejected('iReset; iScan child.local 8; iApply\n', 'contiguous', SIB)
+        self.replay('iReset; iScan child.local 8; iApply; iRead open 1; iApply\n', SIB)
         self.rejected('iReset; iScan client 1 -si 1; iApply\n'
                       'iScan child.local 7; iApply\n', 'length', SIB)
         self.rejected('iReset; iScan client 1 -si 1; iApply\n'
@@ -877,7 +877,8 @@ class ModeledRootScan(unittest.TestCase):
         self.replay(opened + 'iScan child.local 1 -si 0bx; iApply\n', model)
         self.rejected(opened + 'iScan child.local 1 -si 0bx; iApply\n'
                       'iScan child.local 1; iApply\n', 'known', model)
-        self.rejected('iReset; iScan child.local 1; iApply\n', 'contiguous', model)
+        self.replay('iReset; iScan child.local 1; iApply; '
+                    'iRead open 1; iRead child.enable 0; iApply\n', model)
 
     def test_dynamic_child_raw_compensated_root_width_is_not_local_stability(self):
         model = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()

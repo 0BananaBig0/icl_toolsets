@@ -1,0 +1,26 @@
+iProcsForModule AutomaticChildRawTop
+
+iProc oracle {} {
+
+   iReset
+   iWrite open 0b1
+   iApply
+
+   iScan client -chain default 9 -si 0b100101101 -so 0b00000000X
+   iApply
+
+   iWrite child.value[7:0] 0b10010110
+   iRead  child.value[7:0] 0b10010110
+   iWrite open 0b1
+   iApply
+
+   iWrite child.value[7:0] 0b10010111
+   iRead  child.value[7:0] 0b10010110
+   iWrite open 0b1
+   iApply
+
+   iScan client -chain default 9 -si 0b001111001 -so 0b10010111X
+   iApply
+
+
+}
