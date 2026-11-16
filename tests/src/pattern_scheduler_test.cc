@@ -49,6 +49,151 @@ Module Top {
 }
 )ICL";
 }
+void TestRawTapDrScans() {
+  const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_dr/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(folder + name);
+    const std::string text((std::istreambuf_iterator<char>(file)), {});
+    Require(!text.empty(), "raw DR fixture exists");
+    return text;
+  };
+  pattern::Design design;
+  design.AddIcl("raw-dr.icl", read("model.icl"));
+  design.AddBsdl("raw-dr.bsdl", read("model.bsdl"), "RawDrProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "RawDrTop");
+  const auto& netlist = network.netlist;
+  const auto& tap = netlist.taps.begin()->second;
+  const auto reg = netlist.node_ids.at("core.r");
+  pattern::ScanScheduler reference(netlist);
+  reference.Reset();
+  reference.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "dr:prepare", {}}});
+  pattern::ScanScheduler scheduler(reference);
+  const auto steps =
+      reference.Apply({{"iWrite", {"core.r", "0x96"}, "dr:reference", {}},
+                       {"iRead", {"core.r", "0bxx000000"}, "dr:compare", {}}});
+  Require(steps.size() == 1 && !steps[0].instruction &&
+              steps[0].lanes.empty() && steps[0].serial == "01101001" &&
+              steps[0].serial_expected == "000000xx" &&
+              steps[0].loads.size() == 1 && steps[0].writes.size() == 1 &&
+              steps[0].expected.size() == 1,
+          "existing backend proves one exact modeled DR transaction");
+  const pattern::Operation request{
+      "iScan",
+      {"jtag", "8", "-si", "0x96", "-so", "0bxx000000", "-stable"},
+      "dr:raw",
+      {}};
+  const auto normalized = scheduler.NormalizeScan(request);
+  Require(normalized.arguments[3] == "0b10010110" &&
+              scheduler.Value("core.r") == "00000000",
+          "DR normalization retains state and numeric bit order");
+  auto invalid = normalized;
+  invalid.arguments[1] = "9";
+  std::set<size_t> assigned{netlist.nodes.size() + 1};
+  const auto sentinel = assigned;
+  bool rejected = false;
+  try {
+    scheduler.ApplyScan(invalid, {}, &assigned);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("length") != std::string::npos;
+  }
+  Require(rejected && assigned == sentinel &&
+              scheduler.Value("core.r") == "00000000",
+          "bad raw DR geometry leaves state and assigned output unchanged");
+  const auto physical =
+      scheduler.ApplyScan(normalized, {{reg, "00000000"}}, &assigned);
+  Require(physical.arguments == normalized.arguments &&
+              assigned == std::set<size_t>{reg} &&
+              scheduler.Value("core.r") == "10010110" &&
+              scheduler.Value("tap.INSTRUCTION") == "0011",
+          "raw DR assigns only pre-CSU data register and retains IR");
+  pattern::TapExecution literal(netlist);
+  literal.Drive({{tap.pins.at("tap_scan_reset"), "0"}});
+  literal.Drive({{tap.pins.at("tap_scan_reset"), "1"}});
+  size_t cycles = 0;
+  const auto cycle = [&](char tms, char tdi = '0') {
+    literal.Drive({{tap.pins.at("tap_scan_mode"), std::string(1, tms)},
+                   {tap.pins.at("tap_scan_in"), std::string(1, tdi)}});
+    literal.RisingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+    literal.FallingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+    ++cycles;
+  };
+  cycle('0');
+  for (char tms : std::string("1100")) cycle(tms);
+  const std::string instruction = "1100";
+  for (size_t i = 0; i < instruction.size(); ++i)
+    cycle(i + 1 == instruction.size() ? '1' : '0', instruction[i]);
+  cycle('1');
+  cycle('0');
+  cycles = 0;
+  for (char tms : std::string("100")) cycle(tms);
+  const std::string serial = "01101001", expected = "000000xx";
+  for (size_t i = 0; i < serial.size(); ++i) {
+    const auto output =
+        literal.Value(netlist.nodes[tap.pins.at("tap_scan_out")].name, true);
+    Require(expected[i] == 'x' || output == std::string(1, expected[i]),
+            "literal DR capture mask is observed LSB first");
+    cycle(i + 1 == serial.size() ? '1' : '0', serial[i]);
+  }
+  cycle('1');
+  cycle('0');
+  Require(cycles == 13,
+          "eight-bit DR from idle uses N+5 clocks including final exit shift");
+  for (const auto& node : netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      Require(scheduler.Value(node.name) == reference.Value(node.name) &&
+                  scheduler.Value(node.name) == literal.Value(node.name),
+              "raw DR equals ordinary proof and independent literal endpoints");
+    }
+  }
+  scheduler.Idle(1);
+  cycle('0');
+  Require(scheduler.Value("core.r") == "10010110" &&
+              literal.Value("core.r") == "10010110",
+          "DR update survives following idle");
+  auto disconnected = read("model.icl");
+  const std::string old_input = "ScanInSource si; CaptureSource r;";
+  disconnected.replace(disconnected.find(old_input), old_input.size(),
+                       "ScanInSource feedback; CaptureSource r;");
+  disconnected.insert(
+      disconnected.find("  ScanMux mux"),
+      "  ScanMux feedback SelectedBy r[0] {1'b0: si; 1'b1: 1'b0;}\n");
+  pattern::Design bad_design;
+  bad_design.AddIcl("post-route.icl", disconnected);
+  bad_design.AddBsdl("raw-dr.bsdl", read("model.bsdl"), "RawDrProbe");
+  const auto bad_network = pattern::ElaborateTapNetwork(bad_design, "RawDrTop");
+  pattern::ScanScheduler bad(bad_network.netlist);
+  bad.Reset();
+  bad.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "post:prepare", {}}});
+  auto stable = request;
+  stable.arguments[3] = "0x97";
+  assigned = sentinel;
+  std::map<std::string, std::string> before;
+  for (const auto& node : bad_network.netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      before.emplace(node.name, bad.Value(node.name));
+    }
+  }
+  rejected = false;
+  try {
+    bad.ApplyScan(stable, {}, &assigned);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("stable") != std::string::npos;
+  }
+  Require(rejected && assigned == sentinel,
+          "disconnected stable post-route rejects before assigned publication");
+  for (const auto& [name, bits] : before) {
+    Require(bad.Value(name) == bits,
+            "failed stable post-route preserves every endpoint");
+  }
+  stable.arguments.pop_back();
+  bad.ApplyScan(stable, {}, &assigned);
+  Require(bad.Value("core.r") == "10010111" &&
+              assigned ==
+                  std::set<size_t>{bad_network.netlist.node_ids.at("core.r")},
+          "nonstable retry adopts exactly the requested current data CSU");
+}
 void TestRawTapIrScans() {
   const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_ir/";
   const auto read = [&](const std::string& name) {
@@ -4703,6 +4848,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawTapDrScans();
     TestRawTapIrScans();
     TestMixedChildFallbackPreparation();
     TestMixedChildRawPreparation();

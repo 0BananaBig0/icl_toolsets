@@ -37,7 +37,7 @@ def canonical(data):
                   rb'iWrite tap.INSTRUCTION \1\niRead tap.INSTRUCTION \2\n', data)
 
 
-def main():
+def main(scenario_source=scenarios, normalize=canonical, top='RawIrTop', entity='RawIrProbe'):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
@@ -48,7 +48,7 @@ def main():
     digest = lambda data: hashlib.sha256(data).hexdigest()
     report = dict(platform=platform.platform(), binary_sha256=digest(binary.read_bytes()),
                   reference_sha256=digest(reference.read_bytes()), rows=[])
-    for name, model, bsdl, source, ordinary in scenarios():
+    for name, model, bsdl, source, ordinary in scenario_source():
         folder = out / name
         folder.mkdir()
         for filename, data in [('model.icl', model), ('model.bsdl', bsdl),
@@ -60,9 +60,9 @@ def main():
         for form in forms:
             old = form.startswith('reference')
             command = [str(reference if old else binary), '--icl',
-                       str(folder / ('debug/RawIrTop.icl' if form == 'flat' else 'model.icl'))]
+                       str(folder / (f'debug/{top}.icl' if form == 'flat' else 'model.icl'))]
             if form != 'flat':
-                command += ['--bsdl', 'RawIrProbe', str(folder / 'model.bsdl')]
+                command += ['--bsdl', entity, str(folder / 'model.bsdl')]
             pdl = 'ordinary.pdl' if old else 'source0.pdl' if form == 'generated' else 'source.pdl'
             output = folder / (form + '.pdl')
             command += ['--pdl', str(folder / pdl), '--output', str(output)]
@@ -87,9 +87,9 @@ def main():
             assert result.returncode == 0, row
             data = output.read_bytes()
             row['artifact_sha256'] = digest(data)
-            row['canonical_sha256'] = digest(canonical(data))
-            expected = expected or canonical(data)
-            assert canonical(data) == expected, (name, form, 'ordinary/raw mismatch')
+            row['canonical_sha256'] = digest(normalize(data))
+            expected = expected or normalize(data)
+            assert normalize(data) == expected, (name, form, 'ordinary/raw mismatch')
             if not old:
                 raw_bytes = raw_bytes or data
                 assert data == raw_bytes, (name, form, 'raw replay mismatch')

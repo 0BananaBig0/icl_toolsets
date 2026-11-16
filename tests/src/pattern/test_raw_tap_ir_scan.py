@@ -113,7 +113,7 @@ class RawTapIrScan(unittest.TestCase):
                 ('iScan jtag 4 -ir', 'invalid or incomplete option')]:
             with self.subTest(command=command):
                 self.rejected(command + '; iReset\n', diagnostic)
-        self.rejected('iReset; iScan jtag 4; iApply\n', 'raw scan')
+        self.rejected('iReset; iScan jtag 4; iApply\n', 'builtin')
         self.rejected('iReset; iScan -ir jtag 4; iWrite core.r 1; iApply -together\n', 'together')
 
 

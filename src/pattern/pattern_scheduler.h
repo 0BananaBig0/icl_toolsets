@@ -45,9 +45,9 @@ class ScanScheduler {
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true);
   // Raw scans target a known root route or disjoint accessible child
-  // intervals, or a known-binary instruction on one bound root client-TAP.
-  // An ordinary queue may prepare a modeled client before its route/length
-  // check.
+  // intervals, or a known-binary IR/single-register DR on one bound root
+  // client-TAP. An ordinary queue may prepare a modeled client before its
+  // route/length check.
   Operation NormalizeScan(const Operation& operation,
                           bool defer_length = false);
   // Assigned reports explicitly addressed pre-CSU registers only on success.

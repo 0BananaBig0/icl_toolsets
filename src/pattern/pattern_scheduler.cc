@@ -135,7 +135,7 @@ class ScanScheduler::Impl {
       for (const auto& binding : interfaces) {
         if (binding.scope == 0 &&
             binding.interface.kind == ScanInterfaceKind::kClientTap) {
-          implicit_ir_client_ = binding.interface;
+          implicit_tap_client_ = binding.interface;
         }
       }
     }
@@ -1067,10 +1067,10 @@ class ScanScheduler::Impl {
     segment.inverted = inverted;
     return segment;
   }
-  size_t RawIrRegister(const std::string& target) const {
+  void RawTapClient(const std::string& target) const {
     const auto fail = [&] {
       throw std::runtime_error(
-          "raw IR scan requires one bound scalar root client-TAP: " + target);
+          "raw scan requires one bound scalar root client-TAP: " + target);
     };
     if (netlist_.taps.size() != 1) fail();
     const ScanInterface* interface = nullptr;
@@ -1080,8 +1080,8 @@ class ScanScheduler::Impl {
       if (node.scope == 0 && node.scan_interface) {
         interface = &*node.scan_interface;
       }
-    } else if (target == "unnamed" && implicit_ir_client_) {
-      interface = &*implicit_ir_client_;
+    } else if (target == "unnamed" && implicit_tap_client_) {
+      interface = &*implicit_tap_client_;
     }
     if (!interface || interface->kind != ScanInterfaceKind::kClientTap ||
         !interface->chains.empty()) {
@@ -1109,62 +1109,98 @@ class ScanScheduler::Impl {
          {"ScanInPort", "ScanOutPort", "TMSPort", "TCKPort"}) {
       if (!seen.count(kind)) fail();
     }
-    return tap_->instruction_register;
   }
-  Operation NormalizeIrScan(const Operation& operation, bool defer_length) {
-    if (operation.arguments.size() < 3 || operation.arguments[0] != "-ir") {
-      throw std::runtime_error("raw IR scan requires leading -ir and client");
+  size_t RawDataRegister() const {
+    if (!tap_ready_) {
+      throw std::runtime_error("TAP raw data scan requires iReset first");
     }
+    size_t result = kMissing;
+    for (const auto& [id, selected] :
+         execution_->ActiveDataRegisters(netlist_.taps.begin()->first)) {
+      if (selected == '0') continue;
+      if (selected != '1' || result != kMissing ||
+          netlist_.nodes[id].kind != "ScanRegister") {
+        throw std::runtime_error(
+            "raw TAP data requires one fully selected modeled register");
+      }
+      result = id;
+    }
+    if (result == kMissing) {
+      throw std::runtime_error(
+          "raw TAP data requires one fully selected modeled register");
+    }
+    if (tap_data_registers_.count(result)) {
+      throw std::runtime_error(
+          "raw TAP builtin data registers are unsupported");
+    }
+    return result;
+  }
+  Operation NormalizeTapScan(const Operation& operation, bool defer_length) {
+    const bool instruction =
+        !operation.arguments.empty() && operation.arguments[0] == "-ir";
     auto data = operation;
-    data.arguments.erase(data.arguments.begin());
-    const auto id = RawIrRegister(data.arguments[0]);
+    if (instruction) data.arguments.erase(data.arguments.begin());
+    if (data.arguments.size() < 2) {
+      throw std::runtime_error("raw TAP scan requires client and length");
+    }
+    RawTapClient(data.arguments[0]);
     auto normalized = pattern::NormalizeScan(context_, data.arguments[0], data);
     if (normalized.arguments[3].find('x') != std::string::npos) {
-      throw std::runtime_error("raw IR scan input requires known binary data");
+      throw std::runtime_error("raw TAP scan input requires known binary data");
     }
-    if (!defer_length &&
-        normalized.arguments[1] != std::to_string(netlist_.nodes[id].Width())) {
-      throw std::runtime_error(
-          "raw IR scan length differs from bound IR length");
+    if (!defer_length) {
+      const auto id =
+          instruction ? tap_->instruction_register : RawDataRegister();
+      if (normalized.arguments[1] !=
+          std::to_string(netlist_.nodes[id].Width())) {
+        throw std::runtime_error(
+            "raw TAP scan length differs from bound register length");
+      }
     }
-    normalized.arguments.insert(normalized.arguments.begin(), "-ir");
+    if (instruction) {
+      normalized.arguments.insert(normalized.arguments.begin(), "-ir");
+    }
     return normalized;
   }
-  struct RawIrRequest {
+  struct RawTapRequest {
     Operation operation;
+    bool instruction = false;
     std::vector<Operation> accesses;
     size_t id = 0;
     std::string name, input, output;
   };
-  std::optional<RawIrRequest> IrScans(
+  std::optional<RawTapRequest> TapScans(
       const std::vector<Operation>& operations) {
     const auto ir = [](const auto& operation) {
       return !operation.arguments.empty() && operation.arguments[0] == "-ir";
     };
-    if (std::none_of(operations.begin(), operations.end(), ir)) {
-      return std::nullopt;
-    }
-    RawIrRequest request;
+    if (operations.empty()) return std::nullopt;
+    const bool instruction =
+        std::any_of(operations.begin(), operations.end(), ir);
+    if (!instruction && netlist_.taps.empty()) return std::nullopt;
+    RawTapRequest request;
+    request.instruction = instruction;
+    const size_t offset = instruction ? 1 : 0;
     for (const auto& operation : operations) {
-      if (!ir(operation)) {
+      if (ir(operation) != instruction) {
         throw std::runtime_error("mixed raw IR and data scans are unsupported");
       }
-      auto normalized = NormalizeIrScan(operation, false);
+      auto normalized = NormalizeTapScan(operation, false);
       if (!request.operation.arguments.empty() &&
-          request.operation.arguments[1] != normalized.arguments[1]) {
-        throw std::runtime_error("overlapping raw IR client interfaces");
+          request.operation.arguments[offset] != normalized.arguments[offset]) {
+        throw std::runtime_error("overlapping raw TAP client interfaces");
       }
       request.operation = std::move(normalized);
     }
-    request.id = tap_->instruction_register;
-    const auto& name = netlist_.nodes[request.id].name;
-    request.name = name;
-    for (const auto& [command, data] :
-         std::vector<std::pair<std::string, size_t>>{{"iWrite", 4},
-                                                     {"iRead", 6}}) {
+    request.id = instruction ? tap_->instruction_register : RawDataRegister();
+    request.name = netlist_.nodes[request.id].name;
+    for (const auto& [command, index] :
+         std::vector<std::pair<std::string, size_t>>{{"iWrite", 3},
+                                                     {"iRead", 5}}) {
       auto access = request.operation;
       access.command = command;
-      access.arguments = {name, request.operation.arguments[data]};
+      access.arguments = {request.name,
+                          request.operation.arguments[index + offset]};
       request.accesses.push_back(std::move(access));
     }
     const auto endpoint = [&](const std::string& role) {
@@ -1176,13 +1212,36 @@ class ScanScheduler::Impl {
     request.output = endpoint("tap_scan_out");
     return request;
   }
+  void CheckRawTapStable(const RawTapRequest& request) {
+    if (request.instruction ||
+        request.operation.arguments.back() != "-stable") {
+      return;
+    }
+    try {
+      const auto id = RawDataRegister();
+      auto snapshot = state_;
+      // Select the data route for the next DR phase without executing it.
+      snapshot.Drive(tap_->ir_select, "0");
+      const auto input = tap_->pins.at("tap_scan_in");
+      const auto path =
+          ActivePath(snapshot, Key{input, netlist_.nodes[input].left});
+      if (netlist_.nodes[id].Width() == netlist_.nodes[request.id].Width() &&
+          path && *path == std::set<size_t>{id}) {
+        return;
+      }
+    } catch (const std::runtime_error&) {
+      // Unsupported/unknown post-route cannot establish the stable contract.
+    }
+    throw std::runtime_error(
+        "raw TAP stable data route requires one unchanged-length register");
+  }
   Operation NormalizeScan(const Operation& operation,
                           bool defer_length = false) {
     if (operation.arguments.empty()) {
       throw std::runtime_error("raw scan has no target");
     }
-    if (operation.arguments[0] == "-ir") {
-      return NormalizeIrScan(operation, defer_length);
+    if (operation.arguments[0] == "-ir" || !netlist_.taps.empty()) {
+      return NormalizeTapScan(operation, defer_length);
     }
     if (defer_length) {
       const auto& root = RawTemplate();
@@ -3328,10 +3387,13 @@ class ScanScheduler::Impl {
       }
     }
   }
-  std::optional<std::set<size_t>> ActivePath(const NetworkState& snapshot) {
+  std::optional<std::set<size_t>> ActivePath(
+      const NetworkState& snapshot,
+      std::optional<Key> raw_input = std::nullopt) {
     if (roots_.size() != 1) return std::nullopt;
     std::set<size_t> active;
     size_t vertex = roots_.front();
+    bool inverted = false;
     while (!graph_[vertex].input) {
       const auto& current = graph_[vertex];
       if (current.bit.node == kMissing) return std::nullopt;
@@ -3341,7 +3403,10 @@ class ScanScheduler::Impl {
           snapshot.Read(enable->second.at(0)) != '1') {
         return std::nullopt;
       }
-      if (node.kind == "ScanRegister") active.insert(current.bit.node);
+      if (node.kind == "ScanRegister") {
+        if (raw_input && inverted) return std::nullopt;
+        active.insert(current.bit.node);
+      }
       size_t selected = kMissing;
       for (size_t e = 0; e < current.edges.size(); ++e) {
         const auto& edge = current.edges[e];
@@ -3353,7 +3418,12 @@ class ScanScheduler::Impl {
         }
       }
       if (selected == kMissing) return std::nullopt;
+      inverted = inverted != current.edges[selected].inverted;
       vertex = current.edges[selected].next;
+    }
+    const auto& input = graph_[vertex].bit;
+    if (raw_input && (inverted || Key{input.node, input.index} != *raw_input)) {
+      return std::nullopt;
     }
     return active;
   }
@@ -5769,7 +5839,7 @@ class ScanScheduler::Impl {
   std::set<size_t> tap_data_registers_, tap_pins_, tap_clocks_;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
-  std::optional<ScanInterface> implicit_ir_client_;
+  std::optional<ScanInterface> implicit_tap_client_;
   std::optional<RawProfile> raw_profile_, raw_current_;
   std::map<size_t, BitReference> raw_selectors_;
   std::map<Key, BitReference> raw_control_terminals_;
@@ -5854,26 +5924,28 @@ Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved,
     std::set<size_t>* assigned) {
-  const auto ir = impl_->IrScans(operations);
-  if (!ir) return impl_->ApplyScans(operations, preserved, assigned);
+  const auto tap = impl_->TapScans(operations);
+  if (!tap) return impl_->ApplyScans(operations, preserved, assigned);
   ScanScheduler trial(*this);
-  const auto steps = trial.Apply(ir->accesses, false, preserved);
-  const auto& name = ir->name;
-  const auto input = ir->operation.arguments[4].substr(2);
-  const auto expected = ir->operation.arguments[6].substr(2);
+  const auto steps = trial.Apply(tap->accesses, false, preserved);
+  const auto& name = tap->name;
+  const size_t offset = tap->instruction ? 1 : 0;
+  const auto input = tap->operation.arguments[3 + offset].substr(2);
+  const auto expected = tap->operation.arguments[5 + offset].substr(2);
   const std::map<std::string, std::string> loads{{name, input}};
   const std::map<std::string, std::string> reads{{name, expected}};
-  if (steps.size() != 1 || !steps[0].instruction || !steps[0].lanes.empty() ||
-      steps[0].input != ir->input || steps[0].output != ir->output ||
-      steps[0].loads != loads || steps[0].writes != loads ||
-      steps[0].expected != reads ||
+  if (steps.size() != 1 || steps[0].instruction != tap->instruction ||
+      !steps[0].lanes.empty() || steps[0].input != tap->input ||
+      steps[0].output != tap->output || steps[0].loads != loads ||
+      steps[0].writes != loads || steps[0].expected != reads ||
       steps[0].serial != std::string(input.rbegin(), input.rend()) ||
       steps[0].serial_expected !=
           std::string(expected.rbegin(), expected.rend())) {
-    throw std::runtime_error("raw IR requires one exact instruction CSU");
+    throw std::runtime_error("raw TAP scan requires one exact requested CSU");
   }
-  auto result = ir->operation;
-  std::set<size_t> written{ir->id};
+  trial.impl_->CheckRawTapStable(*tap);
+  auto result = tap->operation;
+  std::set<size_t> written{tap->id};
   impl_.swap(trial.impl_);
   if (assigned) *assigned = std::move(written);
   return result;

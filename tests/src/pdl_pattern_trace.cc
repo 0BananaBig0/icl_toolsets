@@ -55,7 +55,7 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
                     [](const pattern::NetlistNode& node) {
                       return node.scope == 0 && node.scan_interface.has_value();
                     }) == 1;
-  std::set<std::string> ir_clients;
+  std::set<std::string> tap_clients;
   if (netlist.taps.size() == 1) {
     bool explicit_root = false;
     for (const auto& node : netlist.nodes) {
@@ -63,14 +63,14 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
       explicit_root = true;
       if (node.scan_interface->kind == pattern::ScanInterfaceKind::kClientTap &&
           node.scan_interface->chains.empty()) {
-        ir_clients.insert(node.name);
+        tap_clients.insert(node.name);
       }
     }
     if (!explicit_root) {
       for (const auto& binding : pattern::EffectiveScanInterfaces(netlist)) {
         if (binding.scope == 0 &&
             binding.interface.kind == pattern::ScanInterfaceKind::kClientTap) {
-          ir_clients.insert("unnamed");
+          tap_clients.insert("unnamed");
         }
       }
     }
@@ -144,7 +144,7 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
         const size_t first = ir ? 2 : 1;
         const std::string target =
             words.size() > first ? words[first].string_value() : "";
-        bool eligible = ir && ir_clients.count(target);
+        bool eligible = tap_clients.count(target);
         const auto found = netlist.node_ids.find(target);
         if (!ir && single_root && found != netlist.node_ids.end()) {
           const auto& node = netlist.nodes[found->second];

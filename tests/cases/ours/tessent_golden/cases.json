@@ -635,6 +635,20 @@
       "bsdl_entity": "RawIrProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "raw_tap_dr",
+      "top": "RawDrTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/raw_tap_dr/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/raw_tap_dr/source.pdl"
+      ],
+      "bsdl": "tests/cases/ours/pattern_generation/raw_tap_dr/model.bsdl",
+      "bsdl_entity": "RawDrProbe",
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

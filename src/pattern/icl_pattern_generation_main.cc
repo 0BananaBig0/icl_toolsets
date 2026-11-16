@@ -393,7 +393,7 @@ std::string Generate(
           const size_t offset = queued.arguments[0] == "-ir" ? 1 : 0;
           return queued.arguments[3 + offset].size() - 2;
         };
-        const auto key = scan.arguments[target];
+        const auto key = (target == 1 ? "-ir " : "") + scan.arguments[target];
         const auto old = pending_scans.find(key);
         const size_t replaced =
             old == pending_scans.end() ? 0 : payload(old->second);

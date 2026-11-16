@@ -1,0 +1,9 @@
+iPDLLevel 1
+iProcsForModule RawDrTop
+iReset
+iWrite tap.INSTRUCTION 3; iRead tap.INSTRUCTION 1; iApply
+iScan jtag 8 -si 0x96 -so 0; iApply
+iRead core.r 0x96; iApply
+iScan -ir jtag 4 -si 4 -so 1; iApply
+iScan -ir jtag 4 -si 3 -so 1; iApply
+iScan jtag 8 -si 0x3c -so 0x96; iApply

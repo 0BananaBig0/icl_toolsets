@@ -25,6 +25,10 @@ class TapExecution {
       const {
     return register_ports_;
   }
+  // Existing hardware selection, including inactive and unknown entries.
+  std::map<size_t, char> ActiveDataRegisters(const std::string& tap) const {
+    return Active(netlist_.taps.at(tap));
+  }
   void Assume(size_t node, const std::string& value);
   explicit TapExecution(const Netlist& netlist);
   void Drive(const std::string& port, const std::string& value);
