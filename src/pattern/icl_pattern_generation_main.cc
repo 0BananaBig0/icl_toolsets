@@ -252,13 +252,6 @@ std::string Generate(
   QueuedAccesses pending;
   std::map<std::string, pattern::Operation> pending_scans;
   size_t pending_scan_bits = 0;
-  const auto root_scan = [&](const pattern::Operation& scan) {
-    const auto found = netlist.node_ids.find(scan.arguments.at(0));
-    if (found == netlist.node_ids.end()) return false;
-    const auto& node = netlist.nodes[found->second];
-    return node.scope == 0 && node.scan_interface &&
-           node.scan_interface->kind == pattern::ScanInterfaceKind::kClient;
-  };
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
   const auto append_steps = [&](const std::vector<pattern::ScanStep>& steps) {
@@ -383,12 +376,6 @@ std::string Generate(
       }
       if (rewritten) rewritten->push_back(operation);
       if (operation.command == "iWrite" || operation.command == "iRead") {
-        if (std::any_of(
-                pending_scans.begin(), pending_scans.end(),
-                [&](const auto& entry) { return !root_scan(entry.second); })) {
-          throw std::runtime_error(
-              "mixed raw scan preparation requires the root client");
-        }
         // Reset may discard this queue, but malformed operands still fail.
         const auto target =
             pattern::ResolvePdlTarget(netlist, operation.arguments.at(0));
@@ -400,8 +387,7 @@ std::string Generate(
                               : std::string(target.bits.size(), 'x');
         pending.Add(operation, target, bits);
       } else if (operation.command == "iScan") {
-        auto scan = scheduler.NormalizeScan(
-            operation, !pending.Empty() || root_scan(operation));
+        auto scan = scheduler.NormalizeScan(operation, true);
         const auto old = pending_scans.find(scan.arguments[0]);
         const size_t replaced = old == pending_scans.end()
                                     ? 0
@@ -423,7 +409,7 @@ std::string Generate(
           if (!pending.Empty()) {
             if (together) {
               throw std::runtime_error(
-                  "mixed root raw preparation cannot use iApply -together");
+                  "mixed raw preparation cannot use iApply -together");
             }
             const auto& accesses = pending.Operations();
             if (edits) scheduler.CheckLocalResets(accesses);

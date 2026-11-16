@@ -49,6 +49,105 @@ Module Top {
 }
 )ICL";
 }
+void TestMixedChildFallbackPreparation() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl");
+  const std::string source((std::istreambuf_iterator<char>(file)), {});
+  Require(!source.empty(), "nested preparation fixture exists");
+  pattern::Design design;
+  design.AddIcl("mixed-child-fallback.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Apply({{"iWrite", {"open", "1"}, "fallback:parent", {}},
+                   {"iWrite", {"child.enable", "1"}, "fallback:child", {}}});
+  Require(
+      scheduler.Value("open") == "1" && scheduler.Value("child.enable") == "1",
+      "symbolic preparation establishes both nested SIB goals");
+  pattern::ScanScheduler cold(scheduler);
+  const pattern::Operation root{"iScan", {"client", "10"}, "fallback:root", {}};
+  const auto expected = cold.NormalizeScan(root);
+  Require(
+      scheduler.NormalizeScan(root).arguments == expected.arguments,
+      "successful fallback invalidates the native attempt's pre-route cache");
+  scheduler.ApplyScan({"iScan",
+                       {"child.local", "9", "-si", "0b101001011", "-stable"},
+                       "fallback:child-raw",
+                       {}});
+  Require(scheduler.Value("open") == "1" &&
+              scheduler.Value("child.enable") == "1" &&
+              scheduler.Value("child.leaf.value") == "10100101",
+          "nested prepared child raw sees the current selected route");
+}
+void TestMixedChildRawPreparation() {
+  pattern::Design design;
+  design.AddIcl("mixed-child.icl", RawSibModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto open = netlist.node_ids.at("open");
+  const auto value = netlist.node_ids.at("child.value");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const pattern::Operation raw{"iScan",
+                               {"child.local", "8", "-si", "0xa5", "-so", "0"},
+                               "mixed-child:raw",
+                               {}};
+  bool strict_rejected = false;
+  try {
+    scheduler.NormalizeScan(raw);
+  } catch (const std::runtime_error&) {
+    strict_rejected = true;
+  }
+  Require(strict_rejected, "strict child normalization requires active route");
+  std::map<std::string, std::string> before;
+  for (const auto& node : netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      before.emplace(node.name, scheduler.Value(node.name));
+    }
+  }
+  const auto deferred = scheduler.NormalizeScan(raw, true);
+  pattern::ScanScheduler cold(scheduler);
+  Require(cold.NormalizeScan(raw, true).arguments == deferred.arguments,
+          "cold copy admits identical immutable child metadata");
+  for (const auto& [name, bits] : before) {
+    Require(scheduler.Value(name) == bits && cold.Value(name) == bits,
+            "deferred child normalization changes no storage or pin");
+  }
+  const std::vector<pattern::Operation> preparation{
+      {"iWrite", {"open", "1"}, "mixed-child:prepare", {}},
+      {"iRead", {"open", "0"}, "mixed-child:observe", {}}};
+  scheduler.Apply(preparation);
+  auto invalid = raw;
+  invalid.arguments = {"child.local", "7"};
+  std::set<size_t> assigned{open};
+  bool length_rejected = false;
+  try {
+    scheduler.ApplyScan(invalid, {{open, "1"}}, &assigned);
+  } catch (const std::runtime_error& error) {
+    length_rejected =
+        std::string(error.what()).find("length") != std::string::npos;
+  }
+  Require(length_rejected && scheduler.Value("open") == "1" &&
+              scheduler.Value("child.value") == "00000000" &&
+              assigned == std::set<size_t>{open},
+          "failed child geometry keeps preparation and assignment output");
+  const auto physical = scheduler.ApplyScan(deferred, {{open, "1"}}, &assigned);
+  Require(
+      physical.arguments[0] == "client" && physical.arguments[1] == "9" &&
+          physical.arguments[3] == "0b101001011" &&
+          assigned == std::set<size_t>{value},
+      "prepared child uses full root CSU with child-only authored footprint");
+  cold.Apply(preparation);
+  cold.ApplyScan(raw, {{open, "1"}});
+  for (const auto& [name, bits] : before) {
+    Require(
+        scheduler.Value(name) == cold.Value(name),
+        "deferred child matches explicit strict boundary on every endpoint");
+  }
+  Require(scheduler.Value("open") == "1" &&
+              scheduler.Value("child.value") == "10100101",
+          "child replay updates target and retains held parent SIB");
+}
 void TestNativeOrdinaryAliases() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
@@ -270,12 +369,12 @@ void TestMixedRootRawPreparation() {
   Require(rejected, "cold copy cannot acquire prepared root geometry");
   rejected = false;
   try {
-    scheduler.NormalizeScan({"iScan", {"child.local", "8"}, "mixed:child", {}},
-                            true);
+    scheduler.NormalizeScan(
+        {"iScan", {"child.value", "8"}, "mixed:invalid", {}}, true);
   } catch (const std::runtime_error& error) {
-    rejected = std::string(error.what()).find("root") != std::string::npos;
+    rejected = std::string(error.what()).find("client") != std::string::npos;
   }
-  Require(rejected, "deferred preparation targets only the qualified root");
+  Require(rejected, "deferred preparation requires immutable client metadata");
   rejected = false;
   try {
     scheduler.ApplyScan({"iScan",
@@ -4504,6 +4603,8 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestMixedChildFallbackPreparation();
+    TestMixedChildRawPreparation();
     TestNativeOrdinaryAliases();
     TestNativeOrdinaryScans();
     TestMixedRootRawPreparation();

@@ -609,6 +609,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "mixed_child_raw_preparation",
+      "top": "MixedChildTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/mixed_child_raw_preparation/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/mixed_child_raw_preparation/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

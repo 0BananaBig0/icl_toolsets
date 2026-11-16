@@ -130,7 +130,83 @@ class ModeledRootScan(unittest.TestCase):
 
     def test_root_raw_queue_keeps_child_and_together_boundaries(self):
         self.rejected('iReset; iScan client 8; iRead value 0; iApply -together\n', 'together')
-        self.rejected('iReset; iScan child.local 8; iRead child.value 0; iApply\n', 'root', CHILD)
+        self.rejected('iReset; iScan child.local 8; iRead child.value 0; iApply -together\n',
+                      'together', CHILD)
+
+    def test_mixed_child_raw_static_orders_and_polarities(self):
+        for si, child_so, root_so in [(False, False, False), (True, False, True),
+                                     (False, True, True), (True, True, False)]:
+            model = CHILD
+            if si:
+                model = model.replace('InputPort si = head[0]', 'InputPort si = ~head[0]')
+            if child_so:
+                model = model.replace('Source value[0]', 'Source ~value[0]')
+            if root_so:
+                model = model.replace('Source tail[0]', 'Source ~tail[0]')
+            prepare = 'iWrite head 5; iRead head 0; '
+            raw = 'iScan child.local 8 -si 0xa5; '
+            reference = self.replay('iReset; ' + prepare + 'iApply; ' + raw + 'iApply\n', model)
+            for body in [prepare + raw, raw + prepare]:
+                with self.subTest(si=si, child_so=child_so, root_so=root_so, body=body):
+                    self.assertEqual(self.replay('iReset; ' + body + 'iApply\n', model), reference)
+
+    def test_mixed_child_raw_future_route_and_overwritten_length(self):
+        prepare = 'iWrite open 1; iRead open 0; '
+        raw = 'iScan child.local 8 -si 0xa5 -so 0; '
+        observe = 'iRead child.value 0xa5; iRead open 1; iApply\n'
+        reference = self.replay('iReset; ' + prepare + 'iApply; ' + raw + 'iApply; ' + observe, SIB)
+        for body in [prepare + raw, raw + prepare,
+                     'iScan child.local 7; ' + prepare + raw]:
+            with self.subTest(body=body):
+                self.assertEqual(self.replay('iReset; ' + body + 'iApply; ' + observe, SIB), reference)
+        definitions = ('iProcsForModule RawSibLeaf\n'
+                       'iProc load {} {iScan local 8 -si 0xa5 -so 0}\n'
+                       'iProcsForModule Top\n')
+        self.assertEqual(self.replay(definitions + 'iReset; iCall child.load; ' +
+                                    prepare + 'iApply; ' + observe, SIB), reference)
+        self.rejected('iReset; ' + raw + 'iApply\n', 'root', SIB)
+        self.rejected('iReset; ' + raw + prepare + 'iState open 0; iApply\n', 'root', SIB)
+
+    def test_mixed_child_raw_preserves_surrounding_and_refreshes_child(self):
+        prefix = ('iReset; iWrite head 5; iWrite tail 21; iApply; '
+                  'iTake head; iState head 5; iTake tail; iState tail 21; '
+                  'iTake child.value[3]; ')
+        body = ('iScan child.local 8 -si 0xa5; iWrite child.value 8; iApply; '
+                'iWrite child.value[1] 1; iApply; '
+                'iRead head 5; iRead tail 21; iRead child.value 0xa7; iApply\n')
+        result = self.replay(prefix + body, CHILD)
+        self.assertIn('iWrite child.value 0b10100111', result)
+        self.rejected(prefix + 'iScan child.local 8 -si 0b1010x101; '
+                      'iWrite child.value 8; iApply\n', 'reserved', CHILD)
+        self.replay('iReset; iTake open; iState open 0; '
+                    'iScan child.local 8 -si 0xa5; iWrite open 1; iApply; '
+                    'iRead open 1; iRead child.value 0xa5; iApply\n', SIB)
+
+    def test_mixed_child_raw_owner_return_and_cancel_validation(self):
+        for persistent in ['', ' -persistent']:
+            definitions = 'iProc prepare {} {iTake child.value[3]' + persistent + '; iWrite child.value 8}\n'
+            body = definitions + ('iReset; iScan child.local 8 -si 0b1010x101; '
+                                  'iCall prepare; iApply\n')
+            if persistent:
+                self.rejected(body, 'reserved', CHILD)
+            else:
+                self.replay(body, CHILD)
+        self.replay('iScan child.local 7; iReset; iApply\n', SIB)
+        self.rejected('iScan child.local 8 -si 256; iReset\n', 'scan', SIB)
+        invalid = SIB.replace('ScanInterface local { Port si; Port so;',
+                              'ScanInterface local { Port si;')
+        self.rejected('iScan child.local 8; iReset\n', 'client', invalid)
+
+    def test_mixed_child_raw_prepared_batches_overlap_and_stability(self):
+        model = native_bench.many_model(2)
+        prepare = 'iWrite r0.enable 1; iWrite r1.enable 1; '
+        raw = 'iScan r0.leaf.local 8 -si 0xa5; iScan r1.leaf.local 8 -si 0x3c; '
+        reference = self.replay('iReset; ' + prepare + 'iApply; ' + raw + 'iApply\n', model)
+        self.assertEqual(self.replay('iReset; ' + raw + prepare + 'iApply\n', model), reference)
+        self.rejected('iReset; iScan client 18; ' + raw + prepare + 'iApply\n', 'overlap', model)
+        dynamic = (opaque.ROOT / 'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()
+        self.rejected('iReset; iScan child.local 9 -si 0b101001010 -stable; '
+                      'iWrite open 1; iWrite child.enable 1; iApply\n', 'stable', dynamic)
 
     def test_mixed_root_raw_prepares_future_route(self):
         mixed = ('iReset; iWrite open 1; iRead open 0; '
@@ -186,7 +262,7 @@ class ModeledRootScan(unittest.TestCase):
 
     def test_mixed_root_raw_explicit_scope_boundaries(self):
         self.rejected('iReset; iRead value 0; iScan client 8; iApply -together\n', 'together')
-        self.rejected('iReset; iWrite open 1; iScan child.local 8; iApply\n', 'root', SIB)
+        self.rejected('iReset; iWrite open 1; iScan child.local 8; iApply -together\n', 'together', SIB)
 
     def test_mixed_root_raw_pending_ownership_lifetime(self):
         for persistent in ['', ' -persistent']:
@@ -524,11 +600,13 @@ class ModeledRootScan(unittest.TestCase):
                 self.assertIn('iScan client 16 -si 0b1010101101010011 -so 0bxxx' + expected + 'xxxxx', result)
 
     def test_child_invalid_discarded_and_overlap_atomic(self):
-        for target, width in [('missing', 8), ('child.value', 8), ('child.local', 7)]:
+        for target, width in [('missing', 8), ('child.value', 8)]:
             with self.subTest(target=target, width=width):
                 self.rejected('iScan ' + target + ' ' + str(width) + '; iReset\n', 'scan', CHILD)
         self.rejected('iReset; iScan client 16; iScan child.local 8; iApply\n', 'overlap', CHILD)
         self.replay('iReset; iScan child.local 8; iReset; iApply\n', CHILD)
+        self.replay('iScan child.local 7; iReset; iApply\n', CHILD)
+        self.rejected('iReset; iScan child.local 7; iApply\n', 'length', CHILD)
 
     def test_raw_tck_idle_counts_and_following_accesses(self):
         for count in [0, 1, 7, 18446744073709551615]:
@@ -577,10 +655,11 @@ class ModeledRootScan(unittest.TestCase):
     def test_default_chain_invalid_discarded_and_tap_atomic(self):
         for selection, diagnostic in [('-chain other 8', 'chain'),
                                       ('-chain default', 'length'),
-                                      ('-chain default 7', 'length'),
                                       ('-chain default 8 -si 0x100', 'scan')]:
             with self.subTest(selection=selection):
                 self.rejected('iScan child.local ' + selection + '; iReset\n', diagnostic, HIER)
+        self.replay('iScan child.local -chain default 7; iReset; iApply\n', HIER)
+        self.rejected('iReset; iScan child.local -chain default 7; iApply\n', 'length', HIER)
         self.rejected('iScan -ir client -chain default 8; iReset\n', 'scan', HIER)
 
     def test_sib_raw_open_close_reopen_retains_child(self):

@@ -1,0 +1,23 @@
+iPDLLevel 0
+iProcsForModule MixedChildTop
+iReset
+iWrite open 0b1
+iRead open 0b0
+iApply
+iScan client 9 -si 0b101001011 -so 0b00000000x
+iApply
+iWrite child.value 0b10100101
+iWrite open 0b1
+iRead child.value 0b10100101
+iRead open 0b1
+iApply
+iWrite child.value 0b10100111
+iWrite open 0b1
+iRead child.value 0b10100101
+iRead open 0b1
+iApply
+iWrite child.value 0b10100111
+iWrite open 0b1
+iRead child.value 0b10100111
+iRead open 0b1
+iApply

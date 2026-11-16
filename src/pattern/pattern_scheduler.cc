@@ -962,8 +962,7 @@ class ScanScheduler::Impl {
         .emplace(id, RawSegmentFor(id, root, &raw_profile_work_))
         .first->second.slice;
   }
-  RawSegment RawSegmentFor(size_t id, const RawProfile& root,
-                           size_t* work) const {
+  std::pair<size_t, size_t> RawClientPorts(size_t id) const {
     const auto fail = [&] {
       throw std::runtime_error(
           "raw scan requires a contiguous modeled child client on the root "
@@ -986,8 +985,18 @@ class ScanScheduler::Impl {
       }
     }
     if (!ports.count("ScanInPort") || !ports.count("ScanOutPort")) fail();
-    const auto input = ports.at("ScanInPort");
-    auto bit = netlist_.nodes[ports.at("ScanOutPort")].inputs.at("Source")[0];
+    return {ports.at("ScanInPort"), ports.at("ScanOutPort")};
+  }
+  RawSegment RawSegmentFor(size_t id, const RawProfile& root,
+                           size_t* work) const {
+    const auto fail = [&] {
+      throw std::runtime_error(
+          "raw scan requires a contiguous modeled child client on the root "
+          "route: " +
+          netlist_.nodes.at(id).name);
+    };
+    const auto [input, output] = RawClientPorts(id);
+    auto bit = netlist_.nodes[output].inputs.at("Source")[0];
     std::set<Key> visited;
     size_t next = kMissing;
     bool inverted = false;
@@ -1047,16 +1056,18 @@ class ScanScheduler::Impl {
     return segment;
   }
   Operation NormalizeScan(const Operation& operation,
-                          bool defer_root_length = false) {
+                          bool defer_length = false) {
     if (operation.arguments.empty()) {
       throw std::runtime_error("raw scan has no target");
     }
-    if (defer_root_length) {
+    if (defer_length) {
       const auto& root = RawTemplate();
-      if (operation.arguments[0] != netlist_.nodes[root.client].name) {
-        throw std::runtime_error(
-            "mixed raw scan preparation requires the root client");
+      const auto found = netlist_.node_ids.find(operation.arguments[0]);
+      if (found == netlist_.node_ids.end()) {
+        throw std::runtime_error("raw scan target is not a client interface: " +
+                                 operation.arguments[0]);
       }
+      if (found->second != root.client) RawClientPorts(found->second);
       return pattern::NormalizeScan(context_, operation.arguments[0],
                                     operation);
     }
@@ -5690,7 +5701,10 @@ std::vector<ScanStep> ScanScheduler::Apply(
     const std::vector<Operation>& operations, bool together,
     const std::map<size_t, std::string>& preserved, bool explicit_writes) {
   impl_->InvalidateRawRoute();
-  return impl_->Apply(operations, together, preserved, explicit_writes);
+  auto steps = impl_->Apply(operations, together, preserved, explicit_writes);
+  // A failed native attempt may cache the pre-state before symbolic fallback.
+  impl_->InvalidateRawRoute();
+  return steps;
 }
 std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(
     const std::vector<Operation>& operations,
@@ -5703,8 +5717,8 @@ void ScanScheduler::CheckLocalResets(
   impl_->CheckLocalResets(operations);
 }
 Operation ScanScheduler::NormalizeScan(const Operation& operation,
-                                       bool defer_root_length) {
-  return impl_->NormalizeScan(operation, defer_root_length);
+                                       bool defer_length) {
+  return impl_->NormalizeScan(operation, defer_length);
 }
 Operation ScanScheduler::ApplyScan(
     const Operation& operation, const std::map<size_t, std::string>& preserved,
