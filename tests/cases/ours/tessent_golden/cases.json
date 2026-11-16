@@ -677,6 +677,19 @@
       "bsdl_entity": "MultipleDrProbe",
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "automatic_child_raw",
+      "top": "AutomaticChildRawTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/gated_sib_raw/model.icl",
+        "tests/cases/ours/pattern_generation/automatic_child_raw/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/automatic_child_raw/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

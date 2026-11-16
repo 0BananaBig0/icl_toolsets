@@ -428,10 +428,13 @@ std::string Generate(
           scans.reserve(pending_scans.size());
           for (const auto& [name, scan] : pending_scans) scans.push_back(scan);
           std::set<size_t> assigned;
+          std::vector<pattern::ScanStep> preparations;
           const auto scan = scheduler.ApplyScans(
               scans, reservations.Values(),
-              reservations.Values().empty() ? nullptr : &assigned);
+              reservations.Values().empty() ? nullptr : &assigned,
+              &preparations);
           reservations.AssignedScans(assigned, scheduler);
+          append_steps(preparations);
           result += OperationText(scan);
           result += together ? "iApply -together\n" : "iApply\n";
           clocks.Invalidate();

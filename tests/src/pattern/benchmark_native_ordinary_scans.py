@@ -60,7 +60,7 @@ def scenarios():
     yield 'partial32', model, source, reference, 1048576, 1, False
 
 
-def main(scenario_source=scenarios):
+def main(scenario_source=scenarios, equivalent_kind='same ordinary program'):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, required=True)
     parser.add_argument('--reference', type=Path, required=True)
@@ -94,7 +94,7 @@ def main(scenario_source=scenarios):
                                         stdout=log, stderr=subprocess.STDOUT, timeout=120)
             values = timing.read_text().split()
             row = dict(scenario=name, active_bits=active, ordinary_setups=setups, form=form,
-                       reference_kind='same ordinary program' if equivalent else 'manually authored raw preparation',
+                       reference_kind=equivalent_kind if equivalent else 'manually authored raw preparation',
                        command=command, exit=result.returncode, seconds=float(values[-2]), max_rss_kib=int(values[-1]))
             if result.returncode == 0:
                 data = output.read_bytes()
