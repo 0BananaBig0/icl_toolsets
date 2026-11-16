@@ -1,0 +1,195 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "forward",
+  "case": {
+    "id": "raw_tap_builtin_dr",
+    "top": "BuiltinDrTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/source.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.bsdl",
+    "bsdl_entity": "BuiltinDrProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.icl": "3c9524cd953be0c0dd8cc6c17efe2c771af7219e9e0e9182f207a6d8a4a0eb85",
+    "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/source.pdl": "38457deeaf3c47b1b577a18843b7e7858e14264a92e6123f67d3b9749fab5639",
+    "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.bsdl": "7a7f62d22ea8b8568c7bb50fc1943bc69f63fbe5aa6c817cebeabb6e51c32728"
+  },
+  "job": {
+    "id": "raw_tap_builtin_dr",
+    "top": "BuiltinDrTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/source.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.bsdl",
+    "bsdl_entity": "BuiltinDrProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "3c9524cd953be0c0dd8cc6c17efe2c771af7219e9e0e9182f207a6d8a4a0eb85",
+      "source_0.pdl": "38457deeaf3c47b1b577a18843b7e7858e14264a92e6123f67d3b9749fab5639",
+      "model.bsdl": "7a7f62d22ea8b8568c7bb50fc1943bc69f63fbe5aa6c817cebeabb6e51c32728",
+      "run.tcl": "2983bcd048d01826aeb499225edb37385ac89f533d06cedf4dd0404a8c87da2c",
+      "ours.pdl": "bdf2db4b92add0d9f5a6fe18566e069c41258c772af4c69696397fd0bf320e27"
+    },
+    "generator_command": [
+      "/tmp/icl-typed-control-inversion-candidate-20261114/build/icl-pattern-generation",
+      "--icl",
+      "/tmp/icl-raw-tap-builtin-dr-roundtrip2-20261116/raw_tap_builtin_dr/forward/test_raw_tap_builtin_dr/design_0.icl",
+      "--pdl",
+      "/tmp/icl-raw-tap-builtin-dr-roundtrip2-20261116/raw_tap_builtin_dr/forward/test_raw_tap_builtin_dr/source_0.pdl",
+      "--top_module",
+      "BuiltinDrTop",
+      "--output",
+      "/tmp/icl-raw-tap-builtin-dr-roundtrip2-20261116/raw_tap_builtin_dr/forward/test_raw_tap_builtin_dr/ours.pdl",
+      "--bsdl",
+      "BuiltinDrProbe",
+      "/tmp/icl-raw-tap-builtin-dr-roundtrip2-20261116/raw_tap_builtin_dr/forward/test_raw_tap_builtin_dr/model.bsdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.16687997616827488,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.icl": "3c9524cd953be0c0dd8cc6c17efe2c771af7219e9e0e9182f207a6d8a4a0eb85",
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/source.pdl": "38457deeaf3c47b1b577a18843b7e7858e14264a92e6123f67d3b9749fab5639",
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.bsdl": "7a7f62d22ea8b8568c7bb50fc1943bc69f63fbe5aa6c817cebeabb6e51c32728"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.680487471166998,
+    "outcome": "ok",
+    "result_sha256": "70732463732b79c12dd2cc142f627e9c3e125a797de91b4d06f072e61f38577b",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "BuiltinDrTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      [
+        "iScan",
+        "jtag",
+        "32",
+        "-si",
+        "0b10001001101010111100110111101111",
+        "-so",
+        "0b00010000000000000000000000000011"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "jtag",
+        "1",
+        "-si",
+        "0b1",
+        "-so",
+        "0b0"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "jtag",
+        "1",
+        "-si",
+        "0b0",
+        "-so",
+        "0b0"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "5b45af0b602887a55102b285b38335d6ff9d87794edbdbd2feb47d5cf500c97f",
+  "vendor_console_sha256": "ea079233414027b9442758b289791d5a2534400a4cd3e68ba161969282bd7ceb",
+  "artifacts": {
+    "flat.pdl": "bdf2db4b92add0d9f5a6fe18566e069c41258c772af4c69696397fd0bf320e27",
+    "vendor.pdl": "70732463732b79c12dd2cc142f627e9c3e125a797de91b4d06f072e61f38577b"
+  }
+}

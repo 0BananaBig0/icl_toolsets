@@ -1,0 +1,7 @@
+iPDLLevel 1
+iProcsForModule BuiltinDrTop
+iReset
+iScan jtag 32 -si 0x89abcdef -so 0x10000003; iApply
+iWrite tap.INSTRUCTION 15; iRead tap.INSTRUCTION 1; iApply
+iScan jtag 1 -si 1 -so 0; iApply
+iScan jtag 1 -si 0 -so 0; iApply

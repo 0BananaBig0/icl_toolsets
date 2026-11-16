@@ -49,6 +49,155 @@ Module Top {
 }
 )ICL";
 }
+void TestRawTapBuiltinDrScans() {
+  const std::string folder =
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(folder + name);
+    return std::string((std::istreambuf_iterator<char>(file)), {});
+  };
+  pattern::Design design;
+  design.AddIcl("builtin.icl", read("model.icl"));
+  design.AddBsdl("builtin.bsdl", read("model.bsdl"), "BuiltinDrProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "BuiltinDrTop");
+  const auto& netlist = network.netlist;
+  const auto& tap = netlist.taps.begin()->second;
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto public_rejected = [&](pattern::ScanScheduler& owner) {
+    for (const auto& name :
+         std::vector<std::string>{"tap.DEVICE_ID", "tap.BYPASS"}) {
+      for (const auto& command : std::vector<std::string>{"iWrite", "iRead"}) {
+        bool rejected = false;
+        try {
+          owner.Apply({{command, {name, "0"}, "public:builtin", {}}});
+        } catch (const std::runtime_error& error) {
+          rejected = std::string(error.what()).find("synthetic TAP") !=
+                     std::string::npos;
+        }
+        Require(rejected, "public builtin operands stay forbidden");
+      }
+    }
+  };
+  public_rejected(scheduler);
+  const pattern::Operation idcode{
+      "iScan",
+      {"jtag", "32", "-si", "0x89abcdef", "-so", "0x10000003", "-stable"},
+      "builtin:raw",
+      {}};
+  std::set<size_t> assigned{netlist.nodes.size() + 1};
+  const auto normalized = scheduler.NormalizeScan(idcode);
+  scheduler.ApplyScan(normalized, {{tap.instruction_register, "0010"}},
+                      &assigned);
+  Require(
+      assigned == std::set<size_t>{tap.data_registers.at("DEVICE_ID")} &&
+          scheduler.Value("tap.INSTRUCTION") == "0010",
+      "raw IDCODE publishes only its builtin footprint and preserves owned IR");
+  public_rejected(scheduler);
+  pattern::ScanScheduler copy(scheduler);
+  public_rejected(copy);
+  pattern::TapExecution literal(netlist);
+  literal.Drive({{tap.pins.at("tap_scan_reset"), "0"}});
+  literal.Drive({{tap.pins.at("tap_scan_reset"), "1"}});
+  size_t clocks = 0;
+  const auto cycle = [&](char tms, char tdi = '0') {
+    literal.Drive({{tap.pins.at("tap_scan_mode"), std::string(1, tms)},
+                   {tap.pins.at("tap_scan_in"), std::string(1, tdi)}});
+    literal.RisingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+    literal.FallingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+    ++clocks;
+  };
+  const auto compare = [&] {
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        Require(scheduler.Value(node.name) == literal.Value(node.name),
+                "builtin raw matches independent literal endpoint state");
+      }
+    }
+  };
+  cycle('0');
+  clocks = 0;
+  for (char tms : std::string("100")) cycle(tms);
+  const std::string numeric = "10001001101010111100110111101111";
+  const std::string capture = "00010000000000000000000000000011";
+  for (size_t i = 0; i < 32; ++i) {
+    Require(literal.Value("TDO", true) == std::string(1, capture[31 - i]),
+            "literal IDCODE capture shifts LSB first");
+    cycle(i == 31 ? '1' : '0', numeric[31 - i]);
+  }
+  cycle('1');
+  cycle('0');
+  Require(clocks == 37, "IDCODE32 from idle uses exactly N+5 clocks");
+  compare();
+  scheduler.Apply(
+      {{"iWrite", {"tap.INSTRUCTION", "15"}, "builtin:select", {}}});
+  for (char tms : std::string("1100")) cycle(tms);
+  for (size_t i = 0; i < 4; ++i) cycle(i == 3 ? '1' : '0', '1');
+  cycle('1');
+  cycle('0');
+  clocks = 0;
+  const pattern::Operation bypass{
+      "iScan",
+      {"jtag", "1", "-si", "1", "-so", "0", "-stable"},
+      "builtin:bypass",
+      {}};
+  scheduler.ApplyScan(bypass, {{tap.instruction_register, "1111"}}, &assigned);
+  for (char tms : std::string("100")) cycle(tms);
+  Require(literal.Value("TDO", true) == "0",
+          "BYPASS capture is zero independent of prior shift");
+  cycle('1', '1');
+  cycle('1');
+  cycle('0');
+  Require(clocks == 6 &&
+              assigned == std::set<size_t>{tap.data_registers.at("BYPASS")},
+          "BYPASS1 uses N+5 clocks and exact assigned register");
+  compare();
+  scheduler.Idle(1, {{tap.instruction_register, "1111"}});
+  cycle('0');
+  compare();
+  public_rejected(scheduler);
+  assigned = {netlist.nodes.size() + 99};
+  const auto failed_assigned = assigned;
+  bool private_rejected = false;
+  try {
+    scheduler.ApplyScan(bypass, {{tap.instruction_register, "0010"}},
+                        &assigned);
+  } catch (const std::runtime_error& error) {
+    // This context is appended by private Apply, after raw normalization.
+    private_rejected =
+        std::string(error.what()).find("reserved tap.INSTRUCTION") !=
+        std::string::npos;
+  }
+  Require(
+      private_rejected && assigned == failed_assigned,
+      "valid-width builtin private solve failure preserves assigned output");
+  compare();
+  public_rejected(scheduler);
+  pattern::ScanScheduler failed_copy(scheduler);
+  public_rejected(failed_copy);
+  scheduler.ApplyScan(bypass, {{tap.instruction_register, "1111"}}, &assigned);
+  for (char tms : std::string("100")) cycle(tms);
+  cycle('1', '1');
+  cycle('1');
+  cycle('0');
+  Require(assigned == std::set<size_t>{tap.data_registers.at("BYPASS")},
+          "successful raw retry follows a failed private solve");
+  compare();
+  auto invalid = bypass;
+  invalid.arguments[1] = "2";
+  const auto before = assigned;
+  bool rejected = false;
+  try {
+    scheduler.ApplyScan(invalid, {}, &assigned);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("length") != std::string::npos;
+  }
+  Require(rejected && assigned == before,
+          "builtin width failure preserves assigned publication");
+  compare();
+  public_rejected(scheduler);
+}
 void TestRawTapDrScans() {
   const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_dr/";
   const auto read = [&](const std::string& name) {
@@ -4848,6 +4997,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawTapBuiltinDrScans();
     TestRawTapDrScans();
     TestRawTapIrScans();
     TestMixedChildFallbackPreparation();

@@ -1129,10 +1129,6 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "raw TAP data requires one fully selected modeled register");
     }
-    if (tap_data_registers_.count(result)) {
-      throw std::runtime_error(
-          "raw TAP builtin data registers are unsupported");
-    }
     return result;
   }
   Operation NormalizeTapScan(const Operation& operation, bool defer_length) {
@@ -1211,6 +1207,17 @@ class ScanScheduler::Impl {
     request.input = endpoint("tap_scan_in");
     request.output = endpoint("tap_scan_out");
     return request;
+  }
+  std::vector<ScanStep> ApplyTapScan(
+      const RawTapRequest& request,
+      const std::map<size_t, std::string>& preserved) {
+    const auto permitted = tap_data_registers_.count(request.id)
+                               ? std::optional<size_t>{request.id}
+                               : std::nullopt;
+    InvalidateRawRoute();
+    auto steps = Apply(request.accesses, false, preserved, true, permitted);
+    InvalidateRawRoute();
+    return steps;
   }
   void CheckRawTapStable(const RawTapRequest& request) {
     if (request.instruction ||
@@ -1777,10 +1784,10 @@ class ScanScheduler::Impl {
   std::string Value(const std::string& target) const {
     return state_.ReadBits(ResolvePdlTarget(netlist_, target).bits);
   }
-  std::vector<ScanStep> Apply(const std::vector<Operation>& operations,
-                              bool together,
-                              const std::map<size_t, std::string>& preserved,
-                              bool explicit_writes) {
+  std::vector<ScanStep> Apply(
+      const std::vector<Operation>& operations, bool together,
+      const std::map<size_t, std::string>& preserved, bool explicit_writes,
+      std::optional<size_t> permitted_tap_data = std::nullopt) {
     const auto previous_fill = fill_;
     try {
       for (const auto& [id, bits] : end_states_) {
@@ -1791,7 +1798,7 @@ class ScanScheduler::Impl {
       // Match Solve's empty-apply exit before constructing an event proof.
       if (operations.empty() && !NeedsEndState(end_states_)) return {};
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
-                   explicit_writes, std::nullopt);
+                   explicit_writes, std::nullopt, permitted_tap_data);
     } catch (const std::exception& error) {
       fill_ = previous_fill;
       std::string message = together ? "iApply -together: " : "";
@@ -4520,7 +4527,8 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& fixed_loads = {},
       bool allow_greedy = true,
       const std::map<size_t, std::string>& preserved = {},
-      bool explicit_writes = true, std::optional<bool> event_mode = false) {
+      bool explicit_writes = true, std::optional<bool> event_mode = false,
+      std::optional<size_t> permitted_tap_data = std::nullopt) {
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     if (roots_.empty() && registers_.empty() && !tap_ &&
@@ -4641,7 +4649,8 @@ class ScanScheduler::Impl {
               "write target requires a register or data port; reads require "
               "observable storage or outputs");
         }
-        if (tap_data_registers_.count(ref.node)) {
+        if (tap_data_registers_.count(ref.node) &&
+            permitted_tap_data != std::optional<size_t>{ref.node}) {
           throw std::runtime_error(
               "synthetic TAP data registers are not PDL targets");
         }
@@ -5391,7 +5400,7 @@ class ScanScheduler::Impl {
         UpdateStorageFill(frame, model, replay, reset, control_events, step,
                           event, fill);
         AppendDataEndOverrides(replay, &step);
-        FilterTapData(&step, parallel);
+        FilterTapData(&step, parallel, permitted_tap_data);
         if (!step.writes.empty() || !step.expected.empty()) {
           steps.push_back(std::move(step));
         }
@@ -5476,8 +5485,10 @@ class ScanScheduler::Impl {
       }
     }
   }
-  void FilterTapData(ScanStep* step, bool parallel) const {
+  void FilterTapData(ScanStep* step, bool parallel,
+                     std::optional<size_t> permitted_tap_data) const {
     for (size_t id : tap_data_registers_) {
+      if (permitted_tap_data == std::optional<size_t>{id}) continue;
       const auto& name = netlist_.nodes[id].name;
       const auto comparison = step->expected.find(name);
       if (comparison != step->expected.end() &&
@@ -5927,7 +5938,7 @@ Operation ScanScheduler::ApplyScans(
   const auto tap = impl_->TapScans(operations);
   if (!tap) return impl_->ApplyScans(operations, preserved, assigned);
   ScanScheduler trial(*this);
-  const auto steps = trial.Apply(tap->accesses, false, preserved);
+  const auto steps = trial.impl_->ApplyTapScan(*tap, preserved);
   const auto& name = tap->name;
   const size_t offset = tap->instruction ? 1 : 0;
   const auto input = tap->operation.arguments[3 + offset].substr(2);

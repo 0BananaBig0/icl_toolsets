@@ -37,26 +37,32 @@ def canonical(data):
                   rb'iWrite tap.INSTRUCTION \1\niRead tap.INSTRUCTION \2\n', data)
 
 
-def main(scenario_source=scenarios, normalize=canonical, top='RawIrTop', entity='RawIrProbe'):
+def main(scenario_source=scenarios, normalize=canonical, top='RawIrTop', entity='RawIrProbe',
+         candidate_only=False):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--binary', type=Path, required=True)
-    parser.add_argument('--reference', type=Path, required=True)
+    parser.add_argument('--reference', type=Path, required=not candidate_only)
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    binary, reference, out = args.binary.resolve(), args.reference.resolve(), args.output.resolve()
+    binary, out = args.binary.resolve(), args.output.resolve()
+    reference = args.reference.resolve() if args.reference else None
     out.mkdir(parents=True, exist_ok=False)
     digest = lambda data: hashlib.sha256(data).hexdigest()
     report = dict(platform=platform.platform(), binary_sha256=digest(binary.read_bytes()),
-                  reference_sha256=digest(reference.read_bytes()), rows=[])
+                  reference_sha256=digest(reference.read_bytes()) if reference else None,
+                  baseline='unavailable' if candidate_only else 'prior ordinary planner', rows=[])
     for name, model, bsdl, source, ordinary in scenario_source():
         folder = out / name
         folder.mkdir()
         for filename, data in [('model.icl', model), ('model.bsdl', bsdl),
                                ('source.pdl', source), ('ordinary.pdl', ordinary)]:
-            (folder / filename).write_text(data)
+            if data is not None:
+                (folder / filename).write_text(data)
         expected = raw_bytes = None
         forms = ['reference0', 'source0'] if name.startswith('w4096-') else [
             'reference0', 'reference1', 'source0', 'source1', 'flat', 'generated']
+        if candidate_only:
+            forms = ['source0', 'source1', 'flat', 'generated']
         for form in forms:
             old = form.startswith('reference')
             command = [str(reference if old else binary), '--icl',

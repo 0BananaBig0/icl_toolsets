@@ -41,7 +41,7 @@ class RawTapDrScan(unittest.TestCase):
         for body in [prepare+raw, raw+prepare, 'iScan jtag 9; '+raw+prepare]:
             self.assertEqual(self.replay('iReset; '+body+'iApply\n'), reference)
         self.replay('iScan jtag 9; iReset; iApply\n')
-        self.rejected('iReset; iScan jtag 8; iApply\n','builtin')
+        self.rejected('iReset; iScan jtag 8; iApply\n','length')
         self.rejected('iScan jtag 8; iApply\n','iReset')
 
     def test_owner_partial_and_observer_history(self):
@@ -107,9 +107,9 @@ class RawTapDrScan(unittest.TestCase):
                 self.rejected('iReset; iWrite tap.INSTRUCTION 3; iApply; '
                               'iScan jtag 8 -si 0x97 -stable; iApply\n', 'stable')
 
-    def test_builtin_registers_remain_explicitly_unsupported(self):
-        self.rejected('iReset; iScan jtag 32; iApply\n', 'builtin')
-        self.rejected('iReset; iScan -ir jtag 4 -si 15; iApply; iScan jtag 1; iApply\n', 'builtin')
+    def test_builtin_registers_keep_exact_current_width(self):
+        self.rejected('iReset; iScan jtag 31; iApply\n', 'length')
+        self.rejected('iReset; iScan -ir jtag 4 -si 15; iApply; iScan jtag 2; iApply\n', 'length')
 
     def test_malformed_data_remains_early(self):
         for command,diagnostic in [('iScan jtag 8 -si 0bx001','known'),
