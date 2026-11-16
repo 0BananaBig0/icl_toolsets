@@ -1,0 +1,12 @@
+iPDLLevel 1
+iProcsForModule RawIrTop
+iReset
+iScan -ir jtag 4 -si 3 -so 0bxx01
+iApply
+iWrite core.r 0xa5
+iRead core.r 0
+iApply
+iScan -ir jtag 4 -si 4 -so 0bxx01
+iApply
+iRead core.r 0xa5
+iApply

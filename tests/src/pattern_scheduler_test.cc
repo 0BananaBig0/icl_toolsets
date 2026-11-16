@@ -49,6 +49,106 @@ Module Top {
 }
 )ICL";
 }
+void TestRawTapIrScans() {
+  const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_ir/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(folder + name);
+    const std::string text((std::istreambuf_iterator<char>(file)), {});
+    Require(!text.empty(), "raw IR fixture exists");
+    return text;
+  };
+  pattern::Design design;
+  design.AddIcl("raw-ir.icl", read("model.icl"));
+  design.AddBsdl("raw-ir.bsdl", read("model.bsdl"), "RawIrProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "RawIrTop");
+  const auto& netlist = network.netlist;
+  const auto& tap = netlist.taps.begin()->second;
+  const auto ir = tap.instruction_register;
+  pattern::ScanScheduler reference(netlist);
+  reference.Reset();
+  const auto proof = reference.Apply(
+      {{"iWrite", {"tap.INSTRUCTION", "3"}, "ir:reference", {}},
+       {"iRead", {"tap.INSTRUCTION", "0bxx01"}, "ir:compare", {}}});
+  Require(proof.size() == 1 && proof[0].instruction && proof[0].lanes.empty() &&
+              proof[0].input == "TDI" && proof[0].output == "TDO" &&
+              proof[0].serial == "1100" && proof[0].serial_expected == "10xx" &&
+              proof[0].loads.size() == 1 && proof[0].writes.size() == 1 &&
+              proof[0].expected.size() == 1,
+          "existing ordinary IR backend proves one exact four-bit transaction");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const pattern::Operation request{
+      "iScan",
+      {"-ir", "jtag", "4", "-si", "3", "-so", "0bxx01", "-stable"},
+      "ir:raw",
+      {}};
+  const auto normalized = scheduler.NormalizeScan(request, true);
+  Require(normalized.arguments[0] == "-ir" &&
+              normalized.arguments[1] == "jtag" &&
+              normalized.arguments[4] == "0b0011" &&
+              normalized.arguments[6] == "0bxx01" &&
+              scheduler.Value("tap.INSTRUCTION") == "0010",
+          "raw IR normalization preserves leading flag, masks and reset state");
+  auto invalid = normalized;
+  invalid.arguments[2] = "5";
+  const auto sentinel = netlist.nodes.size() + 100;
+  std::set<size_t> assigned{sentinel};
+  bool rejected = false;
+  try {
+    scheduler.ApplyScan(invalid, {}, &assigned);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("length") != std::string::npos;
+  }
+  Require(rejected && assigned == std::set<size_t>{sentinel} &&
+              scheduler.Value("tap.INSTRUCTION") == "0010",
+          "invalid IR geometry leaves controller and assigned output intact");
+  const auto physical =
+      scheduler.ApplyScan(normalized, {{ir, "0010"}}, &assigned);
+  Require(
+      physical.arguments == normalized.arguments &&
+          assigned == std::set<size_t>{ir} &&
+          scheduler.Value("tap.INSTRUCTION") == "0011",
+      "known raw IR authoritatively updates only its instruction footprint");
+  pattern::TapExecution literal(netlist);
+  literal.Drive({{tap.pins.at("tap_scan_reset"), "0"}});
+  literal.Drive({{tap.pins.at("tap_scan_reset"), "1"}});
+  size_t cycles = 0;
+  const auto cycle = [&](char tms, char tdi = '0') {
+    literal.Drive({{tap.pins.at("tap_scan_mode"), std::string(1, tms)},
+                   {tap.pins.at("tap_scan_in"), std::string(1, tdi)}});
+    literal.RisingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+    literal.FallingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+    ++cycles;
+  };
+  cycle('0');
+  cycles = 0;
+  for (char tms : std::string("1100")) cycle(tms);
+  const std::string serial = "1100", expected = "10xx";
+  for (size_t i = 0; i < serial.size(); ++i) {
+    const auto output =
+        literal.Value(netlist.nodes[tap.pins.at("tap_scan_out")].name, true);
+    Require(expected[i] == 'x' || output == std::string(1, expected[i]),
+            "literal TDO capture mask and LSB-first IR stream agree");
+    cycle(i + 1 == serial.size() ? '1' : '0', serial[i]);
+  }
+  cycle('1');
+  cycle('0');
+  Require(cycles == 10, "four-bit IR scan from idle uses exactly N+6 clocks");
+  for (const auto& node : netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      Require(
+          scheduler.Value(node.name) == reference.Value(node.name) &&
+              scheduler.Value(node.name) == literal.Value(node.name),
+          "raw IR matches ordinary proof and independent literal endpoints");
+    }
+  }
+  scheduler.Idle(1);
+  cycle('0');
+  Require(scheduler.Value("tap.INSTRUCTION") == "0011" &&
+              literal.Value("tap.INSTRUCTION") == "0011",
+          "IR scan returns to idle and retains instruction on following wait");
+}
 void TestMixedChildFallbackPreparation() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl");
@@ -4603,6 +4703,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawTapIrScans();
     TestMixedChildFallbackPreparation();
     TestMixedChildRawPreparation();
     TestNativeOrdinaryAliases();

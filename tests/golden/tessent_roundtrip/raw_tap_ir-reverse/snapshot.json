@@ -1,0 +1,342 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "raw_tap_ir",
+    "top": "RawIrTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_tap_ir/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_tap_ir/source.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/raw_tap_ir/model.bsdl",
+    "bsdl_entity": "RawIrProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/raw_tap_ir/model.icl": "e1825fbe5d6f36be0fcef721266f646546d7fce2297dff5668aa445fa40bee73",
+    "tests/cases/ours/pattern_generation/raw_tap_ir/source.pdl": "a78a814fe9ffdf14729acc00bdc7b2bb8170315b0ef48c9eb19987361da5ab7f",
+    "tests/cases/ours/pattern_generation/raw_tap_ir/model.bsdl": "b79fd21e9f3e96ae2be23daeae48cfd57ae7f9f96d40f3fe0f3154a8455a82a2"
+  },
+  "job": {
+    "id": "raw_tap_ir",
+    "top": "RawIrTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_tap_ir/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_tap_ir/source.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/raw_tap_ir/model.bsdl",
+    "bsdl_entity": "RawIrProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "e1825fbe5d6f36be0fcef721266f646546d7fce2297dff5668aa445fa40bee73",
+      "source_0.pdl": "a78a814fe9ffdf14729acc00bdc7b2bb8170315b0ef48c9eb19987361da5ab7f",
+      "model.bsdl": "b79fd21e9f3e96ae2be23daeae48cfd57ae7f9f96d40f3fe0f3154a8455a82a2",
+      "run.tcl": "ca39211ac9e84dc735069d90029164fcbe4637cdac2f882a66f421c4757ca77f"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/raw_tap_ir/model.icl": "e1825fbe5d6f36be0fcef721266f646546d7fce2297dff5668aa445fa40bee73",
+      "tests/cases/ours/pattern_generation/raw_tap_ir/source.pdl": "a78a814fe9ffdf14729acc00bdc7b2bb8170315b0ef48c9eb19987361da5ab7f",
+      "tests/cases/ours/pattern_generation/raw_tap_ir/model.bsdl": "b79fd21e9f3e96ae2be23daeae48cfd57ae7f9f96d40f3fe0f3154a8455a82a2"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.630799711216241,
+    "outcome": "ok",
+    "result_sha256": "0df7769e744aba182be893eccdfdaaf57eb74a46d673c60868a8dbf091d8f63e",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "RawIrTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      [
+        "iScan",
+        "-ir",
+        "jtag",
+        "4",
+        "-si",
+        "0b0011",
+        "-so",
+        "0bxx01"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.r",
+            0,
+            "1"
+          ],
+          [
+            "core.r",
+            1,
+            "0"
+          ],
+          [
+            "core.r",
+            2,
+            "1"
+          ],
+          [
+            "core.r",
+            3,
+            "0"
+          ],
+          [
+            "core.r",
+            4,
+            "0"
+          ],
+          [
+            "core.r",
+            5,
+            "1"
+          ],
+          [
+            "core.r",
+            6,
+            "0"
+          ],
+          [
+            "core.r",
+            7,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "core.r",
+            0,
+            "0"
+          ],
+          [
+            "core.r",
+            1,
+            "0"
+          ],
+          [
+            "core.r",
+            2,
+            "0"
+          ],
+          [
+            "core.r",
+            3,
+            "0"
+          ],
+          [
+            "core.r",
+            4,
+            "0"
+          ],
+          [
+            "core.r",
+            5,
+            "0"
+          ],
+          [
+            "core.r",
+            6,
+            "0"
+          ],
+          [
+            "core.r",
+            7,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "-ir",
+        "jtag",
+        "4",
+        "-si",
+        "0b0100",
+        "-so",
+        "0bxx01"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.r",
+            0,
+            "1"
+          ],
+          [
+            "core.r",
+            1,
+            "0"
+          ],
+          [
+            "core.r",
+            2,
+            "1"
+          ],
+          [
+            "core.r",
+            3,
+            "0"
+          ],
+          [
+            "core.r",
+            4,
+            "0"
+          ],
+          [
+            "core.r",
+            5,
+            "1"
+          ],
+          [
+            "core.r",
+            6,
+            "0"
+          ],
+          [
+            "core.r",
+            7,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "core.r",
+            0,
+            "1"
+          ],
+          [
+            "core.r",
+            1,
+            "0"
+          ],
+          [
+            "core.r",
+            2,
+            "1"
+          ],
+          [
+            "core.r",
+            3,
+            "0"
+          ],
+          [
+            "core.r",
+            4,
+            "0"
+          ],
+          [
+            "core.r",
+            5,
+            "1"
+          ],
+          [
+            "core.r",
+            6,
+            "0"
+          ],
+          [
+            "core.r",
+            7,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "6adbd47eef7413510a16c6b9366ebb653f73e0604800da4d81b40f40630627d8",
+  "vendor_console_sha256": "017297812a04e1e60cee8fdab461eb3b0954f85f327c5a8ff9f455c0132be33b",
+  "artifacts": {
+    "flat.pdl": "3d9bf38553b8fcaebf823c7a27ad3eade4d41b3895f7dd2d1116217a6b659e2f",
+    "vendor.pdl": "0df7769e744aba182be893eccdfdaaf57eb74a46d673c60868a8dbf091d8f63e"
+  }
+}

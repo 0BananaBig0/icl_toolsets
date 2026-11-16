@@ -55,6 +55,26 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
                     [](const pattern::NetlistNode& node) {
                       return node.scope == 0 && node.scan_interface.has_value();
                     }) == 1;
+  std::set<std::string> ir_clients;
+  if (netlist.taps.size() == 1) {
+    bool explicit_root = false;
+    for (const auto& node : netlist.nodes) {
+      if (node.scope != 0 || !node.scan_interface) continue;
+      explicit_root = true;
+      if (node.scan_interface->kind == pattern::ScanInterfaceKind::kClientTap &&
+          node.scan_interface->chains.empty()) {
+        ir_clients.insert(node.name);
+      }
+    }
+    if (!explicit_root) {
+      for (const auto& binding : pattern::EffectiveScanInterfaces(netlist)) {
+        if (binding.scope == 0 &&
+            binding.interface.kind == pattern::ScanInterfaceKind::kClientTap) {
+          ir_clients.insert("unnamed");
+        }
+      }
+    }
+  }
   const auto flush_states = [&] {
     if (!states.empty()) {
       events.push_back(Json::Object({{"iState", BitRows(states)}}));
@@ -119,34 +139,40 @@ Json ApplyGroups(const Json& trace, const pattern::Netlist& netlist,
       if (!writes.empty() || !reads.empty()) {
         throw std::runtime_error("unapplied actions before " + name);
       }
-      if (single_root && name == "iScan" && words.size() > 1) {
-        const auto target = netlist.node_ids.find(words[1].string_value());
-        if (target != netlist.node_ids.end()) {
-          const auto& node = netlist.nodes[target->second];
-          if (node.scope == 0 && node.scan_interface &&
-              node.scan_interface->kind ==
-                  pattern::ScanInterfaceKind::kClient &&
-              node.scan_interface->chains.empty()) {
-            pattern::Operation scan;
-            scan.command = name;
-            for (size_t i = 1; i < words.size(); ++i) {
-              scan.arguments.push_back(words[i].string_value());
-            }
-            const auto normalized =
-                pattern::NormalizeScan(context, node.name, scan);
-            const size_t width = normalized.arguments[3].size() - 2;
-            if (width > (256 * 1024 - expanded) / 2) {
-              throw std::runtime_error(
-                  "apply-group bit expansion limit exceeded");
-            }
-            expanded += 2 * width;
-            Json::Elements canonical{Json::String(name)};
-            for (const auto& argument : normalized.arguments) {
-              canonical.push_back(Json::String(argument));
-            }
-            events.push_back(Json::Array(std::move(canonical)));
-            continue;
+      if (name == "iScan" && words.size() > 1) {
+        const bool ir = words[1].string_value() == "-ir";
+        const size_t first = ir ? 2 : 1;
+        const std::string target =
+            words.size() > first ? words[first].string_value() : "";
+        bool eligible = ir && ir_clients.count(target);
+        const auto found = netlist.node_ids.find(target);
+        if (!ir && single_root && found != netlist.node_ids.end()) {
+          const auto& node = netlist.nodes[found->second];
+          eligible = node.scope == 0 && node.scan_interface &&
+                     node.scan_interface->kind ==
+                         pattern::ScanInterfaceKind::kClient &&
+                     node.scan_interface->chains.empty();
+        }
+        if (eligible) {
+          pattern::Operation scan;
+          scan.command = name;
+          for (size_t i = first; i < words.size(); ++i) {
+            scan.arguments.push_back(words[i].string_value());
           }
+          const auto normalized = pattern::NormalizeScan(context, target, scan);
+          const size_t width = normalized.arguments[3].size() - 2;
+          if (width > (256 * 1024 - expanded) / 2) {
+            throw std::runtime_error(
+                "apply-group bit expansion limit exceeded");
+          }
+          expanded += 2 * width;
+          Json::Elements canonical{Json::String(name)};
+          if (ir) canonical.push_back(Json::String("-ir"));
+          for (const auto& argument : normalized.arguments) {
+            canonical.push_back(Json::String(argument));
+          }
+          events.push_back(Json::Array(std::move(canonical)));
+          continue;
         }
       }
       events.push_back(operation);

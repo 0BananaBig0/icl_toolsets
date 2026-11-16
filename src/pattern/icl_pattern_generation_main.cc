@@ -388,17 +388,21 @@ std::string Generate(
         pending.Add(operation, target, bits);
       } else if (operation.command == "iScan") {
         auto scan = scheduler.NormalizeScan(operation, true);
-        const auto old = pending_scans.find(scan.arguments[0]);
-        const size_t replaced = old == pending_scans.end()
-                                    ? 0
-                                    : old->second.arguments[3].size() - 2;
-        const size_t size =
-            pending_scan_bits - replaced + scan.arguments[3].size() - 2;
+        const size_t target = scan.arguments[0] == "-ir" ? 1 : 0;
+        const auto payload = [](const auto& queued) {
+          const size_t offset = queued.arguments[0] == "-ir" ? 1 : 0;
+          return queued.arguments[3 + offset].size() - 2;
+        };
+        const auto key = scan.arguments[target];
+        const auto old = pending_scans.find(key);
+        const size_t replaced =
+            old == pending_scans.end() ? 0 : payload(old->second);
+        const size_t size = pending_scan_bits - replaced + payload(scan);
         if (size > 1024 * 1024) {
           throw std::runtime_error("raw scan queued payload resource limit");
         }
         pending_scan_bits = size;
-        pending_scans[scan.arguments[0]] = std::move(scan);
+        pending_scans[key] = std::move(scan);
       } else if (operation.command == "iApply") {
         const bool together =
             operation.arguments == std::vector<std::string>{"-together"};

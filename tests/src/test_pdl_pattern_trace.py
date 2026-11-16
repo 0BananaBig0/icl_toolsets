@@ -12,7 +12,7 @@ BINARY = Path(os.environ.get('PDL_TRACE', ROOT / 'build/pdl_pattern_trace')).res
 
 
 class Trace(unittest.TestCase):
-    def grouped(self, source, design=None):
+    def grouped(self, source, design=None, bsdl=()):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'input.pdl').write_text(source)
@@ -25,7 +25,7 @@ class Trace(unittest.TestCase):
  ScanOutPort so { Source s[0]; }
 }''')
             return subprocess.run([str(BINARY), str(root / 'input.pdl'), '',
-                                   '--apply-groups', 'M', '--icl', str(root / 'input.icl')],
+                                   '--apply-groups', 'M', '--icl', str(root / 'input.icl'), *bsdl],
                                   capture_output=True, text=True, timeout=10)
 
     def test_raw_default_chain_numeric_and_unknown_spelling(self):
@@ -44,6 +44,29 @@ class Trace(unittest.TestCase):
             other = self.grouped(command, design)
             self.assertEqual(other.returncode, 0, other.stderr)
             self.assertNotEqual(json.loads(a.stdout), json.loads(other.stdout))
+
+    def test_bound_raw_ir_numeric_default_chain_and_observers(self):
+        fixture = ROOT / 'tests/cases/ours/pattern_generation/raw_tap_ir'
+        design = (fixture / 'model.icl').read_text().replace('RawIrTop', 'M')
+        bsdl = ('--bsdl', 'RawIrProbe', str(fixture / 'model.bsdl'))
+        for implicit in (False, True):
+            target = 'unnamed' if implicit else 'jtag'
+            model = design.replace('  ScanInterface jtag {Port TDI; Port TDO; Port TMS; Port TCK; Port TRST;}\n', '') if implicit else design
+            source = f'iScan -ir {target} 4 -si 3 -so 0bx; iApply'
+            a = self.grouped(source, model, bsdl)
+            b = self.grouped(f'iScan -ir {target} -chain default 0x4 -si 0x3 -so 0xX; iApply', model, bsdl)
+            self.assertEqual(a.returncode, 0, a.stderr)
+            self.assertEqual(b.returncode, 0, b.stderr)
+            self.assertEqual(json.loads(a.stdout), json.loads(b.stdout))
+            for changed in [source.replace('-si 3', '-si 4'),
+                            source.replace('-so 0bx', '-so 1'),
+                            source.replace('; iApply', ' -stable; iApply')]:
+                other = self.grouped(changed, model, bsdl)
+                self.assertEqual(other.returncode, 0, other.stderr)
+                self.assertNotEqual(json.loads(a.stdout), json.loads(other.stdout))
+            bad = self.grouped(source.replace(' 4 ', ' -chain other 4 '), model, bsdl)
+            self.assertNotEqual(bad.returncode, 0)
+            self.assertEqual(bad.stdout, '')
 
     def test_raw_eligible_malformed_does_not_fall_back(self):
         design = ("Module M { ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset; ScanOutPort so; "

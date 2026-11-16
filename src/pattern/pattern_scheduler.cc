@@ -127,6 +127,18 @@ class ScanScheduler::Impl {
       state_.Restore(execution_->State());
     }
     const auto interfaces = EffectiveScanInterfaces(netlist);
+    if (netlist.taps.size() == 1 &&
+        std::none_of(netlist.nodes.begin(), netlist.nodes.end(),
+                     [](const auto& node) {
+                       return node.scope == 0 && node.scan_interface;
+                     })) {
+      for (const auto& binding : interfaces) {
+        if (binding.scope == 0 &&
+            binding.interface.kind == ScanInterfaceKind::kClientTap) {
+          implicit_ir_client_ = binding.interface;
+        }
+      }
+    }
     std::vector<const ScanInterface*> clients;
     for (const auto& binding : interfaces) {
       if (binding.scope == 0 &&
@@ -1055,10 +1067,122 @@ class ScanScheduler::Impl {
     segment.inverted = inverted;
     return segment;
   }
+  size_t RawIrRegister(const std::string& target) const {
+    const auto fail = [&] {
+      throw std::runtime_error(
+          "raw IR scan requires one bound scalar root client-TAP: " + target);
+    };
+    if (netlist_.taps.size() != 1) fail();
+    const ScanInterface* interface = nullptr;
+    const auto found = netlist_.node_ids.find(target);
+    if (found != netlist_.node_ids.end()) {
+      const auto& node = netlist_.nodes[found->second];
+      if (node.scope == 0 && node.scan_interface) {
+        interface = &*node.scan_interface;
+      }
+    } else if (target == "unnamed" && implicit_ir_client_) {
+      interface = &*implicit_ir_client_;
+    }
+    if (!interface || interface->kind != ScanInterfaceKind::kClientTap ||
+        !interface->chains.empty()) {
+      fail();
+    }
+    const std::map<std::string, std::string> roles = {
+        {"ScanInPort", "tap_scan_in"},
+        {"ScanOutPort", "tap_scan_out"},
+        {"TMSPort", "tap_scan_mode"},
+        {"TCKPort", "tap_scan_clock"},
+        {"TRSTPort", "tap_scan_reset"}};
+    std::set<std::string> seen;
+    for (const auto& pin : interface->ports) {
+      if (pin.node == kMissing || pin.inverted) fail();
+      const auto& node = netlist_.nodes.at(pin.node);
+      const auto role = roles.find(node.kind);
+      if (node.scope != 0 || node.Width() != 1 || pin.index != node.left ||
+          role == roles.end() || !seen.insert(node.kind).second) {
+        fail();
+      }
+      const auto bound = tap_->pins.find(role->second);
+      if (bound == tap_->pins.end() || bound->second != pin.node) fail();
+    }
+    for (const auto* kind :
+         {"ScanInPort", "ScanOutPort", "TMSPort", "TCKPort"}) {
+      if (!seen.count(kind)) fail();
+    }
+    return tap_->instruction_register;
+  }
+  Operation NormalizeIrScan(const Operation& operation, bool defer_length) {
+    if (operation.arguments.size() < 3 || operation.arguments[0] != "-ir") {
+      throw std::runtime_error("raw IR scan requires leading -ir and client");
+    }
+    auto data = operation;
+    data.arguments.erase(data.arguments.begin());
+    const auto id = RawIrRegister(data.arguments[0]);
+    auto normalized = pattern::NormalizeScan(context_, data.arguments[0], data);
+    if (normalized.arguments[3].find('x') != std::string::npos) {
+      throw std::runtime_error("raw IR scan input requires known binary data");
+    }
+    if (!defer_length &&
+        normalized.arguments[1] != std::to_string(netlist_.nodes[id].Width())) {
+      throw std::runtime_error(
+          "raw IR scan length differs from bound IR length");
+    }
+    normalized.arguments.insert(normalized.arguments.begin(), "-ir");
+    return normalized;
+  }
+  struct RawIrRequest {
+    Operation operation;
+    std::vector<Operation> accesses;
+    size_t id = 0;
+    std::string name, input, output;
+  };
+  std::optional<RawIrRequest> IrScans(
+      const std::vector<Operation>& operations) {
+    const auto ir = [](const auto& operation) {
+      return !operation.arguments.empty() && operation.arguments[0] == "-ir";
+    };
+    if (std::none_of(operations.begin(), operations.end(), ir)) {
+      return std::nullopt;
+    }
+    RawIrRequest request;
+    for (const auto& operation : operations) {
+      if (!ir(operation)) {
+        throw std::runtime_error("mixed raw IR and data scans are unsupported");
+      }
+      auto normalized = NormalizeIrScan(operation, false);
+      if (!request.operation.arguments.empty() &&
+          request.operation.arguments[1] != normalized.arguments[1]) {
+        throw std::runtime_error("overlapping raw IR client interfaces");
+      }
+      request.operation = std::move(normalized);
+    }
+    request.id = tap_->instruction_register;
+    const auto& name = netlist_.nodes[request.id].name;
+    request.name = name;
+    for (const auto& [command, data] :
+         std::vector<std::pair<std::string, size_t>>{{"iWrite", 4},
+                                                     {"iRead", 6}}) {
+      auto access = request.operation;
+      access.command = command;
+      access.arguments = {name, request.operation.arguments[data]};
+      request.accesses.push_back(std::move(access));
+    }
+    const auto endpoint = [&](const std::string& role) {
+      const auto& node = netlist_.nodes[tap_->pins.at(role)];
+      return node.name +
+             (node.indexed ? "[" + std::to_string(node.left) + "]" : "");
+    };
+    request.input = endpoint("tap_scan_in");
+    request.output = endpoint("tap_scan_out");
+    return request;
+  }
   Operation NormalizeScan(const Operation& operation,
                           bool defer_length = false) {
     if (operation.arguments.empty()) {
       throw std::runtime_error("raw scan has no target");
+    }
+    if (operation.arguments[0] == "-ir") {
+      return NormalizeIrScan(operation, defer_length);
     }
     if (defer_length) {
       const auto& root = RawTemplate();
@@ -5645,6 +5769,7 @@ class ScanScheduler::Impl {
   std::set<size_t> tap_data_registers_, tap_pins_, tap_clocks_;
   std::unique_ptr<TapExecution> execution_;
   bool client_controls_ = false;
+  std::optional<ScanInterface> implicit_ir_client_;
   std::optional<RawProfile> raw_profile_, raw_current_;
   std::map<size_t, BitReference> raw_selectors_;
   std::map<Key, BitReference> raw_control_terminals_;
@@ -5723,13 +5848,35 @@ Operation ScanScheduler::NormalizeScan(const Operation& operation,
 Operation ScanScheduler::ApplyScan(
     const Operation& operation, const std::map<size_t, std::string>& preserved,
     std::set<size_t>* assigned) {
-  return impl_->ApplyScans({operation}, preserved, assigned);
+  return ApplyScans({operation}, preserved, assigned);
 }
 Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved,
     std::set<size_t>* assigned) {
-  return impl_->ApplyScans(operations, preserved, assigned);
+  const auto ir = impl_->IrScans(operations);
+  if (!ir) return impl_->ApplyScans(operations, preserved, assigned);
+  ScanScheduler trial(*this);
+  const auto steps = trial.Apply(ir->accesses, false, preserved);
+  const auto& name = ir->name;
+  const auto input = ir->operation.arguments[4].substr(2);
+  const auto expected = ir->operation.arguments[6].substr(2);
+  const std::map<std::string, std::string> loads{{name, input}};
+  const std::map<std::string, std::string> reads{{name, expected}};
+  if (steps.size() != 1 || !steps[0].instruction || !steps[0].lanes.empty() ||
+      steps[0].input != ir->input || steps[0].output != ir->output ||
+      steps[0].loads != loads || steps[0].writes != loads ||
+      steps[0].expected != reads ||
+      steps[0].serial != std::string(input.rbegin(), input.rend()) ||
+      steps[0].serial_expected !=
+          std::string(expected.rbegin(), expected.rend())) {
+    throw std::runtime_error("raw IR requires one exact instruction CSU");
+  }
+  auto result = ir->operation;
+  std::set<size_t> written{ir->id};
+  impl_.swap(trial.impl_);
+  if (assigned) *assigned = std::move(written);
+  return result;
 }
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);
