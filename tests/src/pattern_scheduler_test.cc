@@ -49,6 +49,192 @@ Module Top {
 }
 )ICL";
 }
+void TestNativeOrdinaryAliases() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
+  const std::string base((std::istreambuf_iterator<char>(file)), {});
+  Require(!base.empty(), "ordinary alias fixture exists");
+  for (bool input_inverse : {false, true}) {
+    for (bool child_output_inverse : {false, true}) {
+      for (bool output_inverse : {false, true}) {
+        std::string source = base;
+        const auto replace = [&](const std::string& old,
+                                 const std::string& next) {
+          source.replace(source.find(old), old.size(), next);
+        };
+        if (input_inverse)
+          replace("InputPort si = head[0]", "InputPort si = ~head[0]");
+        if (child_output_inverse)
+          replace("Source value[0]", "Source ~value[0]");
+        if (output_inverse) replace("Source tail[0]", "Source ~tail[0]");
+        source.insert(source.find(" ScanInterface client"),
+                      " Alias reversed[0:7] = ~child.value;\n");
+        pattern::Design design;
+        design.AddIcl("ordinary-alias.icl", source);
+        const auto netlist = pattern::Elaborate(design, "Top");
+        const auto id = [&](const std::string& name) {
+          return netlist.node_ids.at(name);
+        };
+        pattern::ScanScheduler scheduler(netlist);
+        scheduler.Reset();
+        scheduler.Assume("head", "101");
+        scheduler.Assume("child.value", "01010011");
+        scheduler.Assume("tail", "10011");
+        const std::vector<pattern::Operation> operations{
+            {"iWrite", {"reversed[0]", "0"}, "ordinary:alias", {}},
+            {"iRead", {"reversed", "0xac"}, "ordinary:compare", {}}};
+        if (!input_inverse && !child_output_inverse && !output_inverse) {
+          pattern::ScanScheduler blocked(scheduler);
+          bool rejected = false;
+          try {
+            blocked.Apply(operations, false, {{id("child.value"), "0xxxxxxx"}},
+                          false);
+          } catch (const std::runtime_error& error) {
+            rejected =
+                std::string(error.what()).find("reserv") != std::string::npos;
+          }
+          Require(rejected && blocked.Value("child.value") == "01010011",
+                  "automatic partial write cannot override protection or adopt "
+                  "failed native update");
+          blocked.Apply(operations, false, {{id("child.value"), "0xxxxxxx"}});
+          Require(blocked.Value("child.value") == "11010011",
+                  "explicit known retry after rejected native proof");
+        }
+        const auto steps = scheduler.Apply(operations, false,
+                                           {{id("head"), "101"},
+                                            {id("tail"), "10011"},
+                                            {id("child.value"), "xxxx0011"}});
+        Require(steps.size() == 1 && steps[0].serial.size() == 16 &&
+                    steps[0].serial_expected.substr(0, 5) == "xxxxx" &&
+                    steps[0].serial_expected.substr(13) == "xxx" &&
+                    steps[0].expected.at("child.value") == "01010011",
+                "unequal widths and ascending inverted alias preserve exact "
+                "ordinary observation scope");
+        pattern::NetworkState literal(netlist);
+        literal.SetGlobalReset('0', '0');
+        literal.Drive(id("reset"), "0");
+        for (const auto& [name, bits] :
+             std::map<std::string, std::string>{{"head", "101"},
+                                                {"child.value", "01010011"},
+                                                {"tail", "10011"}}) {
+          literal.SetRegister(id(name), bits, bits);
+        }
+        const auto pin = [&](const std::string& name, char bit) {
+          literal.Drive(id(name), std::string(1, bit));
+        };
+        const auto phase = [&](char capture, char shift, char update,
+                               char clock) {
+          pin("sel", '1');
+          pin("ce", capture);
+          pin("se", shift);
+          pin("ue", update);
+          pin("tck", clock);
+          literal.Reset();
+        };
+        const auto controls = [&](char capture, char shift, char update) {
+          std::map<size_t, pattern::ScanControl> result;
+          for (const auto& name : {"head", "child.value", "tail"})
+            result.emplace(id(name),
+                           pattern::ScanControl{capture, shift, update, '1'});
+          return result;
+        };
+        phase('1', '0', '0', '0');
+        pin("tck", '1');
+        literal.Clock(controls('1', '0', '0'), true);
+        for (size_t i = 0; i < steps[0].serial.size(); ++i) {
+          const char compare = steps[0].serial_expected[i];
+          Require(compare == 'x' || literal.Read({id("so"), 0}) == compare,
+                  "expected serial polarity/order matches independently "
+                  "captured shifted output");
+          phase('0', '1', '0', '0');
+          pin("si", steps[0].serial[i]);
+          pin("tck", '1');
+          literal.Clock(controls('0', '1', '0'), true);
+        }
+        phase('0', '0', '1', '1');
+        pin("tck", '0');
+        literal.Clock(controls('0', '0', '1'), false);
+        phase('0', '0', '0', '0');
+        Require(literal.Value(id("head")) == "101" &&
+                    literal.Value(id("tail")) == "10011" &&
+                    literal.Value(id("child.value")) == "11010011",
+                "native encoded loads meet independent partial-write hardware "
+                "goals");
+        for (const auto& node : netlist.nodes) {
+          if (node.model == pattern::ModelKind::kPort ||
+              node.model == pattern::ModelKind::kRegister) {
+            Require(scheduler.Value(node.name) == literal.Value(id(node.name)),
+                    "ordinary aliases match every literal storage and pin");
+          }
+        }
+      }
+    }
+  }
+}
+void TestNativeOrdinaryScans() {
+  std::string source = RawSibModel();
+  source.replace(source.find("[7:0]"), 5, "[1048574:0]");
+  source.replace(source.find("ResetValue 8'b0"), 15, "ResetValue 1048575'b0");
+  pattern::Design design;
+  design.AddIcl("native-ordinary.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"open", "1"}, "native:write", {}},
+                       {"iRead", {"open", "0"}, "native:read", {}}});
+  Require(steps.size() == 1 && steps[0].serial == "1" &&
+              steps[0].serial_expected == "0" &&
+              steps[0].writes.at("open") == "1" &&
+              steps[0].expected.at("open") == "0",
+          "one-bit visible preparation precedes million-bit event probing");
+  pattern::NetworkState literal(netlist);
+  const auto id = [&](const std::string& name) {
+    return netlist.node_ids.at(name);
+  };
+  const auto pin = [&](const std::string& name, char bit) {
+    literal.Drive(id(name), std::string(1, bit));
+  };
+  pin("reset", '1');
+  literal.SetGlobalReset('1', '1');
+  literal.Reset();
+  pin("reset", '0');
+  literal.SetGlobalReset('0', '0');
+  literal.Reset();
+  const auto phase = [&](char capture, char shift, char update, char clock) {
+    pin("sel", '1');
+    pin("ce", capture);
+    pin("se", shift);
+    pin("ue", update);
+    pin("tck", clock);
+    literal.Reset();
+  };
+  const auto controls = [&](char capture, char shift, char update) {
+    return std::map<size_t, pattern::ScanControl>{
+        {id("open"), {capture, shift, update, '1'}},
+        {id("child.value"),
+         {capture, shift, update, literal.Value(id("open"))[0]}}};
+  };
+  phase('1', '0', '0', '0');
+  pin("tck", '1');
+  literal.Clock(controls('1', '0', '0'), true);
+  phase('0', '1', '0', '0');
+  pin("si", '1');
+  pin("tck", '1');
+  literal.Clock(controls('0', '1', '0'), true);
+  phase('0', '0', '1', '1');
+  pin("tck", '0');
+  literal.Clock(controls('0', '0', '1'), false);
+  phase('0', '0', '0', '0');
+  for (const auto& node : netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      Require(scheduler.Value(node.name) == literal.Value(id(node.name)),
+              "ordinary native preparation matches independent literal clocks "
+              "and retained wide storage");
+    }
+  }
+}
 void TestMixedRootRawPreparation() {
   pattern::Design design;
   design.AddIcl("mixed-raw.icl", RawSibModel());
@@ -4318,6 +4504,8 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestNativeOrdinaryAliases();
+    TestNativeOrdinaryScans();
     TestMixedRootRawPreparation();
     TestRawScanReservations();
     TestDynamicChildRawScans();

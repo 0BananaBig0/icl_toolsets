@@ -585,6 +585,18 @@
       ],
       "requires_local_reset": false,
       "expected": "ok"
+    },
+    {
+      "id": "native_ordinary_scans",
+      "top": "NativeOrdinaryTop",
+      "icl": [
+        "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/native_ordinary_scans/source.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
     }
   ]
 }

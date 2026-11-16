@@ -4,6 +4,7 @@ import unittest
 import subprocess
 
 import test_opaque_root_scan as opaque
+import benchmark_native_ordinary_scans as native_bench
 
 MODEL = opaque.MODEL.replace('ScanOutPort so;', """ScanRegister value[7:0] {
   ScanInSource si; CaptureSource value; ResetValue 8'b0;
@@ -147,6 +148,36 @@ class ModeledRootScan(unittest.TestCase):
         self.rejected('iProc prepare {} {iWrite open 1}\n'
                       'iReset; iTake open; iCall prepare; '
                       'iScan client 9 -si 0b00000000x; iApply\n', 'reserved', SIB)
+
+    def test_native_ordinary_wide_visible_preparation(self):
+        model = SIB.replace('[7:0]', '[1048574:0]')
+        model = model.replace("ResetValue 8'b0", "ResetValue 1048575'b0")
+        result = self.replay('iReset; iWrite open 1; iRead open 0; '
+                             'iScan client 1048576 -si 1; iApply; '
+                             'iRead open 1; iApply\n', model)
+        self.assertIn('iWrite open 0b1', result)
+        self.assertIn('iRead open 0b0', result)
+        self.assertIn('iScan client 1048576', result)
+
+    def test_native_ordinary_distinct_visible_sibs(self):
+        count = 1024
+        model = native_bench.many_model(count)
+        commands = 'iReset; ' + ''.join(f'iWrite r{i}.enable 1; ' for i in range(count))
+        commands += f'iScan client {9 * count} -si 0b' + '101001011' * count + '; iApply; '
+        commands += 'iRead r0.leaf.value 0xa5; iRead r0.enable 1; iApply\n'
+        result = self.replay(commands, model)
+        self.assertIn('iScan client 9216', result)
+
+    def test_native_ordinary_unknown_fill_and_capture_observers(self):
+        unknown = MODEL.replace("ResetValue 8'b0", "ResetValue 8'bx")
+        result = self.replay('iReset; iWrite value[7] 1; iApply\n', unknown)
+        self.assertIn('iWrite value 0b1', result)
+        external = MODEL.replace('CaptureSource value;', "CaptureSource 8'b00010110;")
+        result = self.replay('iReset; iTake value[3]; iState value 0; '
+                             'iWrite value 0xa5; iRead value 0x3c; iApply; '
+                             'iWrite value[0] 1; iApply\n', external)
+        self.assertIn('iRead value 0b00111100', result)
+        self.assertIn('iWrite value 0b10100101', result)
 
     def test_unqualified_topology_and_directives(self):
         for model in [MODEL.replace('ScanRegister value',

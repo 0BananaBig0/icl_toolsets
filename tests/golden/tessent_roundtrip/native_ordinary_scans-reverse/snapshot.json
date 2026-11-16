@@ -1,0 +1,406 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "native_ordinary_scans",
+    "top": "NativeOrdinaryTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl": "071838b60d73957f5b6eeb0e146c38686904c15597423511f19f2502d87b0e7f",
+    "tests/cases/ours/pattern_generation/native_ordinary_scans/source.pdl": "8aa75b10447eb874cd5ed8e61be354f69364930c34b892f649c2a81dd47f1e77"
+  },
+  "job": {
+    "id": "native_ordinary_scans",
+    "top": "NativeOrdinaryTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/source.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "071838b60d73957f5b6eeb0e146c38686904c15597423511f19f2502d87b0e7f",
+      "source_0.pdl": "8aa75b10447eb874cd5ed8e61be354f69364930c34b892f649c2a81dd47f1e77",
+      "run.tcl": "d2087b008c9151af3fc05c3e4a3155f2092cae990da2fffc8e48318782b253ba"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl": "071838b60d73957f5b6eeb0e146c38686904c15597423511f19f2502d87b0e7f",
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/source.pdl": "8aa75b10447eb874cd5ed8e61be354f69364930c34b892f649c2a81dd47f1e77"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.679862641263753,
+    "outcome": "ok",
+    "result_sha256": "6749ed7612298f873c09725abacf63a1665d7578089b6cc7d41892e8c7a56cde",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "NativeOrdinaryTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "open",
+            0,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "client",
+        "9",
+        "-si",
+        "0b101001011",
+        "-so",
+        "0b000000001"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "0"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "child.value",
+            0,
+            "1"
+          ],
+          [
+            "child.value",
+            1,
+            "1"
+          ],
+          [
+            "child.value",
+            2,
+            "1"
+          ],
+          [
+            "child.value",
+            3,
+            "0"
+          ],
+          [
+            "child.value",
+            4,
+            "0"
+          ],
+          [
+            "child.value",
+            5,
+            "1"
+          ],
+          [
+            "child.value",
+            6,
+            "0"
+          ],
+          [
+            "child.value",
+            7,
+            "1"
+          ],
+          [
+            "open",
+            0,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "994a8012bcf1c76912f4b44e006ba75b162ca0fd5e9f616144a0c6fe4ca906d5",
+  "vendor_console_sha256": "f63c219145987fb11bc5b5473852a78d994f8f064bbe1cc55088fa39469607e3",
+  "artifacts": {
+    "flat.pdl": "956e3474d2199374b18c29945731ce121869469188837ed91590c5634eb75abc",
+    "vendor.pdl": "6749ed7612298f873c09725abacf63a1665d7578089b6cc7d41892e8c7a56cde"
+  }
+}

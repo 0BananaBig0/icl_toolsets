@@ -6,6 +6,7 @@
 #include <chrono>
 #include <functional>
 #include <iterator>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <tuple>
@@ -56,6 +57,14 @@ std::string Masked(const std::string& value, const std::string& mask) {
     if (mask[i] != 'x') result[i] = value.at(i);
   }
   return result;
+}
+std::string InvertBits(std::string bits, bool inverse) {
+  if (inverse) {
+    for (char& bit : bits) {
+      if (bit != 'x') bit = bit == '1' ? '0' : '1';
+    }
+  }
+  return bits;
 }
 SymbolicValue Choose(const z3::expr& choice, const SymbolicValue& a,
                      const SymbolicValue& b) {
@@ -1096,20 +1105,12 @@ class ScanScheduler::Impl {
       intervals.emplace(slice.offset,
                         std::make_pair(slice.offset + slice.width, name));
     }
-    const auto invert = [](std::string bits, bool inverse) {
-      if (inverse) {
-        for (char& bit : bits) {
-          if (bit != 'x') bit = bit == '1' ? '0' : '1';
-        }
-      }
-      return bits;
-    };
     const auto& root = RawChain();
     std::string input(root.width, 'x'), expected(root.width, 'x');
     for (size_t i = 0; i < root.registers.size(); ++i) {
       const auto [id, suffix] = root.registers[i];
       input.replace(root.offsets[i], netlist_.nodes[id].Width(),
-                    invert(fill_.at(id), root.inverted != suffix));
+                    InvertBits(fill_.at(id), root.inverted != suffix));
     }
     bool stable = true;
     std::set<size_t> stable_clients;
@@ -1129,10 +1130,10 @@ class ScanScheduler::Impl {
       }
       input.replace(
           slice.offset, slice.width,
-          invert(operation.arguments[3].substr(2), slice.input_inverted));
+          InvertBits(operation.arguments[3].substr(2), slice.input_inverted));
       expected.replace(
           slice.offset, slice.width,
-          invert(operation.arguments[5].substr(2), slice.output_inverted));
+          InvertBits(operation.arguments[5].substr(2), slice.output_inverted));
       const bool claimed = operation.arguments.back() == "-stable";
       stable = stable && claimed;
       if (claimed) stable_clients.insert(netlist_.node_ids.at(name));
@@ -1150,10 +1151,11 @@ class ScanScheduler::Impl {
     if (assigned) *assigned = std::move(explicit_registers);
     return result;
   }
-  Operation ReplayScan(const Operation& normalized,
-                       const std::set<size_t>& stable_clients,
-                       const std::map<size_t, std::string>& preserved,
-                       const std::set<size_t>& explicit_registers) {
+  Operation ReplayScan(
+      const Operation& normalized, const std::set<size_t>& stable_clients,
+      const std::map<size_t, std::string>& preserved,
+      const std::set<size_t>& explicit_registers,
+      const std::map<size_t, std::string>* exact_desired = nullptr) {
     const auto& profile = RawChain();
     if (global_resets_ != "00") {
       throw std::runtime_error(
@@ -1187,7 +1189,7 @@ class ScanScheduler::Impl {
         throw std::runtime_error(
             "raw scan reservations require ScanRegister storage");
       }
-      if (!explicit_registers.count(id)) continue;
+      if (exact_desired || !explicit_registers.count(id)) continue;
       const auto& bits = loads.at(id);
       for (size_t i = 0; i < mask.size(); ++i) {
         if (mask[i] == 'x') continue;
@@ -1199,6 +1201,7 @@ class ScanScheduler::Impl {
         mask[i] = bits[i];
       }
     }
+    if (exact_desired) desired = *exact_desired;
     auto held = preserved;
     NetworkState replay(state_);
     replay.TakeControlEvents();
@@ -1593,14 +1596,8 @@ class ScanScheduler::Impl {
       }
       // Match Solve's empty-apply exit before constructing an event proof.
       if (operations.empty() && !NeedsEndState(end_states_)) return {};
-      const bool events = (tap_ || client_controls_) && NeedsScanEvents();
-      if (events) {
-        auto regular =
-            TryRegularReads(operations, together, preserved, explicit_writes);
-        if (regular) return std::move(*regular);
-      }
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
-                   explicit_writes, events);
+                   explicit_writes, std::nullopt);
     } catch (const std::exception& error) {
       fill_ = previous_fill;
       std::string message = together ? "iApply -together: " : "";
@@ -1887,6 +1884,101 @@ class ScanScheduler::Impl {
                                  netlist_.nodes.at(id).name);
       }
       previous = actual;
+    }
+  }
+  struct AccessGroup {
+    bool read = false;
+    std::set<size_t> members, requested;
+  };
+  std::tuple<std::string, std::set<size_t>, std::vector<size_t>>
+  CheckAccessGroups(
+      const std::map<std::pair<size_t, bool>, AccessGroup>& groups) const {
+    std::string access_context;
+    std::set<size_t> grouped_reads;
+    for (const auto& [key, group] : groups) {
+      const auto irs = std::count_if(
+          group.members.begin(), group.members.end(),
+          [&](size_t id) { return instruction_registers_.count(id); });
+      if (irs != 0 && static_cast<size_t>(irs) != group.members.size()) {
+        throw std::runtime_error(
+            "IR and DR registers cannot share a simultaneous access");
+      }
+      if (group.read) {
+        grouped_reads.insert(group.requested.begin(), group.requested.end());
+      }
+      if (key.first != kMissing) {
+        access_context += " AccessTogether " + netlist_.nodes[key.first].name;
+      }
+    }
+    std::vector<size_t> read_order(grouped_reads.begin(), grouped_reads.end());
+    std::sort(read_order.begin(), read_order.end(), [&](size_t a, size_t b) {
+      return netlist_.nodes[a].name < netlist_.nodes[b].name;
+    });
+    return {access_context, grouped_reads, read_order};
+  }
+  std::optional<std::vector<ScanStep>> TryNativeScan(
+      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& goals,
+      const std::map<size_t, std::string>& expected,
+      const std::set<size_t>& required, bool together,
+      const std::map<size_t, std::string>& preserved,
+      const std::map<size_t, std::string>& desired_preserved) {
+    if (global_resets_ != "00" || tap_ || (goals.empty() && expected.empty())) {
+      return std::nullopt;
+    }
+    for (const auto& [id, mask] : preserved) {
+      if (netlist_.nodes.at(id).kind != "ScanRegister") return std::nullopt;
+    }
+    try {
+      const auto& profile = RawChain();
+      for (const auto id : required) {
+        if (!profile.indices.count(id)) return std::nullopt;
+      }
+      ScanStep step;
+      const auto endpoint = [&](size_t id) {
+        const auto& node = netlist_.nodes[id];
+        return node.name +
+               (node.indexed ? "[" + std::to_string(node.left) + "]" : "");
+      };
+      step.input = endpoint(profile.input);
+      step.output = endpoint(profile.output);
+      step.together = together && !goals.empty();
+      std::string input(profile.width, 'x'), compare(profile.width, 'x');
+      for (size_t i = 0; i < profile.registers.size(); ++i) {
+        const auto [id, suffix] = profile.registers[i];
+        const auto& node = netlist_.nodes[id];
+        const auto goal = goals.find(id);
+        const auto bits = goal == goals.end() ? WriteFill(id) : goal->second;
+        if (bits.find_first_not_of("01") != std::string::npos) {
+          return std::nullopt;
+        }
+        step.loads.emplace(node.name, bits);
+        step.writes.emplace(node.name, bits);
+        input.replace(profile.offsets[i], node.Width(),
+                      InvertBits(bits, profile.inverted != suffix));
+        const auto read = expected.find(id);
+        if (read != expected.end()) {
+          step.expected.emplace(node.name, read->second);
+          compare.replace(profile.offsets[i], node.Width(),
+                          InvertBits(read->second, suffix));
+        }
+      }
+      step.serial.assign(input.rbegin(), input.rend());
+      step.serial_expected.assign(compare.rbegin(), compare.rend());
+      std::vector<ScanStep> result;
+      result.push_back(std::move(step));
+      auto physical = operations.front();
+      physical.command = "iScan";
+      physical.arguments = {netlist_.nodes[profile.client].name,
+                            std::to_string(profile.width),
+                            "-si",
+                            "0b" + input,
+                            "-so",
+                            "0b" + compare};
+      ReplayScan(physical, {}, preserved, {}, &desired_preserved);
+      return result;
+    } catch (const std::runtime_error&) {
+      return std::nullopt;
     }
   }
   std::set<size_t> ResetTargets(
@@ -4223,7 +4315,7 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& fixed_loads = {},
       bool allow_greedy = true,
       const std::map<size_t, std::string>& preserved = {},
-      bool explicit_writes = true, bool events = false) {
+      bool explicit_writes = true, std::optional<bool> event_mode = false) {
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     if (roots_.empty() && registers_.empty() && !tap_ &&
@@ -4265,10 +4357,6 @@ class ScanScheduler::Impl {
     std::map<size_t, std::map<int64_t, char>> data_reads;
     std::set<size_t> required, group_pins, port_goals;
     std::unique_ptr<AddressResolver> controls;
-    struct AccessGroup {
-      bool read = false;
-      std::set<size_t> members, requested;
-    };
     std::map<std::pair<size_t, bool>, AccessGroup> groups;
     for (const auto& operation : operations) {
       const bool read = operation.command == "iRead";
@@ -4480,30 +4568,29 @@ class ScanScheduler::Impl {
       }
     }
     required.insert(data_controllers.begin(), data_controllers.end());
-    std::string access_context;
-    std::set<size_t> grouped_reads;
-    for (const auto& [key, group] : groups) {
-      const auto irs = std::count_if(
-          group.members.begin(), group.members.end(),
-          [&](size_t id) { return instruction_registers_.count(id); });
-      if (irs != 0 && static_cast<size_t>(irs) != group.members.size()) {
-        throw std::runtime_error(
-            "IR and DR registers cannot share a simultaneous access");
-      }
-      if (group.read) {
-        grouped_reads.insert(group.requested.begin(), group.requested.end());
-      }
-      if (key.first != kMissing) {
-        access_context += " AccessTogether " + netlist_.nodes[key.first].name;
-      }
-    }
-    std::vector<size_t> read_order(grouped_reads.begin(), grouped_reads.end());
-    std::sort(read_order.begin(), read_order.end(), [&](size_t a, size_t b) {
-      return netlist_.nodes[a].name < netlist_.nodes[b].name;
-    });
+    const auto [access_context, grouped_reads, read_order] =
+        CheckAccessGroups(groups);
     CheckScanConnectivity(required);
     const auto desired_preserved =
         DesiredPreserved(preserved, end_goals, explicit_writes, operations);
+    bool events = event_mode.value_or(false);
+    if (!event_mode) {
+      const bool native_groups = std::all_of(
+          groups.begin(), groups.end(),
+          [](const auto& entry) { return entry.first.first == kMissing; });
+      if (fixed_loads.empty() && !mixed && data_plan.order.empty() &&
+          end_states_.empty() && data_reads.empty() && native_groups) {
+        auto native = TryNativeScan(operations, goals, expected, required,
+                                    together, preserved, desired_preserved);
+        if (native) return std::move(*native);
+      }
+      events = (tap_ || client_controls_) && NeedsScanEvents();
+      if (events) {
+        auto regular =
+            TryRegularReads(operations, together, preserved, explicit_writes);
+        if (regular) return std::move(*regular);
+      }
+    }
     if (allow_greedy && !mixed && !events && goals.size() >= 4 && !together &&
         groups.empty() && end_states_.empty() && expected.empty() &&
         data_reads.empty()) {
