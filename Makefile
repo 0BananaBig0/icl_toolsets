@@ -1090,6 +1090,7 @@ python3 tests/src/pattern/test_raw_tap_ir_scan.py $1
 python3 tests/src/pattern/test_raw_tap_dr_scan.py $1
 python3 tests/src/pattern/test_raw_tap_builtin_dr.py $1
 python3 tests/src/pattern/test_raw_tap_multiple_dr.py $1
+python3 tests/src/pattern/test_native_tap_data.py $1
 python3 tests/src/pattern/test_multiple_tap_scheduling.py $1
 python3 tests/src/pattern/test_apply_end_state.py $1
 python3 tests/src/pattern/test_data_register_scheduling.py $1
