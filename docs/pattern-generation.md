@@ -5748,3 +5748,60 @@ raw replay succeeds. Unsupported or ambiguous local routes retain bounded
 failure. Existing SI/X, clocks/reset and resource rules remain in force.
 
 Verified Task113: a reset-closed modeled child now receives every required parent CSU before its final physical raw packet. Existing local RawRoute and combined prefix-only TryGreedy planning are reused; strict native defaults and existing SI/X rules remain. Preparation plus final geometry/overlap/stable/ownership/replay proof runs on a complete copy and publishes state, controlling fill, assigned IDs and prefix outputs only together. Every prefix is rendered through existing output flow; no target dummy CSU, new engine/dependency/RTL or raised guard. True native/source RED preceded implementation. Scale RED exposed unnecessary general reset/event work; qualified immutable inactive resets and existing native-first ordinary execution resolve it without changing default planner callers. Independent final review found no Critical/Important/Minor issues. Native literal original/flat checks, output/state rollback and retry, ownership, nested/disjoint paths,16 parity/index/alias subcases and source/flat/generated/reset replays pass; automatic CLI11, modeled77, opaque13 and style checks pass. All88 local and88 remote matched-option benchmark commands succeed with exact output/artifact hashes; saved reference fingerprints match Task112. Automatic source1M physical route1.17-1.19s local/1.90s remote,1024 parents with512 aliases .77-.78s/1.17-1.18s,97 levels .33-.34s/.62-.63s,reopen128 .37-.40s/.79-.87s; peak source216536/211988KiB. Original16-file Root freeze stayed byte-identical through full serial make check0 in1538.4046997200348s/editor6 in175.756s,27 fresh leak-enabled SAN gates0,remote62 gates0 and3976 actual input hashes. Parser334/334 and scanner119/119 rules reached; five optional ANTLR integration tests skipped. Initial Tessent2026.2 reverse rejects internal ScanInterface; forward executes0 but adds a parent reset-value comparison, so strict record fails and its trace remains unqualified. A unique unknown-capture parent reusing the existing leaf is separately certified by genuine forward run/strict record/check0, with all source/job-input/artifact/console hashes and measured binary fingerprint verified before8 schema3 files are imported. Reverse still rejects the internal interface. This data-only amendment receives fresh corpus2562/zero duplicate-file groups/26 reviewed repeated-module groups,77 optimized and SAN offline certificates, focused static certificate and all oracle/golden/roundtrip harness checks0; final remote6 gates0 and3985 actual inputs match. Original and qualified snapshots/recovery evidence are retained. Integrate into master and delete the completed task branch; no push. Known self-capture vendor comparison differences, bounded select-only/unknown-parent preparation, opaque/parallel/multi-TAP/rawmerge, broader events/reset/clock/ownership, strict coverage and final release acceptance remain open.
+
+### Literal unknown input on qualified raw TAP paths
+
+A bound scalar single-root TAP may shift literal X input on qualified IR,
+modeled full DR and existing builtin paths. The emitted packet retains X, and
+actual three-valued hardware replay receives X. Only known addressed SI bits
+refresh controlling fill; a later partial ordinary write retains earlier fill
+for X positions. Established protected X assignments remain errors.
+
+The ordinary planner validates target privileges, access groups, end-state
+requirements and one exact compatible CSU on a disposable copy. Its binary
+choices are discarded. Existing TAP cycle replay executes the literal packet
+from the original execution copy, with per-edge preservation checks and actual
+final-load/end-state/stable validation before publication. All-binary behavior
+is unchanged. SO remains an authored comparison, including values differing
+from cached capture. No new FSM, solver, walker, dependency or raised guard.
+
+This profile requires canonical phase/clock forwarding, held-IR-only selection
+and inactive immutable resets. Unsupported gated/control/reset histories fail
+explicitly. Unknown IR values retain the existing instruction-alternative and
+event-work limits; a large unknown opcode mask is not a supported-scale claim.
+
+Verified Task114: qualified scalar single-root raw TAP IR, complete modeled DR
+and existing builtin paths replay literal unknown SI. The ordinary single-CSU
+proof is disposable; shared ReplayTapStep/Cycle alone supplies adopted literal
+hardware/execution state. Known SI positions alone refresh controlling fill;
+protected X assignments reject, with per-edge reservations and actual final
+load/end-state/stable checks before state and both caller outputs publish.
+Existing binary dispatch, permissions, source-family validation and event/IR
+bounds remain; no new engine/dependency/RTL or raised limit. True source2/native
+runtime RED preceded implementation. Original/flat literal endpoint and clock
+checks, post-replay stable rollback/retry, ownership/fill/end-state/builtin cases,
+11 source tests including16 parity/index/alias subcases and32-bit compact IR
+masks pass;4096 event-work rejection remains. A proposed serial-selector review
+finding was withdrawn after actual elaboration rejected both source-family
+variants and Read(false) was verified to use held update storage. Corrected
+review has no Critical/Important/Minor findings; no speculative guard was added.
+Format/tidy/build/native and all7 local qualification gates pass. Both platforms
+52 artifact-verified measurements pass (32 literal-X,20 known binary; no completing
+old X baseline or speedup claim). Literal64x4 .50-.55s local/.85s remote,512aliases
+.79-.80s/1.47s,1024 unrelated .30-.31s/.55s,IR4repeat16 .53s/.94s;128 wide literal
+packets21.49-22.15s/52.53-52.67s, so no15s whole-program claim. Peak literal
+261724/261860KiB. Existing known-native128 packets10.67-10.71s/25.97-26.07s.
+Original15-file freeze remains byte-identical through full serial make check0
+in1564.5019128859858s/editor6 in174.330s and28 fresh leak-enabled SAN gates0. Five optional ANTLR integration tests were skipped. Existing77
+directional certificates pass. Initial remote63 statuses include two faulty test
+expectations (compact IR mask and8-bit benchmark value);60 unchanged passing
+gates are reused with exactly2 script exclusions, correctedCLI/benchmark/verify/
+aggregate4 gates freshly pass and all3991 current input hashes match. Original
+failure evidence is retained. Fresh Tessent2026.2 IR/DR forward/reverse runs all
+exit1 explicitly rejecting SI containing X; source/job-input/console hashes,
+version and absence of results are verified. No new certificate or registry
+entry is created, and no Tessent equivalence is claimed for literal-X export.
+Only verified documentation changes follow the original freeze. Integrate into
+master/delete the finished branch; no push. Opaque/parallel/multi-TAP/rawmerge,
+noncanonical X profiles, broader event/reset/clock/ownership, strict coverage
+and final release acceptance remain open.

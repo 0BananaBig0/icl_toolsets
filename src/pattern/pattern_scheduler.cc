@@ -1164,9 +1164,6 @@ class ScanScheduler::Impl {
     }
     RawTapClient(data.arguments[0]);
     auto normalized = pattern::NormalizeScan(context_, data.arguments[0], data);
-    if (normalized.arguments[3].find('x') != std::string::npos) {
-      throw std::runtime_error("raw TAP scan input requires known binary data");
-    }
     if (!defer_length) {
       const auto width =
           instruction ? netlist_.nodes[tap_->instruction_register].Width()
@@ -1272,10 +1269,124 @@ class ScanScheduler::Impl {
       const RawTapRequest& request,
       const std::map<size_t, std::string>& preserved) {
     InvalidateRawRoute();
+    const size_t offset = request.instruction ? 1 : 0;
+    if (request.operation.arguments[3 + offset].find('x') !=
+        std::string::npos) {
+      return ApplyLiteralTapScan(request, preserved);
+    }
     auto steps =
         Apply(request.accesses, false, preserved, true, request.permitted);
     InvalidateRawRoute();
     return steps;
+  }
+  std::vector<ScanStep> ApplyLiteralTapScan(
+      const RawTapRequest& request,
+      const std::map<size_t, std::string>& preserved) {
+    const auto fail = [] {
+      throw std::runtime_error(
+          "literal raw TAP input requires one qualified exact CSU");
+    };
+    if (!NativeTapShape()) fail();
+    ConcretePath path;
+    if (request.instruction) {
+      const auto input = tap_->pins.at("tap_scan_in");
+      path.input = {input, netlist_.nodes[input].left};
+      path.registers = {{tap_->instruction_register, false}};
+      path.width = request.width;
+    } else {
+      path = RawDataPath();
+    }
+    if (!NativeTapControls(path)) fail();
+    const auto end_goals = EndGoals(request.accesses);
+    const auto desired =
+        DesiredPreserved(preserved, end_goals, true, request.accesses);
+    for (const auto& [name, bits] : request.loads) {
+      const auto held = preserved.find(netlist_.node_ids.at(name));
+      if (held == preserved.end()) continue;
+      for (size_t i = 0; i < bits.size(); ++i) {
+        if (bits[i] == 'x' && held->second[i] != 'x') {
+          throw std::runtime_error(
+              "raw assignment of reserved resource is unknown: " + name);
+        }
+      }
+    }
+    // Reuse ordinary validation on a disposable binary proof, never its fill.
+    Impl proof(*this);
+    const auto steps = proof.Apply(request.accesses, false, preserved, true,
+                                   request.permitted);
+    if (steps.size() != 1) fail();
+    auto step = steps.front();
+    const size_t offset = request.instruction ? 1 : 0;
+    const auto input = request.operation.arguments[3 + offset].substr(2);
+    const auto output = request.operation.arguments[5 + offset].substr(2);
+    const std::string serial(input.rbegin(), input.rend());
+    if (step.instruction != request.instruction || !step.lanes.empty() ||
+        step.input != request.input || step.output != request.output ||
+        step.loads.size() != request.loads.size() ||
+        step.writes != step.loads || step.expected != request.expected ||
+        step.serial.size() != serial.size() ||
+        step.serial_expected != std::string(output.rbegin(), output.rend())) {
+      fail();
+    }
+    for (const auto& [name, bits] : request.loads) {
+      const auto found = step.loads.find(name);
+      if (found == step.loads.end() || found->second.size() != bits.size()) {
+        fail();
+      }
+      for (size_t i = 0; i < bits.size(); ++i) {
+        if (bits[i] != 'x' && bits[i] != found->second[i]) fail();
+      }
+    }
+    for (size_t i = 0; i < serial.size(); ++i) {
+      if (serial[i] != 'x' && serial[i] != step.serial[i]) fail();
+    }
+    step.loads = step.writes = request.loads;
+    step.serial = serial;
+    auto run = std::make_unique<TapExecution>(*execution_);
+    run->TakeControlEvents();
+    run->TakeResetEvents();
+    auto held = preserved;
+    const auto check = [&](const NetworkState& state) {
+      CheckPreserved(state, held, desired);
+    };
+    check(run->State());
+    std::map<size_t, ScanControl> controls;
+    for (const auto& [id, suffix] : path.registers) {
+      controls.emplace(id, ScanControl{'1', '0', '0', '1'});
+    }
+    const std::vector<std::pair<BitReference, ScanLane>> lanes = {
+        {path.input,
+         {step.input, step.output, step.serial, step.serial_expected}}};
+    const auto [writable, reset_held] =
+        ReplayTapStep(step, lanes, controls, run.get(), check);
+    if (!run->TakeResetEvents().empty()) fail();
+    for (const auto& [id, control] : controls) {
+      if (!writable.count(id) ||
+          run->State().Value(id) != request.loads.at(netlist_.nodes[id].name)) {
+        fail();
+      }
+    }
+    for (const auto& [id, bits] : end_goals) {
+      if (Masked(run->State().Value(id), bits) != bits) fail();
+    }
+    auto fill = fill_;
+    for (const auto& [id, bits] : end_states_) {
+      for (size_t i = 0; i < bits.size(); ++i) {
+        if (bits[i] != 'x') fill.at(id)[i] = bits[i];
+      }
+    }
+    for (const auto& [name, bits] : request.loads) {
+      auto& retained = fill.at(netlist_.node_ids.at(name));
+      for (size_t i = 0; i < bits.size(); ++i) {
+        if (bits[i] != 'x') retained[i] = bits[i];
+      }
+    }
+    run->TakeControlEvents();
+    state_.Restore(run->State());
+    execution_ = std::move(run);
+    fill_ = std::move(fill);
+    InvalidateRawRoute();
+    return {std::move(step)};
   }
   void CheckRawTapStable(const RawTapRequest& request) {
     if (request.instruction ||
@@ -2318,27 +2429,31 @@ class ScanScheduler::Impl {
     }
     return true;
   }
-  std::optional<std::vector<ScanStep>> TryNativeTapScan(
-      const std::map<size_t, std::string>& goals,
-      const std::map<size_t, std::string>& expected,
-      const std::set<size_t>& required, bool together,
-      const std::map<size_t, std::string>& preserved,
-      const std::map<size_t, std::string>& desired_preserved) {
+  bool NativeTapShape() {
     if (!tap_ || netlist_.taps.size() != 1 || roots_.size() != 1 ||
-        !tap_ready_ || global_resets_ != "00" || required.empty() ||
+        !tap_ready_ || global_resets_ != "00" ||
         std::any_of(registers_.begin(), registers_.end(), [&](size_t id) {
           const auto& reset = netlist_.nodes[id].reset;
           return reset && (reset->node != kMissing ||
                            reset->virtual_signal == VirtualSignal::kNone ||
                            reset->inverted);
         })) {
-      return std::nullopt;
+      return false;
     }
     // Keep the existing event-work limit even when no symbolic history is
     // built.
     if ((MaximumScanLength() + 1) * EventWorkSize() > 1048576) {
-      return std::nullopt;
+      return false;
     }
+    return true;
+  }
+  std::optional<std::vector<ScanStep>> TryNativeTapScan(
+      const std::map<size_t, std::string>& goals,
+      const std::map<size_t, std::string>& expected,
+      const std::set<size_t>& required, bool together,
+      const std::map<size_t, std::string>& preserved,
+      const std::map<size_t, std::string>& desired_preserved) {
+    if (required.empty() || !NativeTapShape()) return std::nullopt;
     try {
       const auto path = RawDataPath();
       if (!NativeTapControls(path)) return std::nullopt;

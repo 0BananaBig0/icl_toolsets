@@ -111,11 +111,11 @@ class RawTapDrScan(unittest.TestCase):
         self.rejected('iReset; iScan -ir jtag 4 -si 15; iApply; iScan jtag 2; iApply\n', 'length')
 
     def test_malformed_data_remains_early(self):
-        for command,diagnostic in [('iScan jtag 8 -si 0bx001','known'),
-                ('iScan core.client 8','client-TAP'),
+        for command,diagnostic in [('iScan core.client 8','client-TAP'),
                 ('iScan jtag -chain other 8','chain'),
                 ('iScan jtag 0','length'),('iScan jtag 8 -si 256','scan')]:
             self.rejected(command+'; iReset\n',diagnostic)
+        self.replay('iScan jtag 8 -si 0bx001; iReset; iApply\n')
 
 if __name__ == '__main__':
     unittest.main()

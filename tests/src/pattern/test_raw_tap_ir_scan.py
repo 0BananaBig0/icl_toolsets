@@ -106,7 +106,6 @@ class RawTapIrScan(unittest.TestCase):
         for command, diagnostic in [
                 ('iScan -ir missing 4', 'client'),
                 ('iScan -ir jtag 4 -si 16', 'scan'),
-                ('iScan -ir jtag 4 -si 0bx001', 'known'),
                 ('iScan -ir jtag -chain other 4', 'chain'),
                 ('iScan -ir jtag 0', 'length'),
                 ('iScan -ir jtag 1048577', 'length'),
@@ -114,6 +113,7 @@ class RawTapIrScan(unittest.TestCase):
             with self.subTest(command=command):
                 self.rejected(command + '; iReset\n', diagnostic)
         self.rejected('iReset; iScan jtag 4; iApply\n', 'length')
+        self.replay('iScan -ir jtag 4 -si 0bx001; iReset; iApply\n')
         self.rejected('iReset; iScan -ir jtag 4; iWrite core.r 1; iApply -together\n', 'together')
 
 
