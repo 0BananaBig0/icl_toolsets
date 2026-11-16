@@ -463,18 +463,21 @@ class ScanScheduler::Impl {
     control_seen_ = std::move(trial.control_seen_);
     return steps;
   }
-  BitReference EndStateSource(BitReference bit) const {
+  BitReference EndStateSource(
+      BitReference bit, std::optional<size_t> terminal = std::nullopt) const {
     std::set<Key> visited;
     while (bit.node != kMissing) {
       const auto& node = netlist_.nodes.at(bit.node);
       if (!visited.emplace(bit.node, bit.index).second) {
         throw std::runtime_error("cyclic iApplyEndState source");
       }
-      if (node.kind == "ScanRegister" || node.kind == "DataRegister" ||
+      if (terminal == std::optional<size_t>{bit.node} ||
+          node.kind == "ScanRegister" || node.kind == "DataRegister" ||
           PrimaryInput(node)) {
         return bit;
       }
-      if (node.model != ModelKind::kAlias && node.kind != "DataInPort" &&
+      if (!(terminal && node.model == ModelKind::kPort) &&
+          node.model != ModelKind::kAlias && node.kind != "DataInPort" &&
           node.kind != "DataOutPort") {
         throw std::runtime_error("unsuitable iApplyEndState source " +
                                  node.name);
@@ -604,15 +607,18 @@ class ScanScheduler::Impl {
     }
     return false;
   }
-  void Cycle(TapExecution* run, char tms,
-             const std::map<size_t, std::string>& serial = {},
-             const std::function<void(const NetworkState&)>& check = {}) const {
+  void Cycle(
+      TapExecution* run, char tms,
+      const std::map<size_t, std::string>& serial = {},
+      const std::function<void(const NetworkState&)>& check = {},
+      const std::function<void(const NetworkState&)>& sample = {}) const {
     auto pins = serial;
     for (const auto& [name, tap] : netlist_.taps) {
       pins.emplace(tap.pins.at("tap_scan_mode"), std::string(1, tms));
       pins.emplace(tap.pins.at("tap_scan_in"), "0");
     }
     run->Drive(pins);
+    if (sample) sample(run->State());
     run->RisingEdge(tap_clocks_);
     if (check) check(run->State());
     run->FallingEdge(tap_clocks_);
@@ -2166,7 +2172,11 @@ class ScanScheduler::Impl {
       const std::set<size_t>& required, bool together,
       const std::map<size_t, std::string>& preserved,
       const std::map<size_t, std::string>& desired_preserved) {
-    if (global_resets_ != "00" || tap_ || (goals.empty() && expected.empty())) {
+    if (tap_) {
+      return TryNativeTapScan(goals, expected, required, together, preserved,
+                              desired_preserved);
+    }
+    if (global_resets_ != "00" || (goals.empty() && expected.empty())) {
       return std::nullopt;
     }
     for (const auto& [id, mask] : preserved) {
@@ -2220,6 +2230,151 @@ class ScanScheduler::Impl {
                             "0b" + compare};
       ReplayScan(physical, {}, preserved, {}, &desired_preserved);
       return result;
+    } catch (const std::runtime_error&) {
+      return std::nullopt;
+    }
+  }
+  bool NativeTapControls(const ConcretePath& path) {
+    auto roles = tap_->controls;
+    roles.emplace("clock", tap_->pins.at("tap_scan_clock"));
+    const std::map<std::string, std::string> kinds = {
+        {"CaptureEnPort", "capture"},
+        {"ShiftEnPort", "shift"},
+        {"UpdateEnPort", "update"},
+        {"TCKPort", "clock"}};
+    Values immutable;
+    immutable.emplace(tap_->instruction_register,
+                      SymbolicValue::Literal(
+                          context_, state_.Value(tap_->instruction_register)));
+    SymbolicNetwork selection(netlist_, context_, std::move(immutable), "00");
+    for (const auto& [id, suffix] : path.registers) {
+      const auto found = execution_->RegisterInterfaces().find(id);
+      if (found == execution_->RegisterInterfaces().end()) continue;
+      for (const auto& interface : found->second) {
+        for (const auto& [kind, pins] : interface) {
+          const auto role = kinds.find(kind);
+          if (role == kinds.end() && kind != "SelectPort") continue;
+          for (const auto& [port, index] : pins) {
+            if (kind == "SelectPort") {
+              if (!Known(selection.Read({port, index}), true)
+                       .simplify()
+                       .is_true()) {
+                return false;
+              }
+            } else {
+              const auto target = roles.at(role->second);
+              const auto source = EndStateSource({port, index}, target);
+              if (source.node != target || source.inverted ||
+                  source.index != netlist_.nodes[target].left) {
+                return false;
+              }
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }
+  std::optional<std::vector<ScanStep>> TryNativeTapScan(
+      const std::map<size_t, std::string>& goals,
+      const std::map<size_t, std::string>& expected,
+      const std::set<size_t>& required, bool together,
+      const std::map<size_t, std::string>& preserved,
+      const std::map<size_t, std::string>& desired_preserved) {
+    if (!tap_ || netlist_.taps.size() != 1 || roots_.size() != 1 ||
+        !tap_ready_ || global_resets_ != "00" || required.empty() ||
+        std::any_of(registers_.begin(), registers_.end(), [&](size_t id) {
+          const auto& reset = netlist_.nodes[id].reset;
+          return reset && (reset->node != kMissing ||
+                           reset->virtual_signal == VirtualSignal::kNone ||
+                           reset->inverted);
+        })) {
+      return std::nullopt;
+    }
+    // Keep the existing event-work limit even when no symbolic history is
+    // built.
+    if ((MaximumScanLength() + 1) * EventWorkSize() > 1048576) {
+      return std::nullopt;
+    }
+    try {
+      const auto path = RawDataPath();
+      if (!NativeTapControls(path)) return std::nullopt;
+      std::map<size_t, ScanControl> controls;
+      ScanStep step;
+      const auto endpoint = [&](size_t id) {
+        const auto& node = netlist_.nodes[id];
+        return node.name +
+               (node.indexed ? "[" + std::to_string(node.left) + "]" : "");
+      };
+      step.input = endpoint(path.input.node);
+      step.output = endpoint(tap_->pins.at("tap_scan_out"));
+      step.together = together && !goals.empty();
+      for (const auto& [id, suffix] : path.registers) {
+        if (tap_data_registers_.count(id)) return std::nullopt;
+        const auto& name = netlist_.nodes[id].name;
+        const auto goal = goals.find(id);
+        const auto bits = goal == goals.end() ? WriteFill(id) : goal->second;
+        if (bits.find_first_not_of("01") != std::string::npos) {
+          return std::nullopt;
+        }
+        step.loads.emplace(name, bits);
+        const auto input = InvertBits(bits, path.inverted != suffix);
+        step.serial.append(input.rbegin(), input.rend());
+        const auto read = expected.find(id);
+        auto compare = std::string(bits.size(), 'x');
+        if (read != expected.end()) {
+          step.expected.emplace(name, read->second);
+          compare = InvertBits(read->second, suffix);
+        }
+        step.serial_expected.append(compare.rbegin(), compare.rend());
+        controls.emplace(id, ScanControl{'1', '0', '0', '1'});
+      }
+      for (size_t id : required) {
+        if (!controls.count(id)) return std::nullopt;
+      }
+      auto run = std::make_unique<TapExecution>(*execution_);
+      run->TakeControlEvents();
+      run->TakeResetEvents();
+      auto held = preserved;
+      const auto check = [&](const NetworkState& state) {
+        CheckPreserved(state, held, desired_preserved);
+      };
+      check(run->State());
+      const auto output = tap_->pins.at("tap_scan_out");
+      const auto observe = [&](size_t tick, const NetworkState& state) {
+        const char expected_bit = step.serial_expected[tick];
+        if (expected_bit != 'x' &&
+            state.Read({output, netlist_.nodes[output].left}, true) !=
+                expected_bit) {
+          throw std::runtime_error("native TAP capture comparison differs");
+        }
+      };
+      const std::vector<std::pair<BitReference, ScanLane>> lanes = {
+          {path.input,
+           {step.input, step.output, step.serial, step.serial_expected}}};
+      const auto [writable, reset_held] =
+          ReplayTapStep(step, lanes, controls, run.get(), check, observe);
+      const auto history = run->TakeControlEvents();
+      if (!run->TakeResetEvents().empty()) return std::nullopt;
+      for (const auto& [id, event] : history) {
+        if (!controls.count(id)) return std::nullopt;
+      }
+      auto fill = fill_;
+      for (const auto& [id, control] : controls) {
+        const auto& name = netlist_.nodes[id].name;
+        const auto event = history.find(id);
+        if (!writable.count(id) || event == history.end() || !event->second ||
+            *event->second != step.loads.at(name) ||
+            run->State().Value(id) != step.loads.at(name)) {
+          return std::nullopt;
+        }
+        step.writes.emplace(name, step.loads.at(name));
+        fill[id] = step.loads.at(name);
+      }
+      state_.Restore(run->State());
+      execution_ = std::move(run);
+      fill_ = std::move(fill);
+      return std::vector<ScanStep>{std::move(step)};
     } catch (const std::runtime_error&) {
       return std::nullopt;
     }
@@ -5651,6 +5806,41 @@ class ScanScheduler::Impl {
     }
     return controls;
   }
+  std::pair<std::set<size_t>, std::set<size_t>> ReplayTapStep(
+      const ScanStep& step,
+      const std::vector<std::pair<BitReference, ScanLane>>& lanes,
+      const std::map<size_t, ScanControl>& controls, TapExecution* tap_replay,
+      const std::function<void(const NetworkState&)>& check,
+      const std::function<void(size_t, const NetworkState&)>& observe = {}) {
+    const size_t clocks = lanes.front().second.serial.size();
+    std::set<size_t> writable, reset_held;
+    for (char tms : std::string(step.instruction ? "1100" : "100")) {
+      Cycle(tap_replay, tms, {}, check);
+    }
+    for (size_t i = 0; i < clocks; ++i) {
+      std::map<size_t, std::string> inputs;
+      for (const auto& [input, lane] : lanes) {
+        inputs.emplace(input.node, std::string(1, lane.serial[i]));
+      }
+      Cycle(tap_replay, i + 1 == clocks ? '1' : '0', inputs, check,
+            observe ? std::function<void(
+                          const NetworkState&)>{[&](const NetworkState& state) {
+              observe(i, state);
+            }}
+                    : std::function<void(const NetworkState&)>{});
+    }
+    for (const auto& [id, control] : controls) {
+      const auto& node = netlist_.nodes[id];
+      if (!node.reset || tap_replay->State().Read(*node.reset) == '0') {
+        writable.insert(id);
+      } else if (tap_replay->State().Read(*node.reset) == '1') {
+        reset_held.insert(id);
+      }
+    }
+    Cycle(tap_replay, '1', {}, check);
+    Cycle(tap_replay, '0', {}, check);
+    return {std::move(writable), std::move(reset_held)};
+  }
   ScanStep Replay(const Frame& frame, const z3::model& model,
                   const std::map<size_t, std::string>& expected,
                   const std::set<size_t>& required, bool events,
@@ -5770,26 +5960,8 @@ class ScanScheduler::Impl {
     }
     std::set<size_t> writable, reset_held;
     if (tap_replay) {
-      for (char tms : std::string(step.instruction ? "1100" : "100")) {
-        Cycle(tap_replay, tms, {}, check);
-      }
-      for (size_t i = 0; i < clocks; ++i) {
-        std::map<size_t, std::string> inputs;
-        for (const auto& [input, lane] : lanes) {
-          inputs.emplace(input.node, std::string(1, lane.serial[i]));
-        }
-        Cycle(tap_replay, i + 1 == clocks ? '1' : '0', inputs, check);
-      }
-      for (const auto& [id, control] : controls) {
-        const auto& node = netlist_.nodes[id];
-        if (!node.reset || tap_replay->State().Read(*node.reset) == '0') {
-          writable.insert(id);
-        } else if (tap_replay->State().Read(*node.reset) == '1') {
-          reset_held.insert(id);
-        }
-      }
-      Cycle(tap_replay, '1', {}, check);
-      Cycle(tap_replay, '0', {}, check);
+      std::tie(writable, reset_held) =
+          ReplayTapStep(step, lanes, controls, tap_replay, check);
       replay->Restore(tap_replay->State());
     } else {
       std::set<size_t> active;

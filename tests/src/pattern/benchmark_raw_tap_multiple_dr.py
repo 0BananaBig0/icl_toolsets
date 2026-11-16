@@ -6,8 +6,8 @@ import benchmark_raw_tap_ir_scan as ir
 FIXTURE=ir.ROOT/'tests/cases/ours/pattern_generation/raw_tap_multiple_dr'
 
 
-def scenarios():
-    for count,width,unused,repeats,aliases in [(3,4,0,1,0),(16,4,0,1,0),
+def scenarios(shapes=None):
+    for count,width,unused,repeats,aliases in shapes if shapes is not None else [(3,4,0,1,0),(16,4,0,1,0),
             (64,1,0,1,0),(16,16,0,1,0),(3,4,1024,1,0),(3,4,0,128,0),
             (64,1,0,1,512),(16,256,0,1,0)]:
         model=(FIXTURE/'model.icl').read_text()
