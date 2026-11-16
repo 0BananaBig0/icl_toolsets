@@ -1,0 +1,8 @@
+iPDLLevel 1
+iProcsForModule MultipleDrTop
+iReset
+iWrite tap.INSTRUCTION 3; iRead tap.INSTRUCTION 1; iApply
+iScan jtag 8 -si 0x96 -so 0; iApply
+iRead core.a 4; iRead core.b 22; iApply
+iWrite core.a[0] 1; iRead core.a 4; iRead core.b 22; iApply
+iScan jtag 8 -si 0x3c -so 0xb6; iApply

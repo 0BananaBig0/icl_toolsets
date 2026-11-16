@@ -1,0 +1,340 @@
+{
+  "schema": 3,
+  "policy": "resolved-bits-ordered-applies-v1",
+  "direction": "reverse",
+  "case": {
+    "id": "raw_tap_multiple_dr",
+    "top": "MultipleDrTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/source.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.bsdl",
+    "bsdl_entity": "MultipleDrProbe",
+    "requires_local_reset": false,
+    "expected": "ok"
+  },
+  "source_hashes": {
+    "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.icl": "076c594838542a55a20ccc6bab4ee8f6c7f3833dfeb1cf4d380f7ff8a832243e",
+    "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/source.pdl": "e01da509e5d8edd4f962f42cc5a72d703f573201964e1d3e479d9baa3ef04390",
+    "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.bsdl": "933251d782e7b2d1d2d745dd08734ff7fc79ae20615b61f421745658f523e5b8"
+  },
+  "job": {
+    "id": "raw_tap_multiple_dr",
+    "top": "MultipleDrTop",
+    "icl": [
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/source.pdl"
+    ],
+    "bsdl": "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.bsdl",
+    "bsdl_entity": "MultipleDrProbe",
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "076c594838542a55a20ccc6bab4ee8f6c7f3833dfeb1cf4d380f7ff8a832243e",
+      "source_0.pdl": "e01da509e5d8edd4f962f42cc5a72d703f573201964e1d3e479d9baa3ef04390",
+      "model.bsdl": "933251d782e7b2d1d2d745dd08734ff7fc79ae20615b61f421745658f523e5b8",
+      "run.tcl": "4f951d5c6a358d2b162e029486d592e0aa661c30b729ef8e05a6f44663853be9"
+    },
+    "tessent_pdl_inputs": [
+      "source_0.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.icl": "076c594838542a55a20ccc6bab4ee8f6c7f3833dfeb1cf4d380f7ff8a832243e",
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/source.pdl": "e01da509e5d8edd4f962f42cc5a72d703f573201964e1d3e479d9baa3ef04390",
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/model.bsdl": "933251d782e7b2d1d2d745dd08734ff7fc79ae20615b61f421745658f523e5b8"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.8304732837714255,
+    "outcome": "ok",
+    "result_sha256": "ffe8335b3b3f8d9749ee9c62ee1a0fb03aafdf7073975fe9b4c66b02e16a7ad5",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "trace": {
+    "binding": "MultipleDrTop",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "writes": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "reads": [
+          [
+            "tap.INSTRUCTION",
+            0,
+            "1"
+          ],
+          [
+            "tap.INSTRUCTION",
+            1,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            2,
+            "0"
+          ],
+          [
+            "tap.INSTRUCTION",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "jtag",
+        "8",
+        "-si",
+        "0b10010110",
+        "-so",
+        "0b00000000"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.a",
+            0,
+            "0"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            4,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "core.a",
+            0,
+            "0"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            4,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "writes": [
+          [
+            "core.a",
+            0,
+            "1"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            4,
+            "1"
+          ]
+        ],
+        "reads": [
+          [
+            "core.a",
+            0,
+            "0"
+          ],
+          [
+            "core.a",
+            1,
+            "0"
+          ],
+          [
+            "core.a",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            0,
+            "0"
+          ],
+          [
+            "core.b",
+            1,
+            "1"
+          ],
+          [
+            "core.b",
+            2,
+            "1"
+          ],
+          [
+            "core.b",
+            3,
+            "0"
+          ],
+          [
+            "core.b",
+            4,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      [
+        "iScan",
+        "jtag",
+        "8",
+        "-si",
+        "0b00111100",
+        "-so",
+        "0b10110110"
+      ],
+      {
+        "writes": [],
+        "reads": [],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "binary_sha256": "01d482dab25e5e343edeb86e5ff85bd5402300cb19b0b9510423693c351922c8",
+  "vendor_console_sha256": "39cef4352f0190f9f0afd377f742823a0f47be9efe5b9ba8a4dfd1f6d73db33b",
+  "artifacts": {
+    "flat.pdl": "14bdc08b3e9964b28fcaa6be0d16b943a8236338d18b02e4e4e80d111fc917d7",
+    "vendor.pdl": "ffe8335b3b3f8d9749ee9c62ee1a0fb03aafdf7073975fe9b4c66b02e16a7ad5"
+  }
+}

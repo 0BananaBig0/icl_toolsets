@@ -49,6 +49,207 @@ Module Top {
 }
 )ICL";
 }
+void TestRawTapMultipleDrScans() {
+  const std::string folder =
+      "tests/cases/ours/pattern_generation/raw_tap_multiple_dr/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream f(folder + name);
+    return std::string((std::istreambuf_iterator<char>(f)), {});
+  };
+  const auto replace = [](std::string& text, const std::string& from,
+                          const std::string& to) {
+    const auto pos = text.find(from);
+    Require(pos != std::string::npos,
+            "multi-register fixture replacement exists");
+    text.replace(pos, from.size(), to);
+  };
+  for (unsigned flags = 0; flags < 8; ++flags) {
+    for (bool ascending : {false, true}) {
+      const bool si = flags & 1, between = flags & 2, so = flags & 4;
+      auto model = read("model.icl");
+      replace(model, "ScanInSource si; CaptureSource a;",
+              std::string("ScanInSource ") + (si ? "~si" : "si") +
+                  "; CaptureSource a;");
+      replace(model, "  ScanRegister b",
+              "  Alias hop[2:0] = a;\n  Alias forwarding[2:0] = hop;\n  "
+              "ScanRegister b");
+      replace(model, "ScanInSource a[0];",
+              std::string("ScanInSource ") + (between ? "~" : "") +
+                  "forwarding[0];");
+      replace(model, "Source mux;",
+              std::string("Source ") + (so ? "~" : "") + "mux;");
+      if (ascending) {
+        replace(model, "a[2:0]", "a[0:2]");
+        replace(model, "b[4:0]", "b[0:4]");
+        replace(model, "b[0];", "b[4];");
+      }
+      const int avalue = 4 ^ (si ? 7 : 0),
+                bvalue = 22 ^ ((si != between) ? 31 : 0);
+      const unsigned observed = ((between != so) ? 0xe0 : 0) | (so ? 0x1f : 0);
+      std::string physical(8, '0');
+      for (size_t bit = 0; bit < 8; ++bit)
+        physical[7 - bit] = (observed >> bit) & 1 ? '1' : '0';
+      for (size_t bit : {0, 1, 6, 7}) physical[bit] = 'x';
+      pattern::Design design;
+      design.AddIcl("multiple.icl", model);
+      design.AddBsdl("multiple.bsdl", read("model.bsdl"), "MultipleDrProbe");
+      const auto network =
+          pattern::ElaborateTapNetwork(design, "MultipleDrTop");
+      const auto& netlist = network.netlist;
+      const auto& tap = netlist.taps.begin()->second;
+      const auto a = netlist.node_ids.at("core.a"),
+                 b = netlist.node_ids.at("core.b");
+      pattern::ScanScheduler reference(netlist);
+      reference.Reset();
+      reference.Apply(
+          {{"iWrite", {"tap.INSTRUCTION", "3"}, "multi:prepare", {}}});
+      pattern::ScanScheduler scheduler(reference);
+      const auto steps = reference.Apply(
+          {{"iWrite", {"core.a", std::to_string(avalue)}, "multi:a", {}},
+           {"iWrite", {"core.b", std::to_string(bvalue)}, "multi:b", {}},
+           {"iRead", {"core.a", "0bxx0"}, "multi:read-a", {}},
+           {"iRead", {"core.b", "0b000xx"}, "multi:read-b", {}}});
+      Require(steps.size() == 1 && !steps[0].instruction &&
+                  steps[0].serial == "01101001" &&
+                  steps[0].serial_expected ==
+                      std::string(physical.rbegin(), physical.rend()) &&
+                  steps[0].loads.size() == 2,
+              "ordinary backend proves one ordered unequal-register data CSU");
+      const pattern::Operation request{
+          "iScan",
+          {"jtag", "8", "-si", "0x96", "-so", "0b" + physical, "-stable"},
+          "multi:raw",
+          {}};
+      const auto normalized = scheduler.NormalizeScan(request);
+      std::set<size_t> assigned{netlist.nodes.size() + 1};
+      scheduler.ApplyScan(normalized, {{a, "000"}, {b, "00000"}}, &assigned);
+      Require(assigned == std::set<size_t>{a, b} &&
+                  std::stoi(scheduler.Value("core.a"), nullptr, 2) == avalue &&
+                  std::stoi(scheduler.Value("core.b"), nullptr, 2) == bvalue,
+              "raw packet stores upstream prefix/downstream suffix and assigns "
+              "pre-path registers");
+      pattern::TapExecution literal(netlist);
+      literal.Drive({{tap.pins.at("tap_scan_reset"), "0"}});
+      literal.Drive({{tap.pins.at("tap_scan_reset"), "1"}});
+      size_t cycles = 0;
+      const auto cycle = [&](char tms, char tdi = '0') {
+        literal.Drive({{tap.pins.at("tap_scan_mode"), std::string(1, tms)},
+                       {tap.pins.at("tap_scan_in"), std::string(1, tdi)}});
+        literal.RisingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+        literal.FallingEdge(std::set<size_t>{tap.pins.at("tap_scan_clock")});
+        ++cycles;
+      };
+      cycle('0');
+      for (char tms : std::string("1100")) cycle(tms);
+      for (size_t i = 0; i < 4; ++i)
+        cycle(i == 3 ? '1' : '0', i < 2 ? '1' : '0');
+      cycle('1');
+      cycle('0');
+      cycles = 0;
+      for (char tms : std::string("100")) cycle(tms);
+      const std::string serial = "01101001",
+                        expected(physical.rbegin(), physical.rend());
+      for (size_t i = 0; i < 8; ++i) {
+        Require(expected[i] == 'x' ||
+                    literal.Value("TDO", true) == std::string(1, expected[i]),
+                "literal unequal-chain capture mask");
+        cycle(i == 7 ? '1' : '0', serial[i]);
+      }
+      cycle('1');
+      cycle('0');
+      Require(cycles == 13, "unequal eight-bit chain uses N+5 clocks");
+      for (const auto& node : netlist.nodes) {
+        if (node.model == pattern::ModelKind::kPort ||
+            node.model == pattern::ModelKind::kRegister) {
+          Require(scheduler.Value(node.name) == reference.Value(node.name) &&
+                      scheduler.Value(node.name) == literal.Value(node.name),
+                  "multi-register raw equals ordinary and literal endpoints");
+        }
+      }
+      scheduler.Idle(1);
+      cycle('0');
+      Require(std::stoi(scheduler.Value("core.a"), nullptr, 2) == avalue &&
+                  std::stoi(scheduler.Value("core.b"), nullptr, 2) == bvalue,
+              "multi-register raw state survives idle");
+    }
+  }
+  auto dynamic = read("model.icl");
+  replace(dynamic, "ScanInSource a[0];", "ScanInSource routing;");
+  replace(dynamic, "  ScanRegister b",
+          "  ScanRegister extra {ScanInSource a[0]; CaptureSource extra; "
+          "ResetValue 0;}\n  ScanMux routing SelectedBy b[0] {1'b0: a[0]; "
+          "1'b1: extra;}\n  ScanRegister b");
+  pattern::Design dynamic_design;
+  dynamic_design.AddIcl("dynamic.icl", dynamic);
+  dynamic_design.AddBsdl("multiple.bsdl", read("model.bsdl"),
+                         "MultipleDrProbe");
+  const auto dynamic_network =
+      pattern::ElaborateTapNetwork(dynamic_design, "MultipleDrTop");
+  pattern::ScanScheduler changing(dynamic_network.netlist);
+  changing.Reset();
+  changing.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "dynamic:prepare", {}}});
+  const auto aid = dynamic_network.netlist.node_ids.at("core.a"),
+             bid = dynamic_network.netlist.node_ids.at("core.b"),
+             eid = dynamic_network.netlist.node_ids.at("core.extra");
+  pattern::Operation open{"iScan",
+                          {"jtag", "8", "-si", "0x97", "-so", "0", "-stable"},
+                          "dynamic:raw",
+                          {}};
+  std::set<size_t> assigned{dynamic_network.netlist.nodes.size() + 5};
+  const auto sentinel = assigned;
+  std::map<std::string, std::string> before;
+  for (const auto& node : dynamic_network.netlist.nodes)
+    if (node.model == pattern::ModelKind::kRegister ||
+        node.model == pattern::ModelKind::kPort)
+      before.emplace(node.name, changing.Value(node.name));
+  auto protected_open = open;
+  protected_open.arguments.pop_back();
+  bool protected_rejected = false;
+  try {
+    changing.ApplyScan(protected_open, {{eid, "0"}}, &assigned);
+  } catch (const std::runtime_error& error) {
+    const std::string message = error.what();
+    protected_rejected =
+        message.find("reserved core.extra") != std::string::npos ||
+        message.find("one exact requested CSU") != std::string::npos;
+  }
+  Require(protected_rejected && assigned == sentinel,
+          "protected off-path register rejects its raw physical side effect");
+  for (const auto& [name, value] : before)
+    Require(changing.Value(name) == value,
+            "failed off-path preservation leaves all endpoint state unchanged");
+  bool rejected = false;
+  try {
+    changing.ApplyScan(open, {}, &assigned);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("stable") != std::string::npos;
+  }
+  Require(
+      rejected && assigned == sentinel,
+      "multi-register unstable post-route rejects before assigned publication");
+  for (const auto& [name, value] : before)
+    Require(
+        changing.Value(name) == value,
+        "failed multi-register stable transaction preserves every endpoint");
+  open.arguments.pop_back();
+  changing.ApplyScan(open, {}, &assigned);
+  Require(assigned == std::set<size_t>{aid, bid} &&
+              changing.Value("core.extra") == "1",
+          "raw topology opening assigns pre-CSU path only and retains "
+          "actual unaddressed side effects");
+  const pattern::Operation full{
+      "iScan",
+      {"jtag", "9", "-si", "389", "-so", "311", "-stable"},
+      "dynamic:full",
+      {}};
+  changing.ApplyScan(full, {{eid, "1"}}, &assigned);
+  Require(assigned == std::set<size_t>{aid, bid, eid} &&
+              changing.Value("core.a") == "110" &&
+              changing.Value("core.extra") == "0" &&
+              changing.Value("core.b") == "00101",
+          "later full nine-bit route authoritatively owns its new pre-CSU "
+          "register");
+}
 void TestRawTapBuiltinDrScans() {
   const std::string folder =
       "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/";
@@ -4997,6 +5198,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestRawTapMultipleDrScans();
     TestRawTapBuiltinDrScans();
     TestRawTapDrScans();
     TestRawTapIrScans();

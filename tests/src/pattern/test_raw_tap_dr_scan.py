@@ -68,14 +68,13 @@ class RawTapDrScan(unittest.TestCase):
         model.write_text(original.replace('  ScanMux mux',
             "  ScanRegister tail[3:0] {ScanInSource r[0]; ResetValue 4'b0;}\n  ScanMux mux").replace("1'b1: r[0]", "1'b1: tail[0]"))
         previous=self.inputs.copy();self.inputs[1]=str(model)
-        self.rejected('iReset; iWrite tap.INSTRUCTION 3; iApply; iScan jtag 12 -si 1; iApply\n',
-                      'one fully selected modeled register')
+        self.replay('iReset; iWrite tap.INSTRUCTION 3; iApply; iScan jtag 12 -si 1; iApply\n')
         self.inputs=previous
         model.write_text(original.replace('ScanInPort TDI;', 'DataInPort route; ScanInPort TDI;').replace(
             'InputPort mode = tap.long_setup;', 'InputPort mode = route;'))
         self.inputs[1]=str(model)
         self.rejected('iReset; iWrite tap.INSTRUCTION 3; iApply; iScan jtag 8; iApply\n',
-                      'one fully selected modeled register')
+                      'raw TAP data')
         dynamic=original.replace('ScanInSource si; CaptureSource r; ResetValue 8', 'ScanInSource feedback; CaptureSource r; ResetValue 8')
         dynamic=dynamic.replace("  ScanMux mux SelectedBy mode { 1'b1: r[0]; 1'b0: si; }",
             "  ScanRegister extra {ScanInSource si; ResetValue 1'b0;}\n"
@@ -87,9 +86,9 @@ class RawTapDrScan(unittest.TestCase):
         self.replay('iReset; iWrite tap.INSTRUCTION 3; iApply; '
                     'iScan jtag 8 -si 0x97; iApply; iRead core.extra 0; iApply\n')
 
-    def test_stable_rejects_disconnected_alternate_and_inverted_post_input(self):
+    def test_stable_rejects_disconnected_and_alternate_post_input(self):
         original=(FIXTURE/'model.icl').read_text()
-        for endpoint in ["1'b0", 'ALT', '~si']:
+        for endpoint in ["1'b0", 'ALT']:
             with self.subTest(endpoint=endpoint):
                 model=self.root/'post-route.icl'
                 text=original.replace('ScanInSource si; CaptureSource r;',
