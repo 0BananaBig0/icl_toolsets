@@ -2397,7 +2397,7 @@ class ScanScheduler::Impl {
                             "0b" + input,
                             "-so",
                             "0b" + compare};
-      ReplayScan(physical, {}, preserved, {}, &desired_preserved);
+      ReplayScan(physical, {}, preserved, {}, false, &desired_preserved);
       return result;
     } catch (const std::runtime_error&) {
       return std::nullopt;

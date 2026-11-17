@@ -44,3 +44,9 @@ port/child/TAP ownership, full vendor equivalence or new formal certificate.
 Strict100% line/90% raw branch gate stays unchanged and its actual result visible.
 One independent final review and necessary correction pass; merge parent master,
 delete task branch and archive/sync. No push.
+
+Final review correction: the ordinary TryNativeScan caller passes false and
+its exact desired reservation map. The original fifth-argument pointer silently
+converted to the new boolean. One caller fix and a65536-bit ordinary reserved
+write RED/GREEN regression restore the native path. All source-dependent gates
+are repeated; the first-candidate evidence remains preserved before-review.

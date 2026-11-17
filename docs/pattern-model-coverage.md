@@ -67,7 +67,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through 2b5eec1, including 51 generator CLI suites/780 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task126 run 96.5%/62.7% (17336/17966 lines,29265/46679 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task126 run 96.5%/62.7% (17336/17966 lines,29268/46679 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -3595,35 +3595,35 @@ Existing CLI/native tests first fail at the old storage guard, then pass with
 the bounded change. Original/flat/generated/reset replay covers five vendor
 positive source gaps, inverted output aliases, retained later constraints,
 release/reset/explicit rebase and child rejection. Full modeled-root suites pass
-79 methods per dynamic/static variant. Leak-enabled ASan/UBSan passes the focused
-native reservation function, all 79 modeled-root and 71 main methods. The native
+80 methods per dynamic/static variant. Leak-enabled ASan/UBSan passes the focused
+native reservation function, all 80 modeled-root and 71 main methods. The native
 function also covers source/flat owner history, register-only assignments,
 invalid port mask validation before filtering and rollback. Its new test-only
 --raw-reservations selector reuses the default suite function. Changed C++
 format/tidy and strict C++17 checks all pass.
 
-Complete normal integration passes in 1527.898649s,
-including six editor tests in 168.889s. The existing raw-reservation benchmark
+Complete normal integration passes in 1533.315018s,
+including six editor tests in 174.471s. The existing raw-reservation benchmark
 passes 88 rows across dynamic/static: 1,048,576 active bits and up to 1,025 registers,
 wide/partial ownership and 1,024 protected masks, three-run old plain references,
 current plain/reserved forms, flat and generated replay. Physical packets match
-within every scenario. Maximum measured process time/RSS is 0.50s/202,916KiB for
-dynamic and 0.48s/201,784KiB for static. Per-row commands, sizes, platform and binary
+within every scenario. Maximum measured process time/RSS is 0.50s/203,020KiB for
+dynamic and 0.48s/201,732KiB for static. Per-row commands, sizes, platform and binary
 hashes are retained; no speedup claim. Filtering adds at most one ordered-map
 erase per protected port; the existing full-shift acceleration is retained.
 
-The fresh complete raw coverage recipe takes 1113.211660s.
-All 58 Python groups/944 cases (51 generator groups/782 cases), native checks,
+The fresh complete raw coverage recipe takes 1118.165168s.
+All 58 Python groups/945 cases (51 generator groups/783 cases), native checks,
 1916 regression and 2180 conformance cases pass. Strict coverage still fails:
 17,336/17,966 lines (96.5%) and
-29,265/46,679 raw branches (62.7%), against unchanged 100%/90%
+29,268/46,679 raw branches (62.7%), against unchanged 100%/90%
 thresholds. Make exits 2 at the final report. All 54 authored reports and raw
 compiler exception/cleanup edges remain included; untaken edges comprise
-12,233 throw and5,181 other edges. No filtering or waiver.
+12,233 throw and5,178 other edges. No filtering or waiver.
 Optional ANTLR checks remain skipped when unavailable.
 
 Rocky qualification passes all seven gates, including current native checks and
-51 suites/782 cases per dynamic/transferred-static generator variant. All 3,994
+51 suites/783 cases per dynamic/transferred-static generator variant. All 3,994
 submitted source/test hashes match the remote files. Only the two generator
 product bytes change; the other eight products remain unchanged on each platform.
 The transferred static generator matches the local fingerprint and lacks an ELF
@@ -3632,7 +3632,10 @@ source-archive qualification from Task 124 predate this implementation change.
 
 All five normalized programs retarget successfully in fresh Tessent 2026.2 runs
 using the unchanged driver; exports replay through the current native tool and
-all raw payload traces match the preceding audit. Canonical replay bytes match
+all raw payload traces match the preceding audit. After the review correction,
+all 20 submitted program/driver/model hashes remain identical, so the first
+Tessent results are reused and every export is replayed through the corrected
+native binary. Canonical replay bytes match
 the two select cases. The constant-output export removes an empty pre-scan
 Apply; both observed-output exports add an ordinary pre-scan capture comparison.
 Those differences are retained, so full ordered-group equality and a new formal
@@ -3641,4 +3644,12 @@ remain open. Evidence is `build/root-raw-port-20261117/`: frozen inputs, raw
 coverage/profiles, local/remote/vendor logs, 88 benchmark rows, equal-span child
 checks and fingerprints. Only scheduler source and two existing tests change
 among the 3,994 runtime inputs. No push.
-Independent final review and integration are pending.
+The independent review found one Important missed caller: TryNativeScan passed
+its desired-map pointer into the newly inserted boolean parameter. A one-line
+caller correction now passes false and the exact desired map. A 65,536-bit
+ordinary explicit update of a taken register bit timed out 15s on the reviewed
+candidate and passed five forms in 0.393004s after the correction; the pre-feature
+reference passed in 0.400905s. The new maintained wide regression runs in every
+current 80-method suite. All source-dependent qualification above was repeated
+after this fix; first-candidate evidence is retained before-review. No second
+independent review was requested. Independent final review found one Important missed caller; the executor resolved it in one fix pass with RED/GREEN evidence and refreshed source-dependent qualification. No unresolved Critical or Important issues remain. The scoped root raw port feature is qualified for integration.

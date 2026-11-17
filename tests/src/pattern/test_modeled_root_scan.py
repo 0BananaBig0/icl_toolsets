@@ -413,6 +413,22 @@ class ModeledRootScan(unittest.TestCase):
         self.rejected('iReset; iTake sel; iState sel 1; '
                       'iScan child.local 8 -si 0xa5; iApply\n', 'storage', CHILD)
 
+    def test_wide_ordinary_write_refreshes_taken_storage_natively(self):
+        import time
+        width = 65536
+        model = MODEL.replace('value[7:0]', f'value[{width - 1}:0]')
+        model = model.replace("ResetValue 8'b0", f"ResetValue {width}'b0")
+        model = model.replace("DefaultLoadValue 8'b00000000",
+                              f"DefaultLoadValue {width}'b0")
+        start = time.monotonic()
+        result = self.replay('iReset; iTake value[0]; iState value 0; '
+                             'iWrite value[0] 1; iApply; '
+                             'iWrite value[1] 1; iApply; '
+                             f'iScan client {width} -si 3 -so 3; iApply\n', model)
+        self.assertIn('iWrite value 0b' + '0' * (width - 2) + '11', result)
+        print(f'reserved ordinary: bits={width} forms=5 '
+              f'seconds={time.monotonic() - start:.6f}')
+
     def test_raw_reserved_inverted_ascending_alias(self):
         model = MODEL.replace('ScanOutPort so',
                               'Alias reversed[0:7] = ~value; ScanOutPort so')
