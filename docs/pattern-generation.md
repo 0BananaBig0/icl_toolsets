@@ -6274,3 +6274,88 @@ Strict coverage remains unmet at 96.5% lines and 62.7% raw branches against 100%
 General port/raw ownership, broader model/vendor equivalence and other recorded
 acceptance work remain open. No product/test/Makefile edits or push.
 Independent final review found no Critical, Important, or Minor issues in this documentation-only ownership audit. The bounded raw port ownership audit is ready for integration.
+
+### Direct root raw port ownership (2026-11-17)
+
+Direct requests for the qualified standalone root client now accept the five
+port-reservation source cases measured in the preceding audit. The explicit
+root CSU may change ports in that network; their established reservations keep
+their earlier values and still constrain later ordinary retargeting. For example,
+a taken select assumed 0 may be driven by the root raw scan, while a subsequent
+ordinary write still fails until its ownership constraint is explicitly changed
+or released. This separates explicit iScan effects from retargeter preparation
+under IEEE1687-2014 section7.9.12 and the bounded Tessent 2026.2 observations.
+No general child/TAP ownership policy is implied.
+
+One private flag identifies the requested root client after interval validation.
+ReplayScan validates every original reservation mask before omitting port IDs
+from its held-state checks for that root operation. ScanRegister protections,
+unknown-bit rejection and original reservation values remain intact; assignment
+footprints still contain only explicitly addressed pre-route registers. Child
+requests retain the storage-only guard, including a measured child interval
+covering exactly all eight root storage bits. Invalid masks and failed later
+retargeting preserve state and caller footprints; explicit release recovers.
+No public API/header/cache/dependency or per-bit replay loop is added.
+
+Existing CLI/native tests first fail at the old storage guard, then pass with
+the bounded change. Original/flat/generated/reset replay covers five vendor
+positive source gaps, inverted output aliases, retained later constraints,
+release/reset/explicit rebase and child rejection. Full modeled-root suites pass
+80 methods per dynamic/static variant. Leak-enabled ASan/UBSan passes the focused
+native reservation function, all 80 modeled-root and 71 main methods. The native
+function also covers source/flat owner history, register-only assignments,
+invalid port mask validation before filtering and rollback. Its new test-only
+--raw-reservations selector reuses the default suite function. Changed C++
+format/tidy and strict C++17 checks all pass.
+
+Complete normal integration passes in 1533.315018s,
+including six editor tests in 174.471s. The existing raw-reservation benchmark
+passes 88 rows across dynamic/static: 1,048,576 active bits and up to 1,025 registers,
+wide/partial ownership and 1,024 protected masks, three-run old plain references,
+current plain/reserved forms, flat and generated replay. Physical packets match
+within every scenario. Maximum measured process time/RSS is 0.50s/203,020KiB for
+dynamic and 0.48s/201,732KiB for static. Per-row commands, sizes, platform and binary
+hashes are retained; no speedup claim. Filtering adds at most one ordered-map
+erase per protected port; the existing full-shift acceleration is retained.
+
+The fresh complete raw coverage recipe takes 1118.165168s.
+All 58 Python groups/945 cases (51 generator groups/783 cases), native checks,
+1916 regression and 2180 conformance cases pass. Strict coverage still fails:
+17,336/17,966 lines (96.5%) and
+29,268/46,679 raw branches (62.7%), against unchanged 100%/90%
+thresholds. Make exits 2 at the final report. All 54 authored reports and raw
+compiler exception/cleanup edges remain included; untaken edges comprise
+12,233 throw and5,178 other edges. No filtering or waiver.
+Optional ANTLR checks remain skipped when unavailable.
+
+Rocky qualification passes all seven gates, including current native checks and
+51 suites/783 cases per dynamic/transferred-static generator variant. All 3,994
+submitted source/test hashes match the remote files. Only the two generator
+product bytes change; the other eight products remain unchanged on each platform.
+The transferred static generator matches the local fingerprint and lacks an ELF
+interpreter. This is current generator qualification; five-tool installation and
+source-archive qualification from Task 124 predate this implementation change.
+
+All five normalized programs retarget successfully in fresh Tessent 2026.2 runs
+using the unchanged driver; exports replay through the current native tool and
+all raw payload traces match the preceding audit. After the review correction,
+all 20 submitted program/driver/model hashes remain identical, so the first
+Tessent results are reused and every export is replayed through the corrected
+native binary. Canonical replay bytes match
+the two select cases. The constant-output export removes an empty pre-scan
+Apply; both observed-output exports add an ordinary pre-scan capture comparison.
+Those differences are retained, so full ordered-group equality and a new formal
+directional certificate are not claimed. Existing broader vendor/model gaps
+remain open. Evidence is `build/root-raw-port-20261117/`: frozen inputs, raw
+coverage/profiles, local/remote/vendor logs, 88 benchmark rows, equal-span child
+checks and fingerprints. Only scheduler source and two existing tests change
+among the 3,994 runtime inputs. No push.
+The independent review found one Important missed caller: TryNativeScan passed
+its desired-map pointer into the newly inserted boolean parameter. A one-line
+caller correction now passes false and the exact desired map. A 65,536-bit
+ordinary explicit update of a taken register bit timed out 15s on the reviewed
+candidate and passed five forms in 0.393004s after the correction; the pre-feature
+reference passed in 0.400905s. The new maintained wide regression runs in every
+current 80-method suite. All source-dependent qualification above was repeated
+after this fix; first-candidate evidence is retained before-review. No second
+independent review was requested. Independent final review found one Important missed caller; the executor resolved it in one fix pass with RED/GREEN evidence and refreshed source-dependent qualification. No unresolved Critical or Important issues remain. The scoped root raw port feature is qualified for integration.

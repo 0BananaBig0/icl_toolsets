@@ -1559,14 +1559,15 @@ class ScanScheduler::Impl {
                           "0b" + expected};
     if (stable) physical.arguments.push_back("-stable");
     auto result =
-        ReplayScan(physical, stable_clients, preserved, explicit_registers);
+        ReplayScan(physical, stable_clients, preserved, explicit_registers,
+                   latest.count(netlist_.nodes[root.client].name) != 0);
     if (assigned) *assigned = std::move(explicit_registers);
     return result;
   }
   Operation ReplayScan(
       const Operation& normalized, const std::set<size_t>& stable_clients,
       const std::map<size_t, std::string>& preserved,
-      const std::set<size_t>& explicit_registers,
+      const std::set<size_t>& explicit_registers, bool root_request,
       const std::map<size_t, std::string>* exact_desired = nullptr) {
     const auto& profile = RawChain();
     if (global_resets_ != "00") {
@@ -1596,8 +1597,14 @@ class ScanScheduler::Impl {
       active.insert(id);
     }
     auto desired = DesiredPreserved(preserved, {}, false, {});
+    auto held = preserved;
     for (auto& [id, mask] : desired) {
       if (netlist_.nodes.at(id).kind != "ScanRegister") {
+        if (root_request && netlist_.nodes.at(id).model == ModelKind::kPort) {
+          // Explicit root effects leave port locks for later retargeting.
+          held.erase(id);
+          continue;
+        }
         throw std::runtime_error(
             "raw scan reservations require ScanRegister storage");
       }
@@ -1614,7 +1621,6 @@ class ScanScheduler::Impl {
       }
     }
     if (exact_desired) desired = *exact_desired;
-    auto held = preserved;
     NetworkState replay(state_);
     replay.TakeControlEvents();
     replay.TakeResetEvents();
@@ -2391,7 +2397,7 @@ class ScanScheduler::Impl {
                             "0b" + input,
                             "-so",
                             "0b" + compare};
-      ReplayScan(physical, {}, preserved, {}, &desired_preserved);
+      ReplayScan(physical, {}, preserved, {}, false, &desired_preserved);
       return result;
     } catch (const std::runtime_error&) {
       return std::nullopt;

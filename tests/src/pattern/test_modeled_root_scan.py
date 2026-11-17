@@ -21,6 +21,11 @@ ScanOutPort so { Source b[0]; }""").replace("DefaultLoadValue 8'b00000000", "Def
 
 HIER = (opaque.ROOT / 'tests/cases/ours/pattern_generation/hierarchical_root_scan/model.icl').read_text()
 
+PORTS = MODEL.replace('ScanOutPort so', """DataOutPort hold { Source 1'b1; }
+DataOutPort held { Source value[0]; }
+Alias observed = ~held;
+ScanOutPort so""")
+
 CHILD = (opaque.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text()
 
 SIB = (opaque.ROOT / 'tests/cases/ours/pattern_generation/gated_sib_raw/model.icl').read_text()
@@ -375,9 +380,54 @@ class ModeledRootScan(unittest.TestCase):
                       'iReset; iTake open; iState open 0; iCall scan; '
                       'iWrite child.value 5; iApply\n', 'reserv', SIB)
 
-    def test_raw_established_port_ownership_is_explicitly_unsupported(self):
-        self.rejected('iReset; iTake sel; iState sel 0; '
-                      'iScan client 8; iApply\n', 'storage')
+    def test_root_raw_established_port_ownership(self):
+        cases = [('iTake sel; iState sel 1;', '0xa5'),
+                 ('iTake sel; iState sel 0;', '0xa5'),
+                 ('iTake hold; iWrite hold 1; iApply;', '0xa5'),
+                 ('iTake held; iWrite held 0; iApply;', '0x5a'),
+                 ('iTake held; iWrite held 0; iApply;', '0xa5'),
+                 ('iTake observed; iWrite observed 1; iApply;', '0xa5')]
+        for prefix, data in cases:
+            with self.subTest(prefix=prefix, data=data):
+                result = self.replay('iReset; ' + prefix +
+                                     ' iScan client 8 -si ' + data + '; iApply\n', PORTS)
+                self.assertEqual(result.count('iScan '), 1)
+                self.assertNotIn('iTake', result)
+
+    def test_root_raw_retains_port_locks_for_later_retargeting(self):
+        for target, prefix in [('sel', 'iTake sel; iState sel 0;'),
+                               ('held', 'iTake held; iWrite held 0; iApply;')]:
+            before = ('iReset; ' + prefix +
+                      ' iScan client 8 -si 0xa5; iApply; ')
+            ordinary = 'iWrite value[1] 1; iApply\n'
+            with self.subTest(target=target):
+                self.rejected(before + ordinary, 'reserved', PORTS)
+                self.replay(before + 'iRelease ' + target + '; ' + ordinary, PORTS)
+                self.replay(before + 'iReset; ' + ordinary, PORTS)
+        result = self.replay('iReset; iTake held; iWrite held 0; iApply; '
+                             'iScan client 8 -si 0xa5; iApply; '
+                             'iWrite held 1; iApply; iWrite value[1] 1; iApply\n', PORTS)
+        self.assertIn('iWrite value 0b10100111', result)
+
+    def test_raw_child_port_ownership_remains_unsupported(self):
+        self.rejected('iReset; iTake sel; iState sel 1; '
+                      'iScan child.local 8 -si 0xa5; iApply\n', 'storage', CHILD)
+
+    def test_wide_ordinary_write_refreshes_taken_storage_natively(self):
+        import time
+        width = 65536
+        model = MODEL.replace('value[7:0]', f'value[{width - 1}:0]')
+        model = model.replace("ResetValue 8'b0", f"ResetValue {width}'b0")
+        model = model.replace("DefaultLoadValue 8'b00000000",
+                              f"DefaultLoadValue {width}'b0")
+        start = time.monotonic()
+        result = self.replay('iReset; iTake value[0]; iState value 0; '
+                             'iWrite value[0] 1; iApply; '
+                             'iWrite value[1] 1; iApply; '
+                             f'iScan client {width} -si 3 -so 3; iApply\n', model)
+        self.assertIn('iWrite value 0b' + '0' * (width - 2) + '11', result)
+        print(f'reserved ordinary: bits={width} forms=5 '
+              f'seconds={time.monotonic() - start:.6f}')
 
     def test_raw_reserved_inverted_ascending_alias(self):
         model = MODEL.replace('ScanOutPort so',
