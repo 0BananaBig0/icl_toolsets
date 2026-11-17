@@ -44,6 +44,52 @@ class Generator(unittest.TestCase):
         self.assertIn("--icl", self.run_tool("--help").stdout)
         self.assertIn("icl-pattern-generation", self.run_tool("--version").stdout)
 
+    def test_argument_errors_preserve_outputs(self):
+        (self.root / "debug").mkdir()
+        outputs = ("result.pdl", "reset.pdl", "debug/Network.icl")
+        cases = (
+            (("--icl", "--pdl", "source.pdl", "--output", "result.pdl"), "missing files for --icl"),
+            (("--pdl", "--icl", "source.icl", "--output", "result.pdl"), "missing files for --pdl"),
+            (("--output", "result.pdl", "--unknown"), "--unknown"),
+            (("--output",), "--output"),
+            (("--output", "--debug"), "--output"),
+            (("--output", "result.pdl"), "--icl and --pdl"),
+        )
+        for arguments, context in cases:
+            with self.subTest(arguments=arguments):
+                for name in outputs:
+                    (self.root / name).write_text("previous artifact\n")
+                result = self.run_tool(*arguments, ok=False)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn(context, result.stdout + result.stderr)
+                for name in outputs:
+                    self.assertEqual((self.root / name).read_text(), "previous artifact\n")
+
+    def test_missing_or_nul_inputs_preserve_outputs(self):
+        (self.root / "debug").mkdir()
+        outputs = ("result.pdl", "reset.pdl", "debug/Network.icl")
+        for language in ("icl", "pdl"):
+            valid = (ICL if language == "icl" else PDL).encode()
+            for content in (None, valid + b"\0"):
+                with self.subTest(language=language, content=content):
+                    path = self.root / (("missing." if content is None else "nul.") + language)
+                    if content is not None:
+                        path.write_bytes(content)
+                    for name in outputs:
+                        (self.root / name).write_text("previous artifact\n")
+                    result = self.run_tool(
+                        "--icl", path.name if language == "icl" else "source.icl",
+                        "--pdl", path.name if language == "pdl" else "source.pdl",
+                        "--output", "result.pdl", "--debug", "--local_reset", "reset.pdl",
+                        ok=False)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn(path.name, result.stdout + result.stderr)
+                    if content is not None:
+                        self.assertIn("cannot read text input " + path.name,
+                                      result.stdout + result.stderr)
+                    for name in outputs:
+                        self.assertEqual((self.root / name).read_text(), "previous artifact\n")
+
     def test_non_data_sources_preserve_outputs(self):
         (self.root / "debug").mkdir()
         outputs = ("result.pdl", "reset.pdl", "debug/Network.icl")
