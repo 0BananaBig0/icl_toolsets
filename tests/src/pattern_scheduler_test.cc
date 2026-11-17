@@ -823,6 +823,62 @@ void TestRawTapIrScans() {
   Require(scheduler.Value("tap.INSTRUCTION") == "0011" &&
               literal.Value("tap.INSTRUCTION") == "0011",
           "IR scan returns to idle and retains instruction on following wait");
+  const auto again = [&](const std::vector<pattern::Operation>& operations,
+                         const std::string& bits) {
+    const auto packets = scheduler.Apply(operations);
+    Require(
+        packets.size() == 1 && packets[0].instruction &&
+            packets[0].serial == std::string(bits.rbegin(), bits.rend()) &&
+            packets[0].loads.at("tap.INSTRUCTION") == bits &&
+            packets[0].writes == packets[0].loads,
+        "ordinary IR still performs one full CSU for same/partial/read goals");
+    cycles = 0;
+    for (char tms : std::string("1100")) cycle(tms);
+    for (size_t i = 0; i < bits.size(); ++i) {
+      cycle(i + 1 == bits.size() ? '1' : '0', bits[bits.size() - i - 1]);
+    }
+    cycle('1');
+    cycle('0');
+    Require(cycles == bits.size() + 6,
+            "ordinary IR uses exact literal N+6 clocks");
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        Require(scheduler.Value(node.name) == literal.Value(node.name),
+                "ordinary same/read/partial IR matches every literal endpoint");
+      }
+    }
+  };
+  again({{"iRead", {"tap.INSTRUCTION", "0bxx01"}, "ir:read-only", {}}}, "0011");
+  again({{"iWrite", {"tap.INSTRUCTION", "3"}, "ir:same", {}},
+         {"iRead", {"tap.INSTRUCTION", "0bxx01"}, "ir:same-read", {}}},
+        "0011");
+  again({{"iWrite", {"tap.INSTRUCTION[0]", "0"}, "ir:partial", {}},
+         {"iRead", {"tap.INSTRUCTION", "0bxx01"}, "ir:partial-read", {}}},
+        "0010");
+  std::map<std::string, std::string> before;
+  for (const auto& node : netlist.nodes) {
+    if (node.model == pattern::ModelKind::kPort ||
+        node.model == pattern::ModelKind::kRegister) {
+      before[node.name] = scheduler.Value(node.name);
+    }
+  }
+  rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "ir:automatic", {}}},
+                    false, {{ir, "0010"}}, false);
+  } catch (const std::runtime_error&) {
+    rejected = true;
+  }
+  Require(rejected,
+          "automatic IR setup cannot refresh an established reservation");
+  for (const auto& [name, bits] : before) {
+    Require(scheduler.Value(name) == bits,
+            "failed IR setup preserves every endpoint");
+  }
+  again({{"iWrite", {"tap.INSTRUCTION", "3"}, "ir:retry", {}},
+         {"iRead", {"tap.INSTRUCTION", "0bxx01"}, "ir:retry-read", {}}},
+        "0011");
 }
 void TestRawTapUnknownInput() {
   for (bool instruction : {false, true}) {

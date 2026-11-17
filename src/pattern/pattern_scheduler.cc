@@ -1122,7 +1122,7 @@ class ScanScheduler::Impl {
     bool inverted = false;
     size_t width = 0;
   };
-  ConcretePath RawDataPath() {
+  ConcretePath RawTapPath(bool instruction = false) {
     if (!tap_ready_) {
       throw std::runtime_error("TAP raw data scan requires iReset first");
     }
@@ -1131,7 +1131,7 @@ class ScanScheduler::Impl {
           "raw TAP data requires a known complete register route");
     };
     auto snapshot = state_;
-    snapshot.Drive(tap_->ir_select, "0");
+    snapshot.Drive(tap_->ir_select, instruction ? "1" : "0");
     const auto output = tap_->pins.at("tap_scan_out");
     ConcretePath path;
     try {
@@ -1146,11 +1146,19 @@ class ScanScheduler::Impl {
             Key{input, netlist_.nodes[input].left}) {
       fail();
     }
-    const auto active =
-        execution_->ActiveDataRegisters(netlist_.taps.begin()->first);
-    for (const auto& [id, suffix] : path.registers) {
-      const auto found = active.find(id);
-      if (found == active.end() || found->second != '1') fail();
+    if (instruction) {
+      if (path.registers.size() != 1 ||
+          path.registers.front().first != tap_->instruction_register ||
+          path.width != netlist_.nodes[tap_->instruction_register].Width()) {
+        fail();
+      }
+    } else {
+      const auto active =
+          execution_->ActiveDataRegisters(netlist_.taps.begin()->first);
+      for (const auto& [id, suffix] : path.registers) {
+        const auto found = active.find(id);
+        if (found == active.end() || found->second != '1') fail();
+      }
     }
     return path;
   }
@@ -1167,7 +1175,7 @@ class ScanScheduler::Impl {
     if (!defer_length) {
       const auto width =
           instruction ? netlist_.nodes[tap_->instruction_register].Width()
-                      : RawDataPath().width;
+                      : RawTapPath().width;
       if (normalized.arguments[1] != std::to_string(width)) {
         throw std::runtime_error(
             "raw TAP scan length differs from bound register length");
@@ -1218,7 +1226,7 @@ class ScanScheduler::Impl {
       path.registers = {{tap_->instruction_register, false}};
       path.width = netlist_.nodes[tap_->instruction_register].Width();
     } else {
-      path = RawDataPath();
+      path = RawTapPath();
     }
     for (const auto& width : widths) {
       if (width != std::to_string(path.width)) {
@@ -1294,7 +1302,7 @@ class ScanScheduler::Impl {
       path.registers = {{tap_->instruction_register, false}};
       path.width = request.width;
     } else {
-      path = RawDataPath();
+      path = RawTapPath();
     }
     if (!NativeTapControls(path)) fail();
     const auto end_goals = EndGoals(request.accesses);
@@ -1394,7 +1402,7 @@ class ScanScheduler::Impl {
       return;
     }
     try {
-      if (RawDataPath().width == request.width) return;
+      if (RawTapPath().width == request.width) return;
     } catch (const std::runtime_error&) {
       // Unsupported/unknown post-route cannot establish the stable contract.
     }
@@ -2388,7 +2396,7 @@ class ScanScheduler::Impl {
       return std::nullopt;
     }
   }
-  bool NativeTapControls(const ConcretePath& path) {
+  bool NativeTapControls(const ConcretePath& path, bool selected = true) {
     auto roles = tap_->controls;
     roles.emplace("clock", tap_->pins.at("tap_scan_clock"));
     const std::map<std::string, std::string> kinds = {
@@ -2401,18 +2409,16 @@ class ScanScheduler::Impl {
                       SymbolicValue::Literal(
                           context_, state_.Value(tap_->instruction_register)));
     SymbolicNetwork selection(netlist_, context_, std::move(immutable), "00");
-    for (const auto& [id, suffix] : path.registers) {
-      const auto found = execution_->RegisterInterfaces().find(id);
-      if (found == execution_->RegisterInterfaces().end()) continue;
-      for (const auto& interface : found->second) {
+    const auto check = [&](const auto& interfaces) {
+      for (const auto& interface : interfaces) {
         for (const auto& [kind, pins] : interface) {
           const auto role = kinds.find(kind);
           if (role == kinds.end() && kind != "SelectPort") continue;
           for (const auto& [port, index] : pins) {
             if (kind == "SelectPort") {
-              if (!Known(selection.Read({port, index}), true)
-                       .simplify()
-                       .is_true()) {
+              if (selected && !Known(selection.Read({port, index}), true)
+                                   .simplify()
+                                   .is_true()) {
                 return false;
               }
             } else {
@@ -2424,6 +2430,20 @@ class ScanScheduler::Impl {
               }
             }
           }
+        }
+      }
+      return true;
+    };
+    if (!selected) {
+      for (const auto& [id, interfaces] : execution_->RegisterInterfaces()) {
+        if (!check(interfaces)) return false;
+      }
+    } else {
+      for (const auto& [id, suffix] : path.registers) {
+        const auto found = execution_->RegisterInterfaces().find(id);
+        if (found != execution_->RegisterInterfaces().end() &&
+            !check(found->second)) {
+          return false;
         }
       }
     }
@@ -2455,10 +2475,18 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& desired_preserved) {
     if (required.empty() || !NativeTapShape()) return std::nullopt;
     try {
-      const auto path = RawDataPath();
-      if (!NativeTapControls(path)) return std::nullopt;
+      const auto only_ir = [&](const auto& entry) {
+        return entry.first == tap_->instruction_register;
+      };
+      const bool instruction =
+          required == std::set<size_t>{tap_->instruction_register} &&
+          std::all_of(goals.begin(), goals.end(), only_ir) &&
+          std::all_of(expected.begin(), expected.end(), only_ir);
+      const auto path = RawTapPath(instruction);
+      if (!NativeTapControls(path, !instruction)) return std::nullopt;
       std::map<size_t, ScanControl> controls;
       ScanStep step;
+      step.instruction = instruction;
       const auto endpoint = [&](size_t id) {
         const auto& node = netlist_.nodes[id];
         return node.name +
@@ -2521,8 +2549,10 @@ class ScanScheduler::Impl {
       for (const auto& [id, control] : controls) {
         const auto& name = netlist_.nodes[id].name;
         const auto event = history.find(id);
-        if (!writable.count(id) || event == history.end() || !event->second ||
-            *event->second != step.loads.at(name) ||
+        // IR updates come from the TAP controller, not NetworkState events.
+        if (!writable.count(id) ||
+            (!instruction && (event == history.end() || !event->second ||
+                              *event->second != step.loads.at(name))) ||
             run->State().Value(id) != step.loads.at(name)) {
           return std::nullopt;
         }
