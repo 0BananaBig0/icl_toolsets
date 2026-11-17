@@ -2755,6 +2755,56 @@ void TestOscillatorSourceOverrides() {
         rejected && clocks.Check("a.clock(0)", scheduler) == "b.clock(1)" &&
             clocks.Wait("a.clock(0)", 2, scheduler, {{root, "0"}}).second == 1,
         "failed oscillator cycle preserves replacement and default divider");
+    const auto cached = clocks.Wait("a.clock(0)", 6, scheduler);
+    clocks.Override({"iClockOverride",
+                     {"a.clock(0)", "-freqMultiplier", "3"},
+                     "oscillator:factor",
+                     {}},
+                    context);
+    Require(cached.first == "b.clock(1)" && cached.second == 3 &&
+                clocks.Wait("a.clock(0)", 6, scheduler) == cached,
+            "factor-only oscillator update retains the previous checked ratio");
+    rejected = false;
+    try {
+      clocks.Check("a.clock(0)", scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("inactive system-clock path") !=
+                 std::string::npos;
+    }
+    Require(rejected && clocks.Wait("a.clock(0)", 6, scheduler) == cached,
+            "failed fresh check preserves the older checked oscillator route");
+    rejected = false;
+    try {
+      clocks.Override(
+          {"iClockOverride",
+           {"a.clock(0)", "-source", "root", "-freqMultiplier", "0"},
+           "oscillator:invalid",
+           {}},
+          context);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("positive") != std::string::npos;
+    }
+    bool inactive = false;
+    try {
+      clocks.Check("a.clock(0)", scheduler);
+    } catch (const std::runtime_error& error) {
+      inactive = std::string(error.what()).find("inactive system-clock path") !=
+                 std::string::npos;
+    }
+    Require(rejected && inactive &&
+                clocks.Wait("a.clock(0)", 6, scheduler) == cached,
+            "invalid factor cannot publish a partial oscillator source change");
+    clocks.Override({"iClockOverride",
+                     {"a.clock(0)", "-source", "root", "-freqDivider", "2"},
+                     "oscillator:recover",
+                     {}},
+                    context);
+    Require(clocks.Check("a.clock(0)", scheduler) == "root" &&
+                clocks.Wait("a.clock(0)", 6, scheduler).second == 12 &&
+                clocks.Wait("a.clock(1)", 4, scheduler).second == 4,
+            "explicit source recovers while untouched oscillator bits stay "
+            "independent");
     Require(netlist.nodes[oscillator].clock_period->magnitude == 10 &&
                 scheduler.Value("value") == "1" &&
                 scheduler.Value("root") == "x",
@@ -5603,6 +5653,11 @@ Module Network {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
+      if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
+        TestClockOverrideSnapshots();
+        TestOscillatorSourceOverrides();
+        return 0;
+      }
       if (argc == 2 && std::string(argv[1]) == "--reset-backend") {
         TestDataResetCallbacks();
         TestUnreleasedDataFeedback();
@@ -5613,9 +5668,9 @@ int main(int argc, char* argv[]) {
         TestResetFill();
         return 0;
       }
-      Require(
-          argc == 2 && std::string(argv[1]) == "--primary-limits",
-          "expected --primary-limits, --reset-backend or no test arguments");
+      Require(argc == 2 && std::string(argv[1]) == "--primary-limits",
+              "expected --primary-limits, --reset-backend, --clock-snapshots "
+              "or no test arguments");
       TestPrimaryLimits();
       return 0;
     }

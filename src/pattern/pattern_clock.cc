@@ -123,10 +123,12 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
       throw std::runtime_error("unknown iClockOverride option: " + option);
     }
   }
-  if (node.clock_period && !options.count("-source")) {
+  // Factor-only updates may leave only an earlier checked oscillator usable.
+  if (node.clock_period && options.empty()) {
     throw std::runtime_error("oscillator override requires explicit -source");
   }
-  if (source == node.inputs.end() && !options.count("-source")) {
+  if (!node.clock_period && source == node.inputs.end() &&
+      !options.count("-source")) {
     throw std::runtime_error("clock override requires a source");
   }
   BuildSafety();

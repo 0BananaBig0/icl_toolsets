@@ -744,6 +744,31 @@ iClock child.osc; iRunLoop 2 -sck child.osc
         for cycles in (3, 1, 10):
             self.assertIn(f'iRunLoop {cycles} -sck root', result)
 
+    def test_oscillator_factor_only_keeps_intrinsic_check(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ns; } }
+Module Top { ClockPort root; Instance child Of Osc; }'''
+        for options in ('-freqMultiplier 2', '-freqDivider 3'):
+            with self.subTest(options=options):
+                result = self.replay(source, 'iClock child.osc; iRunLoop 4 -sck child.osc\n'
+                                     f'iClockOverride child.osc {options}\n'
+                                     'iRunLoop 4 -sck child.osc\n')
+                self.assertIn('iRunLoop 4 -sck child.osc\niRunLoop 4 -sck child.osc', result)
+                self.assertNotIn('iClockOverride', result)
+
+    def test_oscillator_factor_only_keeps_replaced_check(self):
+        source = '''Module Osc { ToClockPort osc { Period 10ns; } }
+Module Top { ClockPort root; Instance child Of Osc; }'''
+        for options in ('-freqMultiplier 2', '-freqDivider 3'):
+            with self.subTest(options=options):
+                result = self.replay(source, 'iClock child.osc; iRunLoop 4 -sck child.osc\n'
+                                     'iClockOverride child.osc -source root -freqDivider 3\n'
+                                     'iClock child.osc; iRunLoop 4 -sck child.osc\n'
+                                     f'iClockOverride child.osc {options}\n'
+                                     'iRunLoop 4 -sck child.osc\n')
+                self.assertIn('iRunLoop 4 -sck child.osc', result)
+                self.assertIn('iRunLoop 12 -sck root\niRunLoop 12 -sck root', result)
+                self.assertNotIn('iClockOverride', result)
+
     def test_oscillator_target_override_errors(self):
         source = '''Module Osc { ToClockPort osc { Period 10ns; } }
 Module Top { ClockPort root; Instance child Of Osc;
@@ -751,11 +776,13 @@ Module Top { ClockPort root; Instance child Of Osc;
 }'''
         for options in ('', '-freqMultiplier 2', '-freqDivider 3'):
             with self.subTest(options=options):
-                self.rejected(source, f'iClockOverride child.osc {options}\n',
+                check = 'iClock child.osc\n' if options else ''
+                diagnostic = ('inactive system-clock path' if options else
                               'oscillator override requires explicit -source')
+                self.rejected(source, f'iClockOverride child.osc {options}\n' + check,
+                              diagnostic)
                 self.rejected(source, 'iClockOverride child.osc -source root\n'
-                              f'iClockOverride child.osc {options}\n',
-                              'oscillator override requires explicit -source')
+                              f'iClockOverride child.osc {options}\n' + check, diagnostic)
         for replacement in ('child.osc', 'out'):
             with self.subTest(replacement=replacement):
                 self.rejected(source, f'iClock child.osc; iClockOverride child.osc -source {replacement}\n',
