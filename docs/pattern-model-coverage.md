@@ -67,7 +67,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f018bb2, including 51 generator CLI suites/776 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task120 run 96.5%/62.7% (17331/17961 lines,29262/46677 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: last pre-portability Task120 run 96.5%/62.7% (17331/17961 lines,29262/46677 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -3352,3 +3352,31 @@ Task116 full/SAN32 and Task117 platform gates are reused only for unchanged
 bytes, with the changed native groups freshly qualified here. No fresh Tessent
 run or product benchmark is claimed. One independent final review found no Critical, Important or Minor findings. The scoped test task is qualified for
 integration; strict coverage and broader model/vendor work remain open. No push.
+
+### Scheduler C++17 portability (2026-11-17)
+
+The raw-scan overlap callback now captures an ordinary const reference to the
+same map key. Its previous structured-binding capture required a C++20 extension
+despite Makefile's C++17 setting. The first interval-checking loop uses only the
+key; the unused operation binding is removed. The map outlives the synchronous
+callback, and diagnostics, ordering and the later processing loop are unchanged.
+No copy, allocation or new control flow; interval work remains O(C log C) time
+and O(C) space for C clients. There is no product speedup claim.
+
+The strict Clang C++17 probe changes from exit1 to exit0; changed-section format
+and tidy pass. Existing automatic-child, multiple-interface and chain-group
+suites pass39 cases per local dynamic/static variant, plus a leak-enabled
+overlap test. Rocky GCC15 syntax/build/identity/client checks pass7 gates and39
+cases. All3994 input hashes match Root/worktree/remote, with only scheduler
+source changed from Task120. All ten local and ten remote product binaries are
+byte-for-byte identical to their preserved originals after rebuilding.
+
+Evidence is build/scheduler-cpp17-20261117/: compiler RED/GREEN, local/remote
+logs/exits, source/input/product hashes, original generators/source and artifact
+hashes. Exact unchanged artifacts support reuse of Task120/119/116/117 runtime
+and platform checks. No fresh vendor run or product performance benchmark.
+Task120 remains the last complete pre-edit raw coverage measurement at
+17331/17961lines (96.5%) and29262/46677branches (62.7%). The declaration edit
+shifts source attribution; no post-edit gcov metric is claimed or inferred from
+those reports. Strict100%lines/90%rawbranches and broader model/vendor work
+remain open. Independent final review and integration are pending. No push.

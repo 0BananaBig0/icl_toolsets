@@ -1497,7 +1497,8 @@ class ScanScheduler::Impl {
                        std::set<size_t>* assigned) {
     const auto latest = RawRequests(operations);
     std::map<size_t, std::pair<size_t, std::string>> intervals;
-    for (const auto& [name, operation] : latest) {
+    for (const auto& request : latest) {
+      const auto& name = request.first;
       const auto& slice = RawSubchain(name);
       const auto next = intervals.lower_bound(slice.offset);
       const auto conflict = [&](const std::string& other) {
