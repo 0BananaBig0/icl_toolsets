@@ -28,9 +28,10 @@ fresh sanitizer pass for those scale cases; all optimized suites pass.
 Strict authored-code coverage remains unmet. The complete Task120 instrumented
 run reaches 17,331/17,961 lines (96.5%) and 29,262/46,677 raw branches (62.7%). All prescribed tests complete;
 the final unchanged 100% line / 90% raw branch gate fails with Make exit 2.
-See [the current measurement](#public-operand-api-coverage-2026-11-17) and
+See [the last pre-portability measurement](#public-operand-api-coverage-2026-11-17) and
 `build/public-operand-coverage-20261117/` for evidence. Raw exception/cleanup
-edges remain included.
+edges remain included. The later C++17 portability edit does not refresh raw
+source attribution; see [its exact scope](#scheduler-c17-portability-2026-11-17).
 
 Rocky Linux 8 source, dynamic and transferred static qualification covers the
 implementation through `f018bb2`, with 51 CLI suites (776 tests) passing per
@@ -6057,3 +6058,31 @@ Task116 full/SAN32 and Task117 platform gates are reused only for unchanged
 bytes, with the changed native groups freshly qualified here. No fresh Tessent
 run or product benchmark is claimed. One independent final review found no Critical, Important or Minor findings. The scoped test task is qualified for
 integration; strict coverage and broader model/vendor work remain open. No push.
+
+### Scheduler C++17 portability (2026-11-17)
+
+The raw-scan overlap callback now captures an ordinary const reference to the
+same map key. Its previous structured-binding capture required a C++20 extension
+despite Makefile's C++17 setting. The first interval-checking loop uses only the
+key; the unused operation binding is removed. The map outlives the synchronous
+callback, and diagnostics, ordering and the later processing loop are unchanged.
+No copy, allocation or new control flow; interval work remains O(C log C) time
+and O(C) space for C clients. There is no product speedup claim.
+
+The strict Clang C++17 probe changes from exit1 to exit0; changed-section format
+and tidy pass. Existing automatic-child, multiple-interface and chain-group
+suites pass39 cases per local dynamic/static variant, plus a leak-enabled
+overlap test. Rocky GCC15 syntax/build/identity/client checks pass7 gates and39
+cases. All3994 input hashes match Root/worktree/remote, with only scheduler
+source changed from Task120. All ten local and ten remote product binaries are
+byte-for-byte identical to their preserved originals after rebuilding.
+
+Evidence is build/scheduler-cpp17-20261117/: compiler RED/GREEN, local/remote
+logs/exits, source/input/product hashes, original generators/source and artifact
+hashes. Exact unchanged artifacts support reuse of Task120/119/116/117 runtime
+and platform checks. No fresh vendor run or product performance benchmark.
+Task120 remains the last complete pre-edit raw coverage measurement at
+17331/17961lines (96.5%) and29262/46677branches (62.7%). The declaration edit
+shifts source attribution; no post-edit gcov metric is claimed or inferred from
+those reports. Strict100%lines/90%rawbranches and broader model/vendor work
+remain open. One independent final review found no Critical, Important or Minor findings. The portability fix is qualified for integration. No push.
