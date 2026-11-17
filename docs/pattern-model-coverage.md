@@ -67,7 +67,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f018bb2, including 51 generator CLI suites/776 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: fresh complete Task45 instrumented run96.2%/62.0% (14623/15208 lines,24524/39581 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete current94bc043 run96.3%/62.5% (17300/17961 lines,29171/46677 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -3225,3 +3225,42 @@ membership/content, fingerprints and raw remote results remain under
 `build/qualification-f018bb2/`. This refresh does not claim a remote full
 `make check`, a new Tessent certificate, complete model support or the still
 unmet 100% line/90% raw branch coverage gate. No push.
+
+### Authored-code coverage refresh (2026-11-17)
+
+The complete current instrumented run at `94bc043` measures 17,300/17,961
+lines (96.3%) and 29,171/46,677 raw branches (62.5%). The unchanged 100% line /
+90% raw branch gate fails: Make exits2 only after the final strict report.
+All prescribed instrumented checks completed, including 58 Python unittest
+groups (938 cases; the generator subset is51 groups/776 cases),1916 regression
+cases and2180 conformance cases. Native checks also passed. The regression
+log's heading “FAIL: invalid ICL must be rejected” labels expected negative
+inputs; its result is PASS=1916/FAIL=0. This is not a passing strict gate.
+
+The fresh build uses GCC/gcov16.2.1, `-g -O0 -fprofile-arcs -ftest-coverage`,
+serial suites and at most2 compiler jobs. Wall time is1303.821085s. All54
+required authored-source reports are present, and all3994 source/test input
+hashes still match the qualified implementation. Old profiles were not mixed.
+Raw totals retain never-executed, compiler exception and cleanup edges. Of17506
+untaken raw edges,12237 are compiler-marked throw edges and5269 are other edges;
+these annotations do not remove anything from the denominator or prove edges
+unreachable. No filtered score, weakened threshold or new failure machinery.
+
+Persistent evidence is `build/current-coverage-audit-94bc043/`: full log,
+command/environment/input hashes,19 instrumented binary fingerprints, all raw
+reports, per-file analysis and artifact hashes. No product or test source
+changed. Task116 normal full regression/SAN32 and Task117 five-tool platform
+results are reused only for the identical implementation. Coverage measurement
+completion does not establish complete model support or vendor equivalence.
+
+Concrete next test targets are existing generator argument/input failures
+(missing files/values, unknown options, unreadable text), staged-output API
+misuse and publication failure (repeat Prepare, Publish without a stage,
+destination replaced by a directory), and numeric/target API validation
+(malformed tokens/ranges and oversized values). These are real behavior and
+output-preservation checks, using existing test runners. Larger remaining line
+gaps are scheduler189, flattening57, PDL document50, netlist49, generator48 and
+runtime46. Closing braces, initializer attribution, internal contract guards
+and throw/cleanup edges need individual source review; a percentage alone is
+not a reason to delete validation or invent behavior. The strict coverage
+requirement and broader model/vendor work remain open. No push.

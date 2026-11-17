@@ -25,13 +25,12 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. A fresh complete instrumented run
-including Tasks40–45 reaches 14,623/15,208 lines (96.2%) and 24,524/39,581 raw
-branches (62.0%), against required 100%/90%. All instrumented tests completed;
-the final strict gate failed with make exit 2. Reports are preserved under
-.worktrees/coverage/2026-11-14-alias-boundary, with full evidence in
-build/alias-boundary-full-coverage.log/.exit. The later help-only wording change
-does not alter the measured runtime logic. No coverage threshold was weakened.
+Strict authored-code coverage remains unmet. The complete current instrumented
+run at `94bc043` reaches17,300/17,961 lines (96.3%) and29,171/46,677 raw branches
+(62.5%), against the unchanged100%/90% requirement. All prescribed tests complete;
+the final strict gate fails with Make exit2. Raw exception/cleanup edges remain
+included. See [the current measurement](#authored-code-coverage-refresh-2026-11-17)
+and `build/current-coverage-audit-94bc043/` for exact evidence and next test targets.
 
 Rocky Linux 8 source, dynamic and transferred static qualification covers the
 implementation through `f018bb2`, with 51 CLI suites (776 tests) passing per
@@ -5931,3 +5930,42 @@ membership/content, fingerprints and raw remote results remain under
 `build/qualification-f018bb2/`. This refresh does not claim a remote full
 `make check`, a new Tessent certificate, complete model support or the still
 unmet 100% line/90% raw branch coverage gate. No push.
+
+### Authored-code coverage refresh (2026-11-17)
+
+The complete current instrumented run at `94bc043` measures 17,300/17,961
+lines (96.3%) and 29,171/46,677 raw branches (62.5%). The unchanged 100% line /
+90% raw branch gate fails: Make exits2 only after the final strict report.
+All prescribed instrumented checks completed, including 58 Python unittest
+groups (938 cases; the generator subset is51 groups/776 cases),1916 regression
+cases and2180 conformance cases. Native checks also passed. The regression
+log's heading “FAIL: invalid ICL must be rejected” labels expected negative
+inputs; its result is PASS=1916/FAIL=0. This is not a passing strict gate.
+
+The fresh build uses GCC/gcov16.2.1, `-g -O0 -fprofile-arcs -ftest-coverage`,
+serial suites and at most2 compiler jobs. Wall time is1303.821085s. All54
+required authored-source reports are present, and all3994 source/test input
+hashes still match the qualified implementation. Old profiles were not mixed.
+Raw totals retain never-executed, compiler exception and cleanup edges. Of17506
+untaken raw edges,12237 are compiler-marked throw edges and5269 are other edges;
+these annotations do not remove anything from the denominator or prove edges
+unreachable. No filtered score, weakened threshold or new failure machinery.
+
+Persistent evidence is `build/current-coverage-audit-94bc043/`: full log,
+command/environment/input hashes,19 instrumented binary fingerprints, all raw
+reports, per-file analysis and artifact hashes. No product or test source
+changed. Task116 normal full regression/SAN32 and Task117 five-tool platform
+results are reused only for the identical implementation. Coverage measurement
+completion does not establish complete model support or vendor equivalence.
+
+Concrete next test targets are existing generator argument/input failures
+(missing files/values, unknown options, unreadable text), staged-output API
+misuse and publication failure (repeat Prepare, Publish without a stage,
+destination replaced by a directory), and numeric/target API validation
+(malformed tokens/ranges and oversized values). These are real behavior and
+output-preservation checks, using existing test runners. Larger remaining line
+gaps are scheduler189, flattening57, PDL document50, netlist49, generator48 and
+runtime46. Closing braces, initializer attribution, internal contract guards
+and throw/cleanup edges need individual source review; a percentage alone is
+not a reason to delete validation or invent behavior. The strict coverage
+requirement and broader model/vendor work remain open. No push.
