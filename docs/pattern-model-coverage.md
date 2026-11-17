@@ -67,7 +67,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f018bb2, including 51 generator CLI suites/776 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete current94bc043 run96.3%/62.5% (17300/17961 lines,29171/46677 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete corrected Task119 run 96.4%/62.6% (17311/17961 lines,29201/46677 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -3264,3 +3264,45 @@ runtime46. Closing braces, initializer attribution, internal contract guards
 and throw/cleanup edges need individual source review; a percentage alone is
 not a reason to delete validation or invent behavior. The strict coverage
 requirement and broader model/vendor work remain open. No push.
+
+### CLI and staged-output coverage (2026-11-17)
+
+Two new cases in the existing generator CLI suite cover argument/input errors
+and preservation of generated, reset and debug artifacts. NUL cases use valid
+ICL/PDL plus NUL and require the input-reading diagnostic; a parser error cannot
+satisfy that check. Existing native tests now exercise staged publication without
+Prepare, repeated Prepare, successful publication, abandoned stages and real
+rename failure with directory/sentinel preservation. Native checks increase
+from 60 to 78. The existing unit target adds its missing file_output.h header
+prerequisite; a make what-if check changes from no rebuild to a scheduled compile.
+There are no production source, product recipe, flag or external dependency changes.
+
+The corrected final snapshot passes all 71 generator cases in local dynamic,
+static and leak-enabled ASan/UBSan runs and both Rocky variants; native normal,
+SAN and Rocky checks pass 78/0. Format/tidy pass for the changed C++ sections.
+An unchanged legacy whole-file tidy finding remains outside this change.
+One independent final review found the NUL fixture weakness and broad empty-list
+diagnostics; one correction pass fixes both before final qualification.
+
+The complete fresh instrumented recipe takes 1239.545330s with
+GCC/gcov16.2.1, -g -O0 -fprofile-arcs -ftest-coverage, serial suites and at most
+two compiler jobs. All 58 Python groups/940 cases pass, including 51 generator
+groups/778 cases, plus native checks, 1916 regression and 2180 conformance cases.
+All 11 selected previously-zero source guards execute. The final strict gate
+still fails: 17,311/17,961 lines (96.4%) and 29,201/46,677 raw branches (62.6%), against unchanged 100%/90% thresholds. Make exits 2
+only at that final report. No raw edges are filtered or waived. Missing raw
+edges include 12,235 compiler-marked throw edges and
+5,241 other edges; these labels do not prove unreachability.
+
+Persistent evidence is build/cli-output-coverage-20261117/: complete log, 54
+authored-source reports plus raw library reports/profiles, command/environment,
+3994 input hashes, 19 instrumented binary fingerprints, focused and remote
+results, review summary, analysis and artifact hashes. Only Makefile and the two
+existing test inputs differ from Task118; all product source and ten local and
+remote binary fingerprints remain unchanged. The initial pre-review full run
+is preserved separately and is not the final qualification snapshot.
+
+Task116 normal full/SAN32 and Task117 platform gates are reused for identical
+product bytes, with the changed groups freshly qualified here. No fresh Tessent
+run or performance benchmark is claimed for this test-only change. The strict
+coverage requirement and broader model/vendor gaps remain open. No push.

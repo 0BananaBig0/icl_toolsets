@@ -10,12 +10,17 @@
 // location type, precisely so that the tree and the layout can be exercised
 // without generating a parser. Run via `make unitcheck`.
 
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 
 #include "icl/format_tree.h"
 #include "icl/icl_ast.h"
+#include "utility/file_output.h"
 #include "utility/json.h"
 #include "utility/text_position.h"
 
@@ -360,6 +365,72 @@ void TestConcatenatedValues() {
   Check("concatenation width overflow stays unknown", full.width == 0);
 }
 
+void TestStagedTextFile() {
+  namespace fs = std::filesystem;
+  std::string pattern =
+      (fs::temp_directory_path() / "icl-output-XXXXXX").string();
+  if (!::mkdtemp(pattern.data())) {
+    Check("create output test directory", false);
+    return;
+  }
+  const fs::path directory(pattern);
+  const auto contents = [](const fs::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(input),
+                       std::istreambuf_iterator<char>());
+  };
+  const auto entries = [&] {
+    return std::distance(fs::directory_iterator(directory),
+                         fs::directory_iterator());
+  };
+  std::string error;
+  {
+    toolsets::StagedTextFile output;
+    Check("unstaged publish rejects", !output.Publish(&error));
+    Check("unstaged publish creates no files", entries() == 0);
+  }
+  const auto first = directory / "first";
+  const auto second = directory / "second";
+  std::ofstream(first) << "old first";
+  std::ofstream(second) << "old second";
+  {
+    toolsets::StagedTextFile output;
+    Check("prepare first output",
+          output.Prepare(first.string(), "new first", &error));
+    Check("repeated prepare rejects",
+          !output.Prepare(second.string(), "wrong", &error));
+    CheckEq("staging preserves first", "old first", contents(first));
+    CheckEq("repeated prepare preserves second", "old second",
+            contents(second));
+    Check("publish original stage", output.Publish(&error));
+    CheckEq("original stage survives rejected prepare", "new first",
+            contents(first));
+    CheckEq("other output unchanged", "old second", contents(second));
+  }
+  {
+    toolsets::StagedTextFile abandoned;
+    Check("prepare abandoned output",
+          abandoned.Prepare(first.string(), "abandoned", &error));
+  }
+  CheckEq("abandonment preserves output", "new first", contents(first));
+  Check("abandonment removes temporary", entries() == 2);
+  const auto blocked = directory / "blocked";
+  {
+    toolsets::StagedTextFile output;
+    Check("prepare absent destination",
+          output.Prepare(blocked.string(), "blocked", &error));
+    fs::create_directory(blocked);
+    std::ofstream(blocked / "sentinel") << "preserve";
+    Check("directory replacement rejects publish", !output.Publish(&error));
+    CheckEq("failed publish preserves directory contents", "preserve",
+            contents(blocked / "sentinel"));
+  }
+  Check("failed publish cleans temporary", entries() == 3);
+  CheckEq("failed publish keeps first output", "new first", contents(first));
+  CheckEq("failed publish keeps second output", "old second", contents(second));
+  fs::remove_all(directory);
+}
+
 }  // namespace
 }  // namespace icl
 
@@ -379,6 +450,7 @@ int main() {
   TestJsonRejects();
   TestUtf16Index();
   TestConcatenatedValues();
+  TestStagedTextFile();
   std::cout << "========================================================\n";
   std::cout << "PASS=" << icl::g_pass << "  FAIL=" << icl::g_fail << "\n";
   std::cout << "========================================================\n";

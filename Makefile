@@ -870,7 +870,8 @@ $(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(BU
 
 $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/icl/format_tree.cc \
     $(SRC_DIR)/utility/json.cc $(SRC_DIR)/icl/icl_ast.h $(SRC_DIR)/icl/format_tree.h \
-    $(SRC_DIR)/utility/json.h $(SRC_DIR)/utility/utf8.h $(SRC_DIR)/utility/text_position.h
+    $(SRC_DIR)/utility/json.h $(SRC_DIR)/utility/utf8.h $(SRC_DIR)/utility/text_position.h \
+    $(SRC_DIR)/utility/file_output.h
 	@mkdir -p $(@D)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) \
 	  tests/unit_tests.cc $(SRC_DIR)/icl/format_tree.cc $(SRC_DIR)/utility/json.cc -o $@
