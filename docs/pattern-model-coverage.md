@@ -64,7 +64,7 @@ full model coverage or Tessent equivalence.
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through473bc9e, including39 generator CLI suites/514 tests per build | Remaining command semantics and qualification of later changes |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f018bb2, including 51 generator CLI suites/776 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
 | Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: fresh complete Task45 instrumented run96.2%/62.0% (14623/15208 lines,24524/39581 raw branches); full vendor equivalence is unverified |
@@ -3193,3 +3193,35 @@ The inherited unknown-initial primary extra-initialization gap recorded in
 Task115 is resolved for these supported joint/primary cases. Other opaque,
 parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict coverage and
 final release acceptance remain open. Integrate master/delete branch; no push.
+
+### Rocky Linux 8 refresh (2026-11-17)
+
+Source-archive qualification now covers implementation through `f018bb2`.
+All 4,203 shipped tracked files match that clean checkout; only `.gitignore`
+is excluded. The six additional files are the generated parser/scanner sources,
+headers, location header and `.prebuilt` marker. The source archive SHA256 is
+`d3bd6f48b720ff18ed03e099d1d0cf8c724311e75219fa8ae05d5e526cae2e9a`; the five-binary static archive SHA256 is
+`461682b1cfa823006415af8c8891fe5cf83978671a29d3c49c391bc54eb3a2f6`. Both transferred archive hashes pass verification.
+
+The unchanged archive builds on Rocky Linux 8.10 with Bison/Flex disabled and
+no static Tcl archive. Existing pinned Make/GCC/Z3 dependencies are reused
+read-only. Exact toolchain versions and dynamic library resolution are in
+`build/qualification-f018bb2/remote-evidence/environment.log` and
+`dynamic-libraries.log`; all three Tcl-linked dynamic tools use system Tcl8.6.
+All 16 remote gates pass, including native tests, both five-tool installations,
+PDL/LSP/pattern/reset replay, both installed ICL LSP runs (62 checks each), and
+manifest uninstall that preserves unrelated sentinels. Every transferred static
+ELF lacks an interpreter and its installed hash matches the local archive.
+Each remote generator variant passes all 51 suites and 776 tests. Static tools
+are transferred local builds; this is not a remote static source build.
+
+Fresh local dynamic/static installations also pass all 11 gates, with matching
+binary fingerprints and sentinel-preserving uninstall. All 3,994 source/test
+input hashes remain identical to Task116. Its full local regression
+(1820.716870s; editor six tests189.933s), 32 leak-enabled sanitizer gates and
+77 directional certificates are reused explicitly. No product code, dependency,
+user installation or editor configuration changes. Exact commands, archive
+membership/content, fingerprints and raw remote results remain under
+`build/qualification-f018bb2/`. This refresh does not claim a remote full
+`make check`, a new Tessent certificate, complete model support or the still
+unmet 100% line/90% raw branch coverage gate. No push.

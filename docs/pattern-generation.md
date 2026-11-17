@@ -33,9 +33,9 @@ the final strict gate failed with make exit 2. Reports are preserved under
 build/alias-boundary-full-coverage.log/.exit. The later help-only wording change
 does not alter the measured runtime logic. No coverage threshold was weakened.
 
-Rocky8 source/dynamic and transferred-static qualification covers the implementation
-through473bc9e, with39 CLI suites (514 tests) passing per build on2026-11-14.
-See [the exact platform scope](#rocky-linux-8-refresh-2026-11-14).
+Rocky Linux 8 source, dynamic and transferred static qualification covers the
+implementation through `f018bb2`, with 51 CLI suites (776 tests) passing per
+binary variant on 2026-11-17. See [the exact platform scope](#rocky-linux-8-refresh-2026-11-17).
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -5899,3 +5899,35 @@ The inherited unknown-initial primary extra-initialization gap recorded in
 Task115 is resolved for these supported joint/primary cases. Other opaque,
 parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict coverage and
 final release acceptance remain open. Integrate master/delete branch; no push.
+
+### Rocky Linux 8 refresh (2026-11-17)
+
+Source-archive qualification now covers implementation through `f018bb2`.
+All 4,203 shipped tracked files match that clean checkout; only `.gitignore`
+is excluded. The six additional files are the generated parser/scanner sources,
+headers, location header and `.prebuilt` marker. The source archive SHA256 is
+`d3bd6f48b720ff18ed03e099d1d0cf8c724311e75219fa8ae05d5e526cae2e9a`; the five-binary static archive SHA256 is
+`461682b1cfa823006415af8c8891fe5cf83978671a29d3c49c391bc54eb3a2f6`. Both transferred archive hashes pass verification.
+
+The unchanged archive builds on Rocky Linux 8.10 with Bison/Flex disabled and
+no static Tcl archive. Existing pinned Make/GCC/Z3 dependencies are reused
+read-only. Exact toolchain versions and dynamic library resolution are in
+`build/qualification-f018bb2/remote-evidence/environment.log` and
+`dynamic-libraries.log`; all three Tcl-linked dynamic tools use system Tcl8.6.
+All 16 remote gates pass, including native tests, both five-tool installations,
+PDL/LSP/pattern/reset replay, both installed ICL LSP runs (62 checks each), and
+manifest uninstall that preserves unrelated sentinels. Every transferred static
+ELF lacks an interpreter and its installed hash matches the local archive.
+Each remote generator variant passes all 51 suites and 776 tests. Static tools
+are transferred local builds; this is not a remote static source build.
+
+Fresh local dynamic/static installations also pass all 11 gates, with matching
+binary fingerprints and sentinel-preserving uninstall. All 3,994 source/test
+input hashes remain identical to Task116. Its full local regression
+(1820.716870s; editor six tests189.933s), 32 leak-enabled sanitizer gates and
+77 directional certificates are reused explicitly. No product code, dependency,
+user installation or editor configuration changes. Exact commands, archive
+membership/content, fingerprints and raw remote results remain under
+`build/qualification-f018bb2/`. This refresh does not claim a remote full
+`make check`, a new Tessent certificate, complete model support or the still
+unmet 100% line/90% raw branch coverage gate. No push.
