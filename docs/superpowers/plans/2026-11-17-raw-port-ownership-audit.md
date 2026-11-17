@@ -34,10 +34,10 @@ runtime manifests. Existing test_raw_established_port_ownership_is_explicitly_un
 - [x] Run native dynamic/static on identical inputs and isolated vendor probes;
       retain actual statuses/exports/failure stages and submitted/fetched hashes.
       Expected evidence for all ten, with actual outcomes determining findings.
-- [ ] Verify exact runtime/product/platform/full/SAN evidence reuse; document
+- [x] Verify exact runtime/product/platform/full/SAN evidence reuse; document
       bounded findings and open gaps. Freeze four-file candidate; independent
       final review and one necessary correction pass.
-- [ ] Verify final bytes, commit/merge master/delete branch/task-done/archive/sync.
+- [x] Verify final bytes, commit/merge master/delete branch/task-done/archive/sync.
 
 Pre-flight: no product interfaces changed. Design/plan self-review complete.
 Ruling: audit/docs only, no behavior edit or manufactured failing TDD test.
@@ -97,4 +97,4 @@ by hash; no new full regression, coverage or performance measurement is claimed.
 Strict coverage remains unmet at 96.5% lines and 62.7% raw branches against 100%/90%.
 General port/raw ownership, broader model/vendor equivalence and other recorded
 acceptance work remain open. No product/test/Makefile edits or push.
-Independent final review and integration are pending.
+Independent final review found no Critical, Important, or Minor issues in this documentation-only ownership audit. The bounded raw port ownership audit is ready for integration.

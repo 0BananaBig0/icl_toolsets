@@ -3567,4 +3567,4 @@ by hash; no new full regression, coverage or performance measurement is claimed.
 Strict coverage remains unmet at 96.5% lines and 62.7% raw branches against 100%/90%.
 General port/raw ownership, broader model/vendor equivalence and other recorded
 acceptance work remain open. No product/test/Makefile edits or push.
-Independent final review and integration are pending.
+Independent final review found no Critical, Important, or Minor issues in this documentation-only ownership audit. The bounded raw port ownership audit is ready for integration.
