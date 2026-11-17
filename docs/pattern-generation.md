@@ -25,13 +25,12 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. The complete Task120 instrumented
-run reaches 17,331/17,961 lines (96.5%) and 29,262/46,677 raw branches (62.7%). All prescribed tests complete;
-the final unchanged 100% line / 90% raw branch gate fails with Make exit 2.
-See [the last pre-portability measurement](#public-operand-api-coverage-2026-11-17) and
-`build/public-operand-coverage-20261117/` for evidence. Raw exception/cleanup
-edges remain included. The later C++17 portability edit does not refresh raw
-source attribution; see [its exact scope](#scheduler-c17-portability-2026-11-17).
+Strict authored-code coverage remains unmet. The complete Task123 instrumented
+run reaches 17,333/17,963 lines (96.5%) and 29,260/46,667 raw branches (62.7%). All prescribed tests complete;
+the final unchanged100% line/90% raw branch gate fails with Make exit2.
+See [the current measurement](#oscillator-cached-waits-2026-11-17) and
+`build/oscillator-cached-20261117/` for evidence. Raw exception/cleanup edges
+remain included.
 
 Rocky Linux 8 source, dynamic and transferred static qualification covers the
 implementation through `f018bb2`, with 51 CLI suites (776 tests) passing per
@@ -6107,8 +6106,8 @@ match the submitted files.
 | Explicit source/divider3, then multiplier2, retain previous check | exit0 | child.osc4, root12, root12 |
 
 The override itself is accepted in the factor-only cases. A previous checked
-clock remains usable in the two cached-wait patterns; those patterns currently
-fail in our tool at the earlier explicit-source guard (exit2). This is an
+clock remains usable in the two cached-wait patterns; those patterns at the audit revision
+failed in our tool at the earlier explicit-source guard (exit2). This is an
 identified compatibility gap, not a completed clock feature. The guard stays
 unchanged in this documentation-only audit; a separate implementation must
 preserve the cached duration without inventing an intrinsic frequency or
@@ -6129,5 +6128,60 @@ oscillator-target rejection method passes dynamic/static/leak-enabled SAN;
 that verifies the present restriction and does not close the cached-wait gap.
 All3994 runtime inputs and20 product fingerprints remain unchanged. No formal
 certificate, broader equivalence, post-edit coverage or performance claim.
-One independent final review found no Critical, Important or Minor findings. The bounded audit is qualified for integration; cached-wait implementation remains pending. Strict coverage and
+One independent final review found no Critical, Important or Minor findings. The audit recorded the cached-wait gap; the following implementation closes that bounded gap. Strict coverage and
 broader model/vendor requirements remain open. No push.
+
+### Oscillator cached waits (2026-11-17)
+
+Factor-only overrides of a Period ToClockPort now preserve waits using an
+earlier iClock check, including a check that previously selected an external
+source and ratio. This closes the two native gaps measured in the omission
+audit. The latest omitted ICL source may be missing; a fresh iClock still fails
+on that inactive route, matching the measured Tessent2026.2 patterns. Optionless
+Period overrides stay rejected, and unconnected non-Period targets still need
+a source. No intrinsic frequency, self-reference, absolute-time or event model.
+
+The change reuses existing versioned definitions and checked routes, with no
+new API/header/cache/state representation. Native source/flat cases prove saved
+ratios survive a failed fresh check, invalid source/factor updates publish no
+partial change, an explicit source recovers, other vector bits stay independent,
+and original period metadata/hardware remain unchanged. Two new CLI methods
+cover multiplier/divider variants through five replay forms; existing fresh
+failure checks preserve all previous output artifacts. Native --clock-snapshots
+selects existing clock tests for focused sanitizers; default execution retains
+the full tests. Actual CLI/native RED failures precede the two-guard repair.
+
+Dynamic/static clock suites each pass53 methods; leak-enabled ASan/UBSan passes
+the native snapshot selector, all53 clock and71 main CLI methods. Changed C++
+format/tidy and strict C++17 syntax pass. The4096-stage/1024-wait and65536-bit
+oscillator workloads remain within the existing45s limit; measurements are in
+the clock logs. History remains one record per override, with the existing ordered-map route
+lookups and binary search within each bit's history. No product speedup claim.
+
+Complete normal integration passes in 1871.732309s. The fresh
+complete raw coverage recipe takes 1389.920953s, with all58
+Python groups/942 cases (51 generator groups/780 cases), native checks,1916
+regression and2180 conformance cases passing. Strict coverage still fails:
+17,333/17,963 lines (96.5%) and 29,260/46,667 raw branches (62.7%), against unchanged100%/90% thresholds. Make exits2 only at the
+final report. All54 authored reports and raw compiler exception/cleanup edges
+are retained; untaken edges include 12,230 compiler-marked
+throw edges and 5,177 other edges. No filtering or waiver.
+Optional ANTLR checks in normal integration remain skipped when unavailable.
+
+Rocky qualifies the current3994 inputs, updated native tests and both generators:
+51 suites/780 cases pass per dynamic/transferred-static variant. Dynamic builds
+from current source; the transferred static generator matches the Root hash and
+has no ELF interpreter. Only the two generator products change; other eight
+product bytes remain unchanged on each platform. This is generator qualification,
+not a fresh five-tool install/source-archive refresh.
+
+Both new normalized programs pass fresh Tessent2026.2 retargeting with the
+unchanged driver, and vendor exports replay successfully through the native
+tool. Their matched wait traces are child4/child4 and child4/root12/root12.
+These scoped probes add no formal directional certificate or general oscillator
+equivalence claim. Evidence is build/oscillator-cached-20261117/: normal/SAN and
+raw coverage logs/profiles,54 reports,3994 input hashes,19 instrumented binary
+fingerprints and product fingerprints, remote and vendor data, comparison and artifact hashes. Only clock
+source and two existing tests differ from the qualified audit runtime inputs.
+Independent final review found no Critical, Important, or Minor issues in the scoped cached-wait repair. The scoped cached-wait feature is qualified for integration. Strict and broader model/
+vendor requirements remain open. No push.
