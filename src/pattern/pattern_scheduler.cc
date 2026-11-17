@@ -3013,6 +3013,11 @@ class ScanScheduler::Impl {
         simultaneous = simultaneous || (complete && all_reads);
         ConstrainPreserved(solver, *values, preserved, desired_preserved,
                            reserved_changed);
+        auto emitted = any_drive;
+        for (const auto& choice : frame.reads) {
+          emitted = emitted || choice.selected;
+        }
+        ConstrainPrimaryEndStates(solver, *values, emitted, any_drive);
         frame.state = next;
         frame.fill = fills;
         frames.push_back(std::move(frame));
@@ -4335,6 +4340,19 @@ class ScanScheduler::Impl {
     }
     return context_.bool_val(true);
   }
+  void ConstrainPrimaryEndStates(z3::optimize& solver, SymbolicNetwork& state,
+                                 const z3::expr& emitted,
+                                 const z3::expr& event) {
+    for (const auto& [id, defaults] : end_states_) {
+      if (!PrimaryInput(netlist_.nodes[id])) continue;
+      const auto value = state.Value(id);
+      const auto fallback = SymbolicValue::Literal(context_, defaults);
+      // Unknown primary values cannot be emitted as temporary overrides.
+      solver.add(z3::implies(emitted,
+                             (value.known & fallback.known) == fallback.known &&
+                                 (event || Matches(value, fallback))));
+    }
+  }
   void ConstrainEndStateFrames(z3::optimize& solver, const Frame& frame,
                                const Values& state, SymbolicNetwork& before,
                                const z3::expr& event) {
@@ -4343,6 +4361,7 @@ class ScanScheduler::Impl {
       emitted = emitted || comparison.selected;
     }
     SymbolicNetwork serialized(netlist_, context_, state, global_resets_);
+    ConstrainPrimaryEndStates(solver, serialized, emitted, event);
     for (const auto& [id, defaults] : end_states_) {
       const auto& node = netlist_.nodes[id];
       if (node.kind != "ScanRegister") continue;

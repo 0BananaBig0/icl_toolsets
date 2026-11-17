@@ -138,6 +138,53 @@ class ApplyEndState(unittest.TestCase):
         self.replay(text)
         print(f'end-state primary bits={width} source_seconds={elapsed:.3f}')
 
+    def test_unknown_primary_before_intermediate_scan_is_replayable(self):
+        for default in (0, 1):
+            for initial in ('', f'iState marker {1 - default}; '):
+                with self.subTest(default=default, initial=initial):
+                    model = MODEL.replace('  ScanInPort si;', f"""  DataInPort marker;
+  DataInPort untouched;
+  Alias marker_idle = marker {{ iApplyEndState 1'b{default}; }}
+  ScanInPort si;""")
+                    (self.root / 'source.icl').write_text(model)
+                    text = self.run_tool('iReset; ' + initial +
+                        f'iWrite trigger 3; iRead trigger 0; iWrite marker {1 - default}; iApply; '
+                        'iRead trigger 3; iApply\n', extra=('--debug',))
+                    self.assertNotIn('iWrite untouched', text)
+                    self.assertIn(f'iWrite marker 0b{1 - default}', text)
+                    self.assertTrue(text.endswith('iApply\n'))
+                    self.replay(text)
+
+    def test_indexed_inverted_primary_default_replays(self):
+        model = MODEL.replace('  ScanInPort si;', """  DataInPort pins[5:4];
+  Alias idle = ~pins[5] { iApplyEndState 1'b1; }
+  ScanInPort si;""")
+        (self.root / 'source.icl').write_text(model)
+        text = self.run_tool('iReset; iWrite trigger 3; iWrite idle 0; iApply; '
+                             'iRead trigger 3; iApply\n', extra=('--debug',))
+        self.replay(text)
+
+    def test_unknown_primary_before_multiple_data_writes_replays(self):
+        model = (ROOT / 'tests/cases/ours/pattern_generation/data_registers/addressed.icl').read_text()
+        model = model.replace('Module AddressedData {', """Module EndState {
+          DataInPort marker;
+          Alias marker_idle = marker { iApplyEndState 1'b0; }""")
+        (self.root / 'source.icl').write_text(model)
+        text = self.run_tool('iReset; iWrite a 3; iWrite b 5; iWrite marker 1; iApply\n',
+                             extra=('--debug',))
+        self.replay(text)
+
+    def test_known_primary_override_with_initial_comparison_replays(self):
+        model = (ROOT / 'tests/cases/ours/pattern_generation/data_registers/addressed.icl').read_text()
+        model = model.replace('Module AddressedData {', """Module EndState {
+          DataInPort marker;
+          Alias marker_idle = marker { iApplyEndState 1'b0; }""")
+        (self.root / 'source.icl').write_text(model)
+        text = self.run_tool('iReset; iWrite address 1; iWrite we 0; iWrite re 1; '
+            'iWrite data 0; iApply; iState marker 1; '
+            'iRead a 0; iWrite b 5; iWrite marker 1; iApply\n', extra=('--debug',))
+        self.replay(text)
+
     def test_invalid_directives_do_not_publish(self):
         models = [
             "Module EndState { DataInPort pin; Alias a = pin { iApplyEndState 1'b0; } Alias b = pin { iApplyEndState 1'b1; } }",
