@@ -64,7 +64,7 @@ full model coverage or Tessent equivalence.
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through 2b5eec1, including 51 generator CLI suites/780 tests per build | Remaining command semantics; later product changes need fresh qualification |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f75edb8, with fresh installations and reuse based on identical source/product hashes for 51 generator CLI suites/783 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
 | Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task126 run 96.5%/62.7% (17336/17966 lines,29268/46679 raw branches); full vendor equivalence is unverified |
@@ -3653,3 +3653,38 @@ reference passed in 0.400905s. The new maintained wide regression runs in every
 current 80-method suite. All source-dependent qualification above was repeated
 after this fix; first-candidate evidence is retained before-review. No second
 independent review was requested. Independent final review found one Important missed caller; the executor resolved it in one fix pass with RED/GREEN evidence and refreshed source-dependent qualification. No unresolved Critical or Important issues remain. The scoped root raw port feature is qualified for integration.
+
+### Current package identity and installation (2026-11-17)
+
+The clean source archive now covers `f75edb8`, including the root raw port
+ownership repair and the review correction that preserves ordinary reserved-
+write native scheduling. All 4,223 shipped tracked files match that commit;
+`.gitignore` is the sole exclusion and six generated parser/scanner/marker
+extras are identified. Source archive SHA256 `c7191ce2f8edd687fb678627d99de141361f200610d0946fe6761af467a2923b`;
+five-product static archive SHA256 `6e065010e4776a45192dd07dd2089c1a77ac0e98ce6f20df725a5e5e3a7346dc`.
+
+Fresh temporary installations pass 11 local and 14 remote gates. Both dynamic
+and transferred-static installations exercise all five versions, PDL tools,
+original/flat/generated/reset generator replay, installed ICL LSP 62 checks per
+variant, and manifest uninstall preserving unrelated sentinels. Remote library
+checks resolve the three Tcl-linked dynamic products to system Tcl 8.6; all five
+static products have no ELF interpreter and match the local bundle fingerprints.
+No user installation, dependency, editor configuration or product code changes.
+
+All 4,013 non-documentation archive files, including generated parser/scanner
+and `.prebuilt`, match the current qualified remote source tree. All 3,994
+runtime inputs and ten local/ten remote product fingerprints match Task 126.
+This exact identity reuses its current build/native checks and 51 generator
+suites/783 cases per dynamic/transferred-static variant. Source-archive content
+identity and fresh installations are checked here; the remote checkout is not
+rebuilt from this new archive and the full CLI suites are not rerun here.
+
+Task 126 complete normal 1533.315018s (six editor checks 174.471s), leak-enabled
+SAN native/80 modeled-root/71 main, 88 matched performance rows and fresh raw
+coverage are reused unchanged. Strict coverage remains FAILED at 17,336/17,966
+lines (96.5%) and 29,268/46,679 raw branches (62.7%), against unchanged 100%/90%.
+Optional ANTLR checks remain skipped. No new vendor certificate or broad model/
+vendor completeness claim. Exact archive contents, 4,013 remote file hashes,
+products, commands and installation logs/statuses are in `build/package-f75edb8/`;
+underlying runtime evidence remains `build/root-raw-port-20261117/`. No push.
+Independent final review found no Critical, Important, or Minor issues in this current-package record. The current package qualification record is ready for integration.
