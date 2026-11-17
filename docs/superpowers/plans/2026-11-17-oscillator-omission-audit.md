@@ -40,7 +40,7 @@ SystemClocks::Override and existing oscillator target rejection method unchanged
       control0/export; three subsequent-iClock failures1; optionless syntax1.
 - [x] Verify existing native rejection method dynamic/static/SAN. Expected: all3
       exit0 with leak detection;3994 runtime inputs and product hashes unchanged.
-- [ ] Document versioned results and limitations; one independent final review
+- [x] Document versioned results and limitations; one independent final review
       and necessary correction pass. Candidate/final verified4docs, merge master,
       delete branch/task-done/archive/sync. Expected: audit complete, broader
       strict/model/vendor work remains open. No push.
@@ -95,5 +95,5 @@ oscillator-target rejection method passes dynamic/static/leak-enabled SAN;
 that verifies the present restriction and does not close the cached-wait gap.
 All3994 runtime inputs and20 product fingerprints remain unchanged. No formal
 certificate, broader equivalence, post-edit coverage or performance claim.
-Independent final review and integration are pending. Strict coverage and
+One independent final review found no Critical, Important or Minor findings. The bounded audit is qualified for integration; cached-wait implementation remains pending. Strict coverage and
 broader model/vendor requirements remain open. No push.

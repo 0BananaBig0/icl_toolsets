@@ -3422,5 +3422,5 @@ oscillator-target rejection method passes dynamic/static/leak-enabled SAN;
 that verifies the present restriction and does not close the cached-wait gap.
 All3994 runtime inputs and20 product fingerprints remain unchanged. No formal
 certificate, broader equivalence, post-edit coverage or performance claim.
-Independent final review and integration are pending. Strict coverage and
+One independent final review found no Critical, Important or Minor findings. The bounded audit is qualified for integration; cached-wait implementation remains pending. Strict coverage and
 broader model/vendor requirements remain open. No push.
