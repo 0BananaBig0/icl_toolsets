@@ -59,7 +59,7 @@ full model coverage or Tessent equivalence.
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Raw scans | Genuine opaque root-client lowering; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream established ScanRegister reservations; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Opaque child, parallel/multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, established port ownership and broader vendor qualification |
-| Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
+| Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
 | Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots and root-relative replay | General implicit selection, inverted child clock phases, oscillator overrides without explicit source, bound differential-input consistency, absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
@@ -3158,3 +3158,38 @@ no push. Inherited unknown-initial primary end-state replay extra initialization
 reproduces on saved Task114 and remains open; initialized primary guard passes.
 Other opaque/parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict
 coverage and final release acceptance remain open.
+
+Primary end-state replay now requires declared default bits to be known at each
+emitted apply boundary in both the joint scan and primary-only solvers. The
+existing override emitter retains known nondefault values on each write-emitting
+apply. This
+addresses the Task115 inherited extra-initialization case without requiring a
+user-supplied iState. Unrelated unknown bits, temporary override lifetime,
+concrete reset/control replay and reservations retain their existing rules.
+Shared-address multiple-register and IR source/flat/generated replay regressions
+cover both affected paths. A comparison-only frame must either match its defaults or include a proved
+input event that can carry explicit overrides. No physical drive is inserted
+after replay. Qualification is recorded below.
+
+Task116 qualification: true native-IR, shared-address primary-only and
+comparison-only replay REDs precede their fixes. Declared primary default bits
+must be known on emitted frames; a nondefault value additionally requires a
+proved input event so the existing override emitter can express it. No drive is
+added after replay, no fake iState, no changed override lifetime or raised guard.
+Final review found no Critical/confirmed Important initially; its declined
+comparison-only boundary was reproduced and re-graded Important, then fixed in
+one RED/GREEN pass. Documentation's override scope was corrected. All15 end-state
+tests, expanded known/unknown/default0/1 TAP replay, indexed/inverted masks,
+unrelated unknown-port and existing reset/reservation cases pass. Fresh full
+serial make check0 in1820.7168697050074s, editor6 in189.933s,32 leak-enabled SAN gates0,
+17 local qualification gates0,66 remote gates0 and3994 current input hashes.
+Both platforms98 measured native-profile artifacts equal Task115 byte-for-byte;
+no new speedup claim. All77 existing directional certificates pass on the current
+candidate. Four Task115 genuine binary IR/multiple-DR vendor proofs are reused
+with unchanged fixture source/input/artifact provenance and current offline
+checks; no new vendor fixture or certificate, no new literal-X equivalence.
+Seven-file runtime freeze remains unchanged; verified documentation only follows.
+The inherited unknown-initial primary extra-initialization gap recorded in
+Task115 is resolved for these supported joint/primary cases. Other opaque,
+parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict coverage and
+final release acceptance remain open. Integrate master/delete branch; no push.

@@ -60,16 +60,19 @@ class NativeTapIr(unittest.TestCase):
                             'iRead tap.INSTRUCTION 0bxx01; iApply\n')
 
     def test_primary_goal_and_end_state_are_not_dropped(self):
-        model = self.root / 'primary.icl'
-        model.write_text((ir.FIXTURE / 'model.icl').read_text().replace(
-            'Module RawIrTop {',
-            "Module RawIrTop {\n DataInPort marker; Alias idle = marker {iApplyEndState 1'b0;}"))
-        self.inputs[1] = str(model)
-        result = self.replay('iReset; iState marker 0; iWrite tap.INSTRUCTION 3; '
-            'iRead tap.INSTRUCTION 1; iWrite marker 1; iApply; '
-            'iRead tap.INSTRUCTION 0bxx01; iApply\n')
-        self.assertIn('iWrite marker 0b1', result)
-        self.assertIn('iWrite marker 0b0', result)
+        for default in (0, 1):
+            for initial in ('', f'iState marker {1 - default}; '):
+                with self.subTest(default=default, initial=initial):
+                    model = self.root / 'primary.icl'
+                    model.write_text((ir.FIXTURE / 'model.icl').read_text().replace(
+                        'Module RawIrTop {',
+                        f"Module RawIrTop {{\n DataInPort marker; Alias idle = marker {{iApplyEndState 1'b{default};}}"))
+                    self.inputs[1] = str(model)
+                    result = self.replay('iReset; ' + initial + 'iWrite tap.INSTRUCTION 3; '
+                        f'iRead tap.INSTRUCTION 1; iWrite marker {1 - default}; iApply; '
+                        'iRead tap.INSTRUCTION 0bxx01; iApply\n')
+                    self.assertIn('iWrite marker 0b1', result)
+                    self.assertIn('iWrite marker 0b0', result)
 
 
 if __name__ == '__main__':

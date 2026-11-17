@@ -5864,3 +5864,38 @@ no push. Inherited unknown-initial primary end-state replay extra initialization
 reproduces on saved Task114 and remains open; initialized primary guard passes.
 Other opaque/parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict
 coverage and final release acceptance remain open.
+
+Primary end-state replay now requires declared default bits to be known at each
+emitted apply boundary in both the joint scan and primary-only solvers. The
+existing override emitter retains known nondefault values on each write-emitting
+apply. This
+addresses the Task115 inherited extra-initialization case without requiring a
+user-supplied iState. Unrelated unknown bits, temporary override lifetime,
+concrete reset/control replay and reservations retain their existing rules.
+Shared-address multiple-register and IR source/flat/generated replay regressions
+cover both affected paths. A comparison-only frame must either match its defaults or include a proved
+input event that can carry explicit overrides. No physical drive is inserted
+after replay. Qualification is recorded below.
+
+Task116 qualification: true native-IR, shared-address primary-only and
+comparison-only replay REDs precede their fixes. Declared primary default bits
+must be known on emitted frames; a nondefault value additionally requires a
+proved input event so the existing override emitter can express it. No drive is
+added after replay, no fake iState, no changed override lifetime or raised guard.
+Final review found no Critical/confirmed Important initially; its declined
+comparison-only boundary was reproduced and re-graded Important, then fixed in
+one RED/GREEN pass. Documentation's override scope was corrected. All15 end-state
+tests, expanded known/unknown/default0/1 TAP replay, indexed/inverted masks,
+unrelated unknown-port and existing reset/reservation cases pass. Fresh full
+serial make check0 in1820.7168697050074s, editor6 in189.933s,32 leak-enabled SAN gates0,
+17 local qualification gates0,66 remote gates0 and3994 current input hashes.
+Both platforms98 measured native-profile artifacts equal Task115 byte-for-byte;
+no new speedup claim. All77 existing directional certificates pass on the current
+candidate. Four Task115 genuine binary IR/multiple-DR vendor proofs are reused
+with unchanged fixture source/input/artifact provenance and current offline
+checks; no new vendor fixture or certificate, no new literal-X equivalence.
+Seven-file runtime freeze remains unchanged; verified documentation only follows.
+The inherited unknown-initial primary extra-initialization gap recorded in
+Task115 is resolved for these supported joint/primary cases. Other opaque,
+parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict coverage and
+final release acceptance remain open. Integrate master/delete branch; no push.
