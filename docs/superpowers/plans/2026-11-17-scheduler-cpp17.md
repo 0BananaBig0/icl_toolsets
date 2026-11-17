@@ -46,7 +46,7 @@ CLI suites and overlap method; Make dynamic/static generator targets.
 - [x] Compile current scheduler/generator on Rocky with exact source hashes;
       compare all10 products and run affected client checks as required.
       Expected: source/build/checks0; reuse only exact unchanged artifacts.
-- [ ] Document actual results and pre-edit coverage limitation; candidate
+- [x] Document actual results and pre-edit coverage limitation; candidate
       commit, one independent review/necessary fix pass, verify/merge master,
       delete branch/task-done/archive/sync. Expected: scoped portability gate
       complete; global strict/model/vendor requirements still open. No push.
@@ -80,4 +80,4 @@ Task120 remains the last complete pre-edit raw coverage measurement at
 17331/17961lines (96.5%) and29262/46677branches (62.7%). The declaration edit
 shifts source attribution; no post-edit gcov metric is claimed or inferred from
 those reports. Strict100%lines/90%rawbranches and broader model/vendor work
-remain open. Independent final review and integration are pending. No push.
+remain open. One independent final review found no Critical, Important or Minor findings. The portability fix is qualified for integration. No push.
