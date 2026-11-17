@@ -67,7 +67,7 @@ full model coverage or Tessent equivalence.
 | CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f018bb2, including 51 generator CLI suites/776 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete corrected Task119 run 96.4%/62.6% (17311/17961 lines,29201/46677 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task120 run 96.5%/62.7% (17331/17961 lines,29262/46677 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -3306,3 +3306,49 @@ Task116 normal full/SAN32 and Task117 platform gates are reused for identical
 product bytes, with the changed groups freshly qualified here. No fresh Tessent
 run or performance benchmark is claimed for this test-only change. The strict
 coverage requirement and broader model/vendor gaps remain open. No push.
+
+### Public operand API coverage (2026-11-17)
+
+The existing native expression and symbolic runners now exercise public numeric
+and target validation directly. Malformed token spans/literals/operators and
+target ranges/indices require the intended runtime-error diagnostic. Valid
+parameter arithmetic, target declaration/alias ordering and exact supported
+numeric width/text boundaries remain accepted. The largest text is 1MiB+3
+characters for a just-over-limit rejection; valid payloads are at most one
+megabit. Cases run inside the two existing native processes with bounded linear
+work and a few MiB transient data; no product speedup is claimed.
+
+Small caller-created public IR copies exercise oversized targets, aliases with
+missing/cyclic sources and an empty enum target. These cases establish API
+validation, not acceptance of those models through the ICL parser. Product
+source, recipes, targets, flags and external dependencies are unchanged.
+
+Both native runners pass normal, leak-enabled ASan/UBSan, instrumented and Rocky
+checks. Changed-section format/tidy and strict C++17 test-source syntax checks
+pass. A new structured-binding capture was replaced with a C++17 pair reference;
+an unchanged production scheduler capture warning stays outside this test-only
+scope. The first focused command retained old binaries because COV_DIR was
+omitted; its guard assertions correctly failed. The corrected Make target
+selection rebuilds both test runners and hits all 18 designated guards. Initial
+logs/reports and Task119 profiles/raw reports/old native binaries are preserved.
+
+The complete unchanged coverage recipe clears profiles and uses GCC/gcov16.2.1,
+-g -O0 -fprofile-arcs -ftest-coverage, serial suites and at most two compiler
+jobs. It reuses 17 identical instrumented binaries and rebuilds the two changed
+native runners. Wall time is 1344.132797s. All 58 Python groups/940
+cases pass, including 51 generator groups/778 cases, plus native checks, 1916
+regression and 2180 conformance cases. The strict gate remains failed:
+17,331/17,961 lines (96.5%) and 29,262/46,677 raw branches (62.7%), against unchanged 100%/90% thresholds. Make exits 2 only at the
+final report. All raw exception/cleanup edges stay included: missing edges
+include 12,232 compiler-marked throw edges and
+5,183 other edges. No unreachability proof or waiver.
+
+Evidence is build/public-operand-coverage-20261117/: full log, 54 authored-source
+reports plus raw library reports/profiles, command/environment, 3994 input
+hashes, 19 instrumented binary fingerprints, focused/remote data, analysis and
+artifact hashes. Only the two native test inputs differ from Task119. All ten
+local and ten remote product binaries remain unchanged. Task119 CLI71/native78,
+Task116 full/SAN32 and Task117 platform gates are reused only for unchanged
+bytes, with the changed native groups freshly qualified here. No fresh Tessent
+run or product benchmark is claimed. Independent final review and integration
+are pending; strict coverage and broader model/vendor work remain open. No push.
