@@ -3513,3 +3513,58 @@ in `build/qualification-2b5eec1/`; Task 123 evidence remains immutable in
 `build/oscillator-cached-20261117/`. This does not claim a full remote make check,
 a new vendor certificate, or complete model support. No push.
 Independent final review found no Critical, Important, or Minor issues in this package qualification refresh. The current package qualification record is ready for integration.
+
+### Raw port ownership audit (2026-11-17)
+
+A documentation-only audit at `26ce069` measures established port ownership
+around root raw scans. IEEE1687-2014 sections 7.9.12 and 7.9.19 (printed 168–169,
+178–179) describe full network control by iScan and the distinction between
+explicit PDL assignments and retargeter changes to taken resources. The local
+Tessent Shell Reference Manual v2023.4 iTake topic idd8a68c5f also documents
+establishment by iState; its iScan topic idb66e0799 describes scan loads after
+ordinary retargeting and modeled state simulation. These older references are
+kept separate from the following measured Tessent 2026.2 results.
+
+Ten isolated programs reuse the unchanged qualified ReservedRawTop driver and
+model, adding only scalar DataOutPort hold (constant 1) and held (value[0]). The
+initial model with an extra DataInPort and wide DataOutPort was rejected by the
+native raw-profile guard before reservations; those attempts are preserved and
+are not counted as ownership results. The corrected control passes both tools.
+
+| Corrected program | Tessent 2026.2 | Current native dynamic/static |
+|---|---|---|
+| Baseline reset and eight-bit raw load | Export succeeds | Both pass |
+| Taken select established at 1 or 0, then raw load | Both exports succeed | Both reject at final Apply: ScanRegister-storage-only reservation guard |
+| Taken constant output established by applied write, then raw load | Export succeeds | Same raw reservation guard |
+| Taken observed value[0] established at 0; raw 0x5a or 0xa5 | Both exports succeed | Same raw reservation guard |
+| Taken ScanInPort si, then iWrite si 0, before raw 0 or transient-changing raw data | Both fail at setup line 5: invalid iWrite target | Both fail at that write; raw reservation behavior is not reached |
+| Taken inactive select, successful raw load, then ordinary iWrite value 1 | Fails later Apply at line 9, reporting iTake sel value 0 | Rejects earlier raw Apply at line 7 |
+| Taken observed output, successful raw 0xa5, then ordinary iWrite value[1] 1 | Fails later Apply at line 10, reporting iTake held value “-” | Rejects earlier raw Apply at line 8 |
+
+There are six vendor successes and four stage-specific failures. Five vendor
+successes expose native source-acceptance differences at the raw guard. The two
+follow-ups show that acceptance of a raw operation does not establish release
+of the earlier reservation: later ordinary retargeting still reports its iTake
+constraint. The held-output diagnostic does not specify a binary locked value;
+this audit does not infer that value. In particular, accepting a raw operation
+must not be generalized into automatic release or refresh of every port lock.
+The original native unsupported test remains an implementation boundary, not an
+IEEE prohibition. This audit does not choose a general port-ownership policy.
+
+All 30 submitted/fetched input hashes match. Vendor calls run serially with 120s
+timeouts and complete/error anchors. Initial SSH launch timed out locally after
+30s; the existing run was inspected and fetched without relaunching it. Actual
+probe exits, not transport status, determine results. All six vendor exports
+replay through both current native variants after an explicit call to their
+exported procedure. This is replay evidence, not a new directional certificate
+or a full ordered-group equivalence claim. Native failed runs retain their
+previous result artifact. Exact programs, logs, stages, hashes and exports are
+in `build/raw-port-ownership-probe-26ce069/`; first-model evidence is adjacent.
+
+All 3,994 runtime inputs and ten local product fingerprints remain unchanged.
+Task 123 full integration/SAN and Task 124 five-tool platform evidence are reused
+by hash; no new full regression, coverage or performance measurement is claimed.
+Strict coverage remains unmet at 96.5% lines and 62.7% raw branches against 100%/90%.
+General port/raw ownership, broader model/vendor equivalence and other recorded
+acceptance work remain open. No product/test/Makefile edits or push.
+Independent final review and integration are pending.
