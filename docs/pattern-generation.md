@@ -32,9 +32,10 @@ See [the current measurement](#oscillator-cached-waits-2026-11-17) and
 `build/oscillator-cached-20261117/` for evidence. Raw exception/cleanup edges
 remain included.
 
-Rocky Linux 8 source, dynamic and transferred static qualification covers the
-implementation through `2b5eec1`, with 51 CLI suites (780 tests) passing per
-binary variant on 2026-11-17. See [the exact platform scope](#cached-wait-package-qualification-2026-11-17).
+The current source archive and fresh five-tool installations cover `f75edb8`.
+Current runtime qualification has 51 CLI suites (783 tests) per dynamic/static
+variant; exact source/product identity reuses those suites for this package.
+See [the exact platform scope](#current-package-identity-and-installation-2026-11-17).
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -6359,3 +6360,38 @@ reference passed in 0.400905s. The new maintained wide regression runs in every
 current 80-method suite. All source-dependent qualification above was repeated
 after this fix; first-candidate evidence is retained before-review. No second
 independent review was requested. Independent final review found one Important missed caller; the executor resolved it in one fix pass with RED/GREEN evidence and refreshed source-dependent qualification. No unresolved Critical or Important issues remain. The scoped root raw port feature is qualified for integration.
+
+### Current package identity and installation (2026-11-17)
+
+The clean source archive now covers `f75edb8`, including the root raw port
+ownership repair and the review correction that preserves ordinary reserved-
+write native scheduling. All 4,223 shipped tracked files match that commit;
+`.gitignore` is the sole exclusion and six generated parser/scanner/marker
+extras are identified. Source archive SHA256 `c7191ce2f8edd687fb678627d99de141361f200610d0946fe6761af467a2923b`;
+five-product static archive SHA256 `6e065010e4776a45192dd07dd2089c1a77ac0e98ce6f20df725a5e5e3a7346dc`.
+
+Fresh temporary installations pass 11 local and 14 remote gates. Both dynamic
+and transferred-static installations exercise all five versions, PDL tools,
+original/flat/generated/reset generator replay, installed ICL LSP 62 checks per
+variant, and manifest uninstall preserving unrelated sentinels. Remote library
+checks resolve the three Tcl-linked dynamic products to system Tcl 8.6; all five
+static products have no ELF interpreter and match the local bundle fingerprints.
+No user installation, dependency, editor configuration or product code changes.
+
+All 4,013 non-documentation archive files, including generated parser/scanner
+and `.prebuilt`, match the current qualified remote source tree. All 3,994
+runtime inputs and ten local/ten remote product fingerprints match Task 126.
+This exact identity reuses its current build/native checks and 51 generator
+suites/783 cases per dynamic/transferred-static variant. Source-archive content
+identity and fresh installations are checked here; the remote checkout is not
+rebuilt from this new archive and the full CLI suites are not rerun here.
+
+Task 126 complete normal 1533.315018s (six editor checks 174.471s), leak-enabled
+SAN native/80 modeled-root/71 main, 88 matched performance rows and fresh raw
+coverage are reused unchanged. Strict coverage remains FAILED at 17,336/17,966
+lines (96.5%) and 29,268/46,679 raw branches (62.7%), against unchanged 100%/90%.
+Optional ANTLR checks remain skipped. No new vendor certificate or broad model/
+vendor completeness claim. Exact archive contents, 4,013 remote file hashes,
+products, commands and installation logs/statuses are in `build/package-f75edb8/`;
+underlying runtime evidence remains `build/root-raw-port-20261117/`. No push.
+Independent final review and integration are pending.
