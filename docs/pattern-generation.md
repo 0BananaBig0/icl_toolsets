@@ -3685,7 +3685,8 @@ factor returns to the ICL default, which is1 for a Period target. Original perio
 metadata remains immutable, and current reservations follow current routing.
 
 Period targets require explicit -source on every invocation in this increment.
-Omitted-source restoration/factor-only semantics remain unresolved; no intrinsic
+Omitted-source behavior was unresolved at this stage; see the later
+[measured audit](#oscillator-omitted-source-audit-2026-11-17). No intrinsic
 self-reference or frequency multiplication is invented. Differential targets and
 absolute-time waits remain open.
 
@@ -6086,3 +6087,47 @@ Task120 remains the last complete pre-edit raw coverage measurement at
 shifts source attribution; no post-edit gcov metric is claimed or inferred from
 those reports. Strict100%lines/90%rawbranches and broader model/vendor work
 remain open. One independent final review found no Critical, Important or Minor findings. The portability fix is qualified for integration. No push.
+
+### Oscillator omitted-source audit (2026-11-17)
+
+Seven isolated Tessent2026.2 probes distinguish a factor-only override from a
+subsequent clock check. They reuse the unchanged explicit-oscillator driver and
+model: child.osc has Period10ns, and root is configured at100ns. The context is
+patterns -ijtag / analysis with an open pattern set. All21 fetched input hashes
+match the submitted files.
+
+| Pattern | Vendor result | Observed stage or exported waits |
+| --- | --- | --- |
+| Existing explicit-source control | exit0 | child.osc2, child.osc2, root1 |
+| Multiplier2, then fresh iClock | exit1 | iClock fails with undriven child.osc source |
+| Divider3, then fresh iClock | exit1 | iClock fails with undriven child.osc source |
+| Explicit source/divider3, then multiplier2 and fresh iClock | exit1 | final iClock fails with undriven child.osc source |
+| Explicit source, then optionless override | exit1 | iClockOverride syntax rejection |
+| Multiplier2, retain previous clock check | exit0 | child.osc4, child.osc4 |
+| Explicit source/divider3, then multiplier2, retain previous check | exit0 | child.osc4, root12, root12 |
+
+The override itself is accepted in the factor-only cases. A previous checked
+clock remains usable in the two cached-wait patterns; those patterns currently
+fail in our tool at the earlier explicit-source guard (exit2). This is an
+identified compatibility gap, not a completed clock feature. The guard stays
+unchanged in this documentation-only audit; a separate implementation must
+preserve the cached duration without inventing an intrinsic frequency or
+self-referencing clock source. Fresh-check failures and optionless rejection
+must remain distinct from the successful cached-wait paths.
+
+IEEE1687-2014 clauses7.9.15b and7.9.16c-e (printed174-175/PDF188-189) define
+oscillator roots and optional override fields/defaults. Vendor failure does not
+prove an IEEE prohibition. The v2023.4 Shell Reference Manual iClockOverride
+topic (Command_Iclockoverride_id87a56b58.html) describes different omitted-field
+behavior; it is not evidence for measured2026.2 behavior. IEEE-only intrinsic
+restoration and general oscillator override semantics remain unqualified.
+
+Evidence is build/oscillator-omission-probe-cee5dcf/ and its snapshot-probes/:
+original inputs, raw logs/exits/exports, native gap reproductions, reference
+hashes and audit facts. Negative runs have no export. The existing native
+oscillator-target rejection method passes dynamic/static/leak-enabled SAN;
+that verifies the present restriction and does not close the cached-wait gap.
+All3994 runtime inputs and20 product fingerprints remain unchanged. No formal
+certificate, broader equivalence, post-edit coverage or performance claim.
+Independent final review and integration are pending. Strict coverage and
+broader model/vendor requirements remain open. No push.
