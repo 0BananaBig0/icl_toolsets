@@ -1413,6 +1413,11 @@ void TestRawScanReservations() {
       "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
   std::string source((std::istreambuf_iterator<char>(file)), {});
   Require(!source.empty(), "raw reservation fixture exists");
+  const auto output = source.find(" ScanOutPort so { Source tail[0]; }");
+  Require(output != std::string::npos, "raw reservation output exists");
+  source.insert(output,
+                " DataOutPort hold { Source 1'b1; }\n"
+                " DataOutPort held { Source head[0]; }\n");
   for (bool flat : {false, true}) {
     pattern::Design design;
     design.AddIcl("reserved-raw.icl", source);
@@ -1498,6 +1503,66 @@ void TestRawScanReservations() {
         &assigned);
     Require(assigned == std::set<size_t>{head, child, tail},
             "root scan explicitly addresses all pre-route storage");
+    pattern::ResourceReservations ports(netlist);
+    scheduler.Assume("sel", "0");
+    for (const auto& name : {"sel", "held", "hold"}) {
+      ports.Change({"iTake", {name}, "reserve:port-take", {}});
+    }
+    ports.Assigned({{"iState", {"sel", "0"}, "reserve:port-state", {}},
+                    {"iWrite", {"held", "0"}, "reserve:port-state", {}},
+                    {"iWrite", {"hold", "1"}, "reserve:port-state", {}}},
+                   scheduler);
+    const auto locks = ports.Values();
+    const pattern::Operation root{
+        "iScan", {"client", "16", "-si", "0x2000"}, "reserve:root-ports", {}};
+    scheduler.ApplyScan(root, locks, &assigned);
+    ports.AssignedScans(assigned, scheduler);
+    Require(assigned == std::set<size_t>{head, child, tail} &&
+                scheduler.Value("sel") == "1" &&
+                scheduler.Value("held") == "1" && ports.Values() == locks,
+            "explicit root port effects retain original locks and storage-only "
+            "assignment footprint");
+    std::map<std::string, std::string> port_before;
+    for (const auto& node : netlist.nodes) {
+      if (node.model == pattern::ModelKind::kPort ||
+          node.model == pattern::ModelKind::kRegister) {
+        port_before.emplace(node.name, scheduler.Value(node.name));
+      }
+    }
+    for (const auto& mask : {"00", "q"}) {
+      assigned = {tail};
+      bool invalid = false;
+      try {
+        scheduler.ApplyScan(root, {{netlist.node_ids.at("sel"), mask}},
+                            &assigned);
+      } catch (const std::runtime_error& error) {
+        invalid = std::string(error.what()).find("invalid reserved") !=
+                  std::string::npos;
+      }
+      Require(invalid && assigned == std::set<size_t>{tail},
+              "root exemption validates port masks before filtering");
+    }
+    bool ordinary_rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"head", "2"}, "reserve:later", {}}}, false,
+                      ports.Values());
+    } catch (const std::runtime_error&) {
+      ordinary_rejected = true;
+    }
+    Require(ordinary_rejected,
+            "old port locks still constrain later retargeting");
+    for (const auto& [name, value] : port_before) {
+      Require(
+          scheduler.Value(name) == value,
+          "invalid root mask and later ownership failure leave state intact");
+    }
+    for (const auto& name : {"sel", "held", "hold"}) {
+      ports.Change({"iRelease", {name}, "reserve:port-release", {}});
+    }
+    scheduler.Apply({{"iWrite", {"head", "2"}, "reserve:recovered", {}}}, false,
+                    ports.Values());
+    Require(scheduler.Value("head") == "010",
+            "explicit port release permits later ordinary retargeting");
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
   pattern::Design design;
@@ -5653,6 +5718,10 @@ Module Network {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
+      if (argc == 2 && std::string(argv[1]) == "--raw-reservations") {
+        TestRawScanReservations();
+        return 0;
+      }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
         TestClockOverrideSnapshots();
         TestOscillatorSourceOverrides();
@@ -5669,8 +5738,8 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       Require(argc == 2 && std::string(argv[1]) == "--primary-limits",
-              "expected --primary-limits, --reset-backend, --clock-snapshots "
-              "or no test arguments");
+              "expected --primary-limits, --reset-backend, --clock-snapshots, "
+              "--raw-reservations or no test arguments");
       TestPrimaryLimits();
       return 0;
     }
