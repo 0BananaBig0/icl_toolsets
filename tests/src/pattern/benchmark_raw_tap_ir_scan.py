@@ -101,6 +101,7 @@ def main(scenario_source=scenarios, normalize=canonical, top='RawIrTop', entity=
                 assert data == raw_bytes, (name, form, 'raw replay mismatch')
             (out / 'results.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
+    return report
 
 
 if __name__ == '__main__':

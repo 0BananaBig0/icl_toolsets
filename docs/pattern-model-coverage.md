@@ -3109,3 +3109,52 @@ correction gates0 and3991 current input hashes match. All77 existing directional
 certificates pass. Fresh Tessent2026.2 IR/DR forward/reverse all reject SI X,
 with source/job-input/console provenance verified; no new certificate or full
 Tessent equivalence claim. Strict coverage and remaining acceptance are open.
+
+### Native ordinary instruction planning
+
+A qualified known single-root pure IR goal reuses shared serial tracing and TAP
+replay before joint solving. Data interfaces must forward native phase/clock
+roles; data selection may be inactive duringIR. Existing validation, fallback,
+actual-state/fill ownership and work guards remain. Source-family typing and
+update-storage selectors remain unchanged. An unknown-initial primary end-state
+replay can add an initialization on generated replay; the saved Task114 binary
+reproduces this inherited issue. It remains an acceptance gap, independent of
+this native performance path (which is disabled for end-state directives).
+
+Task115 verified native ordinary IR replay: pure-IR goals reuse RawTapPath,
+NativeTapControls and actual shared ReplayTapStep/Cycle, preserving outer
+validation and all default data behavior. IR qualifies every modeled data
+interface phase/clock but does not require active data selection. Actual final
+known instruction load and writable replay eligibility replace unavailable IR
+ControlEvents; existing data event checks remain. Complete trial state, execution
+and known-only fill publish only after preservation/observation checks. No new
+engine, public API, dependency, RTL or raised guard. Same-value, read-only,
+partial/unknown recovery, actual N+6 cycles/public endpoints, protected automatic
+rollback/retry and existing unsupported fallback cases pass. All30 functional
+replay artifacts equal saved Task114 output. True memory RED preceded product
+changes. Independent final review has no Critical/Important/Minor findings.
+
+Both platforms98 artifact-verified measurements pass:42 matched IR commands,
+4 candidate-only dense128,32 literal-X and20 known-data. Local64x4 IR source
+252568-252840KiB/.44-.46s becomes48328-48500KiB/.05-.06s;512aliases
+261560-261696KiB/.64-.70s becomes49924-49984KiB/.06-.07s. Local256-bit IR
+259748-259812KiB/1.87-1.91s becomes48712-49088KiB/.09-.11s. Dense64x4
+128 IR groups candidate .47s/49328KiB local and .94s/49528KiB remote;
+its saved reference exceeds120s (8 groups also exceed15s), retained as unavailable,
+not a completing baseline or speedup ratio. Matched128 uses the completing
+one-register control. Runtime guards remain unchanged. No1M IR/global optimum
+or15s whole-program claim; wide literal128 still21.87s local/51.38s remote.
+
+Fresh full serial make check0 in1855.3154613880324s, editor6 in194.849s,29 leak-enabled
+ASan/UBSan gates0,13 local qualification gates0 and66 remote gates0. All3994
+actual remote inputs match current source. Five optional ANTLR integration tests
+are skipped. Fresh Tessent2026.2 binary IR and multiple-DR forward/reverse run,
+strict record and strict check all0; source/job-input/artifact/console hashes
+verify, and traces/artifacts equal existing certificates. All77 directional
+certificates pass; no duplicate certificate/registry entry. Literal-X vendor
+rejection from Task114 remains. Original11 runtime freeze remains unchanged;
+only verified documentation follows it. Merge into master/delete task branch,
+no push. Inherited unknown-initial primary end-state replay extra initialization
+reproduces on saved Task114 and remains open; initialized primary guard passes.
+Other opaque/parallel/multi-TAP/rawmerge, event/reset/clock/ownership, strict
+coverage and final release acceptance remain open.
