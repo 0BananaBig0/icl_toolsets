@@ -60,11 +60,11 @@ full model coverage or Tessent equivalence.
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Raw scans | Genuine opaque root-client lowering; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream established ScanRegister reservations; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Opaque child, parallel/multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, established port ownership and broader vendor qualification |
 | Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
-| Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots and root-relative replay | General implicit selection, inverted child clock phases, oscillator overrides without explicit source, bound differential-input consistency, absolute-time waits, general clock events and external time-dependent instrument behavior |
+| Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots and root-relative replay | General implicit selection, inverted child clock phases, general intrinsic oscillator restoration/frequency, bound differential-input consistency, absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f018bb2, including 51 generator CLI suites/776 tests per build | Remaining command semantics; later product changes need fresh qualification |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through 2b5eec1, including 51 generator CLI suites/780 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
 | Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task123 run 96.5%/62.7% (17333/17963 lines,29260/46667 raw branches); full vendor equivalence is unverified |
@@ -3479,3 +3479,37 @@ fingerprints and product fingerprints, remote and vendor data, comparison and ar
 source and two existing tests differ from the qualified audit runtime inputs.
 Independent final review found no Critical, Important, or Minor issues in the scoped cached-wait repair. The scoped cached-wait feature is qualified for integration. Strict and broader model/
 vendor requirements remain open. No push.
+
+### Cached-wait package qualification (2026-11-17)
+
+Source-archive and five-tool qualification now cover clean master `2b5eec1`,
+including the cached oscillator-wait repair. All 4,217 shipped tracked files
+match that checkout; only `.gitignore` is excluded. Six generated parser/scanner
+sources/headers/location/`.prebuilt` extras are recorded separately. Source
+archive SHA256 `7cfbde0b39dbec6b0b7b97efd2c6d2a947685dadffbb7ae0855babfaa5b44ebb` and five-binary static archive
+SHA256 `e8c794849779a0b352c6e1d6cfee96623ab3ac45b62091872b26c07f1eff41df` are verified before extraction on Rocky Linux 8.10.
+
+The fresh archive builds five dynamic tools with Bison/Flex disabled and static
+Tcl unavailable, reusing pinned Make/GCC/Z3 dependencies read-only. All 16 remote
+gates pass: native netlist/runtime/flatten targets, installed versions and PDL/pattern/reset replay,
+installed ICL LSP 62 checks per variant, dynamic libraries, transferred-static ELF
+checks and sentinel-preserving manifest uninstall. Both generator variants pass
+all 51 suites/780 cases. All five transferred static executables match the local
+hashes and lack ELF interpreters; these are local builds, not remote static
+source builds. Environment and exact system Tcl 8.6 resolutions are preserved. Initial
+extraction/build clock-skew warnings (~21s) are retained; all objects were built
+in the fresh extraction and all build/test gates exited 0.
+All 11 fresh local temporary installation gates pass for the same ten products.
+
+All 3,994 runtime input hashes match Task 123 exactly. Its complete normal
+integration passes (1871.732309s, including six editor tests), focused leak-enabled
+ASan/UBSan native/clock (53)/main (71) checks and fresh raw coverage are reused by
+hash. Optional ANTLR checks remained skipped when unavailable.
+Coverage remains FAILED at 17,333/17,963 lines (96.5%) and 29,260/46,667 raw
+branches (62.7%), against 100%/90%; no waiver or new coverage result is claimed.
+No product code, test, dependency, user installation or editor config changes.
+Raw commands/statuses, archive membership, hashes and remote/local evidence are
+in `build/qualification-2b5eec1/`; Task 123 evidence remains immutable in
+`build/oscillator-cached-20261117/`. This does not claim a full remote make check,
+a new vendor certificate, or complete model support. No push.
+Independent final review found no Critical, Important, or Minor issues in this package qualification refresh. The current package qualification record is ready for integration.
