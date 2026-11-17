@@ -33,8 +33,8 @@ See [the current measurement](#oscillator-cached-waits-2026-11-17) and
 remain included.
 
 Rocky Linux 8 source, dynamic and transferred static qualification covers the
-implementation through `f018bb2`, with 51 CLI suites (776 tests) passing per
-binary variant on 2026-11-17. See [the exact platform scope](#rocky-linux-8-refresh-2026-11-17).
+implementation through `2b5eec1`, with 51 CLI suites (780 tests) passing per
+binary variant on 2026-11-17. See [the exact platform scope](#cached-wait-package-qualification-2026-11-17).
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -6185,3 +6185,37 @@ fingerprints and product fingerprints, remote and vendor data, comparison and ar
 source and two existing tests differ from the qualified audit runtime inputs.
 Independent final review found no Critical, Important, or Minor issues in the scoped cached-wait repair. The scoped cached-wait feature is qualified for integration. Strict and broader model/
 vendor requirements remain open. No push.
+
+### Cached-wait package qualification (2026-11-17)
+
+Source-archive and five-tool qualification now cover clean master `2b5eec1`,
+including the cached oscillator-wait repair. All 4,217 shipped tracked files
+match that checkout; only `.gitignore` is excluded. Six generated parser/scanner
+sources/headers/location/`.prebuilt` extras are recorded separately. Source
+archive SHA256 `7cfbde0b39dbec6b0b7b97efd2c6d2a947685dadffbb7ae0855babfaa5b44ebb` and five-binary static archive
+SHA256 `e8c794849779a0b352c6e1d6cfee96623ab3ac45b62091872b26c07f1eff41df` are verified before extraction on Rocky Linux 8.10.
+
+The fresh archive builds five dynamic tools with Bison/Flex disabled and static
+Tcl unavailable, reusing pinned Make/GCC/Z3 dependencies read-only. All 16 remote
+gates pass: native netlist/runtime/flatten targets, installed versions and PDL/pattern/reset replay,
+installed ICL LSP 62 checks per variant, dynamic libraries, transferred-static ELF
+checks and sentinel-preserving manifest uninstall. Both generator variants pass
+all 51 suites/780 cases. All five transferred static executables match the local
+hashes and lack ELF interpreters; these are local builds, not remote static
+source builds. Environment and exact system Tcl 8.6 resolutions are preserved. Initial
+extraction/build clock-skew warnings (~21s) are retained; all objects were built
+in the fresh extraction and all build/test gates exited 0.
+All 11 fresh local temporary installation gates pass for the same ten products.
+
+All 3,994 runtime input hashes match Task 123 exactly. Its complete normal
+integration passes (1871.732309s, including six editor tests), focused leak-enabled
+ASan/UBSan native/clock (53)/main (71) checks and fresh raw coverage are reused by
+hash. Optional ANTLR checks remained skipped when unavailable.
+Coverage remains FAILED at 17,333/17,963 lines (96.5%) and 29,260/46,667 raw
+branches (62.7%), against 100%/90%; no waiver or new coverage result is claimed.
+No product code, test, dependency, user installation or editor config changes.
+Raw commands/statuses, archive membership, hashes and remote/local evidence are
+in `build/qualification-2b5eec1/`; Task 123 evidence remains immutable in
+`build/oscillator-cached-20261117/`. This does not claim a full remote make check,
+a new vendor certificate, or complete model support. No push.
+Independent final review and integration are pending.
