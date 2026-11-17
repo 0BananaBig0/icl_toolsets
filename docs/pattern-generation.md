@@ -25,12 +25,12 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. The complete corrected Task119
-instrumented run reaches 17,311/17,961 lines (96.4%) and 29,201/46,677 raw branches (62.6%). All prescribed tests complete;
+Strict authored-code coverage remains unmet. The complete Task120 instrumented
+run reaches 17,331/17,961 lines (96.5%) and 29,262/46,677 raw branches (62.7%). All prescribed tests complete;
 the final unchanged 100% line / 90% raw branch gate fails with Make exit 2.
-See [the current measurement](#cli-and-staged-output-coverage-2026-11-17) and
-`build/cli-output-coverage-20261117/` for evidence. Raw exception/cleanup edges
-remain included.
+See [the current measurement](#public-operand-api-coverage-2026-11-17) and
+`build/public-operand-coverage-20261117/` for evidence. Raw exception/cleanup
+edges remain included.
 
 Rocky Linux 8 source, dynamic and transferred static qualification covers the
 implementation through `f018bb2`, with 51 CLI suites (776 tests) passing per
@@ -6011,3 +6011,49 @@ Task116 normal full/SAN32 and Task117 platform gates are reused for identical
 product bytes, with the changed groups freshly qualified here. No fresh Tessent
 run or performance benchmark is claimed for this test-only change. The strict
 coverage requirement and broader model/vendor gaps remain open. No push.
+
+### Public operand API coverage (2026-11-17)
+
+The existing native expression and symbolic runners now exercise public numeric
+and target validation directly. Malformed token spans/literals/operators and
+target ranges/indices require the intended runtime-error diagnostic. Valid
+parameter arithmetic, target declaration/alias ordering and exact supported
+numeric width/text boundaries remain accepted. The largest text is 1MiB+3
+characters for a just-over-limit rejection; valid payloads are at most one
+megabit. Cases run inside the two existing native processes with bounded linear
+work and a few MiB transient data; no product speedup is claimed.
+
+Small caller-created public IR copies exercise oversized targets, aliases with
+missing/cyclic sources and an empty enum target. These cases establish API
+validation, not acceptance of those models through the ICL parser. Product
+source, recipes, targets, flags and external dependencies are unchanged.
+
+Both native runners pass normal, leak-enabled ASan/UBSan, instrumented and Rocky
+checks. Changed-section format/tidy and strict C++17 test-source syntax checks
+pass. A new structured-binding capture was replaced with a C++17 pair reference;
+an unchanged production scheduler capture warning stays outside this test-only
+scope. The first focused command retained old binaries because COV_DIR was
+omitted; its guard assertions correctly failed. The corrected Make target
+selection rebuilds both test runners and hits all 18 designated guards. Initial
+logs/reports and Task119 profiles/raw reports/old native binaries are preserved.
+
+The complete unchanged coverage recipe clears profiles and uses GCC/gcov16.2.1,
+-g -O0 -fprofile-arcs -ftest-coverage, serial suites and at most two compiler
+jobs. It reuses 17 identical instrumented binaries and rebuilds the two changed
+native runners. Wall time is 1344.132797s. All 58 Python groups/940
+cases pass, including 51 generator groups/778 cases, plus native checks, 1916
+regression and 2180 conformance cases. The strict gate remains failed:
+17,331/17,961 lines (96.5%) and 29,262/46,677 raw branches (62.7%), against unchanged 100%/90% thresholds. Make exits 2 only at the
+final report. All raw exception/cleanup edges stay included: missing edges
+include 12,232 compiler-marked throw edges and
+5,183 other edges. No unreachability proof or waiver.
+
+Evidence is build/public-operand-coverage-20261117/: full log, 54 authored-source
+reports plus raw library reports/profiles, command/environment, 3994 input
+hashes, 19 instrumented binary fingerprints, focused/remote data, analysis and
+artifact hashes. Only the two native test inputs differ from Task119. All ten
+local and ten remote product binaries remain unchanged. Task119 CLI71/native78,
+Task116 full/SAN32 and Task117 platform gates are reused only for unchanged
+bytes, with the changed native groups freshly qualified here. No fresh Tessent
+run or product benchmark is claimed. One independent final review found no Critical, Important or Minor findings. The scoped test task is qualified for
+integration; strict coverage and broader model/vendor work remain open. No push.

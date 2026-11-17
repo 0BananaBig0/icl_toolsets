@@ -6,6 +6,8 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "icl/icl_semantics.h"
 
@@ -133,6 +135,58 @@ void TestConstantBoundaries() {
   Rejects([] { Constant("'b" + std::string(1048577, '0')); }, "bit limit");
 }
 
+void TestEvaluatorApiBoundaries() {
+  // The parser rejects these first; exercise the public token APIs directly.
+  const auto integer_parameter = [](const std::string& name) {
+    if (name == "width") return int64_t{8};
+    throw std::runtime_error("unexpected integer parameter " + name);
+  };
+  const auto constant_parameter = [](const std::string& name) {
+    if (name == "width") return pattern::Constant{false, false, "1000"};
+    throw std::runtime_error("unexpected constant parameter " + name);
+  };
+  const auto integer = [&](const std::vector<icl::SourceToken>& tokens) {
+    return pattern::EvaluateInteger(tokens, 0, tokens.size(),
+                                    integer_parameter);
+  };
+  const auto constant = [&](const std::string& text) {
+    return pattern::EvaluateConstant({{text, 0, text.size()}}, 0, 1,
+                                     constant_parameter);
+  };
+  const std::vector<icl::SourceToken> addition{
+      {"$width", 0, 6}, {"+", 7, 8}, {"2", 9, 10}};
+  if (integer(addition) != 10 || constant("$width").AsInteger() != 8 ||
+      constant("8'hA5").data != "10100101") {
+    throw std::runtime_error("valid public evaluator inputs rejected");
+  }
+  const std::vector<icl::SourceToken> one{{"1", 0, 1}};
+  for (const auto& bounds : {std::pair{size_t{0}, size_t{0}}, {1, 0}, {0, 2}}) {
+    Rejects(
+        [&] {
+          pattern::EvaluateInteger(one, bounds.first, bounds.second,
+                                   integer_parameter);
+        },
+        "empty or invalid ICL integer expression");
+    Rejects(
+        [&] {
+          pattern::EvaluateConstant(one, bounds.first, bounds.second,
+                                    constant_parameter);
+        },
+        "empty ICL constant");
+  }
+  Rejects([&] { integer({}); }, "empty or invalid ICL integer expression");
+  Rejects([&] { constant("8/*"); }, "unterminated numeric comment");
+  Rejects([&] { constant("8'b2"); }, "invalid ICL numeric digit");
+  Rejects([&] { integer({{"0x1"}}); }, "expected ICL decimal integer");
+  Rejects([&] { integer({{"1"}, {"+"}}); }, "missing ICL integer operand");
+  Rejects([&] { integer({{"1"}, {")"}}); },
+          "unmatched ICL integer parenthesis");
+  Rejects([&] { integer({{"1"}, {"??"}}); }, "invalid ICL integer operator");
+  Rejects([&] { integer({{"("}, {"1"}}); }, "invalid ICL integer operands");
+  Rejects([&] { integer({{"1"}, {"+"}, {"("}, {"2"}}); },
+          "invalid ICL integer operator");
+}
+
 void TestConstants() {
   bool empty_rejected = false;
   try {
@@ -212,6 +266,7 @@ int main() {
     Fails("((0 - 9223372036854775807) - 1) % (0 - 1)", "limit");
     TestConstants();
     TestConstantBoundaries();
+    TestEvaluatorApiBoundaries();
     std::cout << "PASS: ICL integer expressions from shared parser tokens\n";
   } catch (const std::exception& error) {
     std::cerr << "FAIL: " << error.what() << '\n';

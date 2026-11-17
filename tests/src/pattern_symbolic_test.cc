@@ -1055,6 +1055,70 @@ Module Targets {
     Require(rejected,
             "unknown/unattached enums and significant truncation fail");
   }
+  const auto rejects = [](const auto& action, const char* message) {
+    bool rejected = false;
+    try {
+      action();
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find(message) != std::string::npos;
+    }
+    Require(rejected, message);
+  };
+  constexpr size_t kMaxBits = 1048576;
+  for (size_t width : {size_t{0}, kMaxBits + 1}) {
+    rejects([&] { pattern::PdlNumber(context, "0", width); },
+            "invalid or oversized PDL numeric value");
+  }
+  rejects(
+      [&] {
+        pattern::PdlNumber(context, "0b" + std::string(kMaxBits + 1, '0'), 1);
+      },
+      "invalid or oversized PDL numeric value");
+  rejects([&] { pattern::PdlNumber(context, "999", 1); },
+          "PDL value truncates significant bits");
+  Require(pattern::PdlNumber(context, "0b1", kMaxBits) ==
+                  std::string(kMaxBits - 1, '0') + "1" &&
+              pattern::PdlNumber(context, "0b" + std::string(kMaxBits, '0'),
+                                 1) == "0",
+          "maximum PDL width and numeric text retain supported boundaries");
+  for (const auto* text : {"r[1", "r[1)"}) {
+    rejects([&] { pattern::ResolvePdlTarget(netlist, text); },
+            "unclosed PDL target range");
+  }
+  for (const auto* text :
+       {"r[]", "r[-1]", "r[a]", "r[18446744073709551616]", "r[1:2:3]"}) {
+    rejects([&] { pattern::ResolvePdlTarget(netlist, text); },
+            "invalid PDL target bit index");
+  }
+  rejects([&] { pattern::ResolvePdlTarget(netlist, "si[0]"); },
+          "PDL scalar target cannot be indexed");
+  rejects([&] { pattern::ResolvePdlTarget(netlist, "r[8]"); },
+          "PDL target index outside r");
+  rejects([&] { pattern::ResolvePdlTarget(netlist, "missing"); },
+          "unknown PDL target missing");
+  Require(target.declaration == netlist.node_ids.at("a") &&
+              reverse.declaration == netlist.node_ids.at("r"),
+          "target declaration identity survives alias resolution");
+  // Public IR callers can provide malformed objects directly.
+  auto oversized = netlist;
+  oversized.nodes.at(oversized.node_ids.at("r")).right = kMaxBits;
+  rejects([&] { pattern::ResolvePdlTarget(oversized, "r"); },
+          "PDL target width limit exceeded");
+  auto missing_source = netlist;
+  missing_source.nodes.at(missing_source.node_ids.at("a"))
+      .inputs.erase("Source");
+  rejects([&] { pattern::ResolvePdlTarget(missing_source, "a"); },
+          "alias target has no source: a");
+  auto cyclic = netlist;
+  const auto alias = cyclic.node_ids.at("a");
+  cyclic.nodes.at(alias).inputs.at("Source") = {
+      {alias, 3}, {alias, 2}, {alias, 1}, {alias, 0}};
+  rejects([&] { pattern::ResolvePdlTarget(cyclic, "a"); },
+          "cyclic PDL alias target");
+  auto empty = target;
+  empty.bits.clear();
+  rejects([&] { pattern::PdlDataValue(context, netlist, empty, "Active"); },
+          "invalid PDL value width");
 }
 }  // namespace
 int main(int argc, char* argv[]) {
