@@ -2802,6 +2802,31 @@ void TestInvariantTimeWaits() {
   }
   Require(rejected,
           "time waits reject unsupported free-running clock consumers");
+
+  std::string forwarded_source =
+      "Module Endpoint { TCKPort tck; } "
+      "Module Top { DataInPort d; DataOutPort out { Source d; } "
+      "Instance child Of Endpoint { InputPort tck = d; } }";
+  for (bool flat : {false, true}) {
+    pattern::Design forwarded_design;
+    forwarded_design.AddIcl("forwarded-time-clock.icl", forwarded_source);
+    const auto forwarded = pattern::Elaborate(forwarded_design, "Top");
+    const auto data = forwarded.node_ids.at("d");
+    const auto& clock = forwarded.nodes.at(forwarded.node_ids.at("child.tck"));
+    Require(clock.inputs.at("Source").at(0).node == data,
+            "data input is the physical source of the child test clock");
+    pattern::SystemClocks forwarded_clocks(forwarded);
+    bool rejected = false;
+    try {
+      forwarded_clocks.CheckTimeWait({{data, "1"}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("test-clock forwarding") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "time waits cannot bypass clock holds through data bindings");
+    if (!flat) forwarded_source = pattern::SerializeIcl(forwarded);
+  }
 }
 
 void TestBoundDifferentialClocks() {

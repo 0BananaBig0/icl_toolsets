@@ -89,6 +89,14 @@ class SystemClocks(unittest.TestCase):
                  'Module Top { ClockPort root; Instance child Of Stage { InputPort ck = root; } '
                  'ToTCKPort observed { Source child.out; } }',
                  'iRunLoop -time 1.25us', 'clock fanout'),
+                ('Module Top { DataInPort d; ToTCKPort forwarded { Source d; } }',
+                 'iWrite d 1; iApply; iTake d; iRunLoop -time 1.25us',
+                 'test-clock forwarding'),
+                ('Module Endpoint { TCKPort tck; } Module Top { DataInPort d; '
+                 'DataOutPort out { Source d; } '
+                 'Instance child Of Endpoint { InputPort tck = d; } }',
+                 'iWrite d 1; iApply; iTake d; iRunLoop -time 1.25us',
+                 'test-clock forwarding'),
                 ('Module Top { ClockPort clk; }',
                  'iState clk 0; iRunLoop -time 1.25us', 'state assumption for'),
                 ('Module Top { ClockPort clk[5:4]; }',

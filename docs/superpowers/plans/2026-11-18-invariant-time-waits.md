@@ -13,7 +13,8 @@ Final verifier: python3 /tmp/invariant-time-verify.py.
 ## Review Focus
 - Shared frontend validates concrete substituted time values; emission preserves
   exact text and ordinary iRunLoop queue/rewrite/bookkeeping behavior.
-- Immutable eligibility excludes storage, opaque hardware and clock-driven data;
+- Immutable eligibility excludes storage, opaque hardware, clock-driven data
+  and forwarded test clocks;
   every call checks held clocks, including zero, copied caches and invalidation.
 - Original clock snapshots/overrides and cycle-count/opaque/merge paths retain
   their contracts. No guessed periods, floating loss or per-time graph scans.
@@ -32,7 +33,8 @@ BuildSafety/Invalidate, Runtime::Validate, Generate iRunLoop, maintained helpers
       boundary/scale tests; expected actual unsupported-time RED.
 - [x] Implement cached eligibility and per-call held-clock validation, retain
       exact delay in Generate/help; add native guards/copy/snapshot checks.
-      Expected native/dynamic/static GREEN and unchanged rejection boundaries.
+      Include forwarded-TCK/data-pin hold regression; expected native/dynamic/
+      static GREEN and unchanged unrelated rejection boundaries.
 - [ ] Run12 style/strict17 gates, SAN and measured scale with frozen inputs.
       Expected0 and preserved exact literal/canonical replays.
 - [ ] Full normal, fresh raw strict coverage, current Rocky, vendor control hash/

@@ -427,6 +427,14 @@ void SystemClocks::CheckTimeWait(
             "absolute-time wait has unsupported clock fanout: " + Name(bit));
       }
     }
+    for (const auto& node : netlist_.nodes) {
+      if (node.kind == "ToTCKPort" ||
+          (node.kind == "TCKPort" && node.inputs.count("Source"))) {
+        throw std::runtime_error(
+            "absolute-time wait has unsupported test-clock forwarding: " +
+            node.name);
+      }
+    }
     time_ready_ = true;
   }
   for (const auto& [id, value] : preserved) {

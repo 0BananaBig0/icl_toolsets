@@ -25,6 +25,9 @@ reject TAPs, register storage, opaque interfaces or AccessLink nodes, then use
 existing clock safety analysis to reject clock/TCK signals feeding non-routing
 data/control logic. Pure ports, combinational data, aliases, enums, muxes and
 groups without storage remain eligible when no clock feeds data/control.
+Also reject ToTCKPort outputs and bound/forwarded TCKPort inputs: a legal
+data pin feeding a child TCK can conceal a held clock level. Do not infer an
+external TCK waveform or extend this task with a clock-role propagation index.
 Check dynamic preserved values on every call and reject any known held
 ClockPort/ToClockPort/TCKPort bit. This check applies to zero delays too:
 a minimum-zero interval does not promise zero external tester cycles.

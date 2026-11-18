@@ -461,7 +461,8 @@ be known unsigned 64-bit integers, with no unapplied reads or writes.
 Checked system-clock waits (`iClock` followed by `iRunLoop COUNT -sck PORT`)
 support relative clock routes that do not drive modeled data or events.
 Absolute-time waits (`iRunLoop -time VALUE`) preserve the exact requested
-minimum delay on models without storage, opaque hardware or clock-driven data. General clock events
+minimum delay on models without storage, opaque hardware, clock-driven data
+or forwarded test clocks. General clock events
 and stateful absolute-time execution remain unsupported; see the
 [clock and time limits](docs/pattern-generation.md#absolute-time-waits-without-clock-driven-state-2026-11-18).
 

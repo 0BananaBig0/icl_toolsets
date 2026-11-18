@@ -6751,6 +6751,8 @@ Independent Task131 whole-branch review at aac20fd approves the scoped merge wit
 Task132 preserves an exact validated iRunLoop -time value when the model has
 no register storage, TAPs, opaque interfaces or AccessLink nodes, and no clock/
 TCK source feeding unsupported data/control or test-clock output logic.
+Forwarded test clocks are also excluded: a data input bound to a child TCK
+can conceal a fixed clock level and requires additional timing/role modeling.
 Pure ports, combinational data, aliases, muxes and groups without storage may
 therefore retain absolute delays. General stateful time execution remains
 unsupported and reports the need for absolute-period and clock-event models.
