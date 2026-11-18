@@ -43,10 +43,10 @@ existing TestClockSignalSources/native test runner and SystemClocks CLI helpers.
       Expected focused GREEN, unchanged generic source-kind rejections.
 - [x] Run changed C++ format/tidy/strict17, full focused dynamic/static/native/SAN
       and existing scale checks. Expected relevant gates0 without new broad policy.
-- [ ] Freeze runtime bytes, full normal integration then fresh raw coverage;
+- [x] Freeze runtime bytes, full normal integration then fresh raw coverage;
       current remote/native51suites per variant, vendor/model/export directions,
       archive/install qualification. Expected normal0; report actual strict gate.
-- [ ] Record scope/results; candidate commit; one independent review and necessary
+- [x] Record scope/results; candidate commit; one independent review and necessary
       fix pass; final verification/merge/delete/taskdone/archive/sync/push. Expected
       clean synchronized master, with any broader acceptance gaps retained.
 

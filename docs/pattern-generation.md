@@ -6585,3 +6585,5 @@ its local dynamic build runs with Bison/Flex disabled. All4013 non-doc archive
 bytes match the current remote source, allowing reuse of that current compile
 and suite evidence. This is not a fresh remote archive rebuild. Later doc-only
 archive refreshes preserve the qualified runtime bytes and original provenance.
+
+Independent Task129 whole-branch review at986a1db approves the scoped merge with no Critical/Important findings. The reviewer selected dynamic63/static63/native-netlist checks, all passing through a disclosed read-only Root proxy because its tool host was unavailable. Broad artifact reproduction remains executor-owned; the recorded verifier checks hashes, counts and statuses. One optional wording minor is deferred:4013 denotes non-documentation files, although the guide currently calls them bytes. No runtime fix pass or second review was needed. Broader release and vendor acceptance remain open.
