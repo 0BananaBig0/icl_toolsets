@@ -17,6 +17,92 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestFlatClockInputKinds() {
+  for (const std::string binding :
+       {"", "InputPort p = root; InputPort n = root_n;",
+        "InputPort p = root; InputPort n[1] = root_n[1];"}) {
+    pattern::Design design;
+    design.AddIcl(
+        "flat_clock_kinds.icl",
+        "Module Pair { ClockPort p[1:0]; ClockPort n[1:0] { "
+        "DifferentialInvOf p; } } Module Wrapper { ClockPort p[1:0]; "
+        "ClockPort n[1:0] { DifferentialInvOf p; } Instance leaf Of Pair { "
+        "InputPort p = p; InputPort n = n; } } Module Top { "
+        "ClockPort root[1:0]; ClockPort root_n[1:0] { DifferentialInvOf root; "
+        "} "
+        "Instance child Of Wrapper { " +
+            binding + " } }");
+    const auto original = pattern::Elaborate(design, "Top");
+    const auto text = pattern::SerializeIcl(original);
+    Require(
+        text.find("\n  ClockPort n726f6f74[1:0]") != std::string::npos &&
+            text.find("\n  ClockPort n726f6f745f6e[1:0]") != std::string::npos,
+        "root clock inputs retain their input declarations");
+    auto legacy = text;
+    for (const auto& [name, kind] :
+         std::vector<std::pair<std::string, std::string>>{
+             {"n6368696c642e70", "DataOutPort"},
+             {"n6368696c642e6e", "ClockPort"},
+             {"n6368696c642e6c6561662e70", "DataOutPort"},
+             {"n6368696c642e6c6561662e6e", "ClockPort"}}) {
+      const auto marker = "ToClockPort " + name;
+      Require(text.find(marker + "[1:0]") != std::string::npos,
+              "internal clock inputs need typed output declarations: " + name);
+      const auto at = legacy.find(marker);
+      Require(at != std::string::npos, "legacy clock declaration exists");
+      legacy.replace(at, marker.size(), kind + " " + name);
+    }
+    for (const auto& input : {text, legacy}) {
+      pattern::Design serialized;
+      serialized.AddIcl("clock_flat.icl", input);
+      const auto restored = pattern::Elaborate(serialized, "Top");
+      Require(pattern::SerializeIcl(restored) == text,
+              "typed and legacy clock encodings share one canonical form");
+      for (const auto& name :
+           {"child.p", "child.n", "child.leaf.p", "child.leaf.n"}) {
+        Require(restored.NodeAt(name).kind == "ClockPort" &&
+                    restored.NodeAt(name).Width() == 2 &&
+                    restored.NodeAt(name).inputs.count("Source") ==
+                        original.NodeAt(name).inputs.count("Source"),
+                "original clock types, widths and missing bindings survive");
+      }
+    }
+  }
+}
+
+void TestFlatClockInputPropertyGuards() {
+  pattern::Design design;
+  design.AddIcl("clock_property_guard.icl",
+                "Module Child { ClockPort p; } Module Top { ClockPort root; "
+                "Instance child Of Child { InputPort p = root; } }");
+  auto text = pattern::SerializeIcl(pattern::Elaborate(design, "Top"));
+  const std::string old_kind = "DataOutPort n6368696c642e70";
+  const auto old = text.find(old_kind);
+  if (old != std::string::npos) {
+    text.replace(old, old_kind.size(), "ToClockPort n6368696c642e70");
+  }
+  for (const std::string property :
+       {"FreqMultiplier 2;", "FreqDivider 3;", "Period 10ns;"}) {
+    auto changed = text;
+    const std::string source = "Source n726f6f74;";
+    const auto at = changed.find(source);
+    Require(at != std::string::npos, "forwarded clock source exists");
+    changed.replace(
+        at, source.size(),
+        property == "Period 10ns;" ? property : source + " " + property);
+    pattern::Design invalid;
+    invalid.AddIcl("forged_clock_flat.icl", changed);
+    bool rejected = false;
+    try {
+      pattern::Elaborate(invalid, "Top");
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("flat") != std::string::npos;
+    }
+    Require(rejected,
+            "original clock inputs cannot acquire output frequency semantics");
+  }
+}
+
 void TestRestoredDataSourceKinds() {
   pattern::Design design;
   design.AddIcl("source_kinds.icl", R"(
@@ -799,6 +885,8 @@ Module Top {
 
 int main() {
   try {
+    TestFlatClockInputKinds();
+    TestFlatClockInputPropertyGuards();
     TestRestoredDataSourceKinds();
     TestRestoredHardwareSourceScopes();
     TestEmptyDataRegisterRoundTrip();

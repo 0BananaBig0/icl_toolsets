@@ -40,8 +40,8 @@ and build/secondary-clock-bindings-20261118/. Raw exception/cleanup edges remain
 
 Current runtime qualification has51 CLI suites(793 tests) per dynamic/static
 variant, a clean local source-archive build and fresh local/remote five-tool
-installations. All4013 non-doc archive bytes match the qualified remote source
-tree; this exact identity reuses its current compile and runtime results.
+installations. All4013 non-documentation files in the archive are byte-identical to the
+qualified remote source tree; this exact identity reuses its current compile and runtime results.
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -6581,9 +6581,60 @@ per variant, LSP behavior, static ELF checks and uninstall sentinel preservation
 Only the two generator binaries change locally and remotely; the other eight
 products remain identical to Task128. The clean41ee126 archive
 ships4229 tracked files plus six generated/prebuilt files;
-its local dynamic build runs with Bison/Flex disabled. All4013 non-doc archive
-bytes match the current remote source, allowing reuse of that current compile
+its local dynamic build runs with Bison/Flex disabled. All4013 non-documentation files in the archive
+are byte-identical to the current remote source, allowing reuse of that current compile
 and suite evidence. This is not a fresh remote archive rebuild. Later doc-only
 archive refreshes preserve the qualified runtime bytes and original provenance.
 
 Independent Task129 whole-branch review at986a1db approves the scoped merge with no Critical/Important findings. The reviewer selected dynamic63/static63/native-netlist checks, all passing through a disclosed read-only Root proxy because its tool host was unavailable. Broad artifact reproduction remains executor-owned; the recorded verifier checks hashes, counts and statuses. One optional wording minor is deferred:4013 denotes non-documentation files, although the guide currently calls them bytes. No runtime fix pass or second review was needed. Broader release and vendor acceptance remain open.
+
+
+## Typed flat clock declarations (2026-11-18)
+
+Task130 serializes internal ClockPort inputs as ToClockPort outputs. Positive
+forwarding declarations keep Source and negative declarations keep only
+DifferentialInvOf. Root clock ports and other port families retain their previous
+declaration kinds. This corrects the earlier association from a negative
+ClockPort to a positive DataOutPort. A shared private kind selector keeps the
+serializer and loader aligned.
+
+Version1 flat-origin metadata still preserves original input kind, scope,
+physical input bindings, ranges, inversion and missing inputs. The loader accepts
+both previous and new declaration encodings; older flat files now canonicalize
+to the new encoding. A converted output declaration cannot give an original
+clock input frequency multiplier/divider or oscillator Period properties.
+Genuine ToClockPort frequency and oscillator declarations remain supported.
+No Source-scope rule, clock execution, public API or metadata version changed.
+
+New native declaration/origin assertions cover nested, vector, partial
+and unbound inputs and migration of legacy encodings. A metadata frequency test
+failed after admitting the new declaration kind, then passed with the guard.
+A new CLI method checks three legacy direct/alias/divider models with existing
+source/flat/generated/reset replay plus legacy source/generated replay. All64
+clock methods pass dynamically, statically and with leak-enabled ASan/UBSan.
+Existing whole flatten/netlist and clock-snapshot native leak checks,71 main CLI
+sanitizer methods and six changed-C++ format/tidy/strict17 gates also pass.
+
+Six fresh Tessent2026.2 flat probes use encoded port names in their actual clock
+setup and program. Direct and aliased models run successfully with both the flat
+positive clock target and the normalized root clock: four complete exports
+contain the expected two ordered clock/wait operations. Mapping physical names
+through the recorded origin metadata gives the expected root trace. Eight
+native replays of these origin-mapped programs against source/flat models pass.
+
+The eight untranslated native export replays instead fail with exit2 because
+origin restoration exposes original names, while the export uses physical flat
+names. No raw native export replay success is claimed. Both divider probes now
+pass read_icl but fail set_current_design with ICL130-2: local output ports feed
+other output Sources. This is separate from the repaired ICL59-1 declaration
+kind failure. General output-source flattening and native flat-name lookup
+remain open; the existing source-scope policy is retained.
+
+The six earlier source/normalized vendor directions from Task129 are reused
+only after verifying exact model, input-program and current native-output
+identity for all three cases. Fresh flat probes verify all18 submitted/fetched
+input hashes. No formal registry certificate is added and no general clock
+event, vendor equivalence or final release acceptance is claimed.
+Evidence is retained under build/flat-differential-clocks-20261118/.
+The earlier Task129 file-count wording minor is clarified:4013 is the count of
+non-documentation files whose individual bytes match, not a byte count.
