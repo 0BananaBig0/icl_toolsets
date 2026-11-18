@@ -6744,3 +6744,36 @@ qualified runtime bytes and original provenance. Full release acceptance,
 strict coverage and the documented broader model/vendor gaps remain open.
 
 Independent Task131 whole-branch review at aac20fd approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected lookup, restoration, copy and emission paths and selected native clock snapshots plus68 dynamic clock methods, all passing through a disclosed read-only Root relay because its tool host was unavailable. Root owns broad artifact/status authentication; the verifier checks recorded hashes and counts. No fix pass or second review was needed. General raw naming, vendor models, clock events, strict coverage and full release acceptance remain open.
+
+
+## Absolute-time waits without clock-driven state (2026-11-18)
+
+Task132 preserves an exact validated iRunLoop -time value when the model has
+no register storage, TAPs, opaque interfaces or AccessLink nodes, and no clock/
+TCK source feeding unsupported data/control or test-clock output logic.
+Pure ports, combinational data, aliases, muxes and groups without storage may
+therefore retain absolute delays. General stateful time execution remains
+unsupported and reports the need for absolute-period and clock-event models.
+
+IEEE1687-2014 7.7 printed154/PDF168 defines time values;7.9.17 printed175-176/
+PDF189-190 specifies a separate -time alternative, minimum elapsed time and
+free-running clocks. It does not provide combined -time/-sck syntax.
+Native output retains the exact shared-frontend-validated text, including units,
+exponents and zero, rather than guessing a tester period or converting through
+floating point. Runtime revalidates values after Tcl substitutions. Existing
+pending-read/write rejection and source/reset rewrite bookkeeping apply.
+
+Eligibility is cached only for the immutable graph. Each call checks preserved
+ClockPort/ToClockPort/TCKPort levels, including minimum-zero waits, since an
+external tester need not implement a minimum-zero delay as zero cycles.
+Direct clock-port iState/iWrite commands retain their existing unsupported
+status; native API tests exercise the held-clock input contract. Clock-route
+cache invalidation preserves checked-clock versions and original-spelled
+overrides. No metadata version, option, new runtime dependency, clock assignment
+or device event model is introduced.
+
+A fresh Tessent2026.2 control accepts and exports a1.25us wait unchanged on a
+clock-only model. It uses the documented patterns -ijtag/analysis pattern-set
+flow and configured free-running clocks. This is one control, without a broad
+vendor certificate or a claim about stateful/opaque timing. Evidence and current
+qualification records are retained under build/invariant-time-waits-20261118/.

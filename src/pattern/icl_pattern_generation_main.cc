@@ -470,40 +470,46 @@ std::string Generate(
           throw std::runtime_error("iRunLoop has unapplied operations");
         }
         const auto& args = operation.arguments;
-        std::string literal, system_clock;
-        if (args.size() == 3 && args[1] == "-sck") {
-          literal = args[0];
-          system_clock = args[2];
-        } else if (args.size() == 1) {
-          literal = args[0];
-        } else if (args.size() == 2 && args[1] == "-tck") {
-          literal = args[0];
-        } else if (args.size() == 2 && args[0] == "-tck") {
-          literal = args[1];
+        if (args.size() == 2 && args[0] == "-time") {
+          clocks.CheckTimeWait(reservations.Values());
+          clocks.Invalidate();
+          result += Command({"iRunLoop", "-time", args[1]});
         } else {
-          throw std::runtime_error(
-              "iRunLoop -time requires absolute period models");
-        }
-        if (literal.find_first_of("xX", 2) != std::string::npos) {
-          throw std::runtime_error("iRunLoop cycle count must be known");
-        }
-        const auto bits = pattern::PdlNumber(context, literal, 64);
-        uint64_t cycles = 0;
-        for (char bit : bits) {
-          if (bit == 'x') {
+          std::string literal, system_clock;
+          if (args.size() == 3 && args[1] == "-sck") {
+            literal = args[0];
+            system_clock = args[2];
+          } else if (args.size() == 1) {
+            literal = args[0];
+          } else if (args.size() == 2 && args[1] == "-tck") {
+            literal = args[0];
+          } else if (args.size() == 2 && args[0] == "-tck") {
+            literal = args[1];
+          } else {
+            throw std::runtime_error(
+                "iRunLoop -time requires absolute period models");
+          }
+          if (literal.find_first_of("xX", 2) != std::string::npos) {
             throw std::runtime_error("iRunLoop cycle count must be known");
           }
-          cycles = (cycles << 1) | (bit == '1');
-        }
-        if (system_clock.empty()) {
-          scheduler.Idle(cycles, reservations.Values());
-          clocks.Invalidate();
-          result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
-        } else {
-          const auto wait = clocks.Wait(system_clock, cycles, scheduler,
-                                        reservations.Values());
-          result += Command(
-              {"iRunLoop", std::to_string(wait.second), "-sck", wait.first});
+          const auto bits = pattern::PdlNumber(context, literal, 64);
+          uint64_t cycles = 0;
+          for (char bit : bits) {
+            if (bit == 'x') {
+              throw std::runtime_error("iRunLoop cycle count must be known");
+            }
+            cycles = (cycles << 1) | (bit == '1');
+          }
+          if (system_clock.empty()) {
+            scheduler.Idle(cycles, reservations.Values());
+            clocks.Invalidate();
+            result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
+          } else {
+            const auto wait = clocks.Wait(system_clock, cycles, scheduler,
+                                          reservations.Values());
+            result += Command(
+                {"iRunLoop", std::to_string(wait.second), "-sck", wait.first});
+          }
         }
       } else if (operation.command == "iState") {
         const bool controlling = operation.arguments.size() != 3 ||
@@ -667,7 +673,10 @@ int main(int argc, char** argv) {
            "support\n"
            "relative clock-only routes, differential partners, Period "
            "oscillators and versioned iClockOverride.\n"
-           "Absolute time and general clock events remain unsupported.\n"
+           "Absolute-time waits require models without storage or clock-driven "
+           "data.\n"
+           "General clock events and stateful absolute time remain "
+           "unsupported.\n"
            "Independent register and data/control-port iMerge calls can "
            "combine\n"
            "ordered applies, including reads, slices, aliases and masks.\n";

@@ -405,6 +405,41 @@ void SystemClocks::BuildSafety() {
   }
   safety_ready_ = true;
 }
+void SystemClocks::CheckTimeWait(
+    const std::map<size_t, std::string>& preserved) {
+  if (!time_ready_) {
+    if (!netlist_.taps.empty() ||
+        std::any_of(netlist_.nodes.begin(), netlist_.nodes.end(),
+                    [](const NetlistNode& node) {
+                      return node.model == ModelKind::kRegister ||
+                             node.model == ModelKind::kInterface ||
+                             node.model == ModelKind::kAccessLink;
+                    })) {
+      throw std::runtime_error(
+          "iRunLoop -time requires absolute period models and clock-event "
+          "support for stateful or opaque hardware");
+    }
+    BuildSafety();
+    for (const auto& bit : unsafe_) {
+      const auto& node = netlist_.nodes.at(bit.first);
+      if (ClockPort(node) || node.kind == "TCKPort") {
+        throw std::runtime_error(
+            "absolute-time wait has unsupported clock fanout: " + Name(bit));
+      }
+    }
+    time_ready_ = true;
+  }
+  for (const auto& [id, value] : preserved) {
+    const auto& node = netlist_.nodes.at(id);
+    if (!ClockPort(node) && node.kind != "TCKPort") continue;
+    const auto bit = value.find_first_of("01");
+    if (bit != std::string::npos) {
+      throw std::runtime_error(
+          "absolute-time wait conflicts with held clock: " +
+          Name({id, Index(node, bit)}));
+    }
+  }
+}
 std::string SystemClocks::Check(const std::string& target,
                                 const ScanScheduler& scheduler) {
   const auto bit = Target(ClockTargetName(target));

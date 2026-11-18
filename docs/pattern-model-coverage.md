@@ -60,7 +60,7 @@ full model coverage or Tessent equivalence.
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Raw scans | Genuine opaque root-client lowering; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream ScanRegister reservations and explicit root port effects with retained locks; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Opaque child, parallel/multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, child/TAP established port ownership and broader vendor qualification |
 | Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
-| Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots, explicitly bound differential inputs with a common modeled phase origin and root-relative replay; named secondary sources on negative clock inputs with six matching source/normalized vendor exports; typed ToClockPort encodings for internal clock inputs with legacy loading and four fresh mapped direct/alias flat traces; metadata-gated physical clock names for native flat iClock/waits and four raw export replays | General implicit selection, inverted child clock phases, general intrinsic oscillator restoration/frequency, general vendor-flat output-source networks, general physical/native naming collisions, raw data/override names and negative vendor iClock targets, general bound differential phase relationships, absolute-time waits, general clock events and external time-dependent instrument behavior |
+| Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots, explicitly bound differential inputs with a common modeled phase origin and root-relative replay; named secondary sources on negative clock inputs with six matching source/normalized vendor exports; typed ToClockPort encodings for internal clock inputs with legacy loading and four fresh mapped direct/alias flat traces; metadata-gated physical clock names for native flat iClock/waits and four raw export replays; exact -time delays on models without storage, opaque hardware or clock-driven data | General implicit selection, inverted child clock phases, general intrinsic oscillator restoration/frequency, general vendor-flat output-source networks, general physical/native naming collisions, raw data/override names and negative vendor iClock targets, general bound differential phase relationships, general stateful absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
@@ -3871,3 +3871,36 @@ qualified runtime bytes and original provenance. Full release acceptance,
 strict coverage and the documented broader model/vendor gaps remain open.
 
 Independent Task131 whole-branch review at aac20fd approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected lookup, restoration, copy and emission paths and selected native clock snapshots plus68 dynamic clock methods, all passing through a disclosed read-only Root relay because its tool host was unavailable. Root owns broad artifact/status authentication; the verifier checks recorded hashes and counts. No fix pass or second review was needed. General raw naming, vendor models, clock events, strict coverage and full release acceptance remain open.
+
+
+## Absolute-time waits without clock-driven state (2026-11-18)
+
+Task132 preserves an exact validated iRunLoop -time value when the model has
+no register storage, TAPs, opaque interfaces or AccessLink nodes, and no clock/
+TCK source feeding unsupported data/control or test-clock output logic.
+Pure ports, combinational data, aliases, muxes and groups without storage may
+therefore retain absolute delays. General stateful time execution remains
+unsupported and reports the need for absolute-period and clock-event models.
+
+IEEE1687-2014 7.7 printed154/PDF168 defines time values;7.9.17 printed175-176/
+PDF189-190 specifies a separate -time alternative, minimum elapsed time and
+free-running clocks. It does not provide combined -time/-sck syntax.
+Native output retains the exact shared-frontend-validated text, including units,
+exponents and zero, rather than guessing a tester period or converting through
+floating point. Runtime revalidates values after Tcl substitutions. Existing
+pending-read/write rejection and source/reset rewrite bookkeeping apply.
+
+Eligibility is cached only for the immutable graph. Each call checks preserved
+ClockPort/ToClockPort/TCKPort levels, including minimum-zero waits, since an
+external tester need not implement a minimum-zero delay as zero cycles.
+Direct clock-port iState/iWrite commands retain their existing unsupported
+status; native API tests exercise the held-clock input contract. Clock-route
+cache invalidation preserves checked-clock versions and original-spelled
+overrides. No metadata version, option, new runtime dependency, clock assignment
+or device event model is introduced.
+
+A fresh Tessent2026.2 control accepts and exports a1.25us wait unchanged on a
+clock-only model. It uses the documented patterns -ijtag/analysis pattern-set
+flow and configured free-running clocks. This is one control, without a broad
+vendor certificate or a claim about stateful/opaque timing. Evidence and current
+qualification records are retained under build/invariant-time-waits-20261118/.
