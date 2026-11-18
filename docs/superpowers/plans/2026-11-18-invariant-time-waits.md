@@ -35,9 +35,9 @@ BuildSafety/Invalidate, Runtime::Validate, Generate iRunLoop, maintained helpers
       exact delay in Generate/help; add native guards/copy/snapshot checks.
       Include forwarded-TCK/data-pin hold regression; expected native/dynamic/
       static GREEN and unchanged unrelated rejection boundaries.
-- [ ] Run12 style/strict17 gates, SAN and measured scale with frozen inputs.
+- [x] Run12 style/strict17 gates, SAN and measured scale with frozen inputs.
       Expected0 and preserved exact literal/canonical replays.
-- [ ] Full normal, fresh raw strict coverage, current Rocky, vendor control hash/
+- [x] Full normal, fresh raw strict coverage, current Rocky, vendor control hash/
       complete trace/export replay, archive/install. Expected normal0, raw actual.
 - [ ] Qualification/task-done, one fresh final review/fix pass, final verification,
       merge/delete/archive/sync/push. Expected clean synchronized master.
