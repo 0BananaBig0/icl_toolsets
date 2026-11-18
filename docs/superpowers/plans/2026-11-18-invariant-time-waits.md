@@ -39,7 +39,7 @@ BuildSafety/Invalidate, Runtime::Validate, Generate iRunLoop, maintained helpers
       Expected0 and preserved exact literal/canonical replays.
 - [x] Full normal, fresh raw strict coverage, current Rocky, vendor control hash/
       complete trace/export replay, archive/install. Expected normal0, raw actual.
-- [ ] Qualification/task-done, one fresh final review/fix pass, final verification,
+- [x] Qualification/task-done, one fresh final review/fix pass, final verification,
       merge/delete/archive/sync/push. Expected clean synchronized master.
 
 Pre-flight: no shared task interfaces; one task. CodeGraph structural discovery
