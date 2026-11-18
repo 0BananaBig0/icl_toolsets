@@ -2643,6 +2643,106 @@ void TestDifferentialClockDurations() {
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
 }
+void TestBoundDifferentialClocks() {
+  std::string source = R"(Module Pair {
+    ClockPort positive;
+    ClockPort negative { DifferentialInvOf positive; }
+  }
+  Module Divider {
+    ClockPort input; ToClockPort output { Source input; FreqDivider 3; }
+  }
+  Module Buffer { ClockPort input; ToClockPort path { Source input; } }
+  Module Top {
+    ClockPort root; ClockPort other; DataInPort mode;
+    Instance divided Of Divider { InputPort input = root; }
+    Instance buffer Of Buffer { InputPort input = divided.output; }
+    ClockMux mux SelectedBy mode { 1'b0: ~buffer.path; 1'b1: ~other; }
+    Instance pair Of Pair {
+      InputPort positive = divided.output; InputPort negative = mux;
+    }
+    ScanInPort si; ScanRegister value { ScanInSource si; ResetValue 0; }
+    ScanOutPort so { Source value; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("bound-differential.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("mode", "0");
+    scheduler.Assume("value", "1");
+    pattern::SystemClocks clocks(netlist);
+    z3::context context;
+    Require(clocks.Check("pair.negative", scheduler) == "root" &&
+                clocks.Wait("pair.negative", 4, scheduler).second == 12,
+            "bound complementary inputs share a converted clock origin");
+    clocks.Override(
+        {"iClockOverride", {"buffer.path", "-source", "other"}, "bound:1", {}},
+        context);
+    bool rejected = false;
+    try {
+      clocks.Check("pair.negative", scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("bound differential") !=
+                 std::string::npos;
+    }
+    Require(rejected && clocks.Wait("pair.negative", 4, scheduler).second == 12,
+            "failed new differential check retains the old override snapshot");
+    scheduler.Assume("mode", "1");
+    clocks.Invalidate();
+    rejected = false;
+    try {
+      clocks.Wait("pair.negative", 0, scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("bound differential") !=
+                 std::string::npos;
+    }
+    Require(rejected, "even zero waits revalidate applied binding selectors");
+    scheduler.Assume("mode", "0");
+    clocks.Invalidate();
+    Require(clocks.Wait("pair.negative", 1, scheduler).second == 3,
+            "failed differential route can recover after selector restoration");
+    clocks.Override({"iClockOverride",
+                     {"buffer.path", "-source", "divided.output"},
+                     "bound:2",
+                     {}},
+                    context);
+    Require(clocks.Check("pair.negative", scheduler) == "root",
+            "a later consistent override can publish a fresh checked route");
+    const std::map<size_t, std::string> held{
+        {netlist.node_ids.at("pair.negative"), "0"}};
+    rejected = false;
+    try {
+      clocks.Wait("pair.negative", 1, scheduler, held);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("held clock") != std::string::npos;
+    }
+    Require(rejected &&
+                clocks.Wait("pair.negative", 0, scheduler, held).second == 0,
+            "bound differential negative inputs remain protected by ownership");
+    Require(scheduler.Value("value") == "1" && scheduler.Value("root") == "x" &&
+                scheduler.Value("pair.negative") == "x",
+            "differential consistency checks do not change hardware storage or "
+            "pins");
+    auto cyclic = netlist;
+    const auto negative = cyclic.node_ids.at("pair.negative");
+    cyclic.nodes[negative].inputs["Source"] = {{negative, 0}};
+    pattern::ScanScheduler cyclic_scheduler(cyclic);
+    pattern::SystemClocks cyclic_clocks(cyclic);
+    cyclic_scheduler.Assume("mode", "0");
+    rejected = false;
+    try {
+      cyclic_clocks.Check("pair.negative", cyclic_scheduler);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("cyclic system-clock") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "cycles in the explicit binding cannot hide behind the declared "
+            "partner");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestClockOverrideSnapshots() {
   pattern::Design design;
   design.AddIcl("overrides.icl", R"(Module Top {
@@ -5723,6 +5823,7 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
+        TestBoundDifferentialClocks();
         TestClockOverrideSnapshots();
         TestOscillatorSourceOverrides();
         return 0;
@@ -5765,6 +5866,7 @@ int main(int argc, char* argv[]) {
     TestModeledRootScans();
     TestInvertedClockDurations();
     TestDifferentialClockDurations();
+    TestBoundDifferentialClocks();
     TestClockOverrideSnapshots();
     TestClockOverrideScale();
     TestRelativeSystemClocks();

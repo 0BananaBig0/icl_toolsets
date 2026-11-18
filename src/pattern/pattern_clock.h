@@ -33,7 +33,8 @@ class SystemClocks {
  private:
   using Bit = std::pair<size_t, int64_t>;
   struct Route {
-    Bit root;
+    Bit root, phase_origin;
+    bool inverted = false;
     uint64_t multiplier = 1, divider = 1;
   };
   struct Checked {
