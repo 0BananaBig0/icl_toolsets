@@ -136,6 +136,39 @@ void TestClockSignalSources() {
   }
 }
 
+void TestSecondaryClockInputSources() {
+  for (const std::string binding : {"root_n", "wrapped", "gen.output_n"}) {
+    const bool child_output = binding == "gen.output_n";
+    pattern::Design design;
+    design.AddIcl(
+        "secondary-clock-input.icl",
+        "Module Pair { ClockPort p; ClockPort n { DifferentialInvOf p; } } "
+        "Module Generator { ClockPort input; ToClockPort output { Source "
+        "input; } "
+        "ToClockPort output_n { DifferentialInvOf output; } } "
+        "Module M { ClockPort root; ClockPort root_n { DifferentialInvOf root; "
+        "} "
+        "Alias wrapped = root_n; Instance gen Of Generator { InputPort input = "
+        "root; } "
+        "Instance child Of Pair { InputPort p = " +
+            std::string(child_output ? "gen.output" : "root") +
+            "; InputPort n = " + binding + "; } }");
+    const auto original = pattern::Elaborate(design, "M");
+    const auto& source = original.NodeAt("child.n").inputs.at("Source").at(0);
+    Require(original.nodes.at(source.node).name == binding && !source.inverted,
+            "secondary binding retains its declared port or alias identity");
+    pattern::Design flat_design;
+    flat_design.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto flat = pattern::Elaborate(flat_design, "M");
+    const auto& restored = flat.NodeAt("child.n").inputs.at("Source").at(0);
+    Require(
+        flat.nodes.at(restored.node).name == binding && !restored.inverted &&
+            flat.NodeAt("child.n").kind == "ClockPort" &&
+            pattern::SerializeIcl(flat) == pattern::SerializeIcl(original),
+        "source/flat metadata preserves named secondary input types and bits");
+  }
+}
+
 void TestClockInputDifferentialAssociation() {
   for (const std::string source :
        {"positive[1:0]", "~positive[0:1]", "wrapped", "~wrapped"}) {
@@ -3905,6 +3938,7 @@ void TestOneHotScanLimits() {
 int main() {
   int failures = 0;
   for (const auto test : {TestClockSignalSources,
+                          TestSecondaryClockInputSources,
                           TestClockOutputDifferentialScope,
                           TestClockInputDifferentialAssociation,
                           TestTckInputSources,

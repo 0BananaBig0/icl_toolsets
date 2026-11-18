@@ -13,8 +13,10 @@ Task128 (2026-11-18) adds native consistency checks for bound differential clock
 inputs. Full normal integration, current dynamic/static generator suites,
 focused leak-enabled sanitizers, local archive builds and five-tool installations
 pass. See [the latest scope and evidence](#bound-differential-clock-inputs-2026-11-18).
-Its three Tessent source probes fail ICL65-1 during elaboration; vendor binding
-compatibility remains open. The strict coverage gate also remains unmet.
+Its three inverted-positive Tessent source probes fail ICL65-1 during elaboration.
+Task129 separately admits the vendor's named secondary input sources; see
+[the compatibility boundary](#secondary-clock-input-bindings-2026-11-18).
+The strict coverage gate remains unmet.
 
 On 2026-11-14, reset source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
@@ -6504,3 +6506,48 @@ rejects that vendor binding form. These are explicit contextual compatibility
 gaps. The three runs supply no directional certificate or vendor export replay;
 no Tessent qualification is claimed for this native feature. Inputs, hashes,
 stage-specific diagnostics and exit1 statuses are retained in the vendor evidence.
+
+
+## Secondary clock input bindings (2026-11-18)
+
+Task129 accepts a named secondary ClockPort from the parent or secondary
+ToClockPort from a direct child as the Source of a negative ClockPort input.
+The exception requires that destination, its DifferentialInvOf association,
+the Source role, and a secondary clock terminal after alias resolution.
+Existing scope, direction, alias ownership and restored flat-origin checks
+still apply. Ordinary positive inputs, ClockMux choices, ToClockPort Sources,
+data outputs and DifferentialInvOf references retain their previous rules.
+No new command, global clock classification, dependency or event model is added.
+
+This is a measured Tessent2026.2 extension to the literal clock_signal lists in
+IEEE1687-2014 6.3.12(e)/6.4.7(h). Source eligibility does not prove a waveform.
+The current relative-duration backend checks a traced negative input against
+its declared positive partner using the existing root, ratio and phase-origin
+proof. Partial unbound lanes, unrelated routes and wrong polarity remain errors
+when used; duration waits do not simulate clock events.
+
+The maintained source-kind regression failed before the change. Native tests
+now preserve direct/aliased/child-output Source identity and original input
+kind through flattening. The clock CLI suite has63 methods, including nested
+and permuted vectors, partial bindings, source/scope rejection and phase
+mismatches, each valid case using source/flat/generated/reset replay. Existing
+rejection tests for other source contexts remain unchanged.
+
+Fresh Tessent2026.2 runs distinguish three directions for direct, aliased and
+shared-divider models. All three original source programs and all three native
+normalized programs elaborate, execute and export successfully. Their six
+complete ordered iClock/iRunLoop traces match the native result; the divider
+maps four child cycles to twelve root cycles. All twelve native replays of
+those exports against original and flattened models pass. All27 submitted
+probe-input hashes match their fetched copies.
+
+All three flattened models instead fail Tessent read_icl with ICL59-1: the
+negative ClockPort refers to a positive partner serialized as DataOutPort.
+Native flat-origin restoration handles that representation, but it is not a
+vendor-portable model. Separately, the negative-target control elaborates and
+then fails at iClock; the positive-target control succeeds. IEEE7.9.15(a)
+permits any valid ClockPort/ToClockPort target, so native negative-target
+support is retained. These results do not establish vendor support for those
+commands or the earlier inverted-positive input spelling. The existing formal
+certificate runner lacks this clock setup; no registry certificate was added.
+Evidence is retained under build/secondary-clock-bindings-20261118/.
