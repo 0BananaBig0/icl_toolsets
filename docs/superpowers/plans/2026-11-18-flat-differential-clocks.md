@@ -36,9 +36,9 @@ existing flatten native runner and SystemClocks replay/rejected helpers.
       Expected new declaration tests GREEN and forged factor/Period test RED.
 - [x] Reject output-only properties when restoring original clock inputs.
       Expected all focused tests GREEN; genuine output factors/oscillators intact.
-- [ ] Run six C++ style/strict gates, native/dynamic/static/leak SAN and scale.
+- [x] Run six C++ style/strict gates, native/dynamic/static/leak SAN and scale.
       Expected0 with correct current byte/product identity.
-- [ ] Full normal then fresh raw coverage, Rocky/current suites, vendor directions
+- [x] Full normal then fresh raw coverage, Rocky/current suites, vendor directions
       and archive/install qualification. Expected normal0; report actual raw gate.
 - [ ] Record qualification/candidate, whole-branch review, necessary fix pass,
       final verify/merge/delete/archive/sync/push. Expected clean synchronized

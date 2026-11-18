@@ -9,12 +9,12 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task129 (2026-11-18) accepts named secondary sources on negative clock inputs.
-Full normal integration, dynamic/static suites, focused leak-enabled sanitizers,
-local source-archive builds and five-tool installations pass. See
-[the latest scope and evidence](#secondary-clock-input-bindings-2026-11-18).
-Six fresh vendor source/normalized exports match; three flattened vendor reads
-and the separate negative iClock control fail. Strict coverage remains unmet.
+Task130 (2026-11-18) preserves clock declaration kinds in native flat output,
+with input loading of both current and legacy encodings. Full normal, focused
+leak sanitizers, current dynamic/static suites, clean local archive builds and
+five-tool installations pass. See [the latest boundary](#typed-flat-clock-declarations-2026-11-18).
+Four fresh flat vendor programs export successfully; two divider elaborations
+and untranslated native export names remain unqualified. Strict coverage remains unmet.
 
 On 2026-11-14, reset source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
@@ -32,16 +32,17 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. The complete Task129 instrumented
-run reaches17376/18005 lines(96.5%) and29350/46789 raw branches(62.7%). All
+Strict authored-code coverage remains unmet. The complete Task130 instrumented
+run reaches17386/18015 lines(96.5%) and29399/46869 raw branches(62.7%). All
 prescribed tests complete; the unchanged100% line/90% raw branch gate fails
-with Make exit2. See [the current measurement](#secondary-clock-input-bindings-2026-11-18)
-and build/secondary-clock-bindings-20261118/. Raw exception/cleanup edges remain included.
+with Make exit2. See [the current measurement](#typed-flat-clock-declarations-2026-11-18)
+and build/flat-differential-clocks-20261118/. Raw exception/cleanup edges remain included.
 
-Current runtime qualification has51 CLI suites(793 tests) per dynamic/static
+Current runtime qualification has51 CLI suites(794 tests) per dynamic/static
 variant, a clean local source-archive build and fresh local/remote five-tool
-installations. All4013 non-documentation files in the archive are byte-identical to the
-qualified remote source tree; this exact identity reuses its current compile and runtime results.
+installations. All4013 non-documentation files in the archive are byte-identical
+to the qualified remote source tree; current compile and runtime results are
+reused on that explicit identity.
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -6638,3 +6639,40 @@ event, vendor equivalence or final release acceptance is claimed.
 Evidence is retained under build/flat-differential-clocks-20261118/.
 The earlier Task129 file-count wording minor is clarified:4013 is the count of
 non-documentation files whose individual bytes match, not a byte count.
+
+
+Task130 qualification passes the whole native flatten and netlist runners,
+clock snapshots,64 clock methods per dynamic/static build and leak sanitizer,
+71 main CLI sanitizer methods, and six changed-C++ style/strict17 gates.
+All3994 runtime input hashes remain frozen; only pattern_flatten.cc and its
+native/clock CLI tests differ from Task129. Full serial normal integration0
+takes1744.420s, with1916 regression cases,2180 conformance cases,
+334 parser/119 scanner rules across2549 ICL files and six editor tests in190.081s.
+Five optional ANTLR checks are skipped.
+
+Fresh instrumented testing takes1312.593s. All58 Python groups/
+956 cases pass (51 generator groups/794 cases), along with native/regression/
+conformance checks. The strict gate still fails at17386/18015 lines(96.5%) and
+29399/46869 raw branches(62.7%). All54 authored reports and19 instrumented products
+remain included, with no exception-edge filtering or threshold waiver.
+
+The605109-byte named-secondary fixture retains4096 pairs,4096 shared stages,
+1024 waits and five replay forms. Parent/current dynamic/static runs take
+1.877934/1.692213/1.796047s, with peak RSS
+125444/127896/125244KiB; all three emit identical
+PDL hashes. Existing4096-stage/65536-bit checks and parent/current5000-instance
+netlist benchmarks pass. Commands, source/product fingerprints and environment
+are retained; no speedup or general throughput claim is made.
+
+All eight current Rocky compiler/native/dynamic/static/ELF gates pass; both
+variants run51 generator groups/794 cases and all3994 submitted input hashes
+match. All14 remote and12 local archive/install gates pass for five commands
+per variant, LSP behavior, static ELF and uninstall sentinel preservation.
+Only the two generator products change; the other eight local/remote tools
+retain Task129 fingerprints. The clean daacad0 archive ships
+4231 tracked files plus six generated/prebuilt files and builds
+locally with Bison/Flex disabled. Its4013 non-documentation files match the
+current qualified remote source byte-for-byte. That current compiler/suite
+evidence is reused by exact identity; no fresh remote archive rebuild is claimed.
+Later doc-only archive refreshes preserve the tested runtime bytes and original
+provenance. Broader source, event, vendor and release acceptance remains open.
