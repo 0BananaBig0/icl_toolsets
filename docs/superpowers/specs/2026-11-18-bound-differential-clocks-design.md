@@ -45,3 +45,7 @@ strict C++17, full make check, fresh raw coverage with unchanged100/90 threshold
 current remote compiler/runtime qualification, archive/install verification and
 one independent whole-branch review. Merge into master and delete the task
 branch when the scoped change passes; retain broader acceptance gaps.
+
+Complementarity is a current-route proof. Existing duration-only Wait behavior
+continues to accept coherent reroutes with the same root and reduced frequency
+ratio; the new metadata does not impose a phase-freeze contract.

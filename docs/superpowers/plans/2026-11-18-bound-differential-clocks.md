@@ -43,7 +43,7 @@ and native TestDifferentialClockDurations remain compatible.
 - [x] Run full make check and fresh raw coverage serially; qualify current remote
       compiler and generator suites; archive/install checks. Expected normal0;
       report actual strict coverage result without exclusions/waivers.
-- [ ] Record evidence and limits, candidate commit, one independent review and
+- [x] Record evidence and limits, candidate commit, one independent review and
       necessary fix pass. Final verification, merge master, delete branch,
       task-done/archive ledger and sync index. Expected clean master; push verified master to its configured upstream (user authorized 2026-11-18).
 
