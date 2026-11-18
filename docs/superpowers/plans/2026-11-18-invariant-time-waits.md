@@ -1,6 +1,6 @@
 # Invariant-model absolute-time wait plan
 > REQUIRED: superpowers:executing-plans and TDD; one final independent review.
-**Goal:** Preserve exact absolute-time waits on models without clock-driven state.
+**Goal:** Preserve absolute-time minimum delays on models without clock-driven state.
 **Spec:** docs/superpowers/specs/2026-11-18-invariant-time-waits-design.md
 
 ## Global Constraints
