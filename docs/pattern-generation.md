@@ -6678,3 +6678,30 @@ Later doc-only archive refreshes preserve the tested runtime bytes and original
 provenance. Broader source, event, vendor and release acceptance remains open.
 
 Independent Task130 whole-branch review at3720dc9 approves the scoped merge with no Critical/Important/Minor findings. The reviewer selected the whole native flatten runner, passing through a disclosed read-only Root proxy because its tool host was unavailable. Root owns broad source/product/archive/vendor status authentication; the verifier checks the recorded hashes and counts. No fix pass or second review was needed. General vendor flattening, raw-name lookup, clock events, strict coverage and full release acceptance remain open.
+
+
+## Physical clock names in flat input (2026-11-18)
+
+Task131 lets iClock and iRunLoop -sck use canonical physical clock names
+from the associated native flat ICL. Original declaration names take priority.
+Otherwise, a lowercase n followed by pairs of hexadecimal digits may name an
+original ClockPort or ToClockPort when valid flat-origin metadata is present.
+Existing scalar/vector suffix checks still apply. The metadata-presence check
+is cached per immutable netlist; decoding costs O(name length + log nodes).
+
+Generated PDL uses original names and replays against original or flat input.
+Raw physical names and their reset artifacts require the associated flat model.
+Original models without flat metadata, aliases, data/resource commands and
+iClockOverride target/source spellings keep their existing lookup behavior.
+Literal original names that collide with physical spellings win; this is not
+general raw-name mode. Prefix and procedure-call qualification is unchanged.
+
+Four unchanged Task130 vendor exports now replay directly on their flat models;
+their complete ordered traces match the native original-name result. All eight
+origin-mapped replays still pass. The four raw replays on original models still
+reject unknown physical targets. Vendor evidence is reused only after exact
+identity checks of the physical models/programs and current native outputs;
+no new vendor execution or formal certificate is claimed. The two divider flat
+models still fail vendor set_current_design with ICL130-2. General flat output
+networks, negative vendor clock targets, clock events and absolute time remain
+open. Evidence: build/flat-clock-targets-20261118/.
