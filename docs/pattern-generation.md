@@ -500,7 +500,7 @@ their state, and parallel input frames do not pulse scan controls.
 It rejects
 multiple TAPs, overlapping paths within a selected chain group, intermediate serial taps,
 general serial- or phase-dependent reset events,
-system-clock/absolute-time waits, unsupported reservation types and other unsupported
+stateful absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
 interface events are outside the current complete-scan model; inability to
 schedule them is not proof of hardware unreachability.

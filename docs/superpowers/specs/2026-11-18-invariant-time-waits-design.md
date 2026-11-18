@@ -37,7 +37,7 @@ In Generate, keep pending-operation rejection before both iRunLoop alternatives.
 Emit exactly iRunLoop -time plus the validated value. Retain loop bookkeeping,
 source rewrite records and existing cycle-count/opaque/merge behavior. Stateful
 time waits continue to reject with an absolute-period/event-model explanation.
-Update help/guides to state this boundary. Existing resource/clock ownership and
+Update help/README/guides to state this boundary. Existing resource/clock ownership and
 all unrelated command restrictions remain unchanged.
 
 Performance: input is existing3994-file runtime set; representative4096-instance/

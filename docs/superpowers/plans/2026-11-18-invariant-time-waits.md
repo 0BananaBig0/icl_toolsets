@@ -24,7 +24,7 @@ Final verifier: python3 /tmp/invariant-time-verify.py.
 **Files:** src/pattern/pattern_clock.cc/.h;
 src/pattern/icl_pattern_generation_main.cc;
 tests/src/pattern_scheduler_test.cc; tests/src/pattern/test_system_clocks.py;
-docs/pattern-generation.md; docs/pattern-model-coverage.md; this plan/spec.
+README.md; docs/pattern-generation.md; docs/pattern-model-coverage.md; this plan/spec.
 **Interfaces:** new internal SystemClocks CheckTimeWait(preserved); existing
 BuildSafety/Invalidate, Runtime::Validate, Generate iRunLoop, maintained helpers.
 
