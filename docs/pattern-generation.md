@@ -25,17 +25,15 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. The complete Task123 instrumented
-run reaches 17,333/17,963 lines (96.5%) and 29,260/46,667 raw branches (62.7%). All prescribed tests complete;
-the final unchanged100% line/90% raw branch gate fails with Make exit2.
-See [the current measurement](#oscillator-cached-waits-2026-11-17) and
-`build/oscillator-cached-20261117/` for evidence. Raw exception/cleanup edges
-remain included.
+Strict authored-code coverage remains unmet. The complete Task128 instrumented
+run reaches17368/17997 lines(96.5%) and29316/46739 raw branches(62.7%). All
+prescribed tests complete; the unchanged100% line/90% raw branch gate fails
+with Make exit2. See [the current measurement](#bound-differential-clock-inputs-2026-11-18)
+and `build/bound-differential-20261118/`. Raw exception/cleanup edges remain included.
 
-The current source archive and fresh five-tool installations cover `f75edb8`.
-Current runtime qualification has 51 CLI suites (783 tests) per dynamic/static
-variant; exact source/product identity reuses those suites for this package.
-See [the exact platform scope](#current-package-identity-and-installation-2026-11-17).
+Current runtime qualification has51 CLI suites(789 tests) per dynamic/static
+variant, plus fresh remote five-tool installations. Local archive/installation
+qualification for Task128 is pending; the previous clean package coversf75edb8.
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -6395,3 +6393,92 @@ vendor completeness claim. Exact archive contents, 4,013 remote file hashes,
 products, commands and installation logs/statuses are in `build/package-f75edb8/`;
 underlying runtime evidence remains `build/root-raw-port-20261117/`. No push.
 Independent final review found no Critical, Important, or Minor issues in this current-package record. The current package qualification record is ready for integration.
+
+### Bound differential clock inputs (2026-11-18)
+
+Relative system-clock waits now support explicitly connected differential child
+inputs when their modeled routes prove complementary. For example:
+
+```icl
+Module Pair {
+  ClockPort positive;
+  ClockPort negative { DifferentialInvOf positive; }
+}
+Module Top {
+  ClockPort root;
+  Instance pair Of Pair {
+    InputPort positive = root;
+    InputPort negative = ~root;
+  }
+}
+```
+
+`iClock pair.negative; iRunLoop 7 -sck pair.negative` emits a seven-cycle wait on
+`root`. Aliases, bit permutations, selected ClockMux paths, shared frequency
+converters and oscillator roots use the same proof. Both the declared positive
+reference and the physical negative binding are traced. Same-phase bindings,
+unrelated roots, incompatible ratios and distinct conversion origins are
+rejected; matching frequency alone does not prove complementarity. A non-unit
+frequency conversion starts a new modeled phase origin. Unit-ratio forwarding
+retains that origin and tracks explicit inversion. This checks the ICL clock
+model; it does not establish physical waveform timing or CDC signoff.
+
+IEEE1687-2014 section6.4.6.19, printed102–103, defines the differential link;
+section6.4.6.20, printed103–104, permits clock conversion across hierarchy.
+Section6.3.12(e), printed71, excludes already-negative declarations as
+clock_signal source terminals, so these connections use legal positive sources
+with explicit inversion. Existing source-kind checks remain intact.
+
+The versioned route cache now records modeled phase origin and inversion parity.
+An iterative dependency walk validates both branches before caching a bound
+input. It avoids recursion and repeated shared-route walks; costs remain
+O((V+E)log V) time and O(V+E) storage per invalidated cache version. Checked
+historical overrides, applied selector revalidation, failed-check recovery,
+held-clock restrictions and hardware-state isolation remain covered.
+
+Dynamic/static clock suites pass59 methods each; leak-enabled ASan/UBSan passes
+all59 clock methods,71 main methods and the focused native snapshot/binding
+checks. Changed C++ formatting, clang-tidy and strict C++17 checks all pass.
+The complete normal integration passes in1829.958s, including1916 regression
+cases,2180 conformance cases, all334 parser and119 scanner rules over2549 files,
+and six editor tests in201.434s. Optional ANTLR checks remain skipped.
+
+A4096-pair/4096-stage shared graph (615278 input bytes),1024 waits and five replay
+forms completes in1.598264s dynamic/1.524562s static, with peak process RSS125500/
+125424KiB. Existing4096-stage/65536-bit clock fixtures remain within their45s
+subprocess limit. Commands, environment, binary hashes and baseline measurements
+are retained; no speedup or global performance claim is made.
+
+Fresh coverage takes1357.151s. All58 Python groups/951 cases pass, including
+51 generator groups/789 cases, native checks,1916 regression and2180 conformance
+cases. The strict gate still fails with Make exit2:17368/17997 lines(96.5%) and
+29316/46739 raw branches(62.7%), against unchanged100%/90% thresholds. All54 authored
+reports and19 instrumented binaries remain included; missing edges comprise
+12244 compiler-marked throw edges and5179 other edges. No filtering or waiver.
+
+Rocky Linux qualification passes all seven gates: current GCC15 native build,
+focused/full native suites,51 groups/789 methods per dynamic/transferred-static
+generator, and static ELF verification. All3994 submitted runtime hashes match.
+All14 fresh remote installation gates pass for five commands per variant,
+libraries, LSP checks and uninstall sentinel preservation. The two generator
+products change remotely; the other eight remain byte-identical. Locally the
+unchanged editor sources are rebuilt with GCC16.2.1-3 rather than the baseline
+16.2.1-2; all ten current local products have fresh fingerprints and full
+integration evidence. Generated parser/scanner sources remain identical.
+
+Local source-archive/installation qualification and the independent final review
+are pending; final results will be added before merge and push.
+
+Evidence: `build/bound-differential-20261118/`. General clock events, independent
+phase relationships without a common modeled origin, time-dependent instrument
+behavior and full vendor equivalence remain outside the qualified boundary.
+
+Tessent2026.2 rejects all three native inverted-positive binding fixtures during
+`set_current_design` with ICL65-1, before executing PDL. Its diagnostic requires
+a negative input to use a declared secondary ClockPort/ToClockPort source (or a
+constant). The literal IEEE6.3.12(e)/6.4.7(h) clock_signal rules instead exclude
+already-negative source declarations; the native source validator currently
+rejects that vendor binding form. These are explicit contextual compatibility
+gaps. The three runs supply no directional certificate or vendor export replay;
+no Tessent qualification is claimed for this native feature. Inputs, hashes,
+stage-specific diagnostics and exit1 statuses are retained in the vendor evidence.

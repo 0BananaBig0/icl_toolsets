@@ -171,11 +171,9 @@ BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler,
   const size_t offset = Offset(node, bit.second);
   const auto differential = node.inputs.find("DifferentialInvOf");
   if (differential != node.inputs.end()) {
-    if (node.kind == "ClockPort" && node.inputs.count("Source")) {
-      throw std::runtime_error(
-          node.origin + ": bound differential clock input is unsupported");
-    }
-    return differential->second.at(offset);
+    auto source = differential->second.at(offset);
+    source.inverted = !source.inverted;
+    return source;
   }
   if (node.kind == "ClockMux") {
     std::string selected;
@@ -228,38 +226,73 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
     routes_.clear();
     cache_version_ = version;
   }
-  std::vector<Bit> path;
+  struct Frame {
+    Bit bit;
+    std::vector<BitReference> sources;
+  };
+  std::vector<Frame> pending;
   std::set<Bit> active;
-  Route route;
-  while (true) {
-    const auto cached = routes_.find(bit);
-    if (cached != routes_.end()) {
-      route = cached->second;
-      break;
+  const auto push = [&](Bit next) {
+    if (routes_.count(next)) return;
+    if (!active.insert(next).second) {
+      throw std::runtime_error("cyclic system-clock path");
     }
-    const auto& node = netlist_.nodes.at(bit.first);
+    const auto& node = netlist_.nodes.at(next.first);
     if ((node.kind == "ClockPort" && node.scope == 0 &&
          !node.inputs.count("Source") &&
          !node.inputs.count("DifferentialInvOf")) ||
         (node.kind == "ToClockPort" && node.clock_period &&
-         !DefinitionAt(bit, version))) {
-      route.root = bit;
-      routes_.emplace(bit, route);
-      break;
+         !DefinitionAt(next, version))) {
+      Route route;
+      route.root = route.phase_origin = next;
+      routes_.emplace(next, route);
+      active.erase(next);
+      return;
     }
-    if (!active.insert(bit).second) {
-      throw std::runtime_error("cyclic system-clock path");
+    Frame frame{next, {Source(next, scheduler, version)}};
+    if (node.kind == "ClockPort" && node.inputs.count("DifferentialInvOf") &&
+        node.inputs.count("Source")) {
+      frame.sources.push_back(
+          node.inputs.at("Source").at(Offset(node, next.second)));
     }
-    path.push_back(bit);
-    const auto source = Source(bit, scheduler, version);
-    if (source.node >= netlist_.nodes.size()) {
-      throw std::runtime_error(node.origin + ": inactive system-clock path");
+    pending.push_back(std::move(frame));
+  };
+  push(bit);
+  while (!pending.empty()) {
+    const auto& frame = pending.back();
+    const auto current = frame.bit;
+    const auto& node = netlist_.nodes.at(current.first);
+    bool ready = true;
+    for (const auto& source : frame.sources) {
+      if (source.node >= netlist_.nodes.size()) {
+        throw std::runtime_error(node.origin + ": inactive system-clock path");
+      }
+      const Bit dependency{source.node, source.index};
+      if (!routes_.count(dependency)) {
+        push(dependency);
+        ready = false;
+        break;
+      }
     }
-    bit = {source.node, source.index};
-  }
-  for (auto it = path.rbegin(); it != path.rend(); ++it) {
-    const auto& node = netlist_.nodes[it->first];
-    const auto* definition = DefinitionAt(*it, version);
+    if (!ready) continue;
+    const auto& source = frame.sources.front();
+    auto route = routes_.at({source.node, source.index});
+    route.inverted = route.inverted != source.inverted;
+    if (frame.sources.size() == 2) {
+      const auto& actual = frame.sources.back();
+      const auto& binding = routes_.at({actual.node, actual.index});
+      if (route.root != binding.root ||
+          route.multiplier != binding.multiplier ||
+          route.divider != binding.divider ||
+          route.phase_origin != binding.phase_origin ||
+          route.inverted != (binding.inverted != actual.inverted)) {
+        throw std::runtime_error(node.origin +
+                                 ": bound differential clock inputs are not "
+                                 "provably complementary: " +
+                                 node.name);
+      }
+    }
+    const auto* definition = DefinitionAt(current, version);
     uint64_t multiplier =
         definition ? definition->multiplier : Factor(node, "FreqMultiplier");
     uint64_t divider =
@@ -271,9 +304,16 @@ SystemClocks::Route SystemClocks::Resolve(Bit bit,
     const auto b = std::gcd(divider, route.multiplier);
     route.multiplier = Product(route.multiplier / b, multiplier / a);
     route.divider = Product(route.divider / a, divider / b);
-    routes_.emplace(*it, route);
+    if (multiplier != divider) {
+      // Frequency conversion alone establishes no phase relation to its input.
+      route.phase_origin = current;
+      route.inverted = false;
+    }
+    routes_.emplace(current, route);
+    active.erase(current);
+    pending.pop_back();
   }
-  return route;
+  return routes_.at(bit);
 }
 void SystemClocks::BuildSafety() {
   if (safety_ready_) return;

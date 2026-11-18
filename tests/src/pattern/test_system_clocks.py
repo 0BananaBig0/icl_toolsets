@@ -253,6 +253,105 @@ Module Top {
         result = self.replay(source, 'iClock root; iRunLoop 2 -sck root\n')
         self.assertIn('iRunLoop 2 -sck root', result)
 
+    # IEEE1687-2014 6.4.6.19: a bound negative input must complement its partner.
+    def test_bound_differential_explicit_inverse_and_alias(self):
+        for negative, top in [
+                ('~root', ''),
+                ('inverse', 'Alias inverse = ~root;')]:
+            with self.subTest(negative=negative):
+                source = ("Module Pair { ClockPort positive; ClockPort negative { "
+                          "DifferentialInvOf positive; } } Module Top { ClockPort root; "
+                          + top + " Instance pair Of Pair { InputPort positive = root; "
+                          "InputPort negative = " + negative + "; } }")
+                result = self.replay(source, 'iClock pair.negative; '
+                                     'iRunLoop 7 -sck pair.negative\n')
+                self.assertIn('iClock root\niRunLoop 7 -sck root', result)
+
+    def test_bound_differential_shared_conversion_and_oscillator(self):
+        for origin, count in [('Source input; FreqDivider 3;', 12), ('Period 10ns;', 4)]:
+            with self.subTest(origin=origin):
+                source = ("Module Pair { ClockPort positive; ClockPort negative { "
+                          "DifferentialInvOf positive; } } Module Generator { ClockPort input; "
+                          "ToClockPort output { " + origin + " } } "
+                          "Module Top { ClockPort root; Instance generator Of Generator { "
+                          "InputPort input = root; } Instance pair Of Pair { "
+                          "InputPort positive = generator.output; "
+                          "InputPort negative = ~generator.output; } }")
+                result = self.replay(source, 'iClock pair.negative; iRunLoop 4 -sck pair.negative\n')
+                target = 'generator.output' if 'Period' in origin else 'root'
+                self.assertIn(f'iClock {target}\niRunLoop {count} -sck {target}', result)
+
+    def test_bound_differential_vector_permutation(self):
+        source = """Module Pair {
+  ClockPort positive[0:1];
+  ClockPort negative[0:1] { DifferentialInvOf positive; }
+}
+Module Top {
+  ClockPort root[5:4];
+  Alias swapped[1:0] = root[4], root[5];
+  Instance pair Of Pair {
+    InputPort positive = swapped;
+    InputPort negative = ~swapped;
+  }
+}"""
+        result = self.replay(source, 'iClock pair.negative(0); iRunLoop 3 -sck pair.negative(0); '
+                             'iClock pair.negative(1); iRunLoop 5 -sck pair.negative(1)\n')
+        self.assertIn('iRunLoop 3 -sck root(4)', result)
+        self.assertIn('iRunLoop 5 -sck root(5)', result)
+
+    def test_bound_differential_rejects_unproven_bindings(self):
+        for positive, negative in [('root', 'root'), ('root', 'other'),
+                                   ('root', '~first.output'),
+                                   ('first.output', '~second.output')]:
+            with self.subTest(negative=negative):
+                source = ("Module Pair { ClockPort positive; ClockPort negative { "
+                          "DifferentialInvOf positive; } } Module Divider { ClockPort input; "
+                          "ToClockPort output { Source input; FreqDivider 2; } } "
+                          "Module Top { ClockPort root; ClockPort other; "
+                          "Instance first Of Divider { InputPort input = root; } "
+                          "Instance second Of Divider { InputPort input = root; } "
+                          "Instance pair Of Pair { InputPort positive = " + positive +
+                          "; InputPort negative = " + negative + "; } }")
+                self.rejected(source, 'iClock pair.negative\n', 'bound differential')
+
+    def test_bound_differential_mux_drift_and_recovery(self):
+        source = """Module Pair {
+  ClockPort positive;
+  ClockPort negative { DifferentialInvOf positive; }
+}
+Module Top {
+  ClockPort root; ClockPort other; DataInPort sel;
+  ClockMux route SelectedBy sel { 1'b0: ~root; 1'b1: ~other; }
+  Instance pair Of Pair { InputPort positive = root; InputPort negative = route; }
+}"""
+        result = self.replay(source, 'iState sel 0; iClock pair.negative; '
+                             'iRunLoop 3 -sck pair.negative; '
+                             'iState sel 1; '
+                             'iState sel 0; iClock pair.negative; iRunLoop 2 -sck pair.negative\n')
+        self.assertIn('iRunLoop 3 -sck root', result)
+        self.assertIn('iRunLoop 2 -sck root', result)
+        self.rejected(source, 'iState sel 0; iClock pair.negative; iState sel 1; '
+                      'iRunLoop 0 -sck pair.negative\n', 'bound differential')
+        self.rejected(source, 'iClock pair.negative\n', 'unknown clock selector')
+
+    def test_bound_differential_shared_route_scale(self):
+        depth = 4096
+        stages = ["ClockMux stage0 SelectedBy 1'b0 { 1'b0: root; }"]
+        stages += [f"ClockMux stage{i} SelectedBy 1'b0 {{ 1'b0: stage{i - 1}; }}"
+                   for i in range(1, depth)]
+        pairs = [f'Instance pair{i} Of Pair {{ InputPort positive = stage{depth - 1}; '
+                 f'InputPort negative = ~stage{depth - 1}; }}' for i in range(depth)]
+        source = ('Module Pair { ClockPort positive; ClockPort negative { '
+                  'DifferentialInvOf positive; } } Module Top { ClockPort root; '
+                  + ' '.join(stages + pairs) + ' }')
+        commands = ''.join(f'iClock pair{i}.negative; iRunLoop 1 -sck pair{i}.negative; '
+                           for i in range(1024))
+        start = time.monotonic()
+        result = self.replay(source, commands)
+        self.assertEqual(result.count('iRunLoop 1 -sck root'), 1024)
+        print(f'bound differential pairs={depth} stages={depth} bytes={len(source)} '
+              f'waits=1024 forms=5 seconds={time.monotonic() - start:.6f}', flush=True)
+
     def test_inverted_clock_duration_routes(self):
         cases = [
             ('ToClockPort out { Source ~root; FreqDivider 3; }', 6),
