@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Relative functional-clock retargeting with source/flat/generated replay."""
+"""Functional-clock waits with source/flat/generated/reset replay."""
 import pathlib
 import subprocess
 import sys
@@ -52,6 +52,83 @@ class SystemClocks(unittest.TestCase):
         self.assertIn(diagnostic, message)
         for artifact in artifacts:
             self.assertEqual(artifact.read_text(), 'previous artifact\n')
+
+    def test_invariant_time_waits(self):
+        values = ['1.0s', '2.5ms', '3.25us', '4.125ns', '5.0ps', '6.0fs', '7.0as',
+                  '1.0e-9s', '0.0e-999999as', '0001.2500us', '10ns']
+        commands = ''.join('iRunLoop -time ' + value + '; ' for value in values)
+        for source, program in [
+                ('Module Top { ClockPort root; ClockPort root_n { DifferentialInvOf root; } }',
+                 commands),
+                ('Module Top { ToClockPort osc { Period 3ns; } }',
+                 'iClock osc; iRunLoop 3 -sck osc; iRunLoop -time 1.25us; iRunLoop 2 -sck osc'),
+                ('Module Top { ClockPort clk; DataInPort d; DataOutPort out { Source d; } }',
+                 'iWrite d 1; iApply; iRunLoop -time 1.25us; iRead out 1; iApply'),
+                ('Module Top { ClockPort clk; }',
+                 'iProc pause {delay} { iRunLoop -time $delay }; iCall pause 1.25us'),
+                ('Module Top { ClockPort clk; ClockPort other; ToClockPort out { Source clk; FreqDivider 2; } }',
+                 'iClock out; iClockOverride out -source other -freqDivider 3; '
+                 'iRunLoop -time 1.25us; iRunLoop 2 -sck out; iClock out; '
+                 'iRunLoop -time 2.5us; iRunLoop 2 -sck out')]:
+            with self.subTest(source=source, program=program):
+                result = self.replay(source, program)
+                self.assertIn('iRunLoop -time', result)
+                if program == commands:
+                    for value in values:
+                        self.assertIn('iRunLoop -time ' + value + '\n', result)
+                if '-source other' in program:
+                    self.assertIn('iRunLoop 4 -sck clk', result)
+                    self.assertIn('iRunLoop 6 -sck other', result)
+
+    def test_invariant_time_wait_boundaries(self):
+        for source, program, diagnostic in [
+                ('Module Top { ScanInPort si; ScanRegister r { ScanInSource si; } '
+                 'ScanOutPort so { Source r; } }',
+                 'iRunLoop -time 1.25us', 'absolute period models'),
+                ('Module Stage { ClockPort ck; ToClockPort out { Source ck; } } '
+                 'Module Top { ClockPort root; Instance child Of Stage { InputPort ck = root; } '
+                 'ToTCKPort observed { Source child.out; } }',
+                 'iRunLoop -time 1.25us', 'clock fanout'),
+                ('Module Top { DataInPort d; ToTCKPort forwarded { Source d; } }',
+                 'iWrite d 1; iApply; iTake d; iRunLoop -time 1.25us',
+                 'test-clock forwarding'),
+                ('Module Endpoint { TCKPort tck; } Module Top { DataInPort d; '
+                 'DataOutPort out { Source d; } '
+                 'Instance child Of Endpoint { InputPort tck = d; } }',
+                 'iWrite d 1; iApply; iTake d; iRunLoop -time 1.25us',
+                 'test-clock forwarding'),
+                ('Module Top { ClockPort clk; }',
+                 'iState clk 0; iRunLoop -time 1.25us', 'state assumption for'),
+                ('Module Top { ClockPort clk[5:4]; }',
+                 'iState clk(5) 0; iRunLoop -time 0ns', 'state assumption for'),
+                ('Module Top { ClockPort clk; }',
+                 'iRunLoop -time 1.25us; iState clk 1; iRunLoop -time 2ns', 'state assumption for'),
+                ('Module Top { ClockPort clk; }',
+                 'set delay nonsense; iRunLoop -time $delay', 'invalid PDL time value'),
+                ('Module Top { ClockPort clk; }',
+                 'iRunLoop -time 1.25us -sck clk', 'iRunLoop'),
+                ('Module Top { ClockPort clk; DataInPort d; }',
+                 'iWrite d 1; iRunLoop -time 1.25us', 'unapplied'),
+                ('Module Top { ClockPort clk; DataInPort d; }',
+                 'iRead d 1; iRunLoop -time 1.25us', 'unapplied')]:
+            with self.subTest(source=source, program=program):
+                self.rejected(source, program + '\n', diagnostic)
+
+    def test_invariant_time_wait_scale(self):
+        depth = 4096
+        stages = ["ClockMux stage0 SelectedBy 1'b0 { 1'b0: root; }"]
+        stages += [f"ClockMux stage{i} SelectedBy 1'b0 {{ 1'b0: stage{i - 1}; }}"
+                   for i in range(1, depth)]
+        pairs = [f'Instance pair{i} Of Pair {{ InputPort p = stage4095; InputPort n = root_n; }}'
+                 for i in range(depth)]
+        source = ('Module Pair { ClockPort p; ClockPort n { DifferentialInvOf p; } } '
+                  'Module Top { ClockPort root; ClockPort root_n { DifferentialInvOf root; } '
+                  + ' '.join(stages + pairs) + ' }')
+        start = time.monotonic()
+        result = self.replay(source, 'iRunLoop -time 1.25us; ' * 1024)
+        self.assertEqual(result.count('iRunLoop -time 1.25us'), 1024)
+        print(f'invariant time pairs={depth} stages={depth} bytes={len(source)} '
+              f'waits=1024 forms=5 seconds={time.monotonic() - start:.6f}', flush=True)
 
     def physical_clock_replay(self, source, original, physical, late_metadata=False):
         icl, pdl = self.files(source, original)

@@ -500,7 +500,7 @@ their state, and parallel input frames do not pulse scan controls.
 It rejects
 multiple TAPs, overlapping paths within a selected chain group, intermediate serial taps,
 general serial- or phase-dependent reset events,
-system-clock/absolute-time waits, unsupported reservation types and other unsupported
+stateful absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
 interface events are outside the current complete-scan model; inability to
 schedule them is not proof of hardware unreachability.
@@ -6744,3 +6744,85 @@ qualified runtime bytes and original provenance. Full release acceptance,
 strict coverage and the documented broader model/vendor gaps remain open.
 
 Independent Task131 whole-branch review at aac20fd approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected lookup, restoration, copy and emission paths and selected native clock snapshots plus68 dynamic clock methods, all passing through a disclosed read-only Root relay because its tool host was unavailable. Root owns broad artifact/status authentication; the verifier checks recorded hashes and counts. No fix pass or second review was needed. General raw naming, vendor models, clock events, strict coverage and full release acceptance remain open.
+
+
+## Absolute-time waits without clock-driven state (2026-11-18)
+
+Task132 preserves an exact validated iRunLoop -time value when the model has
+no register storage, TAPs, opaque interfaces or AccessLink nodes, and no clock/
+TCK source feeding unsupported data/control or test-clock output logic.
+Forwarded test clocks are also excluded: a data input bound to a child TCK
+can conceal a fixed clock level and requires additional timing/role modeling.
+Pure ports, combinational data, aliases, muxes and groups without storage may
+therefore retain absolute delays. General stateful time execution remains
+unsupported and reports the need for absolute-period and clock-event models.
+
+IEEE1687-2014 7.7 printed154/PDF168 defines time values;7.9.17 printed175-176/
+PDF189-190 specifies a separate -time alternative, minimum elapsed time and
+free-running clocks. It does not provide combined -time/-sck syntax.
+Native output retains the exact shared-frontend-validated text, including units,
+exponents and zero, rather than guessing a tester period or converting through
+floating point. Runtime revalidates values after Tcl substitutions. Existing
+pending-read/write rejection and source/reset rewrite bookkeeping apply.
+
+Eligibility is cached only for the immutable graph. Each call checks preserved
+ClockPort/ToClockPort/TCKPort levels, including minimum-zero waits, since an
+external tester need not implement a minimum-zero delay as zero cycles.
+Direct clock-port iState/iWrite commands retain their existing unsupported
+status; native API tests exercise the held-clock input contract. Clock-route
+cache invalidation preserves checked-clock versions and original-spelled
+overrides. No metadata version, option, new runtime dependency, clock assignment
+or device event model is introduced.
+
+A fresh Tessent2026.2 control accepts and exports a1.25us wait unchanged on a
+clock-only model. It uses the documented patterns -ijtag/analysis pattern-set
+flow and configured free-running clocks. This is one control, without a broad
+vendor certificate or a claim about stateful/opaque timing. Evidence and current
+qualification records are retained under build/invariant-time-waits-20261118/.
+
+Qualification for Task132 passes all12 changed-C++ format/tidy/strict17 gates,
+native clock/time snapshots and71 clock methods per dynamic/static variant.
+Leak-enabled ASan/UBSan passes native clock/netlist/flatten checks,71 clock
+methods and71 main CLI methods. All3994 runtime inputs remain frozen; the
+non-runtime README is updated separately in the qualified remote source.
+
+Full serial normal integration passes in1639.195s,
+including1916 regression cases,2180 conformance cases,334 parser/119 scanner
+rules over2549 ICL files and six editor checks. Five optional ANTLR checks are
+skipped. Fresh instrumented testing takes1252.714s: all58
+Python groups/963 cases pass, including51 generator groups/801 cases.
+The unchanged strict100/90 gate still fails at17452/18083
+lines(96.5%) and29536/47075
+raw branches(62.7%). All54 authored reports and19
+instrumented products remain included;12309 throw edges and
+5230 other edges remain missing. No threshold waiver or filtering.
+
+The new workload has4096 pairs,4096 shared mux stages,541574 source bytes,
+1024 absolute-time waits and five replay forms. It completes in
+1.512163s dynamic/1.472742s static,
+peak RSS122004/122216KiB.
+The parent rejects this workload; no completing baseline or speedup is claimed.
+Matched existing4096-stage/65536-bit routes and parent/current5000-instance
+netlist benchmarks pass. Commands, environment, input hashes and wall/RSS
+records are retained.
+
+One fresh Tessent2026.2 clock-only control exports1.25us unchanged. Its three
+retrieved input hashes match submissions, the complete ordered trace matches
+native input/output, and both original/flat native export replays pass.
+This is one control without a formal registry certificate, broader vendor
+equivalence or physical timing/event signoff.
+
+All eight current Rocky compiler/native/dynamic/static/ELF gates pass,
+including51 generator groups/801 cases per variant and3994 matching runtime
+hashes. All12 local archive/install and14 remote install gates pass for five
+commands per variant, LSP behavior, static ELF and uninstall sentinels.
+Only the two generator products change; the other eight remain unchanged.
+The 8c97e90 archive ships4235 tracked files plus six generated/prebuilt
+files. Its local dynamic build runs with Bison/Flex disabled. All4013
+non-documentation archive files, including the updated README, match current
+remote source; current runtime compilation/suite evidence is reused by identity,
+without claiming a fresh remote archive rebuild. Later doc-only refreshes keep
+qualified runtime bytes and original archive provenance. General stateful time,
+events, strict coverage and full release acceptance remain open.
+
+Independent Task132 whole-branch review at bb941f0 approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected clock safety, physical resource holds, substituted-time validation, generation bookkeeping and opaque lowering. Fresh selected native clock checks and71 dynamic clock tests pass. Direct reviewer tooling was unavailable; source and checks used a disclosed Root read-only relay. All seven declined subjects have executor rulings, including independent artifact authentication, broader reproduction, physical timing, excluded features, vendor generality, release acceptance and the unrelated global tool host. No production fix was requested. Closing documentation changes preserve the3994 qualified runtime inputs; strict coverage and broader timing/release acceptance remain open.

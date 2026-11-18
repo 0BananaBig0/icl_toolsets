@@ -2717,6 +2717,118 @@ void TestFlatClockTargetNames() {
   }
 }
 
+void TestInvariantTimeWaits() {
+  std::string source = R"(Module Top {
+    ClockPort root[1:0]; ClockPort other[1:0]; DataInPort mode; TCKPort tck;
+    ToClockPort out { Source root[0]; FreqDivider 2; }
+    ClockMux selected SelectedBy mode { 1'b0: root[0]; 1'b1: other[0]; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("invariant-time.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    pattern::SystemClocks clocks(netlist);
+    clocks.CheckTimeWait();
+    clocks.CheckTimeWait({{netlist.node_ids.at("mode"), "0"}});
+    auto preview = clocks;
+    preview.Invalidate();
+    preview.CheckTimeWait({{netlist.node_ids.at("root"), "xx"}});
+    Require(clocks.Check("out", scheduler) == "root(0)",
+            "time waits retain ordinary checked clock identity");
+    z3::context context;
+    clocks.Override({"iClockOverride",
+                     {"out", "-source", "other(0)", "-freqDivider", "3"},
+                     "time:override",
+                     {}},
+                    context);
+    clocks.CheckTimeWait();
+    clocks.Invalidate();
+    Require(clocks.Wait("out", 2, scheduler).second == 4 &&
+                clocks.Check("out", scheduler) == "other(0)",
+            "time waits retain saved and current override versions");
+    for (const auto& held :
+         std::map<size_t, std::string>{{netlist.node_ids.at("root"), "x0"},
+                                       {netlist.node_ids.at("out"), "0"},
+                                       {netlist.node_ids.at("tck"), "0"}}) {
+      bool rejected = false;
+      try {
+        clocks.CheckTimeWait({held});
+      } catch (const std::runtime_error& error) {
+        rejected =
+            std::string(error.what()).find("held clock") != std::string::npos;
+      }
+      Require(
+          rejected && clocks.Wait("out", 2, scheduler).second == 6,
+          "cached time eligibility rechecks held clocks without state changes");
+    }
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+  for (const std::string source :
+       {"Module Top { ScanInPort si; ScanRegister r { ScanInSource si; } "
+        "ScanOutPort so { Source r; } }",
+        "Module Top { ScanInPort si; SelectPort sel; CaptureEnPort ce; "
+        "ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ScanOutPort so { Source "
+        "si; } "
+        "ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; "
+        "Port ue; Port tck; } }"}) {
+    pattern::Design design;
+    design.AddIcl("stateful-time.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::SystemClocks clocks(netlist);
+    bool rejected = false;
+    try {
+      clocks.CheckTimeWait();
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("absolute period models") !=
+                 std::string::npos;
+    }
+    Require(rejected, "time waits reject storage and opaque interfaces");
+  }
+  pattern::Design design;
+  design.AddIcl("time-clock-fanout.icl",
+                "Module Stage { ClockPort ck; ToClockPort out { Source ck; } } "
+                "Module Top { ClockPort root; Instance child Of Stage { "
+                "InputPort ck = root; } "
+                "ToTCKPort observed { Source child.out; } }");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::SystemClocks clocks(netlist);
+  bool rejected = false;
+  try {
+    clocks.CheckTimeWait();
+  } catch (const std::runtime_error& error) {
+    rejected =
+        std::string(error.what()).find("clock fanout") != std::string::npos;
+  }
+  Require(rejected,
+          "time waits reject unsupported free-running clock consumers");
+
+  std::string forwarded_source =
+      "Module Endpoint { TCKPort tck; } "
+      "Module Top { DataInPort d; DataOutPort out { Source d; } "
+      "Instance child Of Endpoint { InputPort tck = d; } }";
+  for (bool flat : {false, true}) {
+    pattern::Design forwarded_design;
+    forwarded_design.AddIcl("forwarded-time-clock.icl", forwarded_source);
+    const auto forwarded = pattern::Elaborate(forwarded_design, "Top");
+    const auto data = forwarded.node_ids.at("d");
+    const auto& clock = forwarded.nodes.at(forwarded.node_ids.at("child.tck"));
+    Require(clock.inputs.at("Source").at(0).node == data,
+            "data input is the physical source of the child test clock");
+    pattern::SystemClocks forwarded_clocks(forwarded);
+    bool rejected = false;
+    try {
+      forwarded_clocks.CheckTimeWait({{data, "1"}});
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("test-clock forwarding") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "time waits cannot bypass clock holds through data bindings");
+    if (!flat) forwarded_source = pattern::SerializeIcl(forwarded);
+  }
+}
+
 void TestBoundDifferentialClocks() {
   std::string source = R"(Module Pair {
     ClockPort positive;
@@ -5898,6 +6010,7 @@ int main(int argc, char* argv[]) {
       }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
         TestFlatClockTargetNames();
+        TestInvariantTimeWaits();
         TestBoundDifferentialClocks();
         TestClockOverrideSnapshots();
         TestOscillatorSourceOverrides();
@@ -5942,6 +6055,7 @@ int main(int argc, char* argv[]) {
     TestInvertedClockDurations();
     TestDifferentialClockDurations();
     TestFlatClockTargetNames();
+    TestInvariantTimeWaits();
     TestBoundDifferentialClocks();
     TestClockOverrideSnapshots();
     TestClockOverrideScale();

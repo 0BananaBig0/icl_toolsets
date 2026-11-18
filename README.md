@@ -458,7 +458,13 @@ remains unmet.
 For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
 be known unsigned 64-bit integers, with no unapplied reads or writes.
-System-clock (`-sck`) and absolute-time (`-time`) waits are not yet supported.
+Checked system-clock waits (`iClock` followed by `iRunLoop COUNT -sck PORT`)
+support relative clock routes that do not drive modeled data or events.
+Absolute-time waits (`iRunLoop -time VALUE`) preserve the exact requested
+minimum delay on models without storage, opaque hardware, clock-driven data
+or forwarded test clocks. General clock events
+and stateful absolute-time execution remain unsupported; see the
+[clock and time limits](docs/pattern-generation.md#absolute-time-waits-without-clock-driven-state-2026-11-18).
 
 | Option | Behavior |
 |---|---|

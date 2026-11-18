@@ -27,6 +27,7 @@ class SystemClocks {
       const std::string& target, uint64_t cycles,
       const ScanScheduler& scheduler,
       const std::map<size_t, std::string>& preserved = {});
+  void CheckTimeWait(const std::map<size_t, std::string>& preserved = {});
   // Call after changing applied hardware state, not after merely queueing
   // writes.
   void Invalidate();
@@ -58,6 +59,7 @@ class SystemClocks {
   const Netlist& netlist_;
   mutable std::optional<bool> flat_origins_;
   bool safety_ready_ = false;
+  bool time_ready_ = false;
   std::set<Bit> unsafe_;
   std::map<Bit, std::set<Bit>> fanout_;
   size_t version_ = 0, cache_version_ = 0;
