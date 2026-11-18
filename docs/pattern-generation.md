@@ -9,14 +9,12 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task128 (2026-11-18) adds native consistency checks for bound differential clock
-inputs. Full normal integration, current dynamic/static generator suites,
-focused leak-enabled sanitizers, local archive builds and five-tool installations
-pass. See [the latest scope and evidence](#bound-differential-clock-inputs-2026-11-18).
-Its three inverted-positive Tessent source probes fail ICL65-1 during elaboration.
-Task129 separately admits the vendor's named secondary input sources; see
-[the compatibility boundary](#secondary-clock-input-bindings-2026-11-18).
-The strict coverage gate remains unmet.
+Task129 (2026-11-18) accepts named secondary sources on negative clock inputs.
+Full normal integration, dynamic/static suites, focused leak-enabled sanitizers,
+local source-archive builds and five-tool installations pass. See
+[the latest scope and evidence](#secondary-clock-input-bindings-2026-11-18).
+Six fresh vendor source/normalized exports match; three flattened vendor reads
+and the separate negative iClock control fail. Strict coverage remains unmet.
 
 On 2026-11-14, reset source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
@@ -34,13 +32,13 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. The complete Task128 instrumented
-run reaches17368/17997 lines(96.5%) and29316/46739 raw branches(62.7%). All
+Strict authored-code coverage remains unmet. The complete Task129 instrumented
+run reaches17376/18005 lines(96.5%) and29350/46789 raw branches(62.7%). All
 prescribed tests complete; the unchanged100% line/90% raw branch gate fails
-with Make exit2. See [the current measurement](#bound-differential-clock-inputs-2026-11-18)
-and `build/bound-differential-20261118/`. Raw exception/cleanup edges remain included.
+with Make exit2. See [the current measurement](#secondary-clock-input-bindings-2026-11-18)
+and build/secondary-clock-bindings-20261118/. Raw exception/cleanup edges remain included.
 
-Current runtime qualification has51 CLI suites(789 tests) per dynamic/static
+Current runtime qualification has51 CLI suites(793 tests) per dynamic/static
 variant, a clean local source-archive build and fresh local/remote five-tool
 installations. All4013 non-doc archive bytes match the qualified remote source
 tree; this exact identity reuses its current compile and runtime results.
@@ -6551,3 +6549,39 @@ support is retained. These results do not establish vendor support for those
 commands or the earlier inverted-positive input spelling. The existing formal
 certificate runner lacks this clock setup; no registry certificate was added.
 Evidence is retained under build/secondary-clock-bindings-20261118/.
+
+
+Qualification for Task129 passes the six changed-C++ format/tidy/strict17 gates,
+whole native source-kind checks,63 clock methods per dynamic/static variant,
+and leak-enabled ASan/UBSan native netlist/clock-snapshot,63 clock and71 main CLI
+checks. The3994 runtime input hashes remain frozen; only the shared netlist
+source and its two maintained test files differ from Task128.
+
+Full serial normal integration passes in1833.155s:
+1916 regression cases,2180 conformance cases,334 parser/119 scanner rules across
+2549 ICL files, and six editor tests in198.376s. Five optional ANTLR checks are
+skipped. Fresh instrumented testing takes1304.924s;
+all58 Python groups/955 cases pass, including51 generator groups/793 cases.
+The unchanged strict gate still fails: 17376/18005 lines(96.5%),
+29350/46789 raw branches(62.7%). All54 authored reports and19 instrumented
+products remain included; no exception-edge filtering or threshold waiver.
+
+The additional named-secondary scale fixture has4096 pairs,4096 shared mux
+stages,605109 input bytes,1024 waits and five replay forms.
+It completes in1.551698s dynamic/1.534427s static, peak RSS125452/126072KiB.
+The parent rejects these named inputs, so there is no completing baseline or
+speedup ratio. Existing4096-stage/65536-bit clock fixtures and the parent/current
+5000-instance netlist benchmark pass; commands, environment and wall/RSS logs
+are retained. No general throughput or clock-event claim is made.
+
+All seven current Rocky Linux compiler/native/dynamic/static/ELF gates pass;
+both variants run51 generator groups/793 cases and all3994 actual input hashes
+match. All14 remote and12 local archive/install gates pass for five commands
+per variant, LSP behavior, static ELF checks and uninstall sentinel preservation.
+Only the two generator binaries change locally and remotely; the other eight
+products remain identical to Task128. The clean41ee126 archive
+ships4229 tracked files plus six generated/prebuilt files;
+its local dynamic build runs with Bison/Flex disabled. All4013 non-doc archive
+bytes match the current remote source, allowing reuse of that current compile
+and suite evidence. This is not a fresh remote archive rebuild. Later doc-only
+archive refreshes preserve the qualified runtime bytes and original provenance.
