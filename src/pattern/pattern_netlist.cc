@@ -451,6 +451,15 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
       for (const auto& bit : bits) {
         const auto resolved = terminal(bit);
         const auto kind = classify(resolved);
+        // Tessent permits named secondary sources on negative clock inputs.
+        const bool secondary_clock_source =
+            family == Family::kClock && role == "Source" &&
+            node.kind == "ClockPort" &&
+            node.inputs.count("DifferentialInvOf") &&
+            resolved.node < netlist.nodes.size() &&
+            (netlist.nodes[resolved.node].kind == "ClockPort" ||
+             netlist.nodes[resolved.node].kind == "ToClockPort") &&
+            netlist.nodes[resolved.node].properties.count("DifferentialInvOf");
         if (family == Family::kReset) {
           const auto polarity = ResetPolarity(netlist, terminal, resolved);
           if (polarity && *polarity != node.active_low) {
@@ -503,7 +512,8 @@ void CheckSignalSources(const Netlist& netlist, AliasResolver& terminal) {
             (!addressed && kind == Kind::kConstant) ||
             kind == Kind::kUnconnected ||
             (family == Family::kClock &&
-             (kind == Kind::kClock || kind == Kind::kTck)) ||
+             (kind == Kind::kClock || kind == Kind::kTck ||
+              secondary_clock_source)) ||
             (family == Family::kTck && kind == Kind::kTck) ||
             (family == Family::kReset &&
              (kind == Kind::kReset || kind == Kind::kTrst ||

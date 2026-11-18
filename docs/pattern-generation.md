@@ -9,12 +9,12 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task128 (2026-11-18) adds native consistency checks for bound differential clock
-inputs. Full normal integration, current dynamic/static generator suites,
-focused leak-enabled sanitizers, local archive builds and five-tool installations
-pass. See [the latest scope and evidence](#bound-differential-clock-inputs-2026-11-18).
-Its three Tessent source probes fail ICL65-1 during elaboration; vendor binding
-compatibility remains open. The strict coverage gate also remains unmet.
+Task129 (2026-11-18) accepts named secondary sources on negative clock inputs.
+Full normal integration, dynamic/static suites, focused leak-enabled sanitizers,
+local source-archive builds and five-tool installations pass. See
+[the latest scope and evidence](#secondary-clock-input-bindings-2026-11-18).
+Six fresh vendor source/normalized exports match; three flattened vendor reads
+and the separate negative iClock control fail. Strict coverage remains unmet.
 
 On 2026-11-14, reset source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
@@ -32,13 +32,13 @@ The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
 cases reached the unchanged2s solver budget. This clock work does not claim a
 fresh sanitizer pass for those scale cases; all optimized suites pass.
 
-Strict authored-code coverage remains unmet. The complete Task128 instrumented
-run reaches17368/17997 lines(96.5%) and29316/46739 raw branches(62.7%). All
+Strict authored-code coverage remains unmet. The complete Task129 instrumented
+run reaches17376/18005 lines(96.5%) and29350/46789 raw branches(62.7%). All
 prescribed tests complete; the unchanged100% line/90% raw branch gate fails
-with Make exit2. See [the current measurement](#bound-differential-clock-inputs-2026-11-18)
-and `build/bound-differential-20261118/`. Raw exception/cleanup edges remain included.
+with Make exit2. See [the current measurement](#secondary-clock-input-bindings-2026-11-18)
+and build/secondary-clock-bindings-20261118/. Raw exception/cleanup edges remain included.
 
-Current runtime qualification has51 CLI suites(789 tests) per dynamic/static
+Current runtime qualification has51 CLI suites(793 tests) per dynamic/static
 variant, a clean local source-archive build and fresh local/remote five-tool
 installations. All4013 non-doc archive bytes match the qualified remote source
 tree; this exact identity reuses its current compile and runtime results.
@@ -6504,3 +6504,86 @@ rejects that vendor binding form. These are explicit contextual compatibility
 gaps. The three runs supply no directional certificate or vendor export replay;
 no Tessent qualification is claimed for this native feature. Inputs, hashes,
 stage-specific diagnostics and exit1 statuses are retained in the vendor evidence.
+
+
+## Secondary clock input bindings (2026-11-18)
+
+Task129 accepts a named secondary ClockPort from the parent or secondary
+ToClockPort from a direct child as the Source of a negative ClockPort input.
+The exception requires that destination, its DifferentialInvOf association,
+the Source role, and a secondary clock terminal after alias resolution.
+Existing scope, direction, alias ownership and restored flat-origin checks
+still apply. Ordinary positive inputs, ClockMux choices, ToClockPort Sources,
+data outputs and DifferentialInvOf references retain their previous rules.
+No new command, global clock classification, dependency or event model is added.
+
+This is a measured Tessent2026.2 extension to the literal clock_signal lists in
+IEEE1687-2014 6.3.12(e)/6.4.7(h). Source eligibility does not prove a waveform.
+The current relative-duration backend checks a traced negative input against
+its declared positive partner using the existing root, ratio and phase-origin
+proof. Partial unbound lanes, unrelated routes and wrong polarity remain errors
+when used; duration waits do not simulate clock events.
+
+The maintained source-kind regression failed before the change. Native tests
+now preserve direct/aliased/child-output Source identity and original input
+kind through flattening. The clock CLI suite has63 methods, including nested
+and permuted vectors, partial bindings, source/scope rejection and phase
+mismatches, each valid case using source/flat/generated/reset replay. Existing
+rejection tests for other source contexts remain unchanged.
+
+Fresh Tessent2026.2 runs distinguish three directions for direct, aliased and
+shared-divider models. All three original source programs and all three native
+normalized programs elaborate, execute and export successfully. Their six
+complete ordered iClock/iRunLoop traces match the native result; the divider
+maps four child cycles to twelve root cycles. All twelve native replays of
+those exports against original and flattened models pass. All27 submitted
+probe-input hashes match their fetched copies.
+
+All three flattened models instead fail Tessent read_icl with ICL59-1: the
+negative ClockPort refers to a positive partner serialized as DataOutPort.
+Native flat-origin restoration handles that representation, but it is not a
+vendor-portable model. Separately, the negative-target control elaborates and
+then fails at iClock; the positive-target control succeeds. IEEE7.9.15(a)
+permits any valid ClockPort/ToClockPort target, so native negative-target
+support is retained. These results do not establish vendor support for those
+commands or the earlier inverted-positive input spelling. The existing formal
+certificate runner lacks this clock setup; no registry certificate was added.
+Evidence is retained under build/secondary-clock-bindings-20261118/.
+
+
+Qualification for Task129 passes the six changed-C++ format/tidy/strict17 gates,
+whole native source-kind checks,63 clock methods per dynamic/static variant,
+and leak-enabled ASan/UBSan native netlist/clock-snapshot,63 clock and71 main CLI
+checks. The3994 runtime input hashes remain frozen; only the shared netlist
+source and its two maintained test files differ from Task128.
+
+Full serial normal integration passes in1833.155s:
+1916 regression cases,2180 conformance cases,334 parser/119 scanner rules across
+2549 ICL files, and six editor tests in198.376s. Five optional ANTLR checks are
+skipped. Fresh instrumented testing takes1304.924s;
+all58 Python groups/955 cases pass, including51 generator groups/793 cases.
+The unchanged strict gate still fails: 17376/18005 lines(96.5%),
+29350/46789 raw branches(62.7%). All54 authored reports and19 instrumented
+products remain included; no exception-edge filtering or threshold waiver.
+
+The additional named-secondary scale fixture has4096 pairs,4096 shared mux
+stages,605109 input bytes,1024 waits and five replay forms.
+It completes in1.551698s dynamic/1.534427s static, peak RSS125452/126072KiB.
+The parent rejects these named inputs, so there is no completing baseline or
+speedup ratio. Existing4096-stage/65536-bit clock fixtures and the parent/current
+5000-instance netlist benchmark pass; commands, environment and wall/RSS logs
+are retained. No general throughput or clock-event claim is made.
+
+All seven current Rocky Linux compiler/native/dynamic/static/ELF gates pass;
+both variants run51 generator groups/793 cases and all3994 actual input hashes
+match. All14 remote and12 local archive/install gates pass for five commands
+per variant, LSP behavior, static ELF checks and uninstall sentinel preservation.
+Only the two generator binaries change locally and remotely; the other eight
+products remain identical to Task128. The clean41ee126 archive
+ships4229 tracked files plus six generated/prebuilt files;
+its local dynamic build runs with Bison/Flex disabled. All4013 non-doc archive
+bytes match the current remote source, allowing reuse of that current compile
+and suite evidence. This is not a fresh remote archive rebuild. Later doc-only
+archive refreshes preserve the qualified runtime bytes and original provenance.
+
+Independent Task129 whole-branch review at986a1db approves the scoped merge with no Critical/Important findings. The reviewer selected dynamic63/static63/native-netlist checks, all passing through a disclosed read-only Root proxy because its tool host was unavailable. Broad artifact reproduction remains executor-owned; the recorded verifier checks hashes, counts and statuses. One optional wording minor is deferred:4013 denotes non-documentation files, although the guide currently calls them bytes. No runtime fix pass or second review was needed. Broader release and vendor acceptance remain open.

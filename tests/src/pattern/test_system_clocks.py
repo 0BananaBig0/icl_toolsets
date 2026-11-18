@@ -352,6 +352,87 @@ Module Top {
         print(f'bound differential pairs={depth} stages={depth} bytes={len(source)} '
               f'waits=1024 forms=5 seconds={time.monotonic() - start:.6f}', flush=True)
 
+    # Tessent2026.2 ICL65-1 permits named secondary sources on negative inputs.
+    def test_secondary_clock_named_input_sources(self):
+        for positive, negative, extra, first, second in [
+                ('root', 'root_n', '', 3, 2),
+                ('root', 'wrapped', 'Alias wrapped = root_n;', 3, 2),
+                ('gen.output', 'gen.output_n',
+                 'Instance gen Of Generator { InputPort input = root; }', 9, 6)]:
+            with self.subTest(negative=negative):
+                source = ("Module Pair { ClockPort positive; ClockPort negative { "
+                          "DifferentialInvOf positive; } } Module Generator { ClockPort input; "
+                          "ToClockPort output { Source input; FreqDivider 3; } "
+                          "ToClockPort output_n { DifferentialInvOf output; } } "
+                          "Module Top { ClockPort root; ClockPort root_n { DifferentialInvOf root; } "
+                          + extra + " Instance pair Of Pair { InputPort positive = " + positive +
+                          "; InputPort negative = " + negative + "; } }")
+                result = self.replay(source, 'iClock pair.positive; iRunLoop 3 -sck pair.positive; '
+                                     'iClock pair.negative; iRunLoop 2 -sck pair.negative\n')
+                waits = [line for line in result.splitlines() if line.startswith('iRunLoop')]
+                self.assertEqual(waits, [f'iRunLoop {first} -sck root', f'iRunLoop {second} -sck root'])
+
+    def test_secondary_clock_nested_vector_bindings(self):
+        source = """Module Pair {
+  ClockPort positive[0:1];
+  ClockPort negative[0:1] { DifferentialInvOf positive; }
+}
+Module Wrapper {
+  ClockPort positive[1:0];
+  ClockPort negative[1:0] { DifferentialInvOf positive; }
+  Instance pair Of Pair { InputPort positive = positive; InputPort negative = negative; }
+}
+Module Top {
+  ClockPort root[5:4]; ClockPort root_n[5:4] { DifferentialInvOf root; }
+  Instance child Of Wrapper {
+    InputPort positive = root[4], root[5]; InputPort negative = root_n[4], root_n[5];
+  }
+}"""
+        result = self.replay(source, 'iClock child.pair.positive(0); '
+                             'iRunLoop 3 -sck child.pair.positive(0); '
+                             'iClock child.pair.negative(1); iRunLoop 7 -sck child.pair.negative(1)\n')
+        waits = [line for line in result.splitlines() if line.startswith('iRunLoop')]
+        self.assertEqual(waits, ['iRunLoop 3 -sck root(4)', 'iRunLoop 7 -sck root(5)'])
+
+    def test_secondary_clock_partial_binding_holes(self):
+        source = """Module Pair {
+  ClockPort positive[1:0]; ClockPort negative[1:0] { DifferentialInvOf positive; }
+}
+Module Top {
+  ClockPort root[1:0]; ClockPort root_n[1:0] { DifferentialInvOf root; }
+  Instance pair Of Pair { InputPort positive = root; InputPort negative[1] = root_n[1]; }
+}"""
+        result = self.replay(source, 'iClock pair.negative(1); iRunLoop 9 -sck pair.negative(1)\n')
+        self.assertIn('iRunLoop 9 -sck root(1)', result)
+        self.rejected(source, 'iClock pair.negative(0)\n', 'inactive system-clock')
+
+    def test_secondary_clock_kind_scope_and_phase_boundaries(self):
+        base = ("Module Pair { ClockPort positive; ClockPort negative { DifferentialInvOf positive; } } "
+                "Module Top { ClockPort root; ClockPort root_n { DifferentialInvOf root; } "
+                "Alias wrapped = root_n; EXTRA Instance pair Of Pair { "
+                "InputPort positive = root; InputPort negative = root_n; } }")
+        for extra, diagnostic in [
+                ('ToClockPort copied { Source wrapped; }', 'copied: Source requires a clock or data signal'),
+                ("ClockMux copied SelectedBy 1'b0 { 1'b0: wrapped; }", 'copied: clock choice requires'),
+                ('DataOutPort copied { Source wrapped; }', 'copied: Source requires a data signal'),
+                ('ClockPort copied { DifferentialInvOf wrapped; }', 'copied: DifferentialInvOf requires')]:
+            with self.subTest(extra=extra):
+                self.rejected(base.replace('EXTRA', extra), 'iClock pair.positive\n', diagnostic)
+        wrong_positive = base.replace('EXTRA', '').replace('InputPort positive = root;',
+                                                          'InputPort positive = root_n;')
+        self.rejected(wrong_positive, 'iClock pair.positive\n', 'pair.positive: Source requires')
+        wrong_root = base.replace('EXTRA', 'ClockPort other; ClockPort other_n { DifferentialInvOf other; }')
+        wrong_root = wrong_root.replace('InputPort negative = root_n;', 'InputPort negative = other_n;')
+        self.rejected(wrong_root, 'iClock pair.negative\n', 'bound differential')
+        inverted = base.replace('EXTRA', '').replace('InputPort negative = root_n;',
+                                                   'InputPort negative = ~root_n;')
+        self.rejected(inverted, 'iClock pair.negative\n', 'bound differential')
+        provider = ("Module Generator { ClockPort input; ToClockPort output { Source input; } "
+                    "ToClockPort output_n { DifferentialInvOf output; } Alias hidden = output_n; } ")
+        cross_alias = provider + base.replace('EXTRA', 'Instance gen Of Generator { InputPort input = root; }')
+        cross_alias = cross_alias.replace('InputPort negative = root_n;', 'InputPort negative = gen.hidden;')
+        self.rejected(cross_alias, 'iClock pair.negative\n', 'hierarchical signal gen.hidden must name an output port')
+
     def test_inverted_clock_duration_routes(self):
         cases = [
             ('ToClockPort out { Source ~root; FreqDivider 3; }', 6),
