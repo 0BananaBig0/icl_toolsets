@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -49,11 +50,13 @@ class SystemClocks {
   const Definition* DefinitionAt(Bit bit, size_t version) const;
   void CheckCycle(Bit target, BitReference source) const;
   Bit Target(const std::string& name) const;
+  std::string ClockTargetName(const std::string& name) const;
   std::string Name(Bit bit) const;
   Route Resolve(Bit bit, const ScanScheduler& scheduler, size_t version);
   BitReference Source(Bit bit, const ScanScheduler& scheduler, size_t version);
   void BuildSafety();
   const Netlist& netlist_;
+  mutable std::optional<bool> flat_origins_;
   bool safety_ready_ = false;
   std::set<Bit> unsafe_;
   std::map<Bit, std::set<Bit>> fanout_;

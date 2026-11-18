@@ -53,6 +53,101 @@ class SystemClocks(unittest.TestCase):
         for artifact in artifacts:
             self.assertEqual(artifact.read_text(), 'previous artifact\n')
 
+    def physical_clock_replay(self, source, original, physical, late_metadata=False):
+        icl, pdl = self.files(source, original)
+        expected = self.run_tool(icl, pdl)
+        flat = self.root / 'debug/Top.icl'
+        if late_metadata:
+            lines = flat.read_text().splitlines(keepends=True)
+            metadata = next(line for line in lines
+                            if line.lstrip().startswith('Attribute icl_pattern_origins_v1'))
+            lines.remove(metadata)
+            lines.insert(len(lines) - 1, metadata)
+            flat.write_text(''.join(lines))
+        raw = self.root / 'physical.pdl'
+        raw.write_text('iPDLLevel 1\niProcsForModule Top\n' + physical)
+        result = self.run_tool(flat, raw, 'physical/result.pdl', reset=True)
+        self.assertEqual(expected, result)
+        self.assertEqual(expected, self.run_tool(icl, self.root / 'physical/result.pdl',
+                                                'generated-source/result.pdl'))
+        self.assertEqual(expected, self.run_tool(flat, self.root / 'physical/result.pdl',
+                                                'generated-flat/result.pdl'))
+        self.assertEqual(expected, self.run_tool(flat, self.root / 'reset.pdl',
+                                                'reset-flat/result.pdl'))
+        return result
+
+    def test_flat_clock_physical_targets(self):
+        for source, original, physical, expected in [
+                ('Module Top { ClockPort clk; }',
+                 'iClock clk; iRunLoop 7 -sck clk\n',
+                 'iClock n636c6b; iRunLoop 7 -sck n636c6b\n', 'iRunLoop 7 -sck clk'),
+                ('Module Top { ClockPort clk[5:4]; }',
+                 'iClock clk(5); iRunLoop 3 -sck clk(5); iClock clk(4); iRunLoop 2 -sck clk(4)\n',
+                 'iClock n636c6b(5); iRunLoop 3 -sck clk(5); iClock clk(4); iRunLoop 2 -sck n636c6b[4]\n',
+                 'iRunLoop 2 -sck clk(4)'),
+                ('Module Stage { ClockPort ck; ToClockPort out { Source ck; FreqDivider 3; } } '
+                 'Module Top { ClockPort clk; Instance child Of Stage { InputPort ck = clk; } }',
+                 'iClock child.out; iRunLoop 2 -sck child.out\n',
+                 'iClock n6368696c642e6f7574; iRunLoop 2 -sck child.out\n', 'iRunLoop 6 -sck clk')]:
+            with self.subTest(source=source):
+                self.assertIn(expected, self.physical_clock_replay(source, original, physical))
+
+    def test_flat_clock_physical_snapshot_versions(self):
+        source = ('Module Top { ClockPort clk; ClockPort other; '
+                  'ToClockPort out { Source clk; FreqDivider 2; } }')
+        original = ('iClock out; iRunLoop 2 -sck out; '
+                    'iClockOverride out -source other -freqDivider 3; '
+                    'iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out\n')
+        physical = original.replace('iClock out', 'iClock n6f7574').replace('-sck out', '-sck n6f7574')
+        result = self.physical_clock_replay(source, original, physical)
+        self.assertIn('iRunLoop 4 -sck clk', result)
+        self.assertIn('iRunLoop 6 -sck other', result)
+
+    def test_flat_clock_physical_name_boundaries(self):
+        source = ('Module Top { ClockPort clk; DataInPort d; Alias view = clk; '
+                  'ToClockPort out { Source clk; } }')
+        icl, pdl = self.files(source, 'iClock clk; iRunLoop 1 -sck clk\n')
+        self.run_tool(icl, pdl)
+        flat = (self.root / 'debug/Top.icl').read_text()
+        for commands, diagnostic in [
+                ('iClock n636C6b\n', 'unknown PDL target'),
+                ('iClock n64\n', 'unknown PDL target'),
+                ('iClock n76696577\n', 'unknown PDL target'),
+                ('iClock n636c6b(0)\n', 'scalar target cannot be indexed'),
+                ('iClock n636c6b(\n', 'invalid PDL object identifier'),
+                ('iClockOverride n6f7574 -freqDivider 3\n', 'unknown PDL target'),
+                ('iClockOverride out -source n636c6b\n', 'unknown PDL target'),
+                ('iWrite n64 1; iApply\n', 'unknown PDL target')]:
+            with self.subTest(commands=commands):
+                self.rejected(flat, commands, diagnostic)
+        self.rejected(source, 'iClock n636c6b\n', 'unknown PDL target')
+        literal = 'n726f6f74'
+        result = self.physical_clock_replay(
+            'Module Top { ClockPort root; ClockPort ' + literal + '; }',
+            'iClock ' + literal + '; iRunLoop 3 -sck ' + literal + '\n',
+            'iClock ' + literal + '; iRunLoop 3 -sck n' + literal.encode().hex() + '\n')
+        self.assertIn('iRunLoop 3 -sck ' + literal, result)
+
+    def test_flat_clock_physical_name_scale(self):
+        depth = 4096
+        stages = ["ClockMux stage0 SelectedBy 1'b0 { 1'b0: root; }"]
+        stages += [f"ClockMux stage{i} SelectedBy 1'b0 {{ 1'b0: stage{i - 1}; }}"
+                   for i in range(1, depth)]
+        pairs = [f'Instance pair{i} Of Pair {{ InputPort p = stage4095; InputPort n = root_n; }}'
+                 for i in range(depth)]
+        source = ('Module Pair { ClockPort p; ClockPort n { DifferentialInvOf p; } } '
+                  'Module Top { ClockPort root; ClockPort root_n { DifferentialInvOf root; } '
+                  + ' '.join(stages + pairs) + ' }')
+        original = ''.join(f'iClock pair{i}.n; iRunLoop 1 -sck pair{i}.n; ' for i in range(1024))
+        physical = ''.join('iClock n' + f'pair{i}.n'.encode().hex() +
+                           '; iRunLoop 1 -sck n' + f'pair{i}.n'.encode().hex() + '; '
+                           for i in range(1024))
+        start = time.monotonic()
+        result = self.physical_clock_replay(source, original, physical, late_metadata=True)
+        self.assertEqual(result.count('iRunLoop 1 -sck root'), 1024)
+        print(f'physical clocks pairs={depth} stages={depth} bytes={len(source)} '
+              f'waits=1024 forms=5 seconds={time.monotonic() - start:.6f}', flush=True)
+
     def test_root_and_zero_wait(self):
         result = self.replay('Module Top { ClockPort clk; }',
                              'iClock clk; iRunLoop 0 -sck clk; iRunLoop 17 -sck clk\n')

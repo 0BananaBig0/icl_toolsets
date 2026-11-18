@@ -6678,3 +6678,69 @@ Later doc-only archive refreshes preserve the tested runtime bytes and original
 provenance. Broader source, event, vendor and release acceptance remains open.
 
 Independent Task130 whole-branch review at3720dc9 approves the scoped merge with no Critical/Important/Minor findings. The reviewer selected the whole native flatten runner, passing through a disclosed read-only Root proxy because its tool host was unavailable. Root owns broad source/product/archive/vendor status authentication; the verifier checks the recorded hashes and counts. No fix pass or second review was needed. General vendor flattening, raw-name lookup, clock events, strict coverage and full release acceptance remain open.
+
+
+## Physical clock names in flat input (2026-11-18)
+
+Task131 lets iClock and iRunLoop -sck use canonical physical clock names
+from the associated native flat ICL. Original declaration names take priority.
+Otherwise, a lowercase n followed by pairs of hexadecimal digits may name an
+original ClockPort or ToClockPort when valid flat-origin metadata is present.
+Existing scalar/vector suffix checks still apply. The metadata-presence check
+is cached per immutable netlist; decoding costs O(name length + log nodes).
+
+Generated PDL uses original names and replays against original or flat input.
+Raw physical names and their reset artifacts require the associated flat model.
+Original models without flat metadata, aliases, data/resource commands and
+iClockOverride target/source spellings keep their existing lookup behavior.
+Literal original names that collide with physical spellings win; this is not
+general raw-name mode. Prefix and procedure-call qualification is unchanged.
+
+Four unchanged Task130 vendor exports now replay directly on their flat models;
+their complete ordered traces match the native original-name result. All eight
+origin-mapped replays still pass. The four raw replays on original models still
+reject unknown physical targets. Vendor evidence is reused only after exact
+identity checks of the physical models/programs and current native outputs;
+no new vendor execution or formal certificate is claimed. The two divider flat
+models still fail vendor set_current_design with ICL130-2. General flat output
+networks, negative vendor clock targets, clock events and absolute time remain
+open. Evidence: build/flat-clock-targets-20261118/.
+
+Qualification for Task131 passes all nine changed-C++ format/tidy/strict17
+gates, native clock snapshots and68 clock methods per dynamic/static variant.
+Leak-enabled ASan/UBSan passes native clock/netlist/flatten checks,68 clock
+methods and71 main CLI methods. All3994 runtime input hashes remain frozen.
+Only the two generator products change; the other eight products are unchanged.
+
+Full serial normal integration passes in1663.067s,
+including1916 regression and2180 conformance cases,334 parser/119 scanner rules
+across2549 ICL files, and six editor tests. Five optional ANTLR checks are skipped.
+Fresh instrumented testing takes1252.948s; all58 Python
+groups/960 cases pass, including51 generator groups/798 cases. The unchanged
+strict coverage gate still fails: 17417/18046 lines
+(96.5%) and29457/46955 raw
+branches(62.7%). All54 authored reports and19
+instrumented products remain included, with12282 missing throw
+edges and5216 other missing edges. No threshold waiver or
+exception-edge filtering is applied.
+
+The physical-name fixture has4096 pairs,4096 shared mux stages,541574 source
+bytes,1024 waits and five replay forms. With metadata deliberately placed last,
+it completes in1.537519s dynamic/1.475700s static; peak RSS122008/122292KiB.
+The parent rejects raw physical targets, so this is no completing raw-name
+baseline or speedup claim. Matched existing4096-stage/65536-bit clock workloads
+pass on parent/current variants; matched parent/current5000-instance netlist benchmarks also pass. Commands, environment and wall/RSS logs are saved.
+
+All eight current Rocky compiler/native/dynamic/static/ELF gates pass,
+including51 groups/798 cases per generator variant. All3994 submitted source
+hashes match. All12 local archive/install and14 remote install gates pass for
+five commands per variant, LSP behavior, static ELF and uninstall sentinel
+preservation. The e5ee52e archive ships4233 tracked files plus six generated/
+prebuilt files. Its local dynamic build runs with Bison/Flex disabled. All4013
+non-documentation files are byte-identical to the current qualified remote
+source; current compiler/suite evidence is reused by identity, without claiming
+a fresh remote archive rebuild. Later doc-only archive refreshes preserve the
+qualified runtime bytes and original provenance. Full release acceptance,
+strict coverage and the documented broader model/vendor gaps remain open.
+
+Independent Task131 whole-branch review at aac20fd approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected lookup, restoration, copy and emission paths and selected native clock snapshots plus68 dynamic clock methods, all passing through a disclosed read-only Root relay because its tool host was unavailable. Root owns broad artifact/status authentication; the verifier checks recorded hashes and counts. No fix pass or second review was needed. General raw naming, vendor models, clock events, strict coverage and full release acceptance remain open.

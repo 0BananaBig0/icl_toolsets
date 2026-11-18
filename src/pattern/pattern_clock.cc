@@ -3,11 +3,13 @@
 #include "pattern/pattern_clock.h"
 
 #include <algorithm>
+#include <charconv>
 #include <limits>
 #include <numeric>
 #include <stdexcept>
 #include <vector>
 
+#include "pattern/pattern_flatten.h"
 #include "pattern/pattern_values.h"
 
 namespace pattern {
@@ -146,6 +148,44 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
 void SystemClocks::Invalidate() {
   routes_.clear();
   values_.clear();
+}
+std::string SystemClocks::ClockTargetName(const std::string& text) const {
+  const auto open = text.find_first_of("[(");
+  const auto name = text.substr(0, open);
+  if (netlist_.node_ids.count(name) || name.size() < 3 || name[0] != 'n' ||
+      name.size() % 2 == 0 ||
+      name.find_first_not_of("0123456789abcdef", 1) != std::string::npos) {
+    return text;
+  }
+  std::string original;
+  original.reserve((name.size() - 1) / 2);
+  for (size_t i = 1; i < name.size(); i += 2) {
+    unsigned int byte = 0;
+    std::from_chars(name.data() + i, name.data() + i + 2, byte, 16);
+    original.push_back(static_cast<char>(byte));
+  }
+  const auto found = netlist_.node_ids.find(original);
+  if (found == netlist_.node_ids.end() ||
+      !ClockPort(netlist_.nodes.at(found->second))) {
+    return text;
+  }
+  if (!flat_origins_.has_value()) {
+    flat_origins_ = false;
+    if (!netlist_.scopes.empty() && netlist_.scopes[0].definition.ast) {
+      for (const auto* item : netlist_.scopes[0].definition.ast->body()) {
+        const auto* attribute = dynamic_cast<const icl::AstStatement*>(item);
+        if (attribute &&
+            attribute->named_kind() == icl::NamedKind::kAttribute &&
+            attribute->name() == kFlatOriginAttribute) {
+          flat_origins_ = true;
+          break;
+        }
+      }
+    }
+  }
+  return *flat_origins_
+             ? original + (open == std::string::npos ? "" : text.substr(open))
+             : text;
 }
 SystemClocks::Bit SystemClocks::Target(const std::string& name) const {
   const auto target = ResolvePdlTarget(netlist_, name);
@@ -367,7 +407,7 @@ void SystemClocks::BuildSafety() {
 }
 std::string SystemClocks::Check(const std::string& target,
                                 const ScanScheduler& scheduler) {
-  const auto bit = Target(target);
+  const auto bit = Target(ClockTargetName(target));
   const auto route = Resolve(bit, scheduler, version_);
   BuildSafety();
   if (unsafe_.count(route.root)) {
@@ -380,7 +420,7 @@ std::string SystemClocks::Check(const std::string& target,
 std::pair<std::string, uint64_t> SystemClocks::Wait(
     const std::string& target, uint64_t cycles, const ScanScheduler& scheduler,
     const std::map<size_t, std::string>& preserved) {
-  const auto bit = Target(target);
+  const auto bit = Target(ClockTargetName(target));
   const auto checked = checked_.find(bit);
   if (checked == checked_.end()) {
     throw std::runtime_error("system-clock wait requires prior iClock");

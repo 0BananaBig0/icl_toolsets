@@ -2643,6 +2643,80 @@ void TestDifferentialClockDurations() {
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
 }
+void TestFlatClockTargetNames() {
+  std::string source = R"(Module Stage {
+    ClockPort ck[1:0]; ToClockPort out[1:0] { Source ck; FreqDivider 2; }
+  }
+  Module Top {
+    ClockPort clk[5:4]; ClockPort other[5:4]; DataInPort d;
+    Instance child Of Stage { InputPort ck = clk; }
+  })";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("physical-clock-names.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    pattern::SystemClocks clocks(netlist);
+    const std::string physical = "n6368696c642e6f7574(1)";
+    if (!flat) {
+      bool rejected = false;
+      try {
+        clocks.Check(physical, scheduler);
+      } catch (const std::runtime_error& error) {
+        rejected = std::string(error.what()).find("unknown PDL target") !=
+                   std::string::npos;
+      }
+      Require(rejected && clocks.Check("child.out(1)", scheduler) == "clk(5)",
+              "physical names require restored flat metadata");
+      source = pattern::SerializeIcl(netlist);
+      continue;
+    }
+    Require(clocks.Check(physical, scheduler) == "clk(5)" &&
+                clocks.Wait("child.out(1)", 3, scheduler).second == 6 &&
+                clocks.Wait(physical, 2, scheduler).second == 4,
+            "physical and original spellings share one checked clock bit");
+    auto preview = clocks;
+    preview.Invalidate();
+    Require(preview.Wait(physical, 1, scheduler).second == 2,
+            "physical-name state copies and invalidates with clock previews");
+    z3::context context;
+    clocks.Override(
+        {"iClockOverride",
+         {"child.out(1)", "-source", "other(5)", "-freqDivider", "3"},
+         "physical-clock:override",
+         {}},
+        context);
+    Require(clocks.Wait(physical, 2, scheduler).second == 4 &&
+                clocks.Check("child.out(1)", scheduler) == "other(5)" &&
+                clocks.Wait(physical, 2, scheduler).second == 6,
+            "physical names preserve saved and current override versions");
+    for (const std::string bad :
+         {"n636C6b(5)", "n64", "n636c6b(5:4)", "n636c6b(6)", "n636c6b("}) {
+      bool rejected = false;
+      try {
+        clocks.Check(bad, scheduler);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected && clocks.Wait(physical, 1, scheduler).second == 3,
+              "bad physical spellings do not replace checked clocks");
+    }
+    bool rejected = false;
+    try {
+      clocks.Override({"iClockOverride",
+                       {physical, "-freqDivider", "4"},
+                       "physical-clock:unsupported-override",
+                       {}},
+                      context);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("unknown PDL target") !=
+                 std::string::npos;
+    }
+    Require(rejected && clocks.Wait(physical, 1, scheduler).second == 3,
+            "physical override targets retain their original lookup contract");
+  }
+}
+
 void TestBoundDifferentialClocks() {
   std::string source = R"(Module Pair {
     ClockPort positive;
@@ -5823,6 +5897,7 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
+        TestFlatClockTargetNames();
         TestBoundDifferentialClocks();
         TestClockOverrideSnapshots();
         TestOscillatorSourceOverrides();
@@ -5866,6 +5941,7 @@ int main(int argc, char* argv[]) {
     TestModeledRootScans();
     TestInvertedClockDurations();
     TestDifferentialClockDurations();
+    TestFlatClockTargetNames();
     TestBoundDifferentialClocks();
     TestClockOverrideSnapshots();
     TestClockOverrideScale();
