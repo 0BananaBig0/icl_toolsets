@@ -37,7 +37,7 @@ ResolvePdlTarget, current native --clock-snapshots and CLI helpers.
       matched scale. Expected0 with frozen runtime bytes.
 - [x] Full normal then fresh raw coverage, current Rocky, vendor exact-identity
       raw/mapped replay, source archive/install. Expected normal0; raw gate actual.
-- [ ] Qualification commits, independent whole-branch review/necessary fix pass,
+- [x] Qualification commits, independent whole-branch review/necessary fix pass,
       final verify/merge/delete/archive/sync/push. Expected clean parent master.
 
 Pre-flight: no shared task interfaces; one task. Structural CodeGraph discovery
