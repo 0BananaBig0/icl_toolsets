@@ -40,7 +40,7 @@ and native TestDifferentialClockDurations remain compatible.
       including bounds/cycles/snapshots/rollback, without relaxing unsafe fanout.
 - [x] Run changed C++ format/tidy/C++17, dynamic/static clock and native tests,
       leak SAN and representative performance. Expected all relevant gates0.
-- [ ] Run full make check and fresh raw coverage serially; qualify current remote
+- [x] Run full make check and fresh raw coverage serially; qualify current remote
       compiler and generator suites; archive/install checks. Expected normal0;
       report actual strict coverage result without exclusions/waivers.
 - [ ] Record evidence and limits, candidate commit, one independent review and

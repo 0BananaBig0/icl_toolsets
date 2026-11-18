@@ -9,6 +9,13 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
+Task128 (2026-11-18) adds native consistency checks for bound differential clock
+inputs. Full normal integration, current dynamic/static generator suites,
+focused leak-enabled sanitizers, local archive builds and five-tool installations
+pass. See [the latest scope and evidence](#bound-differential-clock-inputs-2026-11-18).
+Its three Tessent source probes fail ICL65-1 during elaboration; vendor binding
+compatibility remains open. The strict coverage gate also remains unmet.
+
 On 2026-11-14, reset source terminal eligibility passed the complete
 make -j2 --jobserver-style=pipe check command, with exit0 recorded in
 build/reset-source-confirmed-full.log/.exit. This includes all41 generator CLI suites
@@ -32,8 +39,9 @@ with Make exit2. See [the current measurement](#bound-differential-clock-inputs-
 and `build/bound-differential-20261118/`. Raw exception/cleanup edges remain included.
 
 Current runtime qualification has51 CLI suites(789 tests) per dynamic/static
-variant, plus fresh remote five-tool installations. Local archive/installation
-qualification for Task128 is pending; the previous clean package coversf75edb8.
+variant, a clean local source-archive build and fresh local/remote five-tool
+installations. All4013 non-doc archive bytes match the qualified remote source
+tree; this exact identity reuses its current compile and runtime results.
 These results do not establish complete retargeting, arbitrary
 event/clock support or general vendor equivalence. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
@@ -6466,8 +6474,18 @@ unchanged editor sources are rebuilt with GCC16.2.1-3 rather than the baseline
 16.2.1-2; all ten current local products have fresh fingerprints and full
 integration evidence. Generated parser/scanner sources remain identical.
 
-Local source-archive/installation qualification and the independent final review
-are pending; final results will be added before merge and push.
+The clean272827f source archive ships4227 tracked files plus six generated
+parser/scanner/prebuilt files. Its fresh local dynamic build runs with Bison/Flex
+and static Tcl unavailable and passes installed five-tool smoke checks. All12
+local package gates pass, including dynamic/static installation, installed PDL/
+pattern/reset/LSP checks, static ELF checks and sentinel-preserving uninstall.
+The4013 non-doc archive files match the current qualified Rocky source tree;
+current remote compile/runtime results and14 installation gates are reused by
+that exact source/product identity. This is not a fresh remote archive rebuild.
+Documentation-only revisions retain the same qualified non-doc payload.
+
+The independent final review is pending; its result will be recorded before
+merge and push.
 
 Evidence: `build/bound-differential-20261118/`. General clock events, independent
 phase relationships without a common modeled origin, time-dependent instrument

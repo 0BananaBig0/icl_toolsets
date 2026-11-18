@@ -64,7 +64,7 @@ full model coverage or Tessent equivalence.
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; local source-archive/install checks and Rocky8 native dynamic/transferred-static qualification through f75edb8, with fresh installations and reuse based on identical source/product hashes for 51 generator CLI suites/783 tests per build | Remaining command semantics; later product changes need fresh qualification |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; Task128 local source-archive build/install checks and current Rocky8 native dynamic/transferred-static qualification, with fresh five-tool installations and reuse based on identical non-doc source/product hashes for51 generator CLI suites/789 tests per build | Remaining command semantics; later product changes need fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
 | Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task128 run 96.5%/62.7% (17368/17997 lines,29316/46739 raw branches); full vendor equivalence is unverified |
@@ -3761,8 +3761,18 @@ unchanged editor sources are rebuilt with GCC16.2.1-3 rather than the baseline
 16.2.1-2; all ten current local products have fresh fingerprints and full
 integration evidence. Generated parser/scanner sources remain identical.
 
-Local source-archive/installation qualification and the independent final review
-are pending; final results will be added before merge and push.
+The clean272827f source archive ships4227 tracked files plus six generated
+parser/scanner/prebuilt files. Its fresh local dynamic build runs with Bison/Flex
+and static Tcl unavailable and passes installed five-tool smoke checks. All12
+local package gates pass, including dynamic/static installation, installed PDL/
+pattern/reset/LSP checks, static ELF checks and sentinel-preserving uninstall.
+The4013 non-doc archive files match the current qualified Rocky source tree;
+current remote compile/runtime results and14 installation gates are reused by
+that exact source/product identity. This is not a fresh remote archive rebuild.
+Documentation-only revisions retain the same qualified non-doc payload.
+
+The independent final review is pending; its result will be recorded before
+merge and push.
 
 Evidence: `build/bound-differential-20261118/`. General clock events, independent
 phase relationships without a common modeled origin, time-dependent instrument
