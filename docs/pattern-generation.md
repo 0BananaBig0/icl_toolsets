@@ -6676,3 +6676,5 @@ current qualified remote source byte-for-byte. That current compiler/suite
 evidence is reused by exact identity; no fresh remote archive rebuild is claimed.
 Later doc-only archive refreshes preserve the tested runtime bytes and original
 provenance. Broader source, event, vendor and release acceptance remains open.
+
+Independent Task130 whole-branch review at3720dc9 approves the scoped merge with no Critical/Important/Minor findings. The reviewer selected the whole native flatten runner, passing through a disclosed read-only Root proxy because its tool host was unavailable. Root owns broad source/product/archive/vendor status authentication; the verifier checks the recorded hashes and counts. No fix pass or second review was needed. General vendor flattening, raw-name lookup, clock events, strict coverage and full release acceptance remain open.

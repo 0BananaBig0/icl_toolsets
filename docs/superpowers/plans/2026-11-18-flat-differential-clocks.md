@@ -40,7 +40,7 @@ existing flatten native runner and SystemClocks replay/rejected helpers.
       Expected0 with correct current byte/product identity.
 - [x] Full normal then fresh raw coverage, Rocky/current suites, vendor directions
       and archive/install qualification. Expected normal0; report actual raw gate.
-- [ ] Record qualification/candidate, whole-branch review, necessary fix pass,
+- [x] Record qualification/candidate, whole-branch review, necessary fix pass,
       final verify/merge/delete/archive/sync/push. Expected clean synchronized
       parent master; explicitly retain broader acceptance gaps.
 
