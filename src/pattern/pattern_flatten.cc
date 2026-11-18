@@ -277,6 +277,12 @@ std::string RenderAttributes(const Attributes& attributes) {
   return result;
 }
 
+std::string FlatKind(const std::string& kind, bool internal_input,
+                     bool differential) {
+  if (internal_input && kind == "ClockPort") return "ToClockPort";
+  return internal_input && !differential ? "DataOutPort" : kind;
+}
+
 std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
   if ((node.model == ModelKind::kGroup && node.kind != "OneHotScanGroup" &&
        node.kind != "OneHotDataGroup") ||
@@ -288,8 +294,9 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
   const bool internal_input = IsInputPort(node.kind) && node.scope != 0;
   const bool flattened_input =
       internal_input && !node.inputs.count("DifferentialInvOf");
-  std::string result = (flattened_input ? "DataOutPort" : node.kind) + " " +
-                       FlatName(node.name) + Range(node);
+  std::string result = FlatKind(node.kind, internal_input,
+                                node.inputs.count("DifferentialInvOf")) +
+                       " " + FlatName(node.name) + Range(node);
   if (node.model == ModelKind::kAlias) {
     const auto source = node.inputs.find("Source");
     result += " = " + (source == node.inputs.end()
@@ -861,8 +868,15 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     const bool flattened_input =
         internal_input && !node.inputs.count("DifferentialInvOf");
     if (!seen.insert(id).second || !names.emplace(original_name, id).second ||
-        node.kind != (flattened_input ? "DataOutPort" : kind)) {
+        (node.kind != FlatKind(kind, internal_input,
+                               node.inputs.count("DifferentialInvOf")) &&
+         node.kind != (flattened_input ? "DataOutPort" : kind))) {
       throw std::runtime_error("invalid flat object kind or duplicate");
+    }
+    if (internal_input && kind == "ClockPort" && node.kind == "ToClockPort" &&
+        (node.clock_period || node.constants.count("FreqMultiplier") ||
+         node.constants.count("FreqDivider"))) {
+      throw std::runtime_error("invalid flat clock input frequency properties");
     }
     node.name = original_name;
     node.scope = scope;

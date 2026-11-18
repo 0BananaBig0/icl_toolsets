@@ -352,6 +352,38 @@ Module Top {
         print(f'bound differential pairs={depth} stages={depth} bytes={len(source)} '
               f'waits=1024 forms=5 seconds={time.monotonic() - start:.6f}', flush=True)
 
+    def test_flat_clock_legacy_forwarding(self):
+        for positive, negative, extra, count in [
+                ('root', 'root_n', '', 3),
+                ('root', 'wrapped', 'Alias wrapped = root_n;', 3),
+                ('gen.output', 'gen.output_n',
+                 'Instance gen Of Generator { InputPort input = root; }', 9)]:
+            with self.subTest(negative=negative):
+                source = ("Module Pair { ClockPort p; ClockPort n { DifferentialInvOf p; } } "
+                          "Module Generator { ClockPort input; ToClockPort output { "
+                          "Source input; FreqDivider 3; } ToClockPort output_n { "
+                          "DifferentialInvOf output; } } Module Top { ClockPort root; "
+                          "ClockPort root_n { DifferentialInvOf root; } " + extra +
+                          " Instance pair Of Pair { InputPort p = " + positive +
+                          "; InputPort n = " + negative + "; } }")
+                result = self.replay(source, 'iClock pair.n; iRunLoop 3 -sck pair.n\n')
+                self.assertIn(f'iRunLoop {count} -sck root', result)
+                flat = (self.root / 'debug/Top.icl').read_text()
+                self.assertIn('ToClockPort n706169722e70', flat)
+                self.assertIn('ToClockPort n706169722e6e', flat)
+                legacy = flat
+                for name, kind in [('n706169722e70', 'DataOutPort'),
+                                   ('n706169722e6e', 'ClockPort'),
+                                   ('n67656e2e696e707574', 'DataOutPort')]:
+                    legacy = legacy.replace('ToClockPort ' + name, kind + ' ' + name)
+                path = self.root / 'legacy.icl'
+                path.write_text(legacy)
+                self.assertEqual(result, self.run_tool(path, self.root / 'source.pdl',
+                                                       'legacy/result.pdl'))
+                self.assertEqual(result, self.run_tool(path, self.root / 'result.pdl',
+                                                       'legacy-generated/result.pdl'))
+                self.assertEqual(flat, (self.root / 'legacy/debug/Top.icl').read_text())
+
     # Tessent2026.2 ICL65-1 permits named secondary sources on negative inputs.
     def test_secondary_clock_named_input_sources(self):
         for positive, negative, extra, first, second in [
