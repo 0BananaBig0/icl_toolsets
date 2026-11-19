@@ -2929,6 +2929,132 @@ void TestBoundDifferentialClocks() {
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
 }
+void TestClockApiContracts() {
+  pattern::Design design;
+  design.AddIcl("clock-api.icl", R"(Module Stage {
+    ClockPort first; ClockPort second; DataInPort mode;
+    ClockMux selected SelectedBy mode { 1'b0: first; 1'b1: second; }
+    ToClockPort clock { Source selected; }
+  }
+  Module Driver {
+    ClockPort input; ToClockPort out { Source input; FreqDivider 2; }
+  }
+  Module Top {
+    ClockPort first; ClockPort second; DataInPort mode;
+    Instance driver Of Driver { InputPort input = first; }
+    Instance stage Of Stage {
+      InputPort first = first; InputPort second = driver.out; InputPort mode = mode;
+    }
+  })");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("mode", "0");
+  pattern::SystemClocks clocks(netlist);
+  z3::context context;
+  Require(clocks.Check("driver.out", scheduler) == "first",
+          "native override fixture starts on the divided first clock");
+  const std::vector<std::pair<std::vector<std::string>, std::string>> invalid{
+      {{}, "invalid iClockOverride arguments"},
+      {{"driver.out", "-source"}, "invalid iClockOverride arguments"},
+      {{"driver.out", "-freqDivider", "7", "-freqDivider", "3"},
+       "duplicate iClockOverride option"},
+      {{"driver.out", "-source", "second", "-freqDivider", "7", "-source",
+        "first"},
+       "duplicate iClockOverride option"},
+      {{"driver.out", "-freqDivider", "7", "-unknown", "1"},
+       "unknown iClockOverride option"},
+      {{"driver.out", "-source", "stage.clock"},
+       "cyclic system-clock override"}};
+  for (const auto& [arguments, diagnostic] : invalid) {
+    bool rejected = false;
+    try {
+      clocks.Override({"iClockOverride", arguments, "clock-api:invalid", {}},
+                      context);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find(diagnostic) != std::string::npos;
+    }
+    Require(rejected, "native invalid override reports the intended failure");
+    const auto saved = clocks.Wait("driver.out", 3, scheduler);
+    Require(saved.first == "first" && saved.second == 6,
+            "failed override preserves the saved duration");
+    clocks.Invalidate();
+    Require(clocks.Check("driver.out", scheduler) == "first" &&
+                clocks.Wait("driver.out", 3, scheduler).second == 6,
+            "failed override preserves the current clock definition");
+  }
+  clocks.Override({"iClockOverride",
+                   {"driver.out", "-source", "second", "-freqDivider", "3"},
+                   "clock-api:valid",
+                   {}},
+                  context);
+  const auto saved = clocks.Wait("driver.out", 3, scheduler);
+  Require(saved.first == "first" && saved.second == 6 &&
+              clocks.Check("driver.out", scheduler) == "second" &&
+              clocks.Wait("driver.out", 3, scheduler).second == 9,
+          "valid override after rejected calls retains versioned durations");
+  Require(scheduler.Value("mode") == "0" && scheduler.Value("first") == "x" &&
+              scheduler.Value("second") == "x",
+          "native override validation does not drive hardware");
+}
+
+void TestClockUnrelatedConsumers() {
+  for (bool client : {false, true}) {
+    std::string source = R"(Module Top {
+      ClockPort root; DataInPort a; DataInPort b;
+      LogicSignal ready { a & b; }
+      DataOutPort observed { Source ready; }
+    )";
+    if (client) {
+      source += R"(
+        ScanInPort si; ScanOutPort so { Source si; }
+        SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+        UpdateEnPort ue; TCKPort ck;
+        ScanInterface client {
+          Chain serial { Port si; Port so; }
+          Port sel; Port ce; Port se; Port ue; Port ck;
+        }
+      )";
+    }
+    source += "}";
+    for (bool flat : {false, true}) {
+      pattern::Design design;
+      design.AddIcl("unrelated-clock-consumers.icl", source);
+      const auto netlist = pattern::Elaborate(design, "Top");
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Assume("a", "1");
+      scheduler.Assume("b", "0");
+      pattern::SystemClocks clocks(netlist);
+      Require(clocks.Check("root", scheduler) == "root",
+              "unrelated logic and client pins do not taint a clock root");
+      const auto wait = clocks.Wait("root", 7, scheduler);
+      Require(wait.first == "root" && wait.second == 7,
+              "unrelated consumers preserve root-relative duration");
+      if (!client) {
+        clocks.CheckTimeWait();
+      } else {
+        bool rejected = false;
+        try {
+          clocks.CheckTimeWait();
+        } catch (const std::runtime_error& error) {
+          rejected = std::string(error.what()).find("opaque hardware") !=
+                     std::string::npos;
+        }
+        Require(rejected, "unrelated opaque clients still exclude time waits");
+        for (const auto* pin : {"si", "sel", "ce", "se", "ue", "ck"}) {
+          Require(scheduler.Value(pin) == "x",
+                  "clock checks and waits preserve unrelated client pins");
+        }
+      }
+      Require(scheduler.Value("a") == "1" && scheduler.Value("b") == "0" &&
+                  scheduler.Value("observed") == "0" &&
+                  scheduler.Value("root") == "x",
+              "clock checks and waits preserve unrelated combinational state");
+      if (!flat) source = pattern::SerializeIcl(netlist);
+    }
+  }
+}
+
 void TestClockOverrideSnapshots() {
   pattern::Design design;
   design.AddIcl("overrides.icl", R"(Module Top {
@@ -6011,6 +6137,8 @@ int main(int argc, char* argv[]) {
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
         TestFlatClockTargetNames();
         TestInvariantTimeWaits();
+        TestClockApiContracts();
+        TestClockUnrelatedConsumers();
         TestBoundDifferentialClocks();
         TestClockOverrideSnapshots();
         TestOscillatorSourceOverrides();
@@ -6056,6 +6184,8 @@ int main(int argc, char* argv[]) {
     TestDifferentialClockDurations();
     TestFlatClockTargetNames();
     TestInvariantTimeWaits();
+    TestClockApiContracts();
+    TestClockUnrelatedConsumers();
     TestBoundDifferentialClocks();
     TestClockOverrideSnapshots();
     TestClockOverrideScale();
