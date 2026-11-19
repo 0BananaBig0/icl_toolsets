@@ -64,10 +64,10 @@ full model coverage or Tessent equivalence.
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; fresh Task133 full normal/source-archive identity and Rocky native checks, with Task132 broader CLI and local/remote archive-build/install evidence reused only for unchanged runtime inputs and all ten product fingerprints | Remaining command semantics; changed products require fresh qualification |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; fresh Task134 full normal/source-archive identity and Rocky native checks, with broader CLI/SAN/vendor/archive-build/install evidence retained only for unchanged source and product fingerprints | Remaining command semantics; changed products require fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest native clock contract evidence in the generator guide;384/384 authored clock lines covered | Strict coverage remains below100% lines/90% raw branches: Task133 96.6%/62.8% (17460/18083 lines,29556/47075 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; native runtime contract evidence in the generator guide; runtime lines607/636,clock384/384 | Strict coverage remains below100% lines/90% raw branches: Task134 96.6%/62.9% (17477/18083 lines,29603/47075 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -4005,3 +4005,59 @@ Strict project coverage, broader timing/model support and release acceptance
 remain open.
 
 Independent Task133 whole-branch review at4daf6ba approves the scoped merge with no Critical/Important findings. The reviewer inspected the changed tests, connected clock/safety/state code, guide changes and evidence through a disclosed Root read-only relay because its tool host was unavailable. The requested fresh native clock check passes. Two optional minor improvements are deferred: identify negative-test arguments/actual exceptions in failure messages, and seed a known SelectPort value for an additional preservation assertion. All declined subjects have executor rulings. No production or test correction was required; closing documentation preserves the qualified3994 inputs and unchanged products. Strict coverage and broader release acceptance remain open.
+
+## Runtime API contract coverage (2026-11-19)
+
+Task134 tests existing public Runtime contracts without changing production
+files or the ten product executables. A missing top module reports its intended
+error. Structurally malformed later input is rejected before publishing that
+file's operations; the previous note remains and the failed runtime cannot
+resume or finish. A pending write inside a procedure retains the iCall frame
+when Finish diagnoses the unapplied queue. This boundary concerns structural
+parse failures; runtime semantic errors can retain partial internal operations
+in the failed runtime and do not acquire a rollback guarantee.
+
+A valid two-level instance path works without elaboration for a procedure with
+no ICL parameters. Parameter-dependent calls require real elaboration before
+the body executes. With elaboration, VALUE=4'b10x1 is passed unchanged and emits
+`iNote 0b10x1`. Missing-module binding is tested once; missing-instance paths
+take the intended error paths through both constructors. Selecting then clearing iUseProcNameSpace emits alternate
+and default notes with no override warning. Expectations use literal values;
+no private callback invocation, fabricated IR, new live readback or simultaneous
+vector scan-return support is introduced.
+
+All16 previously zero-hit runtime lines49/88-91/125/551/569/573/627/661/
+703-704/734-735/742 now execute. The fresh full report measures
+607/636 runtime lines; clock coverage remains384/384.
+Coverage misses were the baseline gap, not a claimed product-failure RED.
+The first parse fixture used an invalid option, which is checked during level1
+execution. It was replaced with an unclosed body; the existing EOF diagnostic
+is invalid.pdl:3: missing close brace. No product correction was required.
+
+Changed-file format/tidy/strict-C++17 checks pass. The full changed runtime
+runner passes leak-enabled ASan/UBSan in 0.357s. Full normal make check
+passes in 1525.108s, including51 generator suites/801 cases per dynamic/
+static variant,1916 regression and2180 conformance cases,334 parser/119 scanner
+rules across2549 ICL files and six editor checks. Five optional ANTLR tests
+remain skipped.
+
+Fresh raw coverage completes58 Python groups/963 cases in 1178.198s. The
+unchanged100% line/90% raw-branch gate still fails with Make exit2:
+**17477/18083 lines(96.6%) and
+29603/47075 raw branches(62.9%)**.
+All54 authored reports and19 instrumented products remain included. Untaken
+edges comprise12308 compiler-marked throw and
+5164 other edges; none are filtered or waived.
+
+Fresh Rocky build/C++17/native checks and the aggregate gate pass. All3993 other
+runtime inputs and all ten local/remote product fingerprints match Task133.
+The refreshed archive ships4239 tracked files plus six generated entries, with
+all4013 non-documentation files matching current remote source. Broader remote
+CLI, other SAN, vendor and archive-build/install evidence is retained only for
+unchanged sources/products; these suites are not freshly rerun here. Source-
+archive refresh checks all tracked shipped bytes and generated entries.
+
+Evidence: build/runtime-api-contracts-20261119/. Strict project coverage,
+broader runtime/model support and full release acceptance remain unfinished.
+
+Independent Task134 whole-branch review at44e96ef approves the scoped merge. The reviewer directly inspected source, coverage counts and source/product fingerprints and independently reran all24 native runtime tests successfully. The executor corrected a qualification overstatement: missing-module binding ran once, while missing-instance paths ran through both constructors; the observed note is now spelled accurately. The optional missing command-name assertions in two success cases are deferred. All declined subjects have executor rulings. Closing edits affect documentation only; all3994 qualified runtime inputs and ten product fingerprints remain unchanged. Strict coverage and broader release/model acceptance remain open.

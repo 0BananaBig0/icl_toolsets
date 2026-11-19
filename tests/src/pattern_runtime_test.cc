@@ -34,6 +34,117 @@ Module Child { DataInPort reg[7:0]; }
 )");
   return design;
 }
+void TestConstructorAndParseFailures() {
+  const auto design = MakeDesign();
+  Fails([&] { pattern::Runtime missing(design, "missing"); },
+        "unknown runtime top module missing");
+  pattern::Runtime runtime(design, "Top");
+  runtime.Execute("valid.pdl", "iNote previous\n");
+  Fails([&] { runtime.Execute("invalid.pdl", "iNote leaked\nif {1} {\n"); },
+        "invalid.pdl:3: missing close brace");
+  const auto& ops = runtime.operations();
+  Require(
+      ops.size() == 1 && ops[0].command == "iNote" &&
+          ops[0].arguments == std::vector<std::string>{"previous"},
+      "malformed later syntax is rejected before publishing any operations");
+  Fails([&] { runtime.Execute("late.pdl", "iNote resumed\n"); },
+        "cannot resume after an error");
+  Fails([&] { runtime.Finish(); }, "cannot finish after an error");
+}
+
+void TestNestedPendingEndOfStream() {
+  const auto design = MakeDesign();
+  pattern::Runtime runtime(design, "Top");
+  runtime.Execute("queued-call.pdl",
+                  "iProcsForModule Top\n"
+                  "iProc queue {} {iWrite reg 1}\niCall queue\n");
+  Fails([&] { runtime.Finish(); }, "while iCall queue");
+  Fails([&] { runtime.Execute("late.pdl", "iApply\n"); },
+        "cannot resume after an error");
+}
+
+void TestFallbackInstanceResolution() {
+  pattern::Design design;
+  design.AddIcl("fallback.icl", R"(
+Module Plain { DataInPort d[3:0]; }
+Module Typed { Parameter VALUE = 4'b10x1; DataInPort d[3:0]; }
+Module Outer { Instance plain Of Plain; Instance typed Of Typed; }
+Module Top { Instance a Of Outer; }
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const std::string definitions =
+      "iProcsForModule Plain\niProc emit {} {iNote plain}\n"
+      "iProcsForModule Typed\niProc emit {} {iNote $VALUE}\n";
+  pattern::Runtime plain(design, "Top");
+  plain.Execute("plain.pdl", definitions + "iCall a.plain.emit\n");
+  plain.Finish();
+  Require(
+      plain.operations().size() == 1 &&
+          plain.operations()[0].arguments == std::vector<std::string>{"plain"},
+      "non-elaborated runtime resolves a nested instance procedure");
+
+  pattern::Runtime unavailable(design, "Top");
+  Fails(
+      [&] {
+        unavailable.Execute("typed.pdl", definitions + "iCall a.typed.emit\n");
+      },
+      "ICL parameters require an elaborated instance a.typed");
+  Require(unavailable.operations().empty(),
+          "missing specialization rejects before the procedure body executes");
+
+  pattern::Runtime specialized(design, netlist);
+  specialized.Execute("specialized.pdl", definitions + "iCall a.typed.emit\n");
+  specialized.Finish();
+  Require(specialized.operations().size() == 1 &&
+              specialized.operations()[0].arguments ==
+                  std::vector<std::string>{"0b10x1"},
+          "elaborated unknown parameter bits retain their binary spelling");
+
+  pattern::Runtime unknown_module(design, "Top");
+  Fails(
+      [&] {
+        unknown_module.Execute("module.pdl", "iProcsForModule Missing\n");
+      },
+      "unknown module Missing");
+  pattern::Runtime unknown_plain(design, "Top");
+  Fails(
+      [&] {
+        unknown_plain.Execute("instance.pdl",
+                              definitions + "iCall a.absent.emit\n");
+      },
+      "unknown or ambiguous instance a.absent");
+  pattern::Runtime unknown_specialized(design, netlist);
+  Fails(
+      [&] {
+        unknown_specialized.Execute("instance.pdl",
+                                    definitions + "iCall a.absent.emit\n");
+      },
+      "unknown instance a.absent");
+}
+
+void TestProcedureNamespaceSelection() {
+  const auto design = MakeDesign();
+  pattern::Runtime runtime(design, "Top");
+  runtime.Execute("namespace.pdl", R"(iProcsForModule Top
+iProc emit {} {iNote default}
+iProcsForModule Top -iProcNameSpace alternate
+iProc emit {} {iNote alternate}
+iUseProcNameSpace alternate
+iCall emit
+iUseProcNameSpace -
+iCall emit
+)");
+  runtime.Finish();
+  const auto& ops = runtime.operations();
+  Require(
+      ops.size() == 2 && ops[0].command == "iNote" &&
+          ops[0].arguments == std::vector<std::string>{"alternate"} &&
+          ops[1].command == "iNote" &&
+          ops[1].arguments == std::vector<std::string>{"default"} &&
+          runtime.warnings().empty(),
+      "selecting and clearing the call namespace chooses distinct procedures");
+}
+
 void TestExplicitObservationGetters() {
   pattern::Design design;
   design.AddIcl("history.icl", R"(
@@ -555,7 +666,11 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestExplicitObservationGetters,
+  for (const auto test : {TestConstructorAndParseFailures,
+                          TestNestedPendingEndOfStream,
+                          TestFallbackInstanceResolution,
+                          TestProcedureNamespaceSelection,
+                          TestExplicitObservationGetters,
                           TestObservationHistoryInvalidation,
                           TestSequentialDefinitions,
                           TestBindingAndPrefixes,
