@@ -621,8 +621,26 @@ void TestVectorSourceActions() {
   const auto begin = source.find("[$index]");
   Require(
       actions.size() == 1 && actions[0].begin == 1 &&
+          actions[0].arguments == std::vector<std::string>{"reg[0]", "1"} &&
           actions[0].vector_brackets == std::vector<size_t>{begin, begin + 7},
       "source metadata distinguishes vector brackets from argument scripts");
+  pattern::Runtime empty(design, netlist, true);
+  empty.Execute("empty.pdl", R"(iPDLLevel 1
+ iProcsForModule Top
+ iProc noop {value} {return $value}
+ foreach command {noop missing} {catch {iCall $command retained}}
+ iNote done
+)");
+  empty.Finish();
+  const auto observed = empty.SourceActions();
+  Require(observed.size() == 2 && observed[0].begin == 0 &&
+              observed[0].end == 0 && observed[1].begin == 0 &&
+              observed[1].end == 0 &&
+              observed[0].arguments ==
+                  std::vector<std::string>{"noop", "retained"} &&
+              observed[1].arguments ==
+                  std::vector<std::string>{"missing", "retained"},
+          "source tracing retains no-op and caught-error caller arguments");
 }
 void TestCompoundSourceActions() {
   auto design = MakeDesign();

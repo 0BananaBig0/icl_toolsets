@@ -227,6 +227,8 @@ class QueuedAccesses {
       references_;
 };
 using ResetEdits = std::map<std::pair<size_t, size_t>, std::string>;
+using ResetVariants = std::map<std::pair<size_t, size_t>,
+                               std::map<std::vector<std::string>, std::string>>;
 std::string Generate(
     const pattern::Netlist& netlist,
     const std::vector<pattern::Operation>& operations,
@@ -235,8 +237,8 @@ std::string Generate(
     std::vector<pattern::Operation>* rewritten = nullptr,
     const pattern::ScanScheduler* initial = nullptr,
     const pattern::ResourceReservations* initial_reservations = nullptr,
-    bool finalize = true,
-    const pattern::SystemClocks* initial_clocks = nullptr) {
+    bool finalize = true, const pattern::SystemClocks* initial_clocks = nullptr,
+    ResetVariants* variants = nullptr) {
   if (const auto opaque = GenerateOpaque(netlist, operations)) {
     if (rewritten) *rewritten = operations;
     return *opaque;
@@ -272,7 +274,12 @@ std::string Generate(
   std::map<size_t, const pattern::SourceAction*> starts;
   if (actions) {
     for (const auto& action : *actions) {
-      if (action.end > action.begin) starts.emplace(action.begin, &action);
+      if (action.end > action.begin) {
+        starts.emplace(action.begin, &action);
+      } else if (variants) {
+        (*variants)[{action.source, action.offset}].emplace(action.arguments,
+                                                            "");
+      }
     }
   }
   size_t covered = 0;
@@ -364,13 +371,30 @@ std::string Generate(
           }
         } else {
           const auto key = std::make_pair(action.source, action.offset);
-          const auto previous = edits->find(key);
-          if (previous != edits->end() && previous->second != preamble) {
-            throw std::runtime_error(
-                "local-reset source site requires different releases on "
-                "repeated execution");
+          if (variants) {
+            auto& alternatives = (*variants)[key];
+            const auto previous = alternatives.find(action.arguments);
+            if (previous != alternatives.end() &&
+                previous->second != preamble) {
+              throw std::runtime_error(
+                  "local-reset identical caller arguments require different "
+                  "releases on repeated execution");
+            }
+            if (!preamble.empty()) {
+              (*edits)[key] = preamble;
+            } else {
+              edits->emplace(key, "");
+            }
+            alternatives.emplace(action.arguments, std::move(preamble));
+          } else {
+            const auto previous = edits->find(key);
+            if (previous != edits->end() && previous->second != preamble) {
+              throw std::runtime_error(
+                  "local-reset source site requires different releases on "
+                  "repeated execution");
+            }
+            edits->emplace(key, std::move(preamble));
           }
-          edits->emplace(key, std::move(preamble));
         }
         covered = end;
       }
@@ -726,13 +750,33 @@ int main(int argc, char** argv) {
     runtime.Finish();
     const auto pdl = GenerateMerged(network.netlist, runtime.operations());
     if (!options.local_reset.empty()) {
-      const auto rewrite = [&](bool whole_commands, bool after_arguments) {
+      const auto rewrite = [&](bool whole_commands, bool after_arguments,
+                               bool dispatch_arguments = false) {
         std::string rewritten_source;
         ResetEdits edits;
+        ResetVariants variants;
         std::vector<pattern::Operation> expected;
         const auto actions = runtime.SourceActions(whole_commands);
         Generate(network.netlist, runtime.operations(), &actions, &edits,
-                 &expected);
+                 &expected, nullptr, nullptr, true, nullptr,
+                 dispatch_arguments ? &variants : nullptr);
+        for (const auto& [site, alternatives] : variants) {
+          std::vector<std::string> branches;
+          bool needed = false;
+          for (const auto& [arguments, preamble] : alternatives) {
+            auto key = Command(arguments);
+            key.pop_back();
+            branches.push_back(std::move(key));
+            branches.push_back(preamble);
+            needed = needed || !preamble.empty();
+          }
+          if (!needed) continue;
+          branches.insert(
+              branches.end(),
+              {"default", "error {unrecognized local-reset caller arguments}"});
+          edits[site] =
+              "switch -exact -- [lrange $args 1 end] " + Command(branches);
+        }
         if (after_arguments) {
           for (auto& [key, text] : edits) {
             if (text.empty()) continue;
@@ -780,6 +824,8 @@ int main(int argc, char** argv) {
               "local-reset insertion changes source execution order or "
               "targets");
         }
+        ResetEdits strict;
+        Generate(network.netlist, actual, nullptr, &strict);
         return rewritten_source;
       };
       try {
@@ -789,7 +835,11 @@ int main(int argc, char** argv) {
         try {
           local_reset = rewrite(false, false);
         } catch (const std::runtime_error&) {
-          local_reset = rewrite(false, true);
+          try {
+            local_reset = rewrite(false, true);
+          } catch (const std::runtime_error&) {
+            local_reset = rewrite(false, true, true);
+          }
         }
       }
     }

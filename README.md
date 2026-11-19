@@ -489,7 +489,10 @@ SIB-opening commands.
 Before publishing it, the tool re-executes the rewritten PDL and verifies the
 operation sequence. Whole-loop prerequisites preserve repeated pending writes
 and entry prefixes; literal-site fallback retains repairable internal-reset loops.
-Cases requiring procedure edits or changed substitution order still reject. See
+Repeated literal write/call sites can dispatch different releases from their
+once-evaluated argument lists, retaining caller scope and procedure bytes.
+Identical arguments requiring different releases, procedure-body repairs and
+unsafe queue changes retain diagnostics. See
 [local-reset behavior and limits](docs/pattern-generation.md#local-reset-output).
 
 Mixed DataRegister access can alternate primary-input and scan frames, including
