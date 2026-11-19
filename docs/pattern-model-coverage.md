@@ -4061,3 +4061,55 @@ Evidence: build/runtime-api-contracts-20261119/. Strict project coverage,
 broader runtime/model support and full release acceptance remain unfinished.
 
 Independent Task134 whole-branch review at44e96ef approves the scoped merge. The reviewer directly inspected source, coverage counts and source/product fingerprints and independently reran all24 native runtime tests successfully. The executor corrected a qualification overstatement: missing-module binding ran once, while missing-instance paths ran through both constructors; the observed note is now spelled accurately. The optional missing command-name assertions in two success cases are deferred. All declined subjects have executor rulings. Closing edits affect documentation only; all3994 qualified runtime inputs and ten product fingerprints remain unchanged. Strict coverage and broader release/model acceptance remain open.
+
+## Independent vector scan returns (2026-11-19)
+
+Task135 extends the existing simultaneous-chain scheduler to interface-free
+networks with disjoint root outputs, including vector OneHotScanGroup returns.
+Every possible static route from each output must reach one distinct ScanInPort
+bit. Existing ownership validation rejects any shared graph vertex, storage or
+input. Ambiguous endpoints and disconnected alternatives remain unsupported,
+even when currently inactive. Explicit interfaces and TAPs retain their existing
+supported chain/event models; this inference does not model independent phases.
+Equivalent observations of a single path retain their earlier behavior.
+
+The endpoint pass is O(V+E) time and O(V) storage. Existing ordered root maps and
+ownership lookups add O(R log R) for R roots. The existing 4096-register and
+65536-vertex bounds remain. Native tests assert unequal 4/2-bit lane streams,
+leading padding and expected-bit masks, unused input bits, copied state and
+reservation rollback against literal expectations. Ten one-hot CLI methods cover
+both branches, inversions, ascending/offset indices, separate output ports,
+original/flat/generated/reset replay, an equivalent explicit-chain control and
+failure preservation of PDL/reset/debug artifacts. Fixed unknown and contending
+enables remain rejected. Unknown writable primary bits can instead be resolved
+by the existing planner; this task does not change primary-X semantics.
+
+Local GCC16.2.1/C++17/Z3 4.13.3 dynamic/static runs of 8 lanes x 8 branches
+(64 four-bit registers, three replay forms) took 0.549/
+0.574s wall time, including Python/process/replay overhead.
+The parent rejects this undeclared-lane model, so there is no completing baseline
+or measured speedup claim. This does not measure the whole supported graph cap.
+See the /usr/bin/time -v logs for RSS and environment evidence.
+
+Both changed C++ files passed changed-line format, clang-tidy and strict C++17
+checks. Full native scheduling passed; its fresh address/undefined/leak sanitizer
+run took 322.775s. The one-hot, named-chain and main CLI suites
+also passed with leak detection enabled. The full normal check passed in
+1746.520s: 1916 regressions, 2180 conformance cases and the existing
+parser/scanner, file and editor suites; five ANTLR tests remain environment skips.
+Rocky Linux GCC15.2.1/Tcl8.6.8 passed native/strict17 checks and all51 generator
+suites (804 cases) for both its dynamic generator and the exact local static
+binary. Source archive build and local/remote install/replay/LSP/uninstall checks
+passed freshly. Eight editor products retain their previous byte identities;
+only the two generator products changed. No fresh vendor control or certificate
+is claimed for these inferred lanes.
+
+Fresh unfiltered coverage ran58 Python suites/966 cases successfully and retained
+54 authored source reports and19 instrumented executables. The raw strict gate
+still exits2: 17499/18105 lines (96.65%) and
+29628/47103 branches (62.90%), with
+12313 missing throw and 5162 other
+missing edges. No reports, compiler exception edges or thresholds were removed.
+The required100% line/90% raw branch acceptance and broader retargeter tasks
+remain unfinished. Detailed commands, hashes, timings, review and rulings are in
+`build/vector-scan-returns-20261119/`.
