@@ -20,28 +20,28 @@ names and Task132's exact-text minimum-time waits on invariant models.
 General stateful timing and clock events remain unsupported. Task131 records
 four native raw-flat export replays; Task132 records one fresh vendor time
 control and two native export replays. Two vendor divider elaborations remain
-unqualified. Task134 adds no vendor execution or general equivalence claim.
+unqualified. Task135 adds no vendor execution or general equivalence claim.
 
-Fresh full normal check passes in 1525.108s:51 generator CLI suites/801
+Fresh full normal check passes in 1746.520s:51 generator CLI suites/804
 cases per dynamic/static variant, native checks,1916 regression and2180
 conformance cases,334 parser/119 scanner rules across2549 ICL files and six
-editor checks. The changed full native runtime runner passes leak-enabled
-ASan/UBSan. Task133 scheduler and earlier unchanged-production sanitizer
-evidence is retained separately. Five optional ANTLR tests remain skipped
-because ICL_REF_DIR is unset; the earlier16/32-TAP sanitizer solver-budget
-limitation is not newly qualified by this native runtime work.
+editor checks. The full native scheduler and one-hot, named-chain, shared-output
+and main CLI suites pass leak-enabled ASan/UBSan. Five optional ANTLR tests
+remain skipped because ICL_REF_DIR is unset. The earlier16/32-TAP sanitizer
+solver-budget limitation is not newly qualified by this task.
 
-Strict coverage remains unmet at17477/18083 lines
-(96.6%) and29603/47075 raw branches(62.9%).
-All prescribed tests complete; the unchanged100% line/90% raw-branch gate
-fails with Make exit2. Raw exception/cleanup edges remain included.
+Strict coverage remains unmet at17499/18105 lines
+(96.65%) and29628/47103 raw branches(62.90%). All58 instrumented
+Python suites/966 cases pass; the unchanged100% line/90% raw-branch gate fails
+with Make exit2. Raw exception/cleanup edges remain included.
 
-Fresh Rocky native qualification passes. All3993 other runtime inputs and
-all ten local/remote products match Task133. Broader CLI, vendor and
-archive-build/install evidence is reused on unchanged source/product identity.
-The refreshed archive ships4239 tracked files plus six generated entries;
-its4013 non-doc files match current remote source. This is a source-archive
-refresh, not fresh archive-build or installation qualification. The
+Fresh Rocky native/strict17 qualification and all51 CLI suites/804 cases per
+dynamic/static variant pass. All3990 other runtime inputs and eight editor
+products retain Task134 identity; the two generator products changed. A fresh
+local source-archive build and local/remote install, replay, LSP and uninstall
+checks pass. The archive ships4241 tracked files plus six generated entries;
+its4013 non-doc files match current remote source. No fresh vendor control or
+certificate is claimed for inferred lanes. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
 records remaining acceptance work.
 
