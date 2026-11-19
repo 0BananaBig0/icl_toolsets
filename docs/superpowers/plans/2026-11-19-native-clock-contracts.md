@@ -32,7 +32,7 @@ ScanScheduler Assume/Value; SerializeIcl; existing native runner both modes.
 - [x] Add TestClockApiContracts and TestClockUnrelatedConsumers with literal
       diagnostics/durations/state assertions; wire both native modes.
       Expected native0 and measured8-line coverage GREEN.
-- [ ] Format/tidy/strict17, full normal project command, native SAN, fresh
+- [x] Format/tidy/strict17, full normal project command, native SAN, fresh
       focused and complete raw coverage, current Rocky native checks.
       Expected executable suites0; report actual strict gate result.
 - [ ] Prove unchanged3993 runtime files/10 products, refresh/archive identity;
