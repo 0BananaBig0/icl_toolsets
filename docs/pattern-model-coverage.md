@@ -64,10 +64,10 @@ full model coverage or Tessent equivalence.
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; Task130 local source-archive build/install checks and current Rocky8 native dynamic/transferred-static qualification, with fresh five-tool installations and reuse based on identical non-doc source/product hashes for51 generator CLI suites/794 tests per build | Remaining command semantics; later product changes need fresh qualification |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; fresh Task133 full normal/source-archive identity and Rocky native checks, with Task132 broader CLI and local/remote archive-build/install evidence reused only for unchanged runtime inputs and all ten product fingerprints | Remaining command semantics; changed products require fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; latest local-reset and numeric-boundary evidence in the generator guide | Strict coverage remains below 100% lines/90% raw branches: complete Task130 run 96.5%/62.7% (17386/18015 lines,29399/46869 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; latest native clock contract evidence in the generator guide;384/384 authored clock lines covered | Strict coverage remains below100% lines/90% raw branches: Task133 96.6%/62.8% (17460/18083 lines,29556/47075 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -3953,3 +3953,55 @@ qualified runtime bytes and original archive provenance. General stateful time,
 events, strict coverage and full release acceptance remain open.
 
 Independent Task132 whole-branch review at bb941f0 approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected clock safety, physical resource holds, substituted-time validation, generation bookkeeping and opaque lowering. Fresh selected native clock checks and71 dynamic clock tests pass. Direct reviewer tooling was unavailable; source and checks used a disclosed Root read-only relay. All seven declined subjects have executor rulings, including independent artifact authentication, broader reproduction, physical timing, excluded features, vendor generality, release acceptance and the unrelated global tool host. No production fix was requested. Closing documentation changes preserve the3994 qualified runtime inputs; strict coverage and broader timing/release acceptance remain open.
+
+## Native clock API contract coverage (2026-11-19)
+
+Task133 adds tests for existing behavior; production files and all ten product
+executables are unchanged from Task132. Native callers now exercise empty or
+incomplete override arguments, duplicate/unknown options after valid parsed
+fields, and a cycle through an inactive clock-mux alternative. Rejected calls
+retain both saved and freshly checked first-root/divide2 durations; a subsequent
+valid second-root/divide3 override preserves the old snapshot and yields nine
+root cycles after a new check. Tests also check unrelated combinational logic
+and named-chain client pins in original and flat models, unchanged hardware,
+and the existing opaque-hardware exclusion for minimum-time waits.
+
+Task132's eight zero-hit clock lines73/80/104/125/387/392/393/394 are now covered.
+The complete fresh report measures **384/384 authored clock lines**. This is a
+file-level result, not full project acceptance. Existing-behavior coverage was
+the baseline gap; no failing product behavior or production fix is claimed.
+An initial fixture violated the local-output Source rule and was corrected to
+use a legal sibling-instance output, preserving language validation.
+
+All three changed-C++ format/tidy/strict-C++17 checks pass. Focused native checks
+pass; the full native scheduler passes leak-enabled ASan/UBSan in 318.304s.
+Fresh full make check passes in 1665.605s, including dynamic/static generator
+suites,1916 regression cases,2180 conformance cases,334 parser/119 scanner rules
+across2549 ICL files and editor checks. Five optional ANTLR tests remain skipped.
+
+Fresh raw coverage completes all58 Python groups/963 cases, including51
+generator groups/801 cases, in 1347.667s. The unchanged100% line/90% raw branch
+gate still fails with Make exit2: **17460/18083 lines
+(96.6%) and 29556/47075 raw branches (62.8%)**.
+All54 authored reports and19 instrumented binaries remain in the evidence.
+Untaken edges include 12309 compiler-marked throw edges and
+5210 other edges; none are excluded or waived.
+
+Current Rocky build, strict C++17, focused-native and full-native checks pass,
+with the aggregate gate0. All3993 other runtime inputs and all ten local and
+remote product fingerprints match Task132. The refreshed source archive ships
+4237 tracked files plus six generated entries; its4013 non-documentation files
+match the current remote source. Task132's broader CLI/SAN, vendor and local/
+remote archive-build/install evidence is reused only for unchanged inputs and
+products. This task does not claim fresh remote CLI suites, vendor execution,
+archive rebuild qualification or installation runs. Only the source archive is
+refreshed and checked against every tracked shipped file and generated entry.
+
+Evidence: build/native-clock-contracts-20261119/. Attempt1 preserves the focused
+coverage command that retained an old runner because COV_DIR was missing, and
+the remote script quoting failure before qualification. Both were corrected;
+the final focused run rebuilt the native runner and all eight target lines hit.
+Strict project coverage, broader timing/model support and release acceptance
+remain open.
+
+Independent Task133 whole-branch review at4daf6ba approves the scoped merge with no Critical/Important findings. The reviewer inspected the changed tests, connected clock/safety/state code, guide changes and evidence through a disclosed Root read-only relay because its tool host was unavailable. The requested fresh native clock check passes. Two optional minor improvements are deferred: identify negative-test arguments/actual exceptions in failure messages, and seed a known SelectPort value for an additional preservation assertion. All declined subjects have executor rulings. No production or test correction was required; closing documentation preserves the qualified3994 inputs and unchanged products. Strict coverage and broader release acceptance remain open.

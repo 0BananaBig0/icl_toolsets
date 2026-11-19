@@ -9,44 +9,40 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task130 (2026-11-18) preserves clock declaration kinds in native flat output,
-with input loading of both current and legacy encodings. Full normal, focused
-leak sanitizers, current dynamic/static suites, clean local archive builds and
-five-tool installations pass. See [the latest boundary](#typed-flat-clock-declarations-2026-11-18).
-Four fresh flat vendor programs export successfully; two divider elaborations
-and untranslated native export names remain unqualified. Strict coverage remains unmet.
+Task133 (2026-11-19) adds native clock API tests without changing production
+behavior. It covers rejected overrides, atomic clock definitions, inactive mux
+cycles and unrelated logic/named-chain scan consumers. All384 authored clock
+lines are covered. See [the current qualification](#native-clock-api-contract-coverage-2026-11-19).
 
-On 2026-11-14, reset source terminal eligibility passed the complete
-make -j2 --jobserver-style=pipe check command, with exit0 recorded in
-build/reset-source-confirmed-full.log/.exit. This includes all41 generator CLI suites
-under dynamic/static builds, native tests,51 directional and seven legacy Tessent
-standards, all334 parser and119 scanner rules across2523 ICL files, and six
-Vim/Neovim tests (182.967s). Full wall time was955.735s. Five optional ANTLR
-integration tests were skipped because ICL_REF_DIR was unset.
+The latest runtime features are Task131's metadata-qualified physical clock
+names and Task132's exact-text minimum-time waits on invariant models.
+General stateful timing and clock events remain unsupported. Task131 records
+four native raw-flat export replays; Task132 records one fresh vendor time
+control and two native export replays. Two vendor divider elaborations remain
+unqualified. This task adds no fresh vendor run or general equivalence claim.
 
-Leak-enabled ASan/UBSan checks passed for native scheduler/flatten/netlist,
-main40, clock41, client-control18 and reset-preview12 methods. Formatting, naming
-and independent source review pass. See
-[the scope and evidence](#reset-source-terminal-eligibility-2026-11-14).
-The previous multiple-TAP sanitizer scale limit remains: instrumented16/32-TAP
-cases reached the unchanged2s solver budget. This clock work does not claim a
-fresh sanitizer pass for those scale cases; all optimized suites pass.
+Fresh full normal check passes in 1665.605s, including51 generator CLI
+suites/801 cases per dynamic/static variant, native checks,1916 regression and
+2180 conformance cases,334 parser/119 scanner rules across2549 ICL files and
+six editor checks. The changed full native scheduler passes leak-enabled
+ASan/UBSan; other Task132 sanitizer evidence is retained for unchanged production
+sources. Five optional ANTLR tests remain skipped because ICL_REF_DIR is unset.
+The earlier16/32-TAP sanitizer solver-budget limitation remains unqualified;
+these new native tests do not establish a fresh pass for those CLI scale cases.
 
-Strict authored-code coverage remains unmet. The complete Task130 instrumented
-run reaches17386/18015 lines(96.5%) and29399/46869 raw branches(62.7%). All
-prescribed tests complete; the unchanged100% line/90% raw branch gate fails
-with Make exit2. See [the current measurement](#typed-flat-clock-declarations-2026-11-18)
-and build/flat-differential-clocks-20261118/. Raw exception/cleanup edges remain included.
+Strict coverage remains unmet. The complete Task133 run measures
+17460/18083 lines(96.6%) and
+29556/47075 raw branches(62.8%).
+All prescribed tests complete; the unchanged100% line/90% raw branch gate
+fails with Make exit2. Raw exception/cleanup edges remain included.
 
-Current runtime qualification has51 CLI suites(794 tests) per dynamic/static
-variant, a clean local source-archive build and fresh local/remote five-tool
-installations. All4013 non-documentation files in the archive are byte-identical
-to the qualified remote source tree; current compile and runtime results are
-reused on that explicit identity.
-These results do not establish complete retargeting, arbitrary
-event/clock support or general vendor equivalence. The
-[model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
-records the remaining acceptance work.
+Fresh Rocky native qualification passes. All3993 other runtime inputs and
+all ten local/remote products match Task132; its broader CLI and installation
+evidence is reused on that identity. The refreshed archive's4013 non-doc files
+match the current remote source, with all4237 tracked shipped files and six
+generated entries checked. Source-archive refresh is not a fresh archive-build
+or install run. The [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
+records remaining acceptance work.
 
 ## Vendor round-trip acceptance
 
@@ -6826,3 +6822,55 @@ qualified runtime bytes and original archive provenance. General stateful time,
 events, strict coverage and full release acceptance remain open.
 
 Independent Task132 whole-branch review at bb941f0 approves the scoped merge with no Critical/Important/Minor findings. The reviewer inspected connected clock safety, physical resource holds, substituted-time validation, generation bookkeeping and opaque lowering. Fresh selected native clock checks and71 dynamic clock tests pass. Direct reviewer tooling was unavailable; source and checks used a disclosed Root read-only relay. All seven declined subjects have executor rulings, including independent artifact authentication, broader reproduction, physical timing, excluded features, vendor generality, release acceptance and the unrelated global tool host. No production fix was requested. Closing documentation changes preserve the3994 qualified runtime inputs; strict coverage and broader timing/release acceptance remain open.
+
+## Native clock API contract coverage (2026-11-19)
+
+Task133 adds tests for existing behavior; production files and all ten product
+executables are unchanged from Task132. Native callers now exercise empty or
+incomplete override arguments, duplicate/unknown options after valid parsed
+fields, and a cycle through an inactive clock-mux alternative. Rejected calls
+retain both saved and freshly checked first-root/divide2 durations; a subsequent
+valid second-root/divide3 override preserves the old snapshot and yields nine
+root cycles after a new check. Tests also check unrelated combinational logic
+and named-chain client pins in original and flat models, unchanged hardware,
+and the existing opaque-hardware exclusion for minimum-time waits.
+
+Task132's eight zero-hit clock lines73/80/104/125/387/392/393/394 are now covered.
+The complete fresh report measures **384/384 authored clock lines**. This is a
+file-level result, not full project acceptance. Existing-behavior coverage was
+the baseline gap; no failing product behavior or production fix is claimed.
+An initial fixture violated the local-output Source rule and was corrected to
+use a legal sibling-instance output, preserving language validation.
+
+All three changed-C++ format/tidy/strict-C++17 checks pass. Focused native checks
+pass; the full native scheduler passes leak-enabled ASan/UBSan in 318.304s.
+Fresh full make check passes in 1665.605s, including dynamic/static generator
+suites,1916 regression cases,2180 conformance cases,334 parser/119 scanner rules
+across2549 ICL files and editor checks. Five optional ANTLR tests remain skipped.
+
+Fresh raw coverage completes all58 Python groups/963 cases, including51
+generator groups/801 cases, in 1347.667s. The unchanged100% line/90% raw branch
+gate still fails with Make exit2: **17460/18083 lines
+(96.6%) and 29556/47075 raw branches (62.8%)**.
+All54 authored reports and19 instrumented binaries remain in the evidence.
+Untaken edges include 12309 compiler-marked throw edges and
+5210 other edges; none are excluded or waived.
+
+Current Rocky build, strict C++17, focused-native and full-native checks pass,
+with the aggregate gate0. All3993 other runtime inputs and all ten local and
+remote product fingerprints match Task132. The refreshed source archive ships
+4237 tracked files plus six generated entries; its4013 non-documentation files
+match the current remote source. Task132's broader CLI/SAN, vendor and local/
+remote archive-build/install evidence is reused only for unchanged inputs and
+products. This task does not claim fresh remote CLI suites, vendor execution,
+archive rebuild qualification or installation runs. Only the source archive is
+refreshed and checked against every tracked shipped file and generated entry.
+
+Evidence: build/native-clock-contracts-20261119/. Attempt1 preserves the focused
+coverage command that retained an old runner because COV_DIR was missing, and
+the remote script quoting failure before qualification. Both were corrected;
+the final focused run rebuilt the native runner and all eight target lines hit.
+Strict project coverage, broader timing/model support and release acceptance
+remain open.
+
+Independent Task133 whole-branch review at4daf6ba approves the scoped merge with no Critical/Important findings. The reviewer inspected the changed tests, connected clock/safety/state code, guide changes and evidence through a disclosed Root read-only relay because its tool host was unavailable. The requested fresh native clock check passes. Two optional minor improvements are deferred: identify negative-test arguments/actual exceptions in failure messages, and seed a known SelectPort value for an additional preservation assertion. All declined subjects have executor rulings. No production or test correction was required; closing documentation preserves the qualified3994 inputs and unchanged products. Strict coverage and broader release acceptance remain open.
