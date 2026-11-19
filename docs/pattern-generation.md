@@ -3,7 +3,8 @@
 `icl-pattern-generation` is an experimental executable. It currently expands
 PDL procedures and Tcl computations and schedules single-path scans, shared
 output observations, simultaneous named client chains, independently selected
-standalone clients, indexed vector inputs and common-phase TAP instruction/data scans.
+standalone clients, inferred disjoint interface-free scan lanes (including vector
+one-hot returns), indexed vector inputs and common-phase TAP instruction/data scans.
 It also schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
 
@@ -484,8 +485,11 @@ broader syntax support and never execute PDL.
 
 The backend accepts one physical scan path and at most one TAP, or standalone
 client interfaces selected one at a time, each with one path or disjoint named
-chains. Multiple scalar
-or vector output bits may observe that path through transparent forwarding,
+chains. Interface-free networks can infer independent lanes when all static
+routes from each output reach one distinct input bit and no graph vertex is
+shared between lanes. Vector one-hot returns use these same lanes. TAPs and
+effective interfaces require their existing supported event/chain models.
+Multiple scalar or vector output bits may also observe one path through transparent forwarding,
 including inversion. Equivalent ungated observations use the first sorted
 output; gated alternatives retain their enables and require a known-enabled
 path. All declared controls are still checked. A path may use an indexed vector input

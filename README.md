@@ -438,7 +438,11 @@ scan transaction. Independently enabled observations of that same path retain
 their enable conditions; the scheduler chooses a known-enabled observation.
 A standalone client with named `Chain` pairs can also clock disjoint chains
 simultaneously, including unequal lengths. Shared storage or scan inputs still
-require additional event scheduling.
+require additional event scheduling. Interface-free networks also infer disjoint
+lanes, including vector one-hot returns, when every possible route from an
+output reaches the same distinct input bit and no lane shares graph vertices.
+This uses the existing common virtual clock; TAPs and declared interfaces still
+require their supported event/chain models.
 
 A single scan chain can use indexed bits of a vector `ScanInPort`, including
 mux-selected or inverted inputs and one lane of a vector `OneHotScanGroup`.
@@ -508,7 +512,7 @@ The offline suite contains 40 directional standards; see
 [qualification scope](docs/tessent-goldens.md#port-control-and-merge-qualification-2026-10-30).
 
 This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
-simultaneous vector scan-return lanes, resource
+overlapping scan-return lanes, resource
 reservation types beyond scan/data storage, data ports and parallel control ports, system clocks, unrestricted local-reset
 rewriting, and comprehensive vendor round-trip qualification remain
 unfinished. Single-TAP shadow registers with phase-qualified capture, shift and

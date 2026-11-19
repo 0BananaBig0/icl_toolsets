@@ -294,12 +294,41 @@ class ScanScheduler::Impl {
                                   }),
                    roots_.end());
       // Gated observations remain alternatives, with their enables enforced.
-      for (size_t root : roots_) {
-        if (physical[root] != physical[roots_.front()]) {
+      if (std::any_of(roots_.begin(), roots_.end(), [&](size_t root) {
+            return physical[root] != physical[roots_.front()];
+          })) {
+        if (!interfaces.empty() || !netlist.taps.empty()) {
           throw std::runtime_error(
               "multiple scan outputs require shared-control transaction "
               "scheduling");
         }
+        // Infer a lane only when every static route reaches the same input.
+        std::vector<size_t> endpoints(graph_.size(), kMissing);
+        for (size_t id : order_) {
+          const auto& vertex = graph_[id];
+          if (vertex.input) {
+            endpoints[id] = id;
+          } else if (!vertex.edges.empty()) {
+            const size_t input = endpoints[vertex.edges.front().next];
+            if (std::all_of(vertex.edges.begin(), vertex.edges.end(),
+                            [&](const auto& edge) {
+                              return endpoints[edge.next] == input;
+                            })) {
+              endpoints[id] = input;
+            }
+          }
+        }
+        for (size_t root : roots_) {
+          if (endpoints[root] == kMissing) {
+            throw std::runtime_error(
+                "independent scan output requires one unambiguous scan input");
+          }
+          const auto& output = graph_[root].bit;
+          const auto& input = graph_[endpoints[root]].bit;
+          chain_inputs[{output.node, output.index}] = {input.node, input.index};
+        }
+        CheckIndependentChains(chain_inputs);
+        parallel_chains_ = true;
       }
     }
     BuildEndStates();
