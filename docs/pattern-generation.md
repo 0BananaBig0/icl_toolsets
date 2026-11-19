@@ -540,20 +540,26 @@ prefix and whole executed operation span. Overlapping compound/merge spans
 use the earliest caller site, including merges continued across files. The
 rewriter first tries whole-command prerequisites, then original literal sites
 from fresh state when internal resets require releases inside a loop. There are
-at most three candidates, using the same scheduler and solver bounds. If both
+at most four candidates, using the same scheduler and solver bounds. If both
 early-insertion candidates fail, a Tcl apply/uplevel wrapper evaluates the
 original command words once, releases prerequisites, then executes that command
 in its caller scope. This repairs argument substitutions that reset state before
 a write or call. Parsed PDL vector ranges remain literal while their variable
 indices and real Tcl substitutions retain their original evaluation order.
-Wrappers introduce no persistent helper commands or procedure-body edits.
+If one repeated literal caller site needs different release preambles, the
+fourth candidate dispatches on the once-evaluated argument list using an exact
+Tcl switch inside that same wrapper. The original call still executes in its
+caller scope. Unknown signatures and identical signatures requiring different
+preambles fail rather than selecting an arbitrary release. Wrappers introduce
+no persistent helper commands, global counters or procedure-body edits.
 After patching the source, a fresh runtime executes the actual
 rewritten text and compares its ordered commands and resolved arguments with
 the planned stream. All analysis and replay must succeed before publication.
 
 Remaining limits: a procedure that reasserts reset internally and then needs
 another release cannot always be repaired from its caller without changing the
-procedure. Cases that none of these caller-site strategies can repair remain
+procedure; preserving the definition and reporting that case is the original
+required contract. Cases that none of these caller-site strategies can repair remain
 rejected. Unresolved
 reset sources, forwarding cycles, serial-dependent reset events and unsupported controller
 models remain errors. Reset solving is bounded to 4096 control bits and two

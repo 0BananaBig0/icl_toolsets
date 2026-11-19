@@ -17,6 +17,8 @@ struct SourceAction {
   std::string prefix;
   // Source positions requiring vector-literal protection in Tcl wrappers.
   std::vector<size_t> vector_brackets;
+  // Evaluated caller arguments, excluding the command word.
+  std::vector<std::string> arguments{};
 };
 struct Operation {
   std::string command;

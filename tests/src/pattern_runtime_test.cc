@@ -621,6 +621,7 @@ void TestVectorSourceActions() {
   const auto begin = source.find("[$index]");
   Require(
       actions.size() == 1 && actions[0].begin == 1 &&
+          actions[0].arguments == std::vector<std::string>{"reg[0]", "1"} &&
           actions[0].vector_brackets == std::vector<size_t>{begin, begin + 7},
       "source metadata distinguishes vector brackets from argument scripts");
 }

@@ -339,6 +339,7 @@ class Runtime::Impl {
       }
       self.Command(arguments, origin, site ? &*site : nullptr);
       if (record) {
+        action.arguments.assign(arguments.begin() + 1, arguments.end());
         action.end = self.operations_.size();
         if (merge_begin) self.main_merge_action_ = self.actions_.size();
         self.actions_.push_back(std::move(action));
