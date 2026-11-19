@@ -35,9 +35,9 @@ ScanScheduler Assume/Value; SerializeIcl; existing native runner both modes.
 - [x] Format/tidy/strict17, full normal project command, native SAN, fresh
       focused and complete raw coverage, current Rocky native checks.
       Expected executable suites0; report actual strict gate result.
-- [ ] Prove unchanged3993 runtime files/10 products, refresh/archive identity;
+- [x] Prove unchanged3993 runtime files/10 products, refresh/archive identity;
       qualification docs, task-done verifier and fresh whole-branch review.
-- [ ] Fix only necessary findings once; final verification, merge/delete,
+- [x] Fix only necessary findings once; final verification, merge/delete,
       archive ledger, sync and push. Expected clean synchronized master.
 
 Pre-flight: one test-only task, no shared interfaces with another task.
