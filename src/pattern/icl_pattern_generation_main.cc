@@ -274,7 +274,12 @@ std::string Generate(
   std::map<size_t, const pattern::SourceAction*> starts;
   if (actions) {
     for (const auto& action : *actions) {
-      if (action.end > action.begin) starts.emplace(action.begin, &action);
+      if (action.end > action.begin) {
+        starts.emplace(action.begin, &action);
+      } else if (variants) {
+        (*variants)[{action.source, action.offset}].emplace(action.arguments,
+                                                            "");
+      }
     }
   }
   size_t covered = 0;
@@ -819,6 +824,8 @@ int main(int argc, char** argv) {
               "local-reset insertion changes source execution order or "
               "targets");
         }
+        ResetEdits strict;
+        Generate(network.netlist, actual, nullptr, &strict);
         return rewritten_source;
       };
       try {

@@ -143,6 +143,53 @@ Module Network {
                 for name in ['out.pdl', 'reset.pdl']:
                     self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
 
+    def test_empty_and_caught_error_call_signatures(self):
+        for partial in [False, True]:
+            with self.subTest(partial=partial):
+                failure = '; error expected_marker' if partial else ''
+                source = ('iPDLLevel 1\niProcsForModule Network\n'
+                          f'iProc put_b {{}} {{iWrite b.value 3; iApply{failure}}}\n'
+                          'iProc no_op {} {return skipped}\n'
+                          'iProc put_a {} {iWrite a.value 3; iApply}\niReset\n'
+                          'foreach command {put_b no_op missing put_a} {\n'
+                          ' set rc [catch {iCall $command} result]\n'
+                          ' if {$command eq "no_op" && ($rc || $result ne "skipped")} {error wrong_return}\n'
+                          ' if {$command eq "missing" && (!$rc || ![string match {*undefined iProc*} $result])} {error wrong_error}\n'
+                          + (' if {$command eq "put_b" && (!$rc || ![string match {*expected_marker*} $result])} {error wrong_partial_error}\n' if partial else '')
+                          + '}\n')
+                rewritten, output = self.check(source, self.opposing_resets())
+                self.assertIn('switch -exact', rewritten)
+                self.assertIn('iWrite b.value 0b0011', output)
+                self.assertIn('iWrite a.value 0b0011', output)
+
+    def test_rewritten_reservation_ownership_is_checked(self):
+        icl = self.opposing_resets()
+        icl.write_text(icl.read_text().replace(
+            'ScanOutPort so { Source b.so; }',
+            'Instance r Of ResourceNetwork { InputPort si = b.so; } '
+            'ScanOutPort so { Source r.so; }'))
+        resource = helpers.FIXTURE.parent.parent / 'resources/network.icl'
+        source = ('iPDLLevel 1\niProcsForModule Cell\n'
+                  'iProc put {} {set ::depth [info frame]; iWrite value 3; iApply}\n'
+                  'iProcsForModule Network\n'
+                  'iProc scoped {} {iTake r.gate; iWrite r.gate 0; iApply}\n'
+                  'iProc baseline {} {set ::baseline [info frame]}\niReset\nforeach unused {baseline} {iCall baseline}\n'
+                  'foreach target {b a} {iCall ${target}.put}\n'
+                  'if {$::depth > $::baseline} {iTake r.gate; iWrite r.gate 0; iApply} else {iCall scoped}\n'
+                  'iWrite r.target 5; iApply\n')
+        (self.root / 'source.pdl').write_text(source)
+        self.run_tool('--icl', icl, resource, '--pdl', 'source.pdl', '--output', 'ordinary.pdl')
+        for name in ['out.pdl', 'reset.pdl', 'debug/Network.icl']:
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('previous artifact\n')
+        failure = self.run_tool('--icl', icl, resource, '--pdl', 'source.pdl',
+                                 '--output', 'out.pdl', '--local_reset', 'reset.pdl',
+                                 '--debug', ok=False)
+        self.assertIn('reserved r.gate', failure.stdout)
+        for name in ['out.pdl', 'reset.pdl', 'debug/Network.icl']:
+            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
     def test_varying_caller_scale(self):
         for count in [64, 256]:
             source = ('iPDLLevel 1\niReset\n'

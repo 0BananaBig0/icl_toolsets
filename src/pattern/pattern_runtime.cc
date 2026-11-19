@@ -337,18 +337,28 @@ class Runtime::Impl {
           }
         }
       }
-      self.Command(arguments, origin, site ? &*site : nullptr);
       if (record) {
         action.arguments.assign(arguments.begin() + 1, arguments.end());
-        action.end = self.operations_.size();
-        if (merge_begin) self.main_merge_action_ = self.actions_.size();
-        self.actions_.push_back(std::move(action));
       }
-      if (self.main_merge_action_ && self.merges_.empty()) {
-        self.actions_.at(*self.main_merge_action_).end =
-            self.operations_.size();
-        self.main_merge_action_.reset();
+      const auto finish_action = [&] {
+        if (record) {
+          action.end = self.operations_.size();
+          if (merge_begin) self.main_merge_action_ = self.actions_.size();
+          self.actions_.push_back(std::move(action));
+        }
+        if (self.main_merge_action_ && self.merges_.empty()) {
+          self.actions_.at(*self.main_merge_action_).end =
+              self.operations_.size();
+          self.main_merge_action_.reset();
+        }
+      };
+      try {
+        self.Command(arguments, origin, site ? &*site : nullptr);
+      } catch (...) {
+        finish_action();
+        throw;
       }
+      finish_action();
       return TCL_OK;
     } catch (const std::exception& error) {
       const std::string message = origin + ": " + error.what();
