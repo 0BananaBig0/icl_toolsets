@@ -9,39 +9,40 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task133 (2026-11-19) adds native clock API tests without changing production
-behavior. It covers rejected overrides, atomic clock definitions, inactive mux
-cycles and unrelated logic/named-chain scan consumers. All384 authored clock
-lines are covered. See [the current qualification](#native-clock-api-contract-coverage-2026-11-19).
+Task134 (2026-11-19) adds tests for existing runtime parse, delayed-error,
+instance/parameter and procedure-namespace contracts. All16 targeted runtime
+lines now execute; runtime coverage is607/636
+lines and clock coverage remains384/384. See
+[the current qualification](#runtime-api-contract-coverage-2026-11-19).
 
-The latest runtime features are Task131's metadata-qualified physical clock
+The latest runtime features remain Task131's metadata-qualified physical clock
 names and Task132's exact-text minimum-time waits on invariant models.
 General stateful timing and clock events remain unsupported. Task131 records
 four native raw-flat export replays; Task132 records one fresh vendor time
 control and two native export replays. Two vendor divider elaborations remain
-unqualified. This task adds no fresh vendor run or general equivalence claim.
+unqualified. Task134 adds no vendor execution or general equivalence claim.
 
-Fresh full normal check passes in 1665.605s, including51 generator CLI
-suites/801 cases per dynamic/static variant, native checks,1916 regression and
-2180 conformance cases,334 parser/119 scanner rules across2549 ICL files and
-six editor checks. The changed full native scheduler passes leak-enabled
-ASan/UBSan; other Task132 sanitizer evidence is retained for unchanged production
-sources. Five optional ANTLR tests remain skipped because ICL_REF_DIR is unset.
-The earlier16/32-TAP sanitizer solver-budget limitation remains unqualified;
-these new native tests do not establish a fresh pass for those CLI scale cases.
+Fresh full normal check passes in 1525.108s:51 generator CLI suites/801
+cases per dynamic/static variant, native checks,1916 regression and2180
+conformance cases,334 parser/119 scanner rules across2549 ICL files and six
+editor checks. The changed full native runtime runner passes leak-enabled
+ASan/UBSan. Task133 scheduler and earlier unchanged-production sanitizer
+evidence is retained separately. Five optional ANTLR tests remain skipped
+because ICL_REF_DIR is unset; the earlier16/32-TAP sanitizer solver-budget
+limitation is not newly qualified by this native runtime work.
 
-Strict coverage remains unmet. The complete Task133 run measures
-17460/18083 lines(96.6%) and
-29556/47075 raw branches(62.8%).
-All prescribed tests complete; the unchanged100% line/90% raw branch gate
+Strict coverage remains unmet at17477/18083 lines
+(96.6%) and29603/47075 raw branches(62.9%).
+All prescribed tests complete; the unchanged100% line/90% raw-branch gate
 fails with Make exit2. Raw exception/cleanup edges remain included.
 
 Fresh Rocky native qualification passes. All3993 other runtime inputs and
-all ten local/remote products match Task132; its broader CLI and installation
-evidence is reused on that identity. The refreshed archive's4013 non-doc files
-match the current remote source, with all4237 tracked shipped files and six
-generated entries checked. Source-archive refresh is not a fresh archive-build
-or install run. The [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
+all ten local/remote products match Task133. Broader CLI, vendor and
+archive-build/install evidence is reused on unchanged source/product identity.
+The refreshed archive ships4239 tracked files plus six generated entries;
+its4013 non-doc files match current remote source. This is a source-archive
+refresh, not fresh archive-build or installation qualification. The
+[model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
 records remaining acceptance work.
 
 ## Vendor round-trip acceptance
@@ -6874,3 +6875,57 @@ Strict project coverage, broader timing/model support and release acceptance
 remain open.
 
 Independent Task133 whole-branch review at4daf6ba approves the scoped merge with no Critical/Important findings. The reviewer inspected the changed tests, connected clock/safety/state code, guide changes and evidence through a disclosed Root read-only relay because its tool host was unavailable. The requested fresh native clock check passes. Two optional minor improvements are deferred: identify negative-test arguments/actual exceptions in failure messages, and seed a known SelectPort value for an additional preservation assertion. All declined subjects have executor rulings. No production or test correction was required; closing documentation preserves the qualified3994 inputs and unchanged products. Strict coverage and broader release acceptance remain open.
+
+## Runtime API contract coverage (2026-11-19)
+
+Task134 tests existing public Runtime contracts without changing production
+files or the ten product executables. A missing top module reports its intended
+error. Structurally malformed later input is rejected before publishing that
+file's operations; the previous note remains and the failed runtime cannot
+resume or finish. A pending write inside a procedure retains the iCall frame
+when Finish diagnoses the unapplied queue. This boundary concerns structural
+parse failures; runtime semantic errors can retain partial internal operations
+in the failed runtime and do not acquire a rollback guarantee.
+
+A valid two-level instance path works without elaboration for a procedure with
+no ICL parameters. Parameter-dependent calls require real elaboration before
+the body executes. With elaboration, VALUE=4'b10x1 is passed unchanged and emits
+iNote0b10x1. Missing module and instance paths take the intended error paths in
+both lookup modes. Selecting then clearing iUseProcNameSpace emits alternate
+and default notes with no override warning. Expectations use literal values;
+no private callback invocation, fabricated IR, new live readback or simultaneous
+vector scan-return support is introduced.
+
+All16 previously zero-hit runtime lines49/88-91/125/551/569/573/627/661/
+703-704/734-735/742 now execute. The fresh full report measures
+607/636 runtime lines; clock coverage remains384/384.
+Coverage misses were the baseline gap, not a claimed product-failure RED.
+The first parse fixture used an invalid option, which is checked during level1
+execution. It was replaced with an unclosed body; the existing EOF diagnostic
+is invalid.pdl:3: missing close brace. No product correction was required.
+
+Changed-file format/tidy/strict-C++17 checks pass. The full changed runtime
+runner passes leak-enabled ASan/UBSan in 0.357s. Full normal make check
+passes in 1525.108s, including51 generator suites/801 cases per dynamic/
+static variant,1916 regression and2180 conformance cases,334 parser/119 scanner
+rules across2549 ICL files and six editor checks. Five optional ANTLR tests
+remain skipped.
+
+Fresh raw coverage completes58 Python groups/963 cases in 1178.198s. The
+unchanged100% line/90% raw-branch gate still fails with Make exit2:
+**17477/18083 lines(96.6%) and
+29603/47075 raw branches(62.9%)**.
+All54 authored reports and19 instrumented products remain included. Untaken
+edges comprise12308 compiler-marked throw and
+5164 other edges; none are filtered or waived.
+
+Fresh Rocky build/C++17/native checks and the aggregate gate pass. All3993 other
+runtime inputs and all ten local/remote product fingerprints match Task133.
+The refreshed archive ships4239 tracked files plus six generated entries, with
+all4013 non-documentation files matching current remote source. Broader remote
+CLI, other SAN, vendor and archive-build/install evidence is retained only for
+unchanged sources/products; these suites are not freshly rerun here. Source-
+archive refresh checks all tracked shipped bytes and generated entries.
+
+Evidence: build/runtime-api-contracts-20261119/. Strict project coverage,
+broader runtime/model support and full release acceptance remain unfinished.

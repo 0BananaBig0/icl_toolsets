@@ -25,7 +25,7 @@ remain unchanged. This catches lost delayed-error stack provenance.
 Test fallback hierarchy: real Top -> Outer -> Plain/Typed instances.
 Plain has a fixed data port; Typed adds VALUE=4'b10x1. Define emit procedures
 in both modules. Runtime(design,"Top") successfully resolves a.plain.emit and
-returns literal plain; a.typed.emit rejects the need for elaborated parameters
+emits one literal plain note; a.typed.emit rejects the need for elaborated parameters
 before its body executes. Runtime(design,elaborated netlist) executes that call
 and emits literal0b10x1. A valid namespace binding to an absent module rejects;
 unknown a.absent instance paths reject through both elaborated and fallback

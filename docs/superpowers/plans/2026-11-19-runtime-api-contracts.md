@@ -33,7 +33,7 @@ existing MakeDesign/Fails/Require, Design/Elaborate and PDL module/proc context.
 - [x] Record parent/native baseline0 and16 zero-hit locations; read brief.
 - [x] Add constructor/parse, nested EOF, fallback-instance/parameter and namespace
       cases; wire existing runner. Expected native0 and16 target-line hits.
-- [ ] Run3 style/strict17 gates, full normal project check, changed native leak
+- [x] Run3 style/strict17 gates, full normal project check, changed native leak
       SAN, fresh focused/full raw coverage and current Rocky native checks.
       Expected executable suites0; report unchanged strict-gate actual result.
 - [ ] Prove3993 other input/10 product identities; refresh/check source archive,
