@@ -10,18 +10,18 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task136 (2026-11-19) adds evaluated-argument reset-release dispatch for repeated
+Task136 (started2026-11-19; review fixes2026-11-20) adds evaluated-argument reset-release dispatch for repeated
 literal main write/call sites, preserving procedure definitions and once-only
-argument evaluation. The19 argument-reset methods pass for dynamic/static and
+argument evaluation. The21 argument-reset methods pass for dynamic/static and
 leak-enabled sanitizer builds. Native runtime24 and the full native scheduler
 pass, including evaluated vector metadata. All reset-focused sanitizer suites
 and the main71-case CLI suite pass. The complete normal check passes in
-1652.360s:51 generator suites/811 cases per dynamic/static
+1649.142s:51 generator suites/813 cases per dynamic/static
 variant,1916 regressions,2180 conformance cases,334 parser/119 scanner rules
 across2549 ICL files and six editor checks. Five optional ANTLR tests remain
 skipped because ICL_REF_DIR is unset.
 
-Fresh Rocky native/strict17 checks and all51 suites/811 cases per dynamic/static
+Fresh Rocky native/strict17 checks and all51 suites/813 cases per dynamic/static
 variant pass; two focused Unicode/default-name/prefixed-vector cases also pass
 on Tcl8.6.8. A standalone syntax-check command initially omitted the build's
 version macro; its failed command is archived and the corrected check passes.
@@ -40,9 +40,9 @@ conflicting with native source write goals. No native physical-export acceptance
 or new equivalence certificate is claimed. See
 [reset qualification](#reset-caller-site-argument-dispatch-2026-11-19).
 
-Fresh unfiltered coverage passes58 Python suites/973 cases but retains the
-strict failure: 17533/18137 lines(96.67%) and
-29680/47177 raw branches(62.91%). Make exits2
+Fresh unfiltered coverage passes58 Python suites/975 cases but retains the
+strict failure: 17546/18150 lines(96.67%) and
+29689/47181 raw branches(62.93%). Make exits2
 against unchanged100% line/90% branch thresholds. All54 authored source reports,
 19 instrumented binaries and raw exception/cleanup edges remain included.
 Full project coverage, broader serial reset events and general vendor
@@ -7011,6 +7011,12 @@ solver/runtime budget is added. The complete rewritten stream is executed and
 checked before publication. Identical signatures requiring different preambles
 remain a precise atomic diagnostic rather than an arbitrary release choice.
 
+Two Important final-review findings were fixed in one pass: observed no-op and
+caught-error calls now retain their empty signatures and original results/errors;
+the actual rewritten operations are strictly scheduled before publication,
+including their reservation lifetimes. The native and maintained regressions
+were observed RED before the fixes and GREEN afterward.
+
 The original contract expressly preserves iProc bytes and diagnoses an internal
 reassertion that no caller preamble can repair. That negative behavior remains
 covered. The11 historical reset implementation plans have no unchecked tasks;
@@ -7018,7 +7024,7 @@ this new caller-site work is recorded separately. Broader serial-dependent
 feedback/event ownership and physical export replay are still unqualified
 models, not hidden by that historical-plan inventory.
 
-The19 argument-reset methods include seven new methods covering opposite reset
+The21 argument-reset methods include nine new methods covering opposite reset
 domains at one write/call site, qualified/default procedure names, literal and
 Unicode arguments, prefixes/vectors, once-only substitutions, file/definition
 order, idempotent rewrite and original/flat/generated/reset replay. Rejected
@@ -7029,7 +7035,7 @@ pins the actual evaluated vector/value metadata independently.
 Measured local dynamic/static scale checks cover64 and256 calls, each with five
 replay forms; complete commands, source/rewrite byte sizes, wall time and RSS
 are in local/scale-*.log. Their whole-test wall times are
-6.301/6.156s, including both input
+8.135/7.913s, including both input
 sizes, Python and process overhead. Rocky CLI logs retain matching input sizes
 and measured times. There is no completing parent baseline for this formerly
 rejected source, and no speedup or structural-cap claim. Evaluated-argument
@@ -7040,27 +7046,30 @@ rebuilding, subprocesses or whole-netlist scans in the emitted wrapper.
 
 Twelve format/tidy/strict17 gates pass. Full native/runtime and leak-enabled
 reset/source/main CLI suites pass; fresh normal0 took
-1652.360s and fresh raw coverage took
-1272.788s. Rocky11 exit records and the complete51x811
+1649.142s and fresh raw coverage took
+1271.275s. Rocky11 exit records and the complete51x813
 functional suites per binary pass. Fresh local archive build and local/remote
 install/replay/LSP/uninstall checks pass with exact input/product identity.
-The failed standalone macro-less syntax check is archived; only its corrected
-command was rerun, with unchanged successful functional evidence retained.
+The pre-review standalone macro-less syntax failure is archived. Its corrected
+command initially reused unchanged functional evidence; after the review fixes,
+all required scoped suites were rerun against the final source hashes.
 
 Tessent2026.2 accepts the generated conditional wrapper and a manually ordered
 reference. Their complete exported result.pdl files are byte-identical. The
 unmodified source fails because the vendor requires a separate local-reset
 apply boundary; the original failure is retained without increasing limits.
-The four optional native source/flat export replays return2 on a generated
+The post-fix wrapper matches the qualified vendor input bytes exactly, so those
+vendor executions are reused by input identity. Four fresh post-fix native
+source/flat export replays return2 on a generated
 physical filler write: control0 asserts b's reset while the export reloads b=3
 and compares its pre-update3. Native source goals require both requested writes
 to hold and reject that masked payload. This broader physical-pattern import
 limitation is preserved explicitly; source validation was not weakened and no
 new directional certificate is added. See vendor/comparison.json and all logs.
 
-Raw coverage remains 17533/18137 lines(96.67%) and
-29680/47177 branches(62.91%), with
-12329 missing throw and 5168 other
+Raw coverage remains 17546/18150 lines(96.67%) and
+29689/47181 branches(62.93%), with
+12328 missing throw and 5164 other
 missing edges. The100/90 strict gate staysFAILED; no reports/edges/thresholds
 were filtered. Evidence, failed attempts, hashes, review and rulings are under
 `build/reset-caller-dispatch-20261119/`.
