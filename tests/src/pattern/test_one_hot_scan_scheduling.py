@@ -33,6 +33,134 @@ class OneHotScan(unittest.TestCase):
         self.assertEqual(text, self.run_tool(icl='debug/OneHotTop.icl', output='flat/result.pdl'))
         self.assertEqual(flat, (self.root / 'flat/debug/OneHotTop.icl').read_text())
 
+    def vector_source(self):
+        return '''
+Module Pair {
+ ScanInPort si[1:0]; DataInPort enabled;
+ ScanRegister low[3:0] { ScanInSource si[0]; CaptureSource low; ResetValue 0; }
+ ScanRegister high[1:0] { ScanInSource si[1]; CaptureSource high; ResetValue 0; }
+ ScanOutPort so[1:0] { Source high[0], low[0]; Enable enabled; }
+}
+Module OneHotTop {
+ ScanInPort si[1:0]; DataInPort choice;
+ LogicSignal left_enabled { ~choice; }
+ LogicSignal right_enabled { choice; }
+ Instance left Of Pair { InputPort si = si; InputPort enabled = left_enabled; }
+ Instance right Of Pair { InputPort si = si; InputPort enabled = right_enabled; }
+ OneHotScanGroup route[1:0] { Port left.so; Port right.so; }
+ ScanOutPort so[1:0] { Source route; }
+
+}
+'''
+
+    def test_vector_independent_returns_and_replay(self):
+        source = self.vector_source()
+        variants = [source,
+                    source.replace('Port left.so;', 'Port ~left.so;')
+                    .replace('Port right.so;', 'Port ~right.so;'),
+                    source.replace('si[1:0]', 'si[5:4]')
+                    .replace('si[0]', 'si[4]').replace('si[1]', 'si[5]')
+                    .replace('so[1:0]', 'so[4:5]').replace('route[1:0]', 'route[4:5]'),
+                    source.replace('ScanOutPort so[1:0] { Source route; }',
+                                   'ScanOutPort out_low { Source route[0]; }\n'
+                                   'ScanOutPort out_high { Source route[1]; }')]
+        program = 'iProcsForModule OneHotTop\niReset\n'
+        for choice, branch in [(0, 'left'), (1, 'right')]:
+            program += (f'iWrite choice {choice}\niApply\n'
+                        f'iWrite {branch}.low 9\niWrite {branch}.high 2\niApply -together\n'
+                        f'iRead {branch}.low 9\niRead {branch}.high 2\niApply -together\n')
+        (self.root / 'source.pdl').write_text(program)
+        for source in variants:
+            with self.subTest(source=source):
+                (self.root / 'source.icl').write_text(source)
+                text = self.run_tool(extra=('--local_reset', 'reset.pdl'))
+                for branch in ['left', 'right']:
+                    self.assertIn(f'iRead {branch}.low 0b1001', text)
+                    self.assertIn(f'iRead {branch}.high 0b10', text)
+                self.replay(text)
+                self.assertEqual(text, self.run_tool(icl='debug/OneHotTop.icl',
+                                                     pdl='result.pdl', output='both/result.pdl'))
+                self.assertEqual(text, self.run_tool(pdl='reset.pdl', output='reset/result.pdl'))
+        # An explicit declaration is an existing planner control for the same network.
+        source = self.vector_source()
+        (self.root / 'source.icl').write_text(source)
+        expected = self.run_tool()
+        source = source.rstrip()[:-1] + '''
+  SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+  ScanInterface client {
+    Chain low { Port si[0]; Port so[0]; }
+    Chain high { Port si[1]; Port so[1]; }
+    Port sel; Port ce; Port se; Port ue; Port ck;
+  }
+}
+'''
+        (self.root / 'source.icl').write_text(source)
+        self.assertEqual(expected, self.run_tool(output='declared/result.pdl'))
+
+    def test_vector_return_boundaries_preserve_artifacts(self):
+        source = self.vector_source()
+        variants = [
+            (source.replace('ScanInSource si[1]', 'ScanInSource si[0]'), 'overlapping-event'),
+            (source.replace('Source high[0], low[0]', 'Source low[0], low[0]'), 'overlapping-event'),
+            (source.replace('Instance right Of Pair { InputPort si = si;',
+                            'Instance right Of Pair { InputPort si = si[0], si[1];'),
+             'unambiguous scan input'),
+            (source.replace('ScanInSource si[1];', 'ScanInSource low[0];'), 'overlapping-event'),
+            (source.replace('Instance right Of Pair { InputPort si = si;',
+                            "Instance right Of Pair { InputPort si = 1'b0, si[0];"),
+             'unambiguous scan input'),
+            (source.replace('LogicSignal right_enabled { choice; }',
+                            "LogicSignal right_enabled { 1'b1; }"), 'scan'),
+            (source.replace('InputPort enabled = right_enabled;',
+                            "InputPort enabled = 1'bx;"), 'scan'),
+            (source.rstrip()[:-1] + ' SelectPort sel; CaptureEnPort ce; ShiftEnPort se; '
+             'UpdateEnPort ue; TCKPort ck; ScanInterface client { Port si[0]; Port so[0]; '
+             'Port sel; Port ce; Port se; Port ue; Port ck; } }', 'shared-control'),
+            (source.rstrip()[:-1] + ' ShiftEnPort se; }', 'interface controls')]
+        (self.root / 'source.pdl').write_text(
+            'iProcsForModule OneHotTop\niReset\niWrite choice 0\niApply\n'
+            'iWrite left.low 9\niWrite left.high 2\niApply -together\n')
+        artifacts = ['result.pdl', 'reset.pdl', 'debug/OneHotTop.icl']
+        for source, diagnostic in variants:
+            with self.subTest(diagnostic=diagnostic, source=source):
+                (self.root / 'source.icl').write_text(source)
+                program = ('iProcsForModule OneHotTop\niReset\niWrite choice 0\niApply\n'
+                           'iWrite left.low 9\niWrite left.high 2\niApply -together\n')
+                (self.root / 'source.pdl').write_text(program)
+                for name in artifacts:
+                    path = self.root / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text('previous artifact\n')
+                message = self.run_tool(ok=False, extra=('--local_reset', 'reset.pdl'))
+                self.assertIn(diagnostic, message)
+                for name in artifacts:
+                    self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
+    def test_vector_return_scale(self):
+        lanes, branches = 8, 8
+        source = 'Module Lane { ScanInPort si; DataInPort enabled;\n'
+        source += 'ScanRegister data[3:0] { ScanInSource si; CaptureSource data; ResetValue 0; }\n'
+        source += 'ScanOutPort so { Source data[0]; Enable enabled; } }\n'
+        source += f'Module OneHotTop {{ ScanInPort si[{lanes - 1}:0]; DataInPort choice[2:0];\n'
+        for lane in range(lanes):
+            for branch in range(branches):
+                source += (f'LogicSignal e{lane}_{branch} {{ choice == 3\'d{branch}; }}\n'
+                           f'Instance b{lane}_{branch} Of Lane {{ InputPort si = si[{lane}]; '
+                           f'InputPort enabled = e{lane}_{branch}; }}\n')
+            source += 'OneHotScanGroup r%d { '%lane + ''.join(
+                f'Port b{lane}_{branch}.so; ' for branch in range(branches)) + '}\n'
+        source += f'ScanOutPort so[{lanes - 1}:0] {{ Source '+', '.join(
+            f'r{lane}' for lane in reversed(range(lanes))) + '; }\n}\n'
+        (self.root / 'source.icl').write_text(source)
+        program = 'iProcsForModule OneHotTop\niReset\niWrite choice 7\niApply\n'
+        program += ''.join(f'iWrite b{lane}_7.data {lane + 1}\n' for lane in range(lanes))
+        program += 'iApply -together\n' + ''.join(
+            f'iRead b{lane}_7.data {lane + 1}\n' for lane in range(lanes)) + 'iApply -together\n'
+        (self.root / 'source.pdl').write_text(program)
+        text = self.run_tool()
+        self.assertEqual(text.count('iRead b'), lanes)
+        self.replay(text)
+
     def test_nested_write_read_and_replay(self):
         text = self.run_tool()
         self.assertIn('iWrite branches.a.data 0b1001', text)

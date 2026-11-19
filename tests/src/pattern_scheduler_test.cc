@@ -4014,8 +4014,9 @@ void TestMultipleClientSelection() {
           "failed shared-state request restores storage and interface pins");
 }
 void TestSimultaneousScanChains() {
-  pattern::Design design;
-  design.AddIcl("simultaneous.icl", R"(
+  for (bool inferred : {false, true}) {
+    pattern::Design design;
+    std::string source = R"(
 Module Chains {
   ScanInPort si[3:0];
   ScanRegister a[3:0] { ScanInSource si[3]; CaptureSource a; ResetValue 4'b0; }
@@ -4027,44 +4028,64 @@ Module Chains {
     Chain second { Port si[1]; Port so[4]; }
     Port sel; Port ce; Port se; Port ue; Port ck;
   }
-})");
-  const auto netlist = pattern::Elaborate(design, "Chains");
-  pattern::ScanScheduler scheduler(netlist);
-  scheduler.Reset();
-  const auto first = scheduler.Apply({{"iWrite", {"a", "9"}, "write", {}},
-                                      {"iWrite", {"b", "2"}, "write", {}}},
-                                     true);
-  Require(first.size() == 1 && first[0].lanes.size() == 2 &&
-              first[0].serial.empty() && first[0].lanes[0].input == "si[1]" &&
-              first[0].lanes[0].serial == "0001" &&
-              first[0].lanes[1].input == "si[3]" &&
-              first[0].lanes[1].serial == "1001" &&
-              scheduler.Value("a") == "1001" && scheduler.Value("b") == "10" &&
-              scheduler.Value("si") == "1x1x",
-          "unequal chains shift together with leading padding and intact "
-          "unused pins");
-  const auto second = scheduler.Apply({{"iRead", {"a", "9"}, "read", {}},
-                                       {"iRead", {"b", "2"}, "read", {}},
-                                       {"iWrite", {"a", "6"}, "write", {}},
-                                       {"iWrite", {"b", "1"}, "write", {}}},
-                                      true);
-  Require(second.size() == 1 && second[0].lanes[0].serial_expected == "01xx" &&
-              second[0].lanes[1].serial_expected == "1001" &&
-              scheduler.Value("a") == "0110" && scheduler.Value("b") == "01" &&
-              scheduler.Value("ck") == "0" && scheduler.Value("ue") == "0",
-          "parallel chain readback precedes the shared update and pads "
-          "comparisons");
-  bool rejected = false;
-  try {
-    scheduler.Apply({{"iWrite", {"a", "9"}, "reserved", {}}}, false,
-                    {{netlist.node_ids.at("a"), "0110"}}, false);
-  } catch (const std::exception&) {
-    rejected = true;
+})";
+    if (inferred) {
+      const auto controls = source.find("  SelectPort sel;");
+      source.erase(controls, source.rfind('}') - controls);
+    }
+    design.AddIcl("simultaneous.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Chains");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    const auto first = scheduler.Apply({{"iWrite", {"a", "9"}, "write", {}},
+                                        {"iWrite", {"b", "2"}, "write", {}}},
+                                       true);
+    Require(first.size() == 1 && first[0].lanes.size() == 2 &&
+                first[0].serial.empty() && first[0].lanes[0].input == "si[1]" &&
+                first[0].lanes[0].serial == "0001" &&
+                first[0].lanes[1].input == "si[3]" &&
+                first[0].lanes[1].serial == "1001" &&
+                scheduler.Value("a") == "1001" &&
+                scheduler.Value("b") == "10" && scheduler.Value("si") == "1x1x",
+            "unequal chains shift together with leading padding and intact "
+            "unused pins");
+    pattern::ScanScheduler copy(scheduler);
+    const auto second = scheduler.Apply({{"iRead", {"a", "9"}, "read", {}},
+                                         {"iRead", {"b", "2"}, "read", {}},
+                                         {"iWrite", {"a", "6"}, "write", {}},
+                                         {"iWrite", {"b", "1"}, "write", {}}},
+                                        true);
+    Require(
+        second.size() == 1 && second[0].lanes[0].serial_expected == "01xx" &&
+            second[0].lanes[1].serial_expected == "1001" &&
+            scheduler.Value("a") == "0110" && scheduler.Value("b") == "01" &&
+            (inferred ||
+             (scheduler.Value("ck") == "0" && scheduler.Value("ue") == "0")),
+        "parallel chain readback precedes the shared update and pads "
+        "comparisons");
+    Require(copy.Value("a") == "1001" && copy.Value("b") == "10",
+            "copied inferred lanes retain independent state");
+    const auto copied = copy.Apply({{"iWrite", {"a", "6"}, "copy", {}},
+                                    {"iWrite", {"b", "1"}, "copy", {}}},
+                                   true);
+    Require(copied.size() == 1 && copied[0].lanes.size() == 2 &&
+                copy.Value("a") == scheduler.Value("a") &&
+                copy.Value("b") == scheduler.Value("b"),
+            "copied inferred lanes schedule the same updates");
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"a", "9"}, "reserved", {}}}, false,
+                      {{netlist.node_ids.at("a"), "0110"}}, false);
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("a") == "0110" &&
+                scheduler.Value("b") == "01" &&
+                (inferred || scheduler.Value("ck") == "0"),
+            "failed simultaneous access rolls back both chains");
   }
-  Require(rejected && scheduler.Value("a") == "0110" &&
-              scheduler.Value("b") == "01" && scheduler.Value("ck") == "0",
-          "failed simultaneous access rolls back both chains");
 }
+
 void TestHiddenClientEvents() {
   for (bool parallel : {false, true}) {
     std::string source = R"(

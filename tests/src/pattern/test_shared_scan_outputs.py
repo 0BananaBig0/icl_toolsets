@@ -140,7 +140,7 @@ Module SharedTop {
                 pdl.write_text(PDL)
                 (self.root / 'result.pdl').write_bytes(b'previous result\n')
                 error = self.run_tool(icl, pdl, ok=False)
-                self.assertIn('shared-control', error)
+                self.assertIn('shared scan inputs or storage require overlapping-event scheduling', error)
                 self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
 
     def test_wide_shared_observation(self):

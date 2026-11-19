@@ -3,45 +3,45 @@
 `icl-pattern-generation` is an experimental executable. It currently expands
 PDL procedures and Tcl computations and schedules single-path scans, shared
 output observations, simultaneous named client chains, independently selected
-standalone clients, indexed vector inputs and common-phase TAP instruction/data scans.
+standalone clients, inferred disjoint interface-free scan lanes (including vector
+one-hot returns), indexed vector inputs and common-phase TAP instruction/data scans.
 It also schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
 
 ## Current verification
 
-Task134 (2026-11-19) adds tests for existing runtime parse, delayed-error,
-instance/parameter and procedure-namespace contracts. All16 targeted runtime
-lines now execute; runtime coverage is607/636
-lines and clock coverage remains384/384. See
-[the current qualification](#runtime-api-contract-coverage-2026-11-19).
+Task135 (2026-11-19) adds inferred independent vector scan returns for
+interface-free models. Native, sanitizer, normal, Rocky and archive/install
+checks pass; the unfiltered100% line/90% branch gate remains failed. See
+[the current qualification](#independent-vector-scan-returns-2026-11-19).
 
-The latest runtime features remain Task131's metadata-qualified physical clock
+Earlier runtime features include Task131's metadata-qualified physical clock
 names and Task132's exact-text minimum-time waits on invariant models.
 General stateful timing and clock events remain unsupported. Task131 records
 four native raw-flat export replays; Task132 records one fresh vendor time
 control and two native export replays. Two vendor divider elaborations remain
-unqualified. Task134 adds no vendor execution or general equivalence claim.
+unqualified. Task135 adds no vendor execution or general equivalence claim.
 
-Fresh full normal check passes in 1525.108s:51 generator CLI suites/801
+Fresh full normal check passes in 1746.520s:51 generator CLI suites/804
 cases per dynamic/static variant, native checks,1916 regression and2180
 conformance cases,334 parser/119 scanner rules across2549 ICL files and six
-editor checks. The changed full native runtime runner passes leak-enabled
-ASan/UBSan. Task133 scheduler and earlier unchanged-production sanitizer
-evidence is retained separately. Five optional ANTLR tests remain skipped
-because ICL_REF_DIR is unset; the earlier16/32-TAP sanitizer solver-budget
-limitation is not newly qualified by this native runtime work.
+editor checks. The full native scheduler and one-hot, named-chain, shared-output
+and main CLI suites pass leak-enabled ASan/UBSan. Five optional ANTLR tests
+remain skipped because ICL_REF_DIR is unset. The earlier16/32-TAP sanitizer
+solver-budget limitation is not newly qualified by this task.
 
-Strict coverage remains unmet at17477/18083 lines
-(96.6%) and29603/47075 raw branches(62.9%).
-All prescribed tests complete; the unchanged100% line/90% raw-branch gate
-fails with Make exit2. Raw exception/cleanup edges remain included.
+Strict coverage remains unmet at17499/18105 lines
+(96.65%) and29628/47103 raw branches(62.90%). All58 instrumented
+Python suites/966 cases pass; the unchanged100% line/90% raw-branch gate fails
+with Make exit2. Raw exception/cleanup edges remain included.
 
-Fresh Rocky native qualification passes. All3993 other runtime inputs and
-all ten local/remote products match Task133. Broader CLI, vendor and
-archive-build/install evidence is reused on unchanged source/product identity.
-The refreshed archive ships4239 tracked files plus six generated entries;
-its4013 non-doc files match current remote source. This is a source-archive
-refresh, not fresh archive-build or installation qualification. The
+Fresh Rocky native/strict17 qualification and all51 CLI suites/804 cases per
+dynamic/static variant pass. All3990 other runtime inputs and eight editor
+products retain Task134 identity; the two generator products changed. A fresh
+local source-archive build and local/remote install, replay, LSP and uninstall
+checks pass. The archive ships4241 tracked files plus six generated entries;
+its4013 non-doc files match current remote source. No fresh vendor control or
+certificate is claimed for inferred lanes. The
 [model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work)
 records remaining acceptance work.
 
@@ -484,8 +484,11 @@ broader syntax support and never execute PDL.
 
 The backend accepts one physical scan path and at most one TAP, or standalone
 client interfaces selected one at a time, each with one path or disjoint named
-chains. Multiple scalar
-or vector output bits may observe that path through transparent forwarding,
+chains. Interface-free networks can infer independent lanes when all static
+routes from each output reach one distinct input bit and no graph vertex is
+shared between lanes. Vector one-hot returns use these same lanes. TAPs and
+effective interfaces require their existing supported event/chain models.
+Multiple scalar or vector output bits may also observe one path through transparent forwarding,
 including inversion. Equivalent ungated observations use the first sorted
 output; gated alternatives retain their enables and require a known-enabled
 path. All declared controls are still checked. A path may use an indexed vector input
@@ -6931,3 +6934,55 @@ Evidence: build/runtime-api-contracts-20261119/. Strict project coverage,
 broader runtime/model support and full release acceptance remain unfinished.
 
 Independent Task134 whole-branch review at44e96ef approves the scoped merge. The reviewer directly inspected source, coverage counts and source/product fingerprints and independently reran all24 native runtime tests successfully. The executor corrected a qualification overstatement: missing-module binding ran once, while missing-instance paths ran through both constructors; the observed note is now spelled accurately. The optional missing command-name assertions in two success cases are deferred. All declined subjects have executor rulings. Closing edits affect documentation only; all3994 qualified runtime inputs and ten product fingerprints remain unchanged. Strict coverage and broader release/model acceptance remain open.
+
+## Independent vector scan returns (2026-11-19)
+
+Task135 extends the existing simultaneous-chain scheduler to interface-free
+networks with disjoint root outputs, including vector OneHotScanGroup returns.
+Every possible static route from each output must reach one distinct ScanInPort
+bit. Existing ownership validation rejects any shared graph vertex, storage or
+input. Ambiguous endpoints and disconnected alternatives remain unsupported,
+even when currently inactive. Explicit interfaces and TAPs retain their existing
+supported chain/event models; this inference does not model independent phases.
+Equivalent observations of a single path retain their earlier behavior.
+
+The endpoint pass is O(V+E) time and O(V) storage. Existing ordered root maps and
+ownership lookups add O(R log R) for R roots. The existing 4096-register and
+65536-vertex bounds remain. Native tests assert unequal 4/2-bit lane streams,
+leading padding and expected-bit masks, unused input bits, copied state and
+reservation rollback against literal expectations. Ten one-hot CLI methods cover
+both branches, inversions, ascending/offset indices, separate output ports,
+original/flat/generated/reset replay, an equivalent explicit-chain control and
+failure preservation of PDL/reset/debug artifacts. Fixed unknown and contending
+enables remain rejected. Unknown writable primary bits can instead be resolved
+by the existing planner; this task does not change primary-X semantics.
+
+Local GCC16.2.1/C++17/Z3 4.13.3 dynamic/static runs of 8 lanes x 8 branches
+(64 four-bit registers, three replay forms) took 0.549/
+0.574s wall time, including Python/process/replay overhead.
+The parent rejects this undeclared-lane model, so there is no completing baseline
+or measured speedup claim. This does not measure the whole supported graph cap.
+See the /usr/bin/time -v logs for RSS and environment evidence.
+
+Both changed C++ files passed changed-line format, clang-tidy and strict C++17
+checks. Full native scheduling passed; its fresh address/undefined/leak sanitizer
+run took 322.775s. The one-hot, named-chain and main CLI suites
+also passed with leak detection enabled. The full normal check passed in
+1746.520s: 1916 regressions, 2180 conformance cases and the existing
+parser/scanner, file and editor suites; five ANTLR tests remain environment skips.
+Rocky Linux GCC15.2.1/Tcl8.6.8 passed native/strict17 checks and all51 generator
+suites (804 cases) for both its dynamic generator and the exact local static
+binary. Source archive build and local/remote install/replay/LSP/uninstall checks
+passed freshly. Eight editor products retain their previous byte identities;
+only the two generator products changed. No fresh vendor control or certificate
+is claimed for these inferred lanes.
+
+Fresh unfiltered coverage ran58 Python suites/966 cases successfully and retained
+54 authored source reports and19 instrumented executables. The raw strict gate
+still exits2: 17499/18105 lines (96.65%) and
+29628/47103 branches (62.90%), with
+12313 missing throw and 5162 other
+missing edges. No reports, compiler exception edges or thresholds were removed.
+The required100% line/90% raw branch acceptance and broader retargeter tasks
+remain unfinished. Detailed commands, hashes, timings, review and rulings are in
+`build/vector-scan-returns-20261119/`.

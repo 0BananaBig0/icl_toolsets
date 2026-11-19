@@ -54,7 +54,7 @@ full model coverage or Tessent equivalence.
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters evaluate fully supplied explicit history and applied reads invalidate their target bits | Complete runtime command coverage and broader real-pair generation |
 | Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
-| Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain and canonical replay | Simultaneous vector scan-return lanes and broader model qualification |
+| Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain, inferred simultaneous disjoint interface-free vector returns and canonical replay | Overlapping returns, independently controlled lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
@@ -64,10 +64,10 @@ full model coverage or Tessent equivalence.
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
 | Resource ownership | Bit-level register/all-port alias/slice and instance-member takes; applied-write/iState protection, inherited ownership and scoped release; Tessent default/persistent takes within the input stream; protected dependency batches, per-clock replay, explicit-reset ownership clearing and atomic failures | Clock/scan assignment and frequency commands, pattern-set lifecycle, broader scale and vendor qualification |
 | Flattened output | Shared netlist serializer, including empty DataRegister declarations; original/flat/generated-PDL tests, including common-phase multiple-TAP instructions | Full corpus and vendor-portable equivalence for all model kinds |
-| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; fresh Task134 full normal/source-archive identity and Rocky native checks, with broader CLI/SAN/vendor/archive-build/install evidence retained only for unchanged source and product fingerprints | Remaining command semantics; changed products require fresh qualification |
+| CLI/build/install/safety | Five dynamic/static executables; staged outputs, input alias protection, BSDL loading; fresh Task135 full normal/SAN, Rocky51x804 dynamic/static and archive-build/install checks; eight editor products unchanged and both generators changed; no new vendor qualification | Remaining command semantics; changed products require fresh qualification |
 | Local-reset-only artifact | Transitive ScanRegister/writable-DataRegister reset-control releases, grouped independent controls and feedback-component layers, ordered multi-file rewriting, whole main Tcl command spans, literal-site and post-argument fallback, unchanged procedures and actual rewritten-runtime validation; Tessent accepts whole/sliced argument-reset wrappers | Internal procedure reassertions, remaining caller-site transformations, serial-dependent feedback and broader vendor qualification |
 | Tessent oracle | Seven legacy and seventy-seven directional certificates for pin/vector, TAP, reservation, shadow storage, transitive-reset, end-state, scan-driven/mixed DataRegister, computed-port, control ownership, merged-observation, standalone client, simultaneous-chain, hidden-client, multiple-client, selected chain-group, ShiftEn-only, all-port membership, DataRegister state and data-controlled reset-mux and generated queued-state and DataRegister reset-release artifact and self-feedback reset-mux and standalone-idle cases; independently generated source schedules need not match | One-hot scan changes have local replay coverage only; merge certification covers the recorded two-stream fixture, and broader model/corpus equivalence remains unverified |
-| Acceptance checks | Regression, sanitizers/style and independent review; native runtime contract evidence in the generator guide; runtime lines607/636,clock384/384 | Strict coverage remains below100% lines/90% raw branches: Task134 96.6%/62.9% (17477/18083 lines,29603/47075 raw branches); full vendor equivalence is unverified |
+| Acceptance checks | Regression, sanitizers/style and independent review; native inferred-lane streams/state/copy/rollback and CLI replay evidence in the generator guide | Strict coverage remains below100% lines/90% raw branches: Task135 96.65%/62.90% (17499/18105 lines,29628/47103 raw branches); full vendor equivalence is unverified |
 
 The current integer evaluator reports an explicit resource error beyond signed
 64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
@@ -4061,3 +4061,55 @@ Evidence: build/runtime-api-contracts-20261119/. Strict project coverage,
 broader runtime/model support and full release acceptance remain unfinished.
 
 Independent Task134 whole-branch review at44e96ef approves the scoped merge. The reviewer directly inspected source, coverage counts and source/product fingerprints and independently reran all24 native runtime tests successfully. The executor corrected a qualification overstatement: missing-module binding ran once, while missing-instance paths ran through both constructors; the observed note is now spelled accurately. The optional missing command-name assertions in two success cases are deferred. All declined subjects have executor rulings. Closing edits affect documentation only; all3994 qualified runtime inputs and ten product fingerprints remain unchanged. Strict coverage and broader release/model acceptance remain open.
+
+## Independent vector scan returns (2026-11-19)
+
+Task135 extends the existing simultaneous-chain scheduler to interface-free
+networks with disjoint root outputs, including vector OneHotScanGroup returns.
+Every possible static route from each output must reach one distinct ScanInPort
+bit. Existing ownership validation rejects any shared graph vertex, storage or
+input. Ambiguous endpoints and disconnected alternatives remain unsupported,
+even when currently inactive. Explicit interfaces and TAPs retain their existing
+supported chain/event models; this inference does not model independent phases.
+Equivalent observations of a single path retain their earlier behavior.
+
+The endpoint pass is O(V+E) time and O(V) storage. Existing ordered root maps and
+ownership lookups add O(R log R) for R roots. The existing 4096-register and
+65536-vertex bounds remain. Native tests assert unequal 4/2-bit lane streams,
+leading padding and expected-bit masks, unused input bits, copied state and
+reservation rollback against literal expectations. Ten one-hot CLI methods cover
+both branches, inversions, ascending/offset indices, separate output ports,
+original/flat/generated/reset replay, an equivalent explicit-chain control and
+failure preservation of PDL/reset/debug artifacts. Fixed unknown and contending
+enables remain rejected. Unknown writable primary bits can instead be resolved
+by the existing planner; this task does not change primary-X semantics.
+
+Local GCC16.2.1/C++17/Z3 4.13.3 dynamic/static runs of 8 lanes x 8 branches
+(64 four-bit registers, three replay forms) took 0.549/
+0.574s wall time, including Python/process/replay overhead.
+The parent rejects this undeclared-lane model, so there is no completing baseline
+or measured speedup claim. This does not measure the whole supported graph cap.
+See the /usr/bin/time -v logs for RSS and environment evidence.
+
+Both changed C++ files passed changed-line format, clang-tidy and strict C++17
+checks. Full native scheduling passed; its fresh address/undefined/leak sanitizer
+run took 322.775s. The one-hot, named-chain and main CLI suites
+also passed with leak detection enabled. The full normal check passed in
+1746.520s: 1916 regressions, 2180 conformance cases and the existing
+parser/scanner, file and editor suites; five ANTLR tests remain environment skips.
+Rocky Linux GCC15.2.1/Tcl8.6.8 passed native/strict17 checks and all51 generator
+suites (804 cases) for both its dynamic generator and the exact local static
+binary. Source archive build and local/remote install/replay/LSP/uninstall checks
+passed freshly. Eight editor products retain their previous byte identities;
+only the two generator products changed. No fresh vendor control or certificate
+is claimed for these inferred lanes.
+
+Fresh unfiltered coverage ran58 Python suites/966 cases successfully and retained
+54 authored source reports and19 instrumented executables. The raw strict gate
+still exits2: 17499/18105 lines (96.65%) and
+29628/47103 branches (62.90%), with
+12313 missing throw and 5162 other
+missing edges. No reports, compiler exception edges or thresholds were removed.
+The required100% line/90% raw branch acceptance and broader retargeter tasks
+remain unfinished. Detailed commands, hashes, timings, review and rulings are in
+`build/vector-scan-returns-20261119/`.
