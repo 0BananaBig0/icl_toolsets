@@ -6890,8 +6890,8 @@ in the failed runtime and do not acquire a rollback guarantee.
 A valid two-level instance path works without elaboration for a procedure with
 no ICL parameters. Parameter-dependent calls require real elaboration before
 the body executes. With elaboration, VALUE=4'b10x1 is passed unchanged and emits
-iNote0b10x1. Missing module and instance paths take the intended error paths in
-both lookup modes. Selecting then clearing iUseProcNameSpace emits alternate
+`iNote 0b10x1`. Missing-module binding is tested once; missing-instance paths
+take the intended error paths through both constructors. Selecting then clearing iUseProcNameSpace emits alternate
 and default notes with no override warning. Expectations use literal values;
 no private callback invocation, fabricated IR, new live readback or simultaneous
 vector scan-return support is introduced.
@@ -6929,3 +6929,5 @@ archive refresh checks all tracked shipped bytes and generated entries.
 
 Evidence: build/runtime-api-contracts-20261119/. Strict project coverage,
 broader runtime/model support and full release acceptance remain unfinished.
+
+Independent Task134 whole-branch review at44e96ef approves the scoped merge. The reviewer directly inspected source, coverage counts and source/product fingerprints and independently reran all24 native runtime tests successfully. The executor corrected a qualification overstatement: missing-module binding ran once, while missing-instance paths ran through both constructors; the observed note is now spelled accurately. The optional missing command-name assertions in two success cases are deferred. All declined subjects have executor rulings. Closing edits affect documentation only; all3994 qualified runtime inputs and ten product fingerprints remain unchanged. Strict coverage and broader release/model acceptance remain open.

@@ -36,9 +36,9 @@ existing MakeDesign/Fails/Require, Design/Elaborate and PDL module/proc context.
 - [x] Run3 style/strict17 gates, full normal project check, changed native leak
       SAN, fresh focused/full raw coverage and current Rocky native checks.
       Expected executable suites0; report unchanged strict-gate actual result.
-- [ ] Prove3993 other input/10 product identities; refresh/check source archive,
+- [x] Prove3993 other input/10 product identities; refresh/check source archive,
       qualification docs and task-done verifier; one fresh whole-branch review.
-- [ ] One necessary fix pass only; final verification, merge/delete, ledger
+- [x] One necessary fix pass only; final verification, merge/delete, ledger
       archive, CodeGraph sync and push. Expected clean synchronized master.
 
 Pre-flight: one native test-only task, no shared interfaces with another task.
