@@ -256,9 +256,9 @@ iNote [iGetStatus -clear]
   for (const auto& op : runtime.operations()) {
     if (op.command == "iNote") notes.push_back(op.arguments.at(0));
   }
-  Require(notes == std::vector<std::string>({"0", "0", "0bxxxxxxxx",
-                  "0bxxxxxxxx", "0xXX", "0bxxxx1010", "0bxxxx0101",
-                  "0bxxxx1010", "0", "0"}),
+  Require(notes == std::vector<std::string>(
+                       {"0", "0", "0bxxxxxxxx", "0bxxxxxxxx", "0xXX",
+                        "0bxxxx1010", "0bxxxx0101", "0bxxxx1010", "0", "0"}),
           "never-read bits remain unknown while initial status is known zero");
 }
 void TestObservationHistoryInvalidation() {
@@ -277,11 +277,16 @@ Module History {
         "iRead value 0; iApply; iGetMiscompares value",
         "iRead value 0; iApply; iGetStatus",
         "iRead value 0; iApply; iReset; iGetStatus -clear",
-        "iState value 9 -LastReadValue; iRead value; iApply; iGetReadData value",
-        "iState value 9 -LastReadValue; iRead value 0bxxxxxxxx; iApply; iGetReadData value",
-        "iRead value 0; iState value 9 -LastReadValue; iApply; iGetReadData value",
-        "iState value 9 -LastReadValue; iRead reversed[0]; iApply; iGetReadData value[7]",
-        "iState value 9 -LastMiscompareValue; iRead value 9; iApply; iGetMiscompares value"}) {
+        "iState value 9 -LastReadValue; iRead value; iApply; iGetReadData "
+        "value",
+        "iState value 9 -LastReadValue; iRead value 0bxxxxxxxx; iApply; "
+        "iGetReadData value",
+        "iRead value 0; iState value 9 -LastReadValue; iApply; iGetReadData "
+        "value",
+        "iState value 9 -LastReadValue; iRead reversed[0]; iApply; "
+        "iGetReadData value[7]",
+        "iState value 9 -LastMiscompareValue; iRead value 9; iApply; "
+        "iGetMiscompares value"}) {
     pattern::Runtime runtime(design, netlist);
     Fails([&] { runtime.Execute("unavailable.pdl", "iPDLLevel 1\n" + body); },
           "hardware readback");
