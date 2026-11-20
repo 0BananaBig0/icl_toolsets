@@ -497,7 +497,7 @@ std::string Generate(
         pending.Clear();
       } else if (operation.command == "iReset") {
         const bool synchronous = !operation.arguments.empty();
-        scheduler.Reset(synchronous);
+        scheduler.Reset(synchronous, physical);
         clocks.Invalidate();
         reservations.Reset();
         pending.Clear();

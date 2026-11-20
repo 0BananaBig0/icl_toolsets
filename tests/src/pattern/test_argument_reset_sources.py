@@ -155,6 +155,68 @@ Module Network {
                                '--pdl', 'source.pdl', ok=False)
         self.assertIn('exact physical TAP CSU', result.stdout)
 
+    def test_physical_repeated_reset_retains_unreset_fill(self):
+        icl, bsdl, _ = self.physical_fixture()
+        icl.write_text(icl.read_text().replace('InputPort rst = reset_a;',
+                                              "InputPort rst = 1'b0;"))
+        for reset in ('iReset', 'iReset -sync'):
+            with self.subTest(reset=reset):
+                source = ('iPDLLevel 0\niReset\niWrite tap.INSTRUCTION 4; iApply\n'
+                          'iWrite core.a.value 15; iApply\n' + reset +
+                          '\niWrite tap.INSTRUCTION 4; iApply\n'
+                          'iRead core.a.value 15; iApply\n'
+                          'iRead core.a.value 15; iApply\n')
+                (self.root / 'source.pdl').write_text(source)
+                self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                              '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                              '--debug')
+                output = (self.root / 'out.pdl').read_bytes()
+                for model, pdl in ((icl, 'out.pdl'), ('debug/Network.icl', 'source.pdl')):
+                    self.run_tool('--physical_pdl', '--icl', model, '--pdl', pdl,
+                                  '--bsdl', 'AccessProbe', bsdl, '--output', 'again.pdl')
+                    self.assertEqual(output, (self.root / 'again.pdl').read_bytes())
+
+    def test_physical_bypassed_unknown_update_invalidates_fill(self):
+        icl, bsdl, _ = self.physical_fixture()
+        source = icl.read_text()
+        begin = source.index('Module Core {')
+        end = source.index('Module Network {', begin)
+        source = """Module Core {
+ ScanInPort si; ResetPort rst;
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck;
+ DataMux pick[3:0] SelectedBy control { 1'b0: 4'bxxxx; 1'b1: b; }
+ ScanRegister b[3:0] { CaptureSource pick; ScanInSource si; ResetValue 0; }
+ ScanMux route SelectedBy control { 1'b0: si; 1'b1: b[0]; }
+ ScanRegister control { ScanInSource route; CaptureSource control; ResetValue 0; }
+ ScanOutPort so { Source control; }
+ ScanInterface client { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; }
+}
+""" + source[end:]
+        icl.write_text(source)
+        head = ('iPDLLevel 0\niReset\niWrite tap.INSTRUCTION 4; iApply\n'
+                'iWrite core.control 1; iApply\n')
+        (self.root / 'source.pdl').write_text(head + 'iRead core.control 1; iApply\n')
+        for name in ('out.pdl', 'debug/Network.icl'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('previous artifact\n')
+        self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                      '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                      '--debug', ok=False)
+        for name in ('out.pdl', 'debug/Network.icl'):
+            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+        explicit = (head + 'iWrite core.b 15; iRead core.b 0b1xxx; '
+                    'iRead core.control 1; iApply\niRead core.b 15; iApply\n')
+        (self.root / 'source.pdl').write_text(explicit)
+        self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                      '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl', '--debug')
+        output = (self.root / 'out.pdl').read_bytes()
+        self.assertEqual(output.count(b'iApply'), 4)
+        for model, pdl in ((icl, 'out.pdl'), ('debug/Network.icl', 'source.pdl')):
+            self.run_tool('--physical_pdl', '--icl', model, '--pdl', pdl,
+                          '--bsdl', 'AccessProbe', bsdl, '--output', 'again.pdl')
+            self.assertEqual(output, (self.root / 'again.pdl').read_bytes())
+
     def test_varying_reset_domains_at_one_write_site(self):
         source = ('iPDLLevel 1\niReset\n'
                   'foreach target {b a} {\n'

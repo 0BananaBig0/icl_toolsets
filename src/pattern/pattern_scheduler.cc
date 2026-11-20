@@ -1772,7 +1772,7 @@ class ScanScheduler::Impl {
     InvalidateRawRoute();
     return result;
   }
-  void Reset(bool synchronous) {
+  void Reset(bool synchronous, bool physical = false) {
     if (tap_) {
       auto run = std::make_unique<TapExecution>(*execution_);
       std::map<size_t, std::string> asserted, released, trst;
@@ -1817,6 +1817,9 @@ class ScanScheduler::Impl {
       }
       if (!released.empty()) run->Drive(released);
       Cycle(run.get(), '0');
+      if (physical) {
+        for (size_t id : registers_) fill.at(id) = run->State().Value(id);
+      }
       state_.Restore(run->State());
       execution_ = std::move(run);
       fill_ = std::move(fill);
@@ -2608,10 +2611,8 @@ class ScanScheduler::Impl {
         fill[id] = physical ? run->State().Value(id) : step.loads.at(name);
       }
       if (physical) {
-        for (const auto& [id, event] : history) {
-          fill.at(id) = run->State().Value(id);
-        }
-        for (size_t id : resets) fill.at(id) = run->State().Value(id);
+        // Bypassed storage can update to X without a binary control event.
+        for (size_t id : registers_) fill.at(id) = run->State().Value(id);
       }
       state_.Restore(run->State());
       execution_ = std::move(run);
@@ -6382,9 +6383,9 @@ ScanScheduler::ScanScheduler(const Netlist& netlist)
 ScanScheduler::ScanScheduler(const ScanScheduler& other)
     : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
-void ScanScheduler::Reset(bool synchronous) {
+void ScanScheduler::Reset(bool synchronous, bool physical) {
   impl_->InvalidateRawRoute();
-  impl_->Reset(synchronous);
+  impl_->Reset(synchronous, physical);
 }
 void ScanScheduler::Idle(uint64_t cycles,
                          const std::map<size_t, std::string>& preserved) {

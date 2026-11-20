@@ -7112,7 +7112,7 @@ data access, AccessTogether aliases, iApplyEndState defaults, raw scans,
 iState, waits, clocks and source-preserving `--local_reset`. Use ordinary mode
 to schedule instrument goals and generate reset prerequisites first.
 
-Task137 qualification: all26 focused reset tests pass with dynamic and static
+Initial Task137 qualification before independent review: all26 focused reset tests pass with dynamic and static
 binaries. Full normal regression passes (1916 regression cases,2180 conformance
 cases,334 parser and119 scanner rules across2549 files, plus6 editor tests).
 ASan/UBSan with leak detection passes the native scheduler/runtime and all
