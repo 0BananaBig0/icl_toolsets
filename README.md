@@ -388,6 +388,15 @@ icl-pattern-generation --icl design.icl --bsdl DEVICE device.bsdl \
   --pdl setup.pdl test.pdl --output result/Top.pdl --debug
 ```
 
+Vendor-exported physical patterns can contain scan loads discarded by local reset.
+Use `--physical_pdl` to replay those loads literally on a supported single bound
+TAP, with one CSU per nonempty `iApply` and comparisons before update. Generated
+output retains the shifted bits and must be replayed with the same option.
+Ordinary mode continues treating `iWrite` as a final register-value objective.
+Physical mode requires binary loads, direct common TAP controls and explicit
+`iReset`; it rejects mixed data access, AccessTogether aliases, end-state
+defaults, raw scans and `--local_reset`.
+
 The PDL must contain `iReset` before the first TAP transaction. `iReset -sync`
 uses five TMS-high cycles even when TRST exists. The scheduler selects IR/DR
 transactions and checks each result through concrete controller/event replay.

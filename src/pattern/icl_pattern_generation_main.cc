@@ -35,12 +35,16 @@ struct Options {
   std::vector<std::string> icl, pdl;
   std::vector<std::pair<std::string, std::string>> bsdl;
   std::string top, output, log, local_reset;
-  bool debug = false;
+  bool debug = false, physical = false;
 };
 Options Parse(int argc, char** argv) {
   Options result;
   for (int i = 1; i < argc; ++i) {
     const std::string option = argv[i];
+    if (option == "--physical_pdl") {
+      result.physical = true;
+      continue;
+    }
     if (option == "--debug") {
       result.debug = true;
       continue;
@@ -88,6 +92,9 @@ Options Parse(int argc, char** argv) {
   }
   if (result.icl.empty() || result.pdl.empty()) {
     throw std::runtime_error("--icl and --pdl inputs are required");
+  }
+  if (result.physical && !result.local_reset.empty()) {
+    throw std::runtime_error("--physical_pdl cannot use --local_reset");
   }
   return result;
 }
@@ -238,10 +245,23 @@ std::string Generate(
     const pattern::ScanScheduler* initial = nullptr,
     const pattern::ResourceReservations* initial_reservations = nullptr,
     bool finalize = true, const pattern::SystemClocks* initial_clocks = nullptr,
-    ResetVariants* variants = nullptr) {
-  if (const auto opaque = GenerateOpaque(netlist, operations)) {
-    if (rewritten) *rewritten = operations;
-    return *opaque;
+    ResetVariants* variants = nullptr, bool physical = false) {
+  if (physical) {
+    const std::set<std::string> allowed = {
+        "iWrite", "iRead", "iApply", "iReset", "iNote", "iTake", "iRelease"};
+    for (const auto& op : operations) {
+      if (!allowed.count(op.command)) {
+        throw std::runtime_error(
+            op.origin +
+            ": unsupported operation in physical PDL: " + op.command);
+      }
+    }
+  }
+  if (!physical) {
+    if (const auto opaque = GenerateOpaque(netlist, operations)) {
+      if (rewritten) *rewritten = operations;
+      return *opaque;
+    }
   }
   pattern::ScanScheduler scheduler = initial ? pattern::ScanScheduler(*initial)
                                              : pattern::ScanScheduler(netlist);
@@ -468,8 +488,8 @@ std::string Generate(
         }
         const auto& accesses = pending.Operations();
         if (edits) scheduler.CheckLocalResets(accesses);
-        const auto steps =
-            scheduler.Apply(accesses, together, reservations.Values());
+        const auto steps = scheduler.Apply(
+            accesses, together, reservations.Values(), true, physical);
         clocks.Invalidate();
         reservations.Assigned(accesses, scheduler);
         append_steps(steps);
@@ -477,7 +497,7 @@ std::string Generate(
         pending.Clear();
       } else if (operation.command == "iReset") {
         const bool synchronous = !operation.arguments.empty();
-        scheduler.Reset(synchronous);
+        scheduler.Reset(synchronous, physical);
         clocks.Invalidate();
         reservations.Reset();
         pending.Clear();
@@ -589,7 +609,8 @@ std::string Generate(
       });
   if (finalize && had_transaction) {
     try {
-      append_steps(scheduler.Apply({}, false, reservations.Values(), false));
+      append_steps(
+          scheduler.Apply({}, false, reservations.Values(), false, physical));
     } catch (const std::exception& error) {
       const auto& last = operations.back();
       std::string message =
@@ -680,6 +701,10 @@ int main(int argc, char** argv) {
            "  --top_module NAME    Select the elaborated top (default: unique "
            "root)\n"
            "  --output PATH        Output PDL (default: out/<top>.pdl)\n"
+           "  --physical_pdl       Replay binary scan loads as one exact TAP "
+           "CSU\n"
+           "                       per iApply; use again when replaying "
+           "output\n"
            "  --debug              Also write debug/<top>.icl beside output\n"
            "  --log PATH           Copy diagnostics to a file\n"
            "  --local_reset PATH   Insert reset releases into the main "
@@ -748,7 +773,11 @@ int main(int argc, char** argv) {
       if (!options.local_reset.empty()) sources.push_back(source);
     }
     runtime.Finish();
-    const auto pdl = GenerateMerged(network.netlist, runtime.operations());
+    const auto pdl =
+        options.physical
+            ? Generate(network.netlist, runtime.operations(), nullptr, nullptr,
+                       nullptr, nullptr, nullptr, true, nullptr, nullptr, true)
+            : GenerateMerged(network.netlist, runtime.operations());
     if (!options.local_reset.empty()) {
       const auto rewrite = [&](bool whole_commands, bool after_arguments,
                                bool dispatch_arguments = false) {

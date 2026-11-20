@@ -1772,7 +1772,7 @@ class ScanScheduler::Impl {
     InvalidateRawRoute();
     return result;
   }
-  void Reset(bool synchronous) {
+  void Reset(bool synchronous, bool physical = false) {
     if (tap_) {
       auto run = std::make_unique<TapExecution>(*execution_);
       std::map<size_t, std::string> asserted, released, trst;
@@ -1817,6 +1817,9 @@ class ScanScheduler::Impl {
       }
       if (!released.empty()) run->Drive(released);
       Cycle(run.get(), '0');
+      if (physical) {
+        for (size_t id : registers_) fill.at(id) = run->State().Value(id);
+      }
       state_.Restore(run->State());
       execution_ = std::move(run);
       fill_ = std::move(fill);
@@ -2033,7 +2036,15 @@ class ScanScheduler::Impl {
   std::vector<ScanStep> Apply(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
-      std::optional<size_t> permitted_tap_data = std::nullopt) {
+      std::optional<size_t> permitted_tap_data = std::nullopt,
+      bool physical = false) {
+    if (physical && !tap_) {
+      throw std::runtime_error(
+          "physical PDL requires one exact physical TAP CSU");
+    }
+    if (physical && !end_states_.empty()) {
+      throw std::runtime_error("physical PDL cannot use iApplyEndState");
+    }
     const auto previous_fill = fill_;
     try {
       for (const auto& [id, bits] : end_states_) {
@@ -2044,7 +2055,7 @@ class ScanScheduler::Impl {
       // Match Solve's empty-apply exit before constructing an event proof.
       if (operations.empty() && !NeedsEndState(end_states_)) return {};
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
-                   explicit_writes, std::nullopt, permitted_tap_data);
+                   explicit_writes, std::nullopt, permitted_tap_data, physical);
     } catch (const std::exception& error) {
       fill_ = previous_fill;
       std::string message = together ? "iApply -together: " : "";
@@ -2485,15 +2496,16 @@ class ScanScheduler::Impl {
     }
     return true;
   }
-  bool NativeTapShape() {
+  bool NativeTapShape(bool physical = false) {
     if (!tap_ || netlist_.taps.size() != 1 || roots_.size() != 1 ||
         !tap_ready_ || global_resets_ != "00" ||
-        std::any_of(registers_.begin(), registers_.end(), [&](size_t id) {
-          const auto& reset = netlist_.nodes[id].reset;
-          return reset && (reset->node != kMissing ||
-                           reset->virtual_signal == VirtualSignal::kNone ||
-                           reset->inverted);
-        })) {
+        (!physical &&
+         std::any_of(registers_.begin(), registers_.end(), [&](size_t id) {
+           const auto& reset = netlist_.nodes[id].reset;
+           return reset && (reset->node != kMissing ||
+                            reset->virtual_signal == VirtualSignal::kNone ||
+                            reset->inverted);
+         }))) {
       return false;
     }
     // Keep the existing event-work limit even when no symbolic history is
@@ -2508,8 +2520,9 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& expected,
       const std::set<size_t>& required, bool together,
       const std::map<size_t, std::string>& preserved,
-      const std::map<size_t, std::string>& desired_preserved) {
-    if (required.empty() || !NativeTapShape()) return std::nullopt;
+      const std::map<size_t, std::string>& desired_preserved,
+      bool physical = false) {
+    if (required.empty() || !NativeTapShape(physical)) return std::nullopt;
     try {
       const auto only_ir = [&](const auto& entry) {
         return entry.first == tap_->instruction_register;
@@ -2577,23 +2590,29 @@ class ScanScheduler::Impl {
       const auto [writable, reset_held] =
           ReplayTapStep(step, lanes, controls, run.get(), check, observe);
       const auto history = run->TakeControlEvents();
-      if (!run->TakeResetEvents().empty()) return std::nullopt;
+      const auto resets = run->TakeResetEvents();
+      if (!physical && !resets.empty()) return std::nullopt;
       for (const auto& [id, event] : history) {
-        if (!controls.count(id)) return std::nullopt;
+        if (!physical && !controls.count(id)) return std::nullopt;
       }
       auto fill = fill_;
       for (const auto& [id, control] : controls) {
         const auto& name = netlist_.nodes[id].name;
         const auto event = history.find(id);
         // IR updates come from the TAP controller, not NetworkState events.
-        if (!writable.count(id) ||
-            (!instruction && (event == history.end() || !event->second ||
-                              *event->second != step.loads.at(name))) ||
-            run->State().Value(id) != step.loads.at(name)) {
+        if (!physical &&
+            (!writable.count(id) ||
+             (!instruction && (event == history.end() || !event->second ||
+                               *event->second != step.loads.at(name))) ||
+             run->State().Value(id) != step.loads.at(name))) {
           return std::nullopt;
         }
         step.writes.emplace(name, step.loads.at(name));
-        fill[id] = step.loads.at(name);
+        fill[id] = physical ? run->State().Value(id) : step.loads.at(name);
+      }
+      if (physical) {
+        // Bypassed storage can update to X without a binary control event.
+        for (size_t id : registers_) fill.at(id) = run->State().Value(id);
       }
       state_.Restore(run->State());
       execution_ = std::move(run);
@@ -4995,7 +5014,8 @@ class ScanScheduler::Impl {
       bool allow_greedy = true,
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true, std::optional<bool> event_mode = false,
-      std::optional<size_t> permitted_tap_data = std::nullopt) {
+      std::optional<size_t> permitted_tap_data = std::nullopt,
+      bool physical = false) {
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     if (roots_.empty() && registers_.empty() && !tap_ &&
@@ -5096,6 +5116,9 @@ class ScanScheduler::Impl {
                             ? std::string(target.bits.size(), 'x')
                             : PdlDataValue(context_, netlist_, target,
                                            operation.arguments[1]);
+      if (physical && !read && bits.find('x') != std::string::npos) {
+        throw std::runtime_error("physical PDL requires binary scan loads");
+      }
       for (size_t i = 0; i < bits.size(); ++i) {
         auto ref = target.bits[i];
         if (!read) ref = WriteReference(ref, &controls);
@@ -5254,6 +5277,19 @@ class ScanScheduler::Impl {
     CheckScanConnectivity(required);
     const auto desired_preserved =
         DesiredPreserved(preserved, end_goals, explicit_writes, operations);
+    if (physical) {
+      const bool ungrouped = std::all_of(
+          groups.begin(), groups.end(),
+          [](const auto& entry) { return entry.first.first == kMissing; });
+      if (!mixed && data_plan.order.empty() && data_reads.empty() &&
+          ungrouped) {
+        auto native = TryNativeTapScan(goals, expected, required, together,
+                                       preserved, desired_preserved, true);
+        if (native) return std::move(*native);
+      }
+      throw std::runtime_error(
+          "physical PDL requires one exact physical TAP CSU");
+    }
     bool events = event_mode.value_or(false);
     if (!event_mode) {
       const bool native_groups = std::all_of(
@@ -6347,9 +6383,9 @@ ScanScheduler::ScanScheduler(const Netlist& netlist)
 ScanScheduler::ScanScheduler(const ScanScheduler& other)
     : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
-void ScanScheduler::Reset(bool synchronous) {
+void ScanScheduler::Reset(bool synchronous, bool physical) {
   impl_->InvalidateRawRoute();
-  impl_->Reset(synchronous);
+  impl_->Reset(synchronous, physical);
 }
 void ScanScheduler::Idle(uint64_t cycles,
                          const std::map<size_t, std::string>& preserved) {
@@ -6362,9 +6398,11 @@ void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
 }
 std::vector<ScanStep> ScanScheduler::Apply(
     const std::vector<Operation>& operations, bool together,
-    const std::map<size_t, std::string>& preserved, bool explicit_writes) {
+    const std::map<size_t, std::string>& preserved, bool explicit_writes,
+    bool physical) {
   impl_->InvalidateRawRoute();
-  auto steps = impl_->Apply(operations, together, preserved, explicit_writes);
+  auto steps = impl_->Apply(operations, together, preserved, explicit_writes,
+                            std::nullopt, physical);
   // A failed native attempt may cache the pre-state before symbolic fallback.
   impl_->InvalidateRawRoute();
   return steps;
