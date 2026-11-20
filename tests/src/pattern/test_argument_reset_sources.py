@@ -50,6 +50,111 @@ Module Network {
 """)
         return path
 
+    def physical_fixture(self):
+        icl = self.opposing_resets()
+        source = icl.read_text().replace('Module Network {', 'Module Core {')
+        source = source.replace('ScanInPort si; ResetPort rst;\n ScanRegister control',
+                                'ScanInPort si; ResetPort rst;\n'
+                                ' SelectPort sel; CaptureEnPort ce; ShiftEnPort se;\n'
+                                ' UpdateEnPort ue; TCKPort tck;\n ScanRegister control')
+        source = source.replace('Source b.so; }\n}', 'Source b.so; }\n'
+                                ' ScanInterface client { Port si; Port so; Port sel; '
+                                'Port ce; Port se; Port ue; Port tck; }\n}')
+        source += """Module Network {
+ TRSTPort TRST;
+ Instance core Of Core { InputPort rst=~TRST; }
+ AccessLink tap Of STD_1149_1_2001 {
+  BSDLEntity AccessProbe;
+  IJTAG_ON { ScanInterface { core.client; } }
+  IJTAG_OFF { ScanInterface { core.client; } }
+ }
+}
+"""
+        icl.write_text(source)
+        bsdl = helpers.FIXTURE.parents[1] / 'access_link/simple.bsdl'
+        # Use the existing AccessProbe BSDL fixture.
+        self.assertIn('entity AccessProbe', bsdl.read_text())
+        commands = ('iPDLLevel 0\niProcsForModule Network\niReset\n'
+                    'iWrite tap.INSTRUCTION 4; iRead tap.INSTRUCTION 1; iApply\n'
+                    'iWrite core.control 1; iWrite core.a.value 0; '
+                    'iRead core.a.value 0; iRead core.b.value 0; iApply\n'
+                    'iWrite core.control 1; iWrite core.b.value 3; '
+                    'iRead core.a.value 0; iRead core.b.value 0; iApply\n'
+                    'iRead core.b.value 3; iApply\n'
+                    'iWrite core.control 0; iWrite core.b.value 3; '
+                    'iRead core.a.value 0; iRead core.b.value 3; iApply\n'
+                    'iWrite core.a.value 3; iRead core.a.value 0; '
+                    'iRead core.b.value 0; iApply\n'
+                    'iRead core.a.value 3; iRead core.b.value 0; iApply\n')
+        (self.root / 'source.pdl').write_text(commands)
+        return icl, bsdl, commands
+
+    def test_physical_reset_loads_replay_exactly(self):
+        icl, bsdl, commands = self.physical_fixture()
+        common = ('--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl')
+        self.run_tool('--icl', icl, '--pdl', 'source.pdl', *common, ok=False)
+        self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                      *common, '--debug')
+        output = (self.root / 'out.pdl').read_bytes()
+        self.assertEqual(output.count(b'iApply'), commands.count('iApply'))
+        self.assertIn(b'iWrite core.b.value 0b0011', output)
+        for model, pdl in ((icl, 'out.pdl'), ('debug/Network.icl', 'source.pdl')):
+            self.run_tool('--physical_pdl', '--icl', model, '--pdl', pdl,
+                          '--bsdl', 'AccessProbe', bsdl, '--output', 'again.pdl')
+            self.assertEqual(output, (self.root / 'again.pdl').read_bytes())
+
+    def test_physical_compare_failure_preserves_artifacts(self):
+        icl, bsdl, commands = self.physical_fixture()
+        commands = commands.replace('iRead core.b.value 0; iApply',
+                                    'iRead core.b.value 2; iApply', 1)
+        (self.root / 'source.pdl').write_text(commands)
+        for name in ('out.pdl', 'debug/Network.icl'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('previous artifact\n')
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                               '--debug', ok=False)
+        self.assertIn('exact physical TAP CSU', result.stdout)
+        for name in ('out.pdl', 'debug/Network.icl'):
+            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
+    def test_physical_mode_rejects_source_rewrite(self):
+        icl, bsdl, _ = self.physical_fixture()
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, '--local_reset', 'reset.pdl',
+                               ok=False)
+        self.assertIn('--physical_pdl cannot use --local_reset', result.stdout)
+
+    def test_physical_unknown_loads_and_extra_commands_rejected(self):
+        icl, bsdl, commands = self.physical_fixture()
+        cases = (
+            (commands.replace('iWrite core.b.value 3', 'iWrite core.b.value 0b00x1', 1),
+             'binary scan loads'),
+            (commands + 'iRunLoop 1 -tck\n', 'unsupported operation in physical PDL'),
+            (commands + 'iState core.control 0\n', 'unsupported operation in physical PDL'),
+        )
+        for source, message in cases:
+            with self.subTest(message=message):
+                (self.root / 'source.pdl').write_text(source)
+                result = self.run_tool('--physical_pdl', '--icl', icl,
+                                       '--pdl', 'source.pdl', '--bsdl', 'AccessProbe',
+                                       bsdl, '--output', 'out.pdl', ok=False)
+                self.assertIn(message, result.stdout)
+
+    def test_physical_mode_requires_tap_and_no_end_states(self):
+        icl, bsdl, _ = self.physical_fixture()
+        icl.write_text(icl.read_text().replace('Module Network {',
+                      "Module Network { Alias idle = core.control { iApplyEndState 1'b0; }"))
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, ok=False)
+        self.assertIn('cannot use iApplyEndState', result.stdout)
+        icl.write_text('Module Network { DataInPort pin; }')
+        (self.root / 'source.pdl').write_text('iWrite pin 1; iApply\n')
+        result = self.run_tool('--physical_pdl', '--icl', icl,
+                               '--pdl', 'source.pdl', ok=False)
+        self.assertIn('exact physical TAP CSU', result.stdout)
+
     def test_varying_reset_domains_at_one_write_site(self):
         source = ('iPDLLevel 1\niReset\n'
                   'foreach target {b a} {\n'

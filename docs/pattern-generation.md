@@ -7073,3 +7073,40 @@ Raw coverage remains 17546/18150 lines(96.67%) and
 missing edges. The100/90 strict gate staysFAILED; no reports/edges/thresholds
 were filtered. Evidence, failed attempts, hashes, review and rulings are under
 `build/reset-caller-dispatch-20261119/`.
+
+
+## Physical reset-pattern replay
+
+A vendor pattern export may express the bits shifted into the scan path rather
+than a final instrument value. For example, loading `core.b.value = 3` while
+the same update asserts its local reset can leave the register at zero.
+Ordinary `iWrite` scheduling correctly rejects that conflicting final objective.
+
+Replay such a physical export explicitly:
+
+```sh
+icl-pattern-generation --physical_pdl --icl model.icl \
+  --bsdl AccessProbe model.bsdl --pdl exported.pdl --output physical.pdl --debug
+icl-pattern-generation --physical_pdl --icl debug/Top.icl \
+  --bsdl AccessProbe model.bsdl --pdl physical.pdl --output replay.pdl
+```
+
+Replace `Top` with the selected module name. Physical mode performs one exact
+capture/shift/update sequence per nonempty apply. It checks the outgoing serial
+bits before updating, simulates local reset on actual TAP edges, and records the
+actual retained state and fill only after success. Output writes preserve the
+shifted values even when reset masks them. Use `--physical_pdl` for subsequent
+replay; this interpretation is opt-in and does not alter ordinary PDL.
+
+The supported scope is one reset-initialized bound root TAP, a known current scan
+route and direct common capture/shift/update/clock controls. Explicit writes
+must be binary; reads may contain X comparison masks. Partial and omitted loads
+use the known retained fill, which local reset events update. The existing
+1,048,576 event-work bound applies. Resource preservation is checked on every
+clock; an unrepresentable route or failed compare leaves output artifacts
+untouched.
+
+Physical mode adds no setup scans and does not merge applies. It rejects mixed
+data access, AccessTogether aliases, iApplyEndState defaults, raw scans,
+iState, waits, clocks and source-preserving `--local_reset`. Use ordinary mode
+to schedule instrument goals and generate reset prerequisites first.

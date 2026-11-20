@@ -6044,6 +6044,100 @@ Module Network {
   }
   Require(rejected, "implicit disabled client controls must not be ignored");
 }
+void TestPhysicalTapResetLoads() {
+  pattern::Design design;
+  design.AddIcl("physical.icl", R"(Module Cell {
+ ScanInPort si; ResetPort rst;
+ ScanRegister value[3:0] { ScanInSource si; CaptureSource value; ResetValue 0; }
+ ScanOutPort so { Source value[0]; }
+}
+Module ResetAccessNetwork {
+ ScanInPort si; ResetPort rst;
+ SelectPort sel; CaptureEnPort capture; ShiftEnPort shift;
+ UpdateEnPort update; TCKPort tck;
+ ScanRegister control { ScanInSource si; ResetValue 0; }
+ DataMux reset_a SelectedBy control { 1'b0: rst; 1'b1: 1'b1; }
+ DataMux reset_b SelectedBy control { 1'b0: 1'b1; 1'b1: rst; }
+ Instance a Of Cell { InputPort si = control; InputPort rst = reset_a; }
+ Instance b Of Cell { InputPort si = a.so; InputPort rst = reset_b; }
+ ScanOutPort so { Source b.so; }
+ ScanInterface client { Port si; Port so; Port sel; Port capture; Port shift; Port update; Port tck; }
+}
+
+Module ResetAccessTop {
+  TRSTPort TRST;
+  Instance core Of ResetAccessNetwork { InputPort rst = ~TRST; }
+  AccessLink tap Of STD_1149_1_2001 {
+    BSDLEntity AccessProbe;
+    IJTAG_ON { ScanInterface { core.client; } }
+    IJTAG_OFF { ScanInterface { core.client; } }
+  }
+}
+)");
+  std::ifstream bsdl(
+      "tests/cases/ours/pattern_generation/access_link/simple.bsdl");
+  design.AddBsdl("simple.bsdl",
+                 std::string(std::istreambuf_iterator<char>(bsdl), {}),
+                 "AccessProbe");
+  const auto netlist =
+      pattern::ElaborateTapNetwork(design, "ResetAccessTop").netlist;
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const auto apply = [&](std::vector<pattern::Operation> operations) {
+    return scheduler.Apply(operations, false, {}, true, true);
+  };
+  const auto ir = apply({{"iWrite", {"tap.INSTRUCTION", "4"}, "test:1", {}},
+                         {"iRead", {"tap.INSTRUCTION", "1"}, "test:2", {}}});
+  Require(ir.size() == 1 && ir[0].serial == "0010" &&
+              ir[0].serial_expected == "1000",
+          "physical IR compares capture and shifts literal bits LSB first");
+  apply({{"iWrite", {"core.control", "1"}, "test:3", {}},
+         {"iWrite", {"core.a.value", "0"}, "test:4", {}}});
+  apply({{"iWrite", {"core.b.value", "3"}, "test:5", {}}});
+  Require(scheduler.Value("core.b.value") == "0011",
+          "released register updates");
+  const std::vector<pattern::Operation> masked = {
+      {"iWrite", {"core.control", "0"}, "test:6", {}},
+      {"iWrite", {"core.b.value", "3"}, "test:7", {}},
+      {"iRead", {"core.b.value", "3"}, "test:8", {}}};
+  pattern::ScanScheduler before(scheduler);
+  bool failed = false;
+  try {
+    scheduler.Apply(masked, false,
+                    {{netlist.node_ids.at("core.b.value"), "0011"}}, true,
+                    true);
+  } catch (const std::runtime_error&) {
+    failed = true;
+  }
+  Require(failed && scheduler.Value("core.control") == "1" &&
+              scheduler.Value("core.b.value") == "0011",
+          "physical reset preserves resource checks and rolls back failure");
+  const auto step = apply(masked);
+  const auto replay = before.Apply(masked, false, {}, true, true);
+  Require(step.size() == 1 && step[0].loads == step[0].writes &&
+              step[0].loads.at("core.b.value") == "0011" &&
+              step[0].serial == "110000000" &&
+              step[0].serial == replay[0].serial &&
+              scheduler.Value("core.b.value") == "0000",
+          "physical load identity survives a reset-masked update");
+  pattern::ScanScheduler saved(scheduler);
+  failed = false;
+  try {
+    apply({{"iRead", {"core.b.value", "3"}, "test:9", {}}});
+  } catch (const std::runtime_error&) {
+    failed = true;
+  }
+  Require(
+      failed && scheduler.Value("core.b.value") == saved.Value("core.b.value"),
+      "failed physical comparison does not commit state");
+  const std::vector<pattern::Operation> read = {
+      {"iRead", {"core.b.value", "0"}, "test:10", {}}};
+  const auto after = apply(read);
+  const auto fresh = saved.Apply(read, false, {}, true, true);
+  Require(after.size() == 1 && after[0].loads.at("core.b.value") == "0000" &&
+              after[0].serial == fresh[0].serial,
+          "reset events replace retained fill and failed compares preserve it");
+}
 void TestResetFill() {
   pattern::Design design;
   design.AddIcl("reset-fill.icl", R"(
@@ -6172,6 +6266,7 @@ int main(int argc, char* argv[]) {
         TestApplyTogether();
         TestAccessTogetherPrerequisites();
         TestPrerequisites();
+        TestPhysicalTapResetLoads();
         TestResetFill();
         return 0;
       }
@@ -6181,6 +6276,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestPhysicalTapResetLoads();
     TestRawTapUnknownInput();
     TestRawTapUnknownStableRollback();
     TestAutomaticChildRawPreparation();

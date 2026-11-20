@@ -40,10 +40,11 @@ class ScanScheduler {
   void Idle(uint64_t cycles,
             const std::map<size_t, std::string>& preserved = {});
   void Assume(const std::string& target, const std::string& bits);
+  // Physical mode replays one exact binary TAP CSU; writes are scan loads.
   std::vector<ScanStep> Apply(
       const std::vector<Operation>& operations, bool together = false,
       const std::map<size_t, std::string>& preserved = {},
-      bool explicit_writes = true);
+      bool explicit_writes = true, bool physical = false);
   // Raw scans target a known root route or disjoint accessible child
   // intervals, or a known-binary IR/full-path DR on one bound root
   // client-TAP. An ordinary queue may prepare a modeled client before its
