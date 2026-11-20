@@ -88,9 +88,24 @@ TapExecution::TapExecution(const Netlist& netlist)
     }
   }
 }
-void TapExecution::Synchronize(const std::string& name) {
+void TapExecution::Synchronize(const std::string& name,
+                               bool instruction_changed) {
   const auto& tap = netlist_.taps.at(name);
   const auto& controller = controllers_.at(name);
+  if (instruction_changed) {
+    auto& selected = builtin_bypass_[tap.instruction_register];
+    selected.reset();
+    const auto bypass = tap.data_registers.find("BYPASS");
+    if (bypass != tap.data_registers.end() &&
+        !tap.scan_returns.count("BYPASS")) {
+      const auto& opcodes = tap.bsdl.opcodes.at("BYPASS");
+      const auto& held = controller.InstructionCodes();
+      if (std::includes(opcodes.begin(), opcodes.end(), held.begin(),
+                        held.end())) {
+        selected = bypass->second;
+      }
+    }
+  }
   auto code = controller.InstructionCodes().at(0);
   for (const auto& possible : controller.InstructionCodes()) {
     for (size_t i = 0; i < code.size(); ++i) {
@@ -103,8 +118,23 @@ void TapExecution::Synchronize(const std::string& name) {
   state_.Drive(tap.ir_select,
                std::string(1, controller.Controller().IrSelect()));
 }
+std::optional<size_t> TapExecution::SelectedBuiltinBypass(
+    const std::string& name) const {
+  return builtin_bypass_.at(netlist_.taps.at(name).instruction_register);
+}
+char TapExecution::ReadTdo(const std::string& name) const {
+  const auto& tap = netlist_.taps.at(name);
+  const auto bypass = SelectedBuiltinBypass(name);
+  if (bypass && controllers_.at(name).Controller().IrSelect() == '0') {
+    return state_.Read({*bypass, netlist_.nodes.at(*bypass).right}, true);
+  }
+  const auto output = tap.pins.at("tap_scan_out");
+  return state_.Read({output, netlist_.nodes.at(output).left}, true);
+}
 void TapExecution::Assume(size_t node, const std::string& value) {
   state_.Assume(node, value);
+  const auto selected = builtin_bypass_.find(node);
+  if (selected != builtin_bypass_.end()) selected->second.reset();
 }
 void TapExecution::ApplyInputs(const std::map<size_t, std::string>& values) {
   state_.ApplyInputs(values);
@@ -212,6 +242,8 @@ void TapExecution::Trace(
   }
 }
 std::map<size_t, char> TapExecution::Active(const TapRuntimeModel& tap) const {
+  const auto bypass = builtin_bypass_.at(tap.instruction_register);
+  if (bypass) return {{*bypass, '1'}};
   std::map<size_t, char> active;
   for (const auto& [instruction, id] : tap.scan_returns) {
     const auto& port = netlist_.nodes.at(id);
@@ -239,6 +271,7 @@ std::map<size_t, char> TapExecution::Active(const TapRuntimeModel& tap) const {
     const auto standard = kStandard.find(instruction);
     if (association == tap.bsdl.registers.end() &&
         standard == kStandard.end()) {
+      if (tap.bsdl.private_instructions.count(instruction)) continue;
       throw std::runtime_error("missing TAP register association");
     }
     const auto reg = association == tap.bsdl.registers.end()
@@ -399,7 +432,7 @@ void TapExecution::Edge(const std::set<size_t>& clock_ids, bool rising) {
   GlobalReset();
   state_.Clock(controls, rising);
   for (const auto& [name, actions] : changed) {
-    Synchronize(name);
+    Synchronize(name, actions.reset_ir != '0' || actions.update_ir != '0');
   }
   state_.Reset();
 }

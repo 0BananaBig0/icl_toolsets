@@ -74,7 +74,7 @@ void TestRegisterFanoutBudget() {
   text.replace(begin, end - begin, "\"" + opcodes + "\"");
   text = Replace(
       text, "BOUNDARY (EXTEST, SAMPLE), BYPASS (BYPASS), DEVICE_ID (IDCODE)",
-      std::string(8192, 'R') + "(" + instructions + ")");
+      std::string(8192, 'R') + "[1](" + instructions + ")");
   Reject(text, "retained-metadata limit exceeded");
 }
 void TestStaticExpressions() {
@@ -100,6 +100,25 @@ void TestStaticExpressions() {
   text.clear();
   Require(tap.ports.at("tap_scan_clock") == "TCK", "metadata owns strings");
 }
+void TestBSDLModelForms() {
+  auto text =
+      Replace(Fixture(), "IJTAG_ON (0011)", "IJTAG_ON (0011), ijtag_on (0101)");
+  text = Replace(text, "is \"0001\";", "is \"0001,1001\";");
+  text = Replace(text, "end AccessProbe;",
+                 "attribute INSTRUCTION_PRIVATE of AccessProbe : entity is "
+                 "\"IJTAG_OFF\"; end AccessProbe;");
+  const auto tap = pattern::ReadBsdlTap("forms.bsdl", text, "AccessProbe");
+  Require(
+      tap.opcodes.at("IJTAG_ON") == std::vector<std::string>({"0011", "0101"}),
+      "repeated instruction descriptions accumulate");
+  Require(tap.capture == "x001", "capture alternatives retain common bits");
+  text = Replace(Fixture(), "DEVICE_ID (IDCODE)",
+                 "REG[2] (IJTAG_ON CAPTURES 10), reg (ijtag_off CAPTURES 01), "
+                 "DEVICE_ID (IDCODE)");
+  const auto shared = pattern::ReadBsdlTap("width.bsdl", text, "AccessProbe");
+  Require(shared.registers.at("IJTAG_OFF").width == 2,
+          "later register association inherits original width");
+}
 void TestMalformedMetadata() {
   const auto text = Fixture();
   for (const auto& replacement :
@@ -113,7 +132,6 @@ void TestMalformedMetadata() {
            {"is \"0001\";", "is UNKNOWN;"},
            {"is \"0001\";", "is \"00\" &;"},
            {"IJTAG_ON (0011)", "IJTAG_ON (001)"},
-           {"IJTAG_ON (0011)", "BYPASS (0011)"},
            {"DEVICE_ID (IDCODE)", "DEVICE_ID (UNKNOWN)"},
            {"DEVICE_ID (IDCODE)", "DEVICE_ID[0] (IDCODE)"},
            {"DEVICE_ID (IDCODE)", "DEVICE_ID (EXTEST)"},
@@ -280,6 +298,7 @@ int main() {
     TestRetainedAttributeBudget();
     TestRegisterFanoutBudget();
     TestStaticExpressions();
+    TestBSDLModelForms();
     TestMalformedMetadata();
     TestTruncationAndMutation();
     TestLexicalBoundaries();
