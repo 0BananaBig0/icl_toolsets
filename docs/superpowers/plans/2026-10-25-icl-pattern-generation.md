@@ -1,5 +1,12 @@
 # ICL Pattern Generation Implementation Plan
 
+> Historical execution record. Later increments supersede many unchecked steps
+> below; they are not a current TODO inventory. Use the
+> [current item/evidence tracker](../../remaining-work.md) for remaining work.
+> Original acceptance requirements are retained. The user's2026-11-20
+> instruction excludes strict coverage closure (item1) from current execution.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver all requested `icl-pattern-generation` behavior, preserving existing tools.

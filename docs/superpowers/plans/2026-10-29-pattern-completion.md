@@ -1,5 +1,12 @@
 # Pattern generation completion implementation plan
 
+> Historical execution record. Later increments supersede many unchecked steps
+> below; they are not a current TODO inventory. Use the
+> [current item/evidence tracker](../../remaining-work.md) for remaining work.
+> Original acceptance requirements are retained. The user's2026-11-20
+> instruction excludes strict coverage closure (item1) from current execution.
+
+
 > **For agentic workers:** Use superpowers:executing-plans; implement and verify each task inline. Retain unfinished tasks as acceptance requirements.
 
 **Goal:** Close the remaining pattern-generation requirements without weakening correctness, resource limits or regression checks.

@@ -10,45 +10,44 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task136 (started2026-11-19; review fixes2026-11-20) adds evaluated-argument reset-release dispatch for repeated
-literal main write/call sites, preserving procedure definitions and once-only
-argument evaluation. The21 argument-reset methods pass for dynamic/static and
-leak-enabled sanitizer builds. Native runtime24 and the full native scheduler
-pass, including evaluated vector metadata. All reset-focused sanitizer suites
-and the main71-case CLI suite pass. The complete normal check passes in
-1649.142s:51 generator suites/813 cases per dynamic/static
-variant,1916 regressions,2180 conformance cases,334 parser/119 scanner rules
-across2549 ICL files and six editor checks. Five optional ANTLR tests remain
-skipped because ICL_REF_DIR is unset.
+Task137 is integrated and pushed at400d2ba (2026-11-20). It adds explicit
+--physical_pdl replay of binary scan loads on one bound root TAP with scan-only
+storage. Ordinary iWrite retains final-value semantics. Independent review found
+two retained-fill defects, fixed at83a8eb8 with RED→GREEN regressions: repeated
+reset must preserve unreset storage, and bypassed updates to partial-X values
+must invalidate stale fill. Physical reset/CSU fill follows actual stored values.
+A generic physical-CSU diagnostic remains the deferred Minor.
 
-Fresh Rocky native/strict17 checks and all51 suites/813 cases per dynamic/static
-variant pass; two focused Unicode/default-name/prefixed-vector cases also pass
-on Tcl8.6.8. A standalone syntax-check command initially omitted the build's
-version macro; its failed command is archived and the corrected check passes.
-Fresh local source-archive build and local/remote dynamic/static install,
-replay, LSP and uninstall checks pass. The archive contains4243 tracked shipped
-files plus six generated entries; all4013 non-doc bytes match remote source.
-All3989 other frozen runtime inputs and eight editor products retain Task135
-identity; only the two generator products changed.
+All28 reset tests pass for dynamic/static and leak-enabled sanitizer binaries.
+Full native runtime/scheduler and all reset/source/main sanitizer suites pass.
+The complete normal check exits0 in1750.319s:51 generator suites/820 cases per
+dynamic/static variant,1916 regressions,2180 conformance cases,334 parser and119
+scanner rules over2549 ICL files, and six editor tests.
 
-Fresh Tessent2026.2 controls accept the explicit manual-release reference and
-generated dispatch wrapper, producing byte-identical complete exported PDL.
-The original unsplit source fails the vendor reset-toggle rule, retained as a
-negative control. Four extra native source/flat replays of the physical exports
-fail closed: the export reloads a value that the same apply's reset masks,
-conflicting with native source write goals. No native physical-export acceptance
-or new equivalence certificate is claimed. See
-[reset qualification](#reset-caller-site-argument-dispatch-2026-11-19).
+Fresh Rocky Linux native/strict-C++17 checks and51 suites/820 cases per variant
+pass. Source-archive build,12 local package gates and14 remote installation/
+identity gates pass. The final archive contains4245 tracked shipped files plus
+six generated entries; all4013 non-doc bytes and ten products match qualified
+installation evidence. Only the two generator products changed from Task136;
+all3994 runtime inputs match the verified merged tree.
 
-Fresh unfiltered coverage passes58 Python suites/975 cases but retains the
-strict failure: 17546/18150 lines(96.67%) and
-29689/47181 raw branches(62.93%). Make exits2
-against unchanged100% line/90% branch thresholds. All54 authored source reports,
-19 instrumented binaries and raw exception/cleanup edges remain included.
-Full project coverage, broader serial reset events and general vendor
-round-trip acceptance remain unfinished. Earlier clock/scan qualifications are
-recorded in their dated sections and the
-[model ledger](pattern-model-coverage.md#current-evidence-and-remaining-work).
+Four archived vendor export/model combinations now replay successfully with
+--physical_pdl, preserving13 explicit loads and seven apply boundaries each.
+Generated outputs are identical and idempotent on original/flat models.
+This is native replay of existing vendor exports, not a fresh vendor/hardware
+run or a general equivalence certificate. See [physical replay](#physical-reset-pattern-replay).
+
+Fresh unfiltered coverage passes58 suites/982 cases but fails the unchanged
+100% line/90% raw-branch gate:17589/18193 lines(96.68%) and29784/47295
+branches(62.97%). All54 reports,19 instrumented binaries,12347 missing throw
+edges and5164 other missing edges are retained. Coverage closure is excluded
+by the user's subsequent instruction; full-release acceptance is not claimed.
+
+The Task137 full run skipped five optional ANTLR reference cases because
+ICL_REF_DIR was unset. The Task138 follow-up executes all five plus the adapter
+availability test with the pinned reference/runtime: six methods, zero skips,
+exit0. The generator code and qualified products are unchanged.
+[Items2–15](remaining-work.md) are the authoritative current completion tracker.
 
 ## Vendor round-trip acceptance
 
@@ -404,7 +403,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iNote` | Retain literal notes in generated PDL. |
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
-| System-clock commands | Execution/scheduling remains unfinished and reports an error. |
+| System-clock commands | iClock/iClockOverride and relative waits work on qualified clock-only routes; restricted state-free absolute waits preserve literal time. General stateful time/clock events remain pending. |
 | Observation getters | `iGetReadData`/`iGetMiscompares` evaluate fully supplied explicit history; applied reads invalidate their target bits. Live observations, `iGetStatus` and interface/chain history remain unavailable. |
 
 This table describes generator execution. The formatter and LSP have separate,
@@ -453,7 +452,7 @@ broader syntax support and never execute PDL.
   propagation. Internal/output ports and controller-owned instruction storage
   are rejected before a mixed alias can partially change valid targets.
   This does not widen the ordinary serial backend's event model: explicit
-  scan-interface control ports still require the supported single-TAP backend.
+  scan-interface controls still require qualified controller/interface event bindings.
   Hardware starts unknown; ResetValue metadata is never treated as a power-on
   reset. A child-module iReset is rejected instead of promoted to a global reset.
   Reset discards pending reads/writes and clears resource ownership; it does
@@ -464,9 +463,10 @@ broader syntax support and never execute PDL.
   SIB and local-reset prerequisites. Reset release cannot enable an update on
   the same edge retroactively.
 - Single-TAP IR/DR selection, retained instruction state across apply groups,
-  and explicit/implicit scan-interface controls. Each complete scan must operate
-  its observed storage without also clocking bypassed registers. Every accepted
-  transaction executes through the native TAP controller and child event model.
+  and explicit/implicit scan-interface controls. The native fast path proves
+  complete-scan equivalence; bounded event planning also models clocked bypassed
+  storage when that proof does not hold. Every accepted transaction executes
+  through the native TAP controller and child event model.
   Generated PDL includes IR selection writes and their apply boundaries, and
   compares the BSDL capture pattern for automatically inserted instruction
   scans. Explicit instruction reads preserve the user's compare mask/value;
@@ -487,7 +487,7 @@ broader syntax support and never execute PDL.
   Native idle replay includes any explicitly enabled storage events; it does
   not infer BIST completion or live hardware readback.
 
-The backend accepts one physical scan path and at most one TAP, or standalone
+The backend accepts common-phase TAPs on equivalent root TCKs, or standalone
 client interfaces selected one at a time, each with one path or disjoint named
 chains. Interface-free networks can infer independent lanes when all static
 routes from each output reach one distinct input bit and no graph vertex is
@@ -503,7 +503,7 @@ path proves complete-scan equivalence; bounded event planning also tracks hidden
 capture/shift/update storage when that proof does not hold. Unbound vector control lanes retain
 their state, and parallel input frames do not pulse scan controls.
 It rejects
-multiple TAPs, overlapping paths within a selected chain group, intermediate serial taps,
+independent TAP phases, shared serial storage, overlapping paths within a selected chain group, intermediate serial taps,
 general serial- or phase-dependent reset events,
 stateful absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
