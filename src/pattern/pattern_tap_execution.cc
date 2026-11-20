@@ -239,6 +239,7 @@ std::map<size_t, char> TapExecution::Active(const TapRuntimeModel& tap) const {
     const auto standard = kStandard.find(instruction);
     if (association == tap.bsdl.registers.end() &&
         standard == kStandard.end()) {
+      if (tap.bsdl.private_instructions.count(instruction)) continue;
       throw std::runtime_error("missing TAP register association");
     }
     const auto reg = association == tap.bsdl.registers.end()

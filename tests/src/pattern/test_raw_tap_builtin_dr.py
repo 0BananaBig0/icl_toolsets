@@ -28,6 +28,119 @@ class RawTapBuiltinDr(unittest.TestCase):
     run_tool = dr.RawTapDrScan.run_tool
     rejected = dr.RawTapDrScan.rejected
 
+    def configure_bsdl(self, opcodes='', registers='', attributes=''):
+        text = (dr.ir.tap.ROOT / 'tests/cases/ours/pattern_generation/raw_tap_builtin_dr/model.bsdl').read_text()
+        text = text.replace('SAMPLE (0001)', 'SAMPLE (0001), PRELOAD (0001)')
+        if opcodes:
+            text = text.replace('IJTAG_OFF (0100)', 'IJTAG_OFF (0100), ' + opcodes)
+        if registers:
+            text = text.replace('DEVICE_ID (IDCODE)', 'DEVICE_ID (IDCODE), ' + registers)
+        if attributes:
+            anchor = ('  attribute IDCODE_REGISTER' if 'INSTRUCTION_PRIVATE' in attributes
+                      else '  attribute REGISTER_ACCESS')
+            text = text.replace(anchor, '  ' + attributes + '\n' + anchor)
+        path = self.root / 'model.bsdl'
+        path.write_text(text)
+        self.inputs[-1] = str(path)
+        return path
+
+    def test_custom_capture_and_reused_width(self):
+        self.configure_bsdl('CUSTOM_A (0101), CUSTOM_B (0110), CUSTOM_C (0111)',
+            'USERREG[2] (CUSTOM_A CAPTURES 10), userreg (custom_b CAPTURES 01, CUSTOM_C)')
+        self.replay('iReset; iScan -ir jtag 4 -si 5 -so 1; iApply; '
+                    'iScan jtag 2 -si 1 -so 2; iApply; '
+                    'iScan -ir jtag 4 -si 6 -so 1; iApply; '
+                    'iScan jtag 2 -si 2 -so 1; iApply; '
+                    'iScan -ir jtag 4 -si 7; iApply; '
+                    'iScan jtag 2 -si 0; iApply\n')
+
+    def test_repeated_opcodes_and_casefolded_bindings(self):
+        self.configure_bsdl('CUSTOM_A (0101), custom_a (0111), CUSTOM_A (0101)',
+                            'USERREG[2] (Custom_A CAPTURES 10)')
+        path = self.root / 'model.bsdl'
+        path.write_text(path.read_text().replace('BYPASS', 'bypass'))
+        model = self.root / 'model.icl'
+        model.write_text(dr.pathlib.Path(self.inputs[1]).read_text().replace('IJTAG_ON {', 'ijtag_on {'))
+        self.inputs[1] = str(model)
+        self.replay('iReset; iScan -ir jtag 4 -si 7; iApply; '
+                    'iScan jtag 2 -si 0 -so 2; iApply; '
+                    'iWrite core.r 7; iApply\n')
+
+    def test_implicit_bypass_with_and_without_identification(self):
+        for identification in (True, False):
+            with self.subTest(identification=identification):
+                path = self.configure_bsdl()
+                text = path.read_text().replace('BYPASS (1111), ', '').replace(', BYPASS (BYPASS)', '')
+                if not identification:
+                    text = text.replace('IDCODE (0010), ', '').replace(', DEVICE_ID (IDCODE)', '')
+                    start = text.index('  attribute IDCODE_REGISTER')
+                    end = text.index(';', start) + 1
+                    text = text[:start] + text[end:]
+                path.write_text(text)
+                body = ('iReset; iScan -ir jtag 4 -si 15; iApply; ' if identification
+                        else 'iReset; ')
+                self.replay(body + 'iScan jtag 1 -si 1 -so 0; iApply\n')
+
+    def test_private_omission_and_explicit_private_route(self):
+        path = self.configure_bsdl('SECRET (1000)', '',
+            'attribute INSTRUCTION_PRIVATE of BuiltinDrProbe : entity is "Secret";')
+        self.replay('iReset; iScan -ir jtag 4 -si 15; iApply; '
+                    'iScan jtag 1 -si 1 -so 0; iApply\n')
+        self.rejected('iReset; iScan -ir jtag 4 -si 8; iApply; '
+                      'iScan jtag 1; iApply\n', 'known complete register route')
+        model = self.root / 'private.icl'
+        model.write_text(dr.pathlib.Path(self.inputs[1]).read_text().replace('    IJTAG_OFF {',
+            '    SECRET { ScanInterface {core.client;} ActiveSignals {long_setup;} }\n    IJTAG_OFF {'))
+        self.inputs[1] = str(model)
+        self.replay('iReset; iScan -ir jtag 4 -si 8; iApply; '
+                    'iScan jtag 8 -si 1 -so 0; iApply\n')
+
+    def test_capture_pattern_lists_keep_only_common_bits(self):
+        path = self.configure_bsdl('USERCODE (0101)', '',
+            'attribute USERCODE_REGISTER of BuiltinDrProbe : entity is '
+            '"10101010101010101010101010101010, 10101010101010101010101010101000";')
+        text = path.read_text().replace('is "0001";', 'is "0001,1001";')
+        text = text.replace('"0001" & "0000000000000000" & "00000000001" & "1"',
+            '"00010000000000000000000000000011, 00100000000000000000000000000011"')
+        path.write_text(text)
+        self.replay('iReset; iScan jtag 32 -si 0 -so 0b00xx0000000000000000000000000011; iApply; '
+                    'iScan -ir jtag 4 -si 5 -so 0bx001; iApply; '
+                    'iScan jtag 32 -si 0 -so 0b101010101010101010101010101010x0; iApply\n')
+
+    def test_bad_capture_list_members_are_rejected(self):
+        for source, replacement in (
+                ('is "0001";', 'is "0001,0000";'),
+                ('is "0001";', 'is "0001,1001,";'),
+                ('"0001" & "0000000000000000" & "00000000001" & "1"',
+                 '"00010000000000000000000000000011, 00010000000000000000000000000010"')):
+            with self.subTest(replacement=replacement):
+                path = self.configure_bsdl()
+                path.write_text(path.read_text().replace(source, replacement))
+                self.rejected('iReset\\n', 'capture')
+
+    def test_shared_capture_masks_are_constraints(self):
+        self.configure_bsdl('USERCODE (0010)', '',
+            'attribute USERCODE_REGISTER of BuiltinDrProbe : entity is '
+            '"XXXX0000000000000000000000000011";')
+        self.replay('iReset; iScan jtag 32 -si 0 -so 0x10000003; iApply\n')
+
+    def test_invalid_private_capture_and_width_metadata(self):
+        cases = [
+            ('SECRET (1000)', '', 'attribute INSTRUCTION_PRIVATE of BuiltinDrProbe : entity is "SECRET, secret";', 'private'),
+            ('', '', 'attribute INSTRUCTION_PRIVATE of BuiltinDrProbe : entity is "UNKNOWN";', 'private'),
+            ('', '', 'attribute INSTRUCTION_PRIVATE of BuiltinDrProbe : entity is "BYPASS";', 'private'),
+            ('CUSTOM_A (0101)', 'USERREG[2] (CUSTOM_A CAPTURES 1)', '', 'capture'),
+            ('CUSTOM_A (0101), CUSTOM_B (0110)', 'USERREG[2] (CUSTOM_A), USERREG[3] (CUSTOM_B)', '', 'width'),
+            ('CUSTOM_A (0101)', 'USERREG (CUSTOM_A)', '', 'width'),
+        ]
+        for opcodes, registers, attributes, message in cases:
+            with self.subTest(message=message, registers=registers, attributes=attributes):
+                self.configure_bsdl(opcodes, registers, attributes)
+                self.rejected('iReset\n', message)
+        path = self.configure_bsdl()
+        path.write_text(path.read_text().replace('BYPASS (BYPASS)', 'BYPASS (BYPASS CAPTURES 0)'))
+        self.rejected('iReset\n', 'CAPTURES')
+
     def test_reset_idcode_and_selected_bypass_replay(self):
         result = self.replay('iReset; iScan jtag 32 -si 0x89abcdef -so 0x10000003 -stable; iApply; '
                              'iScan -ir jtag 4 -si 15 -so 1; iApply; '

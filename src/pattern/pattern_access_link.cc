@@ -116,6 +116,7 @@ class Binder {
           } else if (const auto* instruction =
                          dynamic_cast<const icl::AstBlock*>(child)) {
             auto bound = ReadInstruction(*instruction);
+            bound.name = CanonicalBsdlName(std::move(bound.name));
             if (!link.bsdl->opcodes.count(bound.name)) {
               throw std::runtime_error(
                   bound.origin + ": unknown BSDL instruction " + bound.name);

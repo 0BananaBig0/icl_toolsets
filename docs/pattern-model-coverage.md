@@ -4197,3 +4197,49 @@ Raw coverage remains 17546/18150 lines(96.67%) and
 missing edges. The100/90 strict gate staysFAILED; no reports/edges/thresholds
 were filtered. Evidence, failed attempts, hashes, review and rulings are under
 `build/reset-caller-dispatch-20261119/`.
+
+
+## Task140: audited BSDL model/default forms
+
+The bounded metadata reader and TAP model support case-insensitive BSDL
+instruction/register identities, repeated opcode descriptions, implicit allones
+BYPASS storage/reset encoding, private instructions with omitted associations,
+per-instruction CAPTURES, shared register widths and alternative IR/IDCODE/USERCODE
+capture lists. ICL signal identities retain their original case. An undefined
+private data route stays unknown and rejects raw access; it never becomes an
+unassigned-code BYPASS. Explicit supplied private AccessLink routes work.
+
+Alternative lists retain only common guaranteed bits; cross-bit correlations and
+selection of a particular device variant are not modeled. Shared opcode captures
+instead combine compatible care constraints and reject opposite cared bits.
+Partially overlapping opcode regions retain their own unknown bits. Existing
+constant/nonoverlapping mux paths remain; grouped decoders avoid repeated opcode
+expansion per bit and per register. Original/flat/generated/reset replays and
+atomic rejection cover these forms. The1024-register capture model builds in
+about0.03s; the10000-opcode model remains qualified. Single measurements establish
+no speedup or general throughput promise.
+
+Authority: IEEE1149.1-2001(R2008) B.5.1/B.6.1; B.8.11–13 (printed153–158,
+PDF161–166), with reset7.2.1e/f. B.8.13.3c explicitly permits later omission of
+a known custom register width; the printed BNF still spells brackets as required.
+This implementation follows the semantic permission and records that conflict.
+The reader is not a full VHDL/BSDL conformance checker or boundary-cell simulator.
+
+All13 native pattern suites,51 generator suites/830 cases per dynamic/static
+variant, native BSDL/binding/TAP/state/scheduler/runtime sanitizers, focused12/
+main71 sanitizer checks,24 style/C++17 gates and source distribution checks pass.
+The final maintained CLI fixtures also place private/optional-register attributes
+in the standard order, verified by focused dynamic/static/SAN and package checks.
+
+Fresh Tessent2026.2 setup/analysis/export probes use the original complete audit
+models with corrected attribute order. Six complete with exit0: baseline,
+CAPTURES, unused private instruction, IDCODE alternatives, implicit BYPASS, and
+compatible shared capture masks. Three exit1: repeated instruction descriptions
+(only-one-name rule in that tool), IR capture lists and USERCODE capture lists
+(parser comma rejection). These standard-first native forms do not therefore
+claim Tessent compatibility in that release. Earlier out-of-order pilot failures
+are not counted as valid-form vendor evidence. Source/input/log hashes, commands
+and complete exports are retained under build/bsdl-model-defaults-20261120/.
+This is bounded parser/export evidence, not general directional equivalence.
+Item11's broader corpus/reference acceptance and items2–12 remain separately
+tracked; excluded strict coverage item1 is unchanged.

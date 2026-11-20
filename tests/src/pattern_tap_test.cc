@@ -12,6 +12,7 @@
 
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_logic.h"
+#include "pattern/pattern_state.h"
 #include "utility/text_input.h"
 
 namespace {
@@ -1050,6 +1051,33 @@ void TestUsercodeCapture() {
               pattern::Elaborate(replay, model.netlist.top_module)) == flat,
           "instruction-dependent capture survives flat replay");
 }
+void TestCompatibleCaptureRegions() {
+  auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "IDCODE (0010)",
+                      "IDCODE (10X0), USERCODE (1010)");
+  bsdl =
+      Replace(bsdl, "\"0001\" & \"0000000000000000\" & \"00000000001\" & \"1\"",
+              "\"XXXX0000000000000000000000000011\"");
+  bsdl = Replace(bsdl, "end AccessProbe;",
+                 "attribute USERCODE_REGISTER of AccessProbe : entity is "
+                 "\"00010000000000000000000000000011\"; end AccessProbe;");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto capture = [&](const std::string& code) {
+    pattern::NetworkState state(model.netlist);
+    state.SetRegister(model.instruction_register, code, code);
+    std::string result;
+    const auto& node =
+        model.netlist.nodes.at(model.data_registers.at("DEVICE_ID"));
+    for (const auto& bit : node.inputs.at("CaptureSource")) {
+      result += state.Read(bit);
+    }
+    return result;
+  };
+  Require(capture("1000") == "xxxx0000000000000000000000000011",
+          "exclusive opcode region must not inherit another instruction's care "
+          "bits");
+  Require(capture("1010") == "00010000000000000000000000000011",
+          "overlapping opcode region combines compatible capture constraints");
+}
 void TestInvalidStandardAssociations() {
   const auto original = Read(kDirectory + "simple.bsdl");
   for (const auto& changed :
@@ -1109,7 +1137,7 @@ void TestInvalidDataRoutes() {
             "missing IDCODE_REGISTER"},
            {Replace(Replace(bsdl, "BYPASS (1111)", "CUSTOM (1111)"),
                     "BYPASS (BYPASS)", "USER[1] (CUSTOM)"),
-            "missing BYPASS"},
+            "conflicting"},
            {Replace(bsdl, "BYPASS (BYPASS)", "BYPASS[2] (BYPASS)"), "width"},
            {Replace(bsdl, "SAMPLE (0001)", "SAMPLE (0001), UNMAPPED (1000)"),
             "association"},
@@ -1226,6 +1254,36 @@ void TestManyExactRoutes() {
                   model.data_registers.at("BYPASS"),
           "10000 unique literal opcode routes avoid quadratic mask checks");
   std::cout << "TAP model: 10000 additional literal opcodes, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+void TestCaptureGroupScale() {
+  std::string opcodes, associations;
+  constexpr int kCount = 1024;
+  for (int i = 0; i < kCount; ++i) {
+    const auto instruction = "CUSTOM_" + std::to_string(i);
+    opcodes += ", " + instruction + "(" + Binary16(256 + i) + ")";
+    associations += ", REG_" + std::to_string(i) + "[1](" + instruction +
+                    " CAPTURES " + (i % 2 ? "1" : "0") + ")";
+  }
+  auto bsdl = WideBsdl("1111111111111111");
+  bsdl = Replace(bsdl, "IJTAG_OFF (0000000000000100)",
+                 "IJTAG_OFF (0000000000000100)" + opcodes);
+  bsdl =
+      Replace(bsdl, "DEVICE_ID (IDCODE)", "DEVICE_ID (IDCODE)" + associations);
+  const auto start = std::chrono::steady_clock::now();
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  for (int i = 0; i < kCount; ++i) {
+    const auto& reg = model.netlist.nodes.at(
+        model.data_registers.at("REG_" + std::to_string(i)));
+    Require(reg.Width() == 1 && reg.inputs.at("CaptureSource")[0].constant ==
+                                    (i % 2 ? '1' : '0'),
+            "independent capture groups preserve each register's literal");
+  }
+  std::cout << "TAP model: " << kCount
+            << " independent capture groups, seconds="
             << std::chrono::duration<double>(std::chrono::steady_clock::now() -
                                              start)
                    .count()
@@ -1891,11 +1949,13 @@ int main() {
     TestInstructionDecoderIntegration();
     TestUnassignedOpcodes();
     TestUsercodeCapture();
+    TestCompatibleCaptureRegions();
     TestImplicitStandardRegisters();
     TestInvalidStandardAssociations();
     TestActiveOnlyInstructions();
     TestMaskedRouteBudget();
     TestManyExactRoutes();
+    TestCaptureGroupScale();
     TestSharedInterfaceRoutes();
     TestInvalidDataRoutes();
     TestSharedRegisterRoutesAndNames();

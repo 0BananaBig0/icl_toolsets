@@ -8,6 +8,12 @@
 #include <utility>
 
 namespace pattern {
+std::string CanonicalBsdlName(std::string value) {
+  for (char& c : value) {
+    if (c >= 'a' && c <= 'z') c -= 'a' - 'A';
+  }
+  return value;
+}
 namespace {
 constexpr size_t kMaxSourceBytes = 16 * 1024 * 1024;
 constexpr size_t kMaxValueBytes = 4 * 1024 * 1024;
@@ -403,13 +409,69 @@ class Reader {
     if (atom) Fail(span.begin, "incomplete BSDL string expression");
     return result;
   }
+  bool StandardInstruction(const std::string& name) const {
+    static const std::set<std::string> kNames{"BYPASS", "CLAMP",  "HIGHZ",
+                                              "EXTEST", "INTEST", "PRELOAD",
+                                              "SAMPLE", "IDCODE", "USERCODE"};
+    return kNames.count(name);
+  }
   std::string Bits(const Attribute& attribute, size_t width) {
-    auto value = Lower(String(attribute.value));
-    if (value.size() != width ||
-        value.find_first_not_of("01x") != std::string::npos) {
-      Fail(attribute.origin, "BSDL bit pattern width/characters do not match");
-    }
-    return value;
+    const auto value = String(attribute.value);
+    std::string result;
+    size_t pos = 0;
+    do {
+      while (pos < value.size() && Space(value[pos])) ++pos;
+      const auto begin = pos;
+      while (pos < value.size() && value[pos] != ',' && !Space(value[pos])) {
+        ++pos;
+      }
+      const auto bits =
+          Lower(std::string_view(value).substr(begin, pos - begin));
+      if (bits.size() != width ||
+          bits.find_first_not_of("01x") != std::string::npos) {
+        Fail(attribute.origin,
+             "BSDL bit pattern width/characters do not match");
+      }
+      if (attribute.name == "instruction_capture" &&
+          bits.substr(width - 2) != "01") {
+        Fail(attribute.origin, "invalid instruction capture pattern");
+      }
+      if (attribute.name == "idcode_register" && bits.back() != '1') {
+        Fail(attribute.origin, "IDCODE capture must end in 1");
+      }
+      if (result.empty()) {
+        result = bits;
+      } else {
+        for (size_t bit = 0; bit < width; ++bit) {
+          if (bits[bit] != result[bit]) result[bit] = 'x';
+        }
+      }
+      while (pos < value.size() && Space(value[pos])) ++pos;
+      if (pos == value.size()) break;
+      if (value[pos++] != ',' || pos == value.size()) {
+        Fail(attribute.origin, "invalid BSDL capture pattern list");
+      }
+    } while (pos < value.size());
+    return result;
+  }
+  void PrivateInstructions(const Attribute& attribute) {
+    const auto value = String(attribute.value);
+    const auto table = Lex(context_, value, tokens_[attribute.origin].begin);
+    size_t pos = 0;
+    do {
+      if (table[pos].kind != Kind::kWord) {
+        Fail(attribute.origin, "invalid BSDL private instruction list");
+      }
+      const auto name = CanonicalBsdlName(std::string(table[pos++].text));
+      if (!tap_.opcodes.count(name) || StandardInstruction(name) ||
+          !tap_.private_instructions.insert(name).second) {
+        Fail(attribute.origin, "invalid BSDL private instruction " + name);
+      }
+      if (table[pos].kind == Kind::kEnd) break;
+      if (!table[pos++].Is(",") || table[pos].kind == Kind::kEnd) {
+        Fail(attribute.origin, "invalid BSDL private instruction list");
+      }
+    } while (pos < table.size());
   }
   void OpcodeTable(const Attribute& attribute) {
     const auto value = String(attribute.value);
@@ -420,7 +482,7 @@ class Reader {
     };
     while (table[pos].kind != Kind::kEnd) {
       if (table[pos].kind != Kind::kWord) fail();
-      const auto name = std::string(table[pos++].text);
+      const auto name = CanonicalBsdlName(std::string(table[pos++].text));
       if (!table[pos++].Is("(")) fail();
       std::vector<std::string> codes;
       do {
@@ -437,14 +499,18 @@ class Reader {
         if (!table[pos].Is(",")) break;
         ++pos;
       } while (pos < table.size());
-      if (!table[pos++].Is(")") ||
-          !tap_.opcodes.emplace(name, std::move(codes)).second) {
-        fail();
-      }
+      if (!table[pos++].Is(")")) fail();
+      auto& retained = tap_.opcodes[name];
+      retained.insert(retained.end(), codes.begin(), codes.end());
       if (table[pos].kind == Kind::kEnd) break;
       if (!table[pos++].Is(",") || table[pos].kind == Kind::kEnd) fail();
     }
     if (tap_.opcodes.empty()) fail();
+    tap_.opcodes["BYPASS"].push_back(std::string(tap_.instruction_width, '1'));
+    for (auto& [name, codes] : tap_.opcodes) {
+      std::sort(codes.begin(), codes.end());
+      codes.erase(std::unique(codes.begin(), codes.end()), codes.end());
+    }
   }
   void RegisterTable(const Attribute& attribute) {
     const auto value = String(attribute.value);
@@ -453,9 +519,11 @@ class Reader {
     const auto fail = [&] {
       Fail(attribute.origin, "invalid BSDL register access table");
     };
+    std::map<std::string, size_t> widths;
     while (table[pos].kind != Kind::kEnd) {
       if (table[pos].kind != Kind::kWord) fail();
-      BsdlRegister reg{std::string(table[pos++].text), std::nullopt};
+      BsdlRegister reg{CanonicalBsdlName(std::string(table[pos++].text)),
+                       std::nullopt, std::nullopt};
       if (table[pos].Is("[")) {
         ++pos;
         size_t width = 0;
@@ -467,13 +535,45 @@ class Reader {
         if (!width || !table[pos++].Is("]")) fail();
         reg.width = width;
       }
+      const auto prior = widths.find(reg.name);
+      if (prior != widths.end()) {
+        if (!reg.width) reg.width = prior->second;
+      } else if (reg.width) {
+        widths.emplace(reg.name, *reg.width);
+      }
       if (!table[pos++].Is("(")) fail();
       do {
         if (table[pos].kind != Kind::kWord) fail();
-        const auto instruction = std::string(table[pos++].text);
+        const auto instruction =
+            CanonicalBsdlName(std::string(table[pos++].text));
+        auto association = reg;
+        if (table[pos].Is("captures")) {
+          ++pos;
+          if (StandardInstruction(instruction)) {
+            Fail(attribute.origin, "CAPTURES is forbidden for " + instruction);
+          }
+          if (table[pos].kind != Kind::kWord &&
+              table[pos].kind != Kind::kNumber) {
+            fail();
+          }
+          association.capture = Lower(table[pos++].text);
+          const auto width = reg.name == "BYPASS" ? std::optional<size_t>(1)
+                             : reg.name == "DEVICE_ID"
+                                 ? std::optional<size_t>(32)
+                             : reg.name == "BOUNDARY" ? tap_.boundary_width
+                                                      : reg.width;
+          if (!width || association.capture->size() != *width ||
+              association.capture->find_first_not_of("01x") !=
+                  std::string::npos) {
+            Fail(attribute.origin,
+                 "BSDL register capture width/characters do not match");
+          }
+          Retain(association.capture->size(), attribute.origin);
+        }
         Retain(instruction.size() + reg.name.size(), attribute.origin);
         if (!tap_.opcodes.count(instruction) ||
-            !tap_.registers.emplace(instruction, reg).second) {
+            !tap_.registers.emplace(instruction, std::move(association))
+                 .second) {
           fail();
         }
         if (!table[pos].Is(",")) break;
@@ -492,6 +592,9 @@ class Reader {
       Fail(width.origin, "BSDL instruction width must be at least two");
     }
     OpcodeTable(EntityAttribute("instruction_opcode"));
+    if (Has("instruction_private")) {
+      PrivateInstructions(EntityAttribute("instruction_private"));
+    }
     tap_.capture =
         Bits(EntityAttribute("instruction_capture"), tap_.instruction_width);
     if (Has("idcode_register")) {
