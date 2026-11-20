@@ -23,7 +23,7 @@ list. Completing one supported case does not complete a broad item below.
 | 10 | Broader merge/scheduling optimization and scale qualification | Pending. Cover resource/timing barriers and representative larger networks, preserving valid schedules and reporting measured costs rather than global optimality. |
 | 11 | Remaining model/default/source/reference audit | Pending. Finish contextual source/direction/alias rules, BSDL/private capture and builtin models, corpus specialization and reference evidence. Parsing alone is not generator support. |
 | 12 | Broader vendor and model round-trip qualification | Pending. Extend directional vendor and original/flat/generated evidence beyond existing certified fixtures. Physical import currently covers a single bound TAP with scan-only storage, not general physical/vendor equivalence. |
-| 13 | Concrete physical replay diagnostics | Pending. Preserve compare tick/expected/observed bits and reservation/routing causes; keep ordinary native-probe fallback and failed-output protection. |
+| 13 | Concrete physical replay diagnostics | Completed in Task139 after independent review and one verified fix pass. Serial bit/expected/observed, named closed routes, unknown loads and original reservation causes are covered; ordinary fallback and failed-output protection are preserved. |
 | 14 | Execute five optional reference-ANTLR cases | Completed in Task138. All six existing adapter methods executed without skips using the pinned reference and matching runtime; commands below. |
 | 15 | Reconcile current documentation/checklists | Completed in Task138. Current guide/model/README summaries distinguish completed support and remaining work; historical plans link here. |
 

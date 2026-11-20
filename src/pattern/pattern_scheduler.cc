@@ -1151,7 +1151,8 @@ class ScanScheduler::Impl {
     bool inverted = false;
     size_t width = 0;
   };
-  ConcretePath RawTapPath(bool instruction = false) {
+  ConcretePath RawTapPath(bool instruction = false,
+                          bool preserve_cause = false) {
     if (!tap_ready_) {
       throw std::runtime_error("TAP raw data scan requires iReset first");
     }
@@ -1166,7 +1167,11 @@ class ScanScheduler::Impl {
     try {
       path = TraceSerialPath(
           snapshot, ids_.at({output, netlist_.nodes[output].left}), true);
-    } catch (const std::runtime_error&) {
+    } catch (const std::runtime_error& error) {
+      if (preserve_cause) {
+        throw std::runtime_error(
+            std::string("physical TAP route is incomplete: ") + error.what());
+      }
       fail();
     }
     const auto input = tap_->pins.at("tap_scan_in");
@@ -2511,6 +2516,9 @@ class ScanScheduler::Impl {
     // Keep the existing event-work limit even when no symbolic history is
     // built.
     if ((MaximumScanLength() + 1) * EventWorkSize() > 1048576) {
+      if (physical) {
+        throw std::runtime_error("physical TAP scan event-work limit exceeded");
+      }
       return false;
     }
     return true;
@@ -2531,8 +2539,14 @@ class ScanScheduler::Impl {
           required == std::set<size_t>{tap_->instruction_register} &&
           std::all_of(goals.begin(), goals.end(), only_ir) &&
           std::all_of(expected.begin(), expected.end(), only_ir);
-      const auto path = RawTapPath(instruction);
-      if (!NativeTapControls(path, !instruction)) return std::nullopt;
+      const auto path = RawTapPath(instruction, physical);
+      if (!NativeTapControls(path, !instruction)) {
+        if (physical) {
+          throw std::runtime_error(
+              "physical TAP controls do not match direct scan phases");
+        }
+        return std::nullopt;
+      }
       std::map<size_t, ScanControl> controls;
       ScanStep step;
       step.instruction = instruction;
@@ -2545,11 +2559,22 @@ class ScanScheduler::Impl {
       step.output = endpoint(tap_->pins.at("tap_scan_out"));
       step.together = together && !goals.empty();
       for (const auto& [id, suffix] : path.registers) {
-        if (tap_data_registers_.count(id)) return std::nullopt;
+        if (tap_data_registers_.count(id)) {
+          if (physical) {
+            throw std::runtime_error(
+                "physical TAP route selects synthetic data storage");
+          }
+          return std::nullopt;
+        }
         const auto& name = netlist_.nodes[id].name;
         const auto goal = goals.find(id);
         const auto bits = goal == goals.end() ? WriteFill(id) : goal->second;
         if (bits.find_first_not_of("01") != std::string::npos) {
+          if (physical) {
+            throw std::runtime_error(
+                "physical TAP scan load is not fully binary: " + name + " (" +
+                bits + ")");
+          }
           return std::nullopt;
         }
         step.loads.emplace(name, bits);
@@ -2565,7 +2590,14 @@ class ScanScheduler::Impl {
         controls.emplace(id, ScanControl{'1', '0', '0', '1'});
       }
       for (size_t id : required) {
-        if (!controls.count(id)) return std::nullopt;
+        if (!controls.count(id)) {
+          if (physical) {
+            throw std::runtime_error(
+                "physical target outside current TAP route: " +
+                netlist_.nodes[id].name);
+          }
+          return std::nullopt;
+        }
       }
       auto run = std::make_unique<TapExecution>(*execution_);
       run->TakeControlEvents();
@@ -2578,10 +2610,15 @@ class ScanScheduler::Impl {
       const auto output = tap_->pins.at("tap_scan_out");
       const auto observe = [&](size_t tick, const NetworkState& state) {
         const char expected_bit = step.serial_expected[tick];
-        if (expected_bit != 'x' &&
-            state.Read({output, netlist_.nodes[output].left}, true) !=
-                expected_bit) {
-          throw std::runtime_error("native TAP capture comparison differs");
+        if (expected_bit == 'x') return;
+        const char observed =
+            state.Read({output, netlist_.nodes[output].left}, true);
+        if (observed != expected_bit) {
+          throw std::runtime_error(
+              "TAP capture comparison differs at serial bit " +
+              std::to_string(tick) + ": expected " +
+              std::string(1, expected_bit) + ", observed " +
+              std::string(1, observed));
         }
       };
       const std::vector<std::pair<BitReference, ScanLane>> lanes = {
@@ -2619,6 +2656,7 @@ class ScanScheduler::Impl {
       fill_ = std::move(fill);
       return std::vector<ScanStep>{std::move(step)};
     } catch (const std::runtime_error&) {
+      if (physical) throw;
       return std::nullopt;
     }
   }

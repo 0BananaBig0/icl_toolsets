@@ -115,9 +115,70 @@ Module Network {
         result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
                                '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
                                '--debug', ok=False)
-        self.assertIn('exact physical TAP CSU', result.stdout)
+        self.assertIn('serial bit 1: expected 1, observed 0', result.stdout)
         for name in ('out.pdl', 'debug/Network.icl'):
             self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
+    def test_physical_closed_route_reports_target(self):
+        icl, bsdl, _ = self.physical_fixture()
+        icl.write_text(icl.read_text().replace('ScanOutPort so { Source b.so; }',
+            "ScanMux route SelectedBy control { 1'b0: control; 1'b1: b.so; }\n"
+            ' ScanOutPort so { Source route; }'))
+        # Ordinary native probing excludes locally wired reset networks.
+        icl.write_text(icl.read_text().replace(' ResetPort rst;', '')
+            .replace('InputPort rst = reset_a;', '')
+            .replace('InputPort rst = reset_b;', '')
+            .replace('InputPort rst=~TRST;', '')
+            .replace(" DataMux reset_a SelectedBy control { 1'b0: rst; 1'b1: 1'b1; }", '')
+            .replace(" DataMux reset_b SelectedBy control { 1'b0: 1'b1; 1'b1: rst; }", ''))
+        (self.root / 'source.pdl').write_text(
+            'iPDLLevel 0\niReset\niWrite tap.INSTRUCTION 4; iApply\n'
+            'iWrite core.b.value 3; iApply\n')
+        for name in ('out.pdl', 'debug/Network.icl'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('previous artifact\n')
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                               '--debug', ok=False)
+        self.assertIn('target outside current TAP route: core.b.value', result.stdout)
+        for name in ('out.pdl', 'debug/Network.icl'):
+            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+        self.run_tool('--icl', icl, '--pdl', 'source.pdl', '--bsdl',
+                      'AccessProbe', bsdl, '--output', 'ordinary.pdl')
+        self.assertGreater((self.root / 'ordinary.pdl').read_text().count('iApply'), 2)
+
+    def test_physical_route_trace_and_work_limit_causes(self):
+        for kind, message in (
+                ('work', 'physical TAP scan event-work limit exceeded'),
+                ('route', 'unknown or disconnected replay scan path')):
+            with self.subTest(kind=kind):
+                icl, bsdl, _ = self.physical_fixture()
+                source = icl.read_text()
+                commands = 'iReset\niWrite tap.INSTRUCTION 4; iApply\n'
+                if kind == 'work':
+                    source = source.replace('ScanRegister value[3:0]',
+                                            'ScanRegister value[1023:0]')
+                else:
+                    source = source.replace(
+                        'ScanRegister control { ScanInSource si; ResetValue 0; }',
+                        'ScanRegister control { ScanInSource si; }')
+                    source = source.replace('ScanOutPort so { Source b.so; }',
+                        "ScanMux route SelectedBy control { 1'b0: control; 1'b1: b.so; }\n"
+                        ' ScanOutPort so { Source route; }')
+                    commands += 'iWrite core.b.value 3; iApply\n'
+                icl.write_text(source)
+                (self.root / 'source.pdl').write_text(commands)
+                for name in ('out.pdl', 'debug/Network.icl'):
+                    path = self.root / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text('previous artifact\n')
+                result = self.run_tool('--physical_pdl', '--icl', icl,
+                    '--pdl', 'source.pdl', '--bsdl', 'AccessProbe', bsdl,
+                    '--output', 'out.pdl', '--debug', ok=False)
+                self.assertIn(message, result.stdout)
+                for name in ('out.pdl', 'debug/Network.icl'):
+                    self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
 
     def test_physical_mode_rejects_source_rewrite(self):
         icl, bsdl, _ = self.physical_fixture()
@@ -200,9 +261,10 @@ Module Network {
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('previous artifact\n')
-        self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
-                      '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
-                      '--debug', ok=False)
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                               '--debug', ok=False)
+        self.assertIn('scan load is not fully binary: core.b (1xxx)', result.stdout)
         for name in ('out.pdl', 'debug/Network.icl'):
             self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
         explicit = (head + 'iWrite core.b 15; iRead core.b 0b1xxx; '
