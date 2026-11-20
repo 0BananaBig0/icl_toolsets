@@ -7098,8 +7098,9 @@ actual retained state and fill only after success. Output writes preserve the
 shifted values even when reset masks them. Use `--physical_pdl` for subsequent
 replay; this interpretation is opt-in and does not alter ordinary PDL.
 
-The supported scope is one reset-initialized bound root TAP, a known current scan
-route and direct common capture/shift/update/clock controls. Explicit writes
+The supported scope is scan-only storage (no DataRegister declarations), one
+reset-initialized bound root TAP, a known current scan route and direct common
+capture/shift/update/clock controls. Explicit writes
 must be binary; reads may contain X comparison masks. Partial and omitted loads
 use the known retained fill, which local reset events update. The existing
 1,048,576 event-work bound applies. Resource preservation is checked on every
@@ -7110,3 +7111,21 @@ Physical mode adds no setup scans and does not merge applies. It rejects mixed
 data access, AccessTogether aliases, iApplyEndState defaults, raw scans,
 iState, waits, clocks and source-preserving `--local_reset`. Use ordinary mode
 to schedule instrument goals and generate reset prerequisites first.
+
+Task137 qualification: all26 focused reset tests pass with dynamic and static
+binaries. Full normal regression passes (1916 regression cases,2180 conformance
+cases,334 parser and119 scanner rules across2549 files, plus6 editor tests).
+ASan/UBSan with leak detection passes the native scheduler/runtime and all
+focused reset/source/main suites. Rocky Linux passes51 CLI suites and818 cases
+per binary variant, strict C++17 and native checks, and14 fresh installation
+gates. Four unchanged recorded vendor export/model combinations now replay
+natively with the explicit physical option; all13 explicit loads and7 apply
+boundaries per export are preserved, and outputs are identical and idempotent.
+A repeated256-sequence probe executes1792 applies in0.748/0.741s on source/flat
+models (66524/66600KiB RSS on a shared host); no speedup is claimed.
+
+Fresh raw coverage runs58 suites/980 cases successfully, but the strict100%
+line/90% branch gate remains failed:17588/18193 lines and29777/47293 branches.
+All54 authored reports,19 instrumented binaries and missing edges are retained;
+12347 missing throw edges and5169 other missing edges are not filtered.
+This is scoped reset replay qualification, not whole-project release acceptance.
