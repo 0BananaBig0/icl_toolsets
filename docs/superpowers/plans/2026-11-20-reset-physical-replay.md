@@ -26,7 +26,7 @@
 **Interfaces:** Add a trailing opt-in physical flag to Apply/Solve and Generate; existing defaults remain unchanged.
 - [x] Write self-contained TAP/reset replay tests, run against current binaries; Expected: new physical option is rejected.
 - [x] Implement the shared concrete replay path and CLI mode; Expected: physical export, exact output, flattened replay, default rejection and negative tests pass.
-- [ ] Run focused static and sanitizer checks, native scheduler, normal full regression, raw coverage, style/C++17 and source package; Expected: executable checks pass, known raw 100/90 gate fails and is retained.
+- [x] Run focused static and sanitizer checks, native scheduler, normal full regression, raw coverage, style/C++17 and source package; Expected: executable checks pass, known raw 100/90 gate fails and is retained.
 - [x] Qualify recorded four export/model combinations and repeated larger input; Expected: all explicit physical replays pass with exact scan payloads.
 - [ ] Document semantics and limits; commit, fresh whole-branch review, address important findings once, verify and integrate/delete the finished branch.
 **Verification:** python3 tests/src/pattern/test_argument_reset_sources.py build/icl-pattern-generation
