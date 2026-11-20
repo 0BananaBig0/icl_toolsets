@@ -934,6 +934,7 @@ class Elaborator {
       RecordParameters(model);
       AddScope(model, name, 0, {}, 1);
     }
+    IndexPortGroups(&netlist_);
     AddTopPorts();
     Connect();
     const bool restored = RestoreFlatOrigins(&netlist_);
@@ -1325,10 +1326,38 @@ class Elaborator {
               node.properties.emplace(key, property);
             }
           }
-          if (!netlist_.node_ids.emplace(node.name, node_id).second) {
-            throw std::runtime_error("duplicate object " + node.name);
+          const auto base = node.name;
+          auto group = netlist_.port_groups.find(base);
+          const auto previous = netlist_.node_ids.find(base);
+          if (group != netlist_.port_groups.end() ||
+              previous != netlist_.node_ids.end()) {
+            if (node.model != ModelKind::kPort || !node.indexed) {
+              throw std::runtime_error("duplicate object " + base);
+            }
+            if (group == netlist_.port_groups.end()) {
+              auto& old = netlist_.nodes[previous->second];
+              if (old.model != ModelKind::kPort || !old.indexed) {
+                throw std::runtime_error("duplicate object " + base);
+              }
+              const auto old_id = previous->second;
+              netlist_.node_ids.erase(previous);
+              old.name = PortFunctionName(old);
+              netlist_.node_ids.emplace(old.name, old_id);
+              auto& members = netlist_.scopes[scope_id].members;
+              members.erase(declaration.name);
+              members.emplace(
+                  old.name.substr(path.empty() ? 0 : path.size() + 1), old_id);
+              group =
+                  netlist_.port_groups.emplace(base, PortGroup{{old_id}}).first;
+            }
+            group->second.members.push_back(node_id);
+            node.name = PortFunctionName(node);
           }
-          netlist_.scopes[scope_id].members.emplace(declaration.name, node_id);
+          if (!netlist_.node_ids.emplace(node.name, node_id).second) {
+            throw std::runtime_error("overlapping port functions " + base);
+          }
+          netlist_.scopes[scope_id].members.emplace(
+              node.name.substr(path.empty() ? 0 : path.size() + 1), node_id);
           kinds_[{scope_id, declaration.kind}].push_back(node_id);
           netlist_.nodes.push_back(std::move(node));
         } catch (const std::exception& error) {
@@ -2533,6 +2562,125 @@ BitReference NetlistNode::OneHotSourceBit(size_t source,
   return position < padding ? BitReference{} : bits.at(position - padding);
 }
 
+std::string PortFunctionName(const NetlistNode& node) {
+  auto name = node.BaseName() + "[" + std::to_string(node.left);
+  if (node.left != node.right) name += ":" + std::to_string(node.right);
+  return name + "]";
+}
+
+void IndexPortGroups(Netlist* netlist) {
+  for (auto& [name, group] : netlist->port_groups) {
+    if (group.members.size() < 2 || netlist->node_ids.count(name)) {
+      throw std::runtime_error("invalid segmented port identity " + name);
+    }
+    std::optional<bool> ascending;
+    for (size_t id : group.members) {
+      const auto& node = netlist->nodes.at(id);
+      if (node.model != ModelKind::kPort || !node.indexed ||
+          node.BaseName() != name || node.name != PortFunctionName(node) ||
+          node.scope != netlist->nodes.at(group.members.front()).scope ||
+          std::min(node.left, node.right) < 0) {
+        throw std::runtime_error("invalid segmented port function " + name);
+      }
+      if (node.left == node.right) continue;
+      const bool direction = node.left < node.right;
+      if (ascending && *ascending != direction) {
+        throw std::runtime_error("segmented port direction conflict " + name);
+      }
+      ascending = direction;
+    }
+    std::sort(group.members.begin(), group.members.end(),
+              [&](size_t a, size_t b) {
+                const auto& x = netlist->nodes[a];
+                const auto& y = netlist->nodes[b];
+                return std::min(x.left, x.right) < std::min(y.left, y.right);
+              });
+    const auto& first = netlist->nodes[group.members.front()];
+    const auto lower = std::min(first.left, first.right);
+    auto upper = std::max(first.left, first.right);
+    for (size_t i = 1; i < group.members.size(); ++i) {
+      const auto& node = netlist->nodes[group.members[i]];
+      const auto next = std::min(node.left, node.right);
+      if (next <= upper) {
+        throw std::runtime_error("overlapping port functions " + name);
+      }
+      if (next - upper != 1) {
+        throw std::runtime_error("segmented port must be contiguous " + name);
+      }
+      upper = std::max(node.left, node.right);
+    }
+    if (static_cast<uint64_t>(upper - lower) >= kMaxWidth) {
+      throw std::runtime_error("segmented port width limit exceeded " + name);
+    }
+    group.left = ascending.value_or(false) ? lower : upper;
+    group.right = ascending.value_or(false) ? upper : lower;
+  }
+}
+
+std::vector<BitReference> Netlist::ResolveSignal(
+    const std::string& name,
+    std::optional<std::pair<int64_t, int64_t>> selection,
+    size_t max_bits) const {
+  const auto single = node_ids.find(name);
+  const auto grouped = port_groups.find(name);
+  if (single == node_ids.end() && grouped == port_groups.end()) {
+    throw std::runtime_error("unknown signal " + name);
+  }
+  const auto* node =
+      single == node_ids.end() ? nullptr : &nodes.at(single->second);
+  const auto left = node ? node->left : grouped->second.left;
+  const auto right = node ? node->right : grouped->second.right;
+  const auto range = selection.value_or(std::make_pair(left, right));
+  if (selection && node && !node->indexed) {
+    throw std::runtime_error("invalid vector selection on " + name);
+  }
+  if (range.first < std::min(left, right) ||
+      range.second < std::min(left, right) ||
+      range.first > std::max(left, right) ||
+      range.second > std::max(left, right)) {
+    throw std::runtime_error("signal index out of range for " + name);
+  }
+  const auto width = static_cast<size_t>(std::max(range.first, range.second) -
+                                         std::min(range.first, range.second)) +
+                     1;
+  if (width > std::min(max_bits, kMaxWidth)) {
+    throw std::runtime_error("signal operand bit limit exceeded");
+  }
+  std::vector<BitReference> result;
+  result.reserve(width);
+  const int step = range.first <= range.second ? 1 : -1;
+  if (node) {
+    for (int64_t index = range.first;; index += step) {
+      result.push_back({single->second, index});
+      if (index == range.second) break;
+    }
+    return result;
+  }
+  const auto& members = grouped->second.members;
+  auto member =
+      std::lower_bound(members.begin(), members.end(), range.first,
+                       [&](size_t id, int64_t index) {
+                         const auto& source = nodes[id];
+                         return std::max(source.left, source.right) < index;
+                       });
+  auto index = range.first;
+  while (true) {
+    const auto& source = nodes[*member];
+    const auto last =
+        step > 0 ? std::min(range.second, std::max(source.left, source.right))
+                 : std::max(range.second, std::min(source.left, source.right));
+    for (;;) {
+      result.push_back({*member, index});
+      if (index == last) break;
+      index += step;
+    }
+    if (index == range.second) break;
+    index += step;
+    member += step;
+  }
+  return result;
+}
+
 const NetlistNode& Netlist::NodeAt(const std::string& path) const {
   const auto found = node_ids.find(path);
   if (found == node_ids.end()) {
@@ -2596,43 +2744,48 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
         name += "." + tokens[first + 1].text;
         first += 2;
       }
-      const auto id = node_ids.find(Path(scope.path, name));
-      if (id == node_ids.end()) {
-        throw std::runtime_error("unknown signal " + Path(scope.path, name));
+      const auto path = Path(scope.path, name);
+      std::optional<std::pair<int64_t, int64_t>> range;
+      if (first != end) {
+        if (tokens[first].text != "[" || tokens[end - 1].text != "]") {
+          throw std::runtime_error("invalid vector selection on " + path);
+        }
+        size_t colon = first + 1;
+        while (colon < end - 1 && tokens[colon].text != ":") ++colon;
+        const auto left = Integer({expression.scope, first + 1, colon});
+        range = {left, colon < end - 1
+                           ? Integer({expression.scope, colon + 1, end - 1})
+                           : left};
+      } else if (scan_input) {
+        const auto id = node_ids.find(path);
+        if (id != node_ids.end() && nodes[id->second].kind == "ScanRegister" &&
+            nodes[id->second].indexed) {
+          range = {nodes[id->second].right, nodes[id->second].right};
+        }
       }
-      const auto& source = nodes[id->second];
-      if (source.model == ModelKind::kEnum ||
-          source.model == ModelKind::kInterface ||
-          source.model == ModelKind::kAccessLink ||
-          source.kind == "PortGroup") {
-        throw std::runtime_error(source.name + " is not a data signal or wire");
-      }
-      if (use != ReferenceUse::kAlias && source.scope != expression.scope &&
-          (source.model != ModelKind::kPort || IsInputPort(source.kind))) {
-        throw std::runtime_error(
-            scope.definition.Location(tokens[expression.begin].begin) +
-            ": hierarchical signal " + source.name +
-            " must name an output port");
-      }
-      const auto range =
-          scan_input && first == end && source.kind == "ScanRegister"
-              ? std::make_pair(source.right, source.right)
-              : SelectRange(*this, source, {expression.scope, first, end});
-      const auto left = range.first, right = range.second;
-      const auto length =
-          static_cast<size_t>(std::max(left, right) - std::min(left, right)) +
-          1;
-      if (length > max_bits - known) {
-        throw std::runtime_error("signal operand bit limit exceeded");
-      }
-      if (scan_input && source.kind == "ScanRegister" &&
-          (left != source.right || right != source.right)) {
-        throw std::runtime_error("ScanInSource must use the rightmost bit of " +
-                                 source.name);
-      }
-      for (int64_t bit = left;; bit += left <= right ? 1 : -1) {
-        segment.bits.push_back({id->second, bit, 'x', segment.inverted});
-        if (bit == right) break;
+      segment.bits = ResolveSignal(path, range, max_bits - known);
+      for (auto& bit : segment.bits) {
+        const auto& source = nodes[bit.node];
+        if (source.model == ModelKind::kEnum ||
+            source.model == ModelKind::kInterface ||
+            source.model == ModelKind::kAccessLink ||
+            source.kind == "PortGroup") {
+          throw std::runtime_error(source.name +
+                                   " is not a data signal or wire");
+        }
+        if (use != ReferenceUse::kAlias && source.scope != expression.scope &&
+            (source.model != ModelKind::kPort || IsInputPort(source.kind))) {
+          throw std::runtime_error(
+              scope.definition.Location(tokens[expression.begin].begin) +
+              ": hierarchical signal " + source.name +
+              " must name an output port");
+        }
+        if (scan_input && source.kind == "ScanRegister" &&
+            bit.index != source.right) {
+          throw std::runtime_error(
+              "ScanInSource must use the rightmost bit of " + source.name);
+        }
+        bit.inverted = segment.inverted;
       }
       known += segment.bits.size();
     } else {

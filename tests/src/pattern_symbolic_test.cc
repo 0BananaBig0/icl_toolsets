@@ -995,6 +995,48 @@ Module Justify {
           "unknown hardware state is not a free solver choice");
 }
 
+void TestSegmentedPdlTargets() {
+  pattern::Design design;
+  design.AddIcl("segmented_targets.icl", R"(
+Module Top {
+ Enum HighNames { High = 2'b11; }
+ Enum LowNames { Low = 2'b01; }
+ DataInPort din[3:2] { RefEnum HighNames; }
+ DataInPort din[1:0] { RefEnum LowNames; }
+ DataOutPort dout[3:0] { Source din; }
+ Alias inverted[3:0] = ~din;
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto whole = pattern::ResolvePdlTarget(netlist, "din");
+  const auto high = pattern::ResolvePdlTarget(netlist, "din(3:2)");
+  const auto low = pattern::ResolvePdlTarget(netlist, "din[1:0]");
+  const auto reverse = pattern::ResolvePdlTarget(netlist, "din[0:3]");
+  const auto inverted = pattern::ResolvePdlTarget(netlist, "inverted");
+  z3::context context;
+  Require(
+      whole.bits.size() == 4 &&
+          pattern::PdlDataValue(context, netlist, whole, "0xd") == "1101" &&
+          pattern::PdlDataValue(context, netlist, high, "High") == "11" &&
+          pattern::PdlDataValue(context, netlist, low, "Low") == "01",
+      "selected functions retain their own enum and aggregate numeric width");
+  for (size_t i = 0; i < 4; ++i) {
+    Require(whole.bits[i].index == static_cast<int64_t>(3 - i) &&
+                reverse.bits[i].index == static_cast<int64_t>(i) &&
+                inverted.bits[i].node == whole.bits[i].node &&
+                inverted.bits[i].index == whole.bits[i].index &&
+                inverted.bits[i].inverted,
+            "PDL grouped selections and aliases resolve actual function bits");
+  }
+  bool rejected = false;
+  try {
+    pattern::PdlDataValue(context, netlist, whole, "High");
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("unique") != std::string::npos;
+  }
+  Require(rejected, "aggregate target cannot borrow one function's enum");
+  pattern::ValidatePdlAccessTarget(netlist, whole, false);
+}
+
 void TestPdlOperands() {
   z3::context context;
   Require(pattern::PdlNumber(context, "0x96", 16) == "0000000010010110",
@@ -1160,6 +1202,7 @@ int main(int argc, char* argv[]) {
     TestOneHotScanValues();
     TestSeparateShiftState();
     TestJustification();
+    TestSegmentedPdlTargets();
     TestPdlOperands();
     std::cout << "pattern symbolic tests passed\n";
   } catch (const std::exception& error) {

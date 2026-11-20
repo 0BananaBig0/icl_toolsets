@@ -3933,11 +3933,111 @@ void TestOneHotScanLimits() {
   wide.AddIcl("wide_group.icl", source);
   Fails([&] { pattern::Elaborate(wide, "M"); }, "bit limit");
 }
+
+void TestSegmentedPortSources() {
+  struct Case {
+    std::string ports;
+    std::vector<int64_t> order;
+  };
+  const std::vector<Case> cases = {
+      {"DataInPort din[1:0]; DataInPort din[3:2];", {3, 2, 1, 0}},
+      {"DataInPort din[0:1]; DataInPort din[2:3];", {0, 1, 2, 3}},
+      {"DataInPort din[0]; DataInPort din[2]; DataInPort din[1]; "
+       "DataInPort din[3];",
+       {3, 2, 1, 0}},
+      {"Parameter W = 4; DataInPort din[$W-1:2]; DataInPort din[1:0];",
+       {3, 2, 1, 0}}};
+  for (const auto& item : cases) {
+    pattern::Design design;
+    design.AddIcl("segments.icl", "Module Top {" + item.ports +
+                                      "DataOutPort dout[3:0] { Source din; } "
+                                      "Alias reverse[3:0] = ~din[0:3]; }");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto& bits = netlist.NodeAt("dout").inputs.at("Source");
+    const auto& reverse = netlist.NodeAt("reverse").inputs.at("Source");
+    Require(bits.size() == 4 && reverse.size() == 4,
+            "whole and reversed grouped references have exact widths");
+    for (size_t i = 0; i < bits.size(); ++i) {
+      Require(bits[i].index == item.order[i] &&
+                  netlist.nodes.at(bits[i].node).kind == "DataInPort" &&
+                  reverse[i].index == static_cast<int64_t>(i) &&
+                  reverse[i].inverted,
+              "grouped references follow indices, not function source order");
+    }
+  }
+}
+
+void TestSegmentedPortProperties() {
+  pattern::Design design;
+  design.AddIcl("properties.icl", R"(
+Module Top {
+ Enum HighNames { high = 2'b11; }
+ Enum LowNames { low = 2'b01; }
+ DataInPort din[3:2] { RefEnum HighNames; Attribute tag = "upper"; }
+ DataInPort din[1:0] { RefEnum LowNames; Attribute tag = "lower"; }
+ DataOutPort dout[1:0] { Source din[1:0]; }
+ DataOutPort dout[3:2] { Source ~din[3:2]; }
+ SelectPort mixed[0];
+ DataInPort mixed[1];
+ DataOutPort kinds[1:0] { Source mixed; }
+ DataInPort bidir[1];
+ DataOutPort bidir[0] { Source bidir[1]; }
+ ToClockPort ck[1] { Period 10ns; }
+ ToClockPort ck[0] { Period 20ns; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto& high = netlist.NodeAt("din[3:2]");
+  const auto& low = netlist.NodeAt("din[1:0]");
+  Require(high.attributes.at("tag")->data == "upper" &&
+              low.attributes.at("tag")->data == "lower" && high.enumeration &&
+              low.enumeration && *high.enumeration != *low.enumeration,
+          "real port functions keep distinct attributes and enums");
+  const auto copy = netlist.ResolveSignal("dout");
+  Require(netlist.nodes.at(copy[0].node).name == "dout[3:2]" &&
+              netlist.nodes.at(copy[3].node).name == "dout[1:0]",
+          "output groups reference the correct real functions");
+  const auto& kinds = netlist.NodeAt("kinds").inputs.at("Source");
+  const auto pair = netlist.ResolveSignal("bidir");
+  Require(netlist.nodes.at(kinds[0].node).kind == "DataInPort" &&
+              netlist.nodes.at(kinds[1].node).kind == "SelectPort" &&
+              netlist.nodes.at(pair[0].node).kind == "DataInPort" &&
+              netlist.nodes.at(pair[1].node).kind == "DataOutPort",
+          "mixed function types retain each bit's access direction");
+  Require(netlist.NodeAt("ck[1]").clock_period &&
+              netlist.NodeAt("ck[0]").clock_period,
+          "clock functions retain their own period definitions");
+}
+
+void TestSegmentedPortErrors() {
+  for (const auto& item : std::vector<std::pair<std::string, std::string>>{
+           {"DataInPort p; DataInPort p[1];", "duplicate"},
+           {"ScanInPort si; ScanRegister p { ScanInSource si; } DataInPort "
+            "p[0];",
+            "duplicate"},
+           {"DataInPort p[1:0]; DataInPort p[1];", "overlap"},
+           {"DataInPort p[0]; DataInPort p[2];", "contiguous"},
+           {"DataInPort p[1:0]; DataInPort p[2:3];", "direction"},
+           {"DataInPort p[1]; DataInPort p[0]; "
+            "DataOutPort y { Source p[2]; }",
+            "index out of range"}}) {
+    Fails(
+        [&] {
+          pattern::Design design;
+          design.AddIcl("bad_segments.icl", "Module Top {" + item.first + "}");
+          pattern::Elaborate(design, "Top");
+        },
+        item.second);
+  }
+}
+
 }  // namespace
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestClockSignalSources,
+  for (const auto test : {TestSegmentedPortSources,
+                          TestSegmentedPortProperties,
+                          TestSegmentedPortErrors,
+                          TestClockSignalSources,
                           TestSecondaryClockInputSources,
                           TestClockOutputDifferentialScope,
                           TestClockInputDifferentialAssociation,

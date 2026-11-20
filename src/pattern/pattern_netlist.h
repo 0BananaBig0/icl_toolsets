@@ -9,6 +9,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "pattern/pattern_design.h"
@@ -125,12 +126,15 @@ struct NetlistNode {
   std::vector<LogicInstruction> logic;
   Attributes attributes;
   std::optional<ScanInterface> scan_interface;
+  std::string BaseName() const { return name.substr(0, name.find('[')); }
   size_t Width() const {
     return static_cast<size_t>(left > right ? left - right : right - left) + 1;
   }
   // position is an offset in group declaration order, not a numeric bit index.
   BitReference OneHotSourceBit(size_t source, size_t position) const;
 };
+
+std::string PortFunctionName(const NetlistNode& node);
 
 struct InstanceScope {
   std::string path;
@@ -162,22 +166,35 @@ struct TapRuntimeModel : TapDatapathNodes {
 
 enum class ReferenceUse { kConnection, kScanInput, kAlias };
 
+struct PortGroup {
+  std::vector<size_t> members;
+  int64_t left = 0, right = 0;
+};
+
 struct Netlist {
   std::string top_module;
   std::map<std::string, std::set<std::string>> module_parameters;
   std::vector<InstanceScope> scopes;
   std::vector<NetlistNode> nodes;
   std::map<std::string, size_t> node_ids;
+  std::map<std::string, PortGroup> port_groups;
   std::map<std::string, TapRuntimeModel> taps;
   const NetlistNode& NodeAt(const std::string& path) const;
   int64_t Integer(const Expression& expression) const;
   Constant Value(const Expression& expression, size_t width = 0) const;
   Expression ExpressionAt(size_t scope, icl::SourceSpan span) const;
+  std::vector<BitReference> ResolveSignal(
+      const std::string& name,
+      std::optional<std::pair<int64_t, int64_t>> selection = std::nullopt,
+      size_t max_bits = 1024 * 1024) const;
   std::vector<BitReference> Resolve(
       const Expression& expression, size_t width = 0,
       ReferenceUse use = ReferenceUse::kConnection,
       size_t max_bits = 1024 * 1024) const;
 };
+
+// Validate and sort real port-function intervals once before resolving signals.
+void IndexPortGroups(Netlist* netlist);
 
 // Disjoint selector cubes not covered by any mux code; work is bounded.
 std::vector<std::string> UncoveredMuxCodes(const NetlistNode& node);

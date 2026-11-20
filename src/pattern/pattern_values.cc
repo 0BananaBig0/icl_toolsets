@@ -115,6 +115,9 @@ std::string PdlDataValue(z3::context& context, const Netlist& netlist,
   if (pdl::IsNumberLiteral(text)) {
     return PdlNumber(context, text, target.bits.size());
   }
+  if (target.declaration >= netlist.nodes.size()) {
+    throw std::runtime_error("target has no unique RefEnum for value " + text);
+  }
   const auto& node = netlist.nodes.at(target.declaration);
   if (!node.enumeration) {
     throw std::runtime_error(node.origin + ": " + node.name +
@@ -132,11 +135,17 @@ PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text) {
   const auto open = text.find_first_of("[(");
   const auto name = text.substr(0, open);
   const auto found = netlist.node_ids.find(name);
-  if (found == netlist.node_ids.end()) {
+  const auto grouped = netlist.port_groups.find(name);
+  if (found == netlist.node_ids.end() && grouped == netlist.port_groups.end()) {
     throw std::runtime_error("unknown PDL target " + name);
   }
-  const auto& node = netlist.nodes.at(found->second);
-  int64_t left = node.left, right = node.right;
+  const auto* node = found == netlist.node_ids.end()
+                         ? nullptr
+                         : &netlist.nodes.at(found->second);
+  int64_t left = node ? node->left : grouped->second.left;
+  int64_t right = node ? node->right : grouped->second.right;
+  const auto lower = std::min(left, right), upper = std::max(left, right);
+  std::optional<std::pair<int64_t, int64_t>> selection;
   if (open != std::string::npos) {
     if (text.back() != (text[open] == '[' ? ']' : ')')) {
       throw std::runtime_error("unclosed PDL target range");
@@ -145,20 +154,31 @@ PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text) {
     const auto colon = range.find(':');
     left = Index(range.substr(0, colon));
     right = colon == std::string::npos ? left : Index(range.substr(colon + 1));
-    if (!node.indexed) {
+    if (node && !node->indexed) {
       throw std::runtime_error("PDL scalar target cannot be indexed: " + name);
     }
+    selection = std::make_pair(left, right);
   }
-  Offset(node, left);
-  Offset(node, right);
-  PdlTarget result;
-  result.declaration = found->second;
+  if (node) {
+    Offset(*node, left);
+    Offset(*node, right);
+  } else if (left < lower || right < lower || left > upper || right > upper) {
+    throw std::runtime_error("PDL target index outside " + name);
+  }
   const size_t width = left >= right ? left - right + 1 : right - left + 1;
   if (width > kMaxBits) {
     throw std::runtime_error("PDL target width limit exceeded");
   }
-  for (int64_t index = left;; index += left <= right ? 1 : -1) {
-    BitReference bit{found->second, index};
+  PdlTarget result;
+  result.bits = netlist.ResolveSignal(name, selection);
+  result.declaration = node ? found->second : result.bits.front().node;
+  if (!node &&
+      std::any_of(result.bits.begin(), result.bits.end(), [&](const auto& bit) {
+        return bit.node != result.declaration;
+      })) {
+    result.declaration = std::numeric_limits<size_t>::max();
+  }
+  for (auto& bit : result.bits) {
     size_t traversed = 0;
     while (bit.node != std::numeric_limits<size_t>::max() &&
            netlist.nodes.at(bit.node).model == ModelKind::kAlias) {
@@ -177,8 +197,6 @@ PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text) {
       next.inverted = next.inverted != bit.inverted;
       bit = next;
     }
-    result.bits.push_back(bit);
-    if (index == right) break;
   }
   return result;
 }
