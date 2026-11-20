@@ -1151,7 +1151,8 @@ class ScanScheduler::Impl {
     bool inverted = false;
     size_t width = 0;
   };
-  ConcretePath RawTapPath(bool instruction = false) {
+  ConcretePath RawTapPath(bool instruction = false,
+                          bool preserve_cause = false) {
     if (!tap_ready_) {
       throw std::runtime_error("TAP raw data scan requires iReset first");
     }
@@ -1166,7 +1167,11 @@ class ScanScheduler::Impl {
     try {
       path = TraceSerialPath(
           snapshot, ids_.at({output, netlist_.nodes[output].left}), true);
-    } catch (const std::runtime_error&) {
+    } catch (const std::runtime_error& error) {
+      if (preserve_cause) {
+        throw std::runtime_error(
+            std::string("physical TAP route is incomplete: ") + error.what());
+      }
       fail();
     }
     const auto input = tap_->pins.at("tap_scan_in");
@@ -2511,6 +2516,9 @@ class ScanScheduler::Impl {
     // Keep the existing event-work limit even when no symbolic history is
     // built.
     if ((MaximumScanLength() + 1) * EventWorkSize() > 1048576) {
+      if (physical) {
+        throw std::runtime_error("physical TAP scan event-work limit exceeded");
+      }
       return false;
     }
     return true;
@@ -2531,7 +2539,7 @@ class ScanScheduler::Impl {
           required == std::set<size_t>{tap_->instruction_register} &&
           std::all_of(goals.begin(), goals.end(), only_ir) &&
           std::all_of(expected.begin(), expected.end(), only_ir);
-      const auto path = RawTapPath(instruction);
+      const auto path = RawTapPath(instruction, physical);
       if (!NativeTapControls(path, !instruction)) {
         if (physical) {
           throw std::runtime_error(
