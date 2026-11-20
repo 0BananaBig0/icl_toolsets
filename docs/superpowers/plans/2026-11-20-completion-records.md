@@ -27,5 +27,5 @@
 - [x] Run existing adapter tests using the pinned reference/runtime. Expected: six tests execute, no skips, exit 0.
 - [x] Update current summaries, add the fourteen-item tracker and historical-plan pointers. Expected: completed features and pending requirements are distinguished.
 - [x] Validate links, evidence values, runtime/product hashes and git diff. Expected: no executable changes or invalid links.
-- [ ] Commit, task-done, fresh whole-branch review, necessary fix pass, integrate/push/delete branch.
+- [x] Commit, task-done, fresh whole-branch review, necessary fix pass, integrate/push/delete branch.
 **Verification:** ICL_REF_DIR=/tmp/icl-reference-completion-20261120 /tmp/icl-reference-runtime-20261120/bin/python tests/tests/test_antlr_diff.py

@@ -24,8 +24,8 @@ list. Completing one supported case does not complete a broad item below.
 | 11 | Remaining model/default/source/reference audit | Pending. Finish contextual source/direction/alias rules, BSDL/private capture and builtin models, corpus specialization and reference evidence. Parsing alone is not generator support. |
 | 12 | Broader vendor and model round-trip qualification | Pending. Extend directional vendor and original/flat/generated evidence beyond existing certified fixtures. Physical import currently covers a single bound TAP with scan-only storage, not general physical/vendor equivalence. |
 | 13 | Concrete physical replay diagnostics | Pending. Preserve compare tick/expected/observed bits and reservation/routing causes; keep ordinary native-probe fallback and failed-output protection. |
-| 14 | Execute five optional reference-ANTLR cases | Verified; integration/review pending. All six existing adapter methods executed without skips using the pinned reference and matching runtime; commands below. |
-| 15 | Reconcile current documentation/checklists | Verified; integration/review pending. Current guide/model/README summaries distinguish completed support and remaining work; historical plans link here. |
+| 14 | Execute five optional reference-ANTLR cases | Completed in Task138. All six existing adapter methods executed without skips using the pinned reference and matching runtime; commands below. |
+| 15 | Reconcile current documentation/checklists | Completed in Task138. Current guide/model/README summaries distinguish completed support and remaining work; historical plans link here. |
 
 ## Reference verification
 
