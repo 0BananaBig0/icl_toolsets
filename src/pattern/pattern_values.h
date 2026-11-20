@@ -25,5 +25,7 @@ PdlTarget ResolvePdlTarget(const Netlist& netlist, const std::string& text);
 void ValidatePdlAccessTarget(const Netlist& netlist, const PdlTarget& target,
                              bool read);
 bool IsReservableResource(const NetlistNode& node);
+// Static validation shared by runtime preflight and pattern lowering.
+bool ValidatePdlApplyOptions(const std::vector<std::string>& arguments);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_VALUES_H_

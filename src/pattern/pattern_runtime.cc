@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "pattern/pattern_netlist.h"
+#include "pattern/pattern_opaque.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -397,7 +398,7 @@ class Runtime::Impl {
         entry =
             history
                 .emplace(bit.node,
-                         std::string(netlist_->nodes.at(bit.node).Width(), '?'))
+                         std::string(netlist_->nodes.at(bit.node).Width(), 'x'))
                 .first;
       }
       char data = value[i];
@@ -406,23 +407,140 @@ class Runtime::Impl {
     }
   }
 
-  void InvalidateReadHistory() {
-    if (!pending_ || (read_history_.empty() && miscompare_history_.empty())) {
+  void InvalidateReadHistory(const Operation& apply) {
+    const bool together = ValidatePdlApplyOptions(apply.arguments);
+    if (!pending_) return;
+    const auto first = operations_.begin() + pending_operation_;
+    if (std::none_of(first, operations_.end(), [](const auto& operation) {
+          return operation.command == "iRead" || operation.command == "iScan";
+        })) {
       return;
     }
-    for (size_t i = pending_operation_; i < operations_.size(); ++i) {
-      const auto& operation = operations_[i];
-      if (operation.command != "iRead") continue;
-      const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
-      for (const auto& bit : target.bits) {
-        for (auto* history : {&read_history_, &miscompare_history_}) {
-          const auto entry = history->find(bit.node);
-          if (entry != history->end()) {
-            entry->second.at(HistoryOffset(bit)) = '?';
+    if (!history_context_) history_context_ = std::make_unique<z3::context>();
+    bool zero_status_known = zero_status_known_;
+    bool accesses = false, fallback_read = false;
+    std::unordered_map<size_t, std::string> read_care;
+    std::map<std::pair<bool, std::string>, std::pair<size_t, bool>> raw_care;
+    size_t raw_bits = 0;
+    // Validate discarded operands too; commit history only after the whole
+    // queue.
+    for (auto it = first; it != operations_.end(); ++it) {
+      const auto& operation = *it;
+      if (operation.command == "iScan") {
+        const auto scan = NormalizeScan(*history_context_, operation);
+        const bool instruction = scan.arguments[0] == "-ir";
+        const size_t offset = instruction ? 1 : 0;
+        const auto& name = scan.arguments[offset];
+        if (netlist_) {
+          const auto found = netlist_->node_ids.find(name);
+          bool client = false;
+          if (found != netlist_->node_ids.end()) {
+            const auto& interface =
+                netlist_->nodes[found->second].scan_interface;
+            client =
+                interface && (interface->kind == ScanInterfaceKind::kClient ||
+                              interface->kind == ScanInterfaceKind::kClientTap);
+          } else if (name == "unnamed" && netlist_->taps.size() == 1) {
+            if (!implicit_tap_client_) {
+              const bool declared = std::any_of(
+                  netlist_->nodes.begin(), netlist_->nodes.end(),
+                  [](const auto& node) {
+                    return node.scope == 0 && node.scan_interface.has_value();
+                  });
+              const auto interfaces = EffectiveScanInterfaces(*netlist_);
+              implicit_tap_client_ =
+                  !declared &&
+                  std::any_of(interfaces.begin(), interfaces.end(),
+                              [](const auto& binding) {
+                                return binding.scope == 0 &&
+                                       binding.interface.kind ==
+                                           ScanInterfaceKind::kClientTap;
+                              });
+            }
+            client = *implicit_tap_client_;
           }
+          if (!client || (instruction && netlist_->taps.empty())) {
+            throw std::runtime_error(
+                "raw scan target must be a client interface");
+          }
+        }
+        const auto key = std::make_pair(instruction, name);
+        auto& latest = raw_care[key];
+        const auto& expected = scan.arguments[5 + offset];
+        const size_t width = expected.size() - 2;
+        raw_bits = raw_bits - latest.first + width;
+        if (raw_bits > 1024 * 1024) {
+          throw std::runtime_error("raw scan queued payload resource limit");
+        }
+        latest = {width,
+                  expected.find_first_not_of('x', 2) != std::string::npos};
+        continue;
+      }
+      const bool read = operation.command == "iRead";
+      const bool write = operation.command == "iWrite";
+      const bool state = operation.command == "iState";
+      const bool controlling =
+          state && (operation.arguments.size() != 3 ||
+                    operation.arguments[2] == "-LastWrittenValue");
+      if (!read && !write && !controlling) continue;
+      if (read || write) accesses = true;
+      if (!netlist_) {
+        if (read) {
+          fallback_read = true;
+          if (operation.arguments.size() > 1) zero_status_known = false;
+        } else if (controlling && fallback_read) {
+          zero_status_known = false;
+        }
+        continue;
+      }
+      const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
+      std::string bits;
+      if (controlling) {
+        bits = PdlNumber(*history_context_, operation.arguments[1],
+                         target.bits.size());
+        for (const auto& bit : target.bits) {
+          ValidateStateAssumption(*netlist_, bit.node);
+        }
+      } else {
+        ValidatePdlAccessTarget(*netlist_, target, read);
+        bits = operation.arguments.size() == 2
+                   ? PdlDataValue(*history_context_, *netlist_, target,
+                                  operation.arguments[1])
+                   : std::string(target.bits.size(), 'x');
+      }
+      if (!read && !controlling) continue;
+      for (size_t i = 0; i < target.bits.size(); ++i) {
+        const auto& bit = target.bits[i];
+        auto entry = read_care.find(bit.node);
+        if (read && entry == read_care.end()) {
+          entry =
+              read_care
+                  .emplace(bit.node,
+                           std::string(netlist_->nodes[bit.node].Width(), '?'))
+                  .first;
+        }
+        if (entry == read_care.end()) continue;
+        auto& care = entry->second.at(HistoryOffset(bit));
+        if (read || care != '?') care = bits[i] == 'x' ? 'x' : '1';
+      }
+    }
+    if (together && accesses && !raw_care.empty()) {
+      throw std::runtime_error(
+          "mixed raw preparation cannot use iApply -together");
+    }
+    for (const auto& [key, scan] : raw_care) {
+      if (scan.second) zero_status_known = false;
+    }
+    for (const auto& [id, care] : read_care) {
+      if (care.find('1') != std::string::npos) zero_status_known = false;
+      for (auto* history : {&read_history_, &miscompare_history_}) {
+        auto& value = history->try_emplace(id, care.size(), 'x').first->second;
+        for (size_t i = 0; i < care.size(); ++i) {
+          if (care[i] != '?') value[i] = '?';
         }
       }
     }
+    zero_status_known_ = zero_status_known;
   }
 
   std::string HistoryValue(const std::string& name, const std::string& target,
@@ -432,7 +550,11 @@ class Runtime::Impl {
           name +
           " requires hardware readback; unavailable during static generation");
     };
-    if (!netlist_ || name == "iGetStatus") unavailable();
+    if (name == "iGetStatus") {
+      if (zero_status_known_) return "0";
+      unavailable();
+    }
+    if (!netlist_) unavailable();
     const auto resolved = ResolvePdlTarget(*netlist_, target);
     ValidatePdlAccessTarget(*netlist_, resolved, true);
     const bool read = name == "iGetReadData";
@@ -441,8 +563,8 @@ class Runtime::Impl {
     bits.reserve(resolved.bits.size());
     for (const auto& bit : resolved.bits) {
       const auto entry = history.find(bit.node);
-      if (entry == history.end()) unavailable();
-      char data = entry->second.at(HistoryOffset(bit));
+      char data =
+          entry == history.end() ? 'x' : entry->second.at(HistoryOffset(bit));
       if (data == '?') unavailable();
       if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
       bits += data;
@@ -841,7 +963,7 @@ class Runtime::Impl {
       pending_ = true;
     }
     if (name == "iState") RememberHistory(operation);
-    if (name == "iApply") InvalidateReadHistory();
+    if (name == "iApply") InvalidateReadHistory(operation);
     if (name == "iApply" || name == "iReset") pending_ = false;
     if (name == "iRunLoop" && pending_) {
       throw std::runtime_error("iRunLoop has unapplied operations");
@@ -871,7 +993,9 @@ class Runtime::Impl {
   std::optional<size_t> main_merge_action_;
   const Design& design_;
   const Netlist* netlist_;
+  std::optional<bool> implicit_tap_client_;
   History read_history_, miscompare_history_;
+  bool zero_status_known_ = true;
   std::unique_ptr<z3::context> history_context_;
   std::map<std::string, const InstanceScope*> instance_scopes_;
   std::string top_;

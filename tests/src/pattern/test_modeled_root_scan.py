@@ -409,9 +409,13 @@ class ModeledRootScan(unittest.TestCase):
                              'iWrite held 1; iApply; iWrite value[1] 1; iApply\n', PORTS)
         self.assertIn('iWrite value 0b10100111', result)
 
-    def test_raw_child_port_ownership_remains_unsupported(self):
-        self.rejected('iReset; iTake sel; iState sel 1; '
-                      'iScan child.local 8 -si 0xa5; iApply\n', 'storage', CHILD)
+    def test_raw_child_port_ownership_checks_actual_values(self):
+        result = self.replay('iReset; iTake sel; iState sel 1; '
+                             'iScan child.local 8 -si 0xa5; iApply; '
+                             'iRead child.value 0xa5; iApply\n', CHILD)
+        self.assertIn('iScan client', result)
+        self.rejected('iReset; iTake sel; iState sel 0; '
+                      'iScan child.local 8 -si 0xa5; iApply\n', 'reserved', CHILD)
 
     def test_wide_ordinary_write_refreshes_taken_storage_natively(self):
         import time

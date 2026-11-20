@@ -175,7 +175,10 @@ class SystemClocks(unittest.TestCase):
         original = ('iClock out; iRunLoop 2 -sck out; '
                     'iClockOverride out -source other -freqDivider 3; '
                     'iRunLoop 2 -sck out; iClock out; iRunLoop 2 -sck out\n')
-        physical = original.replace('iClock out', 'iClock n6f7574').replace('-sck out', '-sck n6f7574')
+        physical = (original.replace('iClock out', 'iClock n6f7574')
+                    .replace('-sck out', '-sck n6f7574')
+                    .replace('iClockOverride out', 'iClockOverride n6f7574')
+                    .replace('-source other', '-source n6f74686572'))
         result = self.physical_clock_replay(source, original, physical)
         self.assertIn('iRunLoop 4 -sck clk', result)
         self.assertIn('iRunLoop 6 -sck other', result)
@@ -192,18 +195,34 @@ class SystemClocks(unittest.TestCase):
                 ('iClock n76696577\n', 'unknown PDL target'),
                 ('iClock n636c6b(0)\n', 'scalar target cannot be indexed'),
                 ('iClock n636c6b(\n', 'invalid PDL object identifier'),
-                ('iClockOverride n6f7574 -freqDivider 3\n', 'unknown PDL target'),
-                ('iClockOverride out -source n636c6b\n', 'unknown PDL target'),
                 ('iWrite n64 1; iApply\n', 'unknown PDL target')]:
             with self.subTest(commands=commands):
                 self.rejected(flat, commands, diagnostic)
         self.rejected(source, 'iClock n636c6b\n', 'unknown PDL target')
+        self.rejected(source, 'iClockOverride n6f7574 -freqDivider 3\n', 'unknown PDL target')
+        self.rejected(source, 'iClockOverride out -source n636c6b\n', 'unknown PDL target')
         literal = 'n726f6f74'
         result = self.physical_clock_replay(
             'Module Top { ClockPort root; ClockPort ' + literal + '; }',
             'iClock ' + literal + '; iRunLoop 3 -sck ' + literal + '\n',
             'iClock ' + literal + '; iRunLoop 3 -sck n' + literal.encode().hex() + '\n')
         self.assertIn('iRunLoop 3 -sck ' + literal, result)
+
+    def test_flat_override_literal_collision_and_indexed_names(self):
+        self.physical_clock_replay(
+            'Module Top { ClockPort clk; ClockPort n636c6b; '
+            'ToClockPort out {Source clk;} ToClockPort n6f7574 {Source n636c6b;} }',
+            'iClockOverride n6f7574 -source n636c6b -freqDivider 3; '
+            'iClock n6f7574; iRunLoop 2 -sck n6f7574\n',
+            'iClockOverride n6f7574 -source n636c6b -freqDivider 3; '
+            'iClock n6f7574; iRunLoop 2 -sck n6f7574\n')
+        result = self.physical_clock_replay(
+            'Module Top {ClockPort root[5:4]; ToClockPort out[1:0] {Source root;} }',
+            'iClockOverride out(1) -source root(4) -freqDivider 3; '
+            'iClock out(1); iRunLoop 2 -sck out(1)\n',
+            'iClockOverride n6f7574(1) -source n726f6f74(4) -freqDivider 3; '
+            'iClock n6f7574(1); iRunLoop 2 -sck n6f7574(1)\n')
+        self.assertIn('iRunLoop 6 -sck root(4)', result)
 
     def test_flat_clock_physical_name_scale(self):
         depth = 4096

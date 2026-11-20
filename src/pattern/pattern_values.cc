@@ -9,6 +9,11 @@
 #include "pdl/pdl_document.h"
 
 namespace pattern {
+bool ValidatePdlApplyOptions(const std::vector<std::string>& arguments) {
+  if (arguments.empty()) return false;
+  if (arguments == std::vector<std::string>{"-together"}) return true;
+  throw std::runtime_error("unsupported iApply option");
+}
 bool IsReservableResource(const NetlistNode& node) {
   return node.model == ModelKind::kRegister ||
          (node.model == ModelKind::kPort && node.kind.size() >= 4 &&

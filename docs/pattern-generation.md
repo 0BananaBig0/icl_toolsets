@@ -7220,3 +7220,54 @@ bounds, exact qualification records and Tessent2026.2 differences. The initial
 matrix passed830 cases per variant; the post-review record in that section
 supersedes it. No coverage closure or general physical/vendor equivalence is
 claimed.
+
+## Task141: flat clock overrides, sparse history and child-port locks
+
+Associated flattened clock names use the same checked name mapping for both
+iClockOverride targets and sources as ordinary clock configuration and waits.
+Literal-name collisions retain their existing priority, and indexed clocks,
+saved checks, override versions and default restoration keep their validation.
+
+Never-read register/output bits return unknown history rather than requiring a
+device sample. Explicit sparse history preserves unknown untouched bits.
+A successfully validated apply invalidates its read history until observations are
+supplied; expected comparisons never become observations. Status is zero while
+no cared comparison has been applied, including all-masked raw comparisons;
+unknown actual comparison results still reject, and reset does not clear them.
+This does not add a hardware transport, live observations or chain history.
+
+Modeled child raw scans accept compatible port reservations and check their
+actual capture/shift/update edges and final state. An incompatible selection,
+clock edge or derived output still rejects atomically. Root raw effects retain
+their existing port handling. Scope return and ordinary follow-up writes work.
+A single-stream iRead does not assign a controlling lock (IEEE1687-2014
+7.9.19, printed178/PDF192); the native preservation API tests actual clock and
+output locks.
+
+Qualification after independent review and one necessary fix pass passes all13
+native pattern suites,51 generator suites/852 cases per dynamic/static variant,
+focused72 clock +30 history +14 child methods per variant, three native
+leak-enabled ASan/UBSan suites, sanitizer clock72/history30/child14/BSDL20/main71
+methods,30 changed-hunk format/tidy/C++17 gates and source-distribution checks.
+
+Status follows effective per-bit expectations after controlling state and
+overlapping reads, plus surviving normalized interface/IR raw requests.
+Grouped X masks retain the same meaning as unspaced masks. Static target/value/
+apply-option validation precedes history commit, including discarded operands;
+failed applies preserve histories, status and previously published artifacts.
+
+Child raw replay proves held ports invariant across intermediate serial states
+before bulk shifting. Otherwise it checks each edge within the unchanged
+one-million event-work budget and reports exhaustion explicitly. A65536-bit
+child scan with five held ports uses the proof path in0.422371s in one local
+measurement; no general speedup is claimed. Cared child port locks add one
+linear netlist snapshot; unprotected/root-exempt paths retain existing behavior.
+
+Exact commands, exits, timings, hashes and review disposition are retained in
+build/runtime-clock-ownership-20261120/review-fix/; the original pre-review and
+failed-draft evidence is preserved separately. Two Minor review findings remain:
+the design/top-name constructor without a netlist conservatively rejects an
+explicit all-masked ordinary read's zero status; eager validation identifies the
+apply location rather than the queued operand's origin. CLI elaborated history
+and original operand errors remain covered. Full remaining items5–7, excluded
+coverage1 and general vendor/physical equivalence are not claimed.

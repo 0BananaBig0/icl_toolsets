@@ -16,6 +16,8 @@ namespace pattern {
 // Caller proves a single unnamed client; accepts Tessent -chain default.
 Operation NormalizeScan(z3::context& context, const std::string& target,
                         const Operation& operation);
+// Validate payloads/options without selecting or executing a hardware route.
+Operation NormalizeScan(z3::context& context, const Operation& operation);
 // No result without iScan. Otherwise validate a root opaque client and lower
 // its queued scans. Unsupported topology/interactions fail before any
 // publication.

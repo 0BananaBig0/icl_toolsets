@@ -79,7 +79,7 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
   if (args.empty() || args.size() % 2 == 0) {
     throw std::runtime_error("invalid iClockOverride arguments");
   }
-  const auto target = Target(args[0]);
+  const auto target = Target(ClockTargetName(args[0]));
   const auto& node = netlist_.nodes[target.first];
   if (node.kind != "ToClockPort") {
     throw std::runtime_error(
@@ -104,7 +104,7 @@ void SystemClocks::Override(const Operation& operation, z3::context& context) {
       throw std::runtime_error("duplicate iClockOverride option");
     }
     if (option == "-source") {
-      const auto bit = Target(args[i + 1]);
+      const auto bit = Target(ClockTargetName(args[i + 1]));
       definition.source = {bit.first, bit.second};
     } else if (option == "-freqMultiplier" || option == "-freqDivider") {
       const auto bits = PdlNumber(context, args[i + 1], 64);

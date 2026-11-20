@@ -56,6 +56,12 @@ class RawTapBuiltinDr(unittest.TestCase):
                     'iScan -ir jtag 4 -si 7; iApply; '
                     'iScan jtag 2 -si 0; iApply\n')
 
+    def test_status_replaces_normalized_instruction_scan(self):
+        text = self.replay('iReset; iScan -ir jtag 4 -so 1; '
+            'iScan -ir jtag -chain default 4 -si 15; iApply; '
+            'iNote [iGetStatus];\n')
+        self.assertIn('iNote 0', text)
+
     def test_repeated_opcodes_and_casefolded_bindings(self):
         self.configure_bsdl('CUSTOM_A (0101), custom_a (0111), CUSTOM_A (0101)',
                             'USERREG[2] (Custom_A CAPTURES 10)')
