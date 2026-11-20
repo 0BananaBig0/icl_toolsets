@@ -2682,7 +2682,7 @@ void TestFlatClockTargetNames() {
     z3::context context;
     clocks.Override(
         {"iClockOverride",
-         {"child.out(1)", "-source", "other(5)", "-freqDivider", "3"},
+         {physical, "-source", "n6f74686572(5)", "-freqDivider", "3"},
          "physical-clock:override",
          {}},
         context);
@@ -2701,19 +2701,15 @@ void TestFlatClockTargetNames() {
       Require(rejected && clocks.Wait(physical, 1, scheduler).second == 3,
               "bad physical spellings do not replace checked clocks");
     }
-    bool rejected = false;
-    try {
-      clocks.Override({"iClockOverride",
-                       {physical, "-freqDivider", "4"},
-                       "physical-clock:unsupported-override",
-                       {}},
-                      context);
-    } catch (const std::runtime_error& error) {
-      rejected = std::string(error.what()).find("unknown PDL target") !=
-                 std::string::npos;
-    }
-    Require(rejected && clocks.Wait(physical, 1, scheduler).second == 3,
-            "physical override targets retain their original lookup contract");
+    clocks.Override({"iClockOverride",
+                     {physical, "-freqDivider", "4"},
+                     "physical-clock:override-defaults",
+                     {}},
+                    context);
+    Require(clocks.Wait(physical, 1, scheduler).second == 3 &&
+                clocks.Check(physical, scheduler) == "clk(5)" &&
+                clocks.Wait(physical, 1, scheduler).second == 4,
+            "physical overrides preserve saved checks and restore ICL defaults");
   }
 }
 
