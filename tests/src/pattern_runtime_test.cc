@@ -261,6 +261,45 @@ iNote [iGetStatus -clear]
                         "0bxxxx1010", "0bxxxx0101", "0bxxxx1010", "0", "0"}),
           "never-read bits remain unknown while initial status is known zero");
 }
+void TestFailedApplyHistory() {
+  pattern::Design design;
+  design.AddIcl("failed-history.icl",
+                "Module History { DataRegister value[7:0]; }");
+  const auto netlist = pattern::Elaborate(design, "History");
+  for (bool unknown_status : {false, true}) {
+    for (const std::string first :
+         {"iRead value 0bxxxxxxxx; ", "iRead value 0; "}) {
+      for (const std::string invalid :
+           {"iRead value 0x100; ", "iRead missing 0; "}) {
+        pattern::Runtime runtime(design, netlist);
+        runtime.Execute(
+            "failed-history.pdl",
+            std::string("iPDLLevel 1; iReset; ") +
+                (unknown_status ? "iRead value 0; iApply; " : "") +
+                "iState value 9 -LastReadValue; "
+                "iState value 6 -LastMiscompareValue; " +
+                first + invalid +
+                "if {![catch {iApply}]} {error {invalid apply was accepted}}; "
+                "iReset; iNote [iGetReadData value -dec]; "
+                "iNote [iGetMiscompares value -dec]; " +
+                (unknown_status ? "if {![catch {iGetStatus}]} {error {unknown "
+                                  "status lost}}"
+                                : "iNote [iGetStatus]"));
+        runtime.Finish();
+        std::vector<std::string> notes;
+        for (const auto& operation : runtime.operations()) {
+          if (operation.command == "iNote") {
+            notes.push_back(operation.arguments.at(0));
+          }
+        }
+        Require(
+            notes == (unknown_status ? std::vector<std::string>{"9", "6"}
+                                     : std::vector<std::string>{"9", "6", "0"}),
+            "failed apply preserves supplied histories and prior status");
+      }
+    }
+  }
+}
 void TestObservationHistoryInvalidation() {
   pattern::Design design;
   design.AddIcl("history.icl", R"(
@@ -727,6 +766,7 @@ int main() {
                           TestProcedureNamespaceSelection,
                           TestExplicitObservationGetters,
                           TestNeverReadAndInitialStatus,
+                          TestFailedApplyHistory,
                           TestObservationHistoryInvalidation,
                           TestSequentialDefinitions,
                           TestBindingAndPrefixes,

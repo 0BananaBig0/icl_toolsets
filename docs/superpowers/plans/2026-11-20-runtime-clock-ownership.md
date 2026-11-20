@@ -9,36 +9,38 @@ hardware/time guesses, new parser/dependency or excluded coverage1.
 - Encoded clock names must preserve literal collisions and checked snapshots.
 - Never-read x must not hide unresolved actual reads after apply, reset or files.
 - Initial status must never manufacture comparison outcomes or clear unknowns.
+- Failed apply validation preserves histories/status; invalid CLI operands still
+  reject with their original cause and preserve published artifacts.
 - Child port locks stay enforced on every edge and afterward; root exemptions
   and register assignment refresh must remain unchanged.
 ### Task 1: Reuse associated-flat override target/source mapping
 **Files:** src/pattern/pattern_clock.cc; tests/src/pattern/test_system_clocks.py;
 tests/src/pattern_scheduler_test.cc as necessary.
 **Interfaces:** unchanged SystemClocks API.
-- [ ] Add source/flat/generated/reset replay, source+target mappings, snapshots,
+- [x] Add source/flat/generated/reset replay, source+target mappings, snapshots,
   collision and invalid-target tests; Expected RED on old mapping.
-- [ ] Reuse ClockTargetName at both override lookups; Expected GREEN with all
+- [x] Reuse ClockTargetName at both override lookups; Expected GREEN with all
   existing iClock/Wait and override validation.
-- [ ] Commit and task-done after focused verification.
+- [x] Commit and task-done after focused verification.
 **Verification:** python3 tests/src/pattern/test_system_clocks.py build/icl-pattern-generation
 ### Task 2: Distinguish never-read history and unresolved observations
 **Files:** src/pattern/pattern_runtime.cc; tests/src/pattern_runtime_test.cc;
 tests/src/pattern/test_observation_state.py.
 **Interfaces:** existing runtime getters only; no adapter/device guesses.
-- [ ] Add never-read/partial/supplied/invalidated aliases and initial status/
+- [x] Add never-read/partial/supplied/invalidated aliases and initial status/
   clear/read/no-compare/session tests; Expected RED on current rejection.
-- [ ] Keep sparse x defaults separately from unavailable applied reads; preserve
+- [x] Keep sparse x defaults separately from unavailable applied reads; preserve
   explicit histories and reject unknown status. Expected GREEN.
-- [ ] Commit and task-done after focused and native runtime verification.
+- [x] Commit and task-done after focused and native runtime verification.
 **Verification:** python3 tests/src/pattern/test_observation_state.py build/icl-pattern-generation
 ### Task 3: Enforce compatible child port reservations during raw replay
 **Files:** src/pattern/pattern_scheduler.cc; existing modeled-child/native tests;
 current docs/tracker.
 **Interfaces:** unchanged raw replay and reservation APIs.
-- [ ] Add compatible child selection and conflicting selection/clock/output,
+- [x] Add compatible child selection and conflicting selection/clock/output,
   ordinary follow-up, scoped ownership and atomic failure tests. Expected RED
   on compatible child case.
-- [ ] Let child ports use existing per-edge/final checks; retain root exemption
+- [x] Let child ports use existing per-edge/final checks; retain root exemption
   and storage rules. Expected GREEN.
 - [ ] Run combined native/full generator/dynamic/static/SAN/style/C++17/package,
   update exact tracker evidence without broad closure, commit/task-done, fresh

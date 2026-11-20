@@ -7220,3 +7220,38 @@ bounds, exact qualification records and Tessent2026.2 differences. The initial
 matrix passed830 cases per variant; the post-review record in that section
 supersedes it. No coverage closure or general physical/vendor equivalence is
 claimed.
+
+## Task141: flat clock overrides, sparse history and child-port locks
+
+Associated flattened clock names use the same checked name mapping for both
+iClockOverride targets and sources as ordinary clock configuration and waits.
+Literal-name collisions retain their existing priority, and indexed clocks,
+saved checks, override versions and default restoration keep their validation.
+
+Never-read register/output bits return unknown history rather than requiring a
+device sample. Explicit sparse history preserves unknown untouched bits.
+A successfully validated apply invalidates its read history until observations are
+supplied; expected comparisons never become observations. Status is zero while
+no cared comparison has been applied, including all-masked raw comparisons;
+unknown actual comparison results still reject, and reset does not clear them.
+This does not add a hardware transport, live observations or chain history.
+
+Modeled child raw scans accept compatible port reservations and check their
+actual capture/shift/update edges and final state. An incompatible selection,
+clock edge or derived output still rejects atomically. Root raw effects retain
+their existing port handling. Scope return and ordinary follow-up writes work.
+A single-stream iRead does not assign a controlling lock (IEEE1687-2014
+7.9.19, printed178/PDF192); the native preservation API tests actual clock and
+output locks.
+
+Qualification passes all13 native pattern suites,51 generator suites/845 cases
+per dynamic/static variant, focused72 clock +24 history +14 child methods per
+variant, three native leak-enabled ASan/UBSan suites, sanitizer clock72/history24/
+child14/parent-BSDL19/main71 methods,15 changed-hunk format/tidy/C++17 gates and
+source-distribution build/install/uninstall checks. Failed-apply histories/status
+remain intact; invalid CLI operands still reject with the original cause and
+preserve published artifacts. History validation uses two streamed linear passes
+without retaining all queued target expansions. Exact commands, exits, timings
+and input hashes are in build/runtime-clock-ownership-20261120/final/.
+Full remaining items5–7,
+excluded coverage1 and general vendor/physical equivalence are not claimed.

@@ -12,6 +12,8 @@ those bits. Applied reads without supplied observations remain unavailable,
 distinct from never-read bits. Preserve aliases, inversion, formats and per-file
 session history. Initial status is0 until an applied cared comparison makes
 the count unavailable; do not infer samples from expected data or ResetValue.
+A failed apply validation preserves both supplied histories and prior known/
+unknown status. Catch/reset does not legalize invalid CLI operands.
 iGetStatus-clear returns the current count before clearing; unknown counts
 still require an observation provider. No device backend or full status support
 is claimed. Raw compares with explicit -so remain conservative without readback.
@@ -21,8 +23,10 @@ as before. A child must reject conflicting selection/clock/output locks and
 preserve state/files. Do not release or refresh port locks by implication.
 
 No dependencies, timing defaults, scheduling thresholds or transport guesses.
-These changes add no full scans/subprocesses to hot paths: clock reuse is indexed,
-history is sparse and linear in touched bits, existing scan checks remain.
+These changes add no full-netlist scans or subprocesses to hot paths: clock
+reuse is indexed; history uses sparse storage and two streamed linear passes
+over queued operations/touched bits, without retaining all expanded reads.
+Existing scan checks remain.
 Watch focused RED failures, then GREEN/native/dynamic/static/SAN, whole generator
 regression, style/C++17, source package and one independent final branch review.
 Item1 coverage stays excluded. Actual live observations, general clocks/lifecycle

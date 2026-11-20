@@ -408,6 +408,8 @@ class Runtime::Impl {
 
   void InvalidateReadHistory() {
     if (!pending_) return;
+    bool zero_status_known = zero_status_known_;
+    // Validate the whole apply before invalidating any supplied history.
     for (size_t i = pending_operation_; i < operations_.size(); ++i) {
       const auto& operation = operations_[i];
       if (operation.command == "iScan") {
@@ -421,26 +423,32 @@ class Runtime::Impl {
               (expected[1] == 'b' || expected[1] == 'B' || expected[1] == 'x' ||
                expected[1] == 'X') &&
               expected.find_first_not_of("xX", 2) == std::string::npos;
-          if (!all_masked) zero_status_known_ = false;
+          if (!all_masked) zero_status_known = false;
         }
         continue;
       }
       if (operation.command != "iRead") continue;
       if (!netlist_) {
-        if (operation.arguments.size() > 1) zero_status_known_ = false;
+        if (operation.arguments.size() > 1) zero_status_known = false;
         continue;
       }
       const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
-      if (zero_status_known_ && operation.arguments.size() > 1) {
+      if (operation.arguments.size() > 1) {
         if (!history_context_) {
           history_context_ = std::make_unique<z3::context>();
         }
         const auto expected = PdlDataValue(*history_context_, *netlist_, target,
                                            operation.arguments[1]);
         if (expected.find_first_not_of('x') != std::string::npos) {
-          zero_status_known_ = false;
+          zero_status_known = false;
         }
       }
+    }
+    for (size_t i = pending_operation_; netlist_ && i < operations_.size();
+         ++i) {
+      const auto& operation = operations_[i];
+      if (operation.command != "iRead") continue;
+      const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
       for (const auto& bit : target.bits) {
         for (auto* history : {&read_history_, &miscompare_history_}) {
           auto entry =
@@ -453,6 +461,7 @@ class Runtime::Impl {
         }
       }
     }
+    zero_status_known_ = zero_status_known;
   }
 
   std::string HistoryValue(const std::string& name, const std::string& target,

@@ -68,6 +68,36 @@ class ObservationState(unittest.TestCase):
                        'iApply; iGetStatus\n')
         self.assertIn('hardware readback', self.run_tool(icl, pdl, ok=False))
 
+    def test_failed_apply_preserves_history_and_status(self):
+        for unknown_status in (False, True):
+            for first in ('iRead value 0bxxxx', 'iRead value 0'):
+                for invalid in ('iRead value 0x10', 'iRead missing 0'):
+                    with self.subTest(unknown_status=unknown_status,
+                                      first=first, invalid=invalid):
+                        setup = ('iRead value 0; iApply; '
+                                 if unknown_status else '')
+                        status = ('if {![catch {iGetStatus}]} '
+                                  '{error {failed apply cleared unknown status}}; '
+                                  if unknown_status else 'iNote [iGetStatus]; ')
+                        body = 'iPDLLevel 1; iReset; ' + setup + (
+                            'iState value 9 -LastReadValue; '
+                            'iState value 6 -LastMiscompareValue; ' + first + '; ' +
+                            invalid + '; if {![catch {iApply} message]} '
+                            '{error {invalid apply was accepted}}; iReset; '
+                            'iNote "[iGetReadData value] [iGetMiscompares value]"; ' +
+                            status + '\n')
+                        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+                        icl.write_text(SCAN)
+                        pdl.write_text(body)
+                        output = self.root / 'result.pdl'
+                        output.write_bytes(b'preserve old output\n')
+                        error = self.run_tool(icl, pdl, ok=False)
+                        expected = ('truncates significant bits' if '0x10' in invalid
+                                    else 'unknown PDL target missing')
+                        self.assertIn(expected, error)
+                        self.assertNotIn('hardware readback', error)
+                        self.assertEqual(output.read_bytes(), b'preserve old output\n')
+
     def test_supplied_getters_expand_without_changing_hardware(self):
         out = self.replay(SCAN, 'iPDLLevel 1; iReset; '
                           'iState value 9 -LastReadValue; '
