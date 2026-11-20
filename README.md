@@ -468,7 +468,7 @@ The generator's [verification record](docs/pattern-generation.md#current-verific
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
 
-For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
+For qualified common-phase TAPs after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
 be known unsigned 64-bit integers, with no unapplied reads or writes.
 Checked system-clock waits (`iClock` followed by `iRunLoop COUNT -sck PORT`)
@@ -521,7 +521,8 @@ See [merge behavior](docs/pattern-generation.md#merge-scheduling).
 
 Three further TAP cases covering computed-port writes, child-enable ownership,
 and merged observations are certified in both directions with Tessent 2026.2.
-The offline suite contains 40 directional standards; see
+The offline suite contains 77 directional certificates across 52 cases
+(39 forward, 38 reverse), plus seven legacy certificates; see
 [qualification scope](docs/tessent-goldens.md#port-control-and-merge-qualification-2026-10-30).
 
 This is an experimental retargeter. Common-phase multiple TAPs, qualified

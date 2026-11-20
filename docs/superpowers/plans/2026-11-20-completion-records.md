@@ -23,7 +23,7 @@
 ### Task 1: Reconcile records and execute reference checks
 **Files:** README.md; docs/pattern-generation.md; docs/pattern-model-coverage.md; docs/remaining-work.md; historical completion-plan introductions; own design/plan.
 **Interfaces:** consumes build/reset-physical-replay-20261120/completion.json and existing tests/tests/test_antlr_diff.py; produces current item/status/evidence mapping.
-- [ ] Read Task 137 evidence and compare stale summaries; record exact discrepancies.
+- [x] Read Task 137 evidence and compare stale summaries; record exact discrepancies.
 - [x] Run existing adapter tests using the pinned reference/runtime. Expected: six tests execute, no skips, exit 0.
 - [x] Update current summaries, add the fourteen-item tracker and historical-plan pointers. Expected: completed features and pending requirements are distinguished.
 - [x] Validate links, evidence values, runtime/product hashes and git diff. Expected: no executable changes or invalid links.

@@ -57,11 +57,11 @@ TAP/SIB fixture to verify this transition and reopening before a later write.
 Schema-3 snapshots under `tests/golden/tessent_roundtrip/` preserve the direction,
 comparison policy, original source hashes, staged inputs/scripts, raw vendor
 export, local output, binary/version provenance and compared trace. Ordinary
-checks never refresh them. Forty-two directional standards cover 26 source cases (20 forward and 22
-reverse). They include pin/vector cases, TAP/SIB and reset reservations, data
+checks never refresh them. Seventy-seven directional certificates cover 52 source cases (39 forward and
+38 reverse), alongside seven separately stored legacy certificates. They include pin/vector cases, TAP/SIB and reset reservations, data
 registers, shadow storage, mixed I/O, computed ports, control ownership and
 merged observations. The dated sections below distinguish each qualification's
-scope and failures; the most recent six standards are described in
+scope and failures; the dated six standards from2026-10-30 are described in
 [port/control/merge qualification](#port-control-and-merge-qualification-2026-10-30).
 
 ## TAP and reset qualification, 2026-10-28

@@ -27,7 +27,7 @@ scanner rules over2549 ICL files, and six editor tests.
 Fresh Rocky Linux native/strict-C++17 checks and51 suites/820 cases per variant
 pass. Source-archive build,12 local package gates and14 remote installation/
 identity gates pass. The final archive contains4245 tracked shipped files plus
-six generated entries; all4013 non-doc bytes and ten products match qualified
+six generated entries; all4013 non-documentation files compared byte-for-byte and ten products match qualified
 installation evidence. Only the two generator products changed from Task136;
 all3994 runtime inputs match the verified merged tree.
 
@@ -398,8 +398,8 @@ atomic failures and source/flat/generated-PDL replay.
 | `iProc`, `iCall`, prefixes and Tcl computation | Expand through the bounded runtime, preserving source order and call diagnostics. |
 | `iRead`, `iWrite`, `iApply` | Schedule supported scan-register/alias accesses, primary-input writes and selectable/addressed DataRegister access; numeric or target-local enum operands; `-together` enforces a shared update cycle. |
 | `iState` | Numeric assumptions for ScanRegister/DataRegister storage and supported top-level data/control inputs, including aliases and slices; default/`-LastWrittenValue` updates overlapping queued write/compare values. `-LastReadValue`/`-LastMiscompareValue` supply observation history and are forwarded without hardware changes. No device transaction. |
-| `iReset` | Explicit top-level reset, including `-sync` for a single TAP. |
-| `iRunLoop` | Literal TCK waits on standalone clients or a reset single TAP; zero count is a no-op. |
+| `iReset` | Explicit top-level reset, including `-sync` for qualified common-phase TAPs. |
+| `iRunLoop` | Literal TCK waits on standalone clients or reset qualified common-phase TAPs; zero count is a no-op. |
 | `iNote` | Retain literal notes in generated PDL. |
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
@@ -479,7 +479,7 @@ broader syntax support and never execute PDL.
 - Source-attributed failures and invocation stacks. Structural disconnection,
   unsupported behavior and bounded solver exhaustion are distinct errors.
 - Literal TCK `iRunLoop` counts (IEEE 1687-2014 §7.9.17, printed pp. 175–176)
-  on standalone clients or a single TAP after explicit reset. Standalone clients
+  on standalone clients or qualified common-phase TAPs after explicit reset. Standalone clients
   need no TAP or initial reset. `iRunLoop COUNT` defaults to TCK;
   `COUNT -tck` and `-tck COUNT` are accepted and emitted as decimal
   `COUNT -tck`. Counts must fit an unsigned 64-bit integer and contain no X.
