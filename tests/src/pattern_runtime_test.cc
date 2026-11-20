@@ -224,6 +224,43 @@ iNote [iGetReadData child.value -dec]
           "explicit history formats, alias masks and cross-file identities");
 }
 
+void TestNeverReadAndInitialStatus() {
+  pattern::Design design;
+  design.AddIcl("initial.icl", R"(Module Initial {
+    DataRegister value[7:0]; Alias inverted[7:0] = ~value;
+    DataOutPort q[7:0] {Source value;}
+  })");
+  const auto netlist = pattern::Elaborate(design, "Initial");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("initial-first.pdl", R"(iPDLLevel 1
+iNote [iGetStatus]
+iNote [iGetStatus -clear]
+iNote [iGetReadData value]
+iNote [iGetReadData q]
+iNote [iGetMiscompares value -hex]
+iState value[3:0] 10 -LastReadValue
+iNote [iGetReadData value]
+iNote [iGetReadData inverted]
+)");
+  runtime.Execute("initial-second.pdl", R"(
+iNote [iGetReadData value]
+iRead value
+iApply
+iNote [iGetStatus]
+iRead value 0bxxxxxxxx
+iApply
+iNote [iGetStatus -clear]
+)");
+  runtime.Finish();
+  std::vector<std::string> notes;
+  for (const auto& op : runtime.operations()) {
+    if (op.command == "iNote") notes.push_back(op.arguments.at(0));
+  }
+  Require(notes == std::vector<std::string>({"0", "0", "0bxxxxxxxx",
+                  "0bxxxxxxxx", "0xXX", "0bxxxx1010", "0bxxxx0101",
+                  "0bxxxx1010", "0", "0"}),
+          "never-read bits remain unknown while initial status is known zero");
+}
 void TestObservationHistoryInvalidation() {
   pattern::Design design;
   design.AddIcl("history.icl", R"(
@@ -235,21 +272,16 @@ Module History {
 )");
   const auto netlist = pattern::Elaborate(design, "History");
   for (const std::string body :
-       {"iGetReadData value", "iState value 9 -LastReadValue; iGetReadData q",
-        "iState value 9 -LastMiscompareValue; iGetReadData value",
-        "iState value 9 -LastReadValue; iGetMiscompares value",
-        "iState value 9 -LastReadValue; iRead value; iApply; iGetReadData "
-        "value",
-        "iState value 9 -LastReadValue; iRead value 0bxxxxxxxx; iApply; "
-        "iGetReadData value",
-        "iRead value 0; iState value 9 -LastReadValue; iApply; iGetReadData "
-        "value",
-        "iState value 9 -LastReadValue; iRead reversed[0]; iApply; "
-        "iGetReadData value[7]",
-        "iState value 9 -LastMiscompareValue; iRead value 9; iApply; "
-        "iGetMiscompares value",
-        "iState value[7:4] 9 -LastReadValue; iGetReadData value",
-        "iState value 9 -LastReadValue; iGetStatus"}) {
+       {"iRead value; iApply; iGetReadData value",
+        "iRead value 0; iApply; iGetReadData value",
+        "iRead value 0; iApply; iGetMiscompares value",
+        "iRead value 0; iApply; iGetStatus",
+        "iRead value 0; iApply; iReset; iGetStatus -clear",
+        "iState value 9 -LastReadValue; iRead value; iApply; iGetReadData value",
+        "iState value 9 -LastReadValue; iRead value 0bxxxxxxxx; iApply; iGetReadData value",
+        "iRead value 0; iState value 9 -LastReadValue; iApply; iGetReadData value",
+        "iState value 9 -LastReadValue; iRead reversed[0]; iApply; iGetReadData value[7]",
+        "iState value 9 -LastMiscompareValue; iRead value 9; iApply; iGetMiscompares value"}) {
     pattern::Runtime runtime(design, netlist);
     Fails([&] { runtime.Execute("unavailable.pdl", "iPDLLevel 1\n" + body); },
           "hardware readback");
@@ -689,6 +721,7 @@ int main() {
                           TestFallbackInstanceResolution,
                           TestProcedureNamespaceSelection,
                           TestExplicitObservationGetters,
+                          TestNeverReadAndInitialStatus,
                           TestObservationHistoryInvalidation,
                           TestSequentialDefinitions,
                           TestBindingAndPrefixes,

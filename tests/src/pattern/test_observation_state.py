@@ -22,6 +22,52 @@ class ObservationState(unittest.TestCase):
     run_tool = helpers.SimultaneousChains.run_tool
     replay = helpers.SimultaneousChains.replay
 
+    def test_never_read_bits_and_initial_status(self):
+        out = self.replay(SCAN, 'iPDLLevel 1; '
+            'iNote "[iGetReadData value] [iGetMiscompares value] [iGetStatus]"; '
+            'iNote [iGetStatus -clear]; '
+            'iState value[1:0] 1 -LastReadValue; '
+            'iNote "[iGetReadData value] [iGetReadData inverted]"; '
+            'iNote "[iGetMiscompares value -hex] [iGetReadData value -dec]"; '
+            'iRead value 0; iReset; iApply; iNote [iGetStatus];\n')
+        self.assertIn(b'0bxxxx 0bxxxx 0', out)
+        self.assertIn(b'0bxx01 0bxx10', out)
+        self.assertIn(b'0xX X', out)
+        self.assertNotIn(b'iRead ', out)
+
+    def test_initial_status_does_not_supply_applied_observations(self):
+        for command in ('iRead value', 'iRead value 0bxxxx', 'iRead value 0'):
+            with self.subTest(command=command):
+                icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+                icl.write_text(SCAN)
+                pdl.write_text('iPDLLevel 1; iReset; ' + command +
+                               '; iApply; iGetReadData value\n')
+                error = self.run_tool(icl, pdl, ok=False)
+                self.assertIn('hardware readback', error)
+        out = self.replay(SCAN, 'iPDLLevel 1; iReset; '
+            'iRead value; iApply; iNote [iGetStatus]; '
+            'iRead value 0bxxxx; iApply; iNote [iGetStatus -clear];\n')
+        self.assertEqual(out.count(b'iNote 0'), 2)
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(SCAN)
+        for suffix in ('iGetStatus', 'iGetStatus -clear', 'iReset; iGetStatus'):
+            pdl.write_text('iPDLLevel 1; iReset; iRead value 0; iApply; ' + suffix + '\n')
+            error = self.run_tool(icl, pdl, ok=False)
+            self.assertIn('hardware readback', error)
+
+    def test_raw_status_without_comparisons_and_unknown_cared_results(self):
+        model = (helpers.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text().replace('Module Top {', 'Module Chains {')
+        out = self.replay(model, 'iPDLLevel 1; iReset; '
+            'iScan client 16 -si 0 -so 0bxxxxxxxxxxxxxxxx; iApply; '
+            'iNote [iGetStatus -clear]; iScan client 16 -si 0; iApply; '
+            'iNote [iGetStatus];\n')
+        self.assertEqual(out.count(b'iNote 0'), 2)
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(model)
+        pdl.write_text('iPDLLevel 1; iReset; iScan client 16 -si 0 -so 0; '
+                       'iApply; iGetStatus\n')
+        self.assertIn('hardware readback', self.run_tool(icl, pdl, ok=False))
+
     def test_supplied_getters_expand_without_changing_hardware(self):
         out = self.replay(SCAN, 'iPDLLevel 1; iReset; '
                           'iState value 9 -LastReadValue; '
@@ -57,15 +103,10 @@ class ObservationState(unittest.TestCase):
 
     def test_live_or_unsupplied_history_preserves_outputs(self):
         bodies = (
-            'iGetReadData value',
-            'iState value 3 -LastMiscompareValue; iGetReadData value',
-            'iState value 3 -LastReadValue; iGetMiscompares value',
             'iState value 3 -LastReadValue; iRead value; iApply; iGetReadData value',
             'iState value 3 -LastReadValue; iRead value 0bxxxx; iApply; iGetReadData value',
             'iRead value 0; iState value 3 -LastReadValue; iApply; iGetReadData value',
             'iState value 3 -LastMiscompareValue; iRead value 0; iApply; iGetMiscompares value',
-            'iState value[3:1] 3 -LastReadValue; iGetReadData inverted',
-            'iState value 3 -LastReadValue; iGetStatus',
             'iState value 3 -LastReadValue; iGetReadData value -chain lane',
             'iState value 3 -LastReadValue; iGetReadData value -hex -chain lane',
         )

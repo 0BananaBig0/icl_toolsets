@@ -397,7 +397,7 @@ class Runtime::Impl {
         entry =
             history
                 .emplace(bit.node,
-                         std::string(netlist_->nodes.at(bit.node).Width(), '?'))
+                         std::string(netlist_->nodes.at(bit.node).Width(), 'x'))
                 .first;
       }
       char data = value[i];
@@ -407,19 +407,44 @@ class Runtime::Impl {
   }
 
   void InvalidateReadHistory() {
-    if (!pending_ || (read_history_.empty() && miscompare_history_.empty())) {
-      return;
-    }
+    if (!pending_) return;
     for (size_t i = pending_operation_; i < operations_.size(); ++i) {
       const auto& operation = operations_[i];
+      if (operation.command == "iScan") {
+        const auto so = std::find(operation.arguments.begin(),
+                                  operation.arguments.end(), "-so");
+        if (so != operation.arguments.end()) {
+          const auto& expected = operation.arguments.at(
+              static_cast<size_t>(so - operation.arguments.begin()) + 1);
+          const bool all_masked =
+              expected.size() > 2 && expected[0] == '0' &&
+              (expected[1] == 'b' || expected[1] == 'B' ||
+               expected[1] == 'x' || expected[1] == 'X') &&
+              expected.find_first_not_of("xX", 2) == std::string::npos;
+          if (!all_masked) zero_status_known_ = false;
+        }
+        continue;
+      }
       if (operation.command != "iRead") continue;
+      if (!netlist_) {
+        if (operation.arguments.size() > 1) zero_status_known_ = false;
+        continue;
+      }
       const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
+      if (zero_status_known_ && operation.arguments.size() > 1) {
+        if (!history_context_) history_context_ = std::make_unique<z3::context>();
+        const auto expected = PdlDataValue(*history_context_, *netlist_, target,
+                                           operation.arguments[1]);
+        if (expected.find_first_not_of('x') != std::string::npos) {
+          zero_status_known_ = false;
+        }
+      }
       for (const auto& bit : target.bits) {
         for (auto* history : {&read_history_, &miscompare_history_}) {
-          const auto entry = history->find(bit.node);
-          if (entry != history->end()) {
-            entry->second.at(HistoryOffset(bit)) = '?';
-          }
+          auto entry = history->try_emplace(
+              bit.node, netlist_->nodes.at(bit.node).Width(), 'x').first;
+          // '?' marks an applied read without an actual observation.
+          entry->second.at(HistoryOffset(bit)) = '?';
         }
       }
     }
@@ -432,7 +457,11 @@ class Runtime::Impl {
           name +
           " requires hardware readback; unavailable during static generation");
     };
-    if (!netlist_ || name == "iGetStatus") unavailable();
+    if (name == "iGetStatus") {
+      if (zero_status_known_) return "0";
+      unavailable();
+    }
+    if (!netlist_) unavailable();
     const auto resolved = ResolvePdlTarget(*netlist_, target);
     ValidatePdlAccessTarget(*netlist_, resolved, true);
     const bool read = name == "iGetReadData";
@@ -441,8 +470,8 @@ class Runtime::Impl {
     bits.reserve(resolved.bits.size());
     for (const auto& bit : resolved.bits) {
       const auto entry = history.find(bit.node);
-      if (entry == history.end()) unavailable();
-      char data = entry->second.at(HistoryOffset(bit));
+      char data = entry == history.end() ? 'x'
+                                        : entry->second.at(HistoryOffset(bit));
       if (data == '?') unavailable();
       if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
       bits += data;
@@ -872,6 +901,7 @@ class Runtime::Impl {
   const Design& design_;
   const Netlist* netlist_;
   History read_history_, miscompare_history_;
+  bool zero_status_known_ = true;
   std::unique_ptr<z3::context> history_context_;
   std::map<std::string, const InstanceScope*> instance_scopes_;
   std::string top_;
