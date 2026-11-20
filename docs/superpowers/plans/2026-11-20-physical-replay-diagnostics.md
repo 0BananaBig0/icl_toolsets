@@ -26,5 +26,5 @@
 - [x] Add RED assertions for compare bit1/expected1/observed0, retained unknown fill, named closed route with preserved artifacts, native resource cause and rollback.
 - [x] Preserve explicit-mode exceptions and qualify direct guard failures; enrich observed comparisons only on real mismatch. Expected all focused tests GREEN and ordinary closed-route preparation succeeds.
 - [x] Run native/generator dynamic/static, leak-enabled sanitizer, style/C++17 and relevant package checks. Expected0; coverage closure excluded.
-- [ ] Update item13 evidence, commit, task-done, fresh whole-branch review, necessary fix pass; merge/push/delete branch.
+- [x] Update item13 evidence, commit, task-done, fresh whole-branch review, necessary fix pass; merge/push/delete branch.
 **Verification:** python3 tests/src/pattern/test_argument_reset_sources.py build/icl-pattern-generation

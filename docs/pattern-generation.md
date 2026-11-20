@@ -10,6 +10,17 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
+Task139 completes physical replay diagnostics. Its one independent review led
+to RED→GREEN fixes for event-work exhaustion and suppressed route-trace causes,
+plus a native-eligible ordinary fallback regression. All30 focused cases,
+full native scheduler,51 generator suites/822 cases per dynamic/static variant,
+SAN native/focused30/main71, six style/C++17 gates and source-distribution checks
+pass. Evidence is retained under build/physical-replay-diagnostics-20261120/.
+The optional active built-in register name remains a deferred message-quality
+Minor. The broader tracker items and excluded coverage gate retain their status.
+
+The following Task137 platform/package/whole-project baseline is historical:
+
 Task137 is integrated and pushed at400d2ba (2026-11-20). It adds explicit
 --physical_pdl replay of binary scan loads on one bound root TAP with scan-only
 storage. Ordinary iWrite retains final-value semantics. Independent review found
@@ -7181,9 +7192,9 @@ Masked comparisons do not evaluate their source. Unknown retained scan loads
 name their register and bits. Failed commands preserve state and published
 artifacts; ordinary scheduling still prepares closed routes through fallback.
 
-All29 focused cases pass for dynamic/static and leak-enabled sanitizer builds.
-Full native scheduler and all51 generator suites/821 cases per variant pass;
-full sanitizer native, focused29 and main71 checks pass. Both changed C++ files
+All30 focused cases pass for dynamic/static and leak-enabled sanitizer builds.
+Full native scheduler and all51 generator suites/822 cases per variant pass;
+full sanitizer native, focused30 and main71 checks pass. Both changed C++ files
 pass format, clang-tidy and strict C++17 checks. Source-distribution checks pass.
 Evidence: build/physical-replay-diagnostics-20261120/. No coverage closure,
 fresh vendor run or general physical-replay equivalence is claimed.
