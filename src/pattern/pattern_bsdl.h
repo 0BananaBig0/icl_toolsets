@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,6 +20,7 @@ struct BsdlAttribute {
 struct BsdlRegister {
   std::string name;
   std::optional<size_t> width;
+  std::optional<std::string> capture = std::nullopt;
 };
 struct BsdlTap {
   std::string entity, origin;
@@ -27,6 +29,7 @@ struct BsdlTap {
   size_t instruction_width = 0;
   std::map<std::string, std::string> ports;
   std::map<std::string, std::vector<std::string>> opcodes;
+  std::set<std::string> private_instructions;
   std::string capture;
   std::optional<std::string> idcode;
   std::optional<std::string> usercode;
@@ -36,6 +39,9 @@ struct BsdlTap {
   // original expression for subsequent device-model checks, not execution.
   std::map<std::pair<std::string, std::string>, BsdlAttribute> attributes;
 };
+
+// Semantic BSDL identifiers are case insensitive; ICL signal names are not.
+std::string CanonicalBsdlName(std::string value);
 
 // Extracts static TAP metadata, not a full VHDL/BSDL conformance verdict.
 // Does not execute code or load external packages. Required unresolved values

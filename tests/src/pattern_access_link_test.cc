@@ -233,7 +233,7 @@ void TestKeywordInstructionName() {
       "AccessProbe");
   const auto links =
       pattern::BindAccessLinks(design, design.SelectTop("AccessTop"));
-  Require(links[0].instructions[0].name == "BSDLEntity" &&
+  Require(links[0].instructions[0].name == "BSDLENTITY" &&
               links[0].instructions[0].interfaces[0].instance == "core",
           "instruction keyword names are identified by their AST block");
 }

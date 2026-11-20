@@ -6,6 +6,8 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -184,76 +186,116 @@ class Builder {
   }
 
  private:
-  void ValidateRoutes(const std::map<std::string, std::string>& routes,
-                      const std::string& kind = "data-register routes") const {
+  bool ValidateRoutes(const std::map<std::string, std::string>& routes,
+                      const std::string& kind = "data-register routes",
+                      bool capture_masks = false) const {
     struct Route {
-      std::string source, instruction;
+      size_t source;
+      const std::string* instruction;
     };
-    std::map<std::string, Route> seen;
+    std::unordered_map<std::string_view, size_t> source_ids;
+    std::vector<const std::string*> sources;
+    std::map<std::string_view, std::vector<Route>> seen;
     std::vector<decltype(seen)::const_iterator> masked;
     size_t work = kMaxModelBytes;
-    const auto spend = [&] {
-      if (!work) {
+    bool combine = false;
+    const auto spend = [&](size_t amount = 1) {
+      if (amount > work) {
         throw std::runtime_error(link_.bsdl->origin +
                                  ": TAP opcode overlap work limit exceeded");
       }
-      --work;
+      work -= amount;
     };
-    for (const auto& opcode : link_.bsdl->opcodes) {
-      const auto route = routes.find(opcode.first);
-      if (route == routes.end()) continue;
-      const auto& source = route->second;
+    for (const auto& route : routes) {
+      const auto& instruction = route.first;
+      const auto& source = route.second;
+      spend(source.size());
+      const auto inserted = source_ids.emplace(source, sources.size());
+      if (inserted.second) sources.push_back(&source);
+      const size_t source_id = inserted.first->second;
       const auto conflict = [&](const Route& prior) {
+        const auto& previous = *sources.at(prior.source);
+        if (capture_masks && previous.size() == source.size()) {
+          spend(source.size());
+          bool compatible = true;
+          for (size_t bit = 0; compatible && bit < source.size(); ++bit) {
+            compatible = source[bit] == 'x' || previous[bit] == 'x' ||
+                         source[bit] == previous[bit];
+          }
+          if (compatible) {
+            combine = true;
+            return;
+          }
+        }
         throw std::runtime_error(link_.bsdl->origin + ": conflicting " + kind +
-                                 " for " + prior.instruction + " and " +
-                                 opcode.first);
+                                 " for " + *prior.instruction + " and " +
+                                 instruction);
       };
-      for (const auto& code : opcode.second) {
+      for (const auto& code : link_.bsdl->opcodes.at(instruction)) {
         const auto duplicate = seen.find(code);
-        if (duplicate != seen.end()) {
-          if (duplicate->second.source != source) conflict(duplicate->second);
+        if (duplicate != seen.end() &&
+            std::any_of(
+                duplicate->second.begin(), duplicate->second.end(),
+                [&](const auto& prior) { return prior.source == source_id; })) {
           continue;
         }
         const auto compare = [&](const auto& prior) {
           spend();
-          if (prior.second.source == source) return;
+          if (prior.source == source_id) return;
+          conflict(prior);
+        };
+        const auto compare_entry = [&](const auto& entry) {
+          // Equal source IDs need no bit-pattern or wide-capture comparison.
+          spend();
+          if (std::all_of(entry.second.begin(), entry.second.end(),
+                          [&](const auto& prior) {
+                            return prior.source == source_id;
+                          })) {
+            return;
+          }
           for (size_t bit = 0; bit < code.size(); ++bit) {
             spend();
-            if (code[bit] != 'x' && prior.first[bit] != 'x' &&
-                code[bit] != prior.first[bit]) {
+            if (code[bit] != 'x' && entry.first[bit] != 'x' &&
+                code[bit] != entry.first[bit]) {
               return;
             }
           }
-          conflict(prior.second);
+          for (const auto& prior : entry.second) compare(prior);
         };
         const bool mask = code.find('x') != std::string::npos;
         if (mask) {
-          for (const auto& prior : seen) compare(prior);
+          for (const auto& entry : seen) compare_entry(entry);
         } else {
-          for (const auto& prior : masked) compare(*prior);
+          if (duplicate != seen.end()) {
+            for (const auto& prior : duplicate->second) compare(prior);
+          }
+          for (const auto& entry : masked) compare_entry(*entry);
         }
-        const auto entry =
-            seen.emplace(code, Route{source, opcode.first}).first;
-        if (mask) masked.push_back(entry);
+        auto entry = seen.try_emplace(code).first;
+        if (entry->second.empty() && mask) masked.push_back(entry);
+        entry->second.push_back({source_id, &instruction});
       }
     }
+    return combine;
   }
-  std::string DeviceCapture(const std::string& instruction_reg,
-                            const std::string& instruction_width,
-                            const std::map<std::string, std::string>& returns) {
+  std::string RegisterCapture(const std::string& reg, size_t width,
+                              const std::string& instruction_reg,
+                              const std::string& instruction_width,
+                              const std::vector<std::string>& instructions) {
     std::map<std::string, std::string> captures;
-    for (const auto& opcode : link_.bsdl->opcodes) {
-      if (returns.count(opcode.first)) continue;
-      const auto association = link_.bsdl->registers.find(opcode.first);
-      const bool idcode = opcode.first == "IDCODE";
-      const bool usercode = opcode.first == "USERCODE";
-      if (!idcode && !usercode &&
-          (association == link_.bsdl->registers.end() ||
-           association->second.name != "DEVICE_ID")) {
-        continue;
+    size_t remaining = kMaxModelBytes;
+    for (const auto& instruction : instructions) {
+      const auto association = link_.bsdl->registers.find(instruction);
+      const bool idcode = instruction == "IDCODE";
+      const bool usercode = instruction == "USERCODE";
+      const bool implicit_id = reg == "DEVICE_ID" && (idcode || usercode);
+      if (width > remaining) {
+        throw std::runtime_error(link_.bsdl->origin +
+                                 ": TAP register capture work limit exceeded");
       }
-      std::string capture(32, 'x');
-      if (idcode || usercode) {
+      remaining -= width;
+      std::string capture(width, 'x');
+      if (implicit_id) {
         const auto& value =
             usercode ? link_.bsdl->usercode : link_.bsdl->idcode;
         if (!value) {
@@ -262,24 +304,90 @@ class Builder {
               (usercode ? "USERCODE_REGISTER" : "IDCODE_REGISTER"));
         }
         capture = *value;
+      } else if (reg == "BYPASS") {
+        capture = "0";
       }
-      captures.emplace(opcode.first, std::move(capture));
+      if (association != link_.bsdl->registers.end() &&
+          association->second.capture) {
+        if (reg == "BYPASS") {
+          if (association->second.capture->find('1') != std::string::npos) {
+            throw std::runtime_error(link_.bsdl->origin +
+                                     ": BYPASS capture must be zero");
+          }
+        } else {
+          capture = *association->second.capture;
+        }
+      }
+      captures.emplace(instruction, std::move(capture));
     }
-    ValidateRoutes(captures, "identification capture values");
+    const auto kind = reg == "DEVICE_ID" ? "identification capture values"
+                                         : reg + " capture values";
     const auto& first = captures.begin()->second;
+    const auto literal = [&](const std::string& bits) {
+      return std::to_string(bits.size()) + "'b" + bits;
+    };
     if (std::all_of(captures.begin(), captures.end(),
                     [&](const auto& entry) { return entry.second == first; })) {
-      return "32'b" + first;
+      return literal(first);
+    }
+    const bool combine = ValidateRoutes(captures, kind, true);
+    if (combine) {
+      // Shared encodings constrain each cared bit; exclusive regions keep X.
+      std::map<std::vector<std::string>, std::string> decoders;
+      std::map<std::pair<std::string, std::string>, std::string> bits;
+      const auto decode = [&](const std::vector<std::string>& codes) {
+        if (codes.empty()) return std::string("1'b0");
+        const auto found = decoders.find(codes);
+        if (found != decoders.end()) return found->second;
+        std::vector<std::string> terms;
+        for (const auto& instruction : codes) {
+          for (const auto& code : link_.bsdl->opcodes.at(instruction)) {
+            terms.push_back(instruction_reg + " == " + instruction_width +
+                            "'b" + code);
+          }
+        }
+        const auto name = Fresh("capture_select");
+        Append("LogicSignal " + name + " { " + Or(std::move(terms)) + "; }\n");
+        decoders.emplace(codes, name);
+        return name;
+      };
+      std::string source;
+      for (size_t bit = 0; bit < width; ++bit) {
+        std::vector<std::string> ones, zeros;
+        for (const auto& [instruction, capture] : captures) {
+          if (!remaining) {
+            throw std::runtime_error(
+                link_.bsdl->origin +
+                ": TAP register capture work limit exceeded");
+          }
+          --remaining;
+          if (capture[bit] == 'x') continue;
+          auto& codes = capture[bit] == '1' ? ones : zeros;
+          codes.push_back(instruction);
+        }
+        const auto key = std::make_pair(decode(ones), decode(zeros));
+        auto found = bits.find(key);
+        if (found == bits.end()) {
+          const auto name = Fresh("capture_bit");
+          Append("DataMux " + name + " SelectedBy " + key.first + ", " +
+                 key.second + " { 2'b10: 1'b1; 2'b01: 1'b0; 2'b00: 1'bx; }\n");
+          found = bits.emplace(key, name).first;
+        }
+        if (!source.empty()) source += ", ";
+        source += found->second;
+      }
+      return source;
     }
     const auto name = Fresh("device_capture");
-    Append("DataMux " + name + "[31:0] SelectedBy " + instruction_reg + " {\n");
+    Append("DataMux " + name + "[" + std::to_string(width - 1) +
+           ":0] SelectedBy " + instruction_reg + " {\n");
     for (const auto& entry : captures) {
-      bool first = true;
+      bool first_code = true;
       for (const auto& code : link_.bsdl->opcodes.at(entry.first)) {
-        Append((first ? "" : " | ") + instruction_width + "'b" + code);
-        first = false;
+        Append((first_code ? "" : " | ") + instruction_width + "'b" + code);
+        first_code = false;
       }
-      Append(" : 32'b" + entry.second + ";\n");
+      Append(" : " + literal(entry.second) + ";\n");
     }
     Append("}\n");
     return name;
@@ -309,15 +417,30 @@ class Builder {
     std::map<std::string, size_t> widths;
     std::map<std::string, std::string> routes;
     size_t remaining_bits = kMaxActiveBits;
+    // IEEE 1149.1-2001 B.8.13.3(a): these associations may be omitted,
+    // but explicit ones must agree with the standard instruction.
+    static const std::map<std::string, std::string> kStandardRegisters = {
+        {"BYPASS", "BYPASS"},     {"CLAMP", "BYPASS"},
+        {"HIGHZ", "BYPASS"},      {"EXTEST", "BOUNDARY"},
+        {"INTEST", "BOUNDARY"},   {"PRELOAD", "BOUNDARY"},
+        {"SAMPLE", "BOUNDARY"},   {"IDCODE", "DEVICE_ID"},
+        {"USERCODE", "DEVICE_ID"}};
+    std::map<std::string, std::vector<std::string>> register_instructions;
+    std::set<std::string> explicit_captures;
+    for (const auto& [instruction, codes] : link_.bsdl->opcodes) {
+      if (returns->count(instruction)) continue;
+      const auto association = link_.bsdl->registers.find(instruction);
+      const auto standard = kStandardRegisters.find(instruction);
+      if (association != link_.bsdl->registers.end()) {
+        register_instructions[association->second.name].push_back(instruction);
+        if (association->second.capture) {
+          explicit_captures.insert(association->second.name);
+        }
+      } else if (standard != kStandardRegisters.end()) {
+        register_instructions[standard->second].push_back(instruction);
+      }
+    }
     for (const auto& opcode : link_.bsdl->opcodes) {
-      // IEEE 1149.1-2001 B.8.13.3(a): these associations may be omitted,
-      // but explicit ones must agree with the standard instruction.
-      static const std::map<std::string, std::string> kStandardRegisters = {
-          {"BYPASS", "BYPASS"},     {"CLAMP", "BYPASS"},
-          {"HIGHZ", "BYPASS"},      {"EXTEST", "BOUNDARY"},
-          {"INTEST", "BOUNDARY"},   {"PRELOAD", "BOUNDARY"},
-          {"SAMPLE", "BOUNDARY"},   {"IDCODE", "DEVICE_ID"},
-          {"USERCODE", "DEVICE_ID"}};
       const auto standard = kStandardRegisters.find(opcode.first);
       const auto association = link_.bsdl->registers.find(opcode.first);
       if (standard != kStandardRegisters.end() &&
@@ -345,6 +468,10 @@ class Builder {
       }
       if (association == link_.bsdl->registers.end() &&
           standard == kStandardRegisters.end()) {
+        if (link_.bsdl->private_instructions.count(opcode.first)) {
+          routes.emplace(opcode.first, "1'bx");
+          continue;
+        }
         throw std::runtime_error(
             link_.bsdl->origin +
             ": no data-register association for instruction " + opcode.first);
@@ -375,8 +502,10 @@ class Builder {
               ": TAP data-register width limit exceeded: " + reg.name);
         }
         remaining_bits -= *width;
-        if (reg.name == "DEVICE_ID") {
-          capture = DeviceCapture(instruction_reg, instruction_width, *returns);
+        if (reg.name == "DEVICE_ID" || explicit_captures.count(reg.name)) {
+          capture = RegisterCapture(reg.name, *width, instruction_reg,
+                                    instruction_width,
+                                    register_instructions.at(reg.name));
         }
         const auto name = Fresh(reg.name);
         Append("ScanRegister " + name + "[" + std::to_string(*width - 1) +
@@ -417,13 +546,17 @@ class Builder {
     const auto fallback = Fresh("unassigned_mux");
     const auto ir_mux = Fresh("ir_mux");
     Append("ScanMux " + data_mux + " SelectedBy " + instruction_reg + " {\n");
-    for (const auto& opcode : link_.bsdl->opcodes) {
+    std::map<std::string, std::set<std::string>> route_codes;
+    for (const auto& [instruction, codes] : link_.bsdl->opcodes) {
+      route_codes[routes.at(instruction)].insert(codes.begin(), codes.end());
+    }
+    for (const auto& [route, codes] : route_codes) {
       bool first = true;
-      for (const auto& code : opcode.second) {
+      for (const auto& code : codes) {
         Append((first ? "" : " | ") + instruction_width + "'b" + code);
         first = false;
       }
-      Append(" : " + routes.at(opcode.first) + ";\n");
+      Append(" : " + route + ";\n");
     }
     // IEEE 1149.1-2001 8.1.1(d). Decode coverage instead of enumerating the
     // exponentially large complement of literal/masked opcode patterns.

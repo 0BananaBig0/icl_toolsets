@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_tap.h"
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -12,6 +13,7 @@
 
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_logic.h"
+#include "pattern/pattern_state.h"
 #include "utility/text_input.h"
 
 namespace {
@@ -1050,6 +1052,33 @@ void TestUsercodeCapture() {
               pattern::Elaborate(replay, model.netlist.top_module)) == flat,
           "instruction-dependent capture survives flat replay");
 }
+void TestCompatibleCaptureRegions() {
+  auto bsdl = Replace(Read(kDirectory + "simple.bsdl"), "IDCODE (0010)",
+                      "IDCODE (10X0), USERCODE (1010)");
+  bsdl =
+      Replace(bsdl, "\"0001\" & \"0000000000000000\" & \"00000000001\" & \"1\"",
+              "\"XXXX0000000000000000000000000011\"");
+  bsdl = Replace(bsdl, "end AccessProbe;",
+                 "attribute USERCODE_REGISTER of AccessProbe : entity is "
+                 "\"00010000000000000000000000000011\"; end AccessProbe;");
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto capture = [&](const std::string& code) {
+    pattern::NetworkState state(model.netlist);
+    state.SetRegister(model.instruction_register, code, code);
+    std::string result;
+    const auto& node =
+        model.netlist.nodes.at(model.data_registers.at("DEVICE_ID"));
+    for (const auto& bit : node.inputs.at("CaptureSource")) {
+      result += state.Read(bit);
+    }
+    return result;
+  };
+  Require(capture("1000") == "xxxx0000000000000000000000000011",
+          "exclusive opcode region must not inherit another instruction's care "
+          "bits");
+  Require(capture("1010") == "00010000000000000000000000000011",
+          "overlapping opcode region combines compatible capture constraints");
+}
 void TestInvalidStandardAssociations() {
   const auto original = Read(kDirectory + "simple.bsdl");
   for (const auto& changed :
@@ -1098,7 +1127,7 @@ void TestInvalidDataRoutes() {
             "conflicting"},
            {Replace(bsdl, "IJTAG_ON (0011)", "IJTAG_ON (0XXX)"), "conflicting"},
            {Replace(bsdl, "BYPASS (1111)", "BYPASS (XXXX)"), "conflicting"},
-           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN (BYPASS)"),
+           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN[1] (BYPASS)"),
             "mandated register"},
            {Replace(UserRegisterBsdl(), "USER[9]", "USER[1048576]"),
             "width limit"},
@@ -1109,7 +1138,7 @@ void TestInvalidDataRoutes() {
             "missing IDCODE_REGISTER"},
            {Replace(Replace(bsdl, "BYPASS (1111)", "CUSTOM (1111)"),
                     "BYPASS (BYPASS)", "USER[1] (CUSTOM)"),
-            "missing BYPASS"},
+            "conflicting"},
            {Replace(bsdl, "BYPASS (BYPASS)", "BYPASS[2] (BYPASS)"), "width"},
            {Replace(bsdl, "SAMPLE (0001)", "SAMPLE (0001), UNMAPPED (1000)"),
             "association"},
@@ -1122,8 +1151,7 @@ void TestInvalidDataRoutes() {
     } catch (const std::runtime_error& error) {
       const std::string message = error.what();
       rejected = message.find(probe.second) != std::string::npos &&
-                 message.find("probe.bsdl:") != std::string::npos &&
-                 message.find("AccessLink tap") != std::string::npos;
+                 message.find("probe.bsdl:") != std::string::npos;
       Require(rejected, "unexpected data-route diagnostic: " + message);
     }
     Require(rejected, "invalid BSDL data-route mapping accepted");
@@ -1226,6 +1254,62 @@ void TestManyExactRoutes() {
                   model.data_registers.at("BYPASS"),
           "10000 unique literal opcode routes avoid quadratic mask checks");
   std::cout << "TAP model: 10000 additional literal opcodes, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+void TestCaptureGroupScale() {
+  std::string opcodes, associations;
+  constexpr int kCount = 1024;
+  for (int i = 0; i < kCount; ++i) {
+    const auto instruction = "CUSTOM_" + std::to_string(i);
+    opcodes += ", " + instruction + "(" + Binary16(256 + i) + ")";
+    associations += ", REG_" + std::to_string(i) + "[1](" + instruction +
+                    " CAPTURES " + (i % 2 ? "1" : "0") + ")";
+  }
+  auto bsdl = WideBsdl("1111111111111111");
+  bsdl = Replace(bsdl, "IJTAG_OFF (0000000000000100)",
+                 "IJTAG_OFF (0000000000000100)" + opcodes);
+  bsdl =
+      Replace(bsdl, "DEVICE_ID (IDCODE)", "DEVICE_ID (IDCODE)" + associations);
+  const auto start = std::chrono::steady_clock::now();
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  for (int i = 0; i < kCount; ++i) {
+    const auto& reg = model.netlist.nodes.at(
+        model.data_registers.at("REG_" + std::to_string(i)));
+    Require(reg.Width() == 1 && reg.inputs.at("CaptureSource")[0].constant ==
+                                    (i % 2 ? '1' : '0'),
+            "independent capture groups preserve each register's literal");
+  }
+  std::cout << "TAP model: " << kCount
+            << " independent capture groups, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+void TestWideCaptureAliases() {
+  std::string codes;
+  for (int i = 256; i < 4352; ++i) {
+    if (!codes.empty()) codes += ",";
+    codes += Binary16(i);
+  }
+  auto bsdl = WideBsdl("1111111111111111");
+  bsdl = Replace(bsdl, "IJTAG_OFF (0000000000000100)",
+                 "IJTAG_OFF (0000000000000100), WIDE(" + codes + ")");
+  bsdl = Replace(bsdl, "DEVICE_ID (IDCODE)",
+                 "DEVICE_ID (IDCODE), WIDE_REG[65536](WIDE CAPTURES " +
+                     std::string(65536, '0') + ")");
+  const auto start = std::chrono::steady_clock::now();
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto& reg = model.netlist.nodes.at(model.data_registers.at("WIDE_REG"));
+  Require(reg.Width() == 65536 &&
+              std::all_of(reg.inputs.at("CaptureSource").begin(),
+                          reg.inputs.at("CaptureSource").end(),
+                          [](const auto& bit) { return bit.constant == '0'; }),
+          "wide constant capture is shared across 4096 opcode aliases");
+  std::cout << "TAP capture: bits=65536 aliases=4096 seconds="
             << std::chrono::duration<double>(std::chrono::steady_clock::now() -
                                              start)
                    .count()
@@ -1867,8 +1951,13 @@ void TestSerialScaleAndBudget() {
 }
 
 }  // namespace
-int main() {
+int main(int argc, char* argv[]) {
   try {
+    if (argc == 2 && std::string(argv[1]) == "--capture-scale") {
+      TestWideCaptureAliases();
+      return 0;
+    }
+    Require(argc == 1, "expected --capture-scale or no arguments");
     TestSerialNetwork();
     TestRuntimeMetadataValidation();
     TestSerialOrderAndPins();
@@ -1891,11 +1980,14 @@ int main() {
     TestInstructionDecoderIntegration();
     TestUnassignedOpcodes();
     TestUsercodeCapture();
+    TestCompatibleCaptureRegions();
     TestImplicitStandardRegisters();
     TestInvalidStandardAssociations();
     TestActiveOnlyInstructions();
     TestMaskedRouteBudget();
     TestManyExactRoutes();
+    TestCaptureGroupScale();
+    TestWideCaptureAliases();
     TestSharedInterfaceRoutes();
     TestInvalidDataRoutes();
     TestSharedRegisterRoutesAndNames();

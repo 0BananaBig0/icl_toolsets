@@ -56,7 +56,7 @@ full model coverage or Tessent equivalence.
 | Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain, inferred simultaneous disjoint interface-free vector returns and canonical replay | Overlapping returns, independently controlled lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
-| AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining BSDL/private capture forms |
+| AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining corpus/reference qualification |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Raw scans | Genuine opaque root-client lowering; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream ScanRegister reservations and explicit root port effects with retained locks; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Opaque child, parallel/multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, child/TAP established port ownership and broader vendor qualification |
 | Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
@@ -4197,3 +4197,84 @@ Raw coverage remains 17546/18150 lines(96.67%) and
 missing edges. The100/90 strict gate staysFAILED; no reports/edges/thresholds
 were filtered. Evidence, failed attempts, hashes, review and rulings are under
 `build/reset-caller-dispatch-20261119/`.
+
+
+## Task140: audited BSDL model/default forms
+
+The bounded metadata reader and TAP model support case-insensitive BSDL
+instruction/register identities, repeated opcode descriptions, implicit allones
+BYPASS storage/reset encoding, private instructions with omitted associations,
+per-instruction CAPTURES, shared register widths and alternative IR/IDCODE/USERCODE
+capture lists. ICL signal identities retain their original case. An undefined
+private data route stays unknown and rejects raw access; it never becomes an
+unassigned-code BYPASS. Explicit supplied private AccessLink routes work.
+
+Alternative lists retain only common guaranteed bits; cross-bit correlations and
+selection of a particular device variant are not modeled. Shared opcode captures
+instead combine compatible care constraints and reject opposite cared bits.
+Partially overlapping opcode regions retain their own unknown bits. Existing
+constant/nonoverlapping mux paths remain; grouped decoders avoid repeated opcode
+expansion per bit and per register. Original/flat/generated/reset replays and
+atomic rejection cover these forms. The1024-register capture model builds in
+about0.03s; the10000-opcode model remains qualified. Single measurements establish
+no speedup or general throughput promise.
+
+Authority: IEEE1149.1-2001(R2008) B.5.1/B.6.1; B.8.11–13 (printed153–158,
+PDF161–166), with reset7.2.1e/f. B.8.13.3c explicitly permits later omission of
+a known custom register width; the printed BNF still spells brackets as required.
+This implementation follows the semantic permission and records that conflict.
+The reader is not a full VHDL/BSDL conformance checker or boundary-cell simulator.
+
+Initial qualification passed all13 native pattern suites,51 generator suites/830
+cases per dynamic/static variant, native BSDL/binding/TAP/state/scheduler/runtime
+sanitizers, focused12/main71 sanitizer checks,24 style/C++17 gates and source
+distribution checks. The post-review qualification record below supersedes it.
+The final maintained CLI fixtures also place private/optional-register attributes
+in the standard order, verified by focused dynamic/static/SAN and package checks.
+
+Fresh Tessent2026.2 setup/analysis/export probes use the original complete audit
+models with corrected attribute order. Six complete with exit0: baseline,
+CAPTURES, unused private instruction, IDCODE alternatives, implicit BYPASS, and
+compatible shared capture masks. Three exit1: repeated instruction descriptions
+(only-one-name rule in that tool), IR capture lists and USERCODE capture lists
+(parser comma rejection). These standard-first native forms do not therefore
+claim Tessent compatibility in that release. Earlier out-of-order pilot failures
+are not counted as valid-form vendor evidence. Source/input/log hashes, commands
+and complete exports are retained under build/bsdl-model-defaults-20261120/.
+This is bounded evidence, not general model or hardware equivalence.
+Item11's broader corpus/reference acceptance and items2–12 remain separately
+tracked; excluded strict coverage item1 is unchanged.
+
+The single review fix pass adds seven CLI methods (19 total). It rejects
+contradictory three-way opcode overlaps in either ordering, case-equivalent
+AccessLink blocks, private RUNBIST and inconsistent/first-omitted custom widths
+even behind explicit ICL routes. It restores legacy mixed-case flat semantic
+keys while preserving literal node paths and rejecting canonical duplicates.
+Physical BYPASS captures remain zero for custom, BYPASS and unassigned opcodes.
+A proven no-IDCODE reset BYPASS selection survives alternative encodings while
+the IR value remains uncertain (for example1xxx); no encoding is fabricated.
+
+Capture validation borrows per-group masks instead of copying a wide capture
+per opcode. On the same65536-bit/4096-alias probe, the initial45e4510 model used
+269744KiB RSS/0.20s and failed under a160MiB address-space cap; the corrected
+model used19672KiB/0.04s and passed that cap. These single runs demonstrate this
+resource acceptance case, not a general speedup.
+
+All six successful vendor exports additionally pass48 local original/flat/
+generated replays with nonempty apply sequences. Six fresh Tessent runs consume
+the native normalized exports; all succeed. Existing ordered-apply trace
+comparison matches all12 forward/reverse results, including the vendor's
+explicit IR capture comparisons. These evidence comparisons are under
+vendor-replay-qualified/, vendor-native-forward/ and
+vendor-directional-comparison.json; they do not add source-controlled golden
+certificates or establish general vendor/physical equivalence.
+
+Post-review qualification passes all13 native suites,51 generator suites/837
+cases per dynamic/static variant, six native leak-enabled ASan/UBSan suites,
+focused19/main71 sanitizer methods,36 changed-hunk format/tidy/C++17 gates and
+source-distribution build/install/uninstall checks. The wide-alias probe also
+passes the160MiB address-space cap after the complete matrix. Exact18-step
+commands, exits, timings and qualified input hashes are retained in review-fix/.
+The single final review found eight Important issues, all fixed with RED→GREEN
+regressions in one pass; it found no Critical or Minor issues. No re-review or
+excluded coverage run was performed.

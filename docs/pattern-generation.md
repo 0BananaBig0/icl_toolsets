@@ -10,6 +10,14 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
+Task140 adds the audited BSDL model/default forms with12 replay tests,
+13 native pattern suites,51 suites/830 cases per binary variant and leak-enabled
+sanitizer, style/C++17 and source-package qualification. Fresh Tessent2026.2
+probes complete six forms and reject three standard-first native forms; exact
+limits and evidence are documented in the Task140 section below. Broader
+corpus/specialization and topology/event tasks remain open in the tracker.
+
+
 Task139 completes physical replay diagnostics. Its one independent review led
 to RED→GREEN fixes for event-work exhaustion and suppressed route-trace causes,
 plus a native-eligible ordinary fallback regression. All30 focused cases,
@@ -7198,3 +7206,17 @@ full sanitizer native, focused30 and main71 checks pass. Both changed C++ files
 pass format, clang-tidy and strict C++17 checks. Source-distribution checks pass.
 Evidence: build/physical-replay-diagnostics-20261120/. No coverage closure,
 fresh vendor run or general physical-replay equivalence is claimed.
+
+
+## Task140: BSDL model/default qualification
+
+The eight audited BSDL requirement groups now have native model and replay
+coverage: private omissions, per-instruction captures, alternate capture lists,
+repeated opcode descriptions, implicit BYPASS, shared widths, semantic case
+folding and compatible shared-opcode masks. See the Task140 section in
+[model acceptance](pattern-model-coverage.md#task140-audited-bsdl-modeldefault-forms)
+for conservative-mask semantics, migration/reset fixes, measured resource
+bounds, exact qualification records and Tessent2026.2 differences. The initial
+matrix passed830 cases per variant; the post-review record in that section
+supersedes it. No coverage closure or general physical/vendor equivalence is
+claimed.

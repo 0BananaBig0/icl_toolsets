@@ -430,6 +430,52 @@ void TestRawTapMultipleDrScans() {
           "later full nine-bit route authoritatively owns its new pre-CSU "
           "register");
 }
+void TestNoIdBuiltinBypassAliases() {
+  const std::string folder =
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream file(folder + name);
+    return std::string((std::istreambuf_iterator<char>(file)), {});
+  };
+  auto source = read("model.icl");
+  auto bsdl = read("model.bsdl");
+  const auto replace = [&](const std::string& from, const std::string& to) {
+    const auto at = bsdl.find(from);
+    Require(at != std::string::npos, "no-ID fixture replacement exists");
+    bsdl.replace(at, from.size(), to);
+  };
+  replace("BYPASS (1111)", "BYPASS (1000)");
+  replace("IDCODE (0010), ", "");
+  replace(", DEVICE_ID (IDCODE)", "");
+  const auto begin = bsdl.find("  attribute IDCODE_REGISTER");
+  const auto end = bsdl.find(';', begin);
+  Require(begin != std::string::npos && end != std::string::npos,
+          "no-ID fixture attribute exists");
+  bsdl.erase(begin, end - begin + 1);
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("no-id.icl", source);
+    design.AddBsdl("no-id.bsdl", bsdl, "BuiltinDrProbe");
+    const auto netlist =
+        flat ? pattern::Elaborate(design, "BuiltinDrTop")
+             : pattern::ElaborateTapNetwork(design, "BuiltinDrTop").netlist;
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    Require(scheduler.Value("tap.INSTRUCTION") == "1xxx",
+            "reset does not fabricate a unique BYPASS encoding");
+    scheduler.ApplyScan(
+        {"iScan", {"jtag", "1", "-si", "1", "-so", "0"}, "no-id:scan", {}});
+    Require(scheduler.Value("tap.INSTRUCTION") == "1xxx",
+            "known BYPASS data scan retains uncertain held IR bits");
+    for (const auto& code : {"8", "15"}) {
+      scheduler.ApplyScan(
+          {"iScan", {"-ir", "jtag", "4", "-si", code}, "no-id:ir", {}});
+      scheduler.ApplyScan(
+          {"iScan", {"jtag", "1", "-si", "0", "-so", "0"}, "no-id:data", {}});
+    }
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
 void TestRawTapBuiltinDrScans() {
   const std::string folder =
       "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/";
@@ -6265,6 +6311,7 @@ int main(int argc, char* argv[]) {
     if (argc != 1) {
       if (argc == 2 && std::string(argv[1]) == "--raw-reservations") {
         TestRawScanReservations();
+        TestNoIdBuiltinBypassAliases();
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
@@ -6295,6 +6342,7 @@ int main(int argc, char* argv[]) {
       return 0;
     }
     TestPhysicalTapResetLoads();
+    TestNoIdBuiltinBypassAliases();
     TestRawTapUnknownInput();
     TestRawTapUnknownStableRollback();
     TestAutomaticChildRawPreparation();
