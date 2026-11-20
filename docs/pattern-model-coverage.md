@@ -4285,7 +4285,9 @@ Associated flat iClockOverride target/source mapping, sparse never-read history,
 provably zero initial/no-compare status and compatible modeled-child port locks
 are covered by Task141. Applied reads still require actual observations for
 getters; cared comparisons do not manufacture status. Child conflicts retain
-per-edge checks, rollback and scope ownership. See
+intermediate serial-state invariance/per-edge checks, rollback and scope ownership.
+Effective queue care and static validation preserve honest status/history. Two
+nonblocking API/diagnostic limitations remain recorded in the qualification. See
 [Task141 qualification](pattern-generation.md#task141-flat-clock-overrides-sparse-history-and-child-port-locks).
 The broader time/event, observation-provider, interface/chain, clock assignment
 and lifecycle requirements remain in items5–7.

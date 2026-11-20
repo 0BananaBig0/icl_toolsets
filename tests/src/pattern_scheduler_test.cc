@@ -1626,6 +1626,64 @@ void TestRawScanReservations() {
                     ports.Values());
     Require(scheduler.Value("head") == "010",
             "explicit port release permits later ordinary retargeting");
+    for (bool output_wave : {false, true}) {
+      for (const std::string& name :
+           output_wave ? std::vector<std::string>{"so", "child.so"}
+                       : std::vector<std::string>{"si", "child.si"}) {
+        pattern::ScanScheduler trial(netlist);
+        trial.Reset();
+        trial.ApplyScan({"iScan",
+                         {"client", "16", "-si", output_wave ? "0x0b40" : "0"},
+                         "reserve:preload",
+                         {}});
+        const auto old_head = trial.Value("head");
+        const auto old_child = trial.Value("child.value");
+        const auto old_tail = trial.Value("tail");
+        Require(trial.Value(name) == "0", "serial lock starts at zero");
+        const pattern::Operation waveform{
+            "iScan",
+            {"child.local", "8", "-si", output_wave ? "0" : "0x5a", "-so",
+             output_wave ? "0x5a" : "0"},
+            "reserve:mid-shift",
+            {}};
+        assigned = {tail};
+        bool conflict = false;
+        try {
+          trial.ApplyScan(waveform, {{netlist.node_ids.at(name), "0"}},
+                          &assigned);
+        } catch (const std::runtime_error& error) {
+          conflict =
+              std::string(error.what()).find("reserved resource " + name) !=
+              std::string::npos;
+        }
+        Require(conflict && assigned == std::set<size_t>{tail} &&
+                    trial.Value("head") == old_head &&
+                    trial.Value("child.value") == old_child &&
+                    trial.Value("tail") == old_tail && trial.Value(name) == "0",
+                "intermediate serial port changes reject atomically");
+      }
+    }
+    for (bool output_lock : {false, true}) {
+      for (const std::string& name :
+           output_lock ? std::vector<std::string>{"so", "child.so"}
+                       : std::vector<std::string>{"si", "child.si"}) {
+        pattern::ScanScheduler trial(netlist);
+        trial.Reset();
+        trial.ApplyScan({"iScan",
+                         {"client", "16", "-si", output_lock ? "0" : "0x0b40"},
+                         "",
+                         {}});
+        trial.ApplyScan(
+            {"iScan",
+             {"child.local", "8", "-si", output_lock ? "0x5a" : "0"},
+             "",
+             {}},
+            {{netlist.node_ids.at(name), "0"}});
+        Require(
+            trial.Value(name) == "0",
+            "a serial port whose full waveform is constant stays compatible");
+      }
+    }
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
   pattern::Design design;
@@ -1640,6 +1698,47 @@ void TestRawScanReservations() {
   Require(
       assigned == std::set<size_t>{netlist.node_ids.at("open")},
       "newly enabled post-route storage is absent from assignment footprint");
+}
+void TestRawPortReservationScale() {
+  std::ifstream file(
+      "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
+  std::string source((std::istreambuf_iterator<char>(file)), {});
+  const size_t width = 65536;
+  const auto replace = [&](const std::string& from, const std::string& to) {
+    const auto position = source.find(from);
+    Require(position != std::string::npos, "wide port reservation fixture");
+    source.replace(position, from.size(), to);
+  };
+  replace("value[7:0]", "value[" + std::to_string(width - 1) + ":0]");
+  replace("ResetValue 8'b0", "ResetValue " + std::to_string(width) + "'b0");
+  replace("DefaultLoadValue 16'b0",
+          "DefaultLoadValue " + std::to_string(width + 8) + "'b0");
+  pattern::Design design;
+  design.AddIcl("wide-port-reservation.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler initial(netlist);
+  initial.Reset();
+  initial.ApplyScan({"iScan",
+                     {"client", std::to_string(width + 8), "-si", "0"},
+                     "reserve:wide-preload",
+                     {}});
+  const auto start = std::chrono::steady_clock::now();
+  for (const std::string& name :
+       std::vector<std::string>{"sel", "si", "so", "child.si", "child.so"}) {
+    pattern::ScanScheduler trial(initial);
+    trial.ApplyScan({"iScan",
+                     {"child.local", std::to_string(width), "-si", "0"},
+                     "reserve:wide-port",
+                     {}},
+                    {{netlist.node_ids.at(name), name == "sel" ? "1" : "0"}});
+    Require(trial.Value("child.value") == std::string(width, '0'),
+            "constant wide port proof preserves complete scan loads");
+  }
+  std::cout << "raw protected ports: bits=" << width << " ports=5 seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
 }
 void TestGatedSibRawScans() {
   std::string source = RawSibModel();
@@ -6311,6 +6410,7 @@ int main(int argc, char* argv[]) {
     if (argc != 1) {
       if (argc == 2 && std::string(argv[1]) == "--raw-reservations") {
         TestRawScanReservations();
+        TestRawPortReservationScale();
         TestNoIdBuiltinBypassAliases();
         return 0;
       }
@@ -6356,6 +6456,7 @@ int main(int argc, char* argv[]) {
     TestNativeOrdinaryScans();
     TestMixedRootRawPreparation();
     TestRawScanReservations();
+    TestRawPortReservationScale();
     TestDynamicChildRawScans();
     TestActiveChildRawScans();
     TestGatedSibRawScans();

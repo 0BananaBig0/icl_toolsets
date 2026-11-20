@@ -109,6 +109,96 @@ class ObservationState(unittest.TestCase):
         self.assertNotIn(b'iGet', out)
         self.assertEqual(out.count(b'iApply'), 1)
 
+    def test_status_uses_controlling_state_on_queued_reads(self):
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(SCAN)
+        for state in ('iState value 5', 'iState inverted[1:0] 0',
+                      'iState value 5 -LastWrittenValue'):
+            with self.subTest(state=state):
+                pdl.write_text('iPDLLevel 1; iReset; iRead value; ' + state +
+                               '; iApply; iGetStatus\n')
+                self.assertIn('hardware readback', self.run_tool(icl, pdl, ok=False))
+        out = self.replay(SCAN, 'iPDLLevel 1; iReset; iRead value 5; '
+            'iState value 0bxxxx; iApply; iNote [iGetStatus];\n')
+        self.assertIn(b'iNote 0', out)
+        for flag in FLAGS:
+            self.replay(SCAN, 'iPDLLevel 1; iReset; iRead value; '
+                'iState value 5 ' + flag + '; iApply; iNote [iGetStatus];\n')
+
+    def test_status_uses_latest_overlapping_read_bits(self):
+        out = self.replay(SCAN, 'iPDLLevel 1; iReset; iRead value 0; '
+            'iRead inverted 0bxxxx; iApply; iNote [iGetStatus];\n')
+        self.assertIn(b'iNote 0', out)
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(SCAN)
+        for reads in ('iRead value 0; iRead inverted[1:0] 0bxx',
+                      'iRead inverted 0bxxxx; iRead value[0] 0'):
+            pdl.write_text('iPDLLevel 1; iReset; ' + reads +
+                           '; iApply; iGetStatus\n')
+            self.assertIn('hardware readback', self.run_tool(icl, pdl, ok=False))
+
+    def test_status_uses_surviving_normalized_raw_scans(self):
+        model = (helpers.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text().replace('Module Top {', 'Module Chains {')
+        out = self.replay(model, 'iPDLLevel 1; iReset; '
+            'iScan client 16 -so 0; iScan client -chain default 16 -si 0; '
+            'iApply; iNote [iGetStatus];\n')
+        self.assertIn(b'iNote 0', out)
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(model)
+        for scans in (
+            'iScan client 16 -si 0; iScan client -chain default 16 -so 0',
+            'iScan child.local 8 -so 0; iScan client 16 -si 0'):
+            pdl.write_text('iPDLLevel 1; iReset; ' + scans +
+                           '; iApply; iGetStatus\n')
+            self.assertIn('hardware readback', self.run_tool(icl, pdl, ok=False))
+
+    def test_status_normalizes_grouped_raw_masks(self):
+        model = (helpers.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text().replace('Module Top {', 'Module Chains {')
+        for literal in ('{0bxxxx xxxx xxxx xxxx}', '{0bxxxx\nxxxx xxxx xxxx}',
+                        '{0xX X\nX X}'):
+            with self.subTest(literal=literal):
+                out = self.replay(model, 'iPDLLevel 1; iReset; '
+                    'iScan client 16 -si 0 -so ' + literal +
+                    '; iApply; iNote [iGetStatus];\n')
+                self.assertIn(b'iNote 0', out)
+
+    def test_apply_validates_all_queued_operands_before_history(self):
+        model = SCAN.replace(' ScanInPort si;', ' ScanInPort si; SelectPort sel; '
+            'CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset;')
+        model = model.replace(' Alias inverted', " Alias combo[1:0] = value[1], si;\n"
+            ' ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; '
+            'Port ue; Port tck; Port reset;}\n Alias inverted')
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(model)
+        for invalid, diagnostic in (
+            ('iRead si 0', 'observable storage or outputs'),
+            ('iRead combo 0', 'observable storage or outputs'),
+            ('iWrite missing 0', 'unknown PDL target missing'),
+            ('iWrite value 0x10', 'truncates significant bits'),
+            ('iScan client 4 -si 0x10', 'scan data exceeds scan length')):
+            with self.subTest(invalid=invalid):
+                pdl.write_text('iPDLLevel 1; iState value 3 -LastReadValue; '
+                    'iState value 6 -LastMiscompareValue; iRead value; ' +
+                    invalid + '; catch {iApply}; iReset; '
+                    'iNote "[iGetReadData value] [iGetMiscompares value]";\n')
+                output = self.root / 'result.pdl'
+                output.write_bytes(b'preserve old output\n')
+                error = self.run_tool(icl, pdl, ok=False)
+                self.assertIn(diagnostic, error)
+                self.assertNotIn('hardware readback', error)
+                self.assertEqual(output.read_bytes(), b'preserve old output\n')
+
+    def test_rejected_apply_mode_keeps_history_and_status(self):
+        out = self.replay(SCAN, 'iPDLLevel 1; '
+            'iState value 3 -LastReadValue; iState value 6 -LastMiscompareValue; '
+            'iRead value; if {![catch {iApply -end_in_pause} message]} '
+            '{error {unsupported apply was accepted}}; iReset; '
+            'iNote $message; iNote "[iGetReadData value] [iGetMiscompares value]"; '
+            'iNote [iGetStatus];\n')
+        self.assertIn(b'unsupported iApply option', out)
+        self.assertIn(b'0b0011 0b0110', out)
+        self.assertIn(b'iNote 0', out)
+
     def test_pending_and_reset_discarded_reads_keep_supplied_history(self):
         out = self.replay(SCAN, 'iPDLLevel 1; iReset; '
                           'iState value 9 -LastReadValue; iRead value 0; '

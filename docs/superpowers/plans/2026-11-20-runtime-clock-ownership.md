@@ -42,7 +42,7 @@ current docs/tracker.
   on compatible child case.
 - [x] Let child ports use existing per-edge/final checks; retain root exemption
   and storage rules. Expected GREEN.
-- [ ] Run combined native/full generator/dynamic/static/SAN/style/C++17/package,
+- [x] Run combined native/full generator/dynamic/static/SAN/style/C++17/package,
   update exact tracker evidence without broad closure, commit/task-done, fresh
   independent review, one necessary fix pass, merge/push/delete branch.
 **Verification:** python3 tests/src/pattern/test_automatic_child_raw.py build/icl-pattern-generation

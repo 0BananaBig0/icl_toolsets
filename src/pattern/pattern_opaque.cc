@@ -136,6 +136,18 @@ Operation NormalizeScan(z3::context& context, const std::string& target,
   if (stable) result.arguments.push_back("-stable");
   return result;
 }
+Operation NormalizeScan(z3::context& context, const Operation& operation) {
+  auto data = operation;
+  const bool instruction =
+      !data.arguments.empty() && data.arguments[0] == "-ir";
+  if (instruction) data.arguments.erase(data.arguments.begin());
+  if (data.arguments.size() < 2) {
+    throw std::runtime_error("raw scan requires client and length");
+  }
+  auto result = NormalizeScan(context, data.arguments[0], data);
+  if (instruction) result.arguments.insert(result.arguments.begin(), "-ir");
+  return result;
+}
 std::optional<std::vector<Operation>> LowerOpaqueScans(
     const Netlist& netlist, const std::vector<Operation>& operations) {
   if (std::none_of(operations.begin(), operations.end(),
@@ -158,10 +170,7 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
         // valid.
         pending = NormalizeScan(context, client.name, operation);
       } else if (operation.command == "iApply") {
-        if (!operation.arguments.empty() &&
-            operation.arguments != std::vector<std::string>{"-together"}) {
-          throw std::runtime_error("unsupported opaque iApply option");
-        }
+        ValidatePdlApplyOptions(operation.arguments);
         if (pending) {
           result.push_back(std::move(*pending));
           result.push_back(operation);

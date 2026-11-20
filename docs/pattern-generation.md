@@ -7244,14 +7244,30 @@ A single-stream iRead does not assign a controlling lock (IEEE1687-2014
 7.9.19, printed178/PDF192); the native preservation API tests actual clock and
 output locks.
 
-Qualification passes all13 native pattern suites,51 generator suites/845 cases
-per dynamic/static variant, focused72 clock +24 history +14 child methods per
-variant, three native leak-enabled ASan/UBSan suites, sanitizer clock72/history24/
-child14/parent-BSDL19/main71 methods,15 changed-hunk format/tidy/C++17 gates and
-source-distribution build/install/uninstall checks. Failed-apply histories/status
-remain intact; invalid CLI operands still reject with the original cause and
-preserve published artifacts. History validation uses two streamed linear passes
-without retaining all queued target expansions. Exact commands, exits, timings
-and input hashes are in build/runtime-clock-ownership-20261120/final/.
-Full remaining items5–7,
-excluded coverage1 and general vendor/physical equivalence are not claimed.
+Qualification after independent review and one necessary fix pass passes all13
+native pattern suites,51 generator suites/852 cases per dynamic/static variant,
+focused72 clock +30 history +14 child methods per variant, three native
+leak-enabled ASan/UBSan suites, sanitizer clock72/history30/child14/BSDL20/main71
+methods,30 changed-hunk format/tidy/C++17 gates and source-distribution checks.
+
+Status follows effective per-bit expectations after controlling state and
+overlapping reads, plus surviving normalized interface/IR raw requests.
+Grouped X masks retain the same meaning as unspaced masks. Static target/value/
+apply-option validation precedes history commit, including discarded operands;
+failed applies preserve histories, status and previously published artifacts.
+
+Child raw replay proves held ports invariant across intermediate serial states
+before bulk shifting. Otherwise it checks each edge within the unchanged
+one-million event-work budget and reports exhaustion explicitly. A65536-bit
+child scan with five held ports uses the proof path in0.422371s in one local
+measurement; no general speedup is claimed. Cared child port locks add one
+linear netlist snapshot; unprotected/root-exempt paths retain existing behavior.
+
+Exact commands, exits, timings, hashes and review disposition are retained in
+build/runtime-clock-ownership-20261120/review-fix/; the original pre-review and
+failed-draft evidence is preserved separately. Two Minor review findings remain:
+the design/top-name constructor without a netlist conservatively rejects an
+explicit all-masked ordinary read's zero status; eager validation identifies the
+apply location rather than the queued operand's origin. CLI elaborated history
+and original operand errors remain covered. Full remaining items5–7, excluded
+coverage1 and general vendor/physical equivalence are not claimed.

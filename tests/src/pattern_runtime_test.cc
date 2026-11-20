@@ -263,14 +263,23 @@ iNote [iGetStatus -clear]
 }
 void TestFailedApplyHistory() {
   pattern::Design design;
-  design.AddIcl("failed-history.icl",
-                "Module History { DataRegister value[7:0]; }");
+  design.AddIcl(
+      "failed-history.icl",
+      "Module History { ScanInPort si; SelectPort sel; CaptureEnPort ce; "
+      "ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset; "
+      "ScanRegister value[7:0] {ScanInSource si; CaptureSource value;} "
+      "ScanOutPort so {Source value[0];} "
+      "ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; "
+      "Port ue; Port tck; Port reset;} "
+      "Alias combo[1:0] = value[1], si; }");
   const auto netlist = pattern::Elaborate(design, "History");
   for (bool unknown_status : {false, true}) {
     for (const std::string first :
          {"iRead value 0bxxxxxxxx; ", "iRead value 0; "}) {
       for (const std::string invalid :
-           {"iRead value 0x100; ", "iRead missing 0; "}) {
+           {"iRead value 0x100; ", "iRead missing 0; ", "iRead si 0; ",
+            "iRead combo 0; ", "iWrite missing 0; ", "iWrite value 0x100; ",
+            "iScan client 8 -si 0x100; "}) {
         pattern::Runtime runtime(design, netlist);
         runtime.Execute(
             "failed-history.pdl",

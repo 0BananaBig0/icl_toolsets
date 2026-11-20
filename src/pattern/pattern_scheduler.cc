@@ -1607,6 +1607,64 @@ class ScanScheduler::Impl {
     if (assigned) *assigned = std::move(explicit_registers);
     return result;
   }
+  bool RawPortLocksInvariant(const NetworkState& state,
+                             const std::set<size_t>& active,
+                             const std::string& input, size_t serial_input,
+                             const std::map<size_t, std::string>& held,
+                             const std::map<size_t, std::string>& desired) {
+    if (std::none_of(held.begin(), held.end(), [&](const auto& entry) {
+          return netlist_.nodes[entry.first].model == ModelKind::kPort &&
+                 entry.second.find_first_not_of('x') != std::string::npos;
+        })) {
+      return true;
+    }
+    char serial = input.front();
+    if (input.find_first_not_of(serial) != std::string::npos) serial = 'x';
+    char shifted = serial;
+    for (size_t id : active) {
+      if (state.Value(id, true).find_first_not_of(shifted) !=
+          std::string::npos) {
+        shifted = 'x';
+        break;
+      }
+    }
+    Values values, shifts;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.model == ModelKind::kRegister || state.IsDriven(id)) {
+        values.emplace(id, SymbolicValue::Literal(context_, state.Value(id)));
+      }
+      if (node.kind == "ScanRegister") {
+        shifts.emplace(
+            id,
+            SymbolicValue::Literal(
+                context_, active.count(id) ? std::string(node.Width(), shifted)
+                                           : state.Value(id, true)));
+      }
+    }
+    values.insert_or_assign(
+        serial_input, SymbolicValue::Literal(context_, std::string(1, serial)));
+    const auto before = ClientPins("shift", true);
+    for (const auto& [id, bits] : ClientPins("shift")) {
+      const auto& previous = before.at(id);
+      values.insert_or_assign(
+          id, SymbolicValue::Literal(
+                  context_,
+                  bits == previous ? bits : std::string(bits.size(), 'x')));
+    }
+    // Unknown shifts/pins overapproximate every intermediate serial snapshot.
+    SymbolicNetwork proof(netlist_, context_, std::move(values), global_resets_,
+                          &shifts);
+    for (const auto& [id, mask] : held) {
+      if (netlist_.nodes[id].model != ModelKind::kPort) continue;
+      const auto actual = proof.Value(id);
+      const auto matches =
+          Matches(actual, SymbolicValue::Literal(context_, mask)) ||
+          Matches(actual, SymbolicValue::Literal(context_, desired.at(id)));
+      if (!matches.simplify().is_true()) return false;
+    }
+    return true;
+  }
   Operation ReplayScan(
       const Operation& normalized, const std::set<size_t>& stable_clients,
       const std::map<size_t, std::string>& preserved,
@@ -1664,6 +1722,11 @@ class ScanScheduler::Impl {
       }
     }
     if (exact_desired) desired = *exact_desired;
+    const bool port_locks =
+        std::any_of(held.begin(), held.end(), [&](const auto& entry) {
+          return netlist_.nodes[entry.first].model == ModelKind::kPort &&
+                 entry.second.find_first_not_of('x') != std::string::npos;
+        });
     NetworkState replay(state_);
     replay.TakeControlEvents();
     replay.TakeResetEvents();
@@ -1695,7 +1758,10 @@ class ScanScheduler::Impl {
         }
         return value;
       };
-      auto result = ClientControls(trial, phase_active, phase, {}, read);
+      const auto check = [&](const NetworkState& state) {
+        if (port_locks) CheckPreserved(state, held, desired);
+      };
+      auto result = ClientControls(trial, phase_active, phase, {}, read, check);
       for (const auto& [id, control] : result) {
         const bool loaded = phase_active.count(id);
         if ((loaded && control.select != '1') ||
@@ -1712,16 +1778,48 @@ class ScanScheduler::Impl {
     CheckPreserved(replay, held, desired);
     replay.Clock(controls(&replay, "capture", active), true);
     CheckPreserved(replay, held, desired);
-    replay.Drive(profile.input, input.substr(0, 1));
-    auto shift_controls = controls(&replay, "shift", active);
-    for (auto it = shift_controls.begin(); it != shift_controls.end();) {
-      if (!active.count(it->first)) {
-        it = shift_controls.erase(it);
-      } else {
-        ++it;
+    const auto prepare_input = [&](char bit) {
+      if (port_locks) {
+        for (const auto& [id, bits] : ClientPins("shift", true)) {
+          replay.Drive(id, bits);
+        }
+        replay.Reset();
+        CheckPreserved(replay, held, desired);
+      }
+      replay.Drive(profile.input, std::string(1, bit));
+      if (port_locks) CheckPreserved(replay, held, desired);
+    };
+    const auto shift_controls = [&] {
+      auto result = controls(&replay, "shift", active);
+      for (auto it = result.begin(); it != result.end();) {
+        if (!active.count(it->first)) {
+          it = result.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      return result;
+    };
+    if (RawPortLocksInvariant(replay, active, input, profile.input, held,
+                              desired)) {
+      prepare_input(input.front());
+      replay.ShiftComplete(loads, shift_controls());
+    } else {
+      if (input.size() * EventWorkSize() > 1048576) {
+        throw std::runtime_error(
+            "raw protected serial replay event-work limit exceeded");
+      }
+      for (auto bit = input.rbegin(); bit != input.rend(); ++bit) {
+        prepare_input(*bit);
+        replay.Clock(shift_controls(), true);
+        CheckPreserved(replay, held, desired);
+      }
+      for (const auto& [id, bits] : loads) {
+        if (replay.Value(id, true) != bits) {
+          throw std::runtime_error("raw protected serial replay load mismatch");
+        }
       }
     }
-    replay.ShiftComplete(loads, shift_controls);
     CheckPreserved(replay, held, desired);
     replay.Clock(controls(&replay, "update", active), false);
     CheckPreserved(replay, held, desired);
@@ -6106,13 +6204,15 @@ class ScanScheduler::Impl {
   std::map<size_t, ScanControl> ClientControls(
       NetworkState* state, const std::set<size_t>& active,
       const std::string& phase, const std::map<Key, char>& selections,
-      const std::function<char(const BitReference&)>& read = {}) const {
+      const std::function<char(const BitReference&)>& read = {},
+      const std::function<void(const NetworkState&)>& check = {}) const {
     const bool falling = phase == "update";
     const auto pins = ClientPins(phase, false, selections);
     for (const auto& [id, bits] : ClientPins(phase, true, selections)) {
       state->Drive(id, bits);
     }
     state->Reset();
+    if (check) check(*state);
     const auto value = [&](const BitReference& bit) {
       return read ? read(bit) : state->Read(bit);
     };
@@ -6123,6 +6223,7 @@ class ScanScheduler::Impl {
     for (const auto& [id, bits] : pins) {
       if (client_pins_.at(id) == "clock") state->Drive(id, bits);
     }
+    if (check) check(*state);
     for (auto& [pin, before] : clocks) {
       const char after = value({pin.first, pin.second});
       const char from = falling ? '1' : '0', to = falling ? '0' : '1';

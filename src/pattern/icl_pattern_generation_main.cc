@@ -449,10 +449,7 @@ std::string Generate(
         pending_scans[key] = std::move(scan);
       } else if (operation.command == "iApply") {
         const bool together =
-            operation.arguments == std::vector<std::string>{"-together"};
-        if (!operation.arguments.empty() && !together) {
-          throw std::runtime_error("unsupported iApply option");
-        }
+            pattern::ValidatePdlApplyOptions(operation.arguments);
         if (!pending_scans.empty()) {
           if (!pending.Empty()) {
             if (together) {
