@@ -7163,3 +7163,9 @@ rulings: whole-release/strict-coverage acceptance stays open; excluded physical
 features stay unsupported; invalid control-pin data selectors remain rejected;
 and native replay of archived exports supplies no fresh vendor/hardware or
 general equivalence signoff.
+
+Task137 integration: merged into master at267e0d1 and pushed. Both merged
+28-case reset suites and the native runtime pass; all3994 runtime input hashes
+and ten product hashes match the qualified worktree. The completed task branch
+is deleted. This closes the scoped reset replay task; raw100/90 release
+acceptance and the explicitly excluded physical features remain open.
