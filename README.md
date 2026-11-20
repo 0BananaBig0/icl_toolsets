@@ -335,10 +335,15 @@ verification results and development requirements belong in [docs/](docs/README.
 
 `icl-pattern-generation` expands procedures and Tcl computations, then emits
 level-0 PDL with explicit prerequisite writes and applies. It currently handles
-one ordinary SI/SO boundary or one IEEE 1149.1 TAP, with ScanRegisters, muxes,
-logic-controlled paths and acyclic local-reset dependencies. Hardware starts
+supported standalone/simultaneous scan chains and common-phase TAP networks
+with disjoint lanes, ScanRegisters, muxes, logic-controlled paths and acyclic
+local-reset dependencies. Hardware starts
 unknown: use explicit `iState` declarations where appropriate, and `iReset`
 before TAP transactions.
+
+Contiguous vector-port functions can share a base name while preserving their
+individual types, attributes and enums. Whole/sliced references and child bindings
+replay through associated flat models. See [typed port functions and bounds](docs/pattern-generation.md#task142-typed-vector-port-functions).
 
 Flat TAP output includes instruction-register writes, capture comparisons and
 their `iApply` boundaries. Explicit `tap.INSTRUCTION` reads/writes can be replayed

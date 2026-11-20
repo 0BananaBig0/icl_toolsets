@@ -53,7 +53,7 @@ full model coverage or Tessent equivalence.
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters preserve never-read/sparse unknown bits and explicit history; initial/no-cared-comparison status is known zero, while applied reads invalidate target bits until actual observations exist | Complete runtime command coverage and broader real-pair generation |
-| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
+| Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; typed contiguous vector-port functions retain per-function attributes/enums/properties, selected access eligibility, child bindings and associated-flat identities (Task142 full qualification passes; independent review pending); hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain, inferred simultaneous disjoint interface-free vector returns and canonical replay | Overlapping returns, independently controlled lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage acyclic/feedback snapshot settlement preserve transient reset effects | General gated/serial-dependent reset events and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining corpus/reference qualification |
@@ -4303,3 +4303,21 @@ read/write exports. Sliced instance InputPort bindings already work; no change
 to those bindings is implied. Exact cases and identities remain in
 build/completion-source-probes-20261120/segmented-ports/. This finding remains
 item11 work, separate from Task141's frozen production changes.
+
+## Task142: disjoint vector-port source repair
+
+Real indexed port functions now share a checked interval view without merging
+their types/properties or adding synthetic hardware. Whole/sliced PDL, aliases,
+child bindings, flat identities and clock/TAP callers are covered by16 focused
+methods per variant.36 changed-code quality gates pass. Nine fresh normalized
+Tessent2026.2 runs and72 nonempty native forms match18 directional canonical
+comparisons. Eleven corpus cases pass this source boundary and encounter the
+existing interface-event integration guard; whole corpus acceptance remains open.
+
+Full13 native suites,52x868 dynamic/static generator cases, eight native
+leak-enabled sanitizer suites and port16/clock72/history30/child14/BSDL20/main71
+sanitizer methods pass.36 code-quality gates and source packaging pass.
+Independent whole-branch review is pending.
+See [the implementation and bounded evidence](pattern-generation.md#task142-typed-vector-port-functions).
+The earlier Task141 corpus finding above is historical; current status is in
+[remaining work](remaining-work.md).

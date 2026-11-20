@@ -10,12 +10,21 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task140 adds the audited BSDL model/default forms with12 replay tests,
-13 native pattern suites,51 suites/830 cases per binary variant and leak-enabled
-sanitizer, style/C++17 and source-package qualification. Fresh Tessent2026.2
-probes complete six forms and reject three standard-first native forms; exact
-limits and evidence are documented in the Task140 section below. Broader
-corpus/specialization and topology/event tasks remain open in the tracker.
+Task141 is integrated at0188a6a:13 native pattern suites,51 generator
+suites/852 cases per dynamic/static variant, leak-enabled sanitizers,30
+changed-code quality checks and source packaging pass. It repairs flat clock
+override names, honest history/status and protected child serial ports.
+
+Task142 adds typed disjoint vector-port functions. Its16 focused methods pass
+per binary variant, nine normalized models run successfully through Tessent2026.2,
+and72 nonempty native replays agree in18 directional comparisons. Full native,
+generator, sanitizer, style and packaging checks pass. Independent whole-branch
+review is pending; see the Task142 section.
+
+Task140's final reviewed BSDL/default qualification has19 focused methods,
+13 native suites and51 suites/837 cases per variant, plus sanitizers,
+36 style/C++17 gates and source packaging. Its standard/vendor compatibility
+differences remain documented. Broader corpus/topology/event work stays open.
 
 
 Task139 completes physical replay diagnostics. Its one independent review led
@@ -431,6 +440,13 @@ This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
 
 ## Current transaction support
+
+- Contiguous vector-port functions may share a base name while retaining
+  each function's type, attributes, enum and clock properties. Whole-bus and
+  selected references, parameterized child bindings and associated-flat replay
+  resolve the actual declared bits. Overlap, gaps, inconsistent direction and
+  scalar/non-port duplicates reject. Access and enum eligibility remain tied
+  to the selected functions; see [typed port functions](#task142-typed-vector-port-functions).
 
 - ScanRegister writes and reads, including slices and aliases; PDL numeric
   values and names from the target's `RefEnum`, last-write masks, and all-X
@@ -7271,3 +7287,64 @@ explicit all-masked ordinary read's zero status; eager validation identifies the
 apply location rather than the queued operand's origin. CLI elaborated history
 and original operand errors remain covered. Full remaining items5–7, excluded
 coverage1 and general vendor/physical equivalence are not claimed.
+
+## Task142: typed vector-port functions
+
+Repeated indexed input/output port functions retain their own types, attributes,
+enums, sources and clock properties (IEEE1687-2014 6.4.1g/h, printed80/PDF94).
+For example:
+
+```icl
+Module PortFunctions {
+ DataInPort data[1];
+ DataInPort data[0];
+ DataOutPort value[1:0] { Source data; }
+}
+```
+
+A whole `data` reference uses descending bit order when all functions have one
+index. Nontrivial ranges determine ascending/descending order, independent of
+declaration order. Source and PDL references, aliases and whole/sliced child
+InputPort bindings select actual function bits. Binding holes and wholly absent
+bindings retain their different meanings. Mixed function kinds and disjoint
+input/output functions do not gain each other's access permissions.
+
+A selected function retains its RefEnum; a whole heterogeneous group cannot
+borrow the first function's table. An alias with its own RefEnum remains valid.
+LogicSignal enum comparisons retain the standard's single-object/no-subrange
+restriction (6.4.10c/k). Overlapping/gapped/inconsistently directed functions,
+scalar/non-port duplicates and aggregate width exhaustion reject.
+
+Associated-flat models retain real typed functions and canonical original
+identities in existing metadata. Restoration checks actual bounds, type,
+membership and namespace conflicts; it creates no synthetic hardware node.
+Grouped clock names retain literal collision priority and checked override
+snapshots. An encoded physical fragment cannot select another fragment's bit.
+Scalar generated TAP pins cannot shadow a bus, and generated routes reserve
+logical bus names. TAP construction checks the selected scan-input bit before
+adding wiring, rejecting explicit sources while allowing unrelated bound
+functions on the same bus.
+
+The existing generic primary limits remain256 functions/4096 bits plus bounded
+solver time. Actual128-function scheduling takes0.0208102s in one native run;
+a single128-bit control takes0.00944873s. The equivalent CLI runs take0.1768s/
+84084KiB dynamic and0.1600s/83644KiB static.4096-function loading/history formatting
+takes0.1307s/56848KiB; this is not a4096-function scheduling result. The512-function
+guard and a parent4096-bit bounded-query failure remain explicit item10 evidence.
+These single measurements do not establish a general speedup.
+
+Nine bounded port models have nine successful fresh normalized Tessent2026.2
+runs,72 nonempty local source/flat/generated/vendor replays and18 exact
+directional canonical comparisons. Submitted and returned input hashes match.
+They are exploratory evidence, not newly maintained golden certificates or
+universal vendor equivalence. Eleven corpus models now pass the former duplicate
+boundary and reach the separately tracked interface-event guard; they are not
+counted as end-to-end generation successes.
+
+Full qualification passes13 native suites and52 generator suites/868 cases per
+dynamic/static variant. Leak-enabled ASan/UBSan passes eight native suites,
+port16/clock72/history30/child14/BSDL20 and main71 CLI methods. All36 changed-code
+format/tidy/C++17 gates and source-distribution checks pass. Independent
+whole-branch review is pending. Exact commands, exits, timings and frozen
+source/product identities are retained under build/segmented-ports-20261121/. The broader source/corpus, event/topology and
+excluded coverage requirements keep their tracker status.
