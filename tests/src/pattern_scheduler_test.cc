@@ -6106,7 +6106,11 @@ Module ResetAccessTop {
     scheduler.Apply(masked, false,
                     {{netlist.node_ids.at("core.b.value"), "0011"}}, true,
                     true);
-  } catch (const std::runtime_error&) {
+  } catch (const std::runtime_error& error) {
+    Require(std::string(error.what())
+                    .find("changed reserved resource core.b.value") !=
+                std::string::npos,
+            "physical replay retains the reservation failure cause");
     failed = true;
   }
   Require(failed && scheduler.Value("core.control") == "1" &&

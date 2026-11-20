@@ -115,9 +115,31 @@ Module Network {
         result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
                                '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
                                '--debug', ok=False)
-        self.assertIn('exact physical TAP CSU', result.stdout)
+        self.assertIn('serial bit 1: expected 1, observed 0', result.stdout)
         for name in ('out.pdl', 'debug/Network.icl'):
             self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
+    def test_physical_closed_route_reports_target(self):
+        icl, bsdl, _ = self.physical_fixture()
+        icl.write_text(icl.read_text().replace('ScanOutPort so { Source b.so; }',
+            "ScanMux route SelectedBy control { 1'b0: control; 1'b1: b.so; }\n"
+            ' ScanOutPort so { Source route; }'))
+        (self.root / 'source.pdl').write_text(
+            'iPDLLevel 0\niReset\niWrite tap.INSTRUCTION 4; iApply\n'
+            'iWrite core.b.value 3; iApply\n')
+        for name in ('out.pdl', 'debug/Network.icl'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('previous artifact\n')
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                               '--debug', ok=False)
+        self.assertIn('target outside current TAP route: core.b.value', result.stdout)
+        for name in ('out.pdl', 'debug/Network.icl'):
+            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+        self.run_tool('--icl', icl, '--pdl', 'source.pdl', '--bsdl',
+                      'AccessProbe', bsdl, '--output', 'ordinary.pdl')
+        self.assertGreater((self.root / 'ordinary.pdl').read_text().count('iApply'), 2)
 
     def test_physical_mode_rejects_source_rewrite(self):
         icl, bsdl, _ = self.physical_fixture()
@@ -200,9 +222,10 @@ Module Network {
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('previous artifact\n')
-        self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
-                      '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
-                      '--debug', ok=False)
+        result = self.run_tool('--physical_pdl', '--icl', icl, '--pdl', 'source.pdl',
+                               '--bsdl', 'AccessProbe', bsdl, '--output', 'out.pdl',
+                               '--debug', ok=False)
+        self.assertIn('scan load is not fully binary: core.b (1xxx)', result.stdout)
         for name in ('out.pdl', 'debug/Network.icl'):
             self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
         explicit = (head + 'iWrite core.b 15; iRead core.b 0b1xxx; '
