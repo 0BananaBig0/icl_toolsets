@@ -1413,11 +1413,15 @@ void TestRawScanReservations() {
       "tests/cases/ours/pattern_generation/static_child_scans/model.icl");
   std::string source((std::istreambuf_iterator<char>(file)), {});
   Require(!source.empty(), "raw reservation fixture exists");
+  const auto child_output = source.find(" ScanOutPort so { Source value[0]; }");
+  Require(child_output != std::string::npos, "raw child output exists");
+  source.insert(child_output, " DataOutPort observed { Source value[0]; }\n");
   const auto output = source.find(" ScanOutPort so { Source tail[0]; }");
   Require(output != std::string::npos, "raw reservation output exists");
   source.insert(output,
                 " DataOutPort hold { Source 1'b1; }\n"
-                " DataOutPort held { Source head[0]; }\n");
+                " DataOutPort held { Source head[0]; }\n"
+                " DataOutPort observed { Source child.observed; }\n");
   for (bool flat : {false, true}) {
     pattern::Design design;
     design.AddIcl("reserved-raw.icl", source);
@@ -1455,12 +1459,25 @@ void TestRawScanReservations() {
              {{head, "01"}},
              {{head, "q01"}},
              {{netlist.node_ids.at("sel"), "0"}},
+             {{netlist.node_ids.at("tck"), "0"}},
+             {{netlist.node_ids.at("observed"), "0"}},
              {{head, "000"}}}) {
       assigned = {tail};
       bool rejected = false;
       try {
         scheduler.ApplyScan(scan, invalid, &assigned);
-      } catch (const std::runtime_error&) {
+      } catch (const std::runtime_error& error) {
+        if (invalid.count(netlist.node_ids.at("tck"))) {
+          Require(std::string(error.what()).find("reserved resource tck") !=
+                      std::string::npos,
+                  "a child clock lock rejects the actual rising edge");
+        }
+        if (invalid.count(netlist.node_ids.at("observed"))) {
+          Require(
+              std::string(error.what()).find("reserved resource observed") !=
+                  std::string::npos,
+              "a child output lock rejects the actual Update");
+        }
         rejected = true;
       }
       Require(rejected && assigned == std::set<size_t>{tail} &&
@@ -2706,10 +2723,11 @@ void TestFlatClockTargetNames() {
                      "physical-clock:override-defaults",
                      {}},
                     context);
-    Require(clocks.Wait(physical, 1, scheduler).second == 3 &&
-                clocks.Check(physical, scheduler) == "clk(5)" &&
-                clocks.Wait(physical, 1, scheduler).second == 4,
-            "physical overrides preserve saved checks and restore ICL defaults");
+    Require(
+        clocks.Wait(physical, 1, scheduler).second == 3 &&
+            clocks.Check(physical, scheduler) == "clk(5)" &&
+            clocks.Wait(physical, 1, scheduler).second == 4,
+        "physical overrides preserve saved checks and restore ICL defaults");
   }
 }
 

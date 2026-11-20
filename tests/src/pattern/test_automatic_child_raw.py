@@ -20,6 +20,42 @@ class AutomaticChildRaw(unittest.TestCase):
     def rejected(self,commands,diagnostic,model=modeled.SIB):
         return modeled.opaque.OpaqueRootScan.rejected(self,commands,diagnostic,model)
 
+    def static_port_model(self):
+        return (modeled.opaque.ROOT / 'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text()
+
+    def test_compatible_child_port_lock_and_followup(self):
+        model = self.static_port_model()
+        body = ('iReset; iTake sel; iState sel 1; '
+                'iScan child.local 8 -si 0xa5 -so 0; iApply; '
+                'iWrite child.value[0] 0; iApply; iRead child.value 0xa4; iApply\n')
+        result = self.replay(body, model)
+        self.assertIn('iWrite child.value 0b10100100', result)
+
+    def test_conflicting_child_port_locks_remain_atomic(self):
+        model = self.static_port_model().replace(
+            ' ScanOutPort so { Source value[0]; }',
+            ' DataOutPort observed { Source value[0]; }\n'
+            ' ScanOutPort so { Source value[0]; }')
+        model = model.replace('Module Top {',
+            'Module Top { DataOutPort observed {Source child.observed;}')
+        self.rejected('iReset; iTake sel; iState sel 0; '
+            'iScan child.local 8 -si 0xa5; iApply\n', 'reserved', model)
+        # A read in a single stream does not assign a controlling value.
+        self.replay('iReset; iTake observed; iRead observed 0; iApply; '
+                    'iScan child.local 8 -si 0xa5; iApply; '
+                    'iRead observed 1; iApply\n', model)
+        self.replay('iReset; iTake observed; iRead observed 0; iApply; '
+                    'iRelease observed; iScan child.local 8 -si 0xa5; iApply\n', model)
+
+    def test_scoped_child_port_owner_returns(self):
+        model = self.static_port_model()
+        result = self.replay('iProcsForModule Top\n'
+            'iProc load {} { iTake sel; iState sel 1; '
+            'iScan child.local 8 -si 0xa5; iApply }\n'
+            'iReset; iCall load; iState sel 0; '
+            'iWrite child.value[0] 0; iApply; iRead child.value 0xa4; iApply\n', model)
+        self.assertIn('iWrite child.value 0b10100100', result)
+
     def test_closed_child_matches_explicit_setup_and_partial_history(self):
         scan='iScan child.local 8 -si 0x96 -so 0 -stable; iApply\n'
         tail='iWrite child.value[0] 1; iApply; iRead child.value 0x97; iRead open 1; iApply\n'

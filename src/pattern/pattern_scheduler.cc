@@ -1634,9 +1634,9 @@ class ScanScheduler::Impl {
     auto held = preserved;
     for (auto& [id, mask] : desired) {
       if (netlist_.nodes.at(id).kind != "ScanRegister") {
-        if (root_request && netlist_.nodes.at(id).model == ModelKind::kPort) {
+        if (netlist_.nodes.at(id).model == ModelKind::kPort) {
           // Explicit root effects leave port locks for later retargeting.
-          held.erase(id);
+          if (root_request) held.erase(id);
           continue;
         }
         throw std::runtime_error(

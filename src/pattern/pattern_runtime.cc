@@ -418,8 +418,8 @@ class Runtime::Impl {
               static_cast<size_t>(so - operation.arguments.begin()) + 1);
           const bool all_masked =
               expected.size() > 2 && expected[0] == '0' &&
-              (expected[1] == 'b' || expected[1] == 'B' ||
-               expected[1] == 'x' || expected[1] == 'X') &&
+              (expected[1] == 'b' || expected[1] == 'B' || expected[1] == 'x' ||
+               expected[1] == 'X') &&
               expected.find_first_not_of("xX", 2) == std::string::npos;
           if (!all_masked) zero_status_known_ = false;
         }
@@ -432,7 +432,9 @@ class Runtime::Impl {
       }
       const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
       if (zero_status_known_ && operation.arguments.size() > 1) {
-        if (!history_context_) history_context_ = std::make_unique<z3::context>();
+        if (!history_context_) {
+          history_context_ = std::make_unique<z3::context>();
+        }
         const auto expected = PdlDataValue(*history_context_, *netlist_, target,
                                            operation.arguments[1]);
         if (expected.find_first_not_of('x') != std::string::npos) {
@@ -441,8 +443,11 @@ class Runtime::Impl {
       }
       for (const auto& bit : target.bits) {
         for (auto* history : {&read_history_, &miscompare_history_}) {
-          auto entry = history->try_emplace(
-              bit.node, netlist_->nodes.at(bit.node).Width(), 'x').first;
+          auto entry =
+              history
+                  ->try_emplace(bit.node, netlist_->nodes.at(bit.node).Width(),
+                                'x')
+                  .first;
           // '?' marks an applied read without an actual observation.
           entry->second.at(HistoryOffset(bit)) = '?';
         }
@@ -470,8 +475,8 @@ class Runtime::Impl {
     bits.reserve(resolved.bits.size());
     for (const auto& bit : resolved.bits) {
       const auto entry = history.find(bit.node);
-      char data = entry == history.end() ? 'x'
-                                        : entry->second.at(HistoryOffset(bit));
+      char data =
+          entry == history.end() ? 'x' : entry->second.at(HistoryOffset(bit));
       if (data == '?') unavailable();
       if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
       bits += data;
