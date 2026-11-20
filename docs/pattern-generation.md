@@ -7129,3 +7129,37 @@ line/90% branch gate remains failed:17588/18193 lines and29777/47293 branches.
 All54 authored reports,19 instrumented binaries and missing edges are retained;
 12347 missing throw edges and5169 other missing edges are not filtered.
 This is scoped reset replay qualification, not whole-project release acceptance.
+
+Independent Task137 review at4964653 found two Important retained-fill defects.
+The one fix pass at83a8eb8 reconciles every scan register's physical fill to its
+actual final stored value after both a complete CSU and a complete iReset.
+This preserves unreset storage across repeated asynchronous/synchronous resets
+and invalidates stale fill after a bypassed register updates to a partial-X
+value. Such unknown fill now requires an explicit binary payload.
+Both reproductions were observed RED then GREEN, including original/flat
+models, idempotent output and preserved artifacts on failure. Ordinary reset
+and iWrite conventions remain unchanged.
+
+Post-review qualification supersedes the initial totals above:28 reset tests
+pass for dynamic/static/SAN binaries; full native, normal regression and all
+sanitizer suites pass. Full normal check exits0 in1750.319s; native scheduler
+141.570s and sanitizer native335.318s. Rocky51 suites/820 cases per variant,
+11 platform gates,12 local package gates and14 remote package gates pass.
+The archive contains4245 tracked files and6 generated extras; all4013 non-doc
+bytes and ten qualified products match remote installation evidence.
+Four archived vendor export/model replays remain identical/idempotent with
+all13 explicit loads and7 apply boundaries preserved. The final256-sequence
+probe performs1792 applies in0.679/0.678s (source/flat), with66292/66432KiB RSS;
+these single runs establish no speedup or general throughput guarantee.
+
+Fresh post-fix coverage runs58 suites/982 cases successfully but retains the
+failed raw100/90 gate:17589/18193 lines and29784/47295 branches,
+12347 missing throw edges and5164 other missing edges across54 reports.
+No reports or edges were filtered. One Minor remains deferred: physical replay
+currently reports a generic CSU failure instead of the concrete comparison,
+reservation or routing cause. No re-review was requested after the one fix pass.
+All four subjects the reviewer declined to judge have explicit executor
+rulings: whole-release/strict-coverage acceptance stays open; excluded physical
+features stay unsupported; invalid control-pin data selectors remain rejected;
+and native replay of archived exports supplies no fresh vendor/hardware or
+general equivalence signoff.
