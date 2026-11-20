@@ -1105,6 +1105,7 @@ python3 tests/src/pattern/test_shared_scan_outputs.py $1
 python3 tests/src/pattern/test_pending_reset.py $1
 python3 tests/src/pattern/test_client_scan_controls.py $1
 python3 tests/src/pattern/test_system_clocks.py $1
+python3 tests/src/pattern/test_segmented_ports.py $1
 python3 tests/src/pattern/test_opaque_root_scan.py $1
 python3 tests/src/pattern/test_modeled_root_scan.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1

@@ -86,6 +86,9 @@ class SerialAssembler {
     for (const auto& item : netlist_.node_ids) {
       names_.insert(item.first);
     }
+    for (const auto& item : netlist_.port_groups) {
+      names_.insert(item.first);
+    }
     for (const auto& scope : netlist_.scopes) {
       names_.insert(scope.path);
     }
@@ -395,6 +398,23 @@ TapNetwork ElaborateTapNetwork(Design& design, const std::string& top) {
       result.taps.emplace(name, model);
     }
     return result;
+  }
+  // Check actual selected bits before any generated TAP wiring is installed.
+  for (const auto& link : links) {
+    for (const auto& instruction : link.instructions) {
+      for (const auto& selected : instruction.interfaces) {
+        const auto input = SerialPorts(result.netlist, selected).first;
+        const auto& node = result.netlist.nodes[input.first];
+        const auto source = node.inputs.find("Source");
+        const auto offset = node.left >= node.right ? node.left - input.second
+                                                    : input.second - node.left;
+        if (source != node.inputs.end() && !source->second.empty() &&
+            source->second.at(offset).constant != '?') {
+          throw std::runtime_error(selected.origin + ": " + node.name +
+                                   " already has an InputPort binding");
+        }
+      }
+    }
   }
   SerialAssembler assembler(&result.netlist);
   for (const auto& link : links) {

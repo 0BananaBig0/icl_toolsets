@@ -33,12 +33,12 @@ views from canonical flat identities, preserving old metadata.
 ### Task 3: Affected clocks/enums/resources and CLI replay/scale
 Files: affected pattern_clock/logic/scheduler/netlist/access_link/tap_network callers; existing native tests;
 new tests/src/pattern/test_segmented_ports.py; Makefile suite registration.
-- [ ] RED clock flat-name/index and partial reset-release cases; heterogeneous
+- [x] RED clock flat-name/index and partial reset-release cases; heterogeneous
 enum rejection, mixed function access, histories and reservations.
-- [ ] Update only affected callers, including CheckModels/AddTopPorts and
+- [x] Update only affected callers, including CheckModels/AddTopPorts and
 AccessLink scan-input discovery; retain scalar TAP pins and forbidden enum
 subranges; exercise source/flat/generated/reset replay and atomic failures.
-- [ ] Run representative many-fragment measurements and recorded11 corpus
+- [x] Run representative many-fragment measurements and recorded11 corpus
 cases, reporting next boundaries accurately; GREEN focused/native; commit.
 
 ### Task 4: Qualification and integration

@@ -957,6 +957,10 @@ class Elaborator {
         throw std::runtime_error(origin + ": invalid generated TAP port " +
                                  name);
       }
+      if (netlist_.port_groups.count(name)) {
+        throw std::runtime_error(origin + ": TAP port " + name +
+                                 " must be a scalar " + kind);
+      }
       const auto found = netlist_.node_ids.find(name);
       if (found != netlist_.node_ids.end()) {
         const auto& port = netlist_.nodes[found->second];
@@ -994,7 +998,7 @@ class Elaborator {
   void CheckModels(const ModuleDefinition& top) {
     if (access_link_models_.empty()) return;
     std::set<std::string> links;
-    std::set<std::string> names;
+    std::map<std::string, bool> names;
     for (size_t index : Describe(top).declarations) {
       const auto& declaration = top.document->declarations()[index];
       if (declaration.parent != static_cast<int>(top.declaration_index) &&
@@ -1003,7 +1007,11 @@ class Elaborator {
                "OneHotDataGroup")) {
         continue;
       }
-      if (!names.insert(declaration.name).second) {
+      const auto& kind = declaration.kind;
+      const bool port =
+          kind.size() >= 4 && kind.compare(kind.size() - 4, 4, "Port") == 0;
+      const auto inserted = names.emplace(declaration.name, port);
+      if (!inserted.second && !(inserted.first->second && port)) {
         throw std::runtime_error(top.Location(declaration.name_range.begin) +
                                  ": duplicate top-level declaration " +
                                  declaration.name);

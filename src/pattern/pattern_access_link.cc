@@ -39,7 +39,8 @@ std::string Text(const ModuleDefinition& module, const icl::AstNode& ast) {
   return result;
 }
 const icl::Declaration* Member(const ModuleDefinition& module,
-                               const std::string& name) {
+                               const std::string& name,
+                               bool defer_port_functions = false) {
   const auto scope = module.document->members().find(module.declaration_index);
   if (scope == module.document->members().end()) return nullptr;
   const auto found = scope->second.find(name);
@@ -54,6 +55,15 @@ const icl::Declaration* Member(const ModuleDefinition& module,
       continue;
     }
     if (result) {
+      const auto port = [](const std::string& kind) {
+        return kind.size() >= 4 &&
+               kind.compare(kind.size() - 4, 4, "Port") == 0;
+      };
+      if (defer_port_functions && port(result->kind) &&
+          port(declaration.kind)) {
+        // Selected bits need the actual instance specialization, checked later.
+        return nullptr;
+      }
       throw std::runtime_error(module.Location(declaration.name_range.begin) +
                                ": duplicate declaration " + name);
     }
@@ -181,7 +191,7 @@ class Binder {
                        inputs);
       } else if (kind == "Port") {
         const auto name = (Tokens(module, *item).first + 1)->text;
-        const auto* declaration = Member(module, name);
+        const auto* declaration = Member(module, name, true);
         if (declaration && declaration->kind == "ScanInPort") {
           inputs->insert(name);
         }

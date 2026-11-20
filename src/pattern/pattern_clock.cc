@@ -152,8 +152,8 @@ void SystemClocks::Invalidate() {
 std::string SystemClocks::ClockTargetName(const std::string& text) const {
   const auto open = text.find_first_of("[(");
   const auto name = text.substr(0, open);
-  if (netlist_.node_ids.count(name) || name.size() < 3 || name[0] != 'n' ||
-      name.size() % 2 == 0 ||
+  if (netlist_.node_ids.count(name) || netlist_.port_groups.count(name) ||
+      name.size() < 3 || name[0] != 'n' || name.size() % 2 == 0 ||
       name.find_first_not_of("0123456789abcdef", 1) != std::string::npos) {
     return text;
   }
@@ -183,14 +183,25 @@ std::string SystemClocks::ClockTargetName(const std::string& text) const {
       }
     }
   }
-  return *flat_origins_
-             ? original + (open == std::string::npos ? "" : text.substr(open))
-             : text;
+  if (!*flat_origins_) return text;
+  if (open == std::string::npos) return original;
+  const auto& node = netlist_.nodes[found->second];
+  const auto mapped = node.BaseName() + text.substr(open);
+  if (node.BaseName() != original) {
+    const auto target = ResolvePdlTarget(netlist_, mapped);
+    if (std::any_of(
+            target.bits.begin(), target.bits.end(),
+            [&](const auto& bit) { return bit.node != found->second; })) {
+      throw std::runtime_error("clock index outside flattened port function " +
+                               original);
+    }
+  }
+  return mapped;
 }
 SystemClocks::Bit SystemClocks::Target(const std::string& name) const {
   const auto target = ResolvePdlTarget(netlist_, name);
-  if (!ClockPort(netlist_.nodes.at(target.declaration)) ||
-      target.bits.size() != 1) {
+  if (target.bits.size() != 1 || target.declaration >= netlist_.nodes.size() ||
+      !ClockPort(netlist_.nodes.at(target.declaration))) {
     throw std::runtime_error(
         "system-clock target requires one ClockPort or "
         "ToClockPort bit");
@@ -199,7 +210,7 @@ SystemClocks::Bit SystemClocks::Target(const std::string& name) const {
 }
 std::string SystemClocks::Name(Bit bit) const {
   const auto& node = netlist_.nodes.at(bit.first);
-  return node.name +
+  return node.BaseName() +
          (node.indexed ? "(" + std::to_string(bit.second) + ")" : "");
 }
 BitReference SystemClocks::Source(Bit bit, const ScanScheduler& scheduler,

@@ -39,8 +39,8 @@ Existing ungrouped metadata serialization and restoration stay compatible.
 Do not accept arbitrary indexed names for registers/interfaces/logic/aliases.
 
 Update only callers that require the aggregate view: source/PDL resolution,
-bindings, clock literal/flat decoding and displayed bit names, partial reset
-release names, and enum uniqueness. Direct scalar BSDL/TAP pin uniqueness
+bindings, clock literal/flat decoding and displayed bit names, selected TAP
+input conflicts, generated-name reservations and enum uniqueness. Direct scalar BSDL/TAP pin uniqueness
 remains. Keep unambiguous AST binding checks; grouped scan-input conflicts must
 be checked on selected elaborated bits before TAP wiring, allowing bindings of
 unrelated port functions. Encoded clock references must remain inside the decoded
@@ -53,6 +53,9 @@ Sort intervals once; query one starting interval then stream selected bits/
 intervals. O(N + sum(G log G) + selected bits), excluding existing map lookups;
 no full-fragment scan for each selected bit, no repeated global rebuild per
 instance, no new solver or dependencies. Retain existing object/bit/depth limits.
+Retain the existing generic primary limits of256 functions/4096 bits and bounded
+solver time. Qualify128-function scheduling and4096-function loading; the observed
+512-function and parent4096-bit bounded-query failures remain item10 evidence.
 Measure a representative many-fragment source, nonempty source/flat/generated
 replays, and memory/runtime versus a matching single-port control. Report
 measurements and resource limits without unmeasured speedups.
@@ -61,7 +64,7 @@ Native and CLI acceptance: descending/ascending/single-index source order,
 parameterized bounds, more than two functions, mixed kinds, input/output,
 fragment attributes/defaults/enums, child whole/sliced bindings, Source/Alias/
 LogicSignal references, interface membership, ordinary writes/reads, histories,
-resource holds, reset partial release and clock source/target/indexed flat
+resource holds, existing reset rewriting and clock source/target/indexed flat
 names. Negative atomic cases cover scalar/non-port duplicate, overlap/gap/
 contrary direction, out-of-range, wrong target kind, enum ambiguity, forbidden
 hierarchy, duplicate bindings and forged flat metadata. Retain old output

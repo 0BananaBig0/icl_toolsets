@@ -119,7 +119,12 @@ class Compiler {
       }
     }
     const auto bits = netlist_.Resolve(lhs);
-    if (bits.empty()) return std::nullopt;
+    if (bits.empty() || bits[0].node >= netlist_.nodes.size() ||
+        std::any_of(bits.begin(), bits.end(), [&](const auto& bit) {
+          return bit.node != bits[0].node;
+        })) {
+      return std::nullopt;
+    }
     const auto& source = netlist_.nodes.at(bits[0].node);
     const auto ref = source.properties.find("RefEnum");
     if (ref == source.properties.end()) return std::nullopt;

@@ -6404,6 +6404,112 @@ Module Network {
     }
   }
 }
+void TestGroupedClockNames() {
+  std::string source = R"(Module Stage {
+ ClockPort ck[3:2]; ClockPort ck[1:0];
+ ToClockPort out[3:2] { Source ck[3:2]; FreqDivider 2; }
+ ToClockPort out[1:0] { Source ck[1:0]; FreqDivider 3; }
+}
+Module Top {
+ ClockPort root[7:4];
+ ClockPort alt[7:6]; ClockPort alt[5:4];
+ ClockPort n726f6f74[7:6]; ClockPort n726f6f74[5:4];
+ Instance child Of Stage { InputPort ck=root; }
+})";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("grouped_clocks.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    pattern::SystemClocks clocks(netlist);
+    Require(clocks.Check("n726f6f74(7)", scheduler) == "n726f6f74(7)" &&
+                clocks.Check("child.out(3)", scheduler) == "root(7)",
+            "grouped clocks retain one index and literal-name precedence");
+    const std::string physical = "n6368696c642e6f75745b333a325d";
+    if (!flat) {
+      bool rejected = false;
+      try {
+        clocks.Check(physical + "(3)", scheduler);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(rejected,
+              "physical fragment names need associated flat metadata");
+      source = pattern::SerializeIcl(netlist);
+      continue;
+    }
+    Require(clocks.Check(physical + "(3)", scheduler) == "root(7)" &&
+                clocks.Wait(physical + "(3)", 2, scheduler).second == 4,
+            "physical indexed fragment reaches its actual logical clock bit");
+    z3::context context;
+    clocks.Override({"iClockOverride",
+                     {physical + "(3)", "-source", "n616c745b373a365d(7)",
+                      "-freqDivider", "5"},
+                     "grouped:override",
+                     {}},
+                    context);
+    Require(clocks.Wait(physical + "(3)", 2, scheduler).second == 4 &&
+                clocks.Check(physical + "(3)", scheduler) == "alt(7)" &&
+                clocks.Wait(physical + "(3)", 2, scheduler).second == 10,
+            "fragment overrides keep saved checks and indexed source identity");
+    for (const auto& bad :
+         std::vector<std::string>{physical + "(0)", "child.out"}) {
+      bool rejected = false;
+      try {
+        clocks.Check(bad, scheduler);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(
+          rejected && clocks.Wait(physical + "(3)", 1, scheduler).second == 5,
+          "bad fragment/whole-bus clock references preserve prior checks");
+    }
+    bool rejected = false;
+    try {
+      clocks.Override({"iClockOverride",
+                       {physical + "(3)", "-source", "n616c745b373a365d(4)"},
+                       "grouped:bad-source",
+                       {}},
+                      context);
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && clocks.Wait(physical + "(3)", 1, scheduler).second == 5,
+            "physical fragments cannot name another function's source bit");
+  }
+}
+
+void TestGroupedPrimaryScale() {
+  constexpr size_t kBits = 128;
+  const std::string bits(kBits, '1');
+  for (bool fragmented : {false, true}) {
+    const auto start = std::chrono::steady_clock::now();
+    std::string source = "Module Top {";
+    if (fragmented) {
+      for (size_t i = 0; i < kBits; ++i) {
+        source += "DataInPort p[" + std::to_string(i) + "];";
+      }
+    } else {
+      source += "DataInPort p[" + std::to_string(kBits - 1) + ":0];";
+    }
+    source +=
+        "DataOutPort out[" + std::to_string(kBits - 1) + ":0] { Source p; }}";
+    pattern::Design design;
+    design.AddIcl("grouped_scale.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    const auto steps = scheduler.Apply(
+        {{"iWrite", {"out", "0b" + bits}, "grouped:scale", {}}});
+    Require(steps.size() == 1 && scheduler.Value("out") == bits,
+            "many-fragment scheduling preserves actual modeled primary values");
+    const std::chrono::duration<double> elapsed =
+        std::chrono::steady_clock::now() - start;
+    std::cout << "grouped primary: fragments=" << (fragmented ? kBits : 1)
+              << " bits=" << kBits << " bytes=" << source.size()
+              << " seconds=" << elapsed.count() << '\n';
+  }
+}
+
 }  // namespace
 int main(int argc, char* argv[]) {
   try {
@@ -6415,6 +6521,7 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
+        TestGroupedClockNames();
         TestFlatClockTargetNames();
         TestInvariantTimeWaits();
         TestClockApiContracts();
@@ -6438,6 +6545,7 @@ int main(int argc, char* argv[]) {
       Require(argc == 2 && std::string(argv[1]) == "--primary-limits",
               "expected --primary-limits, --reset-backend, --clock-snapshots, "
               "--raw-reservations or no test arguments");
+      TestGroupedPrimaryScale();
       TestPrimaryLimits();
       return 0;
     }
@@ -6466,6 +6574,8 @@ int main(int argc, char* argv[]) {
     TestModeledRootScans();
     TestInvertedClockDurations();
     TestDifferentialClockDurations();
+    TestGroupedPrimaryScale();
+    TestGroupedClockNames();
     TestFlatClockTargetNames();
     TestInvariantTimeWaits();
     TestClockApiContracts();

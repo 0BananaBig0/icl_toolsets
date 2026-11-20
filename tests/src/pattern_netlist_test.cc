@@ -4153,11 +4153,20 @@ void TestSegmentedPortBindingErrors() {
   }
 }
 
+void TestGroupedGeneratedTapPins() {
+  pattern::Design design;
+  design.AddIcl("grouped_pins.icl",
+                "Module Top { ScanInPort TDI[1]; ScanInPort TDI[0]; }");
+  Fails([&] { pattern::Elaborate(design, "Top", {}, {{"TDI", "ScanInPort"}}); },
+        "must be a scalar");
+}
+
 }  // namespace
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestSegmentedPortBindingBoundaries,
+  for (const auto test : {TestGroupedGeneratedTapPins,
+                          TestSegmentedPortBindingBoundaries,
                           TestSegmentedPortBindings,
                           TestSegmentedPortBindingErrors,
                           TestSegmentedPortSources,
