@@ -858,8 +858,12 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     const size_t scope = Index(fields[2], scopes.size());
     const auto prefix =
         scopes[scope].path.empty() ? "" : scopes[scope].path + ".";
-    if (original_name.compare(0, prefix.size(), prefix) != 0 ||
-        !Identifier(original_name.substr(prefix.size())) ||
+    if (original_name.compare(0, prefix.size(), prefix) != 0) {
+      throw std::runtime_error("invalid flat object identity");
+    }
+    const auto local = original_name.substr(prefix.size());
+    const auto bracket = local.find('[');
+    if (!Identifier(local.substr(0, bracket)) ||
         FlatName(original_name) != flat_name) {
       throw std::runtime_error("invalid flat object identity");
     }
@@ -952,11 +956,16 @@ bool RestoreFlatOrigins(Netlist* netlist) {
       if (missing) bit.constant = '?';
       bit.inverted = Boolean(parts[4]);
     }
+    if (bracket != std::string::npos) {
+      // Group validation checks the spelling against actual port bounds/kinds.
+      netlist->port_groups[node.BaseName()].members.push_back(id);
+    }
     scopes[scope].members.emplace(original_name.substr(prefix.size()), id);
   }
   netlist->node_ids = std::move(names);
   netlist->scopes = std::move(scopes);
   netlist->module_parameters = std::move(module_parameters);
+  IndexPortGroups(netlist);
   if (const auto* contributors = json.Find("instance_contributors")) {
     std::map<size_t, std::vector<size_t>> outputs;
     for (size_t id = 0; id < netlist->nodes.size(); ++id) {

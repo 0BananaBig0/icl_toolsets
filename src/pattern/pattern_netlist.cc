@@ -103,29 +103,22 @@ ClockPeriod ReadClockPeriod(const Netlist& netlist,
   return period;
 }
 
-std::pair<int64_t, int64_t> SelectRange(const Netlist& netlist,
-                                        const NetlistNode& node,
-                                        const Expression& selection) {
-  if (selection.begin == selection.end) return {node.left, node.right};
+std::optional<std::pair<int64_t, int64_t>> SelectedRange(
+    const Netlist& netlist, const Expression& selection) {
+  if (selection.begin == selection.end) return std::nullopt;
   const auto& tokens = SourceTokens(netlist, selection.scope);
-  if (!node.indexed || tokens[selection.begin].text != "[" ||
+  if (tokens[selection.begin].text != "[" ||
       tokens[selection.end - 1].text != "]") {
-    throw std::runtime_error("invalid vector selection on " + node.name);
+    throw std::runtime_error("invalid vector selection");
   }
   size_t colon = selection.begin + 1;
   while (colon < selection.end - 1 && tokens[colon].text != ":") ++colon;
-  const int64_t left =
+  const auto left =
       netlist.Integer({selection.scope, selection.begin + 1, colon});
-  const int64_t right =
-      colon < selection.end - 1
-          ? netlist.Integer({selection.scope, colon + 1, selection.end - 1})
-          : left;
-  const auto lower = std::min(node.left, node.right),
-             upper = std::max(node.left, node.right);
-  if (left < lower || right < lower || left > upper || right > upper) {
-    throw std::runtime_error("signal index out of range for " + node.name);
-  }
-  return {left, right};
+  return std::make_pair(left, colon < selection.end - 1
+                                  ? netlist.Integer({selection.scope, colon + 1,
+                                                     selection.end - 1})
+                                  : left);
 }
 
 constexpr unsigned char kResetUse = 1;
@@ -1401,19 +1394,6 @@ class Elaborator {
             }
             if (tokens[expression.begin].text != "InputPort") continue;
             const auto& port_name = tokens[expression.begin + 1].text;
-            const auto found =
-                netlist_.scopes[child_scope].members.find(port_name);
-            if (found == netlist_.scopes[child_scope].members.end()) {
-              throw std::runtime_error("unknown instance input port " +
-                                       port_name);
-            }
-            const auto& port = netlist_.nodes[found->second];
-            if (port.model != ModelKind::kPort ||
-                port.kind.rfind("To", 0) == 0 || port.kind == "DataOutPort" ||
-                port.kind == "ScanOutPort") {
-              throw std::runtime_error(
-                  "InputPort target is not an input port: " + port.name);
-            }
             const size_t first = expression.begin;
             while (expression.begin < expression.end &&
                    tokens[expression.begin].text != "=") {
@@ -1422,7 +1402,9 @@ class Elaborator {
             const size_t equals = expression.begin++;
             --expression.end;
             bindings_.push_back(
-                {found->second, {scope_id, first + 2, equals}, expression});
+                {Path(netlist_.scopes[child_scope].path, port_name),
+                 {scope_id, first + 2, equals},
+                 expression});
           }
         }
       }
@@ -1840,29 +1822,51 @@ class Elaborator {
       }
     }
     for (const auto& binding : bindings_) {
-      auto& node = netlist_.nodes[binding.node];
-      const auto range = SelectRange(netlist_, node, binding.selection);
-      const size_t width =
-          static_cast<size_t>(std::max(range.first, range.second) -
-                              std::min(range.first, range.second)) +
-          1;
-      const auto source = netlist_.Resolve(binding.source, width);
-      auto& destination = node.inputs["Source"];
-      if (destination.empty()) {
-        destination.resize(node.Width(),
-                           {std::numeric_limits<size_t>::max(), 0, '?', false});
-      }
-      int64_t bit = range.first;
-      for (size_t i = 0; i < width; ++i) {
-        const size_t offset = static_cast<size_t>(
-            node.left >= node.right ? node.left - bit : bit - node.left);
-        auto& target = destination.at(offset);
-        if (target.constant != '?') {
-          throw std::runtime_error(node.origin + ": duplicate input binding " +
-                                   node.name);
+      try {
+        if (!netlist_.node_ids.count(binding.target) &&
+            !netlist_.port_groups.count(binding.target)) {
+          throw std::runtime_error("unknown instance input port " +
+                                   binding.target);
         }
-        target = source[i];
-        if (i + 1 < width) bit += range.first <= range.second ? 1 : -1;
+        const auto targets = netlist_.ResolveSignal(
+            binding.target, SelectedRange(netlist_, binding.selection));
+        for (const auto& bit : targets) {
+          const auto& node = netlist_.nodes[bit.node];
+          if (node.model != ModelKind::kPort || !IsInputPort(node.kind)) {
+            throw std::runtime_error("InputPort target is not an input port: " +
+                                     node.name);
+          }
+        }
+        const auto source = netlist_.Resolve(binding.source, targets.size());
+        size_t current = netlist_.nodes.size();
+        std::vector<BitReference>* destination = nullptr;
+        for (size_t i = 0; i < targets.size(); ++i) {
+          const auto& bit = targets[i];
+          auto& node = netlist_.nodes[bit.node];
+          if (bit.node != current) {
+            current = bit.node;
+            destination = &node.inputs["Source"];
+            if (destination->empty()) {
+              destination->resize(
+                  node.Width(),
+                  {std::numeric_limits<size_t>::max(), 0, '?', false});
+            }
+          }
+          const auto offset = node.left >= node.right ? node.left - bit.index
+                                                      : bit.index - node.left;
+          auto& target = destination->at(offset);
+          if (target.constant != '?') {
+            throw std::runtime_error(node.origin +
+                                     ": duplicate input binding " + node.name);
+          }
+          target = source[i];
+        }
+      } catch (const std::exception& error) {
+        const auto& scope = netlist_.scopes[binding.selection.scope];
+        const auto& tokens = SourceTokens(netlist_, binding.selection.scope);
+        throw std::runtime_error(
+            scope.definition.Location(tokens[binding.selection.begin].begin) +
+            ": " + error.what());
       }
     }
     ConnectAddressedData();
@@ -2263,7 +2267,7 @@ class Elaborator {
   std::map<std::pair<size_t, std::string>, std::vector<size_t>>
       reset_candidates_;
   struct Binding {
-    size_t node;
+    std::string target;
     Expression selection, source;
   };
   std::vector<Binding> bindings_;
@@ -2746,17 +2750,8 @@ std::vector<BitReference> Netlist::Resolve(const Expression& expression,
       }
       const auto path = Path(scope.path, name);
       std::optional<std::pair<int64_t, int64_t>> range;
-      if (first != end) {
-        if (tokens[first].text != "[" || tokens[end - 1].text != "]") {
-          throw std::runtime_error("invalid vector selection on " + path);
-        }
-        size_t colon = first + 1;
-        while (colon < end - 1 && tokens[colon].text != ":") ++colon;
-        const auto left = Integer({expression.scope, first + 1, colon});
-        range = {left, colon < end - 1
-                           ? Integer({expression.scope, colon + 1, end - 1})
-                           : left};
-      } else if (scan_input) {
+      range = SelectedRange(*this, {expression.scope, first, end});
+      if (!range && scan_input) {
         const auto id = node_ids.find(path);
         if (id != node_ids.end() && nodes[id->second].kind == "ScanRegister" &&
             nodes[id->second].indexed) {

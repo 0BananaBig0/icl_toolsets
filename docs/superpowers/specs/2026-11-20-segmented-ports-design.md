@@ -30,7 +30,7 @@ enum ranges remain rejected under IEEE6.4.10c/k (printed123-124/PDF137-138).
 Vendor-generated enum subranges are documented compatibility differences.
 
 Flat hardware names encode each full-fragment identity with existing FlatName.
-Prefer deriving interval views from canonical indexed-port original identities
+Derive interval views from canonical indexed-port original identities
 in existing version1 node metadata instead of a redundant new field. Only
 validated port/indexed/bounds identities may use a fragment suffix; at least
 two members must reconstruct each original group. Strictly reject malformed,
@@ -41,7 +41,10 @@ Do not accept arbitrary indexed names for registers/interfaces/logic/aliases.
 Update only callers that require the aggregate view: source/PDL resolution,
 bindings, clock literal/flat decoding and displayed bit names, partial reset
 release names, and enum uniqueness. Direct scalar BSDL/TAP pin uniqueness
-remains. Scheduler storage/interface maps continue using actual node identities.
+remains. Keep unambiguous AST binding checks; grouped scan-input conflicts must
+be checked on selected elaborated bits before TAP wiring, allowing bindings of
+unrelated port functions. Encoded clock references must remain inside the decoded
+physical fragment even when the logical group contains other selectable bits. Scheduler storage/interface maps continue using actual node identities.
 
 Build groups once after source declaration expansion, before connections.
 Bind pending instance targets by name so child group resolution can wait until

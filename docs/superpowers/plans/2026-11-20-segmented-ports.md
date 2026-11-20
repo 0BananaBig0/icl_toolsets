@@ -24,14 +24,14 @@ once and share bounded numeric-range selection before existing per-bit checks.
 ### Task 2: Bindings and lossless associated-flat identities
 Files: src/pattern/pattern_netlist.cc; src/pattern/pattern_flatten.cc;
 tests/src/pattern_netlist_test.cc; tests/src/pattern_flatten_test.cc.
-- [ ] RED whole/sliced cross-fragment InputPort binding, source/flat round trips,
+- [x] RED whole/sliced cross-fragment InputPort binding, source/flat round trips,
 metadata tampering, attributes/defaults/enum and ordering.
-- [ ] Distribute validated bindings over real bits; derive validated grouped
+- [x] Distribute validated bindings over real bits; derive validated grouped
 views from canonical flat identities, preserving old metadata.
-- [ ] GREEN native netlist/flatten and old metadata controls; commit/task-done.
+- [x] GREEN native netlist/flatten and old metadata controls; commit/task-done.
 
 ### Task 3: Affected clocks/enums/resources and CLI replay/scale
-Files: affected pattern_clock/logic/scheduler callers; existing native tests;
+Files: affected pattern_clock/logic/scheduler/netlist/access_link/tap_network callers; existing native tests;
 new tests/src/pattern/test_segmented_ports.py; Makefile suite registration.
 - [ ] RED clock flat-name/index and partial reset-release cases; heterogeneous
 enum rejection, mixed function access, histories and reservations.

@@ -881,10 +881,115 @@ Module Top {
               flat.NodeAt("cascaded").one_hot_sources[0].bits.size() == 16,
           "short source widths, inversions and cascades survive flattening");
 }
+
+void TestSegmentedPortRoundTrip() {
+  for (const auto& ports : std::vector<std::string>{
+           "DataInPort p[0] { Attribute tag = \"low\"; } "
+           "DataInPort p[1] { Attribute tag = \"high\"; }",
+           "DataInPort p[0:1] { Attribute tag = \"low\"; } "
+           "DataInPort p[2:3] { Attribute tag = \"high\"; }",
+           "Enum LowNames { Lo=1'b0; } Enum HighNames { Hi=1'b1; } "
+           "DataInPort p[0] { RefEnum LowNames; Attribute tag = \"low\"; } "
+           "DataInPort p[1] { RefEnum HighNames; Attribute tag = \"high\"; } "
+           "ToClockPort ck[1] { Period 10ns; } "
+           "ToClockPort ck[0] { Period 20ns; }"}) {
+    const bool ascending = ports.find("0:1") != std::string::npos;
+    pattern::Design design;
+    design.AddIcl("segments.icl",
+                  "Module Top {" + ports + "DataOutPort out[" +
+                      (ascending ? std::string("3") : std::string("1")) +
+                      ":0] { Source p; } }");
+    const auto original = pattern::Elaborate(design, "Top");
+    const auto text = pattern::SerializeIcl(original);
+    pattern::Design replay;
+    replay.AddIcl("flat.icl", text);
+    const auto flat = pattern::Elaborate(replay, "Top");
+    Require(pattern::SerializeIcl(flat) == text,
+            "grouped function identities round-trip canonically without new "
+            "metadata");
+    const auto before = original.ResolveSignal("p");
+    const auto after = flat.ResolveSignal("p");
+    Require(before.size() == after.size(),
+            "restored group width matches source");
+    for (size_t i = 0; i < before.size(); ++i) {
+      const auto& a = original.nodes[before[i].node];
+      const auto& b = flat.nodes[after[i].node];
+      Require(a.name == b.name && before[i].index == after[i].index &&
+                  a.kind == b.kind &&
+                  a.attributes.at("tag")->data == b.attributes.at("tag")->data,
+              "restored fragments keep actual index/type/attribute identity");
+      Require(a.enumeration.has_value() == b.enumeration.has_value(),
+              "fragment enum membership survives restoration");
+      if (a.enumeration) {
+        Require(original.nodes[*a.enumeration].name ==
+                    flat.nodes[*b.enumeration].name,
+                "different fragment enum tables keep their identities");
+      }
+    }
+  }
+}
+
+void TestSegmentedMetadataGuards() {
+  const std::vector<std::string> cases = {
+      WithMetadata(
+          "DataInPort n705b315d[1];",
+          R"([["n705b315d","p[1]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata("DataInPort n705b315d[0]; DataInPort n705b305d[0];",
+                   R"([["n705b315d","p[1]",0,"DataInPort",false,null,[],false],
+          ["n705b305d","p[0]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata(
+          "DataInPort n705b30315d[1]; DataInPort n705b305d[0];",
+          R"([["n705b30315d","p[01]",0,"DataInPort",false,null,[],false],
+          ["n705b305d","p[0]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata("ScanInPort n7369; ScanRegister n705b315d[1] { "
+                   "ScanInSource n7369; } DataInPort n705b305d[0];",
+                   R"([["n7369","si",0,"ScanInPort",false,null,[],false],
+          ["n705b315d","p[1]",0,"ScanRegister",false,null,[],false],
+          ["n705b305d","p[0]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata(
+          "DataInPort n705b313a305d[1:0]; DataInPort n705b305d[0];",
+          R"([["n705b313a305d","p[1:0]",0,"DataInPort",false,null,[],false],
+          ["n705b305d","p[0]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata("DataInPort n705b325d[2]; DataInPort n705b305d[0];",
+                   R"([["n705b325d","p[2]",0,"DataInPort",false,null,[],false],
+          ["n705b305d","p[0]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata(
+          "DataInPort n705b313a305d[1:0]; DataInPort n705b323a335d[2:3];",
+          R"([["n705b313a305d","p[1:0]",0,"DataInPort",false,null,[],false],
+          ["n705b323a335d","p[2:3]",0,"DataInPort",false,null,[],false]])"),
+      WithMetadata(
+          "DataInPort n70; DataInPort n705b315d[1]; DataInPort n705b305d[0];",
+          R"([["n70","p",0,"DataInPort",false,null,[],false],
+          ["n705b315d","p[1]",0,"DataInPort",false,null,[],false],
+          ["n705b305d","p[0]",0,"DataInPort",false,null,[],false]])")};
+  const std::vector<std::string> errors = {"invalid segmented port identity",
+                                           "invalid segmented port function",
+                                           "invalid segmented port function",
+                                           "invalid segmented port function",
+                                           "overlapping port functions",
+                                           "must be contiguous",
+                                           "direction conflict",
+                                           "invalid segmented port identity"};
+  for (size_t i = 0; i < cases.size(); ++i) {
+    bool rejected = false;
+    try {
+      pattern::Design design;
+      design.AddIcl("bad_segments.icl", cases[i]);
+      pattern::Elaborate(design, "Top");
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find(errors[i]) != std::string::npos;
+    }
+    Require(rejected,
+            "forged group identities must preserve strict metadata validation");
+  }
+}
+
 }  // namespace
 
 int main() {
   try {
+    TestSegmentedPortRoundTrip();
+    TestSegmentedMetadataGuards();
     TestFlatClockInputKinds();
     TestFlatClockInputPropertyGuards();
     TestRestoredDataSourceKinds();

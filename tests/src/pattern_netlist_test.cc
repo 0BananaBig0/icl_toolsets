@@ -4016,6 +4016,8 @@ void TestSegmentedPortErrors() {
             "duplicate"},
            {"DataInPort p[1:0]; DataInPort p[1];", "overlap"},
            {"DataInPort p[0]; DataInPort p[2];", "contiguous"},
+           {"DataInPort p[1048577:524289]; DataInPort p[524288:0];",
+            "width limit"},
            {"DataInPort p[1:0]; DataInPort p[2:3];", "direction"},
            {"DataInPort p[1]; DataInPort p[0]; "
             "DataOutPort y { Source p[2]; }",
@@ -4030,11 +4032,135 @@ void TestSegmentedPortErrors() {
   }
 }
 
+void TestSegmentedPortBindings() {
+  pattern::Design design;
+  design.AddIcl("bindings.icl", R"(
+Module Child {
+ DataInPort p[3:2]; DataInPort p[1:0];
+ DataOutPort q[1:0] { Source p[1:0]; }
+ DataOutPort q[3:2] { Source p[3:2]; }
+}
+Module Top {
+ DataInPort din[3:0];
+ Instance whole Of Child { InputPort p = din; }
+ Instance split Of Child {
+  InputPort p[3] = din[0];
+  InputPort p[2:0] = din[3:1];
+ }
+ DataOutPort out[7:0] { Source whole.q, split.q; }
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto root = netlist.node_ids.at("din");
+  for (const auto& [path, wanted] :
+       std::vector<std::pair<std::string, std::vector<int64_t>>>{
+           {"whole.p[3:2]", {3, 2}},
+           {"whole.p[1:0]", {1, 0}},
+           {"split.p[3:2]", {0, 3}},
+           {"split.p[1:0]", {2, 1}}}) {
+    const auto& source = netlist.NodeAt(path).inputs.at("Source");
+    for (size_t i = 0; i < wanted.size(); ++i) {
+      Require(
+          source[i].node == root && source[i].index == wanted[i],
+          "whole and sliced bindings distribute across real port functions");
+    }
+  }
+  Require(netlist.NodeAt("out").inputs.at("Source").size() == 8,
+          "hierarchical output group references retain all bits");
+  const auto text = pattern::SerializeIcl(netlist);
+  pattern::Design flat_design;
+  flat_design.AddIcl("flat_bindings.icl", text);
+  const auto flat = pattern::Elaborate(flat_design, "Top");
+  Require(pattern::SerializeIcl(flat) == text &&
+              flat.NodeAt("split.p[3:2]").inputs.at("Source")[0].index == 0 &&
+              flat.NodeAt("split.p[1:0]").inputs.at("Source")[1].index == 1,
+          "cross-function child bindings survive associated flat restoration");
+}
+
+void TestSegmentedPortBindingBoundaries() {
+  for (const auto& ports : std::vector<std::string>{
+           "DataInPort p[0:1]; DataInPort p[2:3];",
+           "Parameter W=4; DataInPort p[$W-1:2]; DataInPort p[1:0];"}) {
+    const bool ascending = ports.find("0:1") != std::string::npos;
+    pattern::Design design;
+    design.AddIcl(
+        "binding_bounds.icl",
+        "Module Child {" + ports +
+            "} "
+            "Module Top { DataInPort din[" +
+            (ascending ? std::string("3") : std::string("5")) +
+            ":0]; Instance c Of Child {" +
+            (ascending ? std::string{} : std::string("Parameter W=6;")) +
+            "InputPort p = din; } }");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto bits = netlist.ResolveSignal("c.p");
+    for (size_t i = 0; i < bits.size(); ++i) {
+      const auto& node = netlist.nodes[bits[i].node];
+      const auto offset = node.left >= node.right ? node.left - bits[i].index
+                                                  : bits[i].index - node.left;
+      const auto& source = node.inputs.at("Source").at(offset);
+      Require(source.index == static_cast<int64_t>(bits.size() - 1 - i),
+              "whole bindings use actual orientation and instance parameter "
+              "bounds");
+    }
+    pattern::Design flat_design;
+    const auto text = pattern::SerializeIcl(netlist);
+    flat_design.AddIcl("flat_bounds.icl", text);
+    Require(
+        pattern::SerializeIcl(pattern::Elaborate(flat_design, "Top")) == text,
+        "orientation and specialized binding widths survive flat replay");
+  }
+  pattern::Design partial;
+  partial.AddIcl(
+      "partial.icl",
+      "Module Child { DataInPort p[3:2]; "
+      "DataInPort p[1:0]; } Module Top { DataInPort din; Instance c Of Child { "
+      "InputPort p[3]=din; } }");
+  const auto netlist = pattern::Elaborate(partial, "Top");
+  Require(
+      netlist.NodeAt("c.p[3:2]").inputs.at("Source")[1].constant == '?' &&
+          !netlist.NodeAt("c.p[1:0]").inputs.count("Source"),
+      "partial binding holes stay distinct from wholly unconnected functions");
+  pattern::Design flat_design;
+  const auto text = pattern::SerializeIcl(netlist);
+  flat_design.AddIcl("flat_partial.icl", text);
+  const auto flat = pattern::Elaborate(flat_design, "Top");
+  Require(pattern::SerializeIcl(flat) == text &&
+              flat.NodeAt("c.p[3:2]").inputs.at("Source")[1].constant == '?' &&
+              !flat.NodeAt("c.p[1:0]").inputs.count("Source"),
+          "flat metadata retains individual holes and absent bindings");
+}
+
+void TestSegmentedPortBindingErrors() {
+  const std::string child =
+      "Module Child { DataInPort p[1]; DataOutPort p[0] { Source p[1]; } } ";
+  for (const auto& item : std::vector<std::pair<std::string, std::string>>{
+           {"InputPort p = 2'b00;", "not an input port"},
+           {"InputPort p[0] = 1'b0;", "not an input port"},
+           {"InputPort p[1] = 1'b0; InputPort p[1] = 1'b1;",
+            "duplicate input binding"},
+           {"InputPort p[2] = 1'b0;", "index out of range"},
+           {"InputPort missing = 1'b0;", "unknown instance input port"}}) {
+    const auto& binding = item.first;
+    Fails(
+        [&] {
+          pattern::Design design;
+          design.AddIcl(
+              "bad_binding.icl",
+              child + "Module Top { Instance c Of Child {" + binding + "} }");
+          pattern::Elaborate(design, "Top");
+        },
+        item.second);
+  }
+}
+
 }  // namespace
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestSegmentedPortSources,
+  for (const auto test : {TestSegmentedPortBindingBoundaries,
+                          TestSegmentedPortBindings,
+                          TestSegmentedPortBindingErrors,
+                          TestSegmentedPortSources,
                           TestSegmentedPortProperties,
                           TestSegmentedPortErrors,
                           TestClockSignalSources,
