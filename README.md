@@ -468,7 +468,7 @@ The generator's [verification record](docs/pattern-generation.md#current-verific
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
 
-For a single TAP after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
+For qualified common-phase TAPs after explicit reset, `iRunLoop COUNT` (or `COUNT -tck`)
 adds idle TCK cycles and retains the full count in generated PDL. Counts must
 be known unsigned 64-bit integers, with no unapplied reads or writes.
 Checked system-clock waits (`iClock` followed by `iRunLoop COUNT -sck PORT`)
@@ -486,6 +486,7 @@ and stateful absolute-time execution remain unsupported; see the
 | `--bsdl ENTITY FILE` | Load an AccessLink BSDL model; repeat for additional models. |
 | `--top_module NAME` | Select the top; otherwise infer a unique root and print a warning. |
 | `--output PATH` | Write generated PDL; defaults to `out/<top>.pdl`. |
+| `--physical_pdl` | Replay binary scan loads as one exact CSU per nonempty apply on a supported single bound TAP; use the same option for generated-output replay. |
 | `--debug` | Also write `debug/<top>.icl` beside the output, including TAP/BSDL metadata for replay. |
 | `--log PATH` | Copy stdout diagnostics to a file. |
 | `--local_reset PATH` | Write source PDL with transitive local-reset releases before main-level writes, calls, Tcl compounds or whole merge blocks; preserve procedure definitions and combine ordered input files. |
@@ -520,14 +521,18 @@ See [merge behavior](docs/pattern-generation.md#merge-scheduling).
 
 Three further TAP cases covering computed-port writes, child-enable ownership,
 and merged observations are certified in both directions with Tessent 2026.2.
-The offline suite contains 40 directional standards; see
+The offline suite contains 77 directional certificates across 52 cases
+(39 forward, 38 reverse), plus seven legacy certificates; see
 [qualification scope](docs/tessent-goldens.md#port-control-and-merge-qualification-2026-10-30).
 
-This is an experimental retargeter. Multi-TAP/shared-chain scheduling, general gated or feedback events,
-overlapping scan-return lanes, resource
-reservation types beyond scan/data storage, data ports and parallel control ports, system clocks, unrestricted local-reset
-rewriting, and comprehensive vendor round-trip qualification remain
-unfinished. Single-TAP shadow registers with phase-qualified capture, shift and
+This is an experimental retargeter. Common-phase multiple TAPs, qualified
+relative system-clock waits and bounded feedback reset handling are supported.
+Independent TAP phases/shared serial storage, general gated or serial-derived
+events, overlapping scan-return lanes, broader resource assignment/lifecycle,
+stateful absolute time, additional repairable local-reset rewriting and
+comprehensive vendor round-trip qualification remain unfinished. The
+[current completion tracker](docs/remaining-work.md) records the remaining
+items2–15; strict coverage closure is excluded from that work. Single-TAP shadow registers with phase-qualified capture, shift and
 update controls now use event scheduling and full concrete replay, including
 bypassed storage. Four slice-reservation probes have fresh Tessent 2026.2
 certificates in both directions. See [shadow-register support and bounds](docs/pattern-generation.md#hidden-serial-storage-events-2026-10-29).

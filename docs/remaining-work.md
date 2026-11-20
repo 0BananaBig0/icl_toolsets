@@ -1,0 +1,53 @@
+# Remaining work: items 2–15
+
+User instruction: finish items 2–15 from the2026-11-20 inventory. Item 1,
+strict 100% authored-line / 90% raw-branch coverage closure, is excluded from
+this work. Its last measured96.68%/62.97% failure is retained; no acceptance
+threshold has changed. The [completion design](superpowers/specs/2026-11-20-completion-program-design.md)
+preserves the original requirements.
+
+This is the current completion tracker. Earlier plans and dated evidence remain
+historical records; their unchecked boxes are not automatically a current task
+list. Completing one supported case does not complete a broad item below.
+
+| Item | Required result | Status / acceptance |
+|---|---|---|
+| 2 | Independently phased TAPs, shared serial storage, intermediate taps, overlapping returns and independent lanes | Pending. Common-phase/equivalent-TCK multiple TAPs and disjoint lanes already work. Add state/capture/update/ownership cases for the remaining topologies and prove original/flat/generated replay. |
+| 3 | General independently gated and serial-derived scan/reset events | Pending. Retain edge ordering, hidden storage and transient resets across source/flat/generated replay; no guard-only enabling. |
+| 4 | Cyclic/self-referential DataRegister updates and callbacks | Pending. Define documented event/snapshot semantics, test convergence/unknowns, and preserve rollback. |
+| 5 | Stateful absolute time and remaining clock semantics | Pending. Relative waits, clock overrides and restricted clock-only absolute waits already work. Cover stateful events, oscillator restoration/frequency, phases and remaining names/source mappings without inventing periods. |
+| 6 | Runtime observations/status and interface/chain history | Pending. Explicit-history getters already work. Separate actual/model-backed samples from expected comparisons; real device access needs a supplied transport. |
+| 7 | Remaining resource ownership and lifecycle | Pending. Add clock/scan assignment/frequency, pattern-set lifecycle and child/TAP raw-port ownership with protected-edge and scope tests. |
+| 8 | Remaining raw-scan configurations | Pending. Add opaque-child, parallel/multi-TAP and raw-merge support and qualify remaining vendor-export forms. |
+| 9 | Additional repairable caller-only reset transformations | Pending. Handle additional state-dependent/identical-argument release cases; preserve procedure definitions and reject genuinely impossible transformations. |
+| 10 | Broader merge/scheduling optimization and scale qualification | Pending. Cover resource/timing barriers and representative larger networks, preserving valid schedules and reporting measured costs rather than global optimality. |
+| 11 | Remaining model/default/source/reference audit | Pending. Finish contextual source/direction/alias rules, BSDL/private capture and builtin models, corpus specialization and reference evidence. Parsing alone is not generator support. |
+| 12 | Broader vendor and model round-trip qualification | Pending. Extend directional vendor and original/flat/generated evidence beyond existing certified fixtures. Physical import currently covers a single bound TAP with scan-only storage, not general physical/vendor equivalence. |
+| 13 | Concrete physical replay diagnostics | Pending. Preserve compare tick/expected/observed bits and reservation/routing causes; keep ordinary native-probe fallback and failed-output protection. |
+| 14 | Execute five optional reference-ANTLR cases | Verified; integration/review pending. All six existing adapter methods executed without skips using the pinned reference and matching runtime; commands below. |
+| 15 | Reconcile current documentation/checklists | Verified; integration/review pending. Current guide/model/README summaries distinguish completed support and remaining work; historical plans link here. |
+
+## Reference verification
+
+Reference: Honza255/icl_parser at 333f8bc7a54964138ac14a34fde9e942c496436d;
+runtime antlr4-python3-runtime 4.7.2. Both are isolated under owned /tmp paths.
+The reference is an independent syntax oracle, not normative authority.
+
+    ICL_REF_DIR=/tmp/icl-reference-completion-20261120 /tmp/icl-reference-runtime-20261120/bin/python tests/tests/test_antlr_diff.py
+
+Result: six tests ran, zero skips, exit 0, including all five formerly skipped
+reference cases. Temporary paths are reproduction details, not installed
+application dependencies or a guarantee that an external checkout remains
+available. Task 138 evidence is retained under build/completion-records-20261120/.
+
+## Existing qualified baseline
+
+Task 137 at400d2ba is complete: 28 reset cases per binary variant, normal and
+leak-enabled sanitizer suites, Rocky 51 suites/820 cases per variant, source
+archive and dynamic/static installation checks. Four archived vendor exports
+replay natively with --physical_pdl and preserve 13 explicit loads/seven applies.
+All 13 reset-specific implementation plans are complete. This does not close
+the broader items above or strict coverage item 1.
+
+See [model acceptance](pattern-model-coverage.md#current-evidence-and-remaining-work)
+and [current verification](pattern-generation.md#current-verification).
