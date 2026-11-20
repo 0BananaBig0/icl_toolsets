@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Raw builtin DR may use internal models without exposing synthetic PDL targets."""
 import unittest
+import json
+import re
 import test_raw_tap_dr_scan as dr
 
 
@@ -140,6 +142,100 @@ class RawTapBuiltinDr(unittest.TestCase):
         path = self.configure_bsdl()
         path.write_text(path.read_text().replace('BYPASS (BYPASS)', 'BYPASS (BYPASS CAPTURES 0)'))
         self.rejected('iReset\n', 'CAPTURES')
+
+    def test_three_way_overlapping_capture_constraints_reject(self):
+        for codes in ('A (1000), B (100X), C (1000)',
+                      'A (100X), B (1000), C (100X)'):
+            with self.subTest(codes=codes):
+                self.configure_bsdl(codes, 'R[1] (A CAPTURES X, B CAPTURES 1, C CAPTURES 0)')
+                self.rejected('iReset\n', 'conflicting')
+        self.configure_bsdl('A (1000), B (100X), C (1000)',
+                            'R[1] (A CAPTURES X, B CAPTURES 1, C CAPTURES 1)')
+        self.replay('iReset; iScan -ir jtag 4 -si 8; iApply; '
+                    'iScan jtag 1 -si 0 -so 1; iApply\n')
+
+    def test_no_identification_reset_and_bypass_aliases(self):
+        path = self.configure_bsdl()
+        text = path.read_text().replace('BYPASS (1111)', 'BYPASS (1000)')
+        text = text.replace('IDCODE (0010), ', '').replace(', DEVICE_ID (IDCODE)', '')
+        start = text.index('  attribute IDCODE_REGISTER')
+        end = text.index(';', start) + 1
+        path.write_text(text[:start] + text[end:])
+        self.replay('iReset; iScan jtag 1 -si 1 -so 0; iApply; '
+                    'iScan -ir jtag 4 -si 8 -so 1; iApply; '
+                    'iScan jtag 1 -si 0 -so 0; iApply; '
+                    'iScan -ir jtag 4 -si 15 -so 1; iApply; '
+                    'iScan jtag 1 -si 1 -so 0; iApply\n')
+
+    def test_physical_bypass_capture_is_always_zero(self):
+        self.configure_bsdl('A (0101)', 'BYPASS (A CAPTURES 1)')
+        self.rejected('iReset\n', 'capture')
+        for value in ('X', '0'):
+            self.configure_bsdl('A (0101)', 'BYPASS (A CAPTURES ' + value + ')')
+            self.replay('iReset; iScan -ir jtag 4 -si 5; iApply; '
+                        'iScan jtag 1 -si 0 -so 0; iApply; '
+                        'iScan -ir jtag 4 -si 15; iApply; '
+                        'iScan jtag 1 -si 1 -so 0; iApply; '
+                        'iScan -ir jtag 4 -si 9; iApply; '
+                        'iScan jtag 1 -si 1 -so 0; iApply\n')
+
+    def test_case_equivalent_duplicate_link_blocks_reject(self):
+        self.configure_bsdl()
+        model = self.root / 'duplicate.icl'
+        model.write_text(dr.pathlib.Path(self.inputs[1]).read_text().replace(
+            '    IJTAG_OFF {', '    ijtag_on {ScanInterface {core.client;}}\n    IJTAG_OFF {'))
+        self.inputs[1] = str(model)
+        self.rejected('iReset\n', 'duplicate')
+
+    def test_width_validation_precedes_bound_interface_routes(self):
+        for registers in ('R[1] (A), R[2] (IJTAG_OFF)',
+                          'R (IJTAG_OFF), R[1] (A)'):
+            with self.subTest(registers=registers):
+                self.configure_bsdl('A (0101)', registers)
+                self.rejected('iReset\n', 'width')
+
+    def test_runbist_cannot_be_private(self):
+        self.configure_bsdl('RUNBIST (0101)', '',
+            'attribute INSTRUCTION_PRIVATE of BuiltinDrProbe : entity is "RUNBIST";')
+        self.rejected('iReset\n', 'private')
+        self.configure_bsdl('RUNBIST (0101)', 'R[1] (RUNBIST CAPTURES 1)')
+        self.replay('iReset; iScan -ir jtag 4 -si 5; iApply; '
+                    'iScan jtag 1 -si 0 -so 1; iApply\n')
+
+    def test_legacy_flat_semantic_case_and_canonical_duplicates(self):
+        self.configure_bsdl('A (0101)', 'UserReg[2] (A CAPTURES 10)')
+        bsdl = dr.pathlib.Path(self.inputs[-1])
+        bsdl.write_text(bsdl.read_text().replace('IJTAG_ON', 'ijtag_on'))
+        model = self.root / 'case.icl'
+        model.write_text(dr.pathlib.Path(self.inputs[1]).read_text().replace('IJTAG_ON {', 'ijtag_on {'))
+        self.inputs[1] = str(model)
+        body = ('iReset; iWrite core.r 3; iApply; '
+                'iScan -ir jtag 4 -si 5; iApply; iScan jtag 2 -si 0 -so 2; iApply\n')
+        expected = self.replay(body)
+        flat = self.root / 'debug/BuiltinDrTop.icl'
+        text = flat.read_text()
+        match = re.search(r'Attribute icl_pattern_origins_v1\s*=\s*("(?:\\.|[^"\\])*")\s*;', text)
+        self.assertIsNotNone(match)
+        metadata = json.loads(json.loads(match.group(1)))
+        tap = metadata['taps'][0]
+        for field in (5, 7):
+            for item in tap[field]:
+                if item[0] == 'IJTAG_ON': item[0] = 'ijtag_on'
+        for item in tap[6]:
+            if item[0] == 'USERREG': item[0] = 'UserReg'
+        def write_metadata():
+            encoded = json.dumps(json.dumps(metadata, separators=(',', ':')))
+            flat.write_text(text[:match.start(1)] + encoded + text[match.end(1):])
+        write_metadata()
+        source = self.source(body)
+        self.assertEqual(expected, self.run_tool(source, 'legacy.pdl', inputs=['--icl', str(flat)]))
+        for field in (5, 6, 7):
+            original = [item[:] for item in tap[field]]
+            item = next(x for x in original if x[0] in ('ijtag_on', 'UserReg'))
+            tap[field].append([item[0].upper(), item[1]])
+            write_metadata()
+            self.assertIn('mapping', self.run_tool(source, 'bad.pdl', ok=False, inputs=['--icl', str(flat)]))
+            tap[field] = original
 
     def test_reset_idcode_and_selected_bypass_replay(self):
         result = self.replay('iReset; iScan jtag 32 -si 0x89abcdef -so 0x10000003 -stable; iApply; '

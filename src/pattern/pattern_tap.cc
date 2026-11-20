@@ -6,6 +6,8 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -188,30 +190,37 @@ class Builder {
                       const std::string& kind = "data-register routes",
                       bool capture_masks = false) const {
     struct Route {
-      std::string source, instruction;
+      size_t source;
+      const std::string* instruction;
     };
-    std::map<std::string, Route> seen;
+    std::unordered_map<std::string_view, size_t> source_ids;
+    std::vector<const std::string*> sources;
+    std::map<std::string_view, std::vector<Route>> seen;
     std::vector<decltype(seen)::const_iterator> masked;
     size_t work = kMaxModelBytes;
     bool combine = false;
-    const auto spend = [&] {
-      if (!work) {
+    const auto spend = [&](size_t amount = 1) {
+      if (amount > work) {
         throw std::runtime_error(link_.bsdl->origin +
                                  ": TAP opcode overlap work limit exceeded");
       }
-      --work;
+      work -= amount;
     };
-    for (const auto& opcode : link_.bsdl->opcodes) {
-      const auto route = routes.find(opcode.first);
-      if (route == routes.end()) continue;
-      const auto& source = route->second;
+    for (const auto& route : routes) {
+      const auto& instruction = route.first;
+      const auto& source = route.second;
+      spend(source.size());
+      const auto inserted = source_ids.emplace(source, sources.size());
+      if (inserted.second) sources.push_back(&source);
+      const size_t source_id = inserted.first->second;
       const auto conflict = [&](const Route& prior) {
-        if (capture_masks) {
-          bool compatible = source.size() == prior.source.size();
+        const auto& previous = *sources.at(prior.source);
+        if (capture_masks && previous.size() == source.size()) {
+          spend(source.size());
+          bool compatible = true;
           for (size_t bit = 0; compatible && bit < source.size(); ++bit) {
-            spend();
-            compatible = source[bit] == 'x' || prior.source[bit] == 'x' ||
-                         source[bit] == prior.source[bit];
+            compatible = source[bit] == 'x' || previous[bit] == 'x' ||
+                         source[bit] == previous[bit];
           }
           if (compatible) {
             combine = true;
@@ -219,45 +228,52 @@ class Builder {
           }
         }
         throw std::runtime_error(link_.bsdl->origin + ": conflicting " + kind +
-                                 " for " + prior.instruction + " and " +
-                                 opcode.first);
+                                 " for " + *prior.instruction + " and " +
+                                 instruction);
       };
-      for (const auto& code : opcode.second) {
+      for (const auto& code : link_.bsdl->opcodes.at(instruction)) {
         const auto duplicate = seen.find(code);
-        if (duplicate != seen.end()) {
-          if (duplicate->second.source != source) {
-            conflict(duplicate->second);
-            if (capture_masks) {
-              for (size_t bit = 0; bit < source.size(); ++bit) {
-                if (source[bit] != 'x') {
-                  duplicate->second.source[bit] = source[bit];
-                }
-              }
-            }
-          }
+        if (duplicate != seen.end() &&
+            std::any_of(
+                duplicate->second.begin(), duplicate->second.end(),
+                [&](const auto& prior) { return prior.source == source_id; })) {
           continue;
         }
         const auto compare = [&](const auto& prior) {
           spend();
-          if (prior.second.source == source) return;
+          if (prior.source == source_id) return;
+          conflict(prior);
+        };
+        const auto compare_entry = [&](const auto& entry) {
+          // Equal source IDs need no bit-pattern or wide-capture comparison.
+          spend();
+          if (std::all_of(entry.second.begin(), entry.second.end(),
+                          [&](const auto& prior) {
+                            return prior.source == source_id;
+                          })) {
+            return;
+          }
           for (size_t bit = 0; bit < code.size(); ++bit) {
             spend();
-            if (code[bit] != 'x' && prior.first[bit] != 'x' &&
-                code[bit] != prior.first[bit]) {
+            if (code[bit] != 'x' && entry.first[bit] != 'x' &&
+                code[bit] != entry.first[bit]) {
               return;
             }
           }
-          conflict(prior.second);
+          for (const auto& prior : entry.second) compare(prior);
         };
         const bool mask = code.find('x') != std::string::npos;
         if (mask) {
-          for (const auto& prior : seen) compare(prior);
+          for (const auto& entry : seen) compare_entry(entry);
         } else {
-          for (const auto& prior : masked) compare(*prior);
+          if (duplicate != seen.end()) {
+            for (const auto& prior : duplicate->second) compare(prior);
+          }
+          for (const auto& entry : masked) compare_entry(*entry);
         }
-        const auto entry =
-            seen.emplace(code, Route{source, opcode.first}).first;
-        if (mask) masked.push_back(entry);
+        auto entry = seen.try_emplace(code).first;
+        if (entry->second.empty() && mask) masked.push_back(entry);
+        entry->second.push_back({source_id, &instruction});
       }
     }
     return combine;
@@ -293,13 +309,19 @@ class Builder {
       }
       if (association != link_.bsdl->registers.end() &&
           association->second.capture) {
-        capture = *association->second.capture;
+        if (reg == "BYPASS") {
+          if (association->second.capture->find('1') != std::string::npos) {
+            throw std::runtime_error(link_.bsdl->origin +
+                                     ": BYPASS capture must be zero");
+          }
+        } else {
+          capture = *association->second.capture;
+        }
       }
       captures.emplace(instruction, std::move(capture));
     }
     const auto kind = reg == "DEVICE_ID" ? "identification capture values"
                                          : reg + " capture values";
-    const bool combine = ValidateRoutes(captures, kind, true);
     const auto& first = captures.begin()->second;
     const auto literal = [&](const std::string& bits) {
       return std::to_string(bits.size()) + "'b" + bits;
@@ -308,6 +330,7 @@ class Builder {
                     [&](const auto& entry) { return entry.second == first; })) {
       return literal(first);
     }
+    const bool combine = ValidateRoutes(captures, kind, true);
     if (combine) {
       // Shared encodings constrain each cared bit; exclusive regions keep X.
       std::map<std::vector<std::string>, std::string> decoders;

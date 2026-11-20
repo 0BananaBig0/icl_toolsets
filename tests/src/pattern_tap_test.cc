@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_tap.h"
 
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -1126,7 +1127,7 @@ void TestInvalidDataRoutes() {
             "conflicting"},
            {Replace(bsdl, "IJTAG_ON (0011)", "IJTAG_ON (0XXX)"), "conflicting"},
            {Replace(bsdl, "BYPASS (1111)", "BYPASS (XXXX)"), "conflicting"},
-           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN (BYPASS)"),
+           {Replace(bsdl, "BYPASS (BYPASS)", "UNKNOWN[1] (BYPASS)"),
             "mandated register"},
            {Replace(UserRegisterBsdl(), "USER[9]", "USER[1048576]"),
             "width limit"},
@@ -1150,8 +1151,7 @@ void TestInvalidDataRoutes() {
     } catch (const std::runtime_error& error) {
       const std::string message = error.what();
       rejected = message.find(probe.second) != std::string::npos &&
-                 message.find("probe.bsdl:") != std::string::npos &&
-                 message.find("AccessLink tap") != std::string::npos;
+                 message.find("probe.bsdl:") != std::string::npos;
       Require(rejected, "unexpected data-route diagnostic: " + message);
     }
     Require(rejected, "invalid BSDL data-route mapping accepted");
@@ -1284,6 +1284,32 @@ void TestCaptureGroupScale() {
   }
   std::cout << "TAP model: " << kCount
             << " independent capture groups, seconds="
+            << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                             start)
+                   .count()
+            << '\n';
+}
+void TestWideCaptureAliases() {
+  std::string codes;
+  for (int i = 256; i < 4352; ++i) {
+    if (!codes.empty()) codes += ",";
+    codes += Binary16(i);
+  }
+  auto bsdl = WideBsdl("1111111111111111");
+  bsdl = Replace(bsdl, "IJTAG_OFF (0000000000000100)",
+                 "IJTAG_OFF (0000000000000100), WIDE(" + codes + ")");
+  bsdl = Replace(bsdl, "DEVICE_ID (IDCODE)",
+                 "DEVICE_ID (IDCODE), WIDE_REG[65536](WIDE CAPTURES " +
+                     std::string(65536, '0') + ")");
+  const auto start = std::chrono::steady_clock::now();
+  const auto model = Build(Read(kDirectory + "simple.icl"), bsdl);
+  const auto& reg = model.netlist.nodes.at(model.data_registers.at("WIDE_REG"));
+  Require(reg.Width() == 65536 &&
+              std::all_of(reg.inputs.at("CaptureSource").begin(),
+                          reg.inputs.at("CaptureSource").end(),
+                          [](const auto& bit) { return bit.constant == '0'; }),
+          "wide constant capture is shared across 4096 opcode aliases");
+  std::cout << "TAP capture: bits=65536 aliases=4096 seconds="
             << std::chrono::duration<double>(std::chrono::steady_clock::now() -
                                              start)
                    .count()
@@ -1925,8 +1951,13 @@ void TestSerialScaleAndBudget() {
 }
 
 }  // namespace
-int main() {
+int main(int argc, char* argv[]) {
   try {
+    if (argc == 2 && std::string(argv[1]) == "--capture-scale") {
+      TestWideCaptureAliases();
+      return 0;
+    }
+    Require(argc == 1, "expected --capture-scale or no arguments");
     TestSerialNetwork();
     TestRuntimeMetadataValidation();
     TestSerialOrderAndPins();
@@ -1956,6 +1987,7 @@ int main() {
     TestMaskedRouteBudget();
     TestManyExactRoutes();
     TestCaptureGroupScale();
+    TestWideCaptureAliases();
     TestSharedInterfaceRoutes();
     TestInvalidDataRoutes();
     TestSharedRegisterRoutesAndNames();

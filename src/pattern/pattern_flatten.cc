@@ -582,7 +582,8 @@ void RestoreTaps(Netlist* netlist, const Json& json) {
       std::map<std::string, size_t> seen;
       for (const auto& item : Array(value)) {
         const auto& pair = Array(item, 2);
-        const auto key = String(pair[0]), name = String(pair[1]);
+        const auto key = CanonicalBsdlName(String(pair[0]));
+        const auto name = String(pair[1]);
         if ((kind != "ScanRegister" && !tap.bsdl.opcodes.count(key)) ||
             result->count(key)) {
           throw std::runtime_error("invalid flat TAP instruction mapping");

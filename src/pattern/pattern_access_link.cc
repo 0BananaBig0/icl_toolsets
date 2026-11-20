@@ -106,6 +106,7 @@ class Binder {
       link.name = (begin + 1)->text;
       link.standard = (begin + 3)->text;
       link.origin = Origin(top_, block);
+      std::set<std::string> instructions;
       try {
         for (const auto* child : block.body()) {
           if (dynamic_cast<const icl::AstStatement*>(child) &&
@@ -117,6 +118,10 @@ class Binder {
                          dynamic_cast<const icl::AstBlock*>(child)) {
             auto bound = ReadInstruction(*instruction);
             bound.name = CanonicalBsdlName(std::move(bound.name));
+            if (!instructions.insert(bound.name).second) {
+              throw std::runtime_error(
+                  bound.origin + ": duplicate BSDL instruction " + bound.name);
+            }
             if (!link.bsdl->opcodes.count(bound.name)) {
               throw std::runtime_error(
                   bound.origin + ": unknown BSDL instruction " + bound.name);

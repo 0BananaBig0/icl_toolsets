@@ -464,7 +464,7 @@ class Reader {
       }
       const auto name = CanonicalBsdlName(std::string(table[pos++].text));
       if (!tap_.opcodes.count(name) || StandardInstruction(name) ||
-          !tap_.private_instructions.insert(name).second) {
+          name == "RUNBIST" || !tap_.private_instructions.insert(name).second) {
         Fail(attribute.origin, "invalid BSDL private instruction " + name);
       }
       if (table[pos].kind == Kind::kEnd) break;
@@ -537,9 +537,16 @@ class Reader {
       }
       const auto prior = widths.find(reg.name);
       if (prior != widths.end()) {
-        if (!reg.width) reg.width = prior->second;
+        if (reg.width && *reg.width != prior->second) {
+          Fail(attribute.origin,
+               "inconsistent BSDL register width: " + reg.name);
+        }
+        reg.width = prior->second;
       } else if (reg.width) {
         widths.emplace(reg.name, *reg.width);
+      } else if (reg.name != "BYPASS" && reg.name != "BOUNDARY" &&
+                 reg.name != "DEVICE_ID") {
+        Fail(attribute.origin, "missing BSDL register width: " + reg.name);
       }
       if (!table[pos++].Is("(")) fail();
       do {

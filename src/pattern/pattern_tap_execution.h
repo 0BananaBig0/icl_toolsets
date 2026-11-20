@@ -4,6 +4,7 @@
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_TAP_EXECUTION_H_
 
 #include <functional>
+#include <optional>
 
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_tap.h"
@@ -29,6 +30,9 @@ class TapExecution {
   std::map<size_t, char> ActiveDataRegisters(const std::string& tap) const {
     return Active(netlist_.taps.at(tap));
   }
+  // Instruction function can be known while its held encoding is uncertain.
+  std::optional<size_t> SelectedBuiltinBypass(const std::string& tap) const;
+  char ReadTdo(const std::string& tap) const;
   void Assume(size_t node, const std::string& value);
   explicit TapExecution(const Netlist& netlist);
   void Drive(const std::string& port, const std::string& value);
@@ -46,7 +50,7 @@ class TapExecution {
  private:
   void Edge(const std::set<size_t>& clock_ids, bool rising);
   void GlobalReset();
-  void Synchronize(const std::string& name);
+  void Synchronize(const std::string& name, bool instruction_changed = true);
   void Trace(BitReference output, char selected, std::map<size_t, char>* active,
              bool all = false,
              const std::set<std::pair<size_t, int64_t>>& stops = {}) const;
@@ -57,6 +61,7 @@ class TapExecution {
   const Netlist& netlist_;
   NetworkState state_;
   std::map<std::string, TapInstructionRegister> controllers_;
+  std::map<size_t, std::optional<size_t>> builtin_bypass_;
   std::map<size_t, std::set<size_t>> owned_registers_;
   std::map<size_t, std::vector<InterfacePorts>> register_ports_;
 };

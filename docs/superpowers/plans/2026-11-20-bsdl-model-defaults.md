@@ -30,6 +30,6 @@ canonical BSDL instruction lookup; generated ICL retains current public API.
   and source/flat/generated/reset CLI GREEN.
 - [x] Run focused/native/dynamic/static/SAN, full generator, style/C++17 and
   package checks. Expected exit0; do not run coverage closure.
-- [ ] Document exact evidence/boundaries; commit/task-done, independent review,
+- [x] Document exact evidence/boundaries; commit/task-done, independent review,
   one necessary fix pass, merge/push and delete completed branch.
 **Verification:** python3 tests/src/pattern/test_raw_tap_builtin_dr.py build/icl-pattern-generation

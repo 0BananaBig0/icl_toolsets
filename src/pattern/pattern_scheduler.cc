@@ -1160,6 +1160,15 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "raw TAP data requires a known complete register route");
     };
+    if (!instruction) {
+      const auto bypass =
+          execution_->SelectedBuiltinBypass(netlist_.taps.begin()->first);
+      if (bypass) {
+        const auto input = tap_->pins.at("tap_scan_in");
+        return {
+            {input, netlist_.nodes[input].left}, {{*bypass, false}}, false, 1};
+      }
+    }
     auto snapshot = state_;
     snapshot.Drive(tap_->ir_select, instruction ? "1" : "0");
     const auto output = tap_->pins.at("tap_scan_out");
@@ -2385,10 +2394,11 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& expected,
       const std::set<size_t>& required, bool together,
       const std::map<size_t, std::string>& preserved,
-      const std::map<size_t, std::string>& desired_preserved) {
+      const std::map<size_t, std::string>& desired_preserved,
+      std::optional<size_t> permitted_tap_data = std::nullopt) {
     if (tap_) {
       return TryNativeTapScan(goals, expected, required, together, preserved,
-                              desired_preserved);
+                              desired_preserved, false, permitted_tap_data);
     }
     if (global_resets_ != "00" || (goals.empty() && expected.empty())) {
       return std::nullopt;
@@ -2529,8 +2539,10 @@ class ScanScheduler::Impl {
       const std::set<size_t>& required, bool together,
       const std::map<size_t, std::string>& preserved,
       const std::map<size_t, std::string>& desired_preserved,
-      bool physical = false) {
-    if (required.empty() || !NativeTapShape(physical)) return std::nullopt;
+      bool physical = false,
+      std::optional<size_t> permitted_tap_data = std::nullopt) {
+    const bool exact = physical || permitted_tap_data.has_value();
+    if (required.empty() || !NativeTapShape(exact)) return std::nullopt;
     try {
       const auto only_ir = [&](const auto& entry) {
         return entry.first == tap_->instruction_register;
@@ -2559,7 +2571,8 @@ class ScanScheduler::Impl {
       step.output = endpoint(tap_->pins.at("tap_scan_out"));
       step.together = together && !goals.empty();
       for (const auto& [id, suffix] : path.registers) {
-        if (tap_data_registers_.count(id)) {
+        if (tap_data_registers_.count(id) &&
+            permitted_tap_data != std::optional<size_t>{id}) {
           if (physical) {
             throw std::runtime_error(
                 "physical TAP route selects synthetic data storage");
@@ -2607,12 +2620,10 @@ class ScanScheduler::Impl {
         CheckPreserved(state, held, desired_preserved);
       };
       check(run->State());
-      const auto output = tap_->pins.at("tap_scan_out");
-      const auto observe = [&](size_t tick, const NetworkState& state) {
+      const auto observe = [&](size_t tick, const NetworkState&) {
         const char expected_bit = step.serial_expected[tick];
         if (expected_bit == 'x') return;
-        const char observed =
-            state.Read({output, netlist_.nodes[output].left}, true);
+        const char observed = run->ReadTdo(netlist_.taps.begin()->first);
         if (observed != expected_bit) {
           throw std::runtime_error(
               "TAP capture comparison differs at serial bit " +
@@ -2628,16 +2639,16 @@ class ScanScheduler::Impl {
           ReplayTapStep(step, lanes, controls, run.get(), check, observe);
       const auto history = run->TakeControlEvents();
       const auto resets = run->TakeResetEvents();
-      if (!physical && !resets.empty()) return std::nullopt;
+      if (!exact && !resets.empty()) return std::nullopt;
       for (const auto& [id, event] : history) {
-        if (!physical && !controls.count(id)) return std::nullopt;
+        if (!exact && !controls.count(id)) return std::nullopt;
       }
       auto fill = fill_;
       for (const auto& [id, control] : controls) {
         const auto& name = netlist_.nodes[id].name;
         const auto event = history.find(id);
         // IR updates come from the TAP controller, not NetworkState events.
-        if (!physical &&
+        if (!exact &&
             (!writable.count(id) ||
              (!instruction && (event == history.end() || !event->second ||
                                *event->second != step.loads.at(name))) ||
@@ -2645,9 +2656,9 @@ class ScanScheduler::Impl {
           return std::nullopt;
         }
         step.writes.emplace(name, step.loads.at(name));
-        fill[id] = physical ? run->State().Value(id) : step.loads.at(name);
+        fill[id] = exact ? run->State().Value(id) : step.loads.at(name);
       }
-      if (physical) {
+      if (exact) {
         // Bypassed storage can update to X without a binary control event.
         for (size_t id : registers_) fill.at(id) = run->State().Value(id);
       }
@@ -5335,8 +5346,9 @@ class ScanScheduler::Impl {
           [](const auto& entry) { return entry.first.first == kMissing; });
       if (fixed_loads.empty() && !mixed && data_plan.order.empty() &&
           end_states_.empty() && data_reads.empty() && native_groups) {
-        auto native = TryNativeScan(operations, goals, expected, required,
-                                    together, preserved, desired_preserved);
+        auto native =
+            TryNativeScan(operations, goals, expected, required, together,
+                          preserved, desired_preserved, permitted_tap_data);
         if (native) return std::move(*native);
       }
       events = (tap_ || client_controls_) && NeedsScanEvents();

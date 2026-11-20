@@ -7215,8 +7215,8 @@ coverage: private omissions, per-instruction captures, alternate capture lists,
 repeated opcode descriptions, implicit BYPASS, shared widths, semantic case
 folding and compatible shared-opcode masks. See the Task140 section in
 [model acceptance](pattern-model-coverage.md#task140-audited-bsdl-modeldefault-forms)
-for exact conservative-mask semantics, IEEE BNF/prose conflict and measured
-Tessent2026.2 differences. All51 generator suites/830 cases per variant,
-13 native pattern suites, focused12/main71 and six native sanitizer checks,
-24 style/C++17 gates and source distribution checks pass. No coverage closure
-or general physical/vendor equivalence is claimed.
+for conservative-mask semantics, migration/reset fixes, measured resource
+bounds, exact qualification records and Tessent2026.2 differences. The initial
+matrix passed830 cases per variant; the post-review record in that section
+supersedes it. No coverage closure or general physical/vendor equivalence is
+claimed.
