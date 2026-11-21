@@ -10,6 +10,12 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
+Task143 implements recorded-invocation caller reset repair:36 caller methods,
+compound12, native runtime and the full13 native suites pass. Full dynamic/static,
+sanitizer and packaging qualification is running. Two fresh Tessent2026.2 runs
+produce byte-identical rewrite/reference exports; eight nonempty physical
+source/flat/generated replays match. Final independent review is pending.
+
 Task141 is integrated at0188a6a:13 native pattern suites,51 generator
 suites/852 cases per dynamic/static variant, leak-enabled sanitizers,30
 changed-code quality checks and source packaging pass. It repairs flat clock
@@ -556,6 +562,10 @@ files are combined in command-line order, with separators that preserve commands
 after continued EOF comments. When no release is needed, a single input is
 preserved byte-for-byte.
 
+Task143 first strictly replays the recorded operations. An already valid source
+is preserved without adding redundant releases. Its invocation-sensitive
+fallback below is implemented; full qualification and final review are running.
+
 The planner follows transitive reset dependencies, including nested
 `AccessTogether` aliases and logic-driven resets supported by the symbolic
 network. It uses actual reset polarity and the scheduler's current state to
@@ -582,7 +592,7 @@ prefix and whole executed operation span. Overlapping compound/merge spans
 use the earliest caller site, including merges continued across files. The
 rewriter first tries whole-command prerequisites, then original literal sites
 from fresh state when internal resets require releases inside a loop. There are
-at most four candidates, using the same scheduler and solver bounds. If both
+at most five candidates, using the same scheduler and solver bounds. If both
 early-insertion candidates fail, a Tcl apply/uplevel wrapper evaluates the
 original command words once, releases prerequisites, then executes that command
 in its caller scope. This repairs argument substitutions that reset state before
@@ -591,9 +601,18 @@ indices and real Tcl substitutions retain their original evaluation order.
 If one repeated literal caller site needs different release preambles, the
 fourth candidate dispatches on the once-evaluated argument list using an exact
 Tcl switch inside that same wrapper. The original call still executes in its
-caller scope. Unknown signatures and identical signatures requiring different
-preambles fail rather than selecting an arbitrary release. Wrappers introduce
-no persistent helper commands, global counters or procedure-body edits.
+caller scope. Unknown signatures fail rather than selecting an arbitrary
+release. When identical arguments need different releases, the fifth candidate
+checks the recorded invocation sequence. Distinct argument/preamble records are
+stored once; each modified site uses a compact sequence and counter in a guarded
+private namespace. Empty calls and caught errors consume their actual recorded
+occurrences; argument-evaluation failures do not. Original words evaluate once
+before the preamble and call. Unexpected arguments/counts and namespace
+interference reject before publication. Normal completion checks final counts,
+removes private state and restores the actual final PDL level, including across
+ordered files. Procedure definitions remain byte-for-byte. This is checked
+specialization of the recorded execution, without a universal equivalence claim
+for arbitrary external state or introspective Tcl.
 After patching the source, a fresh runtime executes the actual
 rewritten text and compares its ordered commands and resolved arguments with
 the planned stream. All analysis and replay must succeed before publication.
@@ -7037,6 +7056,10 @@ remain unfinished. Detailed commands, hashes, timings, review and rulings are in
 
 ## Reset caller-site argument dispatch (2026-11-19)
 
+Historical Task136 evidence follows. Task143's current
+[invocation-sensitive fallback](#local-reset-output) supersedes its
+identical-signature rejection; the measurements below retain their original scope.
+
 Task136 finishes a concrete reset-only caller gap: the same literal main
 write/call site can need different releases for different evaluated arguments.
 The first three source-rewrite candidates retain their behavior. A fourth
@@ -7358,3 +7381,35 @@ are unchanged from the recorded nine successful vendor runs. No re-review or
 new vendor certificate is claimed. Exact commands, exits, timings and frozen
 source/product identities are retained under build/segmented-ports-20261121/. The broader source/corpus, event/topology and
 excluded coverage requirements keep their tracker status.
+
+## Task143: invocation-sensitive reset callers
+
+The same literal caller can now need different release preambles even when its
+evaluated arguments are identical. The existing source trace supplies all
+invocations, including empty and caught-error calls. A final fallback uses
+interned argument/preamble records and a compact per-site invocation sequence;
+original procedure definitions remain unchanged. Strict replay preserves already
+valid sources without redundant insertions. See [local reset output](#local-reset-output)
+for namespace, invocation and atomic publication contracts.
+
+Thirty-six caller methods cover direct writes and procedures, argument failure
+and side effects, empty/partial-error returns, prefixes/vector literals, ordered
+files/continued EOF, level0 restoration, helper cleanup/interference, rejected
+missing/extra invocations and source/flat/generated/reset idempotence. Existing
+queue/reservation/internal-reassertion negatives remain. Native runtime final
+level controls and12 changed-code format/tidy/C++17 gates pass.
+
+Nine single-run matched-input measurements at64/256/512 calls preserve exact
+canonical outputs. Plain parent0.229/0.779/1.446s versus current0.224/0.769/1.470s;
+repair0.626/2.375/4.437s and71040/72176/74528KiB peak RSS. Rewritten source is
+1443/1829/2341 bytes. These are measurements, without a speedup claim or raised
+runtime/solver budget. Commands, environment, source and product hashes are in
+build/occurrence-reset-20261121/scale/results.json.
+
+The invocation wrapper and a manually ordered reference both run successfully
+through Tessent2026.2 on the existing bound-TAP reset model. Their full exports
+are byte-identical. All submitted/returned input hashes match; eight nonempty
+source/flat/generated physical replays match canonically. This is bounded fresh
+evidence, without a new maintained golden certificate or universal equivalence
+claim. Full qualification and one independent final branch review are running;
+evidence is retained under build/occurrence-reset-20261121/.
