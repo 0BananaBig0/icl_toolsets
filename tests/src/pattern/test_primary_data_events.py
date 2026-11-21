@@ -104,6 +104,25 @@ Module Chains {
                         self.assertNotIn(b"iWrite p 0b00", output)
                         self.assertNotIn(b"iWrite p 0b10", output)
 
+    def test_primary_source_order_preserves_goal_intent(self):
+        for reverse in (False, True):
+            ports = ["DataInPort a;", "DataInPort z[1:0];"]
+            if reverse:
+                ports.reverse()
+            source = ("Module Chains {" + " ".join(ports) +
+                      "DataRegister value[1:0] {WriteDataSource z;} "
+                      "DataOutPort q[1:0] {Source value;}}")
+            for option in ("", " -together"):
+                for initial, goal in (("0", "3"), ("2", "0bx1")):
+                    with self.subTest(reverse=reverse, option=option, goal=goal):
+                        output = self.replay(
+                            source, "iTake z; iState z 3; iState a 0; " +
+                            "iState value " + initial + "; iWrite value " +
+                            goal + "; iApply" + option +
+                            "; iRead q 3; iApply;" + chr(10))
+                        self.assertNotIn(b"iWrite z 0b00", output)
+                        self.assertNotIn(b"iWrite z 0b10", output)
+
     def test_mixed_scan_event_has_matching_data_effect(self):
         source = BASE.replace("DataInPort trigger;", """DataInPort trigger;
  ScanInPort si;

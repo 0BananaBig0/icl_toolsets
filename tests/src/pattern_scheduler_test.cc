@@ -25,55 +25,72 @@ void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
 void TestPrimaryDataEvents() {
-  for (bool cascade : {false, true}) {
-    std::string source =
-        "Module Top {DataInPort trigger; "
-        "DataRegister first[1:0] {WriteDataSource 2'b11;} ";
-    if (cascade) {
-      source += "DataRegister value[1:0] {WriteDataSource first;} ";
-    }
-    source += "DataOutPort q[1:0] {Source " +
-              std::string(cascade ? "value" : "first") + ";}}";
-    for (bool flat : {false, true}) {
-      pattern::Design design;
-      design.AddIcl("primary-events.icl", source);
-      const auto netlist = pattern::Elaborate(design, "Top");
-      if (!flat) source = pattern::SerializeIcl(netlist);
-      const std::string target = cascade ? "value" : "first";
-      pattern::ScanScheduler scheduler(netlist);
-      pattern::NetworkState replay(netlist);
-      for (const auto& node : netlist.nodes) {
-        if (node.model != pattern::ModelKind::kRegister &&
-            node.kind != "DataInPort") {
-          continue;
-        }
-        const auto bits = std::string(node.Width(), '0');
-        scheduler.Assume(node.name, bits);
-        replay.Assume(netlist.node_ids.at(node.name), bits);
+  for (bool connected : {false, true}) {
+    for (bool cascade : {false, true}) {
+      std::string source = "Module Top {DataInPort a; ";
+      if (connected) source += "DataInPort z[1:0]; ";
+      source += "DataRegister first[1:0] {WriteDataSource " +
+                std::string(connected ? "z" : "2'b11") + ";} ";
+      if (cascade) {
+        source += "DataRegister value[1:0] {WriteDataSource first;} ";
       }
-      const auto steps =
-          scheduler.Apply({{"iWrite", {target, "3"}, "event", {}}});
-      bool event = false;
-      for (const auto& step : steps) {
-        std::map<size_t, std::string> inputs;
-        for (const auto& [name, bits] : step.writes) {
-          const auto id = netlist.node_ids.at(name);
-          Require(netlist.nodes[id].kind == "DataInPort",
-                  "autonomous primary update must emit a real pin write");
-          inputs.emplace(id, bits);
+      source += "DataOutPort q[1:0] {Source " +
+                std::string(cascade ? "value" : "first") + ";}}";
+      for (bool flat : {false, true}) {
+        pattern::Design design;
+        design.AddIcl("primary-events.icl", source);
+        const auto netlist = pattern::Elaborate(design, "Top");
+        if (!flat) source = pattern::SerializeIcl(netlist);
+        const std::string target = cascade ? "value" : "first";
+        pattern::ScanScheduler scheduler(netlist);
+        pattern::NetworkState replay(netlist);
+        for (const auto& node : netlist.nodes) {
+          if (node.model != pattern::ModelKind::kRegister &&
+              node.kind != "DataInPort") {
+            continue;
+          }
+          const auto bits =
+              std::string(node.Width(), node.name == "z" ? '1' : '0');
+          scheduler.Assume(node.name, bits);
+          replay.Assume(netlist.node_ids.at(node.name), bits);
         }
-        if (!inputs.empty()) {
-          replay.ApplyInputs(inputs);
-          event = true;
+        const auto steps =
+            scheduler.Apply({{"iWrite", {target, "3"}, "event", {}}});
+        bool event = false;
+        for (const auto& step : steps) {
+          std::map<size_t, std::string> inputs;
+          for (const auto& [name, bits] : step.writes) {
+            const auto id = netlist.node_ids.at(name);
+            if (netlist.nodes[id].kind == "DataInPort") {
+              inputs.emplace(id, bits);
+            } else {
+              Require(netlist.nodes[id].kind == "DataRegister",
+                      "data-goal marker must name a real DataRegister");
+            }
+          }
+          if (!inputs.empty()) {
+            replay.ApplyInputs(inputs);
+            event = true;
+          }
+          for (const auto& [name, bits] : step.writes) {
+            if (netlist.nodes[netlist.node_ids.at(name)].kind ==
+                "DataRegister") {
+              Require(
+                  replay.Value(netlist.node_ids.at(name)) == bits,
+                  "goal marker must match independently reached real state");
+            }
+          }
         }
-      }
-      Require(event && replay.Value(netlist.node_ids.at(target)) == "11" &&
-                  scheduler.Value(target) == "11",
-              "constant-source goal must agree with independent input replay");
-      const auto quiet =
-          scheduler.Apply({{"iRead", {target, "3"}, "read", {}}});
-      for (const auto& step : quiet) {
-        Require(step.writes.empty(), "satisfied read must not invent an event");
+        Require(
+            event && replay.Value(netlist.node_ids.at(target)) == "11" &&
+                scheduler.Value(target) == "11",
+            "constant-source goal must agree with independent input replay");
+        const auto quiet =
+            scheduler.Apply({{"iRead", {target, "3"}, "read", {}}});
+        for (const auto& step : quiet) {
+          Require(step.writes.empty(),
+                  "satisfied read must not invent an event");
+        }
       }
     }
   }

@@ -3474,6 +3474,11 @@ class ScanScheduler::Impl {
             throw std::runtime_error(
                 "symbolic/concrete primary data fill mismatch");
           }
+          const auto goal = goals.find(id);
+          if (goal != goals.end() && event != control_events.end() &&
+              event->second && replay.Value(id) == goal->second) {
+            AppendDataGoalIntent(id, goal->second, &step);
+          }
         }
         AppendDataEndOverrides(replay, &step);
         if (!step.writes.empty() || !step.expected.empty()) {
@@ -3500,6 +3505,23 @@ class ScanScheduler::Impl {
         "budget");
   }
 
+  void AppendDataGoalIntent(size_t id, const std::string& goal,
+                            ScanStep* step) const {
+    const auto& plan = state_.DataRegisters();
+    const auto written = [&](const auto& sources) {
+      const auto found = sources.find(id);
+      return found != sources.end() &&
+             std::any_of(
+                 found->second.begin(), found->second.end(),
+                 [&](size_t driver) {
+                   return step->writes.count(netlist_.nodes[driver].name);
+                 });
+    };
+    // Retain data-goal intent unless emitted controller writes carry it.
+    if (!written(plan.primary_inputs) && !written(plan.scan_inputs)) {
+      step->writes.emplace(netlist_.nodes[id].name, goal);
+    }
+  }
   void AppendDataEndOverrides(const NetworkState& replay,
                               ScanStep* step) const {
     if (!step->writes.empty()) {
@@ -6258,19 +6280,7 @@ class ScanScheduler::Impl {
           for (size_t id : data_write_goals) {
             if (model.eval(frame.active.at(id), true).is_true() &&
                 replay.Value(id) == goals.at(id)) {
-              const auto written = [&](const auto& sources) {
-                const auto found = sources.find(id);
-                return found != sources.end() &&
-                       std::any_of(found->second.begin(), found->second.end(),
-                                   [&](size_t driver) {
-                                     return step.writes.count(
-                                         netlist_.nodes[driver].name);
-                                   });
-              };
-              if (!written(data_plan.primary_inputs) &&
-                  !written(data_plan.scan_inputs)) {
-                step.writes.emplace(netlist_.nodes[id].name, goals.at(id));
-              }
+              AppendDataGoalIntent(id, goals.at(id), &step);
             }
           }
         }
