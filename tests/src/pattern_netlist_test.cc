@@ -3542,8 +3542,7 @@ Module M {
               args[4].value.data == "one; [two] $three" &&
               args[5].value.sized && args[5].value.data == "10x1" &&
               args[6].value.AsInteger() == 20 &&
-              args[7].value.AsInteger() == 7 &&
-              args[8].value.data == "xxxx",
+              args[7].value.AsInteger() == 7 && args[8].value.data == "xxxx",
           "callback markers stay distinct from literal values");
   const auto& second = *netlist.NodeAt("second.value").write_callback;
   Require(second.name_space == "vendor::Other::sub" &&
@@ -3563,26 +3562,32 @@ void TestDataRegisterCallbackTypes() {
       "WriteCallBack M write_proc <D> <R>;"};
   for (size_t first = 0; first < types.size(); ++first) {
     for (size_t second = first + 1; second < types.size(); ++second) {
-      Fails([&] {
-        pattern::Design design;
-        design.AddIcl("mixed_callback.icl", "Module M { DataInPort data; "
-                      "DataInPort enable; DataRegister r { " + types[first] +
-                      types[second] + " } }");
-        pattern::Elaborate(design, "M");
-      }, "mutually exclusive");
+      Fails(
+          [&] {
+            pattern::Design design;
+            design.AddIcl("mixed_callback.icl",
+                          "Module M { DataInPort data; "
+                          "DataInPort enable; DataRegister r { " +
+                              types[first] + types[second] + " } }");
+            pattern::Elaborate(design, "M");
+          },
+          "mutually exclusive");
     }
   }
   for (const auto& name : {"bad name", "M; iReset", "", "2M", "M::N"}) {
     pattern::Design design;
-    design.AddIcl("invalid_callback_name.icl",
-                  "Module M { Parameter owner = \"" + std::string(name) +
-                  "\"; DataRegister r { WriteCallBack $owner write_proc <D>; } }");
+    design.AddIcl(
+        "invalid_callback_name.icl",
+        "Module M { Parameter owner = \"" + std::string(name) +
+            "\"; DataRegister r { WriteCallBack $owner write_proc <D>; } }");
     Fails([&] { pattern::Elaborate(design, "M"); }, "callback identifier");
   }
   for (const auto& type : types) {
     pattern::Design design;
-    design.AddIcl("callback.icl", "Module M { DataInPort data; "
-                  "DataInPort enable; DataRegister r { " + type + " } }");
+    design.AddIcl("callback.icl",
+                  "Module M { DataInPort data; "
+                  "DataInPort enable; DataRegister r { " +
+                      type + " } }");
     pattern::Elaborate(design, "M");
   }
 }

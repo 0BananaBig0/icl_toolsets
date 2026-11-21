@@ -389,6 +389,22 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                                  ? std::to_string(value->second.AsInteger())
                                  : Literal(value->second);
         result += name + " " + literal + ";\n";
+      } else if ((name == "ReadCallBack" && node.read_callback) ||
+                 (name == "WriteCallBack" && node.write_callback)) {
+        const auto& callback =
+            name == "ReadCallBack" ? *node.read_callback : *node.write_callback;
+        result += name + " " + callback.name_space + " " + callback.procedure;
+        for (const auto& argument : callback.arguments) {
+          result += " ";
+          if (argument.kind == CallbackArgumentKind::kData) {
+            result += "<D>";
+          } else if (argument.kind == CallbackArgumentKind::kRegister) {
+            result += "<R>";
+          } else {
+            result += Literal(argument.value);
+          }
+        }
+        result += ";\n";
       } else if (name == "Period" && node.clock_period) {
         result += "Period " + std::to_string(node.clock_period->magnitude) +
                   " " + node.clock_period->unit + ";\n";

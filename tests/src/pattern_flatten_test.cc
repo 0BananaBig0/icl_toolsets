@@ -17,6 +17,45 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestFlatCallbacks() {
+  pattern::Design design;
+  design.AddIcl("callback_flat.icl", R"(
+Module Leaf {
+ Parameter owner = "Top";
+ Parameter value = 8'b10xx0011;
+ DataRegister writable[7:0] {
+  WriteCallBack $owner::api save <D> <R> "<D>" $value "a; [b] $c" 3 + 4;
+ }
+ DataRegister readable[7:0] {
+  ReadCallBack ::Top::api load <D> <R>;
+  ReadDataSource writable;
+ }
+}
+Module Top {
+ Instance first Of Leaf;
+ Instance second Of Leaf { Parameter value = 8'b00110011; }
+}
+)");
+  const auto original = pattern::Elaborate(design, "Top");
+  const auto text = pattern::SerializeIcl(original);
+  pattern::Design serialized;
+  serialized.AddIcl("flat.icl", text);
+  const auto restored = pattern::Elaborate(serialized, "Top");
+  Require(pattern::SerializeIcl(restored) == text,
+          "callback canonical form survives repeated flattening");
+  Require(restored.scopes[restored.NodeAt("first.writable").scope].path ==
+                  "first" &&
+              restored.NodeAt("first.readable").read_callback->name_space ==
+                  "::Top::api" &&
+              restored.NodeAt("second.writable")
+                      .write_callback->arguments[3]
+                      .value.data == "00110011" &&
+              restored.NodeAt("first.writable")
+                      .write_callback->arguments[3]
+                      .value.data == "10xx0011",
+          "flat callback values and original scopes remain specialized");
+}
+
 void TestFlatClockInputKinds() {
   for (const std::string binding :
        {"", "InputPort p = root; InputPort n = root_n;",
@@ -1100,6 +1139,7 @@ int main() {
     TestChildInputDefaultMetadataGuards();
     TestSegmentedPortRoundTrip();
     TestSegmentedMetadataGuards();
+    TestFlatCallbacks();
     TestFlatClockInputKinds();
     TestFlatClockInputPropertyGuards();
     TestRestoredDataSourceKinds();

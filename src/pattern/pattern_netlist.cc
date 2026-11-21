@@ -95,9 +95,10 @@ RegisterCallback ReadRegisterCallback(const Netlist& netlist,
   size_t cursor = expression.begin;
   const auto identifier = [&]() {
     const auto& text = tokens.at(cursor++).text;
-    const auto value = text.front() == '$'
-                           ? netlist.Value({expression.scope, cursor - 1, cursor})
-                           : Constant{true, true, text};
+    const auto value =
+        text.front() == '$'
+            ? netlist.Value({expression.scope, cursor - 1, cursor})
+            : Constant{true, true, text};
     if (!value.is_string || !CallbackIdentifier(value.data)) {
       throw std::runtime_error("invalid resolved callback identifier");
     }
@@ -117,9 +118,10 @@ RegisterCallback ReadRegisterCallback(const Netlist& netlist,
   while (cursor < expression.end) {
     const auto& text = tokens[cursor].text;
     if (text == "<D>" || text == "<R>") {
-      result.arguments.push_back(
-          {text == "<D>" ? CallbackArgumentKind::kData
-                         : CallbackArgumentKind::kRegister, {}});
+      result.arguments.push_back({text == "<D>"
+                                      ? CallbackArgumentKind::kData
+                                      : CallbackArgumentKind::kRegister,
+                                  {}});
       ++cursor;
       continue;
     }
