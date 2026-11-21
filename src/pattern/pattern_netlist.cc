@@ -79,6 +79,75 @@ Constant Parameter(const InstanceScope& scope, const std::string& name) {
   return found->second;
 }
 
+bool CallbackIdentifier(const std::string& name) {
+  const auto letter = [](unsigned char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+  };
+  if (name.empty() || !letter(name.front())) return false;
+  return std::all_of(name.begin() + 1, name.end(), [&](unsigned char c) {
+    return letter(c) || (c >= '0' && c <= '9') || c == '_';
+  });
+}
+
+RegisterCallback ReadRegisterCallback(const Netlist& netlist,
+                                      const Expression& expression) {
+  const auto& tokens = SourceTokens(netlist, expression.scope);
+  size_t cursor = expression.begin;
+  const auto identifier = [&]() {
+    const auto& text = tokens.at(cursor++).text;
+    const auto value = text.front() == '$'
+                           ? netlist.Value({expression.scope, cursor - 1, cursor})
+                           : Constant{true, true, text};
+    if (!value.is_string || !CallbackIdentifier(value.data)) {
+      throw std::runtime_error("invalid resolved callback identifier");
+    }
+    return value.data;
+  };
+  RegisterCallback result;
+  if (tokens.at(cursor).text == "::") {
+    result.name_space = "::";
+    ++cursor;
+  }
+  result.name_space += identifier();
+  while (cursor < expression.end && tokens[cursor].text == "::") {
+    ++cursor;
+    result.name_space += "::" + identifier();
+  }
+  result.procedure = identifier();
+  while (cursor < expression.end) {
+    const auto& text = tokens[cursor].text;
+    if (text == "<D>" || text == "<R>") {
+      result.arguments.push_back(
+          {text == "<D>" ? CallbackArgumentKind::kData
+                         : CallbackArgumentKind::kRegister, {}});
+      ++cursor;
+      continue;
+    }
+    const size_t begin = cursor;
+    const auto atom = [&]() {
+      if (tokens[cursor++].text != "(") return;
+      size_t depth = 1;
+      while (cursor < expression.end && depth) {
+        const auto& token = tokens[cursor++].text;
+        if (token == "(") ++depth;
+        if (token == ")") --depth;
+      }
+    };
+    atom();
+    // Callback numbers share the existing integer-expression grammar.
+    while (cursor < expression.end && tokens[cursor].text.size() == 1 &&
+           std::string("+-*/%").find(tokens[cursor].text[0]) !=
+               std::string::npos) {
+      ++cursor;
+      atom();
+    }
+    result.arguments.push_back(
+        {CallbackArgumentKind::kValue,
+         netlist.Value({expression.scope, begin, cursor})});
+  }
+  return result;
+}
+
 ClockPeriod ReadClockPeriod(const Netlist& netlist,
                             const Expression& expression) {
   const auto& source = SourceTokens(netlist, expression.scope);
@@ -1902,6 +1971,14 @@ class Elaborator {
         }
         for (const auto& property : node.properties) {
           const auto& name = property.first;
+          if (name == "ReadCallBack" || name == "WriteCallBack") {
+            auto callback = ReadRegisterCallback(netlist_, property.second);
+            if (name == "ReadCallBack") {
+              node.read_callback = std::move(callback);
+            } else {
+              node.write_callback = std::move(callback);
+            }
+          }
           if (name == "Period") {
             node.clock_period = ReadClockPeriod(netlist_, property.second);
           }

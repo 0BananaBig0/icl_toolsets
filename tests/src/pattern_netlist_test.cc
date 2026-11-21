@@ -3500,6 +3500,93 @@ void TestKeywordEnumSymbols() {
           "all keyword-named enum symbols are preserved");
 }
 
+void TestDataRegisterCallbackValues() {
+  pattern::Design design;
+  design.AddIcl("callback_values.icl", R"(
+Module Leaf {
+  Parameter owner = "M";
+  Parameter proc = "save";
+  Parameter extra = "one; [two] $three";
+  Parameter number = 4'b10x1;
+  DataRegister value[3:0] {
+    WriteCallBack vendor::$owner::sub $proc <D> <R> "<D>" "<R>"
+        $extra $number (2 + 3) * 4 7 4'bx;
+  }
+  DataRegister observed[3:0] {
+    ReadCallBack M load;
+    ReadDataSource value;
+  }
+}
+Module M {
+  Instance first Of Leaf;
+  Instance second Of Leaf {
+    Parameter owner = "Other";
+    Parameter proc = "restore";
+    Parameter number = 4'b0010;
+  }
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "M");
+  const auto& node = netlist.NodeAt("first.value");
+  Require(node.write_callback && !node.read_callback,
+          "callback direction is explicit");
+  const auto& callback = *node.write_callback;
+  Require(callback.name_space == "vendor::M::sub" &&
+              callback.procedure == "save" && callback.arguments.size() == 9,
+          "callback names and argument boundaries resolve once");
+  const auto& args = callback.arguments;
+  using Kind = pattern::CallbackArgumentKind;
+  Require(args[0].kind == Kind::kData && args[1].kind == Kind::kRegister &&
+              args[2].kind == Kind::kValue && args[2].value.is_string &&
+              args[2].value.data == "<D>" && args[3].value.data == "<R>" &&
+              args[4].value.data == "one; [two] $three" &&
+              args[5].value.sized && args[5].value.data == "10x1" &&
+              args[6].value.AsInteger() == 20 &&
+              args[7].value.AsInteger() == 7 &&
+              args[8].value.data == "xxxx",
+          "callback markers stay distinct from literal values");
+  const auto& second = *netlist.NodeAt("second.value").write_callback;
+  Require(second.name_space == "vendor::Other::sub" &&
+              second.procedure == "restore" &&
+              second.arguments[5].value.data == "0010",
+          "callback parameters use their own instance specialization");
+  const auto& read = netlist.NodeAt("first.observed");
+  Require(read.read_callback && read.read_callback->arguments.empty() &&
+              !read.write_callback && read.inputs.count("ReadDataSource"),
+          "read callbacks retain their separate data source");
+}
+
+void TestDataRegisterCallbackTypes() {
+  const std::vector<std::string> types = {
+      "WriteDataSource data; WriteEnSource enable;",
+      "ReadCallBack M read_proc <D> <R>; ReadDataSource data;",
+      "WriteCallBack M write_proc <D> <R>;"};
+  for (size_t first = 0; first < types.size(); ++first) {
+    for (size_t second = first + 1; second < types.size(); ++second) {
+      Fails([&] {
+        pattern::Design design;
+        design.AddIcl("mixed_callback.icl", "Module M { DataInPort data; "
+                      "DataInPort enable; DataRegister r { " + types[first] +
+                      types[second] + " } }");
+        pattern::Elaborate(design, "M");
+      }, "mutually exclusive");
+    }
+  }
+  for (const auto& name : {"bad name", "M; iReset", "", "2M", "M::N"}) {
+    pattern::Design design;
+    design.AddIcl("invalid_callback_name.icl",
+                  "Module M { Parameter owner = \"" + std::string(name) +
+                  "\"; DataRegister r { WriteCallBack $owner write_proc <D>; } }");
+    Fails([&] { pattern::Elaborate(design, "M"); }, "callback identifier");
+  }
+  for (const auto& type : types) {
+    pattern::Design design;
+    design.AddIcl("callback.icl", "Module M { DataInPort data; "
+                  "DataInPort enable; DataRegister r { " + type + " } }");
+    pattern::Elaborate(design, "M");
+  }
+}
+
 void TestDataRegisterControls() {
   pattern::Design design;
   design.AddIcl("selectable.icl", R"(
@@ -4230,6 +4317,8 @@ int main() {
                           TestPerBitGraph,
                           TestOverrideTypes,
                           TestKeywordEnumSymbols,
+                          TestDataRegisterCallbackValues,
+                          TestDataRegisterCallbackTypes,
                           TestDataRegisterControls,
                           TestRegisterRules,
                           TestInterfaceKinds,

@@ -105,6 +105,16 @@ struct ClockPeriod {
   std::string unit = "ns";
 };
 
+enum class CallbackArgumentKind { kValue, kData, kRegister };
+struct CallbackArgument {
+  CallbackArgumentKind kind = CallbackArgumentKind::kValue;
+  Constant value;
+};
+struct RegisterCallback {
+  std::string name_space, procedure;
+  std::vector<CallbackArgument> arguments;
+};
+
 struct NetlistNode {
   std::string name, kind, origin;
   ModelKind model = ModelKind::kPort;
@@ -115,6 +125,7 @@ struct NetlistNode {
   bool active_low = false;
   std::optional<size_t> enumeration;
   std::optional<ClockPeriod> clock_period;
+  std::optional<RegisterCallback> read_callback, write_callback;
   std::map<std::string, Expression> properties;
   std::map<std::string, std::vector<BitReference>> inputs;
   std::map<std::string, Constant> constants;
