@@ -7578,3 +7578,17 @@ and recorded processes. The guide example and its unsupported-access outcome
 were executed; the reader walkthrough is an author self-review, separately
 recorded in doc-reader-author-check.json. No independent usability reader is
 claimed. Coverage item 1 remains excluded with unchanged thresholds.
+
+One fresh independent code review reports zero Critical, Important or Minor
+findings and approves this increment. The reviewer's command host was unavailable;
+the root agent relayed actual source/grammar/tests and executed the reviewer's
+18 independently specified probes. All met their expectations, including mixed
+queue rollback/history and ordinary-only versus callback-only slices of mixed
+and inverted aliases. This is independent judgment with proxied tool execution,
+not an independent rerun of the qualification gates or a usability-reader claim.
+No second review is claimed. Report and raw probes are retained in the evidence.
+
+The review also isolates an existing unrelated value-loss defect: a trailing
+iWrite -ignore_when_value_already_present off/on emits0 for a requested1 in
+matched parent/current primary-pin controls. It is tracked for the next increment
+under item10; it has not been waived or called correct.
