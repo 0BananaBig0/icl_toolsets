@@ -74,6 +74,33 @@ class CallbackModel(unittest.TestCase):
                 self.assertIn("callback identifier", message)
                 self.assertEqual(output.read_bytes(), b"keep existing artifact\n")
 
+    def test_applied_callbacks_reject_without_inventing_access(self):
+        source = """Module Chains {
+ DataRegister value[3:0] {ReadCallBack Chains observe <D>;}
+ DataRegister writable[3:0] {WriteCallBack Chains store <D>;}
+ Alias observed[3:0] = value;
+ Alias written[3:0] = writable;
+ DataOutPort q[3:0] {Source value;}
+}"""
+        for command, target in (("iRead", "value"), ("iRead", "observed[2:1]"),
+                                ("iWrite", "writable"), ("iWrite", "written[2:1]")):
+            icl, pdl = self.root / "callback.icl", self.root / "callback.pdl"
+            icl.write_text(source)
+            pdl.write_text("iPDLLevel 1; iProcsForModule Chains; "
+                           "iProc observe {args} {error {must not run}}; "
+                           "iProc store {args} {error {must not run}}; "
+                           "iState value 0; " + command + " " + target + " 0; iApply;\n")
+            output = self.root / "result.pdl"
+            output.write_bytes(b"keep callback artifact\n")
+            message = self.run_tool(icl, pdl, ok=False)
+            self.assertIn("CallBack execution is not implemented", message)
+            self.assertEqual(output.read_bytes(), b"keep callback artifact\n")
+        self.replay(source, "iWrite writable 3; iRead value 0; iReset; "
+                    "iState value 0; iRead q 0; iApply;\n")
+        self.replay(source, "iState value 3 -LastReadValue; "
+                    "if {[iGetReadData value] ne {0b0011}} {error history}; "
+                    "iNote {history is not a procedural access};\n")
+
     def test_type_mixtures_stay_invalid(self):
         for property_text in ("ReadDataSource 4'b0;", "WriteDataSource 4'b0;",
                               "WriteEnSource 1'b1;", "ReadCallBack Chains load;"):

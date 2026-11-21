@@ -70,6 +70,10 @@ class Runtime::Impl {
                          nullptr);
     frames_.push_back({});
     if (netlist) {
+      has_callbacks_ = std::any_of(
+          netlist->nodes.begin(), netlist->nodes.end(), [](const auto& node) {
+            return node.read_callback || node.write_callback;
+          });
       module_parameters_ = netlist->module_parameters;
       for (const auto& scope : netlist->scopes) {
         instance_scopes_.emplace(scope.path, &scope);
@@ -405,6 +409,26 @@ class Runtime::Impl {
       char data = value[i];
       if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
       entry->second.at(HistoryOffset(bit)) = data;
+    }
+  }
+
+  void CheckPendingCallbacks() const {
+    if (!has_callbacks_ || !pending_) return;
+    for (size_t i = pending_operation_; i < operations_.size(); ++i) {
+      const auto& operation = operations_[i];
+      const bool read = operation.command == "iRead";
+      if (!read && operation.command != "iWrite") continue;
+      const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
+      for (const auto& bit : target.bits) {
+        if (bit.node >= netlist_->nodes.size()) continue;
+        const auto& node = netlist_->nodes[bit.node];
+        if ((read && node.read_callback) || (!read && node.write_callback)) {
+          throw std::runtime_error(operation.origin + ": " +
+                                   (read ? "ReadCallBack" : "WriteCallBack") +
+                                   " execution is not implemented for " +
+                                   node.name);
+        }
+      }
     }
   }
 
@@ -964,7 +988,10 @@ class Runtime::Impl {
       pending_ = true;
     }
     if (name == "iState") RememberHistory(operation);
-    if (name == "iApply") InvalidateReadHistory(operation);
+    if (name == "iApply") {
+      CheckPendingCallbacks();
+      InvalidateReadHistory(operation);
+    }
     if (name == "iApply" || name == "iReset") pending_ = false;
     if (name == "iRunLoop" && pending_) {
       throw std::runtime_error("iRunLoop has unapplied operations");
@@ -986,6 +1013,7 @@ class Runtime::Impl {
     operations_.push_back(std::move(operation));
   }
 
+  bool has_callbacks_ = false;
   bool trace_source_ = false;
   size_t source_count_ = 0;
   std::vector<SourceAction> actions_;

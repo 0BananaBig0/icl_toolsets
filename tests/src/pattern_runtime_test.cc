@@ -23,6 +23,34 @@ void Fails(Action action, const std::string& expected) {
   }
   throw std::runtime_error("expected error: " + expected);
 }
+void TestCallbackAccessBoundary() {
+  pattern::Design design;
+  design.AddIcl("callbacks.icl", R"(
+Module Top {
+ DataRegister observed[3:0] {ReadCallBack Top observe <D>;}
+ DataRegister written[3:0] {WriteCallBack Top store <D>;}
+ Alias reader[3:0] = observed;
+ Alias writer[3:0] = written;
+ DataOutPort q[3:0] {Source observed;}
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const auto& command : {"iRead observed 0", "iRead reader[2:1] 0",
+                              "iWrite written 0", "iWrite writer[2:1] 0"}) {
+    pattern::Runtime runtime(design, netlist);
+    runtime.Execute("queue.pdl", std::string(command));
+    Fails([&] { runtime.Execute("apply.pdl", "iApply"); },
+          "CallBack execution is not implemented");
+  }
+  pattern::Runtime canceled(design, netlist);
+  canceled.Execute("canceled.pdl",
+                   "iWrite written 0; iRead observed 0; iReset; "
+                   "iState observed 3 -LastReadValue; "
+                   "if {[iGetReadData observed] ne {0b0011}} {error history}; "
+                   "iState observed 0; iRead q 0; iApply;");
+  canceled.Finish();
+}
+
 pattern::Design MakeDesign() {
   pattern::Design design;
   design.AddIcl("top.icl", R"(
@@ -776,7 +804,8 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestConstructorAndParseFailures,
+  for (const auto test : {TestCallbackAccessBoundary,
+                          TestConstructorAndParseFailures,
                           TestNestedPendingEndOfStream,
                           TestFallbackInstanceResolution,
                           TestProcedureNamespaceSelection,

@@ -16,11 +16,15 @@ Files: src/pattern/pattern_netlist.{h,cc}; tests/src/pattern_netlist_test.cc.
 - [x] Resolve typed names/arguments once and validate types; GREEN native check.
 
 ### Task 2: Canonical flat representation and replay
-Files: src/pattern/pattern_flatten.cc; tests/src/pattern_flatten_test.cc;
+Files: src/pattern/pattern_flatten.cc; pattern_runtime.cc;
+tests/src/pattern_flatten_test.cc; tests/src/pattern_runtime_test.cc;
 new tests/src/pattern/test_data_register_callback_model.py; Makefile.
 - [x] RED source/flat replay, parameter specializations and atomic negatives.
 - [x] Reuse serializer literals and origin metadata; GREEN focused checks.
 - [x] Measure representative larger callback models against matching controls.
+
+- [x] RED/GREEN applied callback access must reject until invocation exists;
+  preserve canceled queues, event-free assumptions/history and ordinary outputs.
 
 ### Task 3: Qualification and current evidence
 Files: current guide/model/tracker plus this spec/plan.
