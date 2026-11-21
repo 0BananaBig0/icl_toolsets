@@ -18,9 +18,9 @@ Files: src/pattern/pattern_runtime.cc; tests/src/pattern_runtime_test.cc.
 
 ### Task 2: CLI consumers, replay and scale
 Files: new tests/src/pattern/test_write_value_options.py; Makefile.
-- [ ] RED primary/scan/data/alias/enum/merged value loss and atomic invalids.
-- [ ] GREEN source/flat/generated replay, once-only evaluation and cancellations.
-- [ ] Measure matched16/128-apply controls and flagged inputs, record hashes/costs.
+- [x] RED primary/scan/data/alias/enum/merged value loss and atomic invalids.
+- [x] GREEN source/flat/generated replay, once-only evaluation and cancellations.
+- [x] Measure matched16/128-apply controls and flagged inputs, record hashes/costs.
 
 ### Task 3: Qualification and current evidence
 Files: current guide/model/tracker, this spec/plan.
