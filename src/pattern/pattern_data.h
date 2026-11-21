@@ -25,6 +25,7 @@ struct DataRegisterPlan {
   std::map<size_t, AddressRequirement> writes;
   std::vector<size_t> order;
   std::vector<DataRegisterGroup> groups;
+  std::vector<BitReference> implicit_controls;
   std::map<size_t, std::set<size_t>> primary_inputs, scan_inputs;
 };
 struct DataReadGuard {

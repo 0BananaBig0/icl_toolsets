@@ -116,6 +116,63 @@ Module Chains {
         source = BASE.replace("WriteDataSource value", "WriteDataSource 1'bx,value[3:1]")
         self.reject(source, "iState value 15; iState enable 0; iWrite enable 1; iApply;\n")
 
+    def test_unknown_feedback_mixed_history(self):
+        source = """Module Chains {
+ ScanInPort si;
+ ScanRegister dummy {ScanInSource si;}
+ ScanOutPort so {Source dummy;}
+ DataRegister f[3:0] {WriteDataSource f; DefaultLoadValue 9;}
+ DataOutPort q[3:0] {Source f;}
+}"""
+        for value in (None, "0b1x01", "0b0000"):
+            prefix = f"iState f {value}; " if value is not None else ""
+            expected = value if value is not None else "0bxxxx"
+            self.replay(source, prefix + "iWrite dummy 1; iApply; iWrite dummy 0; "
+                        f"iApply; iRead q {expected}; iApply;\n")
+        disabled = source.replace("WriteDataSource f;", "WriteDataSource 15; WriteEnSource ~f[0];")
+        self.replay(disabled, "iState f 0; iWrite f 15; iWrite dummy 1; iApply -together; "
+                    "iRead q 15; iApply;\n")
+
+    def test_primary_pending_read_feedback_pulse(self):
+        source = """Module Chains {
+ DataInPort en; DataInPort zero;
+ LogicSignal x {b ^ c;}
+ LogicSignal seed {en | (zero & a);}
+ DataRegister a {WriteDataSource x; WriteEnSource en;}
+ DataRegister b {WriteDataSource seed; WriteEnSource en;}
+ DataRegister c {WriteDataSource b; WriteEnSource en;}
+ DataOutPort q {Source a;}
+}"""
+        prefix = "iState en 0; iState zero 0; iState a 0; iState b 0; iState c 0; "
+        error = self.reject(source, prefix + "iWrite en 1; iRead q 0; iApply -together;\n")
+        self.assertIn("primary", error)
+        self.replay(source, prefix + "iRead q 0; iApply; iWrite en 1; iApply;\n")
+
+    def test_implicit_one_hot_read_controls(self):
+        source = """Module Bank {
+ AddressPort address; DataInPort data; WriteEnPort we; ReadEnPort re;
+ OneHotDataGroup group {DataRegister r {AddressValue 0;}}
+ DataOutPort out {Source group;}
+}
+Module Chains {
+ ScanInPort si;
+ ScanRegister dummy {ScanInSource si; CaptureSource dummy;}
+ ScanOutPort so {Source dummy;}
+ AddressPort address; DataInPort data; WriteEnPort we; ReadEnPort re;
+ DataInPort enable;
+ Instance bank Of Bank {InputPort address=address; InputPort data=data;
+                       InputPort we=we; InputPort re=re;}
+ DataRegister f[1:0] {WriteDataSource f[0],bank.out; WriteEnSource enable;}
+}"""
+        prefix = ("iState enable 0; iWrite address 0; iWrite we 0; iWrite re 0; "
+                  "iWrite data 1; iApply; iState bank.r 1; iState f 0; "
+                  "iState dummy 0; iState enable 1; ")
+        for explicit in (True, False):
+            request = "iWrite re 1; " if explicit else ""
+            output = self.replay(source, prefix + request +
+                                 "iWrite f 3; iWrite dummy 1; iApply;\n")
+            self.assertIn(b"iWrite re 0b1", output)
+
     def test_feedback_and_matched_dag_scale(self):
         for count in (16, 128):
             for feedback in (False, True):

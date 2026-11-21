@@ -3201,6 +3201,15 @@ class ScanScheduler::Impl {
                       .emplace(write.id, SymbolicValue::Literal(context_, "0"))
                       .first;
               active->second = Or(active->second, write.active);
+              const auto waiting = pending_reads.find(write.id);
+              if (waiting != pending_reads.end()) {
+                for (size_t read : waiting->second) {
+                  solver.add(z3::implies(
+                      !read_done.at(read),
+                      write.value.bits == state.at(write.id).bits &&
+                          write.value.known == state.at(write.id).known));
+                }
+              }
               if (touched.count(write.id)) {
                 touched.at(write.id) = touched.at(write.id) || write.enabled;
               }
@@ -3859,6 +3868,7 @@ class ScanScheduler::Impl {
     std::optional<z3::expr> clocks;
     std::map<size_t, z3::expr> drives;
     std::map<size_t, z3::expr> active, read, needs_write;
+    std::map<size_t, z3::expr> known_data_writes;
     std::map<Key, std::pair<z3::expr, z3::expr>> inputs;
     std::vector<z3::expr> selected, clients;
   };
@@ -5315,6 +5325,7 @@ class ScanScheduler::Impl {
         for (const auto& bit : *access.signals) AddControl(bit);
       }
     }
+    for (const auto& bit : data_plan.implicit_controls) AddControl(bit);
     bool mixed =
         std::any_of(netlist_.nodes.begin(), netlist_.nodes.end(),
                     [&](const auto& node) { return PrimaryInput(node); }) ||
@@ -5545,6 +5556,17 @@ class ScanScheduler::Impl {
       }
     }
     required.insert(data_controllers.begin(), data_controllers.end());
+    std::vector<size_t> autonomous_feedback_goals;
+    for (const auto& group : data_plan.groups) {
+      if (!group.feedback) continue;
+      for (size_t id : group.nodes) {
+        if (explicit_goals.count(id) &&
+            data_plan.primary_inputs.at(id).empty() &&
+            data_plan.scan_inputs.at(id).empty()) {
+          autonomous_feedback_goals.push_back(id);
+        }
+      }
+    }
     const auto [access_context, grouped_reads, read_order] =
         CheckAccessGroups(groups);
     CheckScanConnectivity(required);
@@ -5955,6 +5977,14 @@ class ScanScheduler::Impl {
                   frame.active.emplace(write.id, context_.bool_val(false))
                       .first;
               active->second = active->second || write.enabled;
+              const auto known =
+                  frame.known_data_writes
+                      .emplace(write.id, context_.bool_val(false))
+                      .first;
+              known->second =
+                  known->second ||
+                  (write.enabled &&
+                   write.load.known == ~context_.bv_val(0, node.Width()));
               if (touched.count(write.id)) {
                 touched.at(write.id) = touched.at(write.id) || write.enabled;
               }
@@ -6237,6 +6267,16 @@ class ScanScheduler::Impl {
         }
         UpdateStorageFill(frame, model, replay, reset, control_events, step,
                           event, fill);
+        if (!step.writes.empty()) {
+          // Physical scans alone do not preserve autonomous data-goal fill
+          // intent.
+          for (size_t id : autonomous_feedback_goals) {
+            if (model.eval(frame.active.at(id), true).is_true() &&
+                replay.Value(id) == goals.at(id)) {
+              step.writes.emplace(netlist_.nodes[id].name, goals.at(id));
+            }
+          }
+        }
         AppendDataEndOverrides(replay, &step);
         FilterTapData(&step, parallel, permitted_tap_data);
         if (!step.writes.empty() || !step.expected.empty()) {
@@ -6288,9 +6328,13 @@ class ScanScheduler::Impl {
             netlist_.nodes[id].name);
       }
       const auto history = control_events.find(id);
+      const auto known = frame.known_data_writes.find(id);
+      const auto& expected = known == frame.known_data_writes.end()
+                                 ? frame.active.at(id)
+                                 : known->second;
       if (history != control_events.end()) {
         fill[id] = history->second ? *history->second : initial_fill_.at(id);
-      } else if (model.eval(frame.active.at(id), true).is_true()) {
+      } else if (model.eval(expected, true).is_true()) {
         throw std::runtime_error("missing concrete DataRegister write event");
       }
       if (fill.at(id) != Decode(model, frame.fill.at(id))) {

@@ -135,6 +135,8 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
   std::map<size_t, std::set<size_t>> dependencies;
   std::map<size_t, std::vector<size_t>> consumers;
   size_t remaining = 4 * 1024 * 1024;
+  OneHotReadResolver one_hot(netlist, &remaining);
+  std::set<BitKey> implicit_seen;
   for (const auto& [id, activation] : writes) {
     const auto& node = netlist.nodes[id];
     std::vector<BitReference> pending = node.inputs.at("WriteDataSource");
@@ -144,6 +146,16 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
                      activation.signals->end());
     }
     if (node.reset) pending.push_back(*node.reset);
+    const auto implicit_control = [&](const BitReference& bit) {
+      pending.push_back(bit);
+      if (bit.node != std::numeric_limits<size_t>::max() &&
+          implicit_seen
+              .emplace(bit.node, bit.index, bit.inverted, bit.constant,
+                       bit.virtual_signal)
+              .second) {
+        implicit_controls.push_back(bit);
+      }
+    };
     std::set<size_t> visited;
     auto& sources = dependencies[id];
     while (!pending.empty()) {
@@ -174,8 +186,15 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
         pending.insert(pending.end(), choice.source.begin(),
                        choice.source.end());
       }
-      for (const auto& source : source.one_hot_sources) {
-        pending.insert(pending.end(), source.bits.begin(), source.bits.end());
+      for (const auto& contributor : source.one_hot_sources) {
+        pending.insert(pending.end(), contributor.bits.begin(),
+                       contributor.bits.end());
+        for (const auto& condition : one_hot.Resolve(contributor)) {
+          implicit_control(condition.enable);
+          if (condition.signals) {
+            for (const auto& bit : *condition.signals) implicit_control(bit);
+          }
+        }
       }
       for (const auto& term : source.logic) {
         pending.insert(pending.end(), term.signals.begin(), term.signals.end());
