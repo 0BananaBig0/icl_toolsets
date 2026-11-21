@@ -23,6 +23,42 @@ void Fails(Action action, const std::string& expected) {
   }
   throw std::runtime_error("expected error: " + expected);
 }
+void TestWriteOptionNormalization() {
+  pattern::Design design;
+  design.AddIcl("write_options.icl",
+                "Module Top {DataInPort value[7:0]; "
+                "DataOutPort q[7:0] {Source value;}}");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const auto& mode : {"auto", "off", "on"}) {
+    pattern::Runtime runtime(design, netlist, true);
+    runtime.Execute("write.pdl",
+                    std::string("iWrite value 0xa "
+                                "-ignore_when_value_already_present ") +
+                        mode + "; iApply;");
+    runtime.Finish();
+    Require(runtime.operations().size() == 2 &&
+                runtime.operations()[0].arguments ==
+                    std::vector<std::string>{"value", "0xa"},
+            "validated optioned write must normalize to its target/value");
+    const auto actions = runtime.SourceActions();
+    Require(
+        actions.size() == 1 &&
+            actions[0].arguments ==
+                std::vector<std::string>{
+                    "value", "0xa", "-ignore_when_value_already_present", mode},
+        "original evaluated source arguments must retain the option");
+  }
+  pattern::Runtime invalid(design, netlist);
+  Fails(
+      [&] {
+        invalid.Execute(
+            "invalid.pdl",
+            "iWrite value 256 "
+            "-ignore_when_value_already_present off; iRead q 0; iApply;");
+      },
+      "truncates significant bits");
+}
+
 void TestCallbackAccessBoundary() {
   pattern::Design design;
   design.AddIcl("callbacks.icl", R"(
@@ -804,7 +840,8 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestCallbackAccessBoundary,
+  for (const auto test : {TestWriteOptionNormalization,
+                          TestCallbackAccessBoundary,
                           TestConstructorAndParseFailures,
                           TestNestedPendingEndOfStream,
                           TestFallbackInstanceResolution,
