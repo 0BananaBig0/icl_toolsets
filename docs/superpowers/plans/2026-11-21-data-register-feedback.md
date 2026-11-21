@@ -4,6 +4,8 @@ Spec: docs/superpowers/specs/2026-11-21-data-register-feedback-design.md
 Base: master ed64d30; user-delegated implementation choices remain authorized.
 Global Constraints: preserve old DAG/reset behavior, budgets and rollback;
 no new solver, dependency, RTL or metadata. Callbacks follow separately.
+After all four tasks, use the required single independent branch review/fix
+phase, then archive the ledger and merge/push/delete before callback work.
 
 ## Review Focus
 - Old state anchors feedback; no arbitrary simultaneous fixed-point choice.
@@ -34,9 +36,8 @@ new tests/src/pattern/test_data_register_feedback.py; Makefile registration.
 generated/reset replay and atomic negatives; GREEN.
 - [x] Matched feedback/control scale with hashes, sizes, wall time and RSS.
 
-### Task 4: Qualification and integration
+### Task 4: Qualification and evidence
 Files: current guide/model/tracker plus this spec/plan.
-- [ ] Full native/dynamic/static/SAN/style/C++17/package and frozen identities.
-- [ ] One independent branch review and one necessary blocking fix pass.
-- [ ] Record decisions/costs and exact vendor limitation; archive ledger,
-merge/push/delete, then continue remaining item4 callback work.
+- [x] Full native/dynamic/static/SAN/style/C++17/package and frozen identities.
+- [x] Record decisions/costs and vendor limitation without a new equivalence
+claim; preserve evidence for the required final review and integration phases.

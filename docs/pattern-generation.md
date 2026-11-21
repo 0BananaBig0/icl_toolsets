@@ -372,8 +372,15 @@ Limits: 4096 writable DataRegisters, 4 Mi dependency visits, 256 primary vectors
 4096 input bits, 262144 read-route visits and at most 256 selection guards per path.
 The temporal model limits horizon × (netlist nodes + input bits) to 262144, with
 2 seconds per solver invocation and 15 seconds across horizons. Exhaustion reports
-a limit, not proven unreachability. Cyclic/self-referential data updates and
-callbacks are not yet supported. Mixed primary-drive/scan DataRegister access
+a limit, not proven unreachability. Self-referential and mutually dependent data
+updates use bounded simultaneous snapshots within each feedback component,
+starting from real pre-event storage. A self hold retains its actual value;
+convergent unknown intermediates may settle, while known oscillations reject.
+The limits are32 delta rounds and4 Mi feedback-bit evaluations per native event
+or symbolic query. Settled symbolic events cannot discard previously known
+storage bits. These are digital cascade semantics, without a physical timing or
+metastability claim. DataRegister PDL callbacks remain unsupported.
+Mixed primary-drive/scan DataRegister access
 is supported. Ordinary write-only groups of at least four addressed data goals on
 one physical scan-driven address vector use deterministic address batches.
 Already-satisfied goals join the first necessary batch, or one controller update
@@ -7435,3 +7442,47 @@ gates and source package. The actual prior full13 native pass is reused through
 input/product hashes, failed pre-fix receipts, review and costs are retained under
 build/occurrence-reset-20261121/, with final evidence under review-fix/.
 Coverage1 remains excluded and other inventory items keep their own status.
+
+## Bounded DataRegister feedback (Task144, 2026-11-21)
+
+Feedback components share one immutable dependency plan between native replay
+and primary/mixed symbolic execution. The acyclic name-ordered cascade path
+remains single-pass. Cyclic components evaluate their members simultaneously
+from the preceding delta and require an unchanged final bits/known snapshot.
+No algebraic solution may invent a new self-held value. Capture observes storage
+before the falling Update event; settling adds no clock edges.
+
+Every changed feedback snapshot checks held resource bits, including computed
+outputs. Native tentative checks are scoped to the current call.
+NetworkState input/clock failures restore pins, shift/update storage and event
+history; ScanScheduler retains the outer TAP-controller transaction. The last fully known
+write/reset controls fill; a self-disabling enable does not erase an earlier
+write. Primary frames include already-driven reset/control pins.
+
+A feedback-derived reset of storage outside its component must retain its level
+and known mask through every delta. Changing external reset events reject
+atomically; masked/invariant paths qualify. General pulse execution remains
+inventory item3. DataRegister PDL callbacks remain separate item4 work.
+The32-round/4 Mi-work limits do not raise existing4096-register, dependency,
+primary-input or solver bounds. Failure to prove convergence is a bounded-model
+diagnostic, not proof of physical instability or unreachable hardware.
+
+Focused evidence includes native state/symbolic/scheduler checks and11 CLI
+methods covering source, associated-flat and generated-PDL replay; known/unknown
+self holds and mutual convergence; capture ordering; held-resource release;
+scoped-check rollback/retry; masked resets and atomic negative artifacts.
+Full qualification passes41 steps: all13 native and13 native sanitizer suites,
+53 suites/890 tests for each dynamic/static generator variant, nine affected
+sanitizer CLI suites plus main71,39 changed-code format/tidy/strict C++17 gates,
+and source packaging. Frozen identities verify3997 inputs/29 products and the
+54-process benchmark binary. Evidence is retained under
+build/data-register-feedback-20261121/final/. Independent branch review follows
+this qualification; integration remains gated on its findings.
+
+The representative scale check records54 actual processes: three repeats of
+source/flat/generated forms for16/128 groups and matched parent/current acyclic
+controls. At128 groups/512 bits, median three-replay wall seconds are1.046 parent
+DAG,0.998 current DAG and3.705 current feedback; peak RSS is124192/125652/126120KiB.
+GCC16.2.1, Z3 4.13.3, Linux WSL2 x86_64. Inputs, outputs, commands and binary hashes
+are retained in build/data-register-feedback-20261121/scale/. These measurements
+make no speedup or global-optimality claim. Coverage item1 remains excluded.
