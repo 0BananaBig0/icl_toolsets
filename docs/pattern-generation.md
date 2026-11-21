@@ -7651,3 +7651,10 @@ Technical accuracy was checked against source, native assertions and recorded
 processes. The guide example above was executed and emits value1. Its reader
 walkthrough is an author self-review, recorded in doc-reader-author-check.json;
 no independent usability-reader claim is made.
+
+One fresh independent code reviewer approves this increment with zero Critical,
+Important or Minor findings. Its command host could not start, so the reviewer
+assessed actual source/parser/test excerpts and qualification output relayed by
+the root agent. No independent test rerun or full-checkout inspection is claimed.
+General load elimination, physical observations and wider vendor equivalence
+remain outside this payload fix. The report is retained in the evidence.
