@@ -7590,5 +7590,71 @@ No second review is claimed. Report and raw probes are retained in the evidence.
 
 The review also isolates an existing unrelated value-loss defect: a trailing
 iWrite -ignore_when_value_already_present off/on emits0 for a requested1 in
-matched parent/current primary-pin controls. It is tracked for the next increment
-under item10; it has not been waived or called correct.
+matched parent/current primary-pin controls. It was tracked under item10 and is fixed by Task146 below; the original
+reproduction evidence is retained.
+
+## Task146: optioned iWrite payloads
+
+A validated trailing -ignore_when_value_already_present option no longer replaces
+the requested value with an X mask. Runtime now records the existing internal
+target/value pair after shared option validation. Original evaluated source
+arguments remain available for source rewriting; procedure bodies and once-only
+Tcl evaluation remain unchanged. History, merge, reset planning, reservations
+and generation receive the same value as an unflagged write.
+
+For example, with a writable scalar data port, this requests value 1:
+
+```tcl
+iWrite data 1 -ignore_when_value_already_present off
+iApply
+```
+
+The auto/off/on forms retain the native generator's existing explicit-load
+policy. The v2023.4 Shell Reference Manual iWrite topic describes on as permission
+to omit a load when the value is already present, rather than a prohibition on
+loading. This fix introduces no skip-load optimizer or global retargeting-option
+command. Broader scheduling optimization remains item 10. These are native PDL
+usage examples; Tessent command mode/context requirements remain its own.
+
+Invalid numeric widths and missing enum values still reject before publication,
+even if a later reset cancels the queue. Six focused methods cover primary pins,
+scan and parallel storage, aliases/inversions/enums/X masks, merged calls,
+once-only Tcl evaluation, cancellation and source/flat/generated replay. Native
+assertions check normalized operation pairs, original traced arguments and
+validation inside a queue containing reads. The saved parent fails 16 subcases;
+the fixed executable passes all six methods.
+
+Four fresh Tessent 2026.2 cases (baseline/auto/off/on) complete successfully in
+patterns -ijtag / analysis with an open pattern set. All four exports are equal
+and explicitly write 0 then 1 and compare 1. Sixteen native forms (source, flat,
+generated and vendor output with its exported procedure invoked) agree exactly.
+This is bounded changed-value PIO payload agreement, without a physical-import,
+general load-elision, timing or hardware-equivalence claim. Raw inputs, commands,
+logs, hashes and exports are under build/write-ignore-value-20261122/vendor/.
+
+The scale record contains 54 actual processes: three repeats of source/flat/
+generated forms at 16/128 applies to a 32-bit pin. Matched parent/current unflagged
+controls and current mixed-mode flagged input have identical outputs per size.
+At 128 applies, median three-form wall times are 0.495/0.494/0.495 s and peak RSS is
+75524/75592/75604 KiB. Environment: GCC 16.2.1, Z3 4.13.3, Linux WSL2 x86_64.
+These measured costs do not establish a speedup or global runtime guarantee.
+Receipts are under build/write-ignore-value-20261122/scale/.
+
+All33 final qualification steps pass:13 native and13 leak-enabled ASan/UBSan
+native suites,55 suites/906 tests per dynamic/static generator, six focused and71
+main sanitizer methods, six changed-code format/tidy/strict C++17 gates and source
+packaging. Frozen checks verify3999 source/test/build inputs and29 products.
+Evidence is under build/write-ignore-value-20261122/final/. Strict coverage item1
+remains excluded with unchanged thresholds.
+
+Technical accuracy was checked against source, native assertions and recorded
+processes. The guide example above was executed and emits value1. Its reader
+walkthrough is an author self-review, recorded in doc-reader-author-check.json;
+no independent usability-reader claim is made.
+
+One fresh independent code reviewer approves this increment with zero Critical,
+Important or Minor findings. Its command host could not start, so the reviewer
+assessed actual source/parser/test excerpts and qualification output relayed by
+the root agent. No independent test rerun or full-checkout inspection is claimed.
+General load elimination, physical observations and wider vendor equivalence
+remain outside this payload fix. The report is retained in the evidence.

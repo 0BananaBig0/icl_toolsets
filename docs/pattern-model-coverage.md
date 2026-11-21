@@ -4347,4 +4347,21 @@ increment after18 reviewer-designed probes. Tool execution was proxied through
 the author because the reviewer's host was unavailable; the reviewer made the
 independent judgment from relayed source and results. No independent gate rerun
 or usability-reader claim is made. Existing iWrite trailing-option value loss is
-separately reproduced on parent/current and remains urgent item10 work.
+separately reproduced on parent/current and fixed by Task146 below.
+
+## Task146: optioned write values
+
+Validated iWrite auto/off/on hints preserve their supplied payload at the shared
+Runtime boundary, including aliases, enum values, masks and merged calls.
+Original evaluated source arguments remain intact. Invalid widths/enums reject
+atomically even when reset later cancels the queue. Existing explicit-load
+planning remains; no skip-load optimizer or global option command is added.
+
+All33 qualification steps pass:13 native/13 native sanitizer suites,55x906
+dynamic/static generator tests, six focused and71 main sanitizer methods, six
+quality gates and source packaging. Frozen checks verify3999 source/test/build
+inputs and29 products. Four successful Tessent2026.2 cases and16 matching native
+forms give bounded changed-value PIO agreement. The54-process scale record
+compares matched16/128-apply controls without a speedup claim. See
+[the implementation evidence](pattern-generation.md#task146-optioned-iwrite-payloads).
+Broader item10 scheduling and item4 callback execution remain open.

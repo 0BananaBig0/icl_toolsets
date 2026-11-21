@@ -943,6 +943,10 @@ class Runtime::Impl {
       return;
     }
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
+    if (name == "iWrite" && operation.arguments.size() > 2) {
+      // Every mode permits a load; retain the native explicit-load policy.
+      operation.arguments.resize(2);
+    }
     for (const auto& frame : frames_) {
       if (!frame.invocation.empty()) {
         operation.call_stack.push_back(frame.invocation);
