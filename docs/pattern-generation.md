@@ -379,7 +379,9 @@ convergent unknown intermediates may settle, while known oscillations reject.
 The limits are32 delta rounds and4 Mi feedback-bit evaluations per native event
 or symbolic query. Settled symbolic events cannot discard previously known
 storage bits. These are digital cascade semantics, without a physical timing or
-metastability claim. DataRegister PDL callbacks remain unsupported.
+metastability claim. DataRegister callback declarations and their parameterized
+arguments survive flat ICL serialization. Callback procedure invocation remains
+unsupported; declaration replay does not perform a register access.
 Mixed primary-drive/scan DataRegister access
 is supported. Ordinary write-only groups of at least four addressed data goals on
 one physical scan-driven address vector use deterministic address batches.
@@ -7501,3 +7503,78 @@ DAG, 0.946 s for the current DAG and 3.606 s for feedback; peak RSS is
 Inputs, exports, commands and hashes are in
 build/data-register-feedback-20261121/scale-review-fix/. These measurements make
 no speedup or global-optimality claim. Coverage item1 remains excluded.
+
+## Task145: typed DataRegister callback declarations
+
+ReadCallBack and WriteCallBack declarations now retain resolved namespace and
+procedure names, with distinct data/register placeholders and literal arguments.
+Each declaration resolves parameters in its own elaborated instance. Numbers use
+the shared constant evaluator, retaining widths and unknown bits; integer
+expressions keep its existing checked 64-bit limits. Identifier parameters must
+be scalar identifier strings. Type/cardinality validation remains in the shared
+ICL parser. No duplicate type checker or metadata version was introduced.
+
+Flat ICL writes canonical callback properties using existing literal quoting and
+restores the original declaration scopes through the existing origin metadata.
+Literal strings containing <D>, <R>, Tcl characters, quotes or backslashes remain
+literal values. Procedure definitions need not be loaded for model serialization.
+For example, this declaration can be exported with the normal --debug model
+output without defining a PDL procedure:
+
+```icl
+Module Example {
+  Parameter owner = "Example";
+  DataRegister value[3:0] {
+    WriteCallBack $owner store <D> <R> 4'hA;
+  }
+}
+```
+
+Use an access-free PDL input such as `iNote {Inspect callback model}` to inspect
+that output. An iWrite/iRead of the callback register still requires the future
+invocation implementation; defining an iProc does not enable that access yet.
+
+Seven focused CLI methods cover source/flat/generated model replay, namespace
+forms, instance specializations, invalid names/type mixtures and preservation of
+existing output after errors. Native checks assert typed argument values and
+canonical replay explicitly.
+
+Applied direct/aliased reads and writes that require a declared callback reject
+at iApply until procedure invocation exists. This prevents an ordinary observable
+route from silently replacing a required callback. Reset-canceled queues,
+event-free assumptions/history and explicit output comparisons remain valid.
+The callback-free path avoids the pending-callback scan.
+
+This increment models declarations only. Direct/implicit callback invocation,
+queue ordering/cancellation, read observation and sourced-value execution remain
+item4 work. The unquoted module-symbol parameter spelling in the standard's
+callback example remains separate source-audit work; quoted identifier parameters
+are the supported form here. No new vendor execution/equivalence claim is made. The retained 2026.2 writer
+probe and a fresh read-only callback probe each reject their callback property at
+read_icl with ICL20-1 before PDL execution. Neither provides a callback export to
+compare. The fresh reader receipt, input hashes and logs are under
+build/callback-execution-discovery-20261122/read-callback/.
+
+The scale record contains 54 actual processes: three repeats of source/flat/
+generated forms at 256 and 2048 instances (512 and 4096 registers), with matched
+parent/current controls. At 2048 instances, median three-replay wall times are
+0.394 s parent control, 0.395 s current control and 0.444 s callback model; peak RSS is
+78348/79120/83320 KiB. These are measured model/serialization costs, without a
+speedup or global-optimality claim. Environment: GCC 16.2.1, Z3 4.13.3, Linux WSL2
+x86_64. Inputs, commands, output hashes and the parent executable snapshot are
+under build/data-register-callback-model-20261122/scale/.
+
+Post-guard qualification passes all 33 steps: 13 native suites, 13 leak-enabled
+ASan/UBSan native suites, 54 suites/900 tests per dynamic/static generator,
+callback-model 7 and main 71 sanitizer methods, 21 changed-code format/tidy/strict
+C++17 gates and source packaging. Hash checks verify 3998 source/test/build
+inputs, 29 products and the measured executable. Evidence is under
+build/data-register-callback-model-20261122/final/. The pre-guard receipts are
+retained separately and are not the final result. The exact original scalar
+callback-read bypass now rejects with the existing output preserved.
+
+Technical accuracy was checked against the implementation, native assertions
+and recorded processes. The guide example and its unsupported-access outcome
+were executed; the reader walkthrough is an author self-review, separately
+recorded in doc-reader-author-check.json. No independent usability reader is
+claimed. Coverage item 1 remains excluded with unchanged thresholds.

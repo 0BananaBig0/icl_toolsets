@@ -28,5 +28,5 @@ new tests/src/pattern/test_data_register_callback_model.py; Makefile.
 
 ### Task 3: Qualification and current evidence
 Files: current guide/model/tracker plus this spec/plan.
-- [ ] Native/dynamic/static/SAN/style/C++17/package checks and hashed identities.
-- [ ] Record remaining invocation work and prepare final independent review.
+- [x] Native/dynamic/static/SAN/style/C++17/package checks and hashed identities.
+- [x] Record remaining invocation work and prepare final independent review.
