@@ -22,13 +22,20 @@ state in existing argument wrappers; retain cheaper fallback order.
 
 ### Task 2: Boundaries, replay and scale
 Files: existing argument/compound reset tests and scoped implementation fixes.
-- [ ] Cover empty/caught calls, side effects, prefixes/vectors, multi-file EOF,
+- [x] Cover empty/caught calls, side effects, prefixes/vectors, multi-file EOF,
 namespace interference/cleanup, unexpected arguments/count and immutable bodies.
-- [ ] Source/flat/generated/reset and idempotence; retain impossible negatives.
-- [ ] Measure repeated caller scale and bounded output growth; commit/task-done.
+- [x] Source/flat/generated/reset and idempotence; retain impossible negatives.
+- [x] Measure repeated caller scale and bounded output growth; commit/task-done.
 
 ### Task 3: Qualification and integration
 Files: current guide/tracker plus this spec/plan.
 - [ ] Full native/dynamic/static/SAN/style/C++17/package checks and identities.
 - [ ] One independent whole-branch review and one necessary blocking fix pass.
 - [ ] Record decisions/costs, archive own ledger; merge/push/delete task branch.
+
+Task2 measurements (single local runs; no speedup claim): equivalent plain
+parent/current outputs match at64/256/512 calls. Parent0.229/0.779/1.446s versus
+current0.224/0.769/1.470s. Invocation repair0.626/2.375/4.437s and71040/72176/
+74528KiB peak RSS; rewritten source1443/1829/2341 bytes. Existing runtime budgets
+remain unchanged. Exact commands, environment, source/product hashes and all
+nine measurements: build/occurrence-reset-20261121/scale/results.json.
