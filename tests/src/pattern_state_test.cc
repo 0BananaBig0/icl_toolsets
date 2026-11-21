@@ -520,16 +520,146 @@ void TestDataCascadeScaleAndFeedback() {
   pattern::Design cyclic;
   cyclic.AddIcl("cyclic.icl", source);
   const auto loop = pattern::Elaborate(cyclic, "Cascade");
-  pattern::NetworkState failed(loop), before(failed);
+  pattern::NetworkState failed(loop);
+  failed.ApplyInputs({{loop.node_ids.at("data"), "1"}});
+  Require(
+      failed.Value(loop.node_ids.at("r0")) == "x",
+      "unknown feedback retains X instead of choosing a binary fixed point");
+  for (size_t i = 0; i < count; ++i) {
+    failed.Assume(loop.node_ids.at("r" + std::to_string(i)), i % 2 ? "1" : "0");
+  }
+  const pattern::NetworkState before(failed);
   bool rejected = false;
   try {
-    failed.ApplyInputs({{loop.node_ids.at("data"), "1"}});
+    failed.ApplyInputs({{loop.node_ids.at("data"), "0"}});
   } catch (const std::exception& error) {
-    rejected = std::string(error.what()).find("cyclic data-register") !=
+    rejected = std::string(error.what()).find("data-register feedback") !=
                std::string::npos;
   }
   Require(rejected && failed.SameState(before),
-          "cyclic data updates reject atomically");
+          "unproved feedback convergence rejects atomically");
+  for (size_t i = 0; i < count; ++i) {
+    failed.Assume(loop.node_ids.at("r" + std::to_string(i)), "1");
+  }
+  failed.ApplyInputs({{loop.node_ids.at("data"), "0"}});
+  Require(
+      failed.Value(loop.node_ids.at("r0")) == "1",
+      "a failed feedback event can retry from an explicitly stable snapshot");
+}
+
+void TestDataRegisterFeedback() {
+  for (const bool reverse : {false, true}) {
+    pattern::Design design;
+    const std::string a =
+        "DataRegister a[3:0] {WriteDataSource b; WriteEnSource enable; "
+        "ResetValue 0;}";
+    const std::string b =
+        "DataRegister b[3:0] {WriteDataSource 1'b0,a[3:1]; WriteEnSource "
+        "enable; ResetValue 0;}";
+    design.AddIcl("data_feedback.icl",
+                  "Module Top {DataInPort enable; ResetPort rst;" +
+                      (reverse ? b + a : a + b) +
+                      "DataRegister hold[3:0] {WriteDataSource hold; "
+                      "WriteEnSource enable; ResetValue 0;}"
+                      "DataRegister shift[3:0] {WriteDataSource "
+                      "1'b0,shift[3:1]; WriteEnSource enable; ResetValue 0;}"
+                      "}");
+    const auto original = pattern::Elaborate(design, "Top");
+    pattern::Design replay;
+    replay.AddIcl("flat.icl", pattern::SerializeIcl(original));
+    const auto flat = pattern::Elaborate(replay, "Top");
+    for (const auto* netlist : {&original, &flat}) {
+      const auto enable = netlist->node_ids.at("enable"),
+                 rst = netlist->node_ids.at("rst");
+      const auto aid = netlist->node_ids.at("a"),
+                 bid = netlist->node_ids.at("b");
+      const auto hold = netlist->node_ids.at("hold"),
+                 shift = netlist->node_ids.at("shift");
+      pattern::NetworkState state(*netlist);
+      state.Drive(rst, "0");
+      state.Assume(hold, "1010");
+      for (const auto& control : {"0", "1", "x"}) {
+        state.ApplyInputs({{enable, control}});
+        Require(state.Value(hold) == "1010",
+                "self hold keeps its actual old value for all enables");
+        const auto events = state.TakeControlEvents();
+        Require(events.count(hold) == (std::string(control) == "1"),
+                "only definite known self writes enter controlling history");
+      }
+      state.Assume(hold, "10xx");
+      state.Assume(aid, "1111");
+      state.Assume(bid, "1111");
+      state.Assume(shift, "1111");
+      state.ApplyInputs({{enable, "1"}});
+      Require(state.Value(hold) == "10xx" && state.Value(shift) == "0000" &&
+                  state.Value(aid) == "0000" && state.Value(bid) == "0000",
+              "simultaneous feedback deltas converge independently of "
+              "declaration order");
+      state.Assume(aid, "xxxx");
+      state.Assume(bid, "xxxx");
+      state.Assume(shift, "xxxx");
+      state.ApplyInputs({{enable, "1"}});
+      Require(state.Value(aid) == "0000" && state.Value(bid) == "0000" &&
+                  state.Value(shift) == "0000",
+              "feedback convergence can establish known zero bits without "
+              "inventing hold bits");
+      state.Drive(rst, "1");
+      state.ApplyInputs({{enable, "1"}});
+      Require(state.Value(hold) == "0000" && state.Value(aid) == "0000" &&
+                  state.Value(bid) == "0000" && state.Value(shift) == "0000",
+              "reset priority is retained in feedback groups");
+    }
+  }
+}
+
+void TestDataFeedbackClockAndRollback() {
+  pattern::Design design;
+  design.AddIcl("feedback_clock.icl", R"(Module Top {
+ ScanInPort si;
+ ScanRegister enable {ScanInSource si;}
+ DataRegister shift[3:0] {WriteDataSource 1'b0,shift[3:1]; WriteEnSource enable;}
+ ScanRegister observed[3:0] {ScanInSource enable; CaptureSource shift;}
+ ScanOutPort so {Source observed[0];}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto enable = netlist.node_ids.at("enable"),
+             shift = netlist.node_ids.at("shift"),
+             observed = netlist.node_ids.at("observed");
+  pattern::NetworkState state(netlist);
+  state.SetRegister(enable, "1", "0");
+  state.Assume(shift, "1111");
+  state.Clock(
+      {{enable, {'0', '0', '0', '1'}}, {observed, {'1', '0', '0', '1'}}}, true);
+  Require(state.Value(observed, true) == "1111" && state.Value(shift) == "1111",
+          "capture uses the old data snapshot before any update settling");
+  state.Clock({{enable, {'0', '0', '1', '1'}}}, false);
+  Require(state.Value(shift) == "0000" && state.Value(observed, true) == "1111",
+          "feedback settles only after the falling update event");
+
+  pattern::Design oscillating;
+  oscillating.AddIcl("oscillating.icl", R"(Module Top {
+ DataInPort enable;
+ DataRegister value {WriteDataSource ~value; WriteEnSource enable;}
+})");
+  const auto loop = pattern::Elaborate(oscillating, "Top");
+  pattern::NetworkState failed(loop);
+  const auto value = loop.node_ids.at("value"),
+             gate = loop.node_ids.at("enable");
+  failed.Assume(value, "0");
+  failed.Drive(gate, "0");
+  const pattern::NetworkState before(failed);
+  bool rejected = false;
+  try {
+    failed.ApplyInputs({{gate, "1"}});
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("data-register feedback") !=
+               std::string::npos;
+  }
+  Require(rejected && failed.SameState(before),
+          "oscillating feedback rolls back pins, storage and events");
+  failed.ApplyInputs({{gate, "0"}});
+  Require(failed.Value(value) == "0",
+          "disabled feedback retries without changing the saved value");
 }
 
 void TestPinSnapshot() {
@@ -1111,6 +1241,8 @@ int main() {
     TestRegisterEvents();
     TestDataRegisterStateSnapshot();
     TestDataRegisterEvents();
+    TestDataRegisterFeedback();
+    TestDataFeedbackClockAndRollback();
     TestAddressedDataEvents();
     TestAmbiguousDataAddress();
     TestDataCascadeScaleAndFeedback();

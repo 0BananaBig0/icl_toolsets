@@ -11,12 +11,19 @@
 #include "pattern/pattern_address.h"
 
 namespace pattern {
+inline constexpr size_t kDataRegisterDeltaLimit = 32;
+inline constexpr size_t kDataRegisterFeedbackBits = 4 * 1024 * 1024;
+struct DataRegisterGroup {
+  std::vector<size_t> nodes;
+  bool feedback = false;
+};
 // Immutable event dependencies shared by concrete replay and symbolic planning.
 // A null address signal list denotes an ordinary selectable register.
 struct DataRegisterPlan {
   explicit DataRegisterPlan(const Netlist& netlist);
   std::map<size_t, AddressRequirement> writes;
   std::vector<size_t> order;
+  std::vector<DataRegisterGroup> groups;
   std::map<size_t, std::set<size_t>> primary_inputs, scan_inputs;
 };
 struct DataReadGuard {

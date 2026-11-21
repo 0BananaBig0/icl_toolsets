@@ -18,6 +18,7 @@
 #include "pattern/pattern_symbolic.h"
 #include "pattern/pattern_tap_execution.h"
 #include "pattern/pattern_values.h"
+#include "utility/strong_components.h"
 
 namespace pattern {
 namespace {
@@ -3602,39 +3603,8 @@ class ScanScheduler::Impl {
     if (!feedback) {
       for (size_t id : reset_order_) reset_components_.push_back({id});
     } else {
-      // Iterative Kosaraju keeps graph depth off the C++ call stack.
-      std::set<size_t> visited;
-      std::vector<size_t> finished;
-      for (size_t root : storage) {
-        std::vector<std::pair<size_t, bool>> pending{{root, false}};
-        while (!pending.empty()) {
-          const auto [id, expanded] = pending.back();
-          pending.pop_back();
-          if (expanded) {
-            finished.push_back(id);
-          } else if (visited.insert(id).second) {
-            pending.emplace_back(id, true);
-            for (size_t child : children[id]) {
-              pending.emplace_back(child, false);
-            }
-          }
-        }
-      }
-      visited.clear();
-      for (auto root = finished.rbegin(); root != finished.rend(); ++root) {
-        if (!visited.insert(*root).second) continue;
-        std::vector<size_t> component, pending{*root};
-        while (!pending.empty()) {
-          const size_t id = pending.back();
-          pending.pop_back();
-          component.push_back(id);
-          for (size_t parent : dependencies[id]) {
-            if (visited.insert(parent).second) pending.push_back(parent);
-          }
-        }
-        std::sort(component.begin(), component.end());
-        reset_components_.push_back(std::move(component));
-      }
+      reset_components_ =
+          toolsets::StrongComponents(storage, dependencies, children);
       reset_order_.clear();
       for (const auto& component : reset_components_) {
         reset_order_.insert(reset_order_.end(), component.begin(),

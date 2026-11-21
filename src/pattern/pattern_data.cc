@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <tuple>
 
+#include "utility/strong_components.h"
+
 namespace pattern {
 DataReadRoutes::DataReadRoutes(const Netlist& netlist, DataReadMode mode) {
   constexpr size_t kMissing = std::numeric_limits<size_t>::max();
@@ -130,7 +132,8 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
                       : enable->second.at(0)});
     }
   }
-  std::map<size_t, std::set<size_t>> dependencies, consumers;
+  std::map<size_t, std::set<size_t>> dependencies;
+  std::map<size_t, std::vector<size_t>> consumers;
   size_t remaining = 4 * 1024 * 1024;
   for (const auto& [id, activation] : writes) {
     const auto& node = netlist.nodes[id];
@@ -178,10 +181,12 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
         pending.insert(pending.end(), term.signals.begin(), term.signals.end());
       }
     }
-    for (size_t source : sources) consumers[source].insert(id);
+    for (size_t source : sources) consumers[source].push_back(id);
   }
   std::set<std::pair<std::string, size_t>> ready;
+  std::map<size_t, size_t> waiting;
   for (const auto& [id, sources] : dependencies) {
+    waiting[id] = sources.size();
     if (sources.empty()) ready.emplace(netlist.nodes[id].name, id);
   }
   while (!ready.empty()) {
@@ -193,15 +198,44 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
                                       primary_inputs[id].end());
       scan_inputs[consumer].insert(scan_inputs[id].begin(),
                                    scan_inputs[id].end());
-      dependencies[consumer].erase(id);
-      if (dependencies[consumer].empty()) {
+      if (--waiting[consumer] == 0) {
         ready.emplace(netlist.nodes[consumer].name, consumer);
       }
     }
   }
-  if (order.size() != writes.size()) {
-    throw std::runtime_error(
-        "cyclic data-register update dependencies are not supported");
+  if (order.size() == writes.size()) {
+    for (size_t id : order) groups.push_back({{id}, false});
+    return;
+  }
+  std::vector<size_t> vertices;
+  for (const auto& [id, access] : writes) vertices.push_back(id);
+  const auto components =
+      toolsets::StrongComponents(vertices, dependencies, consumers);
+  std::map<size_t, size_t> membership;
+  order.clear();
+  for (size_t group = 0; group < components.size(); ++group) {
+    const auto& members = components[group];
+    for (size_t id : members) membership[id] = group;
+    std::set<size_t> primary, scan;
+    for (size_t id : members) {
+      primary.insert(primary_inputs[id].begin(), primary_inputs[id].end());
+      scan.insert(scan_inputs[id].begin(), scan_inputs[id].end());
+      for (size_t parent : dependencies.at(id)) {
+        if (membership.at(parent) == group) continue;
+        primary.insert(primary_inputs[parent].begin(),
+                       primary_inputs[parent].end());
+        scan.insert(scan_inputs[parent].begin(), scan_inputs[parent].end());
+      }
+    }
+    for (size_t id : members) {
+      primary_inputs[id] = primary;
+      scan_inputs[id] = scan;
+    }
+    groups.push_back(
+        {members,
+         members.size() > 1 ||
+             dependencies.at(members.front()).count(members.front()) != 0});
+    order.insert(order.end(), members.begin(), members.end());
   }
 }
 const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(

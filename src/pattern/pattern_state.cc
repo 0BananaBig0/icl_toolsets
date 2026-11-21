@@ -399,10 +399,9 @@ void NetworkState::ApplyInputs(const std::map<size_t, std::string>& values) {
 void NetworkState::UpdateDataRegisters(char event) {
   if (!has_data_registers_) return;
   const auto& plan = DataRegisters();
-  for (size_t id : plan.order) {
+  const auto updated = [&](size_t id, SignalEvaluator& values) {
     const auto& node = netlist_.nodes[id];
     const auto& activation = plan.writes.at(id);
-    SignalEvaluator values(*this);
     const char enabled = And(event, values.Active(activation));
     const auto load = values.Bits(node.inputs.at("WriteDataSource"));
     const char reset = node.reset ? values.Read(*node.reset) : '0';
@@ -417,7 +416,43 @@ void NetworkState::UpdateDataRegisters(char event) {
       }
       next = Choose(reset, node.constants.at("ResetValue").data, next);
     }
-    update_[id] = std::move(next);
+    return next;
+  };
+  size_t remaining = kDataRegisterFeedbackBits;
+  for (const auto& group : plan.groups) {
+    if (!group.feedback) {
+      SignalEvaluator values(*this);
+      const size_t id = group.nodes.front();
+      update_[id] = updated(id, values);
+      continue;
+    }
+    bool stable = false;
+    for (size_t round = 0; round < kDataRegisterDeltaLimit; ++round) {
+      for (size_t id : group.nodes) {
+        const auto width = netlist_.nodes[id].Width();
+        if (width > remaining) {
+          throw std::runtime_error(
+              "data-register feedback bit-work limit; fixed point not proved");
+        }
+        remaining -= width;
+      }
+      SignalEvaluator values(*this);
+      std::vector<std::string> next;
+      next.reserve(group.nodes.size());
+      stable = true;
+      for (size_t id : group.nodes) {
+        next.push_back(updated(id, values));
+        stable = stable && next.back() == update_[id];
+      }
+      for (size_t i = 0; i < group.nodes.size(); ++i) {
+        update_[group.nodes[i]] = std::move(next[i]);
+      }
+      if (stable) break;
+    }
+    if (!stable) {
+      throw std::runtime_error(
+          "data-register feedback delta limit; fixed point not proved");
+    }
   }
   Reset();
 }
