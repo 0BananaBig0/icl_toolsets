@@ -10,11 +10,14 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Task143 implements recorded-invocation caller reset repair:36 caller methods,
-compound12, native runtime and the full13 native suites pass. Full dynamic/static,
-sanitizer and packaging qualification is running. Two fresh Tessent2026.2 runs
-produce byte-identical rewrite/reference exports; eight nonempty physical
-source/flat/generated replays match. Final independent review is pending.
+Task143 completes the inventory's state-dependent/identical-argument caller
+reset repair:40 caller methods,35 reservation methods and compound12 pass.
+All52 generator suites/879 cases per dynamic/static variant, fresh sanitizer
+runtime/eight reset-resource suites/main71 and source packaging pass. The13
+native suites reuse their actual full pass after3992 shared inputs and13 products
+are verified unchanged. One Critical and four Important review findings are
+fixed in one verified pass. Two fresh post-fix Tessent2026.2 runs produce equal
+full exports; eight nonempty physical source/flat/generated replays match.
 
 Task141 is integrated at0188a6a:13 native pattern suites,51 generator
 suites/852 cases per dynamic/static variant, leak-enabled sanitizers,30
@@ -440,7 +443,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | iClock/iClockOverride and relative waits work on qualified clock-only routes; restricted state-free absolute waits preserve literal time. General stateful time/clock events remain pending. |
-| Observation getters | `iGetReadData`/`iGetMiscompares` evaluate fully supplied explicit history; applied reads invalidate their target bits. Live observations, `iGetStatus` and interface/chain history remain unavailable. |
+| Observation getters | `iGetReadData`/`iGetMiscompares` evaluate fully supplied explicit history; applied reads invalidate their target bits. Provably zero `iGetStatus` is supported; applied-read observations and interface/chain history remain unavailable. |
 
 This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
@@ -562,9 +565,10 @@ files are combined in command-line order, with separators that preserve commands
 after continued EOF comments. When no release is needed, a single input is
 preserved byte-for-byte.
 
-Task143 first strictly replays the recorded operations. An already valid source
-is preserved without adding redundant releases. Its invocation-sensitive
-fallback below is implemented; full qualification and final review are running.
+Task143 first executes and strictly replays the actual joined candidate. An
+already valid source is preserved without adding redundant releases. Every
+candidate must retain the original operations and final PDL level. Unsafe file
+return boundaries or skipped invocation cleanup reject before publication.
 
 The planner follows transitive reset dependencies, including nested
 `AccessTogether` aliases and logic-driven resets supported by the symbolic
@@ -610,7 +614,9 @@ occurrences; argument-evaluation failures do not. Original words evaluate once
 before the preamble and call. Unexpected arguments/counts and namespace
 interference reject before publication. Normal completion checks final counts,
 removes private state and restores the actual final PDL level, including across
-ordered files. Procedure definitions remain byte-for-byte. This is checked
+ordered files. A persistent mismatch flag survives caller catch. Cleanup checks
+all array keys and immutable values; a separate verifier attests that cleanup
+completed even if user code returns early. Procedure definitions remain byte-for-byte. This is checked
 specialization of the recorded execution, without a universal equivalence claim
 for arbitrary external state or introspective Tcl.
 After patching the source, a fresh runtime executes the actual
@@ -7392,24 +7398,40 @@ original procedure definitions remain unchanged. Strict replay preserves already
 valid sources without redundant insertions. See [local reset output](#local-reset-output)
 for namespace, invocation and atomic publication contracts.
 
-Thirty-six caller methods cover direct writes and procedures, argument failure
+Forty caller methods cover direct writes and procedures, argument failure
 and side effects, empty/partial-error returns, prefixes/vector literals, ordered
 files/continued EOF, level0 restoration, helper cleanup/interference, rejected
 missing/extra invocations and source/flat/generated/reset idempotence. Existing
 queue/reservation/internal-reassertion negatives remain. Native runtime final
 level controls and12 changed-code format/tidy/C++17 gates pass.
 
-Nine single-run matched-input measurements at64/256/512 calls preserve exact
-canonical outputs. Plain parent0.229/0.779/1.446s versus current0.224/0.769/1.470s;
-repair0.626/2.375/4.437s and71040/72176/74528KiB peak RSS. Rewritten source is
-1443/1829/2341 bytes. These are measurements, without a speedup claim or raised
+Nine post-fix single-run matched-input measurements at64/256/512 calls preserve
+exact canonical outputs. Plain parent0.273/0.826/1.473s versus current0.240/0.769/
+1.482s; repair0.628/2.313/4.571s and61120/69948/71276KiB peak RSS. Rewritten source
+is2212/2982/4006 bytes, including exact immutable-table validation. These are measurements, without a speedup claim or raised
 runtime/solver budget. Commands, environment, source and product hashes are in
-build/occurrence-reset-20261121/scale/results.json.
+build/occurrence-reset-20261121/review-fix/scale/results.json.
 
 The invocation wrapper and a manually ordered reference both run successfully
 through Tessent2026.2 on the existing bound-TAP reset model. Their full exports
 are byte-identical. All submitted/returned input hashes match; eight nonempty
 source/flat/generated physical replays match canonically. This is bounded fresh
 evidence, without a new maintained golden certificate or universal equivalence
-claim. Full qualification and one independent final branch review are running;
-evidence is retained under build/occurrence-reset-20261121/.
+claim. These are fresh post-fix runs because the submitted wrapper changed.
+
+One independent review found a Critical joined-source validation gap and four
+Important issues: skipped cleanup after return, caught guard failures, deletion
+of unexpected array data, and a stale reservation-test rejection. One fix pass
+adds shared fresh-source/final-level validation, independent cleanup attestation,
+a persistent mismatch flag and exact array checks. The corrected reservation
+test requires byte-identical unchanged source for explicit user releases and
+retains a genuinely impossible automatic-release negative with protected outputs.
+All40 caller/resource35/compound12 focused methods pass. No re-review is claimed.
+
+Post-fix15 qualification steps pass:52x879 dynamic/static, fresh native sanitizer
+runtime, eight reset/resource sanitizer suites and main71,12 format/tidy/C++17
+gates and source package. The actual prior full13 native pass is reused through
+3992 unchanged shared inputs and13 unchanged binaries. Exact commands, exits,
+input/product hashes, failed pre-fix receipts, review and costs are retained under
+build/occurrence-reset-20261121/, with final evidence under review-fix/.
+Coverage1 remains excluded and other inventory items keep their own status.

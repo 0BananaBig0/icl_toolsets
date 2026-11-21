@@ -238,8 +238,11 @@ using ResetEdits = std::map<std::pair<size_t, size_t>, std::string>;
 using ResetVariants = std::map<std::pair<size_t, size_t>,
                                std::map<std::vector<std::string>, std::string>>;
 using ResetOccurrences = std::map<const pattern::SourceAction*, std::string>;
+struct InvocationState {
+  std::string setup, cleanup, verify;
+};
 
-std::pair<std::string, std::string> InvocationEdits(
+InvocationState InvocationEdits(
     const std::vector<std::string>& sources,
     const std::vector<pattern::SourceAction>& actions,
     const ResetOccurrences& preambles, int final_level, ResetEdits* edits) {
@@ -269,8 +272,11 @@ std::pair<std::string, std::string> InvocationEdits(
   };
   std::string setup = "if {[namespace exists " + name +
                       "]} {error {local-reset namespace collision}}\n" +
-                      Command({"namespace", "eval", name, ""});
-  std::string cleanup = "\n\niPDLLevel 1\n";
+                      Command({"namespace", "eval", name, ""}) +
+                      Command({"set", name + "::position(failed)", "0"});
+  std::string cleanup =
+      "\n\niPDLLevel 1\nif {[set " + name +
+      "::position(failed)]} {error {local-reset invocation mismatch}}\n";
   std::map<std::pair<size_t, size_t>, std::vector<const pattern::SourceAction*>>
       sites;
   for (const auto& action : actions) {
@@ -309,17 +315,25 @@ std::pair<std::string, std::string> InvocationEdits(
     (*edits)[site] = "set position [set " + position + "]\nset sequence [set " +
                      order +
                      "]\n"
-                     "if {$position >= [llength $sequence]} {error {unexpected "
+                     "if {$position >= [llength $sequence]} {set " +
+                     name +
+                     "::position(failed) 1; error {unexpected "
                      "local-reset invocation}}\n"
                      "set record [lindex [set " +
                      record +
                      "] [lindex $sequence $position]]\n"
-                     "if {[lrange $args 1 end] ne [lindex $record 0]} {error "
+                     "if {[lrange $args 1 end] ne [lindex $record 0]} {set " +
+                     name +
+                     "::position(failed) 1; error "
                      "{unrecognized local-reset caller arguments}}\n"
                      "incr " +
                      position + "\neval [lindex $record 1]\n";
     cleanup += "if {[set " + position + "] != " + std::to_string(calls.size()) +
                "} {error {missing local-reset invocation}}\n";
+    cleanup += "if {![string equal [set " + record + "] " +
+               list({list(values)}) + "] || ![string equal [set " + order +
+               "] " + list({list(sequence)}) +
+               "]} {error {local-reset namespace interference}}\n";
   }
   if (!id) return {};
   const auto variables =
@@ -328,11 +342,20 @@ std::pair<std::string, std::string> InvocationEdits(
              name + "::*] ne {} || [lsort [info vars " + name + "::*]] ne " +
              list({variables}) +
              "} {error {local-reset namespace interference}}\n";
+  cleanup += "if {[array size " + name +
+             "::position] != " + std::to_string(id + 1) + " || [array size " +
+             name + "::records] != " + std::to_string(id) + " || [array size " +
+             name + "::sequence] != " + std::to_string(id) +
+             "} {error {local-reset namespace interference}}\n";
   cleanup += Command({"namespace", "delete", name});
+  std::string verify =
+      "iPDLLevel 1\nif {[namespace exists " + name +
+      "]} {error {local-reset invocation cleanup did not complete}}\n";
   if (final_level != 1) {
     cleanup += Command({"iPDLLevel", std::to_string(final_level)});
+    verify += Command({"iPDLLevel", std::to_string(final_level)});
   }
-  return {setup, cleanup};
+  return {setup, cleanup, verify};
 }
 std::string Generate(
     const pattern::Netlist& netlist,
@@ -882,6 +905,34 @@ int main(int argc, char** argv) {
                        nullptr, nullptr, nullptr, true, nullptr, nullptr, true)
             : GenerateMerged(network.netlist, runtime.operations());
     if (!options.local_reset.empty()) {
+      const auto verify_source =
+          [&](const std::string& source,
+              const std::vector<pattern::Operation>& expected,
+              const std::string& completion) {
+            pattern::Runtime verified(design, network.netlist);
+            verified.Execute(options.local_reset, source);
+            if (verified.Level() != runtime.Level()) {
+              throw std::runtime_error(
+                  "local-reset insertion changes final PDL level");
+            }
+            if (!completion.empty()) {
+              verified.Execute(options.local_reset + " completion", completion);
+            }
+            verified.Finish();
+            const auto& actual = verified.operations();
+            if (actual.size() != expected.size() ||
+                !std::equal(actual.begin(), actual.end(), expected.begin(),
+                            [](const auto& a, const auto& b) {
+                              return a.command == b.command &&
+                                     a.arguments == b.arguments;
+                            })) {
+              throw std::runtime_error(
+                  "local-reset insertion changes source execution order or "
+                  "targets");
+            }
+            ResetEdits strict;
+            Generate(network.netlist, actual, nullptr, &strict);
+          };
       const auto rewrite = [&](bool whole_commands, bool after_arguments,
                                bool dispatch_arguments = false,
                                bool dispatch_occurrences = false) {
@@ -898,8 +949,8 @@ int main(int argc, char** argv) {
         const auto state = dispatch_occurrences
                                ? InvocationEdits(sources, actions, occurrences,
                                                  runtime.Level(), &edits)
-                               : std::pair<std::string, std::string>{};
-        rewritten_source = state.first;
+                               : InvocationState{};
+        rewritten_source = state.setup;
         for (const auto& [site, alternatives] : variants) {
           std::vector<std::string> branches;
           bool needed = false;
@@ -950,32 +1001,16 @@ int main(int argc, char** argv) {
           // comment.
           if (source + 1 < sources.size()) rewritten_source += "\n\n";
         }
-        rewritten_source += state.second;
-        pattern::Runtime verified(design, network.netlist);
-        verified.Execute(options.local_reset, rewritten_source);
-        verified.Finish();
-        const auto& actual = verified.operations();
-        if (actual.size() != expected.size() ||
-            !std::equal(actual.begin(), actual.end(), expected.begin(),
-                        [](const auto& a, const auto& b) {
-                          return a.command == b.command &&
-                                 a.arguments == b.arguments;
-                        })) {
-          throw std::runtime_error(
-              "local-reset insertion changes source execution order or "
-              "targets");
-        }
-        ResetEdits strict;
-        Generate(network.netlist, actual, nullptr, &strict);
+        rewritten_source += state.cleanup;
+        verify_source(rewritten_source, expected, state.verify);
         return rewritten_source;
       };
       try {
-        ResetEdits strict;
-        Generate(network.netlist, runtime.operations(), nullptr, &strict);
         for (size_t source = 0; source < sources.size(); ++source) {
           if (source) local_reset += "\n\n";
           local_reset += sources[source];
         }
+        verify_source(local_reset, runtime.operations(), "");
       } catch (const std::runtime_error&) {
         try {
           local_reset = rewrite(true, false);

@@ -364,17 +364,28 @@ class Reservations(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertEqual(output, (self.root / 'replay.pdl').read_text())
 
-    def test_reset_rewrite_cannot_override_reserved_control(self):
+    def test_reset_rewrite_keeps_explicit_owned_release(self):
         fixture = ROOT / 'tests/cases/ours/pattern_generation/merge/local_reset.icl'
         (self.root / 'source.icl').write_text(fixture.read_text().replace('MergeNetwork', 'ResourceNetwork'))
         body = ('iProc work {} {iWrite reset 0; iApply; iWrite a.value 5; iApply}\n'
                 'iTake reset\niWrite reset 1\niApply\niCall work\n')
         self.generate(body)
         previous = (self.root / 'result.pdl').read_text()
-        error = self.generate(body, ok=False, extra=('--local_reset', 'reset.pdl'))
+        self.generate(body, extra=('--local_reset', 'reset.pdl'))
+        self.assertEqual((self.root / 'result.pdl').read_text(), previous)
+        self.assertEqual((self.root / 'reset.pdl').read_text(),
+                         (self.root / 'source.pdl').read_text())
+        result = subprocess.run([str(BIN), '--icl', 'source.icl', '--pdl', 'reset.pdl',
+                                 '--output', 'replayed.pdl'], cwd=self.root,
+                                text=True, capture_output=True, timeout=40)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.root / 'replayed.pdl').read_text(), previous)
+        (self.root / 'reset.pdl').write_text('previous reset\n')
+        impossible = body.replace('iWrite reset 0; iApply; ', '')
+        error = self.generate(impossible, ok=False, extra=('--local_reset', 'reset.pdl'))
         self.assertIn('reserved reset', error)
         self.assertEqual((self.root / 'result.pdl').read_text(), previous)
-        self.assertFalse((self.root / 'reset.pdl').exists())
+        self.assertEqual((self.root / 'reset.pdl').read_text(), 'previous reset\n')
 
     def test_reset_planner_chooses_available_alternative(self):
         fixtures = ROOT / 'tests/cases/ours/pattern_generation/local_reset'

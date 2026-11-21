@@ -496,6 +496,9 @@ and stateful absolute-time execution remain unsupported; see the
 | `--log PATH` | Copy stdout diagnostics to a file. |
 | `--local_reset PATH` | Write source PDL with transitive local-reset releases before main-level writes, calls, Tcl compounds or whole merge blocks; preserve procedure definitions and combine ordered input files. |
 
+Repeated caller sites can use recorded invocation order when identical arguments
+need different releases; procedure text remains unchanged.
+
 The reset-only output releases prerequisite TDRs in dependency order and groups
 independent releases under one `iApply`. It chooses release paths that respect
 resource reservations, including taken-but-unwritten bits of a control register.

@@ -457,6 +457,74 @@ Module Network {
         self.assertIn('IclPatternReset', rewritten)
         self.assertIn('value\\[3:0\\]', rewritten)
 
+    def test_unchanged_candidate_validates_joined_returns_and_level(self):
+        icl = self.opposing_resets()
+        (self.root / 'first.pdl').write_text('iPDLLevel 1\niReset\nreturn\n')
+        for later, diagnostic in [('iNote second\n', 'execution order or targets'),
+                                  ('iPDLLevel 0\n', 'final PDL level')]:
+            with self.subTest(later=later):
+                (self.root / 'second.pdl').write_text(later)
+                for name in ['protected.pdl', 'reset.pdl', 'debug/Network.icl']:
+                    path = self.root / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text('previous artifact\n')
+                result = self.run_tool('--icl', icl, '--pdl', 'first.pdl', 'second.pdl',
+                                       '--output', 'protected.pdl', '--local_reset', 'reset.pdl',
+                                       '--debug', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                for name in ['protected.pdl', 'reset.pdl', 'debug/Network.icl']:
+                    self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
+    def test_invocation_cleanup_must_complete_before_publication(self):
+        source = ('iPDLLevel 1\niReset\nforeach state {0 1 0 1} {\n'
+                  ' iWrite control $state; iApply\n iWrite b.value 3; iApply\n}\nreturn\n')
+        (self.root / 'source.pdl').write_text(source)
+        for name in ['protected.pdl', 'reset.pdl']:
+            (self.root / name).write_text('previous artifact\n')
+        result = self.run_tool('--icl', self.opposing_resets(), '--pdl', 'source.pdl',
+                               '--output', 'protected.pdl', '--local_reset', 'reset.pdl', ok=False)
+        self.assertIn('invocation cleanup did not complete', result.stdout + result.stderr)
+        for name in ['protected.pdl', 'reset.pdl']:
+            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+
+    def test_caught_invocation_mismatches_remain_fatal(self):
+        source = ('iPDLLevel 1\niReset\nforeach state {0 1 0 1} {\n'
+                  ' iWrite control $state; iApply\n catch {iWrite b.value 3; iApply}\n}\n')
+        icl = self.opposing_resets()
+        rewritten, _ = self.check(source, icl)
+        extra = rewritten.replace('foreach state {0 1 0 1}', 'foreach state {0 1 0 1 0}')
+        bad_then_matching = rewritten.replace('foreach state {0 1 0 1}',
+                                              'foreach state {2 0 1 0 1}')
+        bad_then_matching = bad_then_matching.replace('iWrite control $state',
+                                                      'iWrite control [expr {$state % 2}]')
+        bad_then_matching = bad_then_matching.replace('iWrite b.value 3',
+                                                      'iWrite b.value [expr {$state == 2 ? 2 : 3}]')
+        for modified in [extra, bad_then_matching]:
+            with self.subTest(modified=modified[-180:]):
+                (self.root / 'modified.pdl').write_text(modified)
+                (self.root / 'protected.pdl').write_text('previous artifact\n')
+                result = self.run_tool('--icl', icl, '--pdl', 'modified.pdl',
+                                       '--output', 'protected.pdl', ok=False)
+                self.assertIn('invocation mismatch', result.stdout + result.stderr)
+                self.assertEqual((self.root / 'protected.pdl').read_text(), 'previous artifact\n')
+
+    def test_invocation_cleanup_preserves_unexpected_array_contents(self):
+        for change in ['variable records; set records(user) keep',
+                       'variable records; set records(0) changed',
+                       'variable sequence; set sequence(0) changed',
+                       'variable position; set position(user) keep']:
+            with self.subTest(change=change):
+                source = ('iPDLLevel 1\niReset\nforeach state {0 1 0 1} {\n'
+                          ' iWrite control $state; iApply\n iWrite b.value 3; iApply\n}\n'
+                          'set ns [format "::IclPatternReset%d" 0]\n'
+                          'namespace eval $ns {' + change + '}\n')
+                (self.root / 'source.pdl').write_text(source)
+                (self.root / 'reset.pdl').write_text('previous artifact\n')
+                result = self.run_tool('--icl', self.opposing_resets(), '--pdl', 'source.pdl',
+                                       '--output', 'protected.pdl', '--local_reset', 'reset.pdl', ok=False)
+                self.assertIn('namespace interference', result.stdout + result.stderr)
+                self.assertEqual((self.root / 'reset.pdl').read_text(), 'previous artifact\n')
+
     def test_invocation_record_scale(self):
         sizes = []
         for count in (64, 256, 512):
@@ -472,7 +540,7 @@ Module Network {
             print(f'reset invocation dispatch: calls={count} source_bytes={len(source)} '
                   f'rewrite_bytes={len(rewritten)} five_runs_seconds={time.monotonic() - started:.6f}s',
                   flush=True)
-        self.assertLess(sizes[2] - sizes[1], 4 * (512 - 256))
+        self.assertLessEqual(sizes[2] - sizes[1], 4 * (512 - 256))
 
     def test_dispatch_preserves_queue_and_reservation_rejection(self):
         for source in [

@@ -15,7 +15,10 @@ site. Reuse anonymous apply/uplevel wrappers, not new user procedures. A guarded
 private namespace holds counters and immutable tables across ordered files.
 Choose a spelling absent from literal source names in one bounded scan; reject
 collisions/unexpected helper contents rather than overwriting or deleting user
-state. Verify final invocation counts and clean up on successful completion.
+state. Verify final invocation counts and exact array keys/immutable values before
+cleanup. Guard mismatches remain fatal even when caught by the caller. An
+independent verification postlude must attest completed cleanup; otherwise reject
+before publication. Validate the actual joined artifact's operations/final level.
 Preserve final PDL level through a small existing-pattern runtime getter, and
 retain existing file/continued-EOF boundaries. Do not wrap the entire source.
 
