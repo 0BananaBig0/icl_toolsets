@@ -24,6 +24,60 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestPrimaryDataEvents() {
+  for (bool cascade : {false, true}) {
+    std::string source =
+        "Module Top {DataInPort trigger; "
+        "DataRegister first[1:0] {WriteDataSource 2'b11;} ";
+    if (cascade) {
+      source += "DataRegister value[1:0] {WriteDataSource first;} ";
+    }
+    source += "DataOutPort q[1:0] {Source " +
+              std::string(cascade ? "value" : "first") + ";}}";
+    for (bool flat : {false, true}) {
+      pattern::Design design;
+      design.AddIcl("primary-events.icl", source);
+      const auto netlist = pattern::Elaborate(design, "Top");
+      if (!flat) source = pattern::SerializeIcl(netlist);
+      const std::string target = cascade ? "value" : "first";
+      pattern::ScanScheduler scheduler(netlist);
+      pattern::NetworkState replay(netlist);
+      for (const auto& node : netlist.nodes) {
+        if (node.model != pattern::ModelKind::kRegister &&
+            node.kind != "DataInPort") {
+          continue;
+        }
+        const auto bits = std::string(node.Width(), '0');
+        scheduler.Assume(node.name, bits);
+        replay.Assume(netlist.node_ids.at(node.name), bits);
+      }
+      const auto steps =
+          scheduler.Apply({{"iWrite", {target, "3"}, "event", {}}});
+      bool event = false;
+      for (const auto& step : steps) {
+        std::map<size_t, std::string> inputs;
+        for (const auto& [name, bits] : step.writes) {
+          const auto id = netlist.node_ids.at(name);
+          Require(netlist.nodes[id].kind == "DataInPort",
+                  "autonomous primary update must emit a real pin write");
+          inputs.emplace(id, bits);
+        }
+        if (!inputs.empty()) {
+          replay.ApplyInputs(inputs);
+          event = true;
+        }
+      }
+      Require(event && replay.Value(netlist.node_ids.at(target)) == "11" &&
+                  scheduler.Value(target) == "11",
+              "constant-source goal must agree with independent input replay");
+      const auto quiet =
+          scheduler.Apply({{"iRead", {target, "3"}, "read", {}}});
+      for (const auto& step : quiet) {
+        Require(step.writes.empty(), "satisfied read must not invent an event");
+      }
+    }
+  }
+}
 std::string RawSibModel() {
   return R"ICL(Module RawSibLeaf {
  ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
@@ -6709,6 +6763,10 @@ void TestGroupedScanEndpoints() {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
+      if (argc == 2 && std::string(argv[1]) == "--primary-data-events") {
+        TestPrimaryDataEvents();
+        return 0;
+      }
       if (argc == 2 && std::string(argv[1]) == "--raw-reservations") {
         TestRawScanReservations();
         TestRawPortReservationScale();
@@ -6750,6 +6808,7 @@ int main(int argc, char* argv[]) {
     TestNoIdBuiltinBypassAliases();
     TestRawTapUnknownInput();
     TestRawTapUnknownStableRollback();
+    TestPrimaryDataEvents();
     TestAutomaticChildRawPreparation();
     TestRawTapMultipleDrScans();
     TestRawTapBuiltinDrScans();

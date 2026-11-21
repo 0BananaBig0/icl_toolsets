@@ -3280,16 +3280,7 @@ class ScanScheduler::Impl {
           fills.at(id) = fill;
           frame.activation.emplace(id, active);
           if (touched.count(id)) {
-            auto requested_drive = context_.bool_val(false);
-            const auto inputs = data_plan.primary_inputs.find(id);
-            if (inputs != data_plan.primary_inputs.end()) {
-              for (size_t pin : inputs->second) {
-                if (frame.drives.count(pin)) {
-                  requested_drive = requested_drive || frame.drives.at(pin);
-                }
-              }
-            }
-            touched.at(id) = touched.at(id) || (enabled && requested_drive);
+            touched.at(id) = touched.at(id) || enabled;
           }
           values->Assign({{id, next.at(id)}});
         }
@@ -5556,14 +5547,16 @@ class ScanScheduler::Impl {
       }
     }
     required.insert(data_controllers.begin(), data_controllers.end());
-    std::vector<size_t> autonomous_feedback_goals;
+    std::vector<size_t> autonomous_data_goals;
     for (const auto& group : data_plan.groups) {
-      if (!group.feedback) continue;
       for (size_t id : group.nodes) {
+        const auto primary = data_plan.primary_inputs.find(id);
+        const auto scan = data_plan.scan_inputs.find(id);
         if (explicit_goals.count(id) &&
-            data_plan.primary_inputs.at(id).empty() &&
-            data_plan.scan_inputs.at(id).empty()) {
-          autonomous_feedback_goals.push_back(id);
+            (primary == data_plan.primary_inputs.end() ||
+             primary->second.empty()) &&
+            (scan == data_plan.scan_inputs.end() || scan->second.empty())) {
+          autonomous_data_goals.push_back(id);
         }
       }
     }
@@ -6270,7 +6263,7 @@ class ScanScheduler::Impl {
         if (!step.writes.empty()) {
           // Physical scans alone do not preserve autonomous data-goal fill
           // intent.
-          for (size_t id : autonomous_feedback_goals) {
+          for (size_t id : autonomous_data_goals) {
             if (model.eval(frame.active.at(id), true).is_true() &&
                 replay.Value(id) == goals.at(id)) {
               step.writes.emplace(netlist_.nodes[id].name, goals.at(id));

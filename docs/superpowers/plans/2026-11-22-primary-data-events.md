@@ -22,10 +22,11 @@ ownership and atomic publication. No dependencies, RTL or fabricated observation
 ### Task 1: Shared activation and focused proof
 Files: src/pattern/pattern_scheduler.cc; tests/src/pattern_scheduler_test.cc;
 tests/src/pattern/test_primary_data_events.py; Makefile.
-- [ ] Add native concrete-event oracle and CLI valid/invalid replay regressions.
-- [ ] Observe parent RED on the retained constant-source request.
-- [ ] Replace dependency-only touched rule with existing actual enabled event.
-- [ ] GREEN focused/reused callers; record matched scale; commit.
+- [x] Add native concrete-event oracle and CLI valid/invalid replay regressions.
+- [x] Observe parent RED on the retained constant-source request.
+- [x] Replace dependency-only touched rule with existing actual enabled event;
+      retain autonomous DAG goals through the existing mixed replay mechanism.
+- [x] GREEN focused/reused callers; record matched scale; commit.
 
 ### Task 2: Qualification and current documentation
 Files: guide/model/tracker/spec/plan.
