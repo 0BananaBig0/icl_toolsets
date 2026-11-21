@@ -78,6 +78,32 @@ Module Chains {
                                       "iWrite value 3; iApply;\n")
                 self.assertIn("write requirements", message)
 
+    def test_fixed_primary_source_keeps_goal_intent(self):
+        for mixed in (False, True):
+            source = """Module Chains {
+ DataInPort p[1:0]; DataInPort trigger;
+ DataRegister value[1:0] {WriteDataSource p;}
+ DataOutPort q[1:0] {Source value;}
+}"""
+            if mixed:
+                source = source.replace("DataInPort trigger;", """DataInPort trigger;
+ ScanInPort si;
+ ScanRegister scan {ScanInSource si; CaptureSource scan;}
+ ScanOutPort so {Source scan;}
+""")
+            for option in ("", " -together"):
+                for initial, goal in (("0", "3"), ("2", "0bx1")):
+                    with self.subTest(mixed=mixed, option=option, goal=goal):
+                        setup = "iState scan 0; " if mixed else ""
+                        write = "iWrite scan 1; " if mixed else ""
+                        output = self.replay(
+                            source, "iTake p; iState p 3; iState trigger 0; " +
+                            "iState value " + initial + "; " + setup + write +
+                            "iWrite value " + goal + "; iApply" + option +
+                            "; iRead q 3; iApply;\n")
+                        self.assertNotIn(b"iWrite p 0b00", output)
+                        self.assertNotIn(b"iWrite p 0b10", output)
+
     def test_mixed_scan_event_has_matching_data_effect(self):
         source = BASE.replace("DataInPort trigger;", """DataInPort trigger;
  ScanInPort si;

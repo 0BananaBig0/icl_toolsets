@@ -5547,17 +5547,10 @@ class ScanScheduler::Impl {
       }
     }
     required.insert(data_controllers.begin(), data_controllers.end());
-    std::vector<size_t> autonomous_data_goals;
+    std::vector<size_t> data_write_goals;
     for (const auto& group : data_plan.groups) {
       for (size_t id : group.nodes) {
-        const auto primary = data_plan.primary_inputs.find(id);
-        const auto scan = data_plan.scan_inputs.find(id);
-        if (explicit_goals.count(id) &&
-            (primary == data_plan.primary_inputs.end() ||
-             primary->second.empty()) &&
-            (scan == data_plan.scan_inputs.end() || scan->second.empty())) {
-          autonomous_data_goals.push_back(id);
-        }
+        if (explicit_goals.count(id)) data_write_goals.push_back(id);
       }
     }
     const auto [access_context, grouped_reads, read_order] =
@@ -6261,12 +6254,23 @@ class ScanScheduler::Impl {
         UpdateStorageFill(frame, model, replay, reset, control_events, step,
                           event, fill);
         if (!step.writes.empty()) {
-          // Physical scans alone do not preserve autonomous data-goal fill
-          // intent.
-          for (size_t id : autonomous_data_goals) {
+          // Retain data-goal intent unless emitted controller writes carry it.
+          for (size_t id : data_write_goals) {
             if (model.eval(frame.active.at(id), true).is_true() &&
                 replay.Value(id) == goals.at(id)) {
-              step.writes.emplace(netlist_.nodes[id].name, goals.at(id));
+              const auto written = [&](const auto& sources) {
+                const auto found = sources.find(id);
+                return found != sources.end() &&
+                       std::any_of(found->second.begin(), found->second.end(),
+                                   [&](size_t driver) {
+                                     return step.writes.count(
+                                         netlist_.nodes[driver].name);
+                                   });
+              };
+              if (!written(data_plan.primary_inputs) &&
+                  !written(data_plan.scan_inputs)) {
+                step.writes.emplace(netlist_.nodes[id].name, goals.at(id));
+              }
             }
           }
         }
