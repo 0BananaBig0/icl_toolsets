@@ -39,6 +39,11 @@ Check held resources at intermediate cyclic snapshots in both symbolic and
 concrete replay. Propagate scoped check callbacks through existing state/TAP
 event calls; retain the scheduler's transaction boundary and NetworkState's
 ApplyInputs/Clock rollback. Do not store borrowed callbacks in persistent state.
+Precompute external storage-reset references reached from feedback groups.
+Require those reset levels and known masks to remain invariant through each
+delta; changing external reset events reject atomically until item3 supplies
+general event semantics. Masked/invariant paths remain eligible, while in-group
+reset priority continues to participate in simultaneous settling.
 Capture still observes pre-update storage; feedback evaluation adds no clocks,
 invented source periods, hardware observations or RTL timing claims. Existing
 independent-clock/event guards remain. Source and associated-flat models derive

@@ -388,15 +388,16 @@ const DataRegisterPlan& NetworkState::DataRegisters() const {
   }
   return *data_registers_;
 }
-void NetworkState::ApplyInputs(const std::map<size_t, std::string>& values) {
+void NetworkState::ApplyInputs(const std::map<size_t, std::string>& values,
+                               const Check& check) {
   if (has_data_registers_) DataRegisters();
   NetworkState next(*this);
   for (const auto& [id, value] : values) next.Drive(id, value);
   next.Reset();
-  next.UpdateDataRegisters();
+  next.UpdateDataRegisters('1', check);
   Restore(next);
 }
-void NetworkState::UpdateDataRegisters(char event) {
+void NetworkState::UpdateDataRegisters(char event, const Check& check) {
   if (!has_data_registers_) return;
   const auto& plan = DataRegisters();
   const auto updated = [&](size_t id, SignalEvaluator& values) {
@@ -426,6 +427,11 @@ void NetworkState::UpdateDataRegisters(char event) {
       update_[id] = updated(id, values);
       continue;
     }
+    std::string reset_levels;
+    SignalEvaluator before(*this);
+    for (const auto& reset : group.external_resets) {
+      reset_levels += before.Read(reset);
+    }
     bool stable = false;
     for (size_t round = 0; round < kDataRegisterDeltaLimit; ++round) {
       for (size_t id : group.nodes) {
@@ -448,6 +454,14 @@ void NetworkState::UpdateDataRegisters(char event) {
         update_[group.nodes[i]] = std::move(next[i]);
       }
       if (stable) break;
+      SignalEvaluator after(*this);
+      for (size_t i = 0; i < group.external_resets.size(); ++i) {
+        if (after.Read(group.external_resets[i]) != reset_levels[i]) {
+          throw std::runtime_error(
+              "feedback reset event is not supported during data settling");
+        }
+      }
+      if (check) check(*this);
     }
     if (!stable) {
       throw std::runtime_error(
@@ -457,7 +471,7 @@ void NetworkState::UpdateDataRegisters(char event) {
   Reset();
 }
 void NetworkState::Clock(const std::map<size_t, ScanControl>& controls,
-                         bool rising) {
+                         bool rising, const Check& check) {
   char data_update = '0';
   if (has_data_registers_ && !rising) {
     for (const auto& [id, control] : controls) {
@@ -471,7 +485,7 @@ void NetworkState::Clock(const std::map<size_t, ScanControl>& controls,
   DataRegisters();
   NetworkState next(*this);
   next.ClockRegisters(controls, rising);
-  next.UpdateDataRegisters(data_update);
+  next.UpdateDataRegisters(data_update, check);
   Restore(next);
 }
 void NetworkState::ShiftComplete(

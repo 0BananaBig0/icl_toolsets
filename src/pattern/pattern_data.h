@@ -16,6 +16,7 @@ inline constexpr size_t kDataRegisterFeedbackBits = 4 * 1024 * 1024;
 struct DataRegisterGroup {
   std::vector<size_t> nodes;
   bool feedback = false;
+  std::vector<BitReference> external_resets{};
 };
 // Immutable event dependencies shared by concrete replay and symbolic planning.
 // A null address signal list denotes an ordinary selectable register.

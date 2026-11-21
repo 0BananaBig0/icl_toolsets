@@ -649,9 +649,9 @@ class ScanScheduler::Impl {
     }
     run->Drive(pins);
     if (sample) sample(run->State());
-    run->RisingEdge(tap_clocks_);
+    run->RisingEdge(tap_clocks_, check);
     if (check) check(run->State());
-    run->FallingEdge(tap_clocks_);
+    run->FallingEdge(tap_clocks_, check);
     if (check) check(run->State());
   }
   struct RawProfile {
@@ -1700,6 +1700,9 @@ class ScanScheduler::Impl {
     }
     auto desired = DesiredPreserved(preserved, {}, false, {});
     auto held = preserved;
+    const auto check_feedback = [&](const NetworkState& current) {
+      CheckPreserved(current, held, desired);
+    };
     for (auto& [id, mask] : desired) {
       if (netlist_.nodes.at(id).kind != "ScanRegister") {
         if (netlist_.nodes.at(id).model == ModelKind::kPort) {
@@ -1777,7 +1780,7 @@ class ScanScheduler::Impl {
       return result;
     };
     CheckPreserved(replay, held, desired);
-    replay.Clock(controls(&replay, "capture", active), true);
+    replay.Clock(controls(&replay, "capture", active), true, check_feedback);
     CheckPreserved(replay, held, desired);
     const auto prepare_input = [&](char bit) {
       if (port_locks) {
@@ -1812,7 +1815,7 @@ class ScanScheduler::Impl {
       }
       for (auto bit = input.rbegin(); bit != input.rend(); ++bit) {
         prepare_input(*bit);
-        replay.Clock(shift_controls(), true);
+        replay.Clock(shift_controls(), true, check_feedback);
         CheckPreserved(replay, held, desired);
       }
       for (const auto& [id, bits] : loads) {
@@ -1822,7 +1825,7 @@ class ScanScheduler::Impl {
       }
     }
     CheckPreserved(replay, held, desired);
-    replay.Clock(controls(&replay, "update", active), false);
+    replay.Clock(controls(&replay, "update", active), false, check_feedback);
     CheckPreserved(replay, held, desired);
     for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
     replay.Reset();
@@ -2030,7 +2033,7 @@ class ScanScheduler::Impl {
         }
         controls.emplace(id, active->count(id) ? on : off);
       }
-      state->Clock(controls, rising);
+      state->Clock(controls, rising, check);
       check(*state);
     }
   }
@@ -2893,6 +2896,10 @@ class ScanScheduler::Impl {
       result.fill.emplace(id, fills.at(id));
     }
     const auto previous = result.state;
+    std::vector<SymbolicValue> reset_levels;
+    for (const auto& reset : group.external_resets) {
+      reset_levels.push_back(values->Read(reset));
+    }
     const auto& plan = state_.DataRegisters();
     auto stable = context_.bool_val(false);
     for (size_t round = 0; round < kDataRegisterDeltaLimit; ++round) {
@@ -2954,6 +2961,11 @@ class ScanScheduler::Impl {
       }
       result.state = std::move(next);
       values->Assign(result.state);
+      for (size_t i = 0; i < group.external_resets.size(); ++i) {
+        const auto reset = values->Read(group.external_resets[i]);
+        solver->add(reset.bits == reset_levels[i].bits &&
+                    reset.known == reset_levels[i].known);
+      }
       stable = stable.simplify();
       if (!stable.is_true()) state_check(*values);
       if (stable.is_true()) break;
@@ -3411,7 +3423,11 @@ class ScanScheduler::Impl {
           fill.at(id) = bits;
           step.writes.emplace(netlist_.nodes[id].name, bits);
         }
-        if (!driven.empty()) replay.ApplyInputs(driven);
+        if (!driven.empty()) {
+          replay.ApplyInputs(driven, [&](const NetworkState& current) {
+            CheckPreserved(current, replayed_preserved, desired_preserved);
+          });
+        }
         const auto control_events = replay.TakeControlEvents();
         CheckPreserved(replay, replayed_preserved, desired_preserved);
         Values concrete;
@@ -6339,12 +6355,15 @@ class ScanScheduler::Impl {
       driven.emplace(id, bits);
       step.writes.emplace(netlist_.nodes[id].name, bits);
     }
+    const auto check = [&](const NetworkState& current) {
+      CheckPreserved(current, preserved, desired_preserved);
+    };
     if (!driven.empty()) {
       if (tap_replay) {
-        tap_replay->ApplyInputs(driven);
+        tap_replay->ApplyInputs(driven, check);
         replay->Restore(tap_replay->State());
       } else {
-        replay->ApplyInputs(driven);
+        replay->ApplyInputs(driven, check);
       }
     }
     CheckPreserved(*replay, preserved, desired_preserved);
@@ -6582,7 +6601,7 @@ class ScanScheduler::Impl {
       if (client_controls_) {
         controls = ClientControls(replay, active, "capture", selections);
       }
-      replay->Clock(controls, true);
+      replay->Clock(controls, true, check);
       if (check) check(*replay);
       for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
       for (size_t tick = 0; tick < clocks; ++tick) {
@@ -6597,7 +6616,7 @@ class ScanScheduler::Impl {
         if (client_controls_) {
           controls = ClientControls(replay, active, "shift", selections);
         }
-        replay->Clock(controls, true);
+        replay->Clock(controls, true, check);
         if (check) check(*replay);
       }
       for (auto& [id, control] : controls) control = {'0', '0', '1', '1'};
@@ -6615,7 +6634,7 @@ class ScanScheduler::Impl {
           reset_held.insert(id);
         }
       }
-      replay->Clock(controls, false);
+      replay->Clock(controls, false, check);
       if (check) check(*replay);
       if (client_controls_) {
         for (const auto& [id, bits] : ClientPins("idle", false, selections)) {

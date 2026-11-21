@@ -700,6 +700,98 @@ Module Top {
   Require(state.Value(value) == "0", "disabled selection feedback can retry");
 }
 
+void TestFeedbackTentativeChecks() {
+  std::string source = R"(Module Top {
+ DataInPort enable; ScanInPort si;
+ ScanRegister bus {ScanInSource si;}
+ DataRegister value[1:0] {WriteDataSource 1'b0,value[1]; WriteEnSource enable;}
+ LogicSignal pulse {value[0] ^ value[1];}
+ DataOutPort out {Source pulse;}
+})";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("feedback_check.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    for (bool clock : {false, true}) {
+      pattern::NetworkState state(netlist);
+      const auto enable = netlist.node_ids.at("enable"),
+                 value = netlist.node_ids.at("value");
+      state.Assume(enable, clock ? "1" : "0");
+      state.Assume(value, "11");
+      const pattern::NetworkState before(state);
+      size_t checks = 0;
+      const auto check = [&](const pattern::NetworkState& tentative) {
+        ++checks;
+        if (tentative.Value(netlist.node_ids.at("out")) != "0") {
+          throw std::runtime_error("held feedback pulse");
+        }
+      };
+      bool rejected = false;
+      try {
+        if (clock) {
+          state.Clock({{netlist.node_ids.at("bus"), {'0', '0', '1', '1'}}},
+                      false, check);
+        } else {
+          state.ApplyInputs({{enable, "1"}}, check);
+        }
+      } catch (const std::runtime_error& error) {
+        rejected = std::string(error.what()) == "held feedback pulse";
+      }
+      Require(rejected && checks == 1 && state.SameState(before),
+              "a scoped intermediate check rejects and rolls back a tentative "
+              "event");
+      state.ApplyInputs({{enable, "1"}});
+      Require(state.Value(value) == "00" && checks == 1,
+              "retry does not retain an expired callback");
+    }
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
+
+void TestFeedbackResetPulse() {
+  pattern::Design design;
+  design.AddIcl("feedback_reset.icl", R"(Module Victim {
+ ScanInPort si; ResetPort rst;
+ ScanRegister value {ScanInSource si; ResetValue 0;}
+ ScanOutPort so {Source value;}
+}
+Module Top {
+ ScanInPort si; ResetPort global;
+ DataInPort enable; DataInPort mask;
+ DataRegister value[1:0] {WriteDataSource 1'b0,value[1]; WriteEnSource enable;}
+ LogicSignal asserted {mask & (value[0] ^ value[1]);}
+ DataMux gate SelectedBy asserted {1'b0: global; 1'b1: 1'b1;}
+ Instance victim Of Victim {InputPort si = si; InputPort rst = gate;}
+ ScanOutPort so {Source victim.so;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::NetworkState state(netlist);
+  const auto value = netlist.node_ids.at("value"),
+             victim = netlist.node_ids.at("victim.value"),
+             enable = netlist.node_ids.at("enable"),
+             mask = netlist.node_ids.at("mask");
+  state.Assume(value, "11");
+  state.Assume(victim, "1");
+  state.Assume(enable, "0");
+  state.Assume(mask, "1");
+  state.Drive(netlist.node_ids.at("global"), "0");
+  const pattern::NetworkState before(state);
+  bool rejected = false;
+  try {
+    state.ApplyInputs({{enable, "1"}});
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("feedback reset event") !=
+               std::string::npos;
+  }
+  Require(
+      rejected && state.SameState(before),
+      "an external reset pulse during feedback must not silently disappear");
+  state.ApplyInputs({{enable, "1"}, {mask, "0"}});
+  Require(state.Value(value) == "00" && state.Value(victim) == "1",
+          "a masked external reset permits feedback settling and preserves "
+          "storage");
+}
+
 void TestPinSnapshot() {
   pattern::Design design;
   design.AddIcl("snapshot.icl", R"(
@@ -1282,6 +1374,8 @@ int main() {
     TestDataRegisterFeedback();
     TestDataFeedbackClockAndRollback();
     TestOneHotSelectionFeedback();
+    TestFeedbackResetPulse();
+    TestFeedbackTentativeChecks();
     TestAddressedDataEvents();
     TestAmbiguousDataAddress();
     TestDataCascadeScaleAndFeedback();

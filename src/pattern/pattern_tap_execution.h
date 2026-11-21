@@ -39,16 +39,20 @@ class TapExecution {
   // Stage one pin snapshot before settling controller and network resets.
   void Drive(const std::map<size_t, std::string>& values);
   // One parallel input event, without advancing the TAP state machines.
-  void ApplyInputs(const std::map<size_t, std::string>& values);
+  void ApplyInputs(const std::map<size_t, std::string>& values,
+                   const NetworkState::Check& check = {});
   void RisingEdge(const std::string& clock);
   void FallingEdge(const std::string& clock);
   // One observed logical edge across equivalent, unconnected root TCK ports.
-  void RisingEdge(const std::set<size_t>& clocks);
-  void FallingEdge(const std::set<size_t>& clocks);
+  void RisingEdge(const std::set<size_t>& clocks,
+                  const NetworkState::Check& check = {});
+  void FallingEdge(const std::set<size_t>& clocks,
+                   const NetworkState::Check& check = {});
   std::string Value(const std::string& path, bool scan = false) const;
 
  private:
-  void Edge(const std::set<size_t>& clock_ids, bool rising);
+  void Edge(const std::set<size_t>& clock_ids, bool rising,
+            const NetworkState::Check& check = {});
   void GlobalReset();
   void Synchronize(const std::string& name, bool instruction_changed = true);
   void Trace(BitReference output, char selected, std::map<size_t, char>* active,

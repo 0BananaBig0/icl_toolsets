@@ -3,6 +3,7 @@
 #ifndef ICL_TOOLSETS_SRC_PATTERN_PATTERN_STATE_H_
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_STATE_H_
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -26,6 +27,7 @@ void ValidateStateAssumption(const Netlist& netlist, size_t node);
 // first, independent of numeric index direction. No initial reset is assumed.
 class NetworkState {
  public:
+  using Check = std::function<void(const NetworkState&)>;
   using ControlEvents = std::map<size_t, std::optional<std::string>>;
   explicit NetworkState(const Netlist& netlist);
   void Drive(size_t node, const std::string& value);
@@ -35,7 +37,8 @@ class NetworkState {
   char Read(const BitReference& bit, bool scan = false) const;
   std::string ReadBits(const std::vector<BitReference>& bits,
                        bool scan = false) const;
-  void Clock(const std::map<size_t, ScanControl>& controls, bool rising);
+  void Clock(const std::map<size_t, ScanControl>& controls, bool rising,
+             const Check& check = {});
   // Fast-forward a caller-proven complete chain overwrite. Controls/resets must
   // remain invariant with no omitted side effects. All local preconditions are
   // checked before mutation; update storage changes only at its later edge.
@@ -43,7 +46,8 @@ class NetworkState {
                      const std::map<size_t, ScanControl>& controls);
   // A parallel apply changes all primary pins simultaneously, then settles
   // data-register updates and resets. Failure leaves the snapshot unchanged.
-  void ApplyInputs(const std::map<size_t, std::string>& values);
+  void ApplyInputs(const std::map<size_t, std::string>& values,
+                   const Check& check = {});
   const DataRegisterPlan& DataRegisters() const;
   void Reset();
   void Restore(const NetworkState& state);
@@ -63,7 +67,7 @@ class NetworkState {
   friend class SignalEvaluator;
   void ClockRegisters(const std::map<size_t, ScanControl>& controls,
                       bool rising);
-  void UpdateDataRegisters(char event = '1');
+  void UpdateDataRegisters(char event, const Check& check);
   mutable std::shared_ptr<const DataRegisterPlan> data_registers_;
   bool has_data_registers_ = false;
   const Netlist& netlist_;

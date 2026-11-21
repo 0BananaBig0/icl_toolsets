@@ -5041,6 +5041,45 @@ void TestDataFeedbackScheduling() {
     scheduler.Apply({{"iRead", {"out", "0"}, "feedback:after", {}}});
     if (!flat) source = pattern::SerializeIcl(netlist);
   }
+  for (bool scan : {false, true}) {
+    std::string held_source =
+        "Module Top {DataInPort enable; " +
+        std::string(scan ? "ScanInPort si; ScanRegister bus {ScanInSource si;} "
+                           "ScanOutPort so {Source bus;}"
+                         : "") +
+        "DataRegister value[1:0] {WriteDataSource 1'b0,value[1]; "
+        "WriteEnSource " +
+        (scan ? "bus" : "enable") +
+        ";} LogicSignal pulse {value[0] ^ value[1];} DataOutPort held {Source "
+        "pulse;}}";
+    for (bool flat : {false, true}) {
+      pattern::Design design;
+      design.AddIcl("held_feedback.icl", held_source);
+      const auto netlist = pattern::Elaborate(design, "Top");
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Assume("value", "11");
+      const std::string gate = scan ? "bus" : "enable";
+      scheduler.Assume(gate, "0");
+      const std::map<size_t, std::string> held{
+          {netlist.node_ids.at("held"), "0"}};
+      bool rejected = false;
+      try {
+        scheduler.Apply({{"iWrite", {gate, "1"}, "feedback:held", {}}}, false,
+                        held);
+      } catch (const std::runtime_error&) {
+        rejected = true;
+      }
+      Require(
+          rejected && scheduler.Value("value") == "11" &&
+              scheduler.Value(gate) == "0",
+          "intermediate held-output changes reject without committing a frame");
+      scheduler.Apply({{"iWrite", {gate, "1"}, "feedback:released", {}}});
+      Require(
+          scheduler.Value("value") == "00" && scheduler.Value("held") == "0",
+          "a released output permits convergence and retry");
+      if (!flat) held_source = pattern::SerializeIcl(netlist);
+    }
+  }
 }
 
 void TestDataResetCallbacks() {

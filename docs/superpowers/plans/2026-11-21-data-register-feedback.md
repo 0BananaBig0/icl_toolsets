@@ -29,10 +29,10 @@ primary/mixed paths, preserving fill/activation and final stability; GREEN.
 ### Task 3: Intermediate ownership, CLI replay and measured scale
 Files: affected state/TAP/scheduler event interfaces; native tests;
 new tests/src/pattern/test_data_register_feedback.py; Makefile registration.
-- [ ] RED intermediate held changes, failure/retry and capture-before-update.
-- [ ] Scoped tentative-state checks with no stored callbacks; source/flat/
+- [x] RED intermediate held changes, failure/retry and capture-before-update.
+- [x] Scoped tentative-state checks with no stored callbacks; source/flat/
 generated/reset replay and atomic negatives; GREEN.
-- [ ] Matched feedback/control scale with hashes, sizes, wall time and RSS.
+- [x] Matched feedback/control scale with hashes, sizes, wall time and RSS.
 
 ### Task 4: Qualification and integration
 Files: current guide/model/tracker plus this spec/plan.

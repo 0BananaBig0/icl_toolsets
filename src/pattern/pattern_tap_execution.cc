@@ -136,8 +136,9 @@ void TapExecution::Assume(size_t node, const std::string& value) {
   const auto selected = builtin_bypass_.find(node);
   if (selected != builtin_bypass_.end()) selected->second.reset();
 }
-void TapExecution::ApplyInputs(const std::map<size_t, std::string>& values) {
-  state_.ApplyInputs(values);
+void TapExecution::ApplyInputs(const std::map<size_t, std::string>& values,
+                               const NetworkState::Check& check) {
+  state_.ApplyInputs(values, check);
 }
 void TapExecution::Drive(const std::string& port, const std::string& value) {
   Drive({{netlist_.node_ids.at(port), value}});
@@ -353,7 +354,8 @@ std::map<size_t, ScanControl> TapExecution::Controls(
   }
   return result;
 }
-void TapExecution::Edge(const std::set<size_t>& clock_ids, bool rising) {
+void TapExecution::Edge(const std::set<size_t>& clock_ids, bool rising,
+                        const NetworkState::Check& check) {
   for (size_t id : clock_ids) {
     const auto& node = netlist_.nodes.at(id);
     if (node.kind != "TCKPort") {
@@ -430,7 +432,7 @@ void TapExecution::Edge(const std::set<size_t>& clock_ids, bool rising) {
     }
   }
   GlobalReset();
-  state_.Clock(controls, rising);
+  state_.Clock(controls, rising, check);
   for (const auto& [name, actions] : changed) {
     Synchronize(name, actions.reset_ir != '0' || actions.update_ir != '0');
   }
@@ -442,10 +444,12 @@ void TapExecution::RisingEdge(const std::string& clock) {
 void TapExecution::FallingEdge(const std::string& clock) {
   Edge({netlist_.node_ids.at(clock)}, false);
 }
-void TapExecution::RisingEdge(const std::set<size_t>& clocks) {
-  Edge(clocks, true);
+void TapExecution::RisingEdge(const std::set<size_t>& clocks,
+                              const NetworkState::Check& check) {
+  Edge(clocks, true, check);
 }
-void TapExecution::FallingEdge(const std::set<size_t>& clocks) {
-  Edge(clocks, false);
+void TapExecution::FallingEdge(const std::set<size_t>& clocks,
+                               const NetworkState::Check& check) {
+  Edge(clocks, false, check);
 }
 }  // namespace pattern

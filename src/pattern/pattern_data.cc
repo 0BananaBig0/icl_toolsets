@@ -237,6 +237,55 @@ DataRegisterPlan::DataRegisterPlan(const Netlist& netlist) {
              dependencies.at(members.front()).count(members.front()) != 0});
     order.insert(order.end(), members.begin(), members.end());
   }
+  std::map<size_t, std::set<BitKey>> reset_seen;
+  for (size_t target = 0; target < netlist.nodes.size(); ++target) {
+    const auto& node = netlist.nodes[target];
+    if (!node.reset) continue;
+    std::vector<BitReference> pending{*node.reset};
+    std::set<size_t> visited;
+    while (!pending.empty()) {
+      const auto ref = pending.back();
+      pending.pop_back();
+      if (!remaining--) {
+        throw std::runtime_error(
+            "data-register reset dependency resource limit exceeded");
+      }
+      if (ref.node == std::numeric_limits<size_t>::max() ||
+          !visited.insert(ref.node).second) {
+        continue;
+      }
+      const auto& source = netlist.nodes.at(ref.node);
+      if (source.model == ModelKind::kRegister) {
+        const auto found = membership.find(ref.node);
+        if (found != membership.end() && groups[found->second].feedback &&
+            (!membership.count(target) ||
+             membership.at(target) != found->second)) {
+          const auto reset = *node.reset;
+          if (reset_seen[found->second]
+                  .emplace(reset.node, reset.index, reset.inverted,
+                           reset.constant, reset.virtual_signal)
+                  .second) {
+            groups[found->second].external_resets.push_back(reset);
+          }
+        }
+        continue;
+      }
+      for (const auto& [name, bits] : source.inputs) {
+        pending.insert(pending.end(), bits.begin(), bits.end());
+      }
+      for (const auto& choice : source.choices) {
+        pending.insert(pending.end(), choice.source.begin(),
+                       choice.source.end());
+      }
+      for (const auto& contributor : source.one_hot_sources) {
+        pending.insert(pending.end(), contributor.bits.begin(),
+                       contributor.bits.end());
+      }
+      for (const auto& term : source.logic) {
+        pending.insert(pending.end(), term.signals.begin(), term.signals.end());
+      }
+    }
+  }
 }
 const std::vector<AddressRequirement>& OneHotReadResolver::Resolve(
     const OneHotSource& source) {
