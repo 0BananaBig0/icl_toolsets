@@ -561,6 +561,13 @@ void TestDynamicOptions() {
 
 void TestDynamicLevel() {
   const auto design = MakeDesign();
+  pattern::Runtime levels(design, "Top");
+  Require(levels.Level() == 1, "new runtimes start at PDL level1");
+  levels.Execute("level0.pdl", "iPDLLevel 0\n");
+  Require(levels.Level() == 0, "ordered input files retain actual PDL level");
+  levels.Execute("level1.pdl", "iPDLLevel 1\n");
+  levels.Finish();
+  Require(levels.Level() == 1, "finished runtime retains final PDL level");
   pattern::Runtime runtime(design, "Top");
   Fails(
       [&] {

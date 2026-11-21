@@ -132,6 +132,7 @@ class Runtime::Impl {
 
   const std::vector<Operation>& operations() const { return operations_; }
   const std::vector<std::string>& warnings() const { return warnings_; }
+  int Level() const { return level_; }
   std::vector<SourceAction> SourceActions(bool whole_commands) const {
     if (!whole_commands) return actions_;
     std::map<size_t, SourceAction> starts;
@@ -1039,4 +1040,5 @@ std::vector<SourceAction> Runtime::SourceActions(bool whole_commands) const {
 const std::vector<std::string>& Runtime::warnings() const {
   return impl_->warnings();
 }
+int Runtime::Level() const { return impl_->Level(); }
 }  // namespace pattern

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Reset prerequisites after side-effecting main-command arguments."""
+import re
 import time
 import unittest
 
@@ -342,21 +343,136 @@ Module Network {
         self.assertEqual(rewritten, again)
         self.assertEqual(expected, output)
 
-    def test_ambiguous_identical_arguments_preserve_artifacts(self):
-        source = ('iPDLLevel 1\niReset\nforeach state {0 1} {\n'
-                  ' iWrite control $state; iApply\n'
-                  ' iWrite b.value 3; iApply\n}\n')
-        (self.root / 'source.pdl').write_text(source)
-        for name in ['out.pdl', 'reset.pdl', 'debug/Network.icl']:
-            path = self.root / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text('previous artifact\n')
-        result = self.run_tool('--icl', self.opposing_resets(), '--pdl', 'source.pdl',
-                               '--output', 'out.pdl', '--local_reset', 'reset.pdl',
-                               '--debug', ok=False)
-        self.assertIn('identical caller arguments require different releases', result.stdout)
-        for name in ['out.pdl', 'reset.pdl', 'debug/Network.icl']:
-            self.assertEqual((self.root / name).read_text(), 'previous artifact\n')
+    def test_identical_arguments_follow_recorded_release_order(self):
+        for procedure in (False, True):
+            with self.subTest(procedure=procedure):
+                declaration = ('iProc put {} {iWrite b.value 3; iApply}\n'
+                               if procedure else '')
+                command = 'iCall put' if procedure else 'iWrite b.value 3; iApply'
+                source = ('iPDLLevel 1\niProcsForModule Network\n' + declaration +
+                          'iReset\nforeach state {0 1 0 1} {\n'
+                          ' iWrite control $state; iApply\n ' + command + '\n}\n')
+                rewritten, output = self.check(source, self.opposing_resets())
+                self.assertIn('IclPatternReset', rewritten)
+                self.assertGreaterEqual(output.count('iWrite b.value 0b0011'), 4)
+                if procedure:
+                    self.assertIn(declaration, rewritten)
+
+    def test_invocation_order_includes_empty_and_caught_calls(self):
+        declaration = ('iProc put {} {\n'
+                       ' if {$::phase == 1} {return empty}\n'
+                       ' iWrite b.value 3; iApply\n'
+                       ' if {$::phase == 2} {error expected_marker}\n}\n')
+        source = ('iPDLLevel 1\niProcsForModule Network\n' + declaration +
+                  'iReset\nforeach phase {0 1 2 3} {\n'
+                  ' iWrite control [expr {$phase % 2}]; iApply\n'
+                  ' set rc [catch {iCall put} result]\n'
+                  ' if {$phase == 1 && ($rc || $result ne "empty")} {error wrong_return}\n'
+                  ' if {$phase == 2 && (!$rc || ![string match {*expected_marker*} $result])} {error wrong_error}\n'
+                  '}\n')
+        rewritten, _ = self.check(source, self.opposing_resets())
+        self.assertIn(declaration, rewritten)
+        self.assertIn('IclPatternReset', rewritten)
+
+    def test_invocation_arguments_evaluate_once_before_consumption(self):
+        declaration = 'iProc put {value} {iWrite b.value $value; iApply}\n'
+        source = ('iPDLLevel 1\niProcsForModule Network\n' + declaration +
+                  'iReset\nset evaluated 0\nforeach phase {0 1 2 3} {\n'
+                  ' iWrite control [expr {$phase % 2}]; iApply\n'
+                  ' set rc [catch {iCall put [if {$phase == 1} {error argument_marker} '
+                  'else {incr evaluated; expr 3}]} result]\n'
+                  ' if {$phase == 1 && (!$rc || ![string match {*argument_marker*} $result])} {error wrong_error}\n'
+                  '}\nif {$evaluated != 3} {error repeated_argument}\n')
+        rewritten, _ = self.check(source, self.opposing_resets())
+        self.assertIn(declaration, rewritten)
+        self.assertIn('IclPatternReset', rewritten)
+
+    def test_invocation_namespace_cleanup_and_interference_guards(self):
+        source = ('iPDLLevel 1\nnamespace eval IclPatternReset0 {variable user keep0}\n'
+                  'namespace eval IclPatternReset1 {variable user keep1}\niReset\n'
+                  'foreach state {0 1 0 1} {\n'
+                  ' iWrite control $state; iApply\n iWrite b.value 3; iApply\n}\n'
+                  'if {$::IclPatternReset0::user ne "keep0" || '
+                  '$::IclPatternReset1::user ne "keep1"} {error user_state}\n')
+        icl = self.opposing_resets()
+        rewritten, _ = self.check(source, icl)
+        helper = re.search(r'namespace exists (::IclPatternReset\d+)', rewritten).group(1)
+        self.assertEqual(helper, '::IclPatternReset2')
+        (self.root / 'clean.pdl').write_text(
+            rewritten + f'\niPDLLevel 1\nif {{[namespace exists {helper}]}} {{error leaked_helper}}\n')
+        self.run_tool('--icl', icl, '--pdl', 'clean.pdl', '--output', 'clean-out.pdl')
+        variations = [
+            (rewritten.replace('foreach state {0 1 0 1}', 'foreach state {0 1 0 1 0}'),
+             'unexpected local-reset invocation'),
+            (rewritten.replace('foreach state {0 1 0 1}', 'foreach state {0 1}'),
+             'missing local-reset invocation'),
+            (rewritten.replace('iWrite b.value 3; iApply', 'iWrite b.value 2; iApply'),
+             'unrecognized local-reset caller arguments'),
+            (f'namespace eval {helper} {{variable user keep}}\n' + rewritten,
+             'local-reset namespace collision'),
+            (rewritten.replace('foreach state', f'set {helper}::user keep\nforeach state'),
+             'local-reset namespace interference'),
+        ]
+        for modified, diagnostic in variations:
+            with self.subTest(diagnostic=diagnostic):
+                (self.root / 'modified.pdl').write_text(modified)
+                (self.root / 'protected.pdl').write_text('previous output\n')
+                result = self.run_tool('--icl', icl, '--pdl', 'modified.pdl',
+                                       '--output', 'protected.pdl', ok=False)
+                self.assertIn(diagnostic, result.stdout + result.stderr)
+                self.assertEqual((self.root / 'protected.pdl').read_text(), 'previous output\n')
+
+    def test_invocation_order_crosses_files_and_restores_level0_eof(self):
+        declaration = 'iProc put {} {iWrite b.value 3; iApply}\n'
+        first = 'iPDLLevel 1\niProcsForModule Network\n' + declaration + '# continued ' + chr(92)
+        second = ('iReset\nforeach state {0 1 0 1} {\n'
+                  ' iWrite control $state; iApply\n iCall put\n}\niPDLLevel 0\n')
+        (self.root / 'first.pdl').write_text(first)
+        (self.root / 'second.pdl').write_text(second)
+        icl = self.opposing_resets()
+        self.run_tool('--icl', icl, '--pdl', 'first.pdl', 'second.pdl',
+                      '--output', 'out.pdl', '--local_reset', 'reset.pdl', '--debug')
+        rewritten = (self.root / 'reset.pdl').read_text()
+        self.assertIn(declaration, rewritten)
+        self.assertTrue(rewritten.endswith('iPDLLevel 0\n'))
+        self.run_tool('--icl', icl, '--pdl', 'reset.pdl',
+                      '--output', 'replay.pdl', '--local_reset', 'again.pdl')
+        self.assertEqual(rewritten, (self.root / 'again.pdl').read_text())
+        self.run_tool('--icl', 'debug/Network.icl', '--pdl', 'first.pdl', 'second.pdl',
+                      '--output', 'flat.pdl', '--local_reset', 'flat-reset.pdl')
+        self.assertEqual(rewritten, (self.root / 'flat-reset.pdl').read_text())
+        (self.root / 'level1-command.pdl').write_text('set forbidden 1\n')
+        result = self.run_tool('--icl', icl, '--pdl', 'reset.pdl', 'level1-command.pdl',
+                               '--output', 'protected.pdl', ok=False)
+        self.assertIn('level-0', result.stdout + result.stderr)
+
+    def test_invocation_preserves_prefixed_vector_argument_effects(self):
+        source = ('iPDLLevel 1\niReset\nset evaluated 0\n'
+                  'foreach state {0 1 0 1} {\n'
+                  ' iPrefix -; iWrite control $state; iApply\n'
+                  ' iPrefix b\n'
+                  ' iWrite value[3:0] [incr evaluated; expr 3]; iApply\n'
+                  '}\niPrefix -\nif {$evaluated != 4} {error repeated_argument}\n')
+        rewritten, _ = self.check(source, self.opposing_resets())
+        self.assertIn('IclPatternReset', rewritten)
+        self.assertIn('value\\[3:0\\]', rewritten)
+
+    def test_invocation_record_scale(self):
+        sizes = []
+        for count in (64, 256, 512):
+            source = ('iPDLLevel 1\niReset\n'
+                      f'for {{set state 0}} {{$state < {count}}} {{incr state}} {{\n'
+                      ' iWrite control [expr {$state % 2}]; iApply\n'
+                      ' iWrite b.value 3; iApply\n}\n')
+            started = time.monotonic()
+            rewritten, _ = self.check(source, self.opposing_resets())
+            sizes.append(len(rewritten))
+            self.assertIn('IclPatternReset', rewritten)
+            self.assertLess(rewritten.count('iWrite control 0b1'), 5)
+            print(f'reset invocation dispatch: calls={count} source_bytes={len(source)} '
+                  f'rewrite_bytes={len(rewritten)} five_runs_seconds={time.monotonic() - started:.6f}s',
+                  flush=True)
+        self.assertLess(sizes[2] - sizes[1], 4 * (512 - 256))
 
     def test_dispatch_preserves_queue_and_reservation_rejection(self):
         for source in [

@@ -41,6 +41,7 @@ class Runtime {
   void Finish();
   const std::vector<Operation>& operations() const;
   const std::vector<std::string>& warnings() const;
+  int Level() const;
   std::vector<SourceAction> SourceActions(bool whole_commands = false) const;
 
  private:

@@ -3,6 +3,7 @@
 #include <tcl.h>
 
 #include <algorithm>
+#include <charconv>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -236,6 +237,103 @@ class QueuedAccesses {
 using ResetEdits = std::map<std::pair<size_t, size_t>, std::string>;
 using ResetVariants = std::map<std::pair<size_t, size_t>,
                                std::map<std::vector<std::string>, std::string>>;
+using ResetOccurrences = std::map<const pattern::SourceAction*, std::string>;
+
+std::pair<std::string, std::string> InvocationEdits(
+    const std::vector<std::string>& sources,
+    const std::vector<pattern::SourceAction>& actions,
+    const ResetOccurrences& preambles, int final_level, ResetEdits* edits) {
+  const std::string prefix = "IclPatternReset";
+  std::set<size_t> used;
+  for (const auto& source : sources) {
+    size_t offset = 0;
+    while ((offset = source.find(prefix, offset)) != std::string::npos) {
+      offset += prefix.size();
+      const auto end = source.find_first_not_of("0123456789", offset);
+      const auto length =
+          (end == std::string::npos ? source.size() : end) - offset;
+      size_t value = 0;
+      const auto parsed = std::from_chars(
+          source.data() + offset, source.data() + offset + length, value);
+      if (parsed.ec == std::errc{}) used.insert(value);
+      offset += length;
+    }
+  }
+  size_t suffix = 0;
+  while (used.count(suffix)) ++suffix;
+  const std::string name = "::" + prefix + std::to_string(suffix);
+  const auto list = [](const std::vector<std::string>& words) {
+    auto result = Command(words);
+    result.pop_back();
+    return result;
+  };
+  std::string setup = "if {[namespace exists " + name +
+                      "]} {error {local-reset namespace collision}}\n" +
+                      Command({"namespace", "eval", name, ""});
+  std::string cleanup = "\n\niPDLLevel 1\n";
+  std::map<std::pair<size_t, size_t>, std::vector<const pattern::SourceAction*>>
+      sites;
+  for (const auto& action : actions) {
+    sites[{action.source, action.offset}].push_back(&action);
+  }
+  size_t id = 0;
+  for (const auto& [site, calls] : sites) {
+    const bool needed =
+        std::any_of(calls.begin(), calls.end(), [&](const auto* call) {
+          const auto found = preambles.find(call);
+          return found != preambles.end() && !found->second.empty();
+        });
+    if (!needed) continue;
+    if (site.first >= sources.size()) {
+      throw std::runtime_error(
+          "local-reset rewrite needs a literal source write/call site");
+    }
+    std::map<std::pair<std::vector<std::string>, std::string>, size_t> records;
+    std::vector<std::string> values, sequence;
+    for (const auto* call : calls) {
+      const auto found = preambles.find(call);
+      const std::string preamble =
+          found == preambles.end() ? "" : found->second;
+      const auto key = std::make_pair(call->arguments, preamble);
+      const auto [entry, inserted] = records.emplace(key, values.size());
+      if (inserted) values.push_back(list({list(call->arguments), preamble}));
+      sequence.push_back(std::to_string(entry->second));
+    }
+    const auto index = "(" + std::to_string(id++) + ")";
+    const auto position = name + "::position" + index;
+    const auto record = name + "::records" + index;
+    const auto order = name + "::sequence" + index;
+    setup += Command({"set", position, "0"}) +
+             Command({"set", record, list(values)}) +
+             Command({"set", order, list(sequence)});
+    (*edits)[site] = "set position [set " + position + "]\nset sequence [set " +
+                     order +
+                     "]\n"
+                     "if {$position >= [llength $sequence]} {error {unexpected "
+                     "local-reset invocation}}\n"
+                     "set record [lindex [set " +
+                     record +
+                     "] [lindex $sequence $position]]\n"
+                     "if {[lrange $args 1 end] ne [lindex $record 0]} {error "
+                     "{unrecognized local-reset caller arguments}}\n"
+                     "incr " +
+                     position + "\neval [lindex $record 1]\n";
+    cleanup += "if {[set " + position + "] != " + std::to_string(calls.size()) +
+               "} {error {missing local-reset invocation}}\n";
+  }
+  if (!id) return {};
+  const auto variables =
+      list({name + "::position", name + "::records", name + "::sequence"});
+  cleanup += "if {[namespace children " + name + "] ne {} || [info commands " +
+             name + "::*] ne {} || [lsort [info vars " + name + "::*]] ne " +
+             list({variables}) +
+             "} {error {local-reset namespace interference}}\n";
+  cleanup += Command({"namespace", "delete", name});
+  if (final_level != 1) {
+    cleanup += Command({"iPDLLevel", std::to_string(final_level)});
+  }
+  return {setup, cleanup};
+}
 std::string Generate(
     const pattern::Netlist& netlist,
     const std::vector<pattern::Operation>& operations,
@@ -245,7 +343,8 @@ std::string Generate(
     const pattern::ScanScheduler* initial = nullptr,
     const pattern::ResourceReservations* initial_reservations = nullptr,
     bool finalize = true, const pattern::SystemClocks* initial_clocks = nullptr,
-    ResetVariants* variants = nullptr, bool physical = false) {
+    ResetVariants* variants = nullptr, bool physical = false,
+    ResetOccurrences* occurrences = nullptr) {
   if (physical) {
     const std::set<std::string> allowed = {
         "iWrite", "iRead", "iApply", "iReset", "iNote", "iTake", "iRelease"};
@@ -391,7 +490,14 @@ std::string Generate(
           }
         } else {
           const auto key = std::make_pair(action.source, action.offset);
-          if (variants) {
+          if (occurrences) {
+            occurrences->emplace(&action, preamble);
+            if (!preamble.empty()) {
+              (*edits)[key] = preamble;
+            } else {
+              edits->emplace(key, "");
+            }
+          } else if (variants) {
             auto& alternatives = (*variants)[key];
             const auto previous = alternatives.find(action.arguments);
             if (previous != alternatives.end() &&
@@ -777,15 +883,23 @@ int main(int argc, char** argv) {
             : GenerateMerged(network.netlist, runtime.operations());
     if (!options.local_reset.empty()) {
       const auto rewrite = [&](bool whole_commands, bool after_arguments,
-                               bool dispatch_arguments = false) {
+                               bool dispatch_arguments = false,
+                               bool dispatch_occurrences = false) {
         std::string rewritten_source;
         ResetEdits edits;
         ResetVariants variants;
+        ResetOccurrences occurrences;
         std::vector<pattern::Operation> expected;
         const auto actions = runtime.SourceActions(whole_commands);
         Generate(network.netlist, runtime.operations(), &actions, &edits,
                  &expected, nullptr, nullptr, true, nullptr,
-                 dispatch_arguments ? &variants : nullptr);
+                 dispatch_arguments ? &variants : nullptr, false,
+                 dispatch_occurrences ? &occurrences : nullptr);
+        const auto state = dispatch_occurrences
+                               ? InvocationEdits(sources, actions, occurrences,
+                                                 runtime.Level(), &edits)
+                               : std::pair<std::string, std::string>{};
+        rewritten_source = state.first;
         for (const auto& [site, alternatives] : variants) {
           std::vector<std::string> branches;
           bool needed = false;
@@ -836,6 +950,7 @@ int main(int argc, char** argv) {
           // comment.
           if (source + 1 < sources.size()) rewritten_source += "\n\n";
         }
+        rewritten_source += state.second;
         pattern::Runtime verified(design, network.netlist);
         verified.Execute(options.local_reset, rewritten_source);
         verified.Finish();
@@ -855,16 +970,29 @@ int main(int argc, char** argv) {
         return rewritten_source;
       };
       try {
-        local_reset = rewrite(true, false);
+        ResetEdits strict;
+        Generate(network.netlist, runtime.operations(), nullptr, &strict);
+        for (size_t source = 0; source < sources.size(); ++source) {
+          if (source) local_reset += "\n\n";
+          local_reset += sources[source];
+        }
       } catch (const std::runtime_error&) {
-        // Internal loop resets can require the original literal-site repair.
         try {
-          local_reset = rewrite(false, false);
+          local_reset = rewrite(true, false);
         } catch (const std::runtime_error&) {
+          // Internal loop resets can require the original literal-site repair.
           try {
-            local_reset = rewrite(false, true);
+            local_reset = rewrite(false, false);
           } catch (const std::runtime_error&) {
-            local_reset = rewrite(false, true, true);
+            try {
+              local_reset = rewrite(false, true);
+            } catch (const std::runtime_error&) {
+              try {
+                local_reset = rewrite(false, true, true);
+              } catch (const std::runtime_error&) {
+                local_reset = rewrite(false, true, false, true);
+              }
+            }
           }
         }
       }
