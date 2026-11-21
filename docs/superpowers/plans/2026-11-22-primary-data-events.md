@@ -30,6 +30,6 @@ tests/src/pattern/test_primary_data_events.py; Makefile.
 
 ### Task 2: Qualification and current documentation
 Files: guide/model/tracker/spec/plan.
-- [ ] Run required native/dynamic/static/SAN/quality/package checks and freeze.
-- [ ] Update supported scope and precise evidence; author guide example check.
-- [ ] Commit, ledger, one fresh independent review; integrate per standing choice.
+- [x] Run required native/dynamic/static/SAN/quality/package checks and freeze.
+- [x] Update supported scope and precise evidence; author guide example check.
+- [x] Commit, ledger, one fresh independent review; integrate per standing choice.

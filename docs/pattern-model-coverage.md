@@ -4365,3 +4365,21 @@ forms give bounded changed-value PIO agreement. The54-process scale record
 compares matched16/128-apply controls without a speedup claim. See
 [the implementation evidence](pattern-generation.md#task146-optioned-iwrite-payloads).
 Broader item10 scheduling and item4 callback execution remain open.
+
+## Task147: actual input events and autonomous DAG goals
+
+Primary-only DAG writes count an actual enabled event, consistently with mixed
+and feedback paths. The pin may be outside the register dependency cone; it is
+still explicitly emitted and independently replayed. Mixed generated PDL retains
+autonomous DAG goal/fill intent. No-event/read-only groups, disabled/unknown
+enables, active reset and protected side effects remain constrained.
+
+Five focused methods and native independent concrete replay cover original/flat/
+generated forms, aliases, masks, cascades and atomic failures. All33 qualification
+steps pass:13 native/13 native sanitizer suites,56x911 tests per generator
+variant, five focused/71 main sanitizer methods, six quality gates and source
+packaging. Frozen hashes cover4000 source/test/build inputs and29 products.
+The54-process scale record compares matched writable-source controls and new
+constant-source cases. No physical timing or broad vendor-equivalence claim is
+made; broader items remain tracked in [remaining work](remaining-work.md).
+See [the evidence](pattern-generation.md#task147-actual-primary-events-and-autonomous-dag-goals).

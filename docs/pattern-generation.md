@@ -7658,3 +7658,59 @@ assessed actual source/parser/test excerpts and qualification output relayed by
 the root agent. No independent test rerun or full-checkout inspection is claimed.
 General load elimination, physical observations and wider vendor equivalence
 remain outside this payload fix. The report is retained in the evidence.
+
+## Task147: actual primary events and autonomous DAG goals
+
+The primary-only scheduler now counts an enabled DataRegister update caused by
+an actual emitted primary-pin event, matching the existing mixed and feedback
+paths. The pin may be outside that register's data/control dependency cone.
+The generated write is a real input event in the native model; an empty or
+read-only group cannot create one. No clock or observed value is invented.
+
+For a two-bit value with constant WriteDataSource 2'b11 and a writable trigger,
+this reaches value3 from an assumed zero through an explicit trigger write:
+
+```tcl
+iState trigger 0
+iState value 0
+iWrite value 3
+iApply
+```
+
+This uses the existing accepted native DataRegister and input-event semantics.
+It does not extend ICL source acceptance or establish physical-interface timing.
+The mixed path also retains autonomous DAG goals through its existing abstract
+goal marker, preserving data fill intent when generated PDL is replayed.
+
+Five focused methods cover constant/cascaded/feedback sources, inverted aliases,
+partial masks, event-free reads, reset cancellation, mixed scan replay and atomic
+failure for no writable event source, disabled/unknown enables, an active reset
+and protected side effects. Negative assertions require scheduling failure,
+rather than allowing invalid setup to count as proof. The final parent test run
+fails five subcases. A native test independently applies every emitted pin event
+to NetworkState on original and serialized models and compares concrete storage.
+Existing state11 and feedback14 methods pass, as do six code-quality gates.
+
+The54-process scale record uses16/128 two-bit registers and three repeats of
+source/flat/generated forms. Parent/current writable-source controls have equal
+outputs; candidate constant-source forms agree across replay. At128 registers,
+three-form medians are0.496/0.495s for matched controls and0.394s for the new
+constant-source case, with88212/88332/88276KiB peak RSS. GCC16.2.1,Z34.13.3,
+LinuxWSL2x86_64. Cases differ in data-source model, and no speedup is claimed.
+Receipts under build/primary-data-events-20261122/scale/ record actual commands,
+input/output hashes, binary identities and costs. The inherited benchmark key
+flagged means constant sources; its meaning is explicit in summary.json.
+
+Broader item10 optimization and the other open inventory capabilities remain.
+
+All33 final qualification steps pass:13 native/13 leak-enabled ASan/UBSan native
+suites,56 suites/911 tests per dynamic/static generator, five focused/71 main
+sanitizer methods, six changed-code format/tidy/strict C++17 gates and source
+packaging. Frozen checks verify4000 source/test/build inputs and29 products.
+Evidence is under build/primary-data-events-20261122/final/. Coverage item1
+remains excluded with unchanged thresholds.
+
+Technical source/test checks are separate from the reader walkthrough. The actual
+guide example above executes and emits the trigger write; its author self-review
+is recorded in doc-reader-author-check.json. No independent usability reader or
+live hardware observation is claimed.
