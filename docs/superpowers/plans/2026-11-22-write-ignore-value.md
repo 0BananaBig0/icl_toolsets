@@ -24,5 +24,5 @@ Files: new tests/src/pattern/test_write_value_options.py; Makefile.
 
 ### Task 3: Qualification and current evidence
 Files: current guide/model/tracker, this spec/plan.
-- [ ] Required native/dynamic/static/SAN/quality/package checks and frozen inputs.
-- [ ] Record supported scope, permission/policy distinction and verification.
+- [x] Required native/dynamic/static/SAN/quality/package checks and frozen inputs.
+- [x] Record supported scope, permission/policy distinction and verification.
