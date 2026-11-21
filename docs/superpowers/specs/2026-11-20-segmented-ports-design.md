@@ -36,6 +36,13 @@ validated port/indexed/bounds identities may use a fragment suffix; at least
 two members must reconstruct each original group. Strictly reject malformed,
 duplicate, missing/colliding, overlapping, gapped or contrary identities.
 Existing ungrouped metadata serialization and restoration stay compatible.
+Default-bearing child DataInPorts must remain legal physical DataInPorts with
+their defaults. Reuse the existing version1 ninth Source-binding slot for bound
+default inputs; unbound defaults stay eight fields. Preserve source references,
+inversions and holes, with strict field/flag/kind/constant/reference validation
+and legacy differential-clock compatibility. Conventional single inputs share
+this fix. Public native scan endpoints use logical base plus one selected index;
+physical fragment keys remain unchanged in storage maps.
 Do not accept arbitrary indexed names for registers/interfaces/logic/aliases.
 
 Update only callers that require the aggregate view: source/PDL resolution,

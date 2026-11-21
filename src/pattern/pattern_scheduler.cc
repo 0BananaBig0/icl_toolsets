@@ -2512,7 +2512,7 @@ class ScanScheduler::Impl {
       ScanStep step;
       const auto endpoint = [&](size_t id) {
         const auto& node = netlist_.nodes[id];
-        return node.name +
+        return node.BaseName() +
                (node.indexed ? "[" + std::to_string(node.left) + "]" : "");
       };
       step.input = endpoint(profile.input);
@@ -6346,7 +6346,7 @@ class ScanScheduler::Impl {
       ScanLane lane;
       const auto endpoint = [&](BitReference bit) {
         const auto& node = netlist_.nodes.at(bit.node);
-        return node.name +
+        return node.BaseName() +
                (node.indexed ? "[" + std::to_string(bit.index) + "]" : "");
       };
       lane.output = endpoint(graph_[root].bit);

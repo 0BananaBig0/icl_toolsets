@@ -984,10 +984,120 @@ void TestSegmentedMetadataGuards() {
   }
 }
 
+void TestChildInputDefaultBindings() {
+  for (bool fragmented : {false, true}) {
+    for (const std::string binding : {"InputPort p=pin;", "InputPort p=~pin;",
+                                      "InputPort p[3]=pin[0];", ""}) {
+      pattern::Design design;
+      const auto ports = fragmented
+                             ? "DataInPort p[3:2] {DefaultLoadValue 2'b10;} "
+                               "DataInPort p[1:0] {DefaultLoadValue 2'b01;} "
+                             : "DataInPort p[3:0] {DefaultLoadValue 4'b1001;} ";
+      design.AddIcl("default_bindings.icl",
+                    "Module Child {" + std::string(ports) +
+                        "DataOutPort q[3:0] {Source p;}} Module Top "
+                        "{DataInPort pin[3:0]; "
+                        "Instance a Of Child {" +
+                        binding + "} DataOutPort out[3:0] {Source a.q;}}");
+      const auto original = pattern::Elaborate(design, "Top");
+      const auto text = pattern::SerializeIcl(original);
+      pattern::Design replay;
+      replay.AddIcl("flat_defaults.icl", text);
+      const auto flat = pattern::Elaborate(replay, "Top");
+      Require(pattern::SerializeIcl(flat) == text,
+              "child defaults and bindings survive canonical associated flat "
+              "replay");
+      for (const auto& [name, id] : original.node_ids) {
+        const auto& before = original.nodes[id];
+        if (before.kind != "DataInPort" || before.scope == 0) continue;
+        const auto& after = flat.NodeAt(name);
+        Require(
+            before.constants.at("DefaultLoadValue").data ==
+                    after.constants.at("DefaultLoadValue").data &&
+                before.inputs.count("Source") == after.inputs.count("Source"),
+            "each real child function retains its default and binding "
+            "presence");
+        if (!before.inputs.count("Source")) continue;
+        const auto& wanted = before.inputs.at("Source");
+        const auto& got = after.inputs.at("Source");
+        Require(wanted.size() == got.size(),
+                "restored input binding width is exact");
+        for (size_t i = 0; i < wanted.size(); ++i) {
+          Require(wanted[i].index == got[i].index &&
+                      wanted[i].constant == got[i].constant &&
+                      wanted[i].inverted == got[i].inverted &&
+                      wanted[i].virtual_signal == got[i].virtual_signal &&
+                      (wanted[i].node == std::numeric_limits<size_t>::max()
+                           ? got[i].node == std::numeric_limits<size_t>::max()
+                           : original.nodes[wanted[i].node].name ==
+                                 flat.nodes[got[i].node].name),
+                  "defaults do not replace sources, inverted bits or unbound "
+                  "holes");
+        }
+      }
+    }
+  }
+}
+
+void TestChildInputDefaultMetadataGuards() {
+  const std::string body =
+      "DataInPort n632e70[1:0] {DefaultLoadValue 2'b10;} "
+      "DataInPort n70696e[1:0]; Enum n65 { Off=1'b0; }";
+  const std::string scopes = R"([["","Top",[],[]],["c","Top",[],[]]])";
+  const std::string other =
+      R"(,["n70696e","pin",0,"DataInPort",false,null,[],false],)"
+      R"(["n65","e",0,"Enum",false,null,[],false])";
+  const auto fixture = [&](const std::string& row) {
+    return WithMetadata(body, "[" + row + other + "]", scopes);
+  };
+  const auto elaborate = [](const std::string& text) {
+    pattern::Design design;
+    design.AddIcl("default_metadata.icl", text);
+    return pattern::Elaborate(design, "Top");
+  };
+  const auto valid = elaborate(
+      fixture(R"(["n632e70","c.p",1,"DataInPort",false,null,[],false,)"
+              R"([["n70696e","1",false,0],["n70696e","0",true,0]]])"));
+  Require(valid.NodeAt("c.p").inputs.at("Source")[1].inverted,
+          "valid ninth-field default binding preserves inversion");
+  const std::vector<std::pair<std::string, std::string>> cases = {
+      {fixture(R"(["n632e70","c.p",1,"DataInPort",false,null,[],false])"),
+       "invalid flat default input binding"},
+      {fixture(
+           R"(["n632e70","c.p",1,"DataInPort",true,null,[],false,["x","x"]])"),
+       "invalid flat default input binding"},
+      {fixture(
+           R"(["n632e70","c.p",1,"DataInPort",false,null,[],false,["z","0"]])"),
+       "invalid flat input constant"},
+      {fixture(R"(["n632e70","c.p",1,"DataInPort",false,null,[],false,)"
+               R"([["n65","0",false,0],"0"]])"),
+       "invalid flat reset reference"},
+      {WithMetadata(
+           "DataInPort n70[1:0] {DefaultLoadValue 2'b10;}",
+           R"([["n70","p",0,"DataInPort",false,null,[],false,["1","0"]]])"),
+       "invalid flat differential binding"},
+      {WithMetadata(
+           "DataInPort n632e70[1:0];",
+           R"([["n632e70","c.p",1,"DataInPort",false,null,[],false,["1","0"]]])",
+           scopes),
+       "invalid flat object kind"}};
+  for (const auto& [text, expected] : cases) {
+    bool rejected = false;
+    try {
+      elaborate(text);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find(expected) != std::string::npos;
+    }
+    Require(rejected, "forged default binding must fail its metadata guard");
+  }
+}
+
 }  // namespace
 
 int main() {
   try {
+    TestChildInputDefaultBindings();
+    TestChildInputDefaultMetadataGuards();
     TestSegmentedPortRoundTrip();
     TestSegmentedMetadataGuards();
     TestFlatClockInputKinds();

@@ -55,6 +55,21 @@ class SegmentedPorts(unittest.TestCase):
         self.replay(source, 'iWrite p[3:2] Hi; iWrite p[1:0] Lo; iApply; '
                     'iRead out 13; iApply')
 
+    def test_child_defaults_preserve_parent_bindings(self):
+        for ports in (
+            "DataInPort p[3:2] {DefaultLoadValue 2'b10;} "
+            "DataInPort p[1:0] {DefaultLoadValue 2'b01;}",
+            "DataInPort p[3:0] {DefaultLoadValue 4'b1001;}",
+        ):
+            with self.subTest(ports=ports):
+                source = ('Module Child {' + ports +
+                          'DataOutPort q[3:0] {Source p;}} '
+                          'Module Top {DataInPort pin[3:0]; '
+                          'Instance a Of Child {InputPort p=pin;} '
+                          'DataOutPort out[3:0] {Source a.q;}}')
+                self.replay(source, 'iWrite pin 13; iApply; iRead out 13; '
+                            'iApply; iWrite pin 2; iApply; iRead out 2; iApply')
+
     def test_mixed_input_and_output_functions(self):
         self.replay('Module Top {DataInPort p[1]; SelectPort p[0]; '
                     'DataOutPort out {Source p[1];}}',

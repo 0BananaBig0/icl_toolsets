@@ -6510,6 +6510,72 @@ void TestGroupedPrimaryScale() {
   }
 }
 
+void TestGroupedScanEndpoints() {
+  const std::vector<std::string> models = {
+      R"(Module Top {
+ ScanInPort si[1]; SelectPort si[0];
+ ScanOutPort so[1] { Source a[0]; }
+ ToSelectPort so[0] { Source si[0]; }
+ CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanRegister a[3:0] { ScanInSource si[1]; CaptureSource a; ResetValue 0; }
+ ScanInterface client {
+  Port si[1]; Port so[1]; Port si[0]; Port ce; Port se; Port ue; Port ck;
+ }
+})",
+      R"(Module Top {
+ ScanInPort si[3:2]; ScanInPort si[1:0];
+ ScanRegister a[3:0] { ScanInSource si[3]; CaptureSource a; ResetValue 0; }
+ ScanRegister b[1:0] { ScanInSource si[1]; CaptureSource b; ResetValue 0; }
+ ScanOutPort so[5] { Source a[0]; } ScanOutPort so[4] { Source b[0]; }
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanInterface client {
+  Chain first { Port si[3]; Port so[5]; }
+  Chain second { Port si[1]; Port so[4]; }
+  Port sel; Port ce; Port se; Port ue; Port ck;
+ }
+})"};
+  for (size_t m = 0; m < models.size(); ++m) {
+    pattern::Design design;
+    design.AddIcl("grouped_endpoints.icl", models[m]);
+    auto netlist = pattern::Elaborate(design, "Top");
+    for (bool flat : {false, true}) {
+      if (flat) {
+        pattern::Design replay;
+        replay.AddIcl("flat_endpoints.icl", pattern::SerializeIcl(netlist));
+        netlist = pattern::Elaborate(replay, "Top");
+      }
+      pattern::ScanScheduler scheduler(netlist);
+      scheduler.Reset();
+      std::vector<pattern::Operation> goals = {
+          {"iWrite", {"a", "9"}, "endpoint:a", {}}};
+      if (m) goals.push_back({"iWrite", {"b", "2"}, "endpoint:b", {}});
+      const auto steps = scheduler.Apply(goals, m != 0);
+      Require(steps.size() == 1, "grouped endpoint fixture uses one scan step");
+      const auto& step = steps.front();
+      if (m == 0) {
+        Require(step.input == "si[1]" && step.output == "so[1]" &&
+                    step.serial == "1001",
+                "ordinary grouped endpoints have exactly one selected index");
+        pattern::ResolvePdlTarget(netlist, step.input);
+        pattern::ResolvePdlTarget(netlist, step.output);
+      } else {
+        std::map<std::string, std::pair<std::string, std::string>> actual;
+        for (const auto& lane : step.lanes) {
+          pattern::ResolvePdlTarget(netlist, lane.input);
+          pattern::ResolvePdlTarget(netlist, lane.output);
+          actual.emplace(lane.input, std::make_pair(lane.output, lane.serial));
+        }
+        Require(
+            actual ==
+                std::map<std::string, std::pair<std::string, std::string>>{
+                    {"si[1]", {"so[4]", "0001"}}, {"si[3]", {"so[5]", "1001"}}},
+            "simultaneous grouped lanes expose addressable pins and exact "
+            "data");
+      }
+    }
+  }
+}
+
 }  // namespace
 int main(int argc, char* argv[]) {
   try {
@@ -6521,6 +6587,7 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--clock-snapshots") {
+        TestGroupedScanEndpoints();
         TestGroupedClockNames();
         TestFlatClockTargetNames();
         TestInvariantTimeWaits();
@@ -6574,6 +6641,7 @@ int main(int argc, char* argv[]) {
     TestModeledRootScans();
     TestInvertedClockDurations();
     TestDifferentialClockDurations();
+    TestGroupedScanEndpoints();
     TestGroupedPrimaryScale();
     TestGroupedClockNames();
     TestFlatClockTargetNames();

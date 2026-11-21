@@ -157,6 +157,11 @@ Json AttributeValues(const Attributes& attributes) {
   return Json::Array(std::move(result));
 }
 
+bool DefaultInput(const NetlistNode& node) {
+  return node.scope != 0 && node.kind == "DataInPort" &&
+         node.constants.count("DefaultLoadValue");
+}
+
 Json Metadata(const Netlist& netlist) {
   Json::Elements scopes, nodes, modules, contributors;
   for (const auto& module : netlist.module_parameters) {
@@ -219,8 +224,9 @@ Json Metadata(const Netlist& netlist) {
         node.reset ? Reference(netlist, *node.reset) : Json::Null(),
         Json::Array(std::move(special)),
         Json::Bool(node.active_low)};
-    if (node.scope != 0 && node.kind == "ClockPort" &&
-        node.inputs.count("DifferentialInvOf") && node.inputs.count("Source")) {
+    if (node.inputs.count("Source") &&
+        (DefaultInput(node) || (node.scope != 0 && node.kind == "ClockPort" &&
+                                node.inputs.count("DifferentialInvOf")))) {
       Json::Elements source;
       for (const auto& bit : node.inputs.at("Source")) {
         source.push_back(bit.node == kMissing &&
@@ -278,7 +284,8 @@ std::string RenderAttributes(const Attributes& attributes) {
 }
 
 std::string FlatKind(const std::string& kind, bool internal_input,
-                     bool differential) {
+                     bool differential, bool default_input) {
+  if (default_input) return kind;
   if (internal_input && kind == "ClockPort") return "ToClockPort";
   return internal_input && !differential ? "DataOutPort" : kind;
 }
@@ -292,11 +299,14 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
                              node.kind);
   }
   const bool internal_input = IsInputPort(node.kind) && node.scope != 0;
-  const bool flattened_input =
-      internal_input && !node.inputs.count("DifferentialInvOf");
-  std::string result = FlatKind(node.kind, internal_input,
-                                node.inputs.count("DifferentialInvOf")) +
-                       " " + FlatName(node.name) + Range(node);
+  const bool default_input = DefaultInput(node);
+  const bool flattened_input = internal_input &&
+                               !node.inputs.count("DifferentialInvOf") &&
+                               !default_input;
+  std::string result =
+      FlatKind(node.kind, internal_input,
+               node.inputs.count("DifferentialInvOf"), default_input) +
+      " " + FlatName(node.name) + Range(node);
   if (node.model == ModelKind::kAlias) {
     const auto source = node.inputs.find("Source");
     result += " = " + (source == node.inputs.end()
@@ -870,11 +880,20 @@ bool RestoreFlatOrigins(Netlist* netlist) {
     const size_t id = netlist->node_ids.at(flat_name);
     auto& node = netlist->nodes[id];
     const bool internal_input = scope != 0 && IsInputPort(kind);
-    const bool flattened_input =
-        internal_input && !node.inputs.count("DifferentialInvOf");
+    const bool default_input = internal_input && kind == "DataInPort" &&
+                               node.kind == "DataInPort" &&
+                               node.constants.count("DefaultLoadValue");
+    const bool flattened_input = internal_input &&
+                                 !node.inputs.count("DifferentialInvOf") &&
+                                 !default_input;
+    if (default_input &&
+        (Boolean(fields[4]) ? fields.size() != 8 : fields.size() != 9)) {
+      throw std::runtime_error("invalid flat default input binding");
+    }
     if (!seen.insert(id).second || !names.emplace(original_name, id).second ||
         (node.kind != FlatKind(kind, internal_input,
-                               node.inputs.count("DifferentialInvOf")) &&
+                               node.inputs.count("DifferentialInvOf"),
+                               default_input) &&
          node.kind != (flattened_input ? "DataOutPort" : kind))) {
       throw std::runtime_error("invalid flat object kind or duplicate");
     }
@@ -896,9 +915,10 @@ bool RestoreFlatOrigins(Netlist* netlist) {
       node.properties.erase("Source");
     }
     if (fields.size() == 9) {
-      if (!internal_input || kind != "ClockPort" || Boolean(fields[4]) ||
-          !node.inputs.count("DifferentialInvOf") ||
-          node.inputs.count("Source")) {
+      const bool differential = internal_input && kind == "ClockPort" &&
+                                !Boolean(fields[4]) &&
+                                node.inputs.count("DifferentialInvOf");
+      if ((!default_input && !differential) || node.inputs.count("Source")) {
         throw std::runtime_error("invalid flat differential binding");
       }
       auto& source = node.inputs["Source"];
@@ -907,7 +927,9 @@ bool RestoreFlatOrigins(Netlist* netlist) {
           const auto text = String(value);
           if (text.size() != 1 ||
               text.find_first_not_of("01x") != std::string::npos) {
-            throw std::runtime_error("invalid flat differential constant");
+            throw std::runtime_error(
+                default_input ? "invalid flat input constant"
+                              : "invalid flat differential constant");
           }
           source.push_back({kMissing, 0, text[0], false});
         } else {
@@ -919,13 +941,20 @@ bool RestoreFlatOrigins(Netlist* netlist) {
       if (!internal_input) {
         throw std::runtime_error("invalid flat unconnected port");
       }
-      const auto& bits = node.inputs.at("Source");
-      if (std::any_of(bits.begin(), bits.end(), [](const BitReference& bit) {
-            return bit.node != kMissing || bit.constant != 'x';
-          })) {
-        throw std::runtime_error("flat unconnected port has a driver");
+      const auto source = node.inputs.find("Source");
+      if (source == node.inputs.end()) {
+        if (!default_input) {
+          throw std::runtime_error("invalid flat unconnected port");
+        }
+      } else {
+        const auto& bits = source->second;
+        if (std::any_of(bits.begin(), bits.end(), [](const BitReference& bit) {
+              return bit.node != kMissing || bit.constant != 'x';
+            })) {
+          throw std::runtime_error("flat unconnected port has a driver");
+        }
+        node.inputs.erase(source);
       }
-      node.inputs.erase("Source");
     }
     node.reset =
         fields[5].is_null()

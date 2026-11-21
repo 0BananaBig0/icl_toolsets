@@ -15,11 +15,11 @@ suites/852 cases per dynamic/static variant, leak-enabled sanitizers,30
 changed-code quality checks and source packaging pass. It repairs flat clock
 override names, honest history/status and protected child serial ports.
 
-Task142 adds typed disjoint vector-port functions. Its16 focused methods pass
+Task142 adds typed disjoint vector-port functions. Its17 focused methods pass
 per binary variant, nine normalized models run successfully through Tessent2026.2,
 and72 nonempty native replays agree in18 directional comparisons. Full native,
 generator, sanitizer, style and packaging checks pass. Independent whole-branch
-review is pending; see the Task142 section.
+review found two Important blockers, both fixed in one verified pass; see the Task142 section.
 
 Task140's final reviewed BSDL/default qualification has19 focused methods,
 13 native suites and51 suites/837 cases per variant, plus sanitizers,
@@ -7341,10 +7341,20 @@ universal vendor equivalence. Eleven corpus models now pass the former duplicate
 boundary and reach the separately tracked interface-event guard; they are not
 counted as end-to-end generation successes.
 
-Full qualification passes13 native suites and52 generator suites/868 cases per
+Full post-fix qualification passes13 native suites and52 generator suites/869 cases per
 dynamic/static variant. Leak-enabled ASan/UBSan passes eight native suites,
-port16/clock72/history30/child14/BSDL20 and main71 CLI methods. All36 changed-code
+port17/clock72/history30/child14/BSDL20 and main71 CLI methods. All39 changed-code
 format/tidy/C++17 gates and source-distribution checks pass. Independent
-whole-branch review is pending. Exact commands, exits, timings and frozen
+whole-branch review found no Critical/Minor and two Important blockers, fixed
+in one pass: native scan endpoints now use exactly one selected index, and
+default-bearing child DataInPorts remain legal DataInPorts in associated-flat
+ICL. Existing version1 ninth-field binding metadata preserves their parent
+sources, inversions and holes; wholly unbound defaults retain eight fields.
+Conventional single-port defaults receive the same shared fix. Native source/flat
+single/multiple-lane endpoints, default/source identity, canonical reserialization,
+six forged-metadata guards and CLI source/flat/generated/reset controls pass.
+All72 vendor-related replays were refreshed after the fixes; submitted payloads
+are unchanged from the recorded nine successful vendor runs. No re-review or
+new vendor certificate is claimed. Exact commands, exits, timings and frozen
 source/product identities are retained under build/segmented-ports-20261121/. The broader source/corpus, event/topology and
 excluded coverage requirements keep their tracker status.

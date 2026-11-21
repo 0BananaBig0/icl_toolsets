@@ -43,8 +43,8 @@ cases, reporting next boundaries accurately; GREEN focused/native; commit.
 
 ### Task 4: Qualification and integration
 Files: current docs/tracker plus scoped spec/plan.
-- [ ] Run required full native/generator dynamic/static/SAN/style/C++17/package
+- [x] Run required full native/generator dynamic/static/SAN/style/C++17/package
 checks and capture exact input/product identities.
-- [ ] One independent final branch review; one necessary fix pass if needed.
-- [ ] Record every executor ruling/deferred Minor, update exact docs, archive
+- [x] One independent final branch review; two Important blockers fixed in one pass, with post-fix native/CLI/SAN/full qualification.
+- [x] Record every executor ruling/deferred Minor, update exact docs, archive
 own ledger; merge/push/delete task branch while preserving unrelated worktrees.
