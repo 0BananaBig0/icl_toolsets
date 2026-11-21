@@ -4953,6 +4953,96 @@ Module Control {
               scheduler.Value("out") == "0",
           "partial alias writes access the whole primary group in one event");
 }
+void TestDataFeedbackScheduling() {
+  {
+    pattern::Design design;
+    design.AddIcl("self_disable.icl", R"(Module Top {
+ DataInPort trigger;
+ DataRegister flag {WriteDataSource 1'b1; WriteEnSource ~flag;}
+ DataOutPort out {Source flag;}
+})");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("flag", "0");
+    scheduler.Assume("trigger", "0");
+    const auto steps = scheduler.Apply(
+        {{"iWrite", {"trigger", "1"}, "feedback:self-disable", {}},
+         {"iWrite", {"flag", "1"}, "feedback:first-write", {}}},
+        true);
+    Require(!steps.empty() && scheduler.Value("flag") == "1" &&
+                scheduler.Value("trigger") == "1",
+            "an earlier definite write counts when feedback disables its own "
+            "enable");
+    scheduler.Apply({{"iRead", {"out", "1"}, "feedback:disabled-read", {}}});
+  }
+  std::string source = R"(Module Top {
+ DataInPort enable;
+ DataRegister hold[3:0] {WriteDataSource hold; WriteEnSource enable;}
+ DataOutPort out[3:0] {Source hold;}
+})";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("hold_feedback.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("hold", "1010");
+    scheduler.Assume("enable", "0");
+    scheduler.Apply({{"iWrite", {"enable", "1"}, "feedback:hold", {}}});
+    Require(
+        scheduler.Value("hold") == "1010" && scheduler.Value("enable") == "1",
+        "primary feedback is anchored to actual old storage, not an algebraic "
+        "solution");
+    scheduler.Apply({{"iRead", {"out", "10"}, "feedback:read", {}}});
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"hold", "0"}, "feedback:impossible", {}}});
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("hold") == "1010" &&
+                scheduler.Value("enable") == "1",
+            "self hold cannot acquire another fixed point and failed planning "
+            "rolls back");
+    scheduler.Apply({{"iWrite", {"enable", "0"}, "feedback:retry", {}}});
+    Require(scheduler.Value("hold") == "1010",
+            "a rejected feedback goal leaves later controlling state valid");
+    scheduler.Assume("hold", "x1x0");
+    scheduler.Apply({{"iWrite", {"enable", "0"}, "feedback:unknown", {}}});
+    Require(scheduler.Value("hold") == "x1x0",
+            "disabled feedback retains unknown masks");
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+  source = R"(Module Top {
+ ScanInPort si;
+ ScanRegister bus {ScanInSource si;}
+ DataRegister shift[3:0] {WriteDataSource 1'b0,shift[3:1]; WriteEnSource bus;}
+ ScanRegister observed[3:0] {ScanInSource bus; CaptureSource shift;}
+ ScanOutPort so {Source observed[0];}
+ DataOutPort out[3:0] {Source shift;}
+})";
+  for (bool flat : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("scan_feedback.icl", source);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Assume("bus", "0");
+    scheduler.Assume("shift", "1111");
+    const auto steps = scheduler.Apply(
+        {{"iWrite", {"bus", "1"}, "feedback:update", {}},
+         {"iRead", {"observed", "15"}, "feedback:capture", {}}});
+    bool captured = false;
+    for (const auto& step : steps) {
+      const auto found = step.expected.find("observed");
+      captured =
+          captured || (found != step.expected.end() && found->second == "1111");
+    }
+    Require(captured && scheduler.Value("shift") == "0000",
+            "scan capture precedes complete feedback settling at Update");
+    scheduler.Apply({{"iRead", {"out", "0"}, "feedback:after", {}}});
+    if (!flat) source = pattern::SerializeIcl(netlist);
+  }
+}
+
 void TestDataResetCallbacks() {
   std::ifstream file(
       "tests/cases/ours/pattern_generation/data_reset_callbacks.icl");
@@ -6599,6 +6689,7 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       if (argc == 2 && std::string(argv[1]) == "--reset-backend") {
+        TestDataFeedbackScheduling();
         TestDataResetCallbacks();
         TestUnreleasedDataFeedback();
         TestGreedyRollback();
@@ -6661,6 +6752,7 @@ int main(int argc, char* argv[]) {
     TestStandaloneIdleResetEdges();
     TestStandaloneIdleClockGates();
     TestStandaloneIdleDataFill();
+    TestDataFeedbackScheduling();
     TestDataResetCallbacks();
     TestUnreleasedDataFeedback();
     TestDataResetDependencies();

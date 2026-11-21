@@ -19,7 +19,7 @@ members simultaneously from the previous delta snapshot, then repeat until
 stable. Start from actual pre-event storage, retaining reset priority, enable
 uncertainty and 0/1/X information. A self hold retains its previous value; do not
 select an arbitrary algebraic fixed point. Use at most32 delta rounds and4M
-feedback-bit evaluations per event. These new bounded checks do not raise the
+feedback-bit evaluations per native event or symbolic query. These new bounded checks do not raise the
 existing4096-register, dependency, netlist, primary or solver limits. A failure
 to prove convergence is a resource/model diagnostic, not proof of unreachability
 or physical timing stability. Known oscillations reject; unknown values remain
@@ -29,7 +29,8 @@ Use the same groups and limits in primary and scan/mixed symbolic execution.
 Unroll actual state transitions and require final stability, with bits/known
 masks; do not solve only simultaneous final equations. Reuse current update,
 reset, controlling-fill and active-event semantics, accounting for the last
-definite write/reset through all rounds. Permit early exit when expressions are
+definite known write/reset through all rounds. Partially known intermediate
+loads retain controlling fill; the settled snapshot cannot discard known state. Permit early exit when expressions are
 provably unchanged. Reuse one symbolic state view with transactional assignment
 and derived-cache invalidation, avoiding a full netlist copy/scan per delta.
 Existing immutable symbolic users retain their current memory behavior.

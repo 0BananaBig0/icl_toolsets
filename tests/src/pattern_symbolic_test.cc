@@ -46,6 +46,81 @@ void TestImpliedToTckValues() {
   }
 }
 
+void TestMutableSymbolicState() {
+  pattern::Design design;
+  design.AddIcl("mutable_state.icl", R"(Module Child {
+ DataInPort pin[3:0]; DataOutPort q[3:0] {Source pin;}
+}
+Module Top {
+ DataInPort p[3:0]; ScanInPort si;
+ ScanRegister stored[3:0] {ScanInSource si; CaptureSource p;}
+ Instance child Of Child {InputPort pin=p;}
+ DataOutPort out[3:0] {Source ~child.q;}
+ LogicSignal enabled {p == 4'b1010;}
+ ScanOutPort so {Source stored[0];}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto p = netlist.node_ids.at("p"),
+             stored = netlist.node_ids.at("stored");
+  z3::context context;
+  const auto literal = [&](const std::string& bits) {
+    return pattern::SymbolicValue::Literal(context, bits);
+  };
+  std::map<size_t, pattern::SymbolicValue> assignments{
+      {p, literal("1010")}, {stored, literal("0001")}};
+  const std::map<size_t, pattern::SymbolicValue> shifts{
+      {stored, literal("1110")}};
+  pattern::SymbolicNetwork hot(netlist, context, assignments, "xx", &shifts);
+  for (const auto& bits : {"10x0", "0011", "xxxx", "1010"}) {
+    for (const auto& name :
+         {"out", "child.pin", "child.q", "enabled", "so", "stored"}) {
+      hot.Value(netlist.node_ids.at(name));
+      hot.Value(netlist.node_ids.at(name), true);
+    }
+    assignments.insert_or_assign(p, literal(bits));
+    assignments.insert_or_assign(stored, literal("0011"));
+    hot.Assign(assignments);
+    pattern::SymbolicNetwork cold(netlist, context, assignments, "xx", &shifts);
+    for (const auto& name :
+         {"p", "out", "child.pin", "child.q", "enabled", "so", "stored"}) {
+      for (bool scan : {false, true}) {
+        const auto a = hot.Value(netlist.node_ids.at(name), scan);
+        const auto b = cold.Value(netlist.node_ids.at(name), scan);
+        z3::solver solver(context);
+        solver.add(a.bits != b.bits || a.known != b.known);
+        Require(solver.check() == z3::unsat,
+                "mutated hot symbolic views match cold snapshots, masks and "
+                "shift state");
+      }
+    }
+    bool rejected = false;
+    try {
+      hot.Assign({{p, literal("0000")},
+                  {netlist.node_ids.at("out"), literal("1111")}});
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    const auto got = hot.Value(p), wanted = assignments.at(p);
+    z3::solver unchanged(context);
+    unchanged.add(got.bits != wanted.bits || got.known != wanted.known);
+    Require(rejected && unchanged.check() == z3::unsat,
+            "invalid batch assignments roll back all state and cached views");
+  }
+  for (bool wrong_context : {false, true}) {
+    z3::context other;
+    bool rejected = false;
+    try {
+      hot.Assign(
+          {{p, wrong_context ? pattern::SymbolicValue::Literal(other, "0000")
+                             : literal("00")}});
+    } catch (const std::runtime_error&) {
+      rejected = true;
+    }
+    Require(rejected,
+            "mutable assignments validate context and width before changes");
+  }
+}
+
 void TestRepeatedSignalRuns() {
   for (size_t width : {size_t{512}, size_t{8192}, size_t{65536}}) {
     pattern::Design design;
@@ -1184,6 +1259,7 @@ int main(int argc, char* argv[]) {
       }
       return 0;
     }
+    TestMutableSymbolicState();
     TestLiteralWordBoundaries();
     TestSparseOneHotAgreement();
     TestSparseOneHotScale();

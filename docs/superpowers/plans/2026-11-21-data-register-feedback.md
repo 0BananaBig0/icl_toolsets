@@ -22,8 +22,8 @@ new src/utility/strong_components.h; existing native state/scheduler tests.
 ### Task 2: Symbolic state updates and both scheduling paths
 Files: src/pattern/pattern_symbolic.{h,cc}; pattern_scheduler.cc;
 existing native symbolic/scheduler tests.
-- [ ] RED hot/cold cache equivalence, failed assignment rollback and feedback goals.
-- [ ] Transactional state-view updates and bounded transition unrolling in both
+- [x] RED hot/cold cache equivalence, failed assignment rollback and feedback goals.
+- [x] Transactional state-view updates and bounded transition unrolling in both
 primary/mixed paths, preserving fill/activation and final stability; GREEN.
 
 ### Task 3: Intermediate ownership, CLI replay and measured scale

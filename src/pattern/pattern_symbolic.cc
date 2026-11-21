@@ -98,16 +98,7 @@ SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
     remaining -= node.Width();
   }
   for (auto& [id, value] : assignments) {
-    const auto& node = netlist.nodes.at(id);
-    if (&value.bits.ctx() != &context || &value.known.ctx() != &context ||
-        !value.bits.is_bv() || !value.known.is_bv() ||
-        value.bits.get_sort().bv_size() != node.Width() ||
-        value.known.get_sort().bv_size() != node.Width() ||
-        (node.model != ModelKind::kRegister &&
-         (!IsInputPort(node.kind) || node.inputs.count("Source")))) {
-      throw std::runtime_error(node.origin +
-                               ": invalid symbolic state assignment");
-    }
+    CheckAssignment(id, value);
     cache_.emplace(Key{id, false},
                    SymbolicValue{value.bits & value.known, value.known});
   }
@@ -124,6 +115,44 @@ SymbolicNetwork::SymbolicNetwork(const Netlist& netlist, z3::context& context,
       cache_.emplace(Key{id, true},
                      SymbolicValue{value.bits & value.known, value.known});
     }
+  }
+}
+void SymbolicNetwork::CheckAssignment(size_t id,
+                                      const SymbolicValue& value) const {
+  const auto& node = netlist_.nodes.at(id);
+  if (&value.bits.ctx() != &context_ || &value.known.ctx() != &context_ ||
+      !value.bits.is_bv() || !value.known.is_bv() ||
+      value.bits.get_sort().bv_size() != node.Width() ||
+      value.known.get_sort().bv_size() != node.Width() ||
+      (node.model != ModelKind::kRegister &&
+       (!IsInputPort(node.kind) || node.inputs.count("Source")))) {
+    throw std::runtime_error(node.origin +
+                             ": invalid symbolic state assignment");
+  }
+}
+void SymbolicNetwork::Assign(
+    const std::map<size_t, SymbolicValue>& assignments) {
+  if (assignments.empty()) return;
+  for (const auto& [id, value] : assignments) CheckAssignment(id, value);
+  if (!track_derived_) {
+    for (auto it = cache_.begin(); it != cache_.end();) {
+      const auto& node = netlist_.nodes.at(it->first.first);
+      if (node.model == ModelKind::kRegister ||
+          (!it->first.second && IsInputPort(node.kind) &&
+           !node.inputs.count("Source"))) {
+        ++it;
+      } else {
+        it = cache_.erase(it);
+      }
+    }
+    track_derived_ = true;
+  } else {
+    for (const auto& key : derived_) cache_.erase(key);
+    derived_.clear();
+  }
+  for (const auto& [id, value] : assignments) {
+    cache_.insert_or_assign(
+        Key{id, false}, SymbolicValue{value.bits & value.known, value.known});
   }
 }
 SymbolicValue SymbolicNetwork::Read(const BitReference& bit, bool scan) {
@@ -212,6 +241,7 @@ SymbolicValue SymbolicNetwork::Value(size_t node, bool scan) {
     const auto& object = netlist_.nodes.at(key.first);
     if (expanded) {
       cache_.emplace(key, Compute(key.first, key.second));
+      if (track_derived_) derived_.push_back(key);
       visiting_.erase(key);
       continue;
     }

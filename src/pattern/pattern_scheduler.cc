@@ -2871,6 +2871,101 @@ class ScanScheduler::Impl {
     return ref;
   }
 
+  struct FeedbackWrite {
+    size_t id;
+    SymbolicValue active, load, value, old_fill, fill;
+    z3::expr enabled;
+  };
+  struct FeedbackResult {
+    Values state, fill;
+  };
+  FeedbackResult SettleDataFeedback(
+      const DataRegisterGroup& group, SymbolicNetwork* values,
+      const z3::expr& data_event, const z3::expr& event, const Values& fills,
+      z3::optimize* solver, size_t* remaining,
+      const std::function<void(const FeedbackWrite&)>& write_check,
+      const std::function<void(SymbolicNetwork&)>& state_check) {
+    FeedbackResult result;
+    for (size_t id : group.nodes) {
+      const auto value = values->Value(id);
+      result.state.emplace(
+          id, SymbolicValue{value.bits.simplify(), value.known.simplify()});
+      result.fill.emplace(id, fills.at(id));
+    }
+    const auto previous = result.state;
+    const auto& plan = state_.DataRegisters();
+    auto stable = context_.bool_val(false);
+    for (size_t round = 0; round < kDataRegisterDeltaLimit; ++round) {
+      for (size_t id : group.nodes) {
+        const auto width = netlist_.nodes[id].Width();
+        if (width > *remaining) {
+          throw ScheduleLimit("data-register feedback symbolic work limit at " +
+                              netlist_.nodes[group.nodes.front()].name +
+                              "; fixed point not proved");
+        }
+        *remaining -= width;
+      }
+      Values next;
+      stable = context_.bool_val(true);
+      for (size_t id : group.nodes) {
+        const auto& node = netlist_.nodes[id];
+        const auto active =
+            Choose(data_event, values->Active(plan.writes.at(id)),
+                   SymbolicValue::Literal(context_, "0"));
+        const auto load = values->Bits(node.inputs.at("WriteDataSource"));
+        const auto known_load = load.known == ~context_.bv_val(0, node.Width());
+        auto updated = ResetValue(active, load, result.state.at(id));
+        auto enabled = Known(active, true);
+        auto definite = enabled || Known(active, false);
+        const auto old_fill = result.fill.at(id);
+        auto fill = Choose(enabled && known_load, load, old_fill);
+        if (node.reset) {
+          const auto reset = values->Read(*node.reset);
+          updated =
+              ResetValue(reset,
+                         SymbolicValue::Literal(
+                             context_, node.constants.at("ResetValue").data),
+                         updated);
+          enabled = enabled && Known(reset, false);
+          definite = definite || Known(reset, true);
+          fill = Choose(Known(reset, true),
+                        SymbolicValue::Literal(context_, initial_fill_.at(id)),
+                        Choose(enabled && known_load, load, old_fill));
+        }
+        updated = Choose(event, updated, result.state.at(id));
+        updated = {(updated.bits & updated.known).simplify(),
+                   updated.known.simplify()};
+        fill = Choose(event, fill, old_fill);
+        fill = {(fill.bits & fill.known).simplify(), fill.known.simplify()};
+        const FeedbackWrite write{
+            id,
+            Choose(event, active, SymbolicValue::Literal(context_, "0")),
+            load,
+            updated,
+            old_fill,
+            fill,
+            event && enabled};
+        solver->add(z3::implies(event, definite));
+        write_check(write);
+        stable = stable && updated.bits == result.state.at(id).bits &&
+                 updated.known == result.state.at(id).known;
+        next.emplace(id, updated);
+        result.fill.at(id) = fill;
+      }
+      result.state = std::move(next);
+      values->Assign(result.state);
+      stable = stable.simplify();
+      if (!stable.is_true()) state_check(*values);
+      if (stable.is_true()) break;
+    }
+    solver->add(stable);
+    for (size_t id : group.nodes) {
+      solver->add(z3::implies(
+          event, (result.state.at(id).known & previous.at(id).known) ==
+                     previous.at(id).known));
+    }
+    return result;
+  }
   std::vector<ScanStep> SolvePrimaryWrites(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes) {
@@ -3000,6 +3095,7 @@ class ScanScheduler::Impl {
             "reset resource limit; fixed point not proved");
       }
       z3::optimize solver(context_);
+      size_t feedback_remaining = kDataRegisterFeedbackBits;
       z3::params parameters(context_);
       parameters.set("timeout", 2000U);
       solver.set(parameters);
@@ -3010,7 +3106,7 @@ class ScanScheduler::Impl {
       Values state, fills;
       for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
         if (netlist_.nodes[id].model == ModelKind::kRegister ||
-            PrimaryInput(netlist_.nodes[id])) {
+            PrimaryInput(netlist_.nodes[id]) || state_.IsDriven(id)) {
           state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
           if (data_plan.writes.count(id)) {
             fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
@@ -3060,6 +3156,8 @@ class ScanScheduler::Impl {
           SettleResets(&next, &fills, &any_drive, &solver);
           before_data = next;
         }
+        auto values = std::make_unique<SymbolicNetwork>(netlist_, context_,
+                                                        next, global_resets_);
         for (size_t id : data_plan.order) {
           const auto& node = netlist_.nodes[id];
           const auto suffix = node.name + "_" + std::to_string(time);
@@ -3069,9 +3167,50 @@ class ScanScheduler::Impl {
                                 context_.bv_const(("known_" + suffix).c_str(),
                                                   node.Width())});
         }
-        auto values = std::make_unique<SymbolicNetwork>(netlist_, context_,
-                                                        next, global_resets_);
-        for (size_t id : data_plan.order) {
+        for (const auto& data_group : data_plan.groups) {
+          if (data_group.feedback) {
+            const auto inputs =
+                data_plan.primary_inputs.find(data_group.nodes.front());
+            bool explicit_pins = false;
+            if (inputs != data_plan.primary_inputs.end()) {
+              for (size_t pin : inputs->second) {
+                explicit_pins = explicit_pins || goals.count(pin);
+              }
+            }
+            const auto write_check = [&](const FeedbackWrite& write) {
+              const auto& node = netlist_.nodes[write.id];
+              if (!explicit_pins) {
+                data_deviations.push_back(z3::ite(
+                    write.enabled, write.load.bits ^ write.old_fill.bits,
+                    context_.bv_val(0, node.Width())));
+              }
+              auto active =
+                  frame.activation
+                      .emplace(write.id, SymbolicValue::Literal(context_, "0"))
+                      .first;
+              active->second = Or(active->second, write.active);
+              if (touched.count(write.id)) {
+                touched.at(write.id) = touched.at(write.id) || write.enabled;
+              }
+            };
+            const auto state_check = [&](SymbolicNetwork& current) {
+              ConstrainPreserved(solver, current, preserved, desired_preserved,
+                                 reserved_changed);
+            };
+            const auto settled = SettleDataFeedback(
+                data_group, values.get(), any_drive, any_drive, fills, &solver,
+                &feedback_remaining, write_check, state_check);
+            Values assignments;
+            for (size_t id : data_group.nodes) {
+              solver.add(next.at(id).bits == settled.state.at(id).bits &&
+                         next.at(id).known == settled.state.at(id).known);
+              fills.at(id) = settled.fill.at(id);
+              assignments.emplace(id, next.at(id));
+            }
+            values->Assign(assignments);
+            continue;
+          }
+          const size_t id = data_group.nodes.front();
           const auto& node = netlist_.nodes[id];
           const auto active =
               Choose(any_drive, values->Active(data_plan.writes.at(id)),
@@ -3131,6 +3270,7 @@ class ScanScheduler::Impl {
             }
             touched.at(id) = touched.at(id) || (enabled && requested_drive);
           }
+          values->Assign({{id, next.at(id)}});
         }
         if (data_reset_dependencies_) {
           SettleResets(&next, &fills, &any_drive, &solver);
@@ -5462,7 +5602,10 @@ class ScanScheduler::Impl {
       z3::params parameters(context_);
       parameters.set("timeout", 2000U);
       solver.set(parameters);
-      auto [state, fills] = InitialValues(storage, pins);
+      auto initial_values = InitialValues(storage, pins);
+      auto& state = initial_values.first;
+      auto& fills = initial_values.second;
+      size_t feedback_remaining = kDataRegisterFeedbackBits;
       Values shifts;
       if (events) {
         for (size_t id : registers_) {
@@ -5755,9 +5898,66 @@ class ScanScheduler::Impl {
         }
         // Data storage settles after Update, in dependency order. Capture
         // uses the pre-update state and cannot be satisfied by these writes.
-        for (size_t id : data_plan.order) {
+        SymbolicNetwork data(netlist_, context_, next, global_resets_);
+        for (const auto& data_group : data_plan.groups) {
+          if (data_group.feedback) {
+            const auto id = data_group.nodes.front();
+            const auto scans = data_plan.scan_inputs.find(id);
+            const bool explicit_scan =
+                scans != data_plan.scan_inputs.end() &&
+                std::any_of(
+                    scans->second.begin(), scans->second.end(),
+                    [&](size_t scan) { return explicit_goals.count(scan); });
+            const auto pins = data_plan.primary_inputs.find(id);
+            const bool explicit_pin =
+                pins != data_plan.primary_inputs.end() &&
+                std::any_of(
+                    pins->second.begin(), pins->second.end(),
+                    [&](size_t pin) { return explicit_goals.count(pin); });
+            const auto write_check = [&](const FeedbackWrite& write) {
+              const auto& node = netlist_.nodes[write.id];
+              if (!goals.count(write.id) && !explicit_scan && !explicit_pin) {
+                const auto care = SymbolicValue::Literal(
+                    context_, data_control_masks_.count(write.id)
+                                  ? data_control_masks_.at(write.id)
+                                  : std::string(node.Width(), '0'));
+                solver.add(z3::implies(
+                    write.enabled,
+                    (write.load.bits & write.load.known & ~care.bits) ==
+                        (write.old_fill.bits & write.load.known & ~care.bits)));
+              }
+              const auto waiting = pending_reads.find(write.id);
+              if (waiting != pending_reads.end()) {
+                for (size_t read : waiting->second) {
+                  solver.add(z3::implies(
+                      !data_read_done.at(read),
+                      write.value.bits == state.at(write.id).bits &&
+                          write.value.known == state.at(write.id).known));
+                }
+              }
+              const auto active =
+                  frame.active.emplace(write.id, context_.bool_val(false))
+                      .first;
+              active->second = active->second || write.enabled;
+              if (touched.count(write.id)) {
+                touched.at(write.id) = touched.at(write.id) || write.enabled;
+              }
+            };
+            const auto state_check = [&](SymbolicNetwork& current) {
+              ConstrainPreserved(solver, current, preserved, desired_preserved,
+                                 reserved_changed);
+            };
+            const auto settled = SettleDataFeedback(
+                data_group, &data, data_event, event, fills, &solver,
+                &feedback_remaining, write_check, state_check);
+            for (size_t member : data_group.nodes) {
+              next.insert_or_assign(member, settled.state.at(member));
+              fills.at(member) = settled.fill.at(member);
+            }
+            continue;
+          }
+          const size_t id = data_group.nodes.front();
           const auto& node = netlist_.nodes[id];
-          SymbolicNetwork data(netlist_, context_, next, global_resets_);
           const auto active =
               Choose(data_event, data.Active(data_plan.writes.at(id)),
                      SymbolicValue::Literal(context_, "0"));
@@ -5816,6 +6016,7 @@ class ScanScheduler::Impl {
             }
           }
           next.insert_or_assign(id, updated);
+          data.Assign({{id, updated}});
           fills.at(id) = fill;
           frame.active.insert_or_assign(id, enabled);
           if (touched.count(id)) touched.at(id) = touched.at(id) || enabled;

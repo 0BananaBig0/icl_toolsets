@@ -8,6 +8,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "pattern/pattern_address.h"
 #include "pattern/pattern_data.h"
@@ -34,8 +35,12 @@ class SymbolicNetwork {
   SymbolicValue Bits(const std::vector<BitReference>& bits, bool scan = false);
   SymbolicValue Active(const AddressRequirement& requirement);
   SymbolicValue OneHotActive(const OneHotSource& source);
+  // Update only storage/input assignments; shift snapshots remain independent.
+  // Validate the complete batch before invalidating derived values.
+  void Assign(const std::map<size_t, SymbolicValue>& assignments);
 
  private:
+  void CheckAssignment(size_t node, const SymbolicValue& value) const;
   SymbolicValue Compute(size_t node, bool scan);
   SymbolicValue Logic(const NetlistNode& node);
   const Netlist& netlist_;
@@ -43,6 +48,8 @@ class SymbolicNetwork {
   using Key = std::pair<size_t, bool>;
   std::map<Key, SymbolicValue> cache_;
   std::set<Key> visiting_;
+  bool track_derived_ = false;
+  std::vector<Key> derived_;
   bool has_shift_state_ = false;
   std::string global_resets_;
   OneHotReadResolver one_hot_;

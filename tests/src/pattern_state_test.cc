@@ -662,6 +662,44 @@ void TestDataFeedbackClockAndRollback() {
           "disabled feedback retries without changing the saved value");
 }
 
+void TestOneHotSelectionFeedback() {
+  pattern::Design design;
+  design.AddIcl("one_hot_feedback.icl", R"(Module Driver {
+ DataInPort gate; DataInPort data;
+ DataOutPort q {Source data; Enable gate;}
+}
+Module Bank {
+ DataInPort selector;
+ Instance a Of Driver {InputPort gate = ~selector; InputPort data = 1'b1;}
+ Instance b Of Driver {InputPort gate = selector; InputPort data = 1'b0;}
+ OneHotDataGroup group {Port a.q; Port b.q;}
+ DataOutPort q {Source group;}
+}
+Module Top {
+ DataInPort enable;
+ DataRegister value {WriteDataSource bank.q; WriteEnSource enable;}
+ Instance bank Of Bank {InputPort selector = value;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::NetworkState state(netlist);
+  const auto value = netlist.node_ids.at("value"),
+             enable = netlist.node_ids.at("enable");
+  state.Assume(value, "0");
+  state.Assume(enable, "0");
+  const pattern::NetworkState before(state);
+  bool rejected = false;
+  try {
+    state.ApplyInputs({{enable, "1"}});
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("data-register feedback") !=
+               std::string::npos;
+  }
+  Require(rejected && state.SameState(before),
+          "implicit one-hot selection feedback oscillates and rolls back");
+  state.ApplyInputs({{enable, "0"}});
+  Require(state.Value(value) == "0", "disabled selection feedback can retry");
+}
+
 void TestPinSnapshot() {
   pattern::Design design;
   design.AddIcl("snapshot.icl", R"(
@@ -1243,6 +1281,7 @@ int main() {
     TestDataRegisterEvents();
     TestDataRegisterFeedback();
     TestDataFeedbackClockAndRollback();
+    TestOneHotSelectionFeedback();
     TestAddressedDataEvents();
     TestAmbiguousDataAddress();
     TestDataCascadeScaleAndFeedback();
