@@ -11,7 +11,7 @@ import tempfile
 import time
 
 
-def inputs(width, tap=False):
+def inputs(width, tap=False, child=False):
     controls = ("SelectPort sel; CaptureEnPort ce; ShiftEnPort se; "
                 "UpdateEnPort ue; TCKPort tck; ResetPort reset;")
     ports = "Port sel; Port ce; Port se; Port ue; Port tck; Port reset;"
@@ -19,6 +19,18 @@ def inputs(width, tap=False):
               controls + "ScanRegister r[" + str(width - 1) +
               ":0] {ScanInSource si; CaptureSource r; ResetValue 0;}"
               "ScanInterface client {Port si; Port so;" + ports + "}}")
+    if child:
+        leaf = source.replace("Module Top", "Module RawLeaf").replace(
+            "ScanInterface client", "ScanInterface local")
+        root = ("Module Top {ScanInPort si;" + controls +
+                "ScanRegister head[2:0] {ScanInSource si; CaptureSource head; ResetValue 0;}"
+                "Instance child Of RawLeaf {InputPort si = head[0]; InputPort sel = sel;"
+                "InputPort ce = ce; InputPort se = se; InputPort ue = ue;"
+                "InputPort tck = tck; InputPort reset = reset;}"
+                "ScanRegister tail[4:0] {ScanInSource child.so; CaptureSource tail; ResetValue 0;}"
+                "ScanOutPort so {Source tail[0];}"
+                "ScanInterface client {Port si; Port so;" + ports + "}}")
+        return leaf + root, "Top", "child.local", []
     if tap:
         root = Path(__file__).resolve().parents[3]
         fixture = root / "tests/cases/ours/pattern_generation/raw_tap_ir"
@@ -58,6 +70,7 @@ def main():
               "runs": []}
     cases = [("root32", 32, 1, 20, False),
              ("root512", 512, 1, 12, False),
+             ("child512", 512, 1, 12, False),
              ("tap512", 512, 1, 12, True),
              ("opaque32x4096", 4096, 32, 8, False)]
     with tempfile.TemporaryDirectory(prefix="modeled-raw-scale-") as temporary:
@@ -65,7 +78,7 @@ def main():
         for case, width, chains, applies, tap in cases:
             opaque = chains > 1
             source, top, target, extra = (opaque_inputs(chains, width) if opaque
-                                         else inputs(width, tap))
+                                         else inputs(width, tap, case.startswith("child")))
             icl = root / "model.icl"
             icl.write_text(source)
             for owner, mode in [("parent", "default"), ("current", "default"),
