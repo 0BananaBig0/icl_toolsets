@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <stdexcept>
+#include <tuple>
 #include <utility>
 
 #include "pattern/pattern_access_queue.h"
@@ -177,8 +178,8 @@ class ModelReadback {
     if (op.command == "iScan") {
       auto scan = scheduler_->NormalizeScan(op, true);
       const auto fields = ReadScanFields(scan);
-      const auto key =
-          std::make_pair(fields.instruction, scan.arguments[fields.target]);
+      const auto key = std::make_tuple(
+          fields.instruction, scan.arguments[fields.target], fields.chain);
       const size_t previous =
           raw_pending_.count(key)
               ? raw_pending_.at(key)
@@ -243,7 +244,7 @@ class ModelReadback {
         for (const auto& [key, scan] : raw_pending_) scans.push_back(scan);
         std::set<size_t> assigned;
         std::vector<ScanStep> preparations;
-        scheduler_->ApplyScans(
+        scheduler_->ApplyRawScans(
             scans, reservations_.Values(),
             reservations_.Values().empty() ? nullptr : &assigned, &preparations,
             [&](const auto& scan, const auto& actual) {
@@ -290,7 +291,7 @@ class ModelReadback {
   z3::context context_;
   std::unique_ptr<ScanScheduler> scheduler_;
   std::unique_ptr<OpaqueScanQueue> opaque_;
-  std::map<std::pair<bool, std::string>, Operation> raw_pending_;
+  std::map<std::tuple<bool, std::string, std::string>, Operation> raw_pending_;
   size_t raw_pending_bits_ = 0;
   ResourceReservations reservations_;
   QueuedAccesses pending_;

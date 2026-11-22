@@ -345,7 +345,8 @@ std::string Generate(
       initial_clocks ? *initial_clocks : pattern::SystemClocks(netlist);
   z3::context context;
   pattern::QueuedAccesses pending;
-  std::map<std::string, pattern::Operation> pending_scans;
+  std::map<std::tuple<bool, std::string, std::string>, pattern::Operation>
+      pending_scans;
   size_t pending_scan_bits = 0;
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
@@ -515,12 +516,14 @@ std::string Generate(
         pending.Add(operation, target, bits);
       } else if (operation.command == "iScan") {
         auto scan = scheduler.NormalizeScan(operation, true);
-        const size_t target = scan.arguments[0] == "-ir" ? 1 : 0;
+        const auto fields = pattern::ReadScanFields(scan);
         const auto payload = [](const auto& queued) {
-          const size_t offset = queued.arguments[0] == "-ir" ? 1 : 0;
-          return queued.arguments[3 + offset].size() - 2;
+          return queued.arguments[pattern::ReadScanFields(queued).input]
+                     .size() -
+                 2;
         };
-        const auto key = (target == 1 ? "-ir " : "") + scan.arguments[target];
+        const auto key = std::make_tuple(
+            fields.instruction, scan.arguments[fields.target], fields.chain);
         const auto old = pending_scans.find(key);
         const size_t replaced =
             old == pending_scans.end() ? 0 : payload(old->second);
@@ -554,7 +557,7 @@ std::string Generate(
           for (const auto& [name, scan] : pending_scans) scans.push_back(scan);
           std::set<size_t> assigned;
           std::vector<pattern::ScanStep> preparations;
-          const auto scan = scheduler.ApplyScans(
+          const auto applied = scheduler.ApplyRawScans(
               scans, reservations.Values(),
               reservations.Values().empty() ? nullptr : &assigned,
               &preparations,
@@ -564,7 +567,7 @@ std::string Generate(
                   : pattern::ScanScheduler::RawObservation{});
           reservations.AssignedScans(assigned, scheduler);
           append_steps(preparations);
-          result += OperationText(scan);
+          for (const auto& scan : applied) result += OperationText(scan);
           result += together ? "iApply -together\n" : "iApply\n";
           clocks.Invalidate();
           pending_scans.clear();

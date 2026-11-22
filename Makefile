@@ -1143,6 +1143,7 @@ python3 tests/src/pattern/test_modeled_data_readback.py $1
 python3 tests/src/pattern/test_modeled_scan_readback.py $1
 python3 tests/src/pattern/test_modeled_tap_readback.py $1
 python3 tests/src/pattern/test_modeled_raw_readback.py $1
+python3 tests/src/pattern/test_modeled_parallel_raw.py $1
 python3 tests/src/pattern/test_data_reset_releases.py $1
 python3 tests/src/pattern/test_feedback_resets.py $1
 python3 tests/src/pattern/test_hidden_client_events.py $1

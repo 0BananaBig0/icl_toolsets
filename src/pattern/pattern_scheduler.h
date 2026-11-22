@@ -81,6 +81,15 @@ class ScanScheduler {
                        std::set<size_t>* assigned,
                        std::vector<ScanStep>* preparations,
                        const RawObservation& observe);
+  // Canonical fields of one raw CSU; the caller emits one following Apply.
+  // Parallel fields retain distinct chain names and share concrete hardware
+  // state.
+  std::vector<Operation> ApplyRawScans(
+      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& preserved = {},
+      std::set<size_t>* assigned = nullptr,
+      std::vector<ScanStep>* preparations = nullptr,
+      const RawObservation& observe = {});
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.
