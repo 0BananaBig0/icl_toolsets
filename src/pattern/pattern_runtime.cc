@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_netlist.h"
 #include "pattern/pattern_opaque.h"
 #include "pattern/pattern_state.h"
@@ -76,6 +77,15 @@ class Runtime::Impl {
           netlist->nodes.begin(), netlist->nodes.end(), [](const auto& node) {
             return node.read_callback || node.write_callback;
           });
+      for (const auto& node : netlist->nodes) {
+        if (!node.read_callback && !node.write_callback) continue;
+        size_t scope = node.scope;
+        while (true) {
+          callback_scopes_.insert(netlist->scopes.at(scope).path);
+          if (scope == 0) break;
+          scope = netlist->scopes.at(scope).parent;
+        }
+      }
       module_parameters_ = netlist->module_parameters;
       for (const auto& scope : netlist->scopes) {
         instance_scopes_.emplace(scope.path, &scope);
@@ -123,6 +133,10 @@ class Runtime::Impl {
       failed_ = true;
       throw std::runtime_error(merges_.back().origin + ": unclosed iMerge");
     }
+    if (callback_failed_) {
+      failed_ = true;
+      throw std::runtime_error("failed callback queue requires iReset");
+    }
     if (pending_) {
       failed_ = true;
       const auto& operation = operations_.at(pending_operation_);
@@ -137,6 +151,7 @@ class Runtime::Impl {
   }
 
   const std::vector<Operation>& operations() const { return operations_; }
+  bool CallbacksExecuted() const { return callbacks_executed_; }
   const std::vector<std::string>& warnings() const { return warnings_; }
   int Level() const { return level_; }
   std::vector<SourceAction> SourceActions(bool whole_commands) const {
@@ -414,24 +429,198 @@ class Runtime::Impl {
     }
   }
 
-  void CheckPendingCallbacks() const {
-    if (!has_callbacks_ || !pending_) return;
-    for (size_t i = pending_operation_; i < operations_.size(); ++i) {
-      const auto& operation = operations_[i];
-      const bool read = operation.command == "iRead";
-      if (!read && operation.command != "iWrite") continue;
-      const auto target = ResolvePdlTarget(*netlist_, operation.arguments[0]);
-      for (const auto& bit : target.bits) {
-        if (bit.node >= netlist_->nodes.size()) continue;
-        const auto& node = netlist_->nodes[bit.node];
-        if ((read && node.read_callback) || (!read && node.write_callback)) {
-          throw std::runtime_error(operation.origin + ": " +
-                                   (read ? "ReadCallBack" : "WriteCallBack") +
-                                   " execution is not implemented for " +
-                                   node.name);
+  struct CallbackBinding {
+    std::string instance;
+    ProcedureKey procedure;
+  };
+  const CallbackBinding& BindCallback(size_t id, bool read) {
+    const auto key = std::make_pair(id, read);
+    const auto old = callback_bindings_.find(key);
+    if (old != callback_bindings_.end()) return old->second;
+    const auto& node = netlist_->nodes.at(id);
+    const auto& descriptor = read ? *node.read_callback : *node.write_callback;
+    auto owner = descriptor.name_space;
+    if (owner.rfind("::", 0) == 0) owner.erase(0, 2);
+    size_t scope = node.scope;
+    while (true) {
+      const auto& ancestor = netlist_->scopes.at(scope);
+      const auto module = ancestor.definition.name();
+      if (owner == module || owner.rfind(module + "::", 0) == 0) {
+        CallbackBinding binding{
+            ancestor.path,
+            {module, owner == module ? "" : owner.substr(module.size() + 2),
+             descriptor.procedure}};
+        return callback_bindings_.emplace(key, std::move(binding))
+            .first->second;
+      }
+      if (scope == 0) break;
+      scope = ancestor.parent;
+    }
+    throw std::runtime_error(
+        "callback namespace must name an ancestor module: " +
+        descriptor.name_space);
+  }
+
+  bool ExecuteCallbacks(const Operation& apply) {
+    if (!has_callbacks_ || !pending_) return false;
+    const size_t begin = pending_operation_;
+    const auto first = operations_.begin() + begin;
+    if (std::none_of(first, operations_.end(),
+                     [](const auto& op) { return op.callback; }))
+      return false;
+    if (ValidatePdlApplyOptions(apply.arguments)) {
+      throw std::runtime_error(
+          "callback groups do not support iApply -together");
+    }
+    if (!merges_.empty()) {
+      throw std::runtime_error(
+          "callback execution inside iMerge is unsupported");
+    }
+    const std::vector<Operation> pending(first, operations_.end());
+    using Key = std::pair<size_t, bool>;
+    struct Request {
+      Key key;
+      Operation source;
+      std::string data, requested;
+    };
+    QueuedAccesses queue;
+    std::map<Key, size_t> positions;
+    std::vector<Request> requests;
+    std::vector<size_t> anchors;
+    for (size_t i = 0; i < pending.size(); ++i) {
+      const auto& op = pending[i];
+      const bool read = op.command == "iRead";
+      if (read || op.command == "iWrite") {
+        if (!op.callback) {
+          throw std::runtime_error(
+              "mixed callback and ordinary accesses require separate Applies");
         }
+        const auto target = ResolvePdlTarget(*netlist_, op.arguments.at(0));
+        const auto data = PdlDataValue(*history_context_, *netlist_, target,
+                                       op.arguments.at(1));
+        for (const auto& bit : target.bits) {
+          const auto& node = netlist_->nodes.at(bit.node);
+          if (!(read ? node.read_callback : node.write_callback)) {
+            throw std::runtime_error(
+                "mixed callback and ordinary alias bits require separate "
+                "Applies");
+          }
+          const Key key{bit.node, read};
+          if (positions.emplace(key, requests.size()).second) {
+            requests.push_back({key, op, std::string(node.Width(), 'x'),
+                                std::string(node.Width(), '0')});
+          }
+        }
+        queue.Add(op, target, data);
+        anchors.push_back(begin + i);
+      } else if (op.command == "iScan") {
+        throw std::runtime_error(
+            "mixed callback and raw accesses require separate Applies");
+      } else if (op.command == "iState" &&
+                 (op.arguments.size() != 3 ||
+                  op.arguments[2] == "-LastWrittenValue")) {
+        const auto target = ResolvePdlTarget(*netlist_, op.arguments.at(0));
+        queue.Assume(target, PdlNumber(*history_context_, op.arguments.at(1),
+                                       target.bits.size()));
       }
     }
+    for (bool read : {false, true}) {
+      const auto [bits, values] = read ? queue.ReadModel() : queue.WriteModel();
+      for (size_t i = 0; i < bits.size(); ++i) {
+        const auto& bit = bits[i];
+        const size_t offset = HistoryOffset(bit);
+        auto& request = requests.at(positions.at({bit.node, read}));
+        request.data.at(offset) = values[i];
+        request.requested.at(offset) = '1';
+      }
+    }
+    // Preflight all static bindings and loaded procedures before any effects.
+    for (const auto& request : requests) {
+      const auto& binding = BindCallback(request.key.first, request.key.second);
+      if (!procedures_.count(binding.procedure)) {
+        throw std::runtime_error("undefined iProc for callback " +
+                                 netlist_->nodes[request.key.first].name);
+      }
+      if (std::find(callback_stack_.begin(), callback_stack_.end(),
+                    request.key) != callback_stack_.end()) {
+        throw std::runtime_error("callback cycle at " +
+                                 netlist_->nodes[request.key.first].name);
+      }
+    }
+    pending_ = false;
+    try {
+      for (const auto& request : requests) {
+        const auto [id, read] = request.key;
+        const auto& node = netlist_->nodes.at(id);
+        const auto& descriptor =
+            read ? *node.read_callback : *node.write_callback;
+        const auto& binding = BindCallback(id, read);
+        auto relative = node.name;
+        if (!binding.instance.empty()) {
+          const auto prefix = binding.instance + ".";
+          if (relative.rfind(prefix, 0) != 0) {
+            throw std::runtime_error(
+                "callback register is outside its namespace instance");
+          }
+          relative.erase(0, prefix.size());
+        }
+        std::vector<std::string> arguments;
+        for (const auto& argument : descriptor.arguments) {
+          if (argument.kind == CallbackArgumentKind::kData) {
+            arguments.push_back("0b" + request.data);
+          } else if (argument.kind == CallbackArgumentKind::kRegister) {
+            arguments.push_back(relative);
+          } else {
+            arguments.push_back(argument.value.is_string
+                                    ? argument.value.data
+                                    : "0b" + argument.value.data);
+          }
+        }
+        const auto definition = procedures_.at(binding.procedure);
+        callback_stack_.push_back(request.key);
+        try {
+          callbacks_executed_ = true;
+          InvokeProcedure(
+              definition, binding.instance, arguments,
+              std::string(read ? "ReadCallBack " : "WriteCallBack ") +
+                  node.name + " at " + request.source.origin,
+              request.source.origin, true);
+        } catch (...) {
+          callback_stack_.pop_back();
+          throw;
+        }
+        callback_stack_.pop_back();
+        if (read) {
+          for (auto* history : {&read_history_, &miscompare_history_}) {
+            auto& value =
+                history->try_emplace(id, node.Width(), 'x').first->second;
+            for (size_t i = 0; i < request.requested.size(); ++i) {
+              if (request.requested[i] == '1') value.at(i) = '?';
+            }
+          }
+          if (request.data.find_first_not_of('x') != std::string::npos) {
+            zero_status_known_ = false;
+          }
+        } else {
+          operations_.push_back(
+              {"iState",
+               {node.name, "0b" + request.data, "-LastWrittenValue"},
+               request.source.origin,
+               request.source.call_stack});
+        }
+      }
+    } catch (...) {
+      callback_failed_ = true;
+      pending_ = true;
+      pending_operation_ = begin;
+      for (size_t anchor : anchors)
+        callback_action_ends_[anchor] = operations_.size();
+      throw;
+    }
+    for (size_t anchor : anchors)
+      callback_action_ends_[anchor] = operations_.size() + 1;
+    pending_ = false;
+    return true;
   }
 
   std::string ScanChainName(const std::string& name, const std::string& chain) {
@@ -844,6 +1033,56 @@ class Runtime::Impl {
     if (!validated.ok()) throw std::runtime_error(validated.error_message());
   }
 
+  void InvokeProcedure(const Procedure& definition, const std::string& instance,
+                       const std::vector<std::string>& arguments,
+                       const std::string& invocation, const std::string& origin,
+                       bool apply_tail = false) {
+    std::vector<std::string> call{definition.tcl_name};
+    if (!definition.parameters.empty()) {
+      const auto scope = instance_scopes_.find(instance);
+      if (scope == instance_scopes_.end()) {
+        throw std::runtime_error(
+            "ICL parameters require an elaborated instance " + instance);
+      }
+      for (const auto& name : definition.parameters) {
+        const auto& value = scope->second->parameters.at(name);
+        if (value.is_string) {
+          call.push_back(value.data);
+        } else if (value.data.find('x') != std::string::npos) {
+          call.push_back("0b" + value.data);
+        } else {
+          EvalWords({"expr", "0b" + value.data});
+          call.push_back(Tcl_GetStringResult(interpreter_.get()));
+        }
+      }
+    }
+    if (!definition.parameters.empty()) call.emplace_back();
+    call.insert(call.end(), arguments.begin(), arguments.end());
+    frames_.push_back({instance, "", "", invocation, 0, definition.level});
+    const size_t merge_count = merges_.size();
+    try {
+      EvalWords(call);
+      if (merges_.size() != merge_count) {
+        throw std::runtime_error("iProc returned with unclosed iMerge");
+      }
+      if (apply_tail && pending_) Command({"iApply"}, origin, nullptr);
+      if (apply_tail && callback_failed_) {
+        throw std::runtime_error("failed callback queue requires iReset");
+      }
+      frames_.pop_back();
+    } catch (const std::exception& error) {
+      merges_.resize(merge_count);
+      frames_.pop_back();
+      throw std::runtime_error(std::string(error.what()) + "\n  while " +
+                               invocation);
+    }
+    if (!merges_.empty() && merges_.back().depth == frames_.size() &&
+        pending_) {
+      throw std::runtime_error(
+          "merged iCall returned with unapplied operations");
+    }
+  }
+
   const ModuleDefinition& InstanceModule(const std::string& path) const {
     if (!instance_scopes_.empty()) {
       const auto found = instance_scopes_.find(path);
@@ -1027,46 +1266,8 @@ class Runtime::Impl {
       const auto invocation = "iCall " + words[1] + " at " + origin +
                               " (command " +
                               std::to_string(frames_.back().command) + ")";
-      std::vector<std::string> call{definition.tcl_name};
-      if (!definition.parameters.empty()) {
-        const auto scope = instance_scopes_.find(instance);
-        if (scope == instance_scopes_.end()) {
-          throw std::runtime_error(
-              "ICL parameters require an elaborated instance " + instance);
-        }
-        for (const auto& name : definition.parameters) {
-          const auto& value = scope->second->parameters.at(name);
-          if (value.is_string) {
-            call.push_back(value.data);
-          } else if (value.data.find('x') != std::string::npos) {
-            call.push_back("0b" + value.data);
-          } else {
-            EvalWords({"expr", "0b" + value.data});
-            call.push_back(Tcl_GetStringResult(interpreter_.get()));
-          }
-        }
-      }
-      if (!definition.parameters.empty()) call.emplace_back();
-      call.insert(call.end(), words.begin() + 2, words.end());
-      frames_.push_back({instance, "", "", invocation, 0, definition.level});
-      const size_t merge_count = merges_.size();
-      try {
-        EvalWords(call);
-        if (merges_.size() != merge_count) {
-          throw std::runtime_error("iProc returned with unclosed iMerge");
-        }
-        frames_.pop_back();
-      } catch (const std::exception& error) {
-        merges_.resize(merge_count);
-        frames_.pop_back();
-        throw std::runtime_error(std::string(error.what()) + "\n  while " +
-                                 invocation);
-      }
-      if (!merges_.empty() && merges_.back().depth == frames_.size() &&
-          pending_) {
-        throw std::runtime_error(
-            "merged iCall returned with unapplied operations");
-      }
+      InvokeProcedure(definition, instance, {words.begin() + 2, words.end()},
+                      invocation, origin);
       return;
     }
     if (name == "iGetReadData" || name == "iGetMiscompares" ||
@@ -1135,15 +1336,55 @@ class Runtime::Impl {
             JoinPath(prefix(), operation.arguments[i + 1]);
       }
     }
+    if ((name == "iTake" || name == "iRelease") && has_callbacks_) {
+      const auto& target = operation.arguments.at(0);
+      if (callback_scopes_.count(target)) {
+        throw std::runtime_error(
+            "ownership of logical callback storage is unsupported");
+      }
+      if (!instance_scopes_.count(target)) {
+        for (const auto& bit : ResolvePdlTarget(*netlist_, target).bits) {
+          const auto& node = netlist_->nodes.at(bit.node);
+          if (node.read_callback || node.write_callback) {
+            throw std::runtime_error(
+                "ownership of logical callback storage is unsupported");
+          }
+        }
+      }
+    }
+    if ((name == "iWrite" || name == "iRead") && has_callbacks_) {
+      const auto target =
+          ResolvePdlTarget(*netlist_, operation.arguments.at(0));
+      const bool read = name == "iRead";
+      operation.callback = std::any_of(
+          target.bits.begin(), target.bits.end(), [&](const auto& bit) {
+            const auto& node = netlist_->nodes.at(bit.node);
+            return (read ? node.read_callback : node.write_callback)
+                .has_value();
+          });
+      if (operation.callback) {
+        ValidatePdlAccessTarget(*netlist_, target, read);
+        if (!history_context_)
+          history_context_ = std::make_unique<z3::context>();
+        const auto bits = operation.arguments.size() > 1
+                              ? PdlDataValue(*history_context_, *netlist_,
+                                             target, operation.arguments[1])
+                              : std::string(target.bits.size(), 'x');
+        operation.arguments = {operation.arguments[0], "0b" + bits};
+      }
+    }
     if (name == "iWrite" || name == "iRead" || name == "iScan") {
       if (!pending_) pending_operation_ = operations_.size();
       pending_ = true;
     }
     if (name == "iState") RememberHistory(operation);
     if (name == "iApply") {
-      CheckPendingCallbacks();
-      InvalidateReadHistory(operation);
+      if (callback_failed_) {
+        throw std::runtime_error("failed callback queue requires iReset");
+      }
+      if (!ExecuteCallbacks(operation)) InvalidateReadHistory(operation);
     }
+    if (name == "iReset") callback_failed_ = false;
     if (name == "iApply" || name == "iReset") pending_ = false;
     if (name == "iRunLoop" && pending_) {
       throw std::runtime_error("iRunLoop has unapplied operations");
@@ -1165,7 +1406,12 @@ class Runtime::Impl {
     operations_.push_back(std::move(operation));
   }
 
-  bool has_callbacks_ = false;
+  bool has_callbacks_ = false, callback_failed_ = false,
+       callbacks_executed_ = false;
+  std::map<std::pair<size_t, bool>, CallbackBinding> callback_bindings_;
+  std::vector<std::pair<size_t, bool>> callback_stack_;
+  std::set<std::string> callback_scopes_;
+  std::map<size_t, size_t> callback_action_ends_;
   bool trace_source_ = false;
   Readback readback_;
   size_t source_count_ = 0;
@@ -1226,4 +1472,5 @@ const std::vector<std::string>& Runtime::warnings() const {
   return impl_->warnings();
 }
 int Runtime::Level() const { return impl_->Level(); }
+bool Runtime::CallbacksExecuted() const { return impl_->CallbacksExecuted(); }
 }  // namespace pattern

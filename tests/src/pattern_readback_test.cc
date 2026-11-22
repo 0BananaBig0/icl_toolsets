@@ -158,6 +158,32 @@ void TestRawTapObservationCommit() {
             "raw TAP follow-up observes committed binary/literal state");
   }
 }
+void TestCallbackHistoryBoundary() {
+  pattern::Design design;
+  design.AddIcl("callback-history.icl", R"(
+Module Top {
+ DataInPort p;
+ DataRegister value {WriteCallBack Top store <D>;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto canceled = pattern::MakeModeledReadback(netlist);
+  const auto* delta =
+      canceled({{"iWrite", {"value", "1"}, "callback", {}, true},
+                {"iReset", {}, "cancel", {}}},
+               false);
+  Require(delta && delta->bits.empty() && delta->failures == 0,
+          "canceled callback marker produces no observation or failure");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  bool rejected = false;
+  try {
+    readback({{"iWrite", {"value", "1"}, "callback", {}, true},
+              {"iApply", {}, "callback apply", {}}},
+             false);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("callback") != std::string::npos;
+  }
+  Require(rejected, "logical callback data cannot become modeled observations");
+}
 void TestReadModel() {
   pattern::Design design;
   design.AddIcl("queue.icl", R"(
@@ -593,6 +619,7 @@ int main() {
   try {
     TestRawObservationCommit();
     TestRawTapObservationCommit();
+    TestCallbackHistoryBoundary();
     TestReadModel();
     TestModeledReadback();
     TestScheduledObservations();

@@ -96,12 +96,14 @@ modeled connectivity, not an actual read observation or substitute for its
 executed endpoint operations. Unspecified x bits stay unknown; do not infer their
 values from expected data, a prior call, defaults or endpoint similarity.
 Existing downstream logic may use known declared postcondition bits.
-Do not assign read callback data from <D>. Invalidate its read/miscompare history
-on successful logical Apply and require an actual provider for subsequent values.
+Do not assign read callback data from <D>. Invalidate its requested read/miscompare history bits
+on successful logical Apply, preserving unrequested explicit history and require an actual provider for subsequent values.
 
 Generation skips logical request markers and emits real expanded endpoint
-transactions plus declared write postconditions. ModelReadback explicitly rejects
-callback markers and CLI model mode rejects an executed callback, preserving the
+transactions plus declared write postconditions. ModelReadback skips queued logical markers, tracks them incrementally until Apply
+or Reset, and rejects an applied callback group. Runtime::CallbacksExecuted()
+distinguishes invocation from a canceled request for CLI model/physical checks,
+ preserving the
 boundary against invented callback observations/counts. Physical mode rejects
 callbacks explicitly. Manual state/history assumptions retain existing semantics.
 
@@ -125,7 +127,7 @@ Filter logical markers in reset-prerequisite/local-reset target analysis and
 skip their hardware lowering after processing their source-action anchor.
 Preserve procedure bytes, evaluated arguments, prefixes and per-invocation
 occurrence dispatch. Endpoint reservations and automatic reset releases keep
-their existing enforcement. Direct take/release of logical callback storage remains unsupported.
+their existing enforcement. Direct or whole-instance reservations including logical callback storage remain unsupported.
 
 ## Cost and verification
 No dependencies or RTL edits. Work is O(B log B + emitted procedure commands and indexed metadata/action

@@ -27,6 +27,175 @@ void Fails(Action action, const std::string& expected) {
   }
   throw std::runtime_error("expected error: " + expected);
 }
+const std::string kCallbackModel = R"(
+Module Leaf {
+ Parameter Tag = "leaf";
+ DataRegister value[3:0] {WriteCallBack ::Top::api store <D> <R> "<D>" 8'b10x1;}
+}
+Module Top {
+ Parameter Tag = "root";
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ Instance first Of Leaf;
+ Alias low[1:0] = first.value[1:0];
+})";
+void TestCallbackQueueAndBinding() {
+  pattern::Design design;
+  design.AddIcl("callback.icl", kCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist, true);
+  runtime.Execute("callback.pdl", R"(
+iWrite first.value 3; iReset
+iProcsForModule Top -iProcNameSpace api
+iProc store {data reg literal number} {
+ if {$Tag ne "root" || $literal ne "<D>" || $number ne "0b000010x1"} {
+  error {wrong callback arguments or ancestor parameters}
+ }
+ iNote "$reg=$data"
+ iWrite p $data
+}
+iWrite low 2; iWrite first.value 9; iApply
+iWrite p 8; iApply
+)");
+  runtime.Finish();
+  size_t markers = 0, notes = 0, endpoints = 0, states = 0;
+  for (const auto& op : runtime.operations()) {
+    if (op.callback) {
+      ++markers;
+      continue;
+    }
+    if (op.command == "iNote") {
+      ++notes;
+      Require(op.arguments == std::vector<std::string>{"first.value=0b1001"},
+              "callback R/data resolve relative to real ancestor");
+    }
+    if (op.command == "iWrite") {
+      ++endpoints;
+      Require(op.arguments[0] == "p", "callback frame did not leak prefix");
+    }
+    if (op.command == "iState") {
+      ++states;
+      Require(op.arguments[0] == "first.value" && op.arguments[1] == "0b1001",
+              "callback declares successful logical write postcondition");
+    }
+  }
+  Require(
+      markers == 3 && notes == 1 && endpoints == 2 && states == 1,
+      "latest callback coalesces once, reset cancels, ordinary path retained");
+  pattern::Runtime retry(design, netlist);
+  retry.Execute("retry.pdl", R"(
+iWrite first.value 9
+if {![catch {iApply} message] || [string first {undefined iProc} $message] < 0} {
+ error {missing callback preflight did not fail}
+}
+iProcsForModule Top -iProcNameSpace api
+iProc store {data reg literal number} {iWrite p $data}
+iApply
+)");
+  retry.Finish();
+}
+void TestCallbackFailureRecovery() {
+  pattern::Design design;
+  design.AddIcl("callback-error.icl", kCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const std::string source = R"(
+iProcsForModule Top -iProcNameSpace api
+iProc store {data reg literal number} {
+ iWrite p $data; iApply
+ iWrite p 5; error broken
+}
+iWrite first.value 9
+if {![catch {iApply} message] || [string first broken $message] < 0} {
+ error {callback body error missing}
+}
+if {![catch {iApply} message] || [string first iReset $message] < 0} {
+ error {unfinished callback endpoint queue flushed}
+}
+)";
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("failure.pdl", source + R"(
+iReset
+iProc store {data reg literal number} {iWrite p $data}
+iWrite first.value 6; iApply
+)");
+  runtime.Finish();
+  size_t states = 0;
+  for (const auto& op : runtime.operations()) {
+    if (op.command != "iState") continue;
+    ++states;
+    Require(op.arguments[1] == "0b0110",
+            "failed callback cannot publish logical write postcondition");
+  }
+  Require(states == 1, "only recovered callback declares a postcondition");
+  pattern::Runtime blocked(design, netlist);
+  blocked.Execute("blocked.pdl", source);
+  Fails([&] { blocked.Finish(); }, "iReset");
+}
+void TestCaughtCallbackReturnsToCaller() {
+  pattern::Design design;
+  design.AddIcl("callback-wrapper.icl", kCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("wrapper.pdl", R"(
+iProcsForModule Top -iProcNameSpace api
+iProc store {data reg literal number} {iWrite p $data; error broken}
+iProc wrapper {} {
+ iWrite first.value 9
+ if {![catch {iApply}]} {error {callback failure missing}}
+}
+iCall api::wrapper
+iReset
+iProc store {data reg literal number} {iWrite p $data}
+iWrite first.value 6; iApply
+)");
+  runtime.Finish();
+}
+void TestCallbackCycles() {
+  auto source = kCallbackModel;
+  const auto where = source.find(" Instance first Of Leaf;");
+  source.insert(where, " Instance second Of Leaf;\n");
+  pattern::Design design;
+  design.AddIcl("callback-cycle.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (bool indirect : {false, true}) {
+    pattern::Runtime runtime(design, netlist);
+    std::string procedure = R"(
+iProcsForModule Top -iProcNameSpace api
+iProc store {data reg literal number} {
+ set target first.value
+)";
+    if (indirect)
+      procedure += " if {$reg eq {first.value}} {set target second.value}\n";
+    procedure += R"(
+ iWrite $target $data; iApply
+}
+iWrite first.value 9; iApply
+)";
+    Fails([&] { runtime.Execute("cycle.pdl", procedure); }, "callback cycle");
+  }
+}
+void TestCallbackPartialHistory() {
+  pattern::Design design;
+  design.AddIcl("callback-partial.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister observed[3:0] {ReadCallBack Top load <D> <R>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("partial.pdl", R"(
+iProcsForModule Top
+iProc load {data reg} {iRead q $data}
+iState observed 12 -LastReadValue
+iRead observed[1:0] 0; iApply
+if {[iGetReadData observed[3:2]] ne {0b11}} {
+ error {callback lost unrequested manual history}
+}
+if {![catch {iGetReadData observed[1:0]}]} {
+ error {callback invented observed data from expected}
+}
+)");
+  runtime.Finish();
+}
 void CheckInvalidRawProviderMode(bool mixed) {
   const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_ir/";
   const auto read = [&](const std::string& name) {
@@ -257,8 +426,7 @@ Module Top {
                               "iWrite written 0", "iWrite writer[2:1] 0"}) {
     pattern::Runtime runtime(design, netlist);
     runtime.Execute("queue.pdl", std::string(command));
-    Fails([&] { runtime.Execute("apply.pdl", "iApply"); },
-          "CallBack execution is not implemented");
+    Fails([&] { runtime.Execute("apply.pdl", "iApply"); }, "undefined iProc");
   }
   pattern::Runtime canceled(design, netlist);
   canceled.Execute("canceled.pdl",
@@ -1022,7 +1190,12 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestRawProviderRejectsRegularIr,
+  for (const auto test : {TestCallbackQueueAndBinding,
+                          TestCallbackFailureRecovery,
+                          TestCaughtCallbackReturnsToCaller,
+                          TestCallbackCycles,
+                          TestCallbackPartialHistory,
+                          TestRawProviderRejectsRegularIr,
                           TestRawProviderRejectsMixedModes,
                           TestRawReadbackProvider,
                           TestReadbackAdapter,
