@@ -12,11 +12,53 @@
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_scheduler.h"
 #include "pattern/pattern_state.h"
+#include "pattern/pattern_tap_execution.h"
 #include "pattern/pattern_values.h"
 
 namespace {
 void Require(bool value, const char* message) {
   if (!value) throw std::runtime_error(message);
+}
+void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
+                                   const pattern::Netlist& netlist,
+                                   const std::string& target,
+                                   const std::string& committed,
+                                   const std::string& next_read, bool physical,
+                                   bool write) {
+  std::vector<pattern::Operation> operations{
+      {"iRead", {target, "0"}, "test", {}}};
+  if (write) operations.push_back({"iWrite", {target, "6"}, "test", {}});
+  size_t calls = 0;
+  bool propagated = false;
+  try {
+    scheduler->Apply(operations, false, {}, true, physical,
+                     [&](const auto&, const auto&) {
+                       ++calls;
+                       throw std::runtime_error("listener failure");
+                     });
+  } catch (const std::runtime_error& error) {
+    propagated =
+        std::string(error.what()).find("listener failure") != std::string::npos;
+  }
+  Require(propagated && calls == 1, "subscriber failure propagates once");
+  Require(scheduler->Value(target) == committed,
+          "subscriber failure retains completed transaction state");
+  std::map<std::pair<size_t, int64_t>, char> observed;
+  scheduler->Apply(
+      {{"iRead", {target, "0b" + next_read}, "test", {}}}, false, {}, true,
+      physical, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          observed.emplace(std::make_pair(bits[i].node, bits[i].index),
+                           values[i]);
+        }
+      });
+  std::string actual;
+  for (const auto& bit : pattern::ResolvePdlTarget(netlist, target).bits) {
+    actual += observed.at({bit.node, bit.index});
+  }
+  Require(
+      actual == next_read && scheduler->Value(target) == committed,
+      "following read observes committed data without restoring stale fill");
 }
 void TestReadModel() {
   pattern::Design design;
@@ -229,20 +271,133 @@ void TestFastObserverExceptions() {
     pattern::ScanScheduler scheduler(netlist);
     scheduler.Reset();
     scheduler.Assume(native ? "open" : "cap_enable", "1");
-    size_t calls = 0;
-    bool thrown = false;
-    try {
-      scheduler.Apply({{"iRead", {"child.value", "0"}, "test", {}}}, false, {},
-                      true, false, [&](const auto&, const auto&) {
-                        ++calls;
-                        throw std::runtime_error("listener failure");
-                      });
-    } catch (const std::runtime_error& error) {
-      thrown = std::string(error.what()).find("listener failure") !=
-               std::string::npos;
+    scheduler.Assume("child.value", native ? "00001001" : "1001");
+    CheckCommittedObserverFailure(&scheduler, netlist, "child.value",
+                                  native ? "00000110" : "1001",
+                                  native ? "00000110" : "1010", false, native);
+  }
+}
+void TestObserverFailureInvalidatesRoute() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl";
+  std::ifstream stream(path);
+  Require(stream.good(), "route-change fixture opens");
+  pattern::Design design;
+  design.AddIcl(path,
+                std::string((std::istreambuf_iterator<char>(stream)), {}));
+  const auto netlist = pattern::Elaborate(design, "NativeOrdinaryTop");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  bool thrown = false;
+  try {
+    scheduler.Apply({{"iWrite", {"open", "1"}, "test", {}},
+                     {"iRead", {"child.value", "0"}, "test", {}},
+                     {"iWrite", {"child.value", "6"}, "test", {}}},
+                    false, {}, true, false, [](const auto&, const auto&) {
+                      throw std::runtime_error("route listener failure");
+                    });
+  } catch (const std::runtime_error& error) {
+    thrown = std::string(error.what()).find("route listener failure") !=
+             std::string::npos;
+  }
+  Require(
+      thrown && scheduler.Value("open") == "1" &&
+          scheduler.Value("child.value") == "00000110",
+      "route-changing transaction remains committed after subscriber failure");
+  const auto normalized = scheduler.NormalizeScan(
+      {"iScan", {"client", "9", "-si", "0"}, "after observer failure", {}});
+  Require(normalized.arguments[1] == "9" &&
+              normalized.arguments[3] == "0b000000000",
+          "raw normalization uses the newly committed open route");
+}
+void TestGeneralObserverException() {
+  pattern::Design design;
+  design.AddIcl("general.icl", R"(
+Module Top {
+ ScanInPort si;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanOutPort so {Source r[0];}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("r", "1001");
+  CheckCommittedObserverFailure(&scheduler, netlist, "r", "0110", "0110", false,
+                                true);
+}
+void TestTapReturnOracle() {
+  const std::string directory =
+      "tests/cases/ours/pattern_generation/access_link/";
+  const auto read = [](const std::string& path) {
+    std::ifstream stream(path);
+    Require(stream.good(), "TAP oracle fixture opens");
+    return std::string((std::istreambuf_iterator<char>(stream)), {});
+  };
+  auto source = read(directory + "simple.icl");
+  const std::string declaration = "ScanRegister r[7:0] { ScanInSource si; }";
+  source.replace(
+      source.find(declaration), declaration.size(),
+      "ScanRegister r[7:0] {ScanInSource si; CaptureSource r; ResetValue 0;}");
+  pattern::Design design;
+  design.AddIcl("tap.icl", source);
+  design.AddBsdl("tap.bsdl", read(directory + "simple.bsdl"), "AccessProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "AccessTop");
+  const auto& netlist = network.netlist;
+  const auto id = netlist.node_ids.at("core.r");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("core.r", "00001001");
+  std::map<int64_t, char> observed;
+  const auto steps = scheduler.Apply(
+      {{"iRead", {"core.r", "0"}, "test", {}},
+       {"iWrite", {"core.r", "6"}, "test", {}}},
+      false, {}, true, false, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          if (bits[i].node == id) observed.emplace(bits[i].index, values[i]);
+        }
+      });
+  pattern::TapExecution oracle(netlist);
+  const auto cycle = [&](char tms, char input = '0',
+                         std::string* returned = nullptr) {
+    oracle.Drive("TMS", std::string(1, tms));
+    oracle.Drive("TDI", std::string(1, input));
+    if (returned) *returned += oracle.ReadTdo("tap");
+    oracle.RisingEdge("TCK");
+    oracle.FallingEdge("TCK");
+  };
+  oracle.Drive("TRST", "0");
+  oracle.Drive("TRST", "1");
+  cycle('0');
+  oracle.Assume(id, "00001001");
+  std::string data_return;
+  for (const auto& step : steps) {
+    for (char tms : std::string(step.instruction ? "1100" : "100")) cycle(tms);
+    std::string returned;
+    for (size_t tick = 0; tick < step.serial.size(); ++tick) {
+      cycle(tick + 1 == step.serial.size() ? '1' : '0', step.serial[tick],
+            &returned);
     }
-    Require(thrown && calls == 1,
-            "accepted fast replay propagates subscriber errors without retry");
+    cycle('1');
+    cycle('0');
+    if (!step.instruction) data_return = returned;
+  }
+  Require(
+      data_return == "10010000" && oracle.Value("core.r") == "00000110",
+      "independent TAP edge replay returns old9 LSB first before updating6");
+  Require(observed.size() == 8,
+          "TAP listener delivers all eight requested data bits");
+  for (int64_t bit = 0; bit < 8; ++bit) {
+    Require(observed.at(bit) == (bit == 0 || bit == 3 ? '1' : '0'),
+            "logical observations agree with independently sampled TDO");
+  }
+  for (bool physical : {false, true}) {
+    pattern::ScanScheduler throwing(netlist);
+    throwing.Reset(false, physical);
+    throwing.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "test", {}}}, false,
+                   {}, true, physical);
+    throwing.Assume("core.r", "00001001");
+    CheckCommittedObserverFailure(&throwing, netlist, "core.r", "00000110",
+                                  "00000110", physical, true);
   }
 }
 void TestDataReadbackPlanes() {
@@ -343,6 +498,9 @@ int main() {
     TestScheduledObservations();
     TestSerialEventOracle();
     TestFastObserverExceptions();
+    TestGeneralObserverException();
+    TestObserverFailureInvalidatesRoute();
+    TestTapReturnOracle();
     TestDataReadbackPlanes();
     TestDataFrameEventOracle();
     std::cout << "readback tests passed\n";

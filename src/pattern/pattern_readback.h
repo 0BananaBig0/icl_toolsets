@@ -10,5 +10,6 @@ inline constexpr char kModeledReadbackNote[] =
     "modeled register/PIO readback; no live device";
 // The netlist must outlive this append-only, single-runtime session.
 Runtime::Readback MakeModeledReadback(const Netlist& netlist);
+Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_READBACK_H_

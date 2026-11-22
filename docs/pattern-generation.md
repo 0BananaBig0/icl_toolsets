@@ -452,7 +452,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | iClock/iClockOverride and relative waits work on qualified clock-only routes; restricted state-free absolute waits preserve literal time. General stateful time/clock events remain pending. |
-| Observation getters | Explicit history and known-zero status remain available by default. --model_readback supplies actual PIO and standalone serial register observations, bitwise miscompares and exact failure counts; see [the example and limits](#task150-modeled-standalone-scan-observations). Bound-TAP, interface/chain and live-device observations remain open. |
+| Observation getters | Explicit history and known-zero status remain available by default. --model_readback supplies actual PIO and serial-register observations, including bound TAPs and exact physical-PDL replay, with bitwise miscompares and failure counts; see [the example and limits](#task151-modeled-bound-tap-observations). Raw/interface/chain, timed and live-device observations remain open. |
 
 This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
@@ -8050,3 +8050,122 @@ Matched ordinary outputs and replay forms agree. These short, noisy process
 measurements establish the tested scale, not a global speedup or a million-bit
 modeled-readback qualification. Commands, input sizes, hashes and timings are
 retained in build/modeled-scan-readback-20261122/scale/.
+
+## Task151: modeled bound-TAP observations
+
+--model_readback now includes IR/DR register observations through existing
+bound TAP routes, captured DataRegister reads and common-phase multiple TAPs.
+It samples the actual modeled TDO before each shift edge and retains the first
+requested observation within an Apply. Expected bits control masks and counts;
+they never supply observed values. Capture-IR metadata, unknown bits and
+capture/shift/update separation come from the existing BSDL/ICL controller.
+
+Save tap.icl:
+
+~~~icl
+Module Instrument {
+ ScanInPort si; ScanOutPort so {Source r[0];}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanRegister r[7:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port ck;}
+}
+Module TapModel {
+ Instance core Of Instrument;
+ AccessLink tap Of STD_1149_1_2001 {
+  BSDLEntity AccessProbe;
+  IJTAG_ON {ScanInterface {core.client;}}
+  IJTAG_OFF {ScanInterface {core.client;}}
+ }
+}
+~~~
+
+Save observe.pdl:
+
+~~~tcl
+iPDLLevel 1
+iReset
+iWrite tap.INSTRUCTION 3; iApply
+iWrite core.r 9; iApply
+iRead core.r 0; iWrite core.r 6; iApply
+iNote [iGetReadData core.r -dec]
+iNote [iGetMiscompares core.r -bin]
+iNote [iGetStatus -clear]
+iRead core.r 6; iApply
+iNote [iGetReadData core.r -dec]
+iNote [iGetStatus]
+~~~
+
+From the repository root, use its self-constructed BSDL test fixture:
+
+~~~sh
+icl-pattern-generation --icl tap.icl --bsdl AccessProbe tests/cases/ours/pattern_generation/access_link/simple.bsdl --pdl observe.pdl --top_module TapModel --model_readback --physical_pdl --output result.pdl
+~~~
+
+The notes are9,0b00001001,2,6,0. The first read sees old storage9
+before the same CSU updates6; its two mismatching bits accumulate and clear
+returns2. A later read sees6. The explicit IR setup is needed for exact
+physical replay. Removing --physical_pdl uses ordinary retargeting; both forms
+of this author walkthrough have been executed. The fixture is an ICL/BSDL
+model, not a certificate for a physical device.
+
+Runtime observations and emitted generation use matching observer-aware
+scheduling. Modeled miscompares remain data to count, including physical
+replay, rather than causing a different verification fallback. Default mode
+retains its existing physical comparison diagnostics. The physical-mode
+readback factory uses the same exact-CSU/reset mode as output generation.
+Implicit IR setup is not added to explicit source-read history or failure
+counts. Accepted native results own observations across route/state changes;
+subscriber errors propagate without retrying an accepted scan.
+
+Sparse/inverted/ascending aliases, unknown status, manual history planes,
+reservations and reset cancellation retain their existing semantics.
+Prefix/file ordering and once-only Tcl evaluation remain intact, and local
+reset rewriting preserves procedure bytes. Existing unsupported topology,
+reset, binary-load, event-work and physical-shape guards stay in force.
+Direct accesses to synthetic TAP data registers remain forbidden; their raw
+scan models do not become ordinary PDL targets.
+
+Raw/interface/chain histories, independently phased unsupported TAP networks,
+timed histories, applied callbacks and device transport remain open. This
+increment neither inserts RTL nor signs off physical timing. The mode note
+remains modeled register/PIO readback; no live device.
+
+Final qualification, independent review and measured scale evidence follow. The author walkthrough is not an independent usability
+reader assessment.
+
+
+Task151 final qualification passes 38 recorded gates: all 14 native and 14
+leak-enabled ASAN/UBSAN native suites, 60 suites/978 methods for each dynamic
+and static generator, 16 TAP/16 standalone/16 data/17 PIO/71 CLI sanitizer
+methods, 18 affected format/tidy/strict C++17 checks and source packaging.
+All 4008 input hashes and 31 executable hashes are verified. Coverage item1
+remains excluded with unchanged thresholds.
+
+The fresh independent reviewer used direct source/tool access and independently
+ran the 16 new dynamic methods, native readback and selected inversion/IR-lane
+probes. Verdict: 0 Critical, 1 Important, 2 Minor. The Important subscriber-error
+finding is fixed in one test-first verified pass. Public Apply now commits the
+complete state and finishes route invalidation before external notification.
+A subscriber exception leaves that completed transaction committed; a following
+read keeps its data and raw normalization uses the new route. Tests cover native
+standalone, regular/general and ordinary/physical TAP paths. Both stale-fill
+and stale-route regressions failed before their fixes. Interrupted earlier runs
+are retained as partial evidence, never a full pass; no rereview is claimed.
+
+Two Minor findings are deferred: compiled help does not explicitly explain
+modeled physical comparison behavior, and the walkthrough numeric prose lacks
+spaces in several places. The guide explains the behavior and its executed
+examples produce the five correct notes. These are not runtime failures.
+
+The final 144-process scale matrix repeats original/flat/generated forms three
+times for parent/current, default/unused/queried controls. It covers prepared
+32-bit and 512-bit single-TAP chains, two unequal TAP lanes, and physical 32-bit
+replay. Matching ordinary outputs and replay forms agree. Queried three-replay
+medians are single32=0.294s, single512=0.545s, multiple=0.947s, physical32=0.294s. Commands, sizes, RSS, hashes and environment are
+recorded under build/modeled-tap-readback-20261122/scale-qualified/.
+Short process timings are noisy; no global speedup is claimed.
+The initial implicit-setup 512-bit parent invocation reaches the existing
+solver limit; explicit IR preparation passes matched parent/current controls.
+No limit was raised and the prepared-chain measurement does not qualify every
+wide startup sequence. Hardware timing, device transport, vendor equivalence
+and an independent usability reader are not established by these checks.
