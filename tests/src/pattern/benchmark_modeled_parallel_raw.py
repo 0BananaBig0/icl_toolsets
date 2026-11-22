@@ -41,11 +41,15 @@ def inputs(widths, mode):
     payloads = [("10010110" * ((width + 7) // 8))[:width] for width in widths]
     for stage in range(2):
         for i, width in enumerate(widths):
+            if mode == "implicit" and i:
+                continue
             target = "client" + ("" if mode == "scalar" else f" -chain lane{i}")
             bits = payloads[i] if stage == 0 else "0" * width
             program += [f"iScan {target} {width} -si 0b{bits} -stable"]
         program += ["iApply"]
         for i, width in enumerate(widths):
+            if mode == "implicit" and i:
+                continue
             target = "client" + ("" if mode == "scalar" else f" -chain lane{i}")
             expected = "x" * width if mode == "opaque" else (
                 "0" * width if stage == 0 else payloads[i])
@@ -133,7 +137,10 @@ def main():
     report["parent_negative_control"] = {
         "exit": old.returncode, "diagnostic": message, "artifact": str(root)}
     for label, widths in shapes:
-        for mode in ("parallel", "scalar", "opaque"):
+        modes = ("parallel", "scalar", "opaque")
+        if label == "skewed":
+            modes += ("implicit",)
+        for mode in modes:
             root = Path(tempfile.mkdtemp(prefix=label + "-" + mode + "-", dir=output))
             source, commands = inputs(widths, mode)
             model, program = root / "model.icl", root / "source.pdl"

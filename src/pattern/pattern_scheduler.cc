@@ -1202,6 +1202,7 @@ class ScanScheduler::Impl {
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
       if (node.scope != 0 || node.constants.count("iApplyEndState") ||
+          node.model == ModelKind::kAccessLink ||
           (node.model == ModelKind::kRegister && node.kind != "ScanRegister" &&
            node.kind != "DataRegister") ||
           (node.kind == "DataRegister" && node.inputs.count("WriteDataSource")))
@@ -1228,8 +1229,11 @@ class ScanScheduler::Impl {
     for (const auto& bit : interface.ports) {
       if (bit.node == kMissing || bit.inverted) fail();
       const auto& node = netlist_.nodes.at(bit.node);
-      if (!kinds.count(node.kind) || node.Width() != 1 ||
-          !node.inputs.empty() || !controls.insert(node.kind).second)
+      if (!kinds.count(node.kind) || !node.inputs.empty() ||
+          bit.index < std::min(node.left, node.right) ||
+          bit.index > std::max(node.left, node.right) ||
+          (node.kind != "SelectPort" &&
+           (node.Width() != 1 || !controls.insert(node.kind).second)))
         fail();
     }
     std::map<Key, size_t> outputs;
@@ -1336,11 +1340,29 @@ class ScanScheduler::Impl {
       std::set<size_t>* assigned, const RawObservation& observe) {
     const auto& profile = ParallelRawPaths();
     std::map<std::string, Operation> latest;
+    size_t queued_bits = 0;
     for (const auto& operation : operations) {
-      auto scan = NormalizeParallelRaw(operation, false);
-      latest.insert_or_assign(ReadScanFields(scan).chain, std::move(scan));
+      auto scan = NormalizeParallelRaw(operation, true);
+      const auto fields = ReadScanFields(scan);
+      const auto previous = latest.find(fields.chain);
+      const size_t replaced =
+          previous == latest.end()
+              ? 0
+              : previous->second
+                        .arguments[ReadScanFields(previous->second).input]
+                        .size() -
+                    2;
+      queued_bits =
+          queued_bits - replaced + scan.arguments[fields.input].size() - 2;
+      if (queued_bits > 1048576) {
+        throw std::runtime_error("raw scan queued payload resource limit");
+      }
+      latest.insert_or_assign(fields.chain, std::move(scan));
     }
     if (latest.empty()) throw std::runtime_error("raw scan queue is empty");
+    for (auto& [name, scan] : latest) {
+      scan = NormalizeParallelRaw(scan, false);
+    }
     if (global_resets_ != "00") {
       throw std::runtime_error(
           "modeled raw scan requires an explicit iReset first");
@@ -1362,7 +1384,10 @@ class ScanScheduler::Impl {
       if (found != latest.end()) {
         scan = found->second;
       } else {
-        scan = operations.front();
+        const auto& source = operations.front();
+        scan = {source.command,  {},
+                source.origin,   source.call_stack,
+                source.callback, source.callback_execution};
         std::string input(path.width, 'x');
         size_t offset = path.width;
         for (const auto& [id, suffix] : path.registers) {

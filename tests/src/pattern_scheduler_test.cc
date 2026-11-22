@@ -385,6 +385,123 @@ void TestParallelRawUnknownAndSerialFields() {
     }
   }
 }
+
+void TestParallelRawImplicitCapacity() {
+  constexpr size_t count = 64, width = 16384;
+  std::string model = "Module Top {SelectPort sel;";
+  std::string chains;
+  for (size_t i = 0; i < count; ++i) {
+    const auto name = std::to_string(i);
+    const auto bits = i ? 1 : width;
+    model += "ScanInPort si" + name + "; ScanRegister r" + name + "[" +
+             std::to_string(bits - 1) + ":0] {ScanInSource si" + name +
+             "; CaptureSource r" + name + "; ResetValue 0;} ScanOutPort so" +
+             name + " {Source r" + name + "[0];}";
+    chains +=
+        "Chain lane" + name + " {Port si" + name + ";Port so" + name + ";}";
+  }
+  model += "ScanInterface client {Port sel;" + chains + "}}";
+  pattern::Design design;
+  design.AddIcl("capacity.icl", model);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  auto operation = ParallelRawRequest("lane0", std::to_string(width),
+                                      "0b" + std::string(width, '1'),
+                                      "0b" + std::string(width, 'x'));
+  operation.call_stack = {"parent"};
+  operation.callback_execution = true;
+  const auto result = scheduler.ApplyRawScans({operation});
+  size_t capacity = 0;
+  for (const auto& scan : result) {
+    const auto fields = pattern::ReadScanFields(scan);
+    capacity += scan.arguments[fields.input].capacity() +
+                scan.arguments[fields.expected].capacity();
+    Require(
+        scan.origin == operation.origin &&
+            scan.call_stack == operation.call_stack &&
+            scan.callback_execution == operation.callback_execution,
+        "implicit fields retain source context without wide operand copies");
+  }
+  Require(result.size() == count && capacity <= 8 * (width + count * 32),
+          "skewed implicit fields retain only aggregate-sized operand storage");
+}
+void TestParallelRawNativeReplacement() {
+  pattern::Design design;
+  design.AddIcl("replacement.icl", ParallelRawModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.ApplyRawScans({ParallelRawRequest("first", "3", "7"),
+                           ParallelRawRequest("first", "4", "9")});
+  Require(scheduler.Value("a") == "1001",
+          "native latest request supersedes a valid obsolete physical length");
+  bool rejected = false;
+  try {
+    scheduler.ApplyRawScans({ParallelRawRequest("first", "3", "0binvalid"),
+                             ParallelRawRequest("first", "4", "6")});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("a") == "1001",
+          "discarded malformed operand still rejects without changing state");
+}
+void TestParallelRawUnboundAccessLink() {
+  auto model = ParallelRawModel();
+  model.insert(model.find("ScanInPort"),
+               "AccessLink tap Of Generic {opaque;} ");
+  pattern::Design design;
+  design.AddIcl("unbound.icl", model);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  Require(netlist.taps.empty(), "native fixture has an unbound AccessLink");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  bool rejected = false;
+  try {
+    scheduler.ApplyRawScans({ParallelRawRequest("first", "4", "9")});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(rejected && scheduler.Value("a") == "0000",
+          "public native replay rejects unbound AccessLink before effects");
+}
+void TestParallelRawCommonSelectBits() {
+  for (bool vector : {false, true}) {
+    auto model = ParallelRawModel();
+    const auto declaration = model.find("SelectPort sel;");
+    model.replace(
+        declaration, std::string("SelectPort sel;").size(),
+        vector ? "SelectPort sel[1:0];" : "SelectPort sel; SelectPort sel2;");
+    const auto binding =
+        model.find("Port sel;", model.find("ScanInterface client"));
+    model.replace(binding, std::string("Port sel;").size(),
+                  vector ? "Port sel[0];" : "Port sel; Port sel2;");
+    pattern::Design design;
+    design.AddIcl("common-select.icl", model);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    if (vector) scheduler.Assume("sel[1]", "0");
+    scheduler.ApplyRawScans({ParallelRawRequest("first", "4", "9"),
+                             ParallelRawRequest("second", "2", "2")});
+    std::map<std::string, std::string> actual;
+    scheduler.ApplyRawScans({ParallelRawRequest("first", "4", "6"),
+                             ParallelRawRequest("second", "2", "1")},
+                            {}, nullptr, nullptr,
+                            [&](const auto& op, const auto& bits) {
+                              actual[pattern::ReadScanFields(op).chain] = bits;
+                            });
+    Require(actual == std::map<std::string, std::string>{{"first", "1001"},
+                                                         {"second", "10"}} &&
+                scheduler.Value("a") == "0110" && scheduler.Value("b") == "01",
+            "direct vector/multiple common selects retain native raw CSU");
+    Require(vector ? scheduler.Value("sel") == "01"
+                   : scheduler.Value("sel") == "1" &&
+                         scheduler.Value("sel2") == "1",
+            "common selects assert bound bits and preserve unused vector bit");
+  }
+}
+
 void TestParallelRawObservationCommit() {
   pattern::Design design;
   design.AddIcl("parallel.icl", ParallelRawModel());
@@ -7226,10 +7343,30 @@ void TestGroupedScanEndpoints() {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
+      if (argc == 2 && std::string(argv[1]) == "--parallel-raw-review") {
+        size_t failures = 0;
+        for (const auto test :
+             {TestParallelRawImplicitCapacity, TestParallelRawNativeReplacement,
+              TestParallelRawUnboundAccessLink,
+              TestParallelRawCommonSelectBits}) {
+          try {
+            test();
+          } catch (const std::exception& error) {
+            ++failures;
+            std::cerr << error.what() << '\n';
+          }
+        }
+        Require(failures == 0, "parallel raw review regressions");
+        return EXIT_SUCCESS;
+      }
       if (argc == 2 && std::string(argv[1]) == "--parallel-raw") {
         TestModeledParallelRawScans();
         TestParallelRawRollbackAndImplicitFill();
         TestParallelRawObservationCommit();
+        TestParallelRawImplicitCapacity();
+        TestParallelRawNativeReplacement();
+        TestParallelRawUnboundAccessLink();
+        TestParallelRawCommonSelectBits();
         TestParallelRawBoundaries();
         TestParallelRawTopologyGuards();
         TestParallelRawUnknownAndSerialFields();
@@ -7291,6 +7428,10 @@ int main(int argc, char* argv[]) {
     TestModeledParallelRawScans();
     TestParallelRawRollbackAndImplicitFill();
     TestParallelRawObservationCommit();
+    TestParallelRawImplicitCapacity();
+    TestParallelRawNativeReplacement();
+    TestParallelRawUnboundAccessLink();
+    TestParallelRawCommonSelectBits();
     TestParallelRawBoundaries();
     TestParallelRawTopologyGuards();
     TestParallelRawUnknownAndSerialFields();

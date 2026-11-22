@@ -240,5 +240,34 @@ iRelease b
                             "reserved resource is unknown")
 
 
+    def test_replaced_physical_length_matches_native_queue(self):
+        output = self.replay(MODEL, START + """
+iScan client -chain first 3 -si 7
+iScan client -chain second 2 -si 2
+iScan client -chain first 4 -si 9
+iApply
+iScan client -chain first 4 -si 6; iApply
+iNote [iGetReadData client -chain first -dec]
+""")
+        self.assertEqual(self.notes(output), [b"9"])
+
+    def test_common_select_bits_and_unused_vector_state(self):
+        variants = (
+            MODEL.replace("SelectPort sel;", "SelectPort sel[1:0];").replace(
+                "} Port sel;", "} Port sel[0];"),
+            MODEL.replace("SelectPort sel;", "SelectPort sel; SelectPort other;").replace(
+                "} Port sel;", "} Port sel; Port other;"),
+        )
+        for source in variants:
+            output = self.replay(source, START + """
+iScan client -chain first 4 -si 9
+iScan client -chain second 2 -si 2
+iApply
+iScan client -chain first 4 -si 6; iApply
+iNote [iGetReadData client -chain first -dec]
+""")
+            self.assertEqual(self.notes(output), [b"9"])
+
+
 if __name__ == "__main__":
     unittest.main()
