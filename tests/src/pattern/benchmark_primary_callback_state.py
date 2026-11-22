@@ -7,6 +7,7 @@ from pathlib import Path
 import platform
 import statistics
 import subprocess
+import tempfile
 import time
 
 from benchmark_callback_execution import inputs
@@ -36,7 +37,8 @@ def main():
 
     def run(owner, mode, form, count, root, model, commands):
         root.mkdir(parents=True, exist_ok=True)
-        output, metric = root / "result.pdl", root / "time.txt"
+        invocation = Path(tempfile.mkdtemp(prefix=form + "-", dir=root))
+        output, metric = invocation / "result.pdl", invocation / "time.txt"
         command = [str(binaries[owner]), "--icl", str(model), "--pdl", str(commands),
                    "--top_module", "Top", "--output", str(output), "--debug"]
         started = time.monotonic()
@@ -45,6 +47,8 @@ def main():
             text=True, capture_output=True, timeout=180)
         if result.returncode:
             raise RuntimeError(mode + ": " + result.stdout + result.stderr)
+        if not output.is_file() or not (invocation / "debug/Top.icl").is_file():
+            raise RuntimeError("benchmark process produced no fresh pattern or flat model")
         seconds, rss = metric.read_text().split()
         data = output.read_bytes()
         report["runs"].append({
@@ -101,7 +105,7 @@ def main():
                 raise RuntimeError("callback RSS exceeds256MiB")
         model, commands, output, root = replay_input
         for form, replay_model, replay_commands in (
-                ("flat", root / "debug/Top.icl", commands),
+                ("flat", output.parent / "debug/Top.icl", commands),
                 ("generated", model, output)):
             data, _ = run("current", "callbacks", form, count, root / form,
                           replay_model, replay_commands)

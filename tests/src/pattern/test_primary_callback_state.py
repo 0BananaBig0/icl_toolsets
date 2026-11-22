@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Primary scheduling retains every observable callback storage obligation."""
+import shutil
 import subprocess
 import unittest
 
@@ -166,6 +167,23 @@ iRead q 2; iApply; iNote [iGetReadData q -dec]
 """, modeled=True)
         self.assertIn(b"iNote 9", output)
         self.assertIn(b"iNote 2", output)
+
+
+    def test_benchmark_rejects_stale_output_from_noop_candidate(self):
+        candidate = shutil.which("true")
+        self.assertIsNotNone(candidate, "benchmark regression requires true")
+        driver = cli.ROOT / "tests/src/pattern/benchmark_primary_callback_state.py"
+        output = self.root / "benchmark"
+        args = ["python3", str(driver), "--parent", str(cli.BIN),
+                "--output", str(output), "--sizes", "1", "--repeats", "1"]
+        control = subprocess.run(args + ["--binary", str(cli.BIN)],
+                                 capture_output=True, text=True, timeout=45)
+        self.assertEqual(control.returncode, 0, control.stdout + control.stderr)
+        result = subprocess.run(args + ["--binary", candidate],
+                                capture_output=True, text=True, timeout=45)
+        self.assertNotEqual(result.returncode, 0,
+                            "no-output candidate reused old benchmark artifacts")
+        self.assertIn("fresh pattern", result.stdout + result.stderr)
 
 
 if __name__ == "__main__":
