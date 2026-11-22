@@ -8553,3 +8553,11 @@ reviewer confirmed its current intended diagnostic is reserved storage =0011.
 Full-suite execution is author-run evidence; performance outside this workload
 retains its separate acceptance criteria. Qualification, review dispositions and
 hash receipts are under build/primary-callback-state-20261123/final/.
+
+
+Task154 is integrated into master. Seven integration checks pass against4016
+matching inputs and16 copied qualified native executables: scheduler state/copy
+snapshots, native readback, dynamic/static primary-state tests, explicit
+callbacks, observation state and the71-method CLI suite. All117 stashes remain.
+Integration receipts are in
+build/primary-callback-state-20261123/merged/receipt.json. Broad item10 remains open.

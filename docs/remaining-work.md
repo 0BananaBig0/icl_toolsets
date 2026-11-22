@@ -94,3 +94,6 @@ packaging and4016 input/31 product hashes. The single Important benchmark
 repeatability finding is fixed in one RED→GREEN pass; one ownership-test
 diagnostic Minor remains deferred. The broader item10, remaining callback
 functionality and other pending inventory items are still open.
+
+Task154 is merged into master; seven integration checks,4016 input hashes,
+16 copied qualified executables and117 preserved stashes are verified.
