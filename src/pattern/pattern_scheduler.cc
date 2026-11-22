@@ -2177,14 +2177,6 @@ class ScanScheduler::Impl {
       throw std::runtime_error("physical PDL cannot use iApplyEndState");
     }
     const auto previous_fill = fill_;
-    std::vector<ScanStep> steps;
-    std::vector<std::pair<std::vector<BitReference>, std::string>> observations;
-    Observation collect;
-    if (observe) {
-      collect = [&](const auto& bits, const auto& values) {
-        observations.emplace_back(bits, values);
-      };
-    }
     try {
       for (const auto& [id, bits] : end_states_) {
         for (size_t i = 0; i < bits.size(); ++i) {
@@ -2193,9 +2185,9 @@ class ScanScheduler::Impl {
       }
       // Match Solve's empty-apply exit before constructing an event proof.
       if (operations.empty() && !NeedsEndState(end_states_)) return {};
-      steps = Solve(operations, together, kMaxSteps, {}, true, preserved,
-                    explicit_writes, std::nullopt, permitted_tap_data, physical,
-                    collect);
+      return Solve(operations, together, kMaxSteps, {}, true, preserved,
+                   explicit_writes, std::nullopt, permitted_tap_data, physical,
+                   observe);
     } catch (const std::exception& error) {
       fill_ = previous_fill;
       std::string message = together ? "iApply -together: " : "";
@@ -2212,9 +2204,6 @@ class ScanScheduler::Impl {
       }
       throw std::runtime_error(message);
     }
-    // Subscriber failures cannot roll back only the fill of committed state.
-    for (const auto& [bits, values] : observations) observe(bits, values);
-    return steps;
   }
 
   std::vector<std::vector<Operation>> ResetPrerequisites(
@@ -6982,10 +6971,19 @@ std::vector<ScanStep> ScanScheduler::Apply(
     const std::map<size_t, std::string>& preserved, bool explicit_writes,
     bool physical, const PioObservation& observe) {
   impl_->InvalidateRawRoute();
+  std::vector<std::pair<std::vector<BitReference>, std::string>> observations;
+  Observation collect;
+  if (observe) {
+    collect = [&](const auto& bits, const auto& values) {
+      observations.emplace_back(bits, values);
+    };
+  }
   auto steps = impl_->Apply(operations, together, preserved, explicit_writes,
-                            std::nullopt, physical, observe);
+                            std::nullopt, physical, collect);
   // A failed native attempt may cache the pre-state before symbolic fallback.
   impl_->InvalidateRawRoute();
+  // Notify after commit and route cleanup, outside the solver's fill rollback.
+  for (const auto& [bits, values] : observations) observe(bits, values);
   return steps;
 }
 std::vector<std::vector<Operation>> ScanScheduler::ResetPrerequisites(

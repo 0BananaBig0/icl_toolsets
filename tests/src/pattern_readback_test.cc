@@ -277,6 +277,39 @@ void TestFastObserverExceptions() {
                                   native ? "00000110" : "1010", false, native);
   }
 }
+void TestObserverFailureInvalidatesRoute() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl";
+  std::ifstream stream(path);
+  Require(stream.good(), "route-change fixture opens");
+  pattern::Design design;
+  design.AddIcl(path,
+                std::string((std::istreambuf_iterator<char>(stream)), {}));
+  const auto netlist = pattern::Elaborate(design, "NativeOrdinaryTop");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  bool thrown = false;
+  try {
+    scheduler.Apply({{"iWrite", {"open", "1"}, "test", {}},
+                     {"iRead", {"child.value", "0"}, "test", {}},
+                     {"iWrite", {"child.value", "6"}, "test", {}}},
+                    false, {}, true, false, [](const auto&, const auto&) {
+                      throw std::runtime_error("route listener failure");
+                    });
+  } catch (const std::runtime_error& error) {
+    thrown = std::string(error.what()).find("route listener failure") !=
+             std::string::npos;
+  }
+  Require(
+      thrown && scheduler.Value("open") == "1" &&
+          scheduler.Value("child.value") == "00000110",
+      "route-changing transaction remains committed after subscriber failure");
+  const auto normalized = scheduler.NormalizeScan(
+      {"iScan", {"client", "9", "-si", "0"}, "after observer failure", {}});
+  Require(normalized.arguments[1] == "9" &&
+              normalized.arguments[3] == "0b000000000",
+          "raw normalization uses the newly committed open route");
+}
 void TestGeneralObserverException() {
   pattern::Design design;
   design.AddIcl("general.icl", R"(
@@ -466,6 +499,7 @@ int main() {
     TestSerialEventOracle();
     TestFastObserverExceptions();
     TestGeneralObserverException();
+    TestObserverFailureInvalidatesRoute();
     TestTapReturnOracle();
     TestDataReadbackPlanes();
     TestDataFrameEventOracle();
