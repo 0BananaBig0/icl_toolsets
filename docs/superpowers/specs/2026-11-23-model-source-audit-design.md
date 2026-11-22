@@ -111,3 +111,5 @@ Commit and integrate only this completed branch into master, verify/push,
 delete it and archive only its own ledger, preserving117 stashes and unrelated
 detached worktrees. Then continue remaining inventory. Do not mark whole
 items11/12 complete from this bounded model/default audit.
+
+Execution ruling: the existing parser/dedup corpus report currently keeps module definition hashes but not module keys. Add module_keys to fixture records, preserving prior hashes/policy fields, so model inventory completeness and namespace/ordered-override identity can be verified without another parser process. Existing producer tests and new protocol tests cover this additive format field.

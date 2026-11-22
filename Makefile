@@ -1127,6 +1127,7 @@ python3 tests/src/pattern/test_multiple_client_interfaces.py $1
 python3 tests/src/pattern/test_multiple_client_chain_groups.py $1
 python3 tests/src/pattern/test_shift_enable_clients.py $1
 python3 tests/src/pattern/test_source_literals.py $1
+python3 tests/src/pattern/test_model_source_audit.py $1
 python3 tests/src/pattern/test_port_reservations.py $1
 python3 tests/src/pattern/test_data_register_state.py $1
 python3 tests/src/pattern/test_data_register_feedback.py $1
