@@ -513,7 +513,7 @@ class Runtime::Impl {
         if (fields.instruction && netlist_ &&
             (netlist_->taps.empty() || !tap_clients_.count(name))) {
           throw std::runtime_error(
-              "raw IR target must be a client TAP interface");
+              "raw IR scan target must be a client TAP interface");
         }
         if (raw_mode && *raw_mode != fields.instruction) {
           throw std::runtime_error(
