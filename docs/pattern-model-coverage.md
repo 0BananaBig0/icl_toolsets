@@ -52,7 +52,7 @@ full model coverage or Tessent equivalence.
 
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
-| Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters preserve never-read/sparse unknown bits and explicit history; initial/no-cared-comparison status is known zero, while applied reads invalidate target bits until actual observations exist | Complete runtime command coverage and broader real-pair generation |
+| Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters preserve never-read/sparse unknown bits and explicit history; opt-in PIO/DataRegister reads supply selected-frame observations and exact failure counts; default applied observations remain unavailable and initial/no-cared-comparison status is known zero | Complete runtime command coverage and broader real-pair generation |
 | Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; typed contiguous vector-port functions retain per-function attributes/enums/properties, selected access eligibility, child bindings and associated-flat identities (Task142 reviewed; two blockers fixed and post-fix qualification passes); hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain, inferred simultaneous disjoint interface-free vector returns and canonical replay | Overlapping returns, independently controlled lanes and broader model qualification |
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage reset snapshot settlement preserve supported transient reset effects; Task144 adds bounded simultaneous DataRegister feedback from real old state, known/unknown convergence, self-disable history and scoped intermediate ownership checks in native and primary/mixed replay; all three Important review findings are fixed, including unknown mixed history, pending-read deltas and implicit OneHot controls, with14 replay methods and full post-fix qualification | DataRegister PDL callback execution (declarations and typed flat replay are supported), general gated/serial-dependent reset events (including changing external resets during data feedback) and complete vendor builtin models |
@@ -4416,3 +4416,30 @@ source packaging. Frozen hashes verify4005 source/test/build inputs and31
 products. Evidence is under build/modeled-pio-readback-20261122/final/.
 The final108 scale processes use the same qualified generator binary.
 Coverage item1 remains excluded with unchanged thresholds.
+
+## Task149: modeled DataRegister observations
+
+Opt-in --model_readback extends selected-frame observations to DataRegisters
+accessed through existing PIO routes. Actual old storage is observed before a
+later write, including supported DAG/feedback schedules. Manual read/miscompare
+history suppresses its own older undelivered plane without changing hardware,
+queues or failure counts. Later observations replace both planes. Existing
+reset requirements, unknown status, source-order aliases and callback/scan/TAP/
+clock/raw/merge boundaries remain. Legacy mode notes migrate once.
+
+Sixteen new focused methods per variant, native emitted-event/state checks,
+existing readback/runtime/data-state/primary-event callers and15 C++ quality
+gates pass before broad qualification. The native oracle applies only emitted
+pin writes; expected masks/goal markers never assign its state.
+See [example and evidence](pattern-generation.md#task149-modeled-dataregister-observations-through-pio)
+and [remaining work](remaining-work.md). Coverage1 remains excluded.
+
+Full behavioral qualification at2641965 passes36 gates:14 native/14 native
+sanitizer suites,58x946 tests per generator,15 quality gates and packaging.
+One independent review found0Critical/0Important/2Minor. A help/assertion-only
+verified fix pass passes13 checks/312 focused methods and packaging; all28 native
+binaries/4004 other inputs retain baseline hashes. Final4006 inputs/31 products
+are verified, with108 scale processes at2641965. Original full receipts and
+generator snapshots are separate from final/post-review/ checks. Review used
+relayed source and six independently selected root-executed probes; no rereview
+or independent full rerun is claimed. See the guide for precise scope/evidence.

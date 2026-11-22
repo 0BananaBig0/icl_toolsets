@@ -779,7 +779,7 @@ int main(int argc, char** argv) {
            "CSU\n"
            "                       per iApply; use again when replaying "
            "output\n"
-           "  --model_readback     Model combinational PIO readback (no live "
+           "  --model_readback     Model PIO/DataRegister readback (no live "
            "device)\n"
            "  --debug              Also write debug/<top>.icl beside output\n"
            "  --log PATH           Copy diagnostics to a file\n"
@@ -858,7 +858,9 @@ int main(int argc, char** argv) {
     const auto* output_operations = &runtime.operations();
     const auto is_model_note = [](const auto& operation) {
       return operation.command == "iNote" && operation.arguments.size() == 1 &&
-             operation.arguments[0] == pattern::kModeledReadbackNote;
+             (operation.arguments[0] == pattern::kModeledReadbackNote ||
+              operation.arguments[0] ==
+                  "modeled combinational PIO readback; no live device");
     };
     if (options.model_readback &&
         std::any_of(runtime.operations().begin(), runtime.operations().end(),

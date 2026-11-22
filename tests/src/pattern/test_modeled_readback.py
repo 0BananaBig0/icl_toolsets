@@ -9,7 +9,7 @@ BASE = """Module Chains {
  DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
  Alias inverted[3:0] = ~q;
 }"""
-LABEL = b"modeled combinational PIO readback; no live device"
+LABEL = b"modeled PIO/DataRegister readback; no live device"
 
 
 class ModeledReadback(unittest.TestCase):
@@ -170,8 +170,9 @@ iNote [iGetReadData q -bin]
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         output = self.root / "result.pdl"
         for source, history in (
-                (BASE.replace(" DataOutPort", " DataRegister r {"
-                              "WriteDataSource p[0];}\n DataOutPort"), ""),
+                (BASE.replace(" DataOutPort", " ScanInPort si; ScanRegister r {"
+                              "ScanInSource si; ResetValue 0;} "
+                              "ScanOutPort so {Source r;}\n DataOutPort"), ""),
                 (BASE, "iRunLoop 1 -tck; "),
                 (BASE, "iMerge -begin; iMerge -end; ")):
             with self.subTest(history=history):
@@ -221,8 +222,9 @@ iReset; iScan client 4 -si 0 -so 0; iApply; iGetStatus
         self.assertEqual(pdl.read_text(), reset)
 
     def test_unused_mode_preserves_execution_without_eager_support_checks(self):
-        source = BASE.replace(" DataOutPort", " DataRegister r {"
-                              "WriteDataSource p[0];}\n DataOutPort")
+        source = BASE.replace(" DataOutPort", " ScanInPort si; ScanRegister r {"
+                              "ScanInSource si; ResetValue 0;} "
+                              "ScanOutPort so {Source r;}\n DataOutPort")
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         icl.write_text(source)
         pdl.write_text("iPDLLevel 1; iState p 15; iRead q 15; iApply")
