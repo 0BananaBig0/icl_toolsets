@@ -36,4 +36,6 @@ Defaults and schedules remain unchanged. New maintained tests live under tests/.
 - [x] Measure equivalent parent/current single-chain and larger multi-register inputs with/without queries; retain sizes, commands and timings.
 - [x] Obtain fresh whole-branch independent review, resolve Important/Critical findings in one test-first verified pass, ledger dispositions.
 - [x] Update docs with actual results and bounded remaining work; commit.
-- [ ] Merge to master, verify integrated outputs, push and confirm upstream, detach reused worktree and delete merged child branch.
+- [x] Merge to master, verify integrated outputs, push and confirm upstream, detach reused worktree and delete merged child branch.
+
+Integrated as816768e; six merged checks and4007 input/16 copied-product hashes agree. Pushed to origin/master; task branch deleted and reused worktree detached. No unresolved or deferred review findings. Existing model reset semantics retained; no physical timing signoff claimed.
