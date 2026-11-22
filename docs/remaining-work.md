@@ -78,3 +78,6 @@ At1024 targets/four Apply groups, median source runtime is25.9599s; larger routi
 workloads need measured scheduler work under item10. Automatic downstream/mixed/
 merged callbacks, callback histories and physical output remain item4 work.
 Coverage item1 remains excluded.
+
+Task153 is merged into master; seven integration checks,4014 input hashes,
+16 copied qualified executables and117 preserved stashes are verified.
