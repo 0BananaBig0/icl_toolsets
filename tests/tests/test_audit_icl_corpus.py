@@ -34,6 +34,18 @@ class AuditTest(unittest.TestCase):
         report = self.root / 'report.json'
         return run, json.loads(report.read_text()) if report.exists() else {}
 
+    def test_module_keys_preserve_namespaces_and_ordered_overrides(self):
+        self.source('names.icl', 'NameSpace N; Module A {} '
+                    'Module A {Attribute replacement;} Module B {}')
+        self.source('other.icl', 'NameSpace Q; Module A {}')
+        self.source('bad.icl', 'Module Broken {')
+        run, report = self.audit()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(report['fixtures']['names.icl']['module_keys'],
+                         ['N::A', 'N::A', 'N::B'])
+        self.assertEqual(report['fixtures']['other.icl']['module_keys'], ['Q::A'])
+        self.assertEqual(report['fixtures']['bad.icl']['module_keys'], [])
+
     def test_identical_files_and_lexical_modules_are_separate_findings(self):
         self.source('a.icl', 'Module A { Attribute s = "} // not a comment"; }')
         self.source('copy.ICL', 'Module A { Attribute s = "} // not a comment"; }')

@@ -16,9 +16,13 @@ from import_eda_corpus import digest, module_id
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def source_paths(root):
+    return sorted(p for p in root.rglob('*') if p.is_file() and p.suffix.lower() == '.icl'
+                  and p.relative_to(root).parts[0] != 'generated')
+
+
 def audit(root, inventory):
-    paths = sorted(p for p in root.rglob('*') if p.is_file() and p.suffix.lower() == '.icl'
-                   and p.relative_to(root).parts[0] != 'generated')
+    paths = source_paths(root)
     if not paths:
         raise ValueError(f'no maintained ICL files under {root}')
     by_hash = defaultdict(list)
@@ -38,7 +42,11 @@ def audit(root, inventory):
         names = [p.relative_to(root).as_posix() for p in copies]
         identities = [module_id(m) for m in info.get('modules', [])]
         for name in names:
-            fixtures[name] = {'sha256': sha, 'modules': identities}
+            fixtures[name] = {
+                'sha256': sha, 'modules': identities,
+                'module_keys': [(m['namespace'] + '::' if m['namespace'] else '') + m['name']
+                                for m in info.get('modules', [])],
+            }
         if len(copies) > 1:
             file_duplicates.append({'sha256': sha, 'paths': names})
         if not info['ok']:
