@@ -39,4 +39,6 @@ New maintained tests under tests/src/pattern/. Preserve117 stashes and unrelated
 - [x] Run required full native/sanitizer, dynamic/static generator, affected format/tidy/strict C++17 and source-packaging checks. Expected: zero failures, no unsupported suite represented as run.
 - [x] Obtain one fresh independent whole-branch review; fix Important/Critical findings in one test-first verified pass, no rereview; ledger all dispositions.
 - [x] Update current docs/inventory and record actual counts/limits; commit.
-- [ ] Merge into master, verify source/product hashes and integrated focused tests, push, detach reused worktree and delete merged task branch; archive only own ledger.
+- [x] Merge into master, verify source/product hashes and integrated focused tests, push, detach reused worktree and delete merged task branch; archive only own ledger.
+
+Integrated as2e72caa; seven merged checks,4008 source/input hashes and16 copied-product hashes agree. Pushed to origin/master; task branch deleted and reused worktree detached. Two Minor compiled-help/prose findings remain deferred. Shared Apply commits state and cleans routes before external notification; model-only boundaries and existing startup limits remain documented.
