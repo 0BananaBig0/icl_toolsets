@@ -60,10 +60,18 @@ class QueuedAccesses {
   }
 
   std::pair<std::vector<BitReference>, std::string> ReadModel() const {
+    return Model(true);
+  }
+  std::pair<std::vector<BitReference>, std::string> WriteModel() const {
+    return Model(false);
+  }
+
+ private:
+  std::pair<std::vector<BitReference>, std::string> Model(bool reads) const {
     std::pair<std::vector<BitReference>, std::string> result;
     for (const auto& [key, references] : references_) {
       const auto [node, index, read] = key;
-      if (!read) continue;
+      if (read != reads) continue;
       const auto& last = references.back();
       result.first.push_back({node, index});
       result.second +=
@@ -72,7 +80,6 @@ class QueuedAccesses {
     return result;
   }
 
- private:
   struct Reference {
     size_t operation, offset;
     bool inverted;

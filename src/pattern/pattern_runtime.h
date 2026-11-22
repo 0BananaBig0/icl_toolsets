@@ -28,6 +28,10 @@ struct Operation {
   std::vector<std::string> arguments;
   std::string origin;
   std::vector<std::string> call_stack;
+  // Logical callback request; endpoint operations are appended at Apply.
+  bool callback = false;
+  // Invocation context survives resets inside callback bodies.
+  bool callback_execution = false;
 };
 
 struct ReadbackUpdate {
@@ -62,6 +66,7 @@ class Runtime {
   const std::vector<Operation>& operations() const;
   const std::vector<std::string>& warnings() const;
   int Level() const;
+  bool CallbacksExecuted() const;
   std::vector<SourceAction> SourceActions(bool whole_commands = false) const;
 
  private:

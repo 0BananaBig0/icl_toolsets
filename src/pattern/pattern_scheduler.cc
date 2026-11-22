@@ -2924,6 +2924,7 @@ class ScanScheduler::Impl {
     bool canceled = false;
     for (auto it = operations.rbegin(); it != operations.rend(); ++it) {
       const auto& operation = *it;
+      if (operation.callback) continue;
       if (operation.command == "iReset") canceled = true;
       if (operation.command == "iApply") canceled = false;
       if (canceled) continue;

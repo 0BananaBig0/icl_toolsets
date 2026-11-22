@@ -51,8 +51,22 @@ class ModelReadback {
     if (error_) std::rethrow_exception(error_);
     try {
       // Reject unsupported histories before exposing any observation delta.
+      bool callback_pending = callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
+        if (op.callback_execution) {
+          throw std::runtime_error(
+              op.origin + ": modeled readback excludes callback histories");
+        }
+        if (op.callback) {
+          callback_pending = true;
+          continue;
+        }
+        if (op.command == "iReset") callback_pending = false;
+        if (op.command == "iApply" && callback_pending) {
+          throw std::runtime_error(
+              op.origin + ": modeled readback excludes callback histories");
+        }
         if (op.command != "iWrite" && op.command != "iRead" &&
             op.command != "iApply" && op.command != "iState" &&
             op.command != "iScan" && op.command != "iReset" &&
@@ -63,12 +77,14 @@ class ModelReadback {
                                    op.command + " histories");
         }
       }
+      callback_pending_ = callback_pending;
       updates_.bits.clear();
       updates_.scans.clear();
       positions_.clear();
       raw_positions_.clear();
       for (; cursor_ < operations.size(); ++cursor_) {
         const auto& op = operations[cursor_];
+        if (op.callback) continue;
         try {
           Process(op);
         } catch (const std::exception& error) {
@@ -270,6 +286,7 @@ class ModelReadback {
 
   const Netlist& netlist_;
   bool physical_;
+  bool callback_pending_ = false;
   z3::context context_;
   std::unique_ptr<ScanScheduler> scheduler_;
   std::unique_ptr<OpaqueScanQueue> opaque_;

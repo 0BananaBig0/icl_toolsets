@@ -74,7 +74,7 @@ class CallbackModel(unittest.TestCase):
                 self.assertIn("callback identifier", message)
                 self.assertEqual(output.read_bytes(), b"keep existing artifact\n")
 
-    def test_applied_callbacks_reject_without_inventing_access(self):
+    def test_applied_callbacks_execute_errors_without_publishing_artifacts(self):
         source = """Module Chains {
  DataRegister value[3:0] {ReadCallBack Chains observe <D>;}
  DataRegister writable[3:0] {WriteCallBack Chains store <D>;}
@@ -87,13 +87,13 @@ class CallbackModel(unittest.TestCase):
             icl, pdl = self.root / "callback.icl", self.root / "callback.pdl"
             icl.write_text(source)
             pdl.write_text("iPDLLevel 1; iProcsForModule Chains; "
-                           "iProc observe {args} {error {must not run}}; "
-                           "iProc store {args} {error {must not run}}; "
+                           "iProc observe {args} {error {callback deliberately fails}}; "
+                           "iProc store {args} {error {callback deliberately fails}}; "
                            "iState value 0; " + command + " " + target + " 0; iApply;\n")
             output = self.root / "result.pdl"
             output.write_bytes(b"keep callback artifact\n")
             message = self.run_tool(icl, pdl, ok=False)
-            self.assertIn("CallBack execution is not implemented", message)
+            self.assertIn("callback deliberately fails", message)
             self.assertEqual(output.read_bytes(), b"keep callback artifact\n")
         self.replay(source, "iWrite writable 3; iRead value 0; iReset; "
                     "iState value 0; iRead q 0; iApply;\n")

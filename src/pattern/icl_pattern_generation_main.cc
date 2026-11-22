@@ -322,6 +322,7 @@ std::string Generate(
     const std::set<std::string> allowed = {
         "iWrite", "iRead", "iApply", "iReset", "iNote", "iTake", "iRelease"};
     for (const auto& op : operations) {
+      if (op.callback) continue;
       if (!allowed.count(op.command)) {
         throw std::runtime_error(
             op.origin +
@@ -500,6 +501,7 @@ std::string Generate(
         covered = end;
       }
       if (rewritten) rewritten->push_back(operation);
+      if (operation.callback) continue;
       if (operation.command == "iWrite" || operation.command == "iRead") {
         // Reset may discard this queue, but malformed operands still fail.
         const auto target =
@@ -872,6 +874,15 @@ int main(int argc, char** argv) {
       if (!options.local_reset.empty()) sources.push_back(source);
     }
     runtime.Finish();
+    if (runtime.CallbacksExecuted()) {
+      if (options.model_readback) {
+        throw std::runtime_error(
+            "modeled readback excludes callback histories");
+      }
+      if (options.physical) {
+        throw std::runtime_error("physical PDL callbacks are unsupported");
+      }
+    }
     auto modeled_operations = std::vector<pattern::Operation>{};
     const auto* output_operations = &runtime.operations();
     const auto is_model_note = [](const auto& operation) {
@@ -1014,6 +1025,10 @@ int main(int argc, char** argv) {
         }
         rewritten_source += state.cleanup;
         verify_source(rewritten_source, expected, state.verify);
+        if (runtime.CallbacksExecuted()) {
+          pdl =
+              GenerateMerged(network.netlist, expected, options.model_readback);
+        }
         return rewritten_source;
       };
       try {

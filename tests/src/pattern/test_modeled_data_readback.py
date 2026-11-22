@@ -276,9 +276,9 @@ iNote [iGetStatus]
                 (BASE, "iMerge -begin; iMerge -end; " + read, True,
                  "does not support iMerge"),
                 (callbacks.MODEL, "iRead first.observed 0; iApply", True,
-                 "ReadCallBack execution is not implemented"),
+                 "undefined iProc for callback"),
                 (callbacks.MODEL, "iWrite first.value 1; iApply", True,
-                 "WriteCallBack execution is not implemented")):
+                 "undefined iProc for callback")):
             with self.subTest(message=message):
                 icl.write_text(source)
                 pdl.write_text("iPDLLevel 1; " + commands)
