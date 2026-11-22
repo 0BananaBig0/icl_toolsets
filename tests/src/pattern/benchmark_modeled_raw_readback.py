@@ -76,6 +76,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="modeled-raw-scale-") as temporary:
         root = Path(temporary)
         for case, width, chains, applies, tap in cases:
+            reference = None
             opaque = chains > 1
             source, top, target, extra = (opaque_inputs(chains, width) if opaque
                                          else inputs(width, tap, case.startswith("child")))
@@ -114,6 +115,13 @@ def main():
                                            result.stdout + result.stderr)
                     seconds, rss = metric.read_text().split()
                     data = output.read_bytes()
+                    schedule = b"\n".join(
+                        line for line in data.splitlines()
+                        if not line.startswith(b"iNote ")) + b"\n"
+                    if reference is None:
+                        reference = schedule
+                    elif schedule != reference:
+                        raise RuntimeError("parent/current schedule differs: " + case)
                     if mode == "queried":
                         expected = b"iNote 0b" + (b"x" * width if opaque
                                   else format(9, "0" + str(width) + "b").encode())
