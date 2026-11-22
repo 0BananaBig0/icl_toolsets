@@ -605,7 +605,8 @@ class Runtime::Impl {
       merge(read_history_, update.read);
       merge(miscompare_history_, update.miscompare);
     }
-    zero_status_known_ = updates->failures && *updates->failures == 0;
+    zero_status_known_ =
+        updates->failures && (clear_status || *updates->failures == 0);
     return updates;
   }
 

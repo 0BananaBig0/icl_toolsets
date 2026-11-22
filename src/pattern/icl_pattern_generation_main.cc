@@ -856,16 +856,17 @@ int main(int argc, char** argv) {
     runtime.Finish();
     auto modeled_operations = std::vector<pattern::Operation>{};
     const auto* output_operations = &runtime.operations();
-    if (options.model_readback) {
+    const auto is_model_note = [](const auto& operation) {
+      return operation.command == "iNote" && operation.arguments.size() == 1 &&
+             operation.arguments[0] == pattern::kModeledReadbackNote;
+    };
+    if (options.model_readback &&
+        std::any_of(runtime.operations().begin(), runtime.operations().end(),
+                    is_model_note)) {
       modeled_operations = runtime.operations();
       modeled_operations.erase(
           std::remove_if(modeled_operations.begin(), modeled_operations.end(),
-                         [](const auto& operation) {
-                           return operation.command == "iNote" &&
-                                  operation.arguments ==
-                                      std::vector<std::string>{
-                                          pattern::kModeledReadbackNote};
-                         }),
+                         is_model_note),
           modeled_operations.end());
       output_operations = &modeled_operations;
     }

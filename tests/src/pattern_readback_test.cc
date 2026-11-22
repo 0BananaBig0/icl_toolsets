@@ -9,6 +9,7 @@
 #include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_design.h"
 #include "pattern/pattern_scheduler.h"
+#include "pattern/pattern_state.h"
 #include "pattern/pattern_values.h"
 
 namespace {
@@ -55,9 +56,9 @@ Module Top {
   check(false);
   add("iRead", "q[2]", "0bx");
   check(true);
-  pattern::ScanScheduler scheduler(netlist);
-  scheduler.Assume("p", "1010");
-  Require(scheduler.ReadBits(queue.ReadModel().first) == "0101",
+  pattern::NetworkState actual(netlist);
+  actual.Assume(netlist.node_ids.at("p"), "1010");
+  Require(actual.ReadBits(queue.ReadModel().first) == "0101",
           "batched observations use actual values, not expected data");
   queue.Clear();
   Require(queue.ReadModel().first.empty(), "clear discards read model");
@@ -100,11 +101,63 @@ Module Top {
     Require(rejected, "unsupported histories cannot produce observations");
   }
 }
+void TestScheduledObservations() {
+  pattern::Design design;
+  design.AddIcl("frames.icl", R"(
+Module Top {
+ DataInPort p; DataInPort sel;
+ DataOutPort a {Source p; Enable sel;}
+ DataOutPort b {Source p; Enable ~sel;}
+ Alias group = a {AccessTogether;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("p", "1");
+  std::map<std::pair<size_t, int64_t>, char> observed;
+  size_t frames = 0;
+  const auto steps = scheduler.Apply(
+      {{"iRead", {"group", "0"}, "test", {}},
+       {"iRead", {"b", "0"}, "test", {}}},
+      false, {}, true, false, [&](const auto& bits, const auto& values) {
+        ++frames;
+        for (size_t i = 0; i < bits.size(); ++i) {
+          observed.emplace(std::make_pair(bits[i].node, bits[i].index),
+                           values[i]);
+        }
+      });
+  pattern::NetworkState oracle(netlist);
+  oracle.Assume(netlist.node_ids.at("p"), "1");
+  std::map<std::pair<size_t, int64_t>, char> replayed;
+  for (const auto& step : steps) {
+    std::map<size_t, std::string> writes;
+    for (const auto& [name, bits] : step.writes) {
+      writes.emplace(netlist.node_ids.at(name), bits);
+    }
+    oracle.ApplyInputs(writes);
+    for (const auto& [name, expected] : step.expected) {
+      const auto target = pattern::ResolvePdlTarget(netlist, name);
+      const auto actual = oracle.ReadBits(target.bits);
+      for (size_t i = 0; i < target.bits.size(); ++i) {
+        replayed.emplace(
+            std::make_pair(target.bits[i].node, target.bits[i].index),
+            actual[i]);
+      }
+    }
+  }
+  Require(frames == 2 && observed.size() == 2 && observed == replayed,
+          "observations match independent replay of actual emitted events");
+  for (const auto& [bit, value] : observed) {
+    Require(value == '1', "both enabled observations are one");
+  }
+  Require(scheduler.Value("a") + scheduler.Value("b") != "11",
+          "final state cannot replace earlier enabled observations");
+}
 }  // namespace
 int main() {
   try {
     TestReadModel();
     TestModeledReadback();
+    TestScheduledObservations();
     std::cout << "readback tests passed\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

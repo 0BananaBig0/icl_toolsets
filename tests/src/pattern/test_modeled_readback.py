@@ -241,6 +241,36 @@ iNote [iGetMiscompares q[1023] -dec]; iNote [iGetStatus]
 """)
         self.assertEqual(output.count(b"iNote 0\n"), 3)
 
+    def test_first_observation_uses_its_scheduled_frame(self):
+        source = """Module Chains {
+ DataInPort p; DataInPort sel;
+ DataOutPort a {Source p; Enable sel;}
+ DataOutPort b {Source p; Enable ~sel;}
+ Alias group = a {AccessTogether;}
+}"""
+        for expected, count in (("1", 0), ("0", 2)):
+            with self.subTest(expected=expected):
+                output = self.replay(source, "iPDLLevel 1; iState p 1; "
+                                     "iRead group " + expected + "; iRead b " +
+                                     expected + "; iApply; "
+                                     "iNote [iGetReadData a -bin]; "
+                                     "iNote [iGetReadData b -bin]; "
+                                     "iNote [iGetMiscompares b -bin]; "
+                                     "iNote [iGetStatus]")
+                self.assertEqual(output.count(b"iNote 0b1\n"),
+                                 3 if count else 2)
+                self.assertIn(("iNote " + str(count) + "\n").encode(), output)
+
+    def test_clear_proves_zero_across_empty_unsupported_history(self):
+        output = self.replay(BASE, """iPDLLevel 1
+iState p 1; iRead q 0; iApply
+iNote [iGetStatus -clear]
+iMerge -begin; iMerge -end
+iNote [iGetStatus]
+""")
+        self.assertIn(b"iNote 1\n", output)
+        self.assertIn(b"iNote 0\n", output)
+
 
 if __name__ == "__main__":
     unittest.main()

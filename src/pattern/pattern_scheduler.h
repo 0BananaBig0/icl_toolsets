@@ -4,6 +4,7 @@
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_SCHEDULER_H_
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -32,6 +33,10 @@ struct ScanStep {
 // The borrowed netlist must outlive the scheduler.
 class ScanScheduler {
  public:
+  // Storage-free PIO bits at their selected concrete replay frame.
+  // Delivery is tentative until Apply returns successfully.
+  using PioObservation =
+      std::function<void(const std::vector<BitReference>&, const std::string&)>;
   explicit ScanScheduler(const Netlist& netlist);
   ScanScheduler(const ScanScheduler& other);
   ~ScanScheduler();
@@ -44,7 +49,8 @@ class ScanScheduler {
   std::vector<ScanStep> Apply(
       const std::vector<Operation>& operations, bool together = false,
       const std::map<size_t, std::string>& preserved = {},
-      bool explicit_writes = true, bool physical = false);
+      bool explicit_writes = true, bool physical = false,
+      const PioObservation& observe = {});
   // Raw scans target a known root route or disjoint accessible child
   // intervals, or a known-binary IR/full-path DR on one bound root
   // client-TAP. An ordinary queue may prepare a modeled client before its
@@ -62,7 +68,6 @@ class ScanScheduler {
                        std::set<size_t>* assigned = nullptr,
                        std::vector<ScanStep>* preparations = nullptr);
   std::string Value(const std::string& target) const;
-  std::string ReadBits(const std::vector<BitReference>& bits) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.
   std::vector<std::vector<Operation>> ResetPrerequisites(

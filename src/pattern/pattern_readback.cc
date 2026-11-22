@@ -70,9 +70,8 @@ class ModelReadback {
   }
 
  private:
-  void Observe() {
-    const auto [bits, expected] = pending_.ReadModel();
-    const auto actual = scheduler_.ReadBits(bits);
+  void Observe(const std::vector<BitReference>& bits,
+               const std::string& expected, const std::string& actual) {
     for (size_t i = 0; i < bits.size(); ++i) {
       const char mismatch = expected[i] == 'x'         ? '0'
                             : actual[i] == 'x'         ? 'x'
@@ -104,10 +103,31 @@ class ModelReadback {
       pending_.Add(op, target, bits);
     } else if (op.command == "iApply") {
       const auto& accesses = pending_.Operations();
-      scheduler_.Apply(accesses, ValidatePdlApplyOptions(args),
-                       reservations_.Values());
+      const auto [bits, expected] = pending_.ReadModel();
+      std::map<std::pair<size_t, int64_t>, size_t> requested;
+      for (size_t i = 0; i < bits.size(); ++i) {
+        requested.emplace(std::make_pair(bits[i].node, bits[i].index), i);
+      }
+      std::string actual(bits.size(), '?');
+      const ScanScheduler::PioObservation observe =
+          [&](const auto& observed_bits, const auto& values) {
+            for (size_t i = 0; i < observed_bits.size(); ++i) {
+              const auto& bit = observed_bits[i];
+              const auto found = requested.find({bit.node, bit.index});
+              if (found != requested.end() && actual[found->second] == '?') {
+                actual[found->second] = values[i];
+              }
+            }
+          };
+      scheduler_.Apply(
+          accesses, ValidatePdlApplyOptions(args), reservations_.Values(), true,
+          false, bits.empty() ? ScanScheduler::PioObservation{} : observe);
+      if (actual.find('?') != std::string::npos) {
+        throw std::runtime_error(
+            "modeled apply did not observe every read bit");
+      }
       reservations_.Assigned(accesses, scheduler_);
-      Observe();
+      Observe(bits, expected, actual);
       pending_.Clear();
     } else if (op.command == "iReset") {
       scheduler_.Reset(!args.empty());
