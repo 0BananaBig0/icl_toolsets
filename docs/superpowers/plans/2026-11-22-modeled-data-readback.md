@@ -71,7 +71,7 @@ Same factory/flag API; no new state engine/history format.
 - [x] One fresh independent final review; regrade real effects/declined items.
       One verified fix pass with appropriate fresh qualification; no rereview.
       Retain pre-fix/partial receipts without claiming complete passes.
-- [ ] Merge master, verify qualified root hashes/focused callers, push/confirm
+- [x] Merge master, verify qualified root hashes/focused callers, push/confirm
       origin, delete completed branch, detach reused worktree and archive only
       own ledger. Retain117 stashes. Coverage1 excluded; continue inventory.
 
@@ -81,3 +81,7 @@ processes. One help/assertion-only fix20931ff passes13 focused checks/312 method
 15 quality and packaging; native28/other4004 inputs unchanged. Final4006 inputs/
 31 products verified. Preserve both evidence layers; no rereview/full post-help
 regression claim. Integration next.
+
+Integrated/pushed40cce756769cddc2f8d7525453fe8d8b8ff71fd4, origin confirmed.
+Six merged checks and4006 source/16 copied-normal-product hashes pass. Completed
+branch deleted; only own ledger archived;117 stashes/siblings retained.
