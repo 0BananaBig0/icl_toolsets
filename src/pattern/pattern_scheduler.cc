@@ -448,6 +448,8 @@ class ScanScheduler::Impl {
     control_masks_ = other.control_masks_;
     data_control_masks_ = other.data_control_masks_;
     control_seen_ = other.control_seen_;
+    primary_state_indexed_ = other.primary_state_indexed_;
+    primary_state_candidates_ = other.primary_state_candidates_;
     if (other.execution_) {
       execution_ = std::make_unique<TapExecution>(*other.execution_);
     }
@@ -3124,6 +3126,74 @@ class ScanScheduler::Impl {
     }
     return result;
   }
+  const std::optional<std::vector<size_t>>& PrimaryStateCandidates() {
+    if (primary_state_indexed_) return primary_state_candidates_;
+    primary_state_indexed_ = true;
+    std::vector<bool> omitted(netlist_.nodes.size(), false);
+    size_t count = 0;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.kind == "DataRegister" &&
+          (node.read_callback || node.write_callback) &&
+          !node.inputs.count("WriteDataSource") && !node.reset &&
+          !node.constants.count("ResetValue")) {
+        omitted[id] = true;
+        ++count;
+      }
+    }
+    if (!count) return primary_state_candidates_;
+    const auto retain = [&](size_t id) {
+      if (id < omitted.size() && omitted[id]) {
+        omitted[id] = false;
+        --count;
+      }
+    };
+    const auto retain_bits = [&](const std::vector<BitReference>& bits) {
+      for (const auto& bit : bits) retain(bit.node);
+    };
+    const auto retain_ids = [&](const auto& ids) {
+      for (const auto& [name, id] : ids) retain(id);
+    };
+    for (const auto& node : netlist_.nodes) {
+      for (const auto& [role, bits] : node.inputs) retain_bits(bits);
+      if (node.reset) retain(node.reset->node);
+      for (const auto& choice : node.choices) retain_bits(choice.source);
+      for (const auto& source : node.one_hot_sources) {
+        retain_bits(source.bits);
+        if (source.kind == OneHotSourceKind::kRegister) retain(source.object);
+      }
+      for (const auto& term : node.logic) retain_bits(term.signals);
+      if (node.scan_interface) {
+        retain_bits(node.scan_interface->ports);
+        for (const auto& chain : node.scan_interface->chains) {
+          retain_bits(chain.ports);
+        }
+      }
+    }
+    for (const auto& [name, tap] : netlist_.taps) {
+      for (size_t id : {tap.instruction_register, tap.scan_input,
+                        tap.scan_output, tap.ir_select}) {
+        retain(id);
+      }
+      retain_ids(tap.instruction_selects);
+      retain_ids(tap.data_registers);
+      retain_ids(tap.scan_returns);
+      retain_ids(tap.pins);
+      retain_ids(tap.controls);
+    }
+    if (!count) return primary_state_candidates_;
+    // Unreferenced callback storage has no event or constraint in this query.
+    primary_state_candidates_.emplace();
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (!omitted[id] &&
+          (node.model == ModelKind::kRegister || IsInputPort(node.kind))) {
+        primary_state_candidates_->push_back(id);
+      }
+    }
+    return primary_state_candidates_;
+  }
+
   std::vector<ScanStep> SolvePrimaryWrites(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
@@ -3263,7 +3333,7 @@ class ScanScheduler::Impl {
         reserved_changed.emplace(id, context_.bool_val(false));
       }
       Values state, fills;
-      for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto seed_state = [&](size_t id) {
         if (netlist_.nodes[id].model == ModelKind::kRegister ||
             PrimaryInput(netlist_.nodes[id]) || state_.IsDriven(id)) {
           state.emplace(id, SymbolicValue::Literal(context_, state_.Value(id)));
@@ -3271,6 +3341,21 @@ class ScanScheduler::Impl {
             fills.emplace(id, SymbolicValue::Literal(context_, fill_.at(id)));
           }
         }
+      };
+      const auto& candidates = PrimaryStateCandidates();
+      if (candidates) {
+        std::set<size_t> selected(candidates->begin(), candidates->end());
+        const auto include = [&](const auto& values) {
+          for (const auto& [id, value] : values) selected.insert(id);
+        };
+        include(goals);
+        include(reads);
+        include(end_goals);
+        include(preserved);
+        include(desired_preserved);
+        for (size_t id : selected) seed_state(id);
+      } else {
+        for (size_t id = 0; id < netlist_.nodes.size(); ++id) seed_state(id);
       }
       std::map<size_t, z3::expr> touched;
       for (const auto& [id, goal] : goals) {
@@ -7000,6 +7085,8 @@ class ScanScheduler::Impl {
   size_t raw_profile_work_ = 0;
   bool parallel_chains_ = false;
   bool data_reset_dependencies_ = false, feedback_resets_ = false;
+  bool primary_state_indexed_ = false;
+  std::optional<std::vector<size_t>> primary_state_candidates_;
   size_t reset_passes_ = 0, reset_work_ = 0;
   std::vector<std::vector<Key>> clients_;
   std::vector<size_t> client_route_counts_;
