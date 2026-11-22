@@ -387,12 +387,12 @@ void TestParallelRawUnknownAndSerialFields() {
 }
 
 void TestParallelRawImplicitCapacity() {
-  constexpr size_t count = 64, width = 16384;
+  constexpr size_t kCount = 64, kWidth = 16384;
   std::string model = "Module Top {SelectPort sel;";
   std::string chains;
-  for (size_t i = 0; i < count; ++i) {
+  for (size_t i = 0; i < kCount; ++i) {
     const auto name = std::to_string(i);
-    const auto bits = i ? 1 : width;
+    const auto bits = i ? 1 : kWidth;
     model += "ScanInPort si" + name + "; ScanRegister r" + name + "[" +
              std::to_string(bits - 1) + ":0] {ScanInSource si" + name +
              "; CaptureSource r" + name + "; ResetValue 0;} ScanOutPort so" +
@@ -406,9 +406,9 @@ void TestParallelRawImplicitCapacity() {
   const auto netlist = pattern::Elaborate(design, "Top");
   pattern::ScanScheduler scheduler(netlist);
   scheduler.Reset();
-  auto operation = ParallelRawRequest("lane0", std::to_string(width),
-                                      "0b" + std::string(width, '1'),
-                                      "0b" + std::string(width, 'x'));
+  auto operation = ParallelRawRequest("lane0", std::to_string(kWidth),
+                                      "0b" + std::string(kWidth, '1'),
+                                      "0b" + std::string(kWidth, 'x'));
   operation.call_stack = {"parent"};
   operation.callback_execution = true;
   const auto result = scheduler.ApplyRawScans({operation});
@@ -423,7 +423,7 @@ void TestParallelRawImplicitCapacity() {
             scan.callback_execution == operation.callback_execution,
         "implicit fields retain source context without wide operand copies");
   }
-  Require(result.size() == count && capacity <= 8 * (width + count * 32),
+  Require(result.size() == kCount && capacity <= 8 * (kWidth + kCount * 32),
           "skewed implicit fields retain only aggregate-sized operand storage");
 }
 void TestParallelRawNativeReplacement() {

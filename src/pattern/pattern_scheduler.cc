@@ -1191,13 +1191,15 @@ class ScanScheduler::Impl {
           "common controls");
     };
     if (!netlist_.taps.empty() || netlist_.scopes.size() != 1 ||
-        registers_.empty())
+        registers_.empty()) {
       fail();
+    }
     const auto interfaces = EffectiveScanInterfaces(netlist_);
     if (interfaces.size() != 1 || interfaces[0].scope != 0 ||
         interfaces[0].interface.kind != ScanInterfaceKind::kClient ||
-        interfaces[0].interface.chains.empty())
+        interfaces[0].interface.chains.empty()) {
       fail();
+    }
     ParallelRawProfile profile;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
@@ -1205,19 +1207,23 @@ class ScanScheduler::Impl {
           node.model == ModelKind::kAccessLink ||
           (node.model == ModelKind::kRegister && node.kind != "ScanRegister" &&
            node.kind != "DataRegister") ||
-          (node.kind == "DataRegister" && node.inputs.count("WriteDataSource")))
+          (node.kind == "DataRegister" &&
+           node.inputs.count("WriteDataSource"))) {
         fail();
+      }
       if (node.scan_interface) {
         if (profile.client != kMissing ||
-            node.scan_interface->kind != ScanInterfaceKind::kClient)
+            node.scan_interface->kind != ScanInterfaceKind::kClient) {
           fail();
+        }
         profile.client = id;
       }
       if (node.reset && node.reset->node != kMissing) {
         const auto& reset = netlist_.nodes.at(node.reset->node);
         if (reset.kind != "ResetPort" || reset.scope != 0 ||
-            reset.Width() != 1 || !reset.inputs.empty())
+            reset.Width() != 1 || !reset.inputs.empty()) {
           fail();
+        }
       }
     }
     if (profile.client == kMissing) fail();
@@ -1233,8 +1239,9 @@ class ScanScheduler::Impl {
           bit.index < std::min(node.left, node.right) ||
           bit.index > std::max(node.left, node.right) ||
           (node.kind != "SelectPort" &&
-           (node.Width() != 1 || !controls.insert(node.kind).second)))
+           (node.Width() != 1 || !controls.insert(node.kind).second))) {
         fail();
+      }
     }
     std::map<Key, size_t> outputs;
     for (size_t root : roots_) {
@@ -1262,8 +1269,9 @@ class ScanScheduler::Impl {
       }
       if (!found_input || !found_output ||
           !inputs.emplace(input.node, input.index).second ||
-          !returned.emplace(output.node, output.index).second)
+          !returned.emplace(output.node, output.index).second) {
         fail();
+      }
       const auto root = outputs.find({output.node, output.index});
       if (root == outputs.end()) fail();
       size_t vertex = root->second;
@@ -1275,22 +1283,25 @@ class ScanScheduler::Impl {
         const auto& node = netlist_.nodes.at(current.bit.node);
         if (node.model == ModelKind::kMux || node.model == ModelKind::kLogic ||
             node.inputs.count("Enable") || current.edges.size() != 1 ||
-            current.edges[0].choice != kMissing)
+            current.edges[0].choice != kMissing) {
           fail();
+        }
         vertex = current.edges[0].next;
       }
       auto path = TraceSerialPath(state_, root->second, false);
       if (path.input.node != input.node || path.input.index != input.index ||
-          path.width == 0 || path.width > 1048576 - total)
+          path.width == 0 || path.width > 1048576 - total) {
         fail();
+      }
       total += path.width;
       for (const auto& [id, suffix] : path.registers) {
         if (!covered.insert(id).second) fail();
       }
       if (!profile.fields
                .emplace(chain.name, ParallelRawField{output, std::move(path)})
-               .second)
+               .second) {
         fail();
+      }
     }
     if (covered.size() != registers_.size()) fail();
     parallel_raw_profile_ = std::move(profile);

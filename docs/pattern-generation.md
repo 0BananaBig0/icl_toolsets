@@ -8567,7 +8567,8 @@ build/primary-callback-state-20261123/merged/receipt.json. Broad item10 remains 
 
 One explicit root Client ScanInterface can now execute named fixed disjoint
 ScanRegister chains under common direct root controls or their existing
-virtual defaults. Each group emits one iScan per field and one iApply. Names,
+virtual defaults. Common selects may bind indexed bits or multiple direct
+root SelectPorts; unused vector bits retain their state. Each group emits one iScan per field and one iApply. Names,
 including a chain literally named default, stay independent when requests are
 replaced or spread across PDL files.
 
@@ -8661,14 +8662,40 @@ caller emits the original Apply. The previous single-result APIs reject named
 parallel requests before execution. Scalar/child/TAP calls delegate to the
 existing scalar implementation.
 
-The dedicated CLI module has14 methods, with native per-clock differential,
+The dedicated CLI module has16 methods, with native per-clock differential,
 rollback, copy, implicit-fill, ownership and postcommit callback checks.
-Ninety fresh measured processes cover8/32/64 chains at32/512/4096 bits and a
+Ninety-three fresh measured processes cover8/32/64 chains at32/512/4096 bits and a
 skewed262,144-bit field with63 short fields, each in source/flat/generated
-forms with scalar and opaque controls. The prior binary rejects modeled
+forms with scalar and opaque controls and an additional skewed omitted-field case. The prior binary rejects modeled
 parallel raw, and is recorded as a negative control. Commands, input/product
 hashes, time and RSS live under build/modeled-parallel-raw-20261123/scale.
 The driver enforces45s/process and512MiB for these representative cases.
 
-Full qualification and independent review are in progress; these focused and
-scale results do not yet establish final integration acceptance.
+All47 qualification gates pass:14 native/14 leak-enabled sanitizer suites,
+65 suites and1,074 tests per generator,14 sanitizer CLI modules,15 changed-code
+format/tidy/strict-C++17 checks and source packaging. All4,018 input and31
+product hashes are verified. Mechanical braces/constant-name fixes leave
+all16 optimized products byte-identical to the fully tested and measured
+post-fix executables; changed debug sanitizer products received fresh checks.
+The single independent review's four Important findings are fixed in one
+test-first pass; its two Minor findings remain deferred, with no rereview.
+
+The independent final review found four Important issues: retained oversized
+implicit operand buffers, obsolete native replacement lengths checked too
+early, unbound AccessLink acceptance, and rejected supported common-select
+bits. All four have RED→GREEN native coverage and pass the expanded CLI
+module in one fix pass. Two Minor findings remain deferred: implicit
+controlling fill can resolve previously unknown storage, and equal-width
+benchmark lanes share the same payload, so that scale oracle does not prove
+absence of lane permutations. The native capacity regression covers omitted
+short fields beside a wide explicit field. Full post-fix qualification passes; no rereview is used.
+
+The corrected executable's93 scale/control processes peak at
+0.2239s and
+143040KiB. Its preserved1,024-target/four-group callback source
+median is2.5877s against the original reference's26.5808s,
+within10s;60 callback replay processes,20 alternating controls and six
+wide-alias processes also pass, for179 measured processes total. The wide
+alias peak163108KiB remains below256MiB. This proves the recorded workloads,
+not broader topology or performance acceptance. Qualification receipts are in
+build/modeled-parallel-raw-20261123/final; integration remains pending.

@@ -4514,10 +4514,15 @@ histories belong only to explicit fields. Numeric held-storage assignments,
 rollback and postcommit publication follow the native scalar contracts.
 The old single-result API rejects parallel; the vector API returns all fields.
 
-Fourteen CLI methods and native per-clock reference cases pass, along with
-the focused dynamic/static compatibility run. Ninety fresh scale/control
+Sixteen CLI methods and native per-clock reference cases pass, along with
+the focused dynamic/static compatibility run. Ninety-three fresh scale/control
 processes pass exact replay and the representative45s/512MiB bounds.
-Full regression, independent review and integration are still in progress.
+All47 post-fix qualification gates pass, including14 native/14 sanitizer suites,
+65x1074 tests per generator,15 quality checks, packaging and4018 input/31
+product hashes. Four Important review findings are fixed in one pass; two
+Minors remain deferred. All179 performance/control processes pass. Exact-byte
+optimized-product reuse and fresh changed sanitizer checks are recorded;
+integration is pending.
 
 See [the runnable guide](pattern-generation.md#task155-modeled-parallel-raw-scans).
 Hierarchical/dynamic/shared/hidden/gated routes, multiple TAPs, opaque children,
