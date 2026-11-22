@@ -15,31 +15,52 @@ from import_eda_corpus import digest
 STAGES = {"elaborate", "serialize", "flat_load", "flat_elaborate", "canonical"}
 
 
+def source_snapshot(root):
+    paths = {path.relative_to(root).as_posix(): path for path in source_paths(root)}
+    return paths, {name: digest(path.read_bytes()) for name, path in paths.items()}
+
+
 def audit(root, corpus_report, inventory, registry):
     started = time.monotonic()
     root = Path(root).resolve()
     inventory = Path(inventory).resolve()
     corpus_bytes, registry_bytes = Path(corpus_report).read_bytes(), Path(registry).read_bytes()
     corpus, policy = json.loads(corpus_bytes), json.loads(registry_bytes)
+    if not isinstance(corpus, dict) or not isinstance(policy, dict):
+        raise ValueError("corpus report and registry must be JSON objects")
     fixtures = corpus["fixtures"]
-    paths = {path.relative_to(root).as_posix(): path for path in source_paths(root)}
+    if not isinstance(fixtures, dict) or any(not isinstance(value, dict) for value in fixtures.values()):
+        raise ValueError("corpus fixtures must be JSON objects")
+    paths, inputs = source_snapshot(root)
     if set(paths) != set(fixtures) or corpus["files"] != len(paths):
         raise ValueError("corpus file coverage differs; regenerate parser report")
-    inputs = {}
-    for name, path in paths.items():
-        inputs[name] = digest(path.read_bytes())
+    for name in paths:
         if inputs[name] != fixtures[name]["sha256"]:
             raise ValueError("stale corpus input: " + name)
-    rejected = set(corpus["rejected"])
+    rejected_names = corpus["rejected"]
+    if (not isinstance(rejected_names, list) or
+            any(not isinstance(name, str) for name in rejected_names) or
+            len(set(rejected_names)) != len(rejected_names)):
+        raise ValueError("invalid or duplicate rejected corpus names")
+    rejected = set(rejected_names)
     if not rejected <= set(fixtures):
         raise ValueError("rejected corpus file coverage differs")
-    names = sorted(set(paths) - rejected)
-    expected = {}
-    for name in names:
-        keys = fixtures[name].get("module_keys")
-        if not isinstance(keys, list) or any(not isinstance(key, str) or not key for key in keys):
-            raise ValueError("missing module keys; regenerate parser report: " + name)
-        expected[name] = set(keys)
+    expected, declarations = {}, 0
+    for name, fixture in fixtures.items():
+        keys, hashes = fixture.get("module_keys"), fixture.get("modules")
+        if (not isinstance(keys, list) or not isinstance(hashes, list) or
+                any(not isinstance(key, str) or not key for key in keys) or
+                any(not isinstance(sha, str) for sha in hashes) or len(keys) != len(hashes)):
+            raise ValueError("inconsistent corpus declarations: " + name)
+        if name in rejected:
+            if keys or hashes:
+                raise ValueError("rejected corpus entry has declarations: " + name)
+        else:
+            expected[name] = set(keys)
+            declarations += len(keys)
+    if type(corpus["modules"]) is not int or corpus["modules"] != declarations:
+        raise ValueError("corpus declaration total differs")
+    names = sorted(expected)
     required, unsupported = policy["required"], policy["unsupported"]
     if (policy["schema"] != 1 or not isinstance(required, list) or
             any(not isinstance(key, str) for key in required) or
@@ -47,13 +68,21 @@ def audit(root, corpus_report, inventory, registry):
             set(required) & set(unsupported)):
         raise ValueError("invalid model acceptance registry")
     for boundary in unsupported.values():
-        if (boundary.get("stage") != "serialize" or
+        if (not isinstance(boundary, dict) or boundary.get("stage") != "serialize" or
                 not isinstance(boundary.get("diagnostic"), str) or not boundary["diagnostic"]):
             raise ValueError("unsupported registry entries require explicit serialization diagnostics")
 
     command = [str(inventory), *[str(paths[name]) for name in names]]
+    inventory_sha = digest(inventory.read_bytes())
     process = subprocess.run(command, capture_output=True, text=True,
                              encoding="utf-8", errors="surrogateescape", timeout=45)
+    try:
+        _, after = source_snapshot(root)
+        inventory_after = digest(inventory.read_bytes())
+    except OSError as error:
+        raise ValueError("audit inputs changed during inventory") from error
+    if after != inputs or inventory_after != inventory_sha:
+        raise ValueError("audit inputs changed during inventory")
     if process.returncode:
         raise ValueError("inventory failed: " + process.stderr)
     lines = process.stdout.splitlines()
@@ -81,6 +110,8 @@ def audit(root, corpus_report, inventory, registry):
             if stage not in STAGES or type(ok) is not bool or (ok and stage != "canonical"):
                 raise ValueError("invalid inventory stage/result: " + name)
             if ok:
+                if "error" in module:
+                    raise ValueError("canonical success contains an error: " + name)
                 if (type(module.get("nodes")) is not int or module["nodes"] < 0 or
                         type(module.get("flat_bytes")) is not int or module["flat_bytes"] < 1):
                     raise ValueError("invalid canonical inventory counts: " + name)
@@ -96,8 +127,9 @@ def audit(root, corpus_report, inventory, registry):
     known = 0
     for key, boundary in unsupported.items():
         actual = results.get(key)
+        diagnostic = boundary["diagnostic"]
         if (actual is None or actual["ok"] or actual["stage"] != boundary["stage"] or
-                boundary["diagnostic"] not in actual["error"]):
+                not (actual["error"] == diagnostic or actual["error"].endswith(": " + diagnostic))):
             errors.append("unsupported boundary changed or missing: " + key)
         else:
             known += 1
@@ -116,7 +148,7 @@ def audit(root, corpus_report, inventory, registry):
         "elaboration_failures": sum(not module["ok"] and module["stage"] == "elaborate"
                                     for module in results.values()),
         "errors": errors, "inputs": inputs, "results": results,
-        "inventory": str(inventory), "inventory_sha256": digest(inventory.read_bytes()),
+        "inventory": str(inventory), "inventory_sha256": inventory_sha,
         "corpus_report_sha256": digest(corpus_bytes), "registry_sha256": digest(registry_bytes),
         "command": command, "wall_seconds": time.monotonic() - started,
     }

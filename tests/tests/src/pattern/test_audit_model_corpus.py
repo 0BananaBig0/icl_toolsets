@@ -20,6 +20,7 @@ SPEC = importlib.util.spec_from_file_location(
 audit_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(audit_module)
 INVENTORY = Path(os.environ.get("MODEL_INVENTORY", ROOT / "build/pattern_netlist_inventory"))
+PARSER_INVENTORY = Path(os.environ.get("PARSER_INVENTORY", ROOT / "build/icl_corpus_inventory"))
 
 
 class ModelAuditTest(unittest.TestCase):
@@ -37,7 +38,7 @@ class ModelAuditTest(unittest.TestCase):
             (self.root / name).write_text(source)
         self.corpus = self.root / "corpus.json"
         self.corpus.write_text(json.dumps(parser_audit.audit(
-            self.root, ROOT / "build/icl_corpus_inventory")))
+            self.root, PARSER_INVENTORY)))
         self.registry = self.root / "registry.json"
         self.policy = {
             "schema": 1,
@@ -148,6 +149,85 @@ class ModelAuditTest(unittest.TestCase):
                 self.audit()
         with patch.object(audit_module.subprocess, "run", return_value=self.fake([], 2)):
             with self.assertRaisesRegex(ValueError, "inventory failed"):
+                self.audit()
+
+    def test_malformed_registry_object_replaces_old_success(self):
+        report = self.root / "report.json"
+        report.write_text('{"ok":true,"old":true}')
+        self.policy["unsupported"]["d.icl::Opaque"] = None
+        self.registry.write_text(json.dumps(self.policy))
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tests/src/pattern/audit_model_corpus.py"),
+             "--root", str(self.root), "--corpus-report", str(self.corpus),
+             "--registry", str(self.registry), "--inventory", str(INVENTORY),
+             "--report", str(report)], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(json.loads(report.read_text())["ok"])
+        self.assertNotIn("old", json.loads(report.read_text()))
+
+    def test_parser_rejection_and_declaration_consistency(self):
+        original = json.loads(self.corpus.read_text())
+        variants = []
+        value = json.loads(json.dumps(original))
+        value["rejected"].append("c.icl")
+        variants.append(value)
+        value = json.loads(json.dumps(original))
+        value["fixtures"]["a.icl"]["modules"].pop()
+        variants.append(value)
+        value = json.loads(json.dumps(original))
+        value["modules"] += 1
+        variants.append(value)
+        value = json.loads(json.dumps(original))
+        value["rejected"] = ["c.icl", "c.icl"]
+        variants.append(value)
+        for value in variants:
+            with self.subTest(value=value):
+                self.corpus.write_text(json.dumps(value))
+                with self.assertRaises(ValueError):
+                    self.audit()
+        self.corpus.write_text(json.dumps(original))
+
+    def test_contradictory_success_and_extended_boundary_fail(self):
+        records = self.records()
+        records[0]["modules"][0]["error"] = "map::at"
+        with patch.object(audit_module.subprocess, "run", return_value=self.fake(records)):
+            with self.assertRaises(ValueError):
+                self.audit()
+        records = self.records()
+        records[-1]["modules"][0]["error"] += "Extended"
+        with patch.object(audit_module.subprocess, "run", return_value=self.fake(records)):
+            self.assertFalse(self.audit()["ok"])
+
+    def test_source_drift_during_real_inventory_is_rejected(self):
+        actual_run = subprocess.run
+        path = self.root / "a.icl"
+        def edited_before_run(*args, **kwargs):
+            path.write_text(path.read_text().replace(
+                "DataInPort p;", "DataInPort p; DataInPort added;"))
+            return actual_run(*args, **kwargs)
+        with patch.object(audit_module.subprocess, "run", side_effect=edited_before_run):
+            with self.assertRaisesRegex(ValueError, "changed during"):
+                self.audit()
+
+    def test_helper_or_source_set_drift_after_execution_is_rejected(self):
+        import shutil
+        actual_run = subprocess.run
+        helper = self.root / "inventory-copy"
+        shutil.copy2(INVENTORY, helper)
+        def rebuilt_after_run(*args, **kwargs):
+            result = actual_run(*args, **kwargs)
+            with helper.open("ab") as stream:
+                stream.write(b"\n")
+            return result
+        with patch.object(audit_module.subprocess, "run", side_effect=rebuilt_after_run):
+            with self.assertRaisesRegex(ValueError, "changed during"):
+                audit_module.audit(self.root, self.corpus, helper, self.registry)
+        def added_after_run(*args, **kwargs):
+            result = actual_run(*args, **kwargs)
+            (self.root / "new.icl").write_text("Module Added {}")
+            return result
+        with patch.object(audit_module.subprocess, "run", side_effect=added_after_run):
+            with self.assertRaisesRegex(ValueError, "changed during"):
                 self.audit()
 
     def test_failed_rerun_replaces_old_success_report(self):

@@ -8833,9 +8833,33 @@ qualify the maintained1334-file/1763-module workload; broader inputs require
 their own evidence.
 
 Eight new generator methods, native source/flatten/default checks, eight
-producer and eight protocol methods pass, including direct parent RED
+producer and13 protocol methods pass, including direct parent RED
 evidence for12 broken serializations and14 internal enum messages. The
 required full native/dynamic/static/sanitizer/quality/package qualification
 and independent whole-branch review are in progress. Remaining source
 specializations, model semantics, binding/event support and wider vendor
 round-trips still belong to unfinished inventory11/12 and related items.
+
+
+Task156 independent review found five Important audit-evidence gaps. The
+single fix pass now invalidates reports before prerequisite builds/parser/
+policy, rejects malformed registry objects and inconsistent parser declaration
+metadata, rejects contradictory success/error records, matches complete
+unsupported diagnostics, selects both test-runner helpers by build variant,
+and checks source file sets/digests plus the helper digest before and after
+execution. A failed or changing run cannot keep a prior success under these
+handled paths. Post-fix full qualification is in progress; no rereview is used.
+
+One Minor remains deferred: the standalone native helper checks its output
+stream before its final buffered flush, so a late write failure can still
+exit0. The Python audit rejects incomplete records. The example was checked
+by its author; independent reader usability and general peak-live-application
+memory were not measured. Allocator exit totals explain this workload's
+retention pattern without establishing a live-heap bound. Broader physical/
+vendor equivalence and inventory11/12 completion remain pending.
+
+Post-fix selected-parser producer8/protocol13 and normal corpus/three Make
+lifecycle/selection tests pass. Their exact source/tool/log hashes are retained
+in review-fix/focused-receipt.json so the final executor can replace earlier
+pre-fix gates without pretending they covered the corrected audit. All52 final
+gates and six post-fix corpus performance measurements remain required.

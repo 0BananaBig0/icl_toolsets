@@ -806,15 +806,17 @@ keywordcheck: $(BIN) $(LSP_BIN) $(BUILD_DIR)/icl_corpus_inventory
 	  --lsp $(LSP_BIN) --inventory $(BUILD_DIR)/icl_corpus_inventory
 
 .PHONY: corpuscheck
-corpuscheck: $(BUILD_DIR)/icl_corpus_inventory $(BIN) model-corpus-check
+corpuscheck: model-corpus-check $(BIN)
 	python3 tests/tests/test_import_eda_corpus.py
 	python3 tests/tests/test_eda_corpus.py
-	python3 tests/tests/test_audit_icl_corpus.py
-	MODEL_INVENTORY=$(abspath $(BUILD_DIR)/pattern_netlist_inventory) python3 tests/tests/src/pattern/test_audit_model_corpus.py
+	PARSER_INVENTORY=$(abspath $(BUILD_DIR)/icl_corpus_inventory) python3 tests/tests/test_audit_icl_corpus.py
+	PARSER_INVENTORY=$(abspath $(BUILD_DIR)/icl_corpus_inventory) MODEL_INVENTORY=$(abspath $(BUILD_DIR)/pattern_netlist_inventory) python3 tests/tests/src/pattern/test_audit_model_corpus.py
 	python3 tests/test_makefile_model_corpus.py
 
 .PHONY: model-corpus-check
-model-corpus-check: $(BUILD_DIR)/icl_corpus_inventory $(BUILD_DIR)/pattern_netlist_inventory
+model-corpus-check:
+	@python3 -c 'import json,pathlib,sys; p=pathlib.Path(sys.argv[1]); p.parent.mkdir(parents=True,exist_ok=True); p.write_text(json.dumps({"ok":False,"errors":["corpus prerequisites incomplete or failed"]})+"\n")' "$(BUILD_DIR)/model_source_audit.json"
+	$(MAKE) --no-print-directory $(BUILD_DIR)/icl_corpus_inventory $(BUILD_DIR)/pattern_netlist_inventory
 	python3 tests/audit_icl_corpus.py --inventory $(BUILD_DIR)/icl_corpus_inventory --policy tests/cases/deduplication.json --report $(BUILD_DIR)/model_source_corpus.json
 	python3 tests/src/pattern/audit_model_corpus.py --corpus-report $(BUILD_DIR)/model_source_corpus.json --inventory $(BUILD_DIR)/pattern_netlist_inventory --report $(BUILD_DIR)/model_source_audit.json
 

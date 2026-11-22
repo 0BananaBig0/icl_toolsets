@@ -2,6 +2,7 @@
 """Exercise duplicate detection using the real shared parser and source bytes."""
 import json
 import hashlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,6 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+INVENTORY = Path(os.environ.get('PARSER_INVENTORY', ROOT / 'build/icl_corpus_inventory'))
 
 
 class AuditTest(unittest.TestCase):
@@ -24,7 +26,7 @@ class AuditTest(unittest.TestCase):
 
     def audit(self, policy=None):
         command = [sys.executable, str(ROOT / 'tests/audit_icl_corpus.py'),
-                   '--root', str(self.root), '--inventory', str(ROOT / 'build/icl_corpus_inventory'),
+                   '--root', str(self.root), '--inventory', str(INVENTORY),
                    '--report', str(self.root / 'report.json')]
         if policy is not None:
             path = self.root / 'policy.json'
@@ -69,7 +71,7 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(report['rejected'], ['invalid.icl'])
         self.assertEqual(report['module_duplicates'], [])
-        strict = subprocess.run([str(ROOT / 'build/icl_corpus_inventory'),
+        strict = subprocess.run([str(INVENTORY),
                                  str(self.root / 'invalid.icl')], capture_output=True)
         self.assertNotEqual(strict.returncode, 0, 'normal importer must still reject invalid input')
 
