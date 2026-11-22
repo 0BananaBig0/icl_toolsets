@@ -7964,7 +7964,11 @@ Coverage1 remains excluded with unchanged thresholds.
 existing standalone or client-controlled serial routes. The concrete replay
 samples the actual return wire immediately before each shift edge, decodes
 chain order and inversion, and maps capture cells back to their logical data
-targets. Readback comes from the first selected read in an Apply, before its
+targets. The qualified native shortcut retains batched shifting: its fixed
+route and uninterrupted-shift checks prove captured shift storage equals the
+decoded return, so it exports that actual storage after capture. Speculative
+read shortcuts publish observations only after accepting the trial.
+Readback comes from the first selected read in an Apply, before its
 subsequent update; expected data only controls mismatch masks and counts.
 
 Save scan.icl:

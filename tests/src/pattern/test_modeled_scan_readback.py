@@ -172,6 +172,44 @@ iNote [iGetReadData child.r -dec]; iNote [iGetReadData b -dec]; iNote [iGetStatu
 """)
         self.assertEqual(self.notes(output), [b"9", b"0", b"2"])
 
+    def test_native_client_readback_keeps_fast_replay(self):
+        fixture = cli.ROOT / "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl"
+        source = fixture.read_text().replace("Module NativeOrdinaryTop", "Module Chains")
+        for capture, expected, count in (("value", "9", "2"),
+                                         ("8'b00001010", "10", "2"),
+                                         ("8'bxxxxxxxx", "X", None)):
+            model = source.replace("CaptureSource value", "CaptureSource " + capture)
+            status = ("iNote [iGetStatus]" if count is not None else
+                      "if {![catch {iGetStatus}]} {error {unknown count lost}}")
+            with self.subTest(capture=capture):
+                output = self.replay(model, """iPDLLevel 1
+iReset; iWrite open 1; iApply; iWrite child.value 9; iApply
+iRead child.value 0; iApply
+iNote [iGetReadData child.value -dec]
+""" + status)
+                self.assertEqual(self.notes(output),
+                                 [expected.encode()] + ([count.encode()] if count else []))
+
+    def test_wide_native_observation_retains_batched_shift(self):
+        fixture = cli.ROOT / "tests/cases/ours/pattern_generation/native_ordinary_scans/model.icl"
+        source = fixture.read_text().replace("Module NativeOrdinaryTop", "Module Chains")
+        source = source.replace("[7:0]", "[4095:0]").replace("8'b0", "4096'b0")
+        output = self.replay(source, """iPDLLevel 1
+iReset; iWrite open 1; iApply; iWrite child.value 0x""" + "f" * 1024 + """; iApply
+iRead child.value 0; iApply
+iNote [iGetReadData child.value -bin]; iNote [iGetStatus]
+""")
+        self.assertEqual(self.notes(output), [b"0b" + b"1" * 4096, b"4096"])
+
+    def test_regular_read_trial_projects_constant_capture(self):
+        fixture = cli.ROOT / "tests/cases/ours/pattern_generation/control_mux_operations/capture.icl"
+        source = fixture.read_text().replace("Module ClientTop", "Module Chains")
+        output = self.replay(source, """iPDLLevel 1
+iReset; iState cap_enable 1; iRead child.value 0; iApply
+iNote [iGetReadData child.value -dec]; iNote [iGetStatus]
+""")
+        self.assertEqual(self.notes(output), [b"10", b"2"])
+
     def test_unsupported_operation_preserves_output(self):
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         icl.write_text(BASE)

@@ -16,6 +16,8 @@ Add the logical target Key to CaptureComparison at its single creation site. Pro
 
 Allow ScanRegister and DataRegister storage in ModelReadback, retaining TAP and operation guards. Migrate both old note forms to 'modeled register/PIO readback; no live device'; update help/assertions. No history query keeps unsupported networks lazy.
 
+Review correction: the certified native ReplayScan shortcut exports requested actual shift storage immediately after capture. Its pure forwarding, held selectors, inactive resets and uninterrupted shifts prove these values equal decoded serial returns, preserving batched ShiftComplete for wide chains. Deliver owned data only after success and outside fallback catches. TryRegularReads buffers nested-solver observations until its speculative trial is accepted. General Replay continues sampling wires per tick.
+
 ## Acceptance
 Tests: simple/inverted serial chains, declaration directions, sparse aliases, unknowns, count/clear, read-before-write, multiple Applies, DataRegister projection, unequal lanes, client controls, reset-held downstream corruption, setup frames, atomic failures and default/no-query controls. Reuse fixtures/native binary; new maintained Python tests under tests/src/pattern/.
 

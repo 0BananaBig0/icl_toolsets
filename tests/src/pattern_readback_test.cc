@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_readback.h"
 
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <stdexcept>
 
@@ -211,6 +213,38 @@ Module Top {
   Require(scheduler.Value("first") == "0110",
           "observation precedes the new update");
 }
+void TestFastObserverExceptions() {
+  for (bool native : {true, false}) {
+    const std::string path = native ? "tests/cases/ours/pattern_generation/"
+                                      "native_ordinary_scans/model.icl"
+                                    : "tests/cases/ours/pattern_generation/"
+                                      "control_mux_operations/capture.icl";
+    std::ifstream stream(path);
+    Require(stream.good(), "observer fixture opens");
+    const std::string source((std::istreambuf_iterator<char>(stream)), {});
+    pattern::Design design;
+    design.AddIcl(path, source);
+    const auto netlist =
+        pattern::Elaborate(design, native ? "NativeOrdinaryTop" : "ClientTop");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.Assume(native ? "open" : "cap_enable", "1");
+    size_t calls = 0;
+    bool thrown = false;
+    try {
+      scheduler.Apply({{"iRead", {"child.value", "0"}, "test", {}}}, false, {},
+                      true, false, [&](const auto&, const auto&) {
+                        ++calls;
+                        throw std::runtime_error("listener failure");
+                      });
+    } catch (const std::runtime_error& error) {
+      thrown = std::string(error.what()).find("listener failure") !=
+               std::string::npos;
+    }
+    Require(thrown && calls == 1,
+            "accepted fast replay propagates subscriber errors without retry");
+  }
+}
 void TestDataReadbackPlanes() {
   pattern::Design design;
   design.AddIcl("data.icl", R"(
@@ -308,6 +342,7 @@ int main() {
     TestModeledReadback();
     TestScheduledObservations();
     TestSerialEventOracle();
+    TestFastObserverExceptions();
     TestDataReadbackPlanes();
     TestDataFrameEventOracle();
     std::cout << "readback tests passed\n";
