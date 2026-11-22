@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Actual DataRegister readback through PIO and lazy manual history order."""
 import unittest
+import subprocess
+
+import test_simultaneous_scan_chains as cli
 
 import test_modeled_readback as helpers
 import test_data_register_callback_model as callbacks
@@ -84,9 +87,9 @@ iState inverted[3:2] 3 -LastMiscompareValue
 iNote [iGetMiscompares value -dec]; iNote [iGetStatus]
 iRead q 9; iApply; iNote [iGetReadData q -dec]
 """)
-        for value in (0, 11, 4, 13, 2, 9):
-            self.assertIn(("iNote " + str(value) + "\n").encode(), output)
-        self.assertIn(b"iNote 0b1001", output)
+        notes = [line[6:] for line in output.splitlines()
+                 if line.startswith(b"iNote ") and helpers.LABEL not in line]
+        self.assertEqual(notes, [b"0", b"0b1001", b"11", b"4", b"13", b"2", b"9"])
 
     def test_unknown_storage_and_manual_history_do_not_clear_unknown_count(self):
         output = self.replay(BASE, """iPDLLevel 1
@@ -228,6 +231,10 @@ if {$calls != 1} {error {argument evaluated twice}}
         self.assertEqual(pdl.read_bytes(), (self.root / "reset.pdl").read_bytes())
 
     def test_legacy_label_migrates_once_and_default_is_unchanged(self):
+        help_result = subprocess.run([str(cli.BIN), "--help"], capture_output=True,
+                                     text=True, timeout=45)
+        self.assertEqual(help_result.returncode, 0, help_result.stderr)
+        self.assertIn("Model PIO/DataRegister readback", help_result.stdout)
         legacy = "modeled combinational PIO readback; no live device"
         output = self.replay(
             BASE, "iPDLLevel 1; iNote {" + legacy + "}; "

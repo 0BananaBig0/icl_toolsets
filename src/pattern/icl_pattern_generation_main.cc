@@ -779,7 +779,7 @@ int main(int argc, char** argv) {
            "CSU\n"
            "                       per iApply; use again when replaying "
            "output\n"
-           "  --model_readback     Model combinational PIO readback (no live "
+           "  --model_readback     Model PIO/DataRegister readback (no live "
            "device)\n"
            "  --debug              Also write debug/<top>.icl beside output\n"
            "  --log PATH           Copy diagnostics to a file\n"
