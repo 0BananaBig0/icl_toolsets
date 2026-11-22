@@ -22,12 +22,12 @@ Defaults and schedules remain unchanged. New maintained tests live under tests/.
 ### Task 1: Serial observation integration
 **Files:** Modify src/pattern/pattern_scheduler.{h,cc}, pattern_readback.{h,cc}, icl_pattern_generation_main.cc; tests/src/pattern_readback_test.cc, tests/src/pattern/test_modeled_readback.py, test_modeled_data_readback.py; create tests/src/pattern/test_modeled_scan_readback.py.
 **Interfaces:** Consumes existing TraceSerialPath, NetworkState::ReadBits and tentative PioObservation. Produces Observation alias (old alias retained) and actual logical-bit observations.
-- [ ] Write literal-output scan tests: value9 expected0 gives read9/mask1001/count2, read-before-write gives9 then6, inverted/ascending/sparse/unknown lanes and DataRegister captures; add native serial event oracle and failure atomicity checks.
-- [ ] Run new tests against parent generator/native test; expect unsupported ScanRegister or missing observer failures. Keep raw logs.
-- [ ] Add CaptureComparison logical Key, pass observer into Replay, gather wanted monotonic per-lane intervals, sample actual outputs before each shift edge, decode suffix/order and emit selected logical bits. Restrict old post-state observation to parallel frames.
-- [ ] Admit ScanRegister storage, retain TAP/operation guards; migrate both legacy notes and compiled help; revise obsolete unsupported-scan test and cover TAP boundary.
-- [ ] Run focused new/existing readback, scheduler and scan-data tests against dynamic/static generators and native binary; expect all pass.
-- [ ] Commit feature and tests.
+- [x] Write literal-output scan tests: value9 expected0 gives read9/mask1001/count2, read-before-write gives9 then6, inverted/ascending/sparse/unknown lanes and DataRegister captures; add native serial event oracle and failure atomicity checks.
+- [x] Run new tests against parent generator/native test; expect unsupported ScanRegister or missing observer failures. Keep raw logs.
+- [x] Add CaptureComparison logical Key, pass observer into Replay, gather wanted monotonic per-lane intervals, sample actual outputs before each shift edge, decode suffix/order and emit selected logical bits. Restrict old post-state observation to parallel frames.
+- [x] Admit ScanRegister storage, retain TAP/operation guards; migrate both legacy notes and compiled help; revise obsolete unsupported-scan test and cover TAP boundary.
+- [x] Run focused new/existing readback, scheduler and scan-data tests against dynamic/static generators and native binary; expect all pass.
+- [x] Commit feature and tests.
 
 ### Task 2: Qualification and delivery
 **Files:** Modify docs/pattern-generation.md, docs/pattern-model-coverage.md, docs/remaining-work.md and relevant README text.

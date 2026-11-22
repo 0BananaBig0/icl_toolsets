@@ -9,7 +9,7 @@ BASE = """Module Chains {
  DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
  Alias inverted[3:0] = ~q;
 }"""
-LABEL = b"modeled PIO/DataRegister readback; no live device"
+LABEL = b"modeled register/PIO readback; no live device"
 
 
 class ModeledReadback(unittest.TestCase):
@@ -170,9 +170,6 @@ iNote [iGetReadData q -bin]
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         output = self.root / "result.pdl"
         for source, history in (
-                (BASE.replace(" DataOutPort", " ScanInPort si; ScanRegister r {"
-                              "ScanInSource si; ResetValue 0;} "
-                              "ScanOutPort so {Source r;}\n DataOutPort"), ""),
                 (BASE, "iRunLoop 1 -tck; "),
                 (BASE, "iMerge -begin; iMerge -end; ")):
             with self.subTest(history=history):

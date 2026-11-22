@@ -152,6 +152,65 @@ Module Top {
   Require(scheduler.Value("a") + scheduler.Value("b") != "11",
           "final state cannot replace earlier enabled observations");
 }
+void TestSerialEventOracle() {
+  pattern::Design design;
+  design.AddIcl("serial.icl", R"(
+Module Top {
+ ScanInPort si;
+ ScanRegister first[3:0] {ScanInSource si; CaptureSource first; ResetValue 0;}
+ ScanRegister last[1:0] {ScanInSource ~first[0]; CaptureSource last; ResetValue 0;}
+ ScanOutPort so {Source ~last[0];}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("first", "1001");
+  scheduler.Assume("last", "10");
+  std::map<std::pair<size_t, int64_t>, char> observed;
+  const auto steps = scheduler.Apply(
+      {{"iRead", {"first", "0"}, "test", {}},
+       {"iRead", {"last", "0"}, "test", {}},
+       {"iWrite", {"first", "6"}, "test", {}}},
+      false, {}, true, false, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          observed.emplace(std::make_pair(bits[i].node, bits[i].index),
+                           values[i]);
+        }
+      });
+  pattern::NetworkState oracle(netlist);
+  oracle.SetGlobalReset('0', '0');
+  oracle.Assume(netlist.node_ids.at("first"), "1001");
+  oracle.Assume(netlist.node_ids.at("last"), "10");
+  std::string returned;
+  for (const auto& step : steps) {
+    std::map<size_t, pattern::ScanControl> controls;
+    for (const auto& [name, bits] : step.loads) {
+      controls[netlist.node_ids.at(name)] = {'1', '0', '0', '1'};
+    }
+    oracle.Clock(controls, true);
+    for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
+    for (char input : step.serial) {
+      oracle.Drive(netlist.node_ids.at("si"), std::string(1, input));
+      returned += oracle.Read({netlist.node_ids.at("so"), 0}, true);
+      oracle.Clock(controls, true);
+    }
+    for (auto& [id, control] : controls) control = {'0', '0', '1', '1'};
+    oracle.Clock(controls, false);
+  }
+  Require(returned == "101001",
+          "independent pre-edge wire oracle has literal return bits");
+  Require(observed.size() == 6,
+          "listener delivers all six requested logical bits");
+  const auto first = netlist.node_ids.at("first"),
+             last = netlist.node_ids.at("last");
+  Require(
+      observed.at({first, 3}) == '1' && observed.at({first, 2}) == '0' &&
+          observed.at({first, 1}) == '0' && observed.at({first, 0}) == '1' &&
+          observed.at({last, 1}) == '1' && observed.at({last, 0}) == '0',
+      "logical observations decode actual wire order and both path inversions");
+  Require(scheduler.Value("first") == "0110",
+          "observation precedes the new update");
+}
 void TestDataReadbackPlanes() {
   pattern::Design design;
   design.AddIcl("data.icl", R"(
@@ -248,6 +307,7 @@ int main() {
     TestReadModel();
     TestModeledReadback();
     TestScheduledObservations();
+    TestSerialEventOracle();
     TestDataReadbackPlanes();
     TestDataFrameEventOracle();
     std::cout << "readback tests passed\n";

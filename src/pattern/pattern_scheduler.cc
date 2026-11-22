@@ -3881,6 +3881,7 @@ class ScanScheduler::Impl {
   }
   struct CaptureComparison {
     BitReference output;
+    Key target;
     char expected;
     z3::expr selected;
   };
@@ -5917,7 +5918,8 @@ class ScanScheduler::Impl {
               const char compare = path.output.inverted && expected != 'x'
                                        ? (expected == '1' ? '0' : '1')
                                        : expected;
-              frame.comparisons.push_back({path.output, compare, selected});
+              frame.comparisons.push_back(
+                  {path.output, {id, index}, compare, selected});
               if (compare != 'x') {
                 const auto key = std::make_pair(
                     Key{path.output.node, path.output.index}, compare);
@@ -6236,7 +6238,7 @@ class ScanScheduler::Impl {
                                       replayed_preserved, desired_preserved)
                      : Replay(frame, model, expected, required, events, &replay,
                               tap_replay.get(), replayed_preserved,
-                              desired_preserved);
+                              desired_preserved, observe);
         for (size_t id : replay.TakeResetEvents()) reset.insert(id);
         const auto control_events = replay.TakeControlEvents();
         for (const auto& [id, drive] : frame.drives) {
@@ -6246,7 +6248,7 @@ class ScanScheduler::Impl {
                 "symbolic/concrete mixed-input replay mismatch");
           }
         }
-        if (observe) {
+        if (observe && parallel) {
           std::vector<BitReference> bits;
           for (const auto& [id, requested] : data_reads) {
             if (!model.eval(frame.read.at(id), true).is_true()) continue;
@@ -6550,7 +6552,8 @@ class ScanScheduler::Impl {
                   const std::set<size_t>& required, bool events,
                   NetworkState* replay, TapExecution* tap_replay,
                   std::map<size_t, std::string>& preserved,
-                  const std::map<size_t, std::string>& desired_preserved) {
+                  const std::map<size_t, std::string>& desired_preserved,
+                  const ScanScheduler::Observation& observe) {
     std::function<void(const NetworkState&)> check;
     if (!preserved.empty()) {
       check = [&](const NetworkState& state) {
@@ -6601,6 +6604,18 @@ class ScanScheduler::Impl {
         bits.at(Offset(node, item.output.index)) = item.expected;
       }
     }
+    std::map<size_t, std::string> observed;
+    struct ReadInterval {
+      size_t start;
+      bool inverted;
+      std::string* bits;
+    };
+    struct ReadLane {
+      BitReference output;
+      std::vector<ReadInterval> intervals;
+      size_t cursor = 0;
+    };
+    std::vector<ReadLane> read_lanes;
     std::map<size_t, ScanControl> controls;
     std::vector<std::pair<BitReference, ScanLane>> lanes;
     size_t clocks = 0;
@@ -6616,6 +6631,8 @@ class ScanScheduler::Impl {
       const auto& registers = path.registers;
       const bool inverted = path.inverted;
       const auto input_bit = path.input;
+      ReadLane read_lane{graph_[root].bit, {}, 0};
+      size_t read_offset = 0;
       lane.input = endpoint(input_bit);
       for (const auto& [id, suffix] : registers) {
         const auto bits = Decode(model, frame.loads.at(id));
@@ -6633,6 +6650,14 @@ class ScanScheduler::Impl {
           step.expected.emplace(netlist_.nodes[id].name, compare);
         }
         const auto captured = capture_expected.find(id);
+        if (observe && (captured != capture_expected.end() ||
+                        (frame.read.count(id) &&
+                         model.eval(frame.read.at(id), true).is_true()))) {
+          auto& actual =
+              observed.try_emplace(id, bits.size(), '?').first->second;
+          read_lane.intervals.push_back({read_offset, suffix, &actual});
+        }
+        read_offset += bits.size();
         if (captured != capture_expected.end()) {
           for (size_t bit = 0; bit < compare.size(); ++bit) {
             if (captured->second[bit] != 'x') {
@@ -6648,6 +6673,9 @@ class ScanScheduler::Impl {
         controls[id] = {'1', '0', '0', '1'};
       }
       clocks = std::max(clocks, lane.serial.size());
+      if (!read_lane.intervals.empty()) {
+        read_lanes.push_back(std::move(read_lane));
+      }
       lanes.emplace_back(input_bit, std::move(lane));
     }
     for (auto& [input, lane] : lanes) {
@@ -6687,6 +6715,33 @@ class ScanScheduler::Impl {
         for (const auto& [input, bits] : inputs) replay->Drive(input, bits);
         if (client_controls_) {
           controls = ClientControls(replay, active, "shift", selections);
+        }
+        if (!read_lanes.empty()) {
+          std::vector<BitReference> outputs;
+          std::vector<ReadInterval*> intervals;
+          for (auto& lane : read_lanes) {
+            while (lane.cursor < lane.intervals.size() &&
+                   tick >= lane.intervals[lane.cursor].start +
+                               lane.intervals[lane.cursor].bits->size()) {
+              ++lane.cursor;
+            }
+            if (lane.cursor == lane.intervals.size() ||
+                tick < lane.intervals[lane.cursor].start) {
+              continue;
+            }
+            outputs.push_back(lane.output);
+            intervals.push_back(&lane.intervals[lane.cursor]);
+          }
+          const auto values = replay->ReadBits(outputs, true);
+          for (size_t i = 0; i < intervals.size(); ++i) {
+            auto& interval = *intervals[i];
+            char value = values[i];
+            if (interval.inverted && value != 'x') {
+              value = value == '1' ? '0' : '1';
+            }
+            interval.bits->at(interval.bits->size() - 1 -
+                              (tick - interval.start)) = value;
+          }
         }
         replay->Clock(controls, true, check);
         if (check) check(*replay);
@@ -6745,6 +6800,36 @@ class ScanScheduler::Impl {
             ": symbolic/concrete scan replay mismatch at " +
             netlist_.nodes[id].name);
       }
+    }
+    if (observe && !tap_replay) {
+      std::vector<BitReference> bits;
+      std::string values;
+      for (const auto& [id, actual] : observed) {
+        if (!frame.read.count(id) ||
+            !model.eval(frame.read.at(id), true).is_true()) {
+          continue;
+        }
+        const auto& node = netlist_.nodes[id];
+        for (size_t offset = 0; offset < actual.size(); ++offset) {
+          const auto index = node.left <= node.right
+                                 ? node.left + static_cast<int64_t>(offset)
+                                 : node.left - static_cast<int64_t>(offset);
+          bits.push_back({id, index});
+          values += actual[offset];
+        }
+      }
+      for (const auto& comparison : frame.comparisons) {
+        if (!model.eval(comparison.selected, true).is_true()) continue;
+        const auto& node = netlist_.nodes[comparison.output.node];
+        char value = observed.at(comparison.output.node)
+                         .at(Offset(node, comparison.output.index));
+        if (comparison.output.inverted && value != 'x') {
+          value = value == '1' ? '0' : '1';
+        }
+        bits.push_back({comparison.target.first, comparison.target.second});
+        values += value;
+      }
+      if (!bits.empty()) observe(bits, values);
     }
     return step;
   }
