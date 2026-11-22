@@ -450,6 +450,7 @@ class ScanScheduler::Impl {
     control_seen_ = other.control_seen_;
     primary_state_indexed_ = other.primary_state_indexed_;
     primary_state_candidates_ = other.primary_state_candidates_;
+    parallel_raw_profile_ = other.parallel_raw_profile_;
     if (other.execution_) {
       execution_ = std::make_unique<TapExecution>(*other.execution_);
     }
@@ -1163,6 +1164,323 @@ class ScanScheduler::Impl {
     bool inverted = false;
     size_t width = 0;
   };
+  struct ParallelRawField {
+    BitReference output;
+    ConcretePath path;
+  };
+  struct ParallelRawProfile {
+    size_t client = kMissing;
+    std::map<std::string, ParallelRawField> fields;
+  };
+  bool ParallelRawTarget(const Operation& operation) const {
+    if (operation.arguments.empty()) return false;
+    const size_t target = operation.arguments[0] == "-ir" ? 1 : 0;
+    if (target >= operation.arguments.size()) return false;
+    const auto found = netlist_.node_ids.find(operation.arguments[target]);
+    if (found == netlist_.node_ids.end()) return false;
+    const auto& node = netlist_.nodes[found->second];
+    return node.scan_interface &&
+           node.scan_interface->kind == ScanInterfaceKind::kClient &&
+           !node.scan_interface->chains.empty();
+  }
+  const ParallelRawProfile& ParallelRawPaths() {
+    if (parallel_raw_profile_) return *parallel_raw_profile_;
+    const auto fail = [] {
+      throw std::runtime_error(
+          "parallel raw scan requires fixed disjoint root chains and direct "
+          "common controls");
+    };
+    if (!netlist_.taps.empty() || netlist_.scopes.size() != 1 ||
+        registers_.empty())
+      fail();
+    const auto interfaces = EffectiveScanInterfaces(netlist_);
+    if (interfaces.size() != 1 || interfaces[0].scope != 0 ||
+        interfaces[0].interface.kind != ScanInterfaceKind::kClient ||
+        interfaces[0].interface.chains.empty())
+      fail();
+    ParallelRawProfile profile;
+    for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
+      const auto& node = netlist_.nodes[id];
+      if (node.scope != 0 || node.constants.count("iApplyEndState") ||
+          (node.model == ModelKind::kRegister && node.kind != "ScanRegister" &&
+           node.kind != "DataRegister") ||
+          (node.kind == "DataRegister" && node.inputs.count("WriteDataSource")))
+        fail();
+      if (node.scan_interface) {
+        if (profile.client != kMissing ||
+            node.scan_interface->kind != ScanInterfaceKind::kClient)
+          fail();
+        profile.client = id;
+      }
+      if (node.reset && node.reset->node != kMissing) {
+        const auto& reset = netlist_.nodes.at(node.reset->node);
+        if (reset.kind != "ResetPort" || reset.scope != 0 ||
+            reset.Width() != 1 || !reset.inputs.empty())
+          fail();
+      }
+    }
+    if (profile.client == kMissing) fail();
+    const auto& interface = *netlist_.nodes[profile.client].scan_interface;
+    const std::set<std::string> kinds{"SelectPort",  "CaptureEnPort",
+                                      "ShiftEnPort", "UpdateEnPort",
+                                      "TCKPort",     "ResetPort"};
+    std::set<std::string> controls;
+    for (const auto& bit : interface.ports) {
+      if (bit.node == kMissing || bit.inverted) fail();
+      const auto& node = netlist_.nodes.at(bit.node);
+      if (!kinds.count(node.kind) || node.Width() != 1 ||
+          !node.inputs.empty() || !controls.insert(node.kind).second)
+        fail();
+    }
+    std::map<Key, size_t> outputs;
+    for (size_t root : roots_) {
+      const auto& bit = graph_.at(root).bit;
+      if (!outputs.emplace(Key{bit.node, bit.index}, root).second) fail();
+    }
+    std::set<Key> inputs, returned;
+    std::set<size_t> covered;
+    size_t total = 0;
+    for (const auto& chain : interface.chains) {
+      BitReference input, output;
+      bool found_input = false, found_output = false;
+      for (const auto& bit : chain.ports) {
+        if (bit.node == kMissing || bit.inverted) fail();
+        const auto& node = netlist_.nodes.at(bit.node);
+        if (node.kind == "ScanInPort" && !found_input && node.inputs.empty()) {
+          input = bit;
+          found_input = true;
+        } else if (node.kind == "ScanOutPort" && !found_output) {
+          output = bit;
+          found_output = true;
+        } else {
+          fail();
+        }
+      }
+      if (!found_input || !found_output ||
+          !inputs.emplace(input.node, input.index).second ||
+          !returned.emplace(output.node, output.index).second)
+        fail();
+      const auto root = outputs.find({output.node, output.index});
+      if (root == outputs.end()) fail();
+      size_t vertex = root->second;
+      std::set<size_t> visited;
+      while (!graph_.at(vertex).input) {
+        if (!visited.insert(vertex).second) fail();
+        const auto& current = graph_[vertex];
+        if (current.bit.node == kMissing) fail();
+        const auto& node = netlist_.nodes.at(current.bit.node);
+        if (node.model == ModelKind::kMux || node.model == ModelKind::kLogic ||
+            node.inputs.count("Enable") || current.edges.size() != 1 ||
+            current.edges[0].choice != kMissing)
+          fail();
+        vertex = current.edges[0].next;
+      }
+      auto path = TraceSerialPath(state_, root->second, false);
+      if (path.input.node != input.node || path.input.index != input.index ||
+          path.width == 0 || path.width > 1048576 - total)
+        fail();
+      total += path.width;
+      for (const auto& [id, suffix] : path.registers) {
+        if (!covered.insert(id).second) fail();
+      }
+      if (!profile.fields
+               .emplace(chain.name, ParallelRawField{output, std::move(path)})
+               .second)
+        fail();
+    }
+    if (covered.size() != registers_.size()) fail();
+    parallel_raw_profile_ = std::move(profile);
+    return *parallel_raw_profile_;
+  }
+  Operation NormalizeParallelRaw(const Operation& operation,
+                                 bool defer_length) {
+    const auto& profile = ParallelRawPaths();
+    auto result = pattern::NormalizeScan(context_, operation);
+    const auto fields = ReadScanFields(result);
+    if (fields.instruction) {
+      throw std::runtime_error(
+          "parallel raw -ir requires a client TAP interface");
+    }
+    const auto found = profile.fields.find(fields.chain);
+    if (result.arguments[fields.target] !=
+            netlist_.nodes[profile.client].name ||
+        found == profile.fields.end()) {
+      throw std::runtime_error(
+          "parallel raw scan requires a valid client chain");
+    }
+    if (!defer_length && result.arguments[fields.length] !=
+                             std::to_string(found->second.path.width)) {
+      throw std::runtime_error(
+          "raw scan length differs from the modeled parallel chain length");
+    }
+    return result;
+  }
+  void CheckRawControls(const std::map<size_t, ScanControl>& controls,
+                        const std::set<size_t>& active,
+                        const std::string& phase) const {
+    for (const auto& [id, control] : controls) {
+      const bool loaded = active.count(id);
+      if ((loaded && control.select != '1') ||
+          control.capture != (loaded && phase == "capture" ? '1' : '0') ||
+          control.shift != (loaded && phase == "shift" ? '1' : '0') ||
+          control.update != (loaded && phase == "update" ? '1' : '0')) {
+        throw std::runtime_error(
+            "raw scan requires unconditional native control events for its "
+            "route");
+      }
+    }
+  }
+  std::vector<Operation> ApplyParallelRawScans(
+      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& preserved,
+      std::set<size_t>* assigned, const RawObservation& observe) {
+    const auto& profile = ParallelRawPaths();
+    std::map<std::string, Operation> latest;
+    for (const auto& operation : operations) {
+      auto scan = NormalizeParallelRaw(operation, false);
+      latest.insert_or_assign(ReadScanFields(scan).chain, std::move(scan));
+    }
+    if (latest.empty()) throw std::runtime_error("raw scan queue is empty");
+    if (global_resets_ != "00") {
+      throw std::runtime_error(
+          "modeled raw scan requires an explicit iReset first");
+    }
+    for (const auto& node : netlist_.nodes) {
+      if (node.model == ModelKind::kRegister && node.reset &&
+          state_.Read(*node.reset) != '0') {
+        throw std::runtime_error("raw scan requires inactive direct resets");
+      }
+    }
+    std::set<size_t> active, written;
+    std::map<size_t, std::string> loads;
+    std::vector<Operation> result;
+    result.reserve(profile.fields.size());
+    for (const auto& [name, field] : profile.fields) {
+      const auto& path = field.path;
+      auto found = latest.find(name);
+      Operation scan;
+      if (found != latest.end()) {
+        scan = found->second;
+      } else {
+        scan = operations.front();
+        std::string input(path.width, 'x');
+        size_t offset = path.width;
+        for (const auto& [id, suffix] : path.registers) {
+          offset -= netlist_.nodes[id].Width();
+          input.replace(offset, netlist_.nodes[id].Width(),
+                        InvertBits(fill_.at(id), path.inverted != suffix));
+        }
+        scan.arguments = {netlist_.nodes[profile.client].name,
+                          "-chain",
+                          name,
+                          std::to_string(path.width),
+                          "-si",
+                          "0b" + input,
+                          "-so",
+                          "0b" + std::string(path.width, 'x'),
+                          "-stable"};
+      }
+      const auto fields = ReadScanFields(scan);
+      const auto input = scan.arguments[fields.input].substr(2);
+      size_t offset = path.width;
+      for (const auto& [id, suffix] : path.registers) {
+        const auto width = netlist_.nodes[id].Width();
+        offset -= width;
+        loads.emplace(id, InvertBits(input.substr(offset, width),
+                                     path.inverted != suffix));
+        active.insert(id);
+        if (found != latest.end()) written.insert(id);
+      }
+      result.push_back(std::move(scan));
+    }
+    auto desired = DesiredPreserved(preserved, {}, false, {});
+    auto held = preserved;
+    for (auto& [id, mask] : desired) {
+      const auto& node = netlist_.nodes.at(id);
+      if (node.model == ModelKind::kPort) {
+        held.erase(id);
+        continue;
+      }
+      if (node.kind != "ScanRegister") {
+        throw std::runtime_error(
+            "raw scan reservations require ScanRegister storage");
+      }
+      if (!written.count(id)) continue;
+      for (size_t bit = 0; bit < mask.size(); ++bit) {
+        if (mask[bit] == 'x') continue;
+        if (loads.at(id)[bit] == 'x') {
+          throw std::runtime_error(
+              "raw assignment of reserved resource is unknown: " + node.name);
+        }
+        mask[bit] = loads.at(id)[bit];
+      }
+    }
+    NetworkState replay(state_);
+    replay.TakeControlEvents();
+    replay.TakeResetEvents();
+    const auto check = [&](const NetworkState& current) {
+      CheckPreserved(current, held, desired);
+    };
+    const auto controls = [&](const std::string& phase) {
+      auto value = ClientControls(&replay, active, phase, {}, {}, check);
+      CheckRawControls(value, active, phase);
+      return value;
+    };
+    check(replay);
+    replay.Clock(controls("capture"), true, check);
+    check(replay);
+    std::map<std::string, std::string> captured;
+    if (observe) {
+      for (const auto& [name, operation] : latest) {
+        const auto& path = profile.fields.at(name).path;
+        std::string bits(path.width, 'x');
+        size_t offset = path.width;
+        for (const auto& [id, suffix] : path.registers) {
+          const auto width = netlist_.nodes[id].Width();
+          offset -= width;
+          bits.replace(offset, width,
+                       InvertBits(replay.Value(id, true), suffix));
+        }
+        captured.emplace(name, std::move(bits));
+      }
+    }
+    std::map<size_t, std::string> inputs;
+    for (const auto& operation : result) {
+      const auto fields = ReadScanFields(operation);
+      const auto& path = profile.fields.at(fields.chain).path;
+      const auto& node = netlist_.nodes[path.input.node];
+      auto entry = inputs.find(path.input.node);
+      if (entry == inputs.end()) {
+        entry = inputs.emplace(path.input.node, replay.Value(path.input.node))
+                    .first;
+      }
+      entry->second.at(Offset(node, path.input.index)) =
+          operation.arguments[fields.input].at(2);
+    }
+    for (const auto& [id, bits] : inputs) replay.Drive(id, bits);
+    replay.ShiftComplete(loads, controls("shift"));
+    check(replay);
+    replay.Clock(controls("update"), false, check);
+    check(replay);
+    for (const auto& [id, bits] : ClientPins("idle")) replay.Drive(id, bits);
+    replay.Reset();
+    check(replay);
+    auto fill = fill_;
+    for (const auto& [id, bits] : loads) {
+      for (size_t bit = 0; bit < bits.size(); ++bit) {
+        if (bits[bit] != 'x') fill.at(id)[bit] = bits[bit];
+      }
+    }
+    replay.TakeControlEvents();
+    replay.TakeResetEvents();
+    state_.Restore(replay);
+    fill_ = std::move(fill);
+    if (assigned) *assigned = std::move(written);
+    for (const auto& [name, operation] : latest) {
+      if (observe) observe(operation, captured.at(name));
+    }
+    return result;
+  }
   ConcretePath RawTapPath(bool instruction = false,
                           bool preserve_cause = false) {
     if (!tap_ready_) {
@@ -1518,6 +1836,9 @@ class ScanScheduler::Impl {
     if (operation.arguments.empty()) {
       throw std::runtime_error("raw scan has no target");
     }
+    if (ParallelRawTarget(operation)) {
+      return NormalizeParallelRaw(operation, defer_length);
+    }
     if (operation.arguments[0] == "-ir" || !netlist_.taps.empty()) {
       return NormalizeTapScan(operation, defer_length);
     }
@@ -1855,17 +2176,7 @@ class ScanScheduler::Impl {
         if (port_locks) CheckPreserved(state, held, desired);
       };
       auto result = ClientControls(trial, phase_active, phase, {}, read, check);
-      for (const auto& [id, control] : result) {
-        const bool loaded = phase_active.count(id);
-        if ((loaded && control.select != '1') ||
-            control.capture != (loaded && phase == "capture" ? '1' : '0') ||
-            control.shift != (loaded && phase == "shift" ? '1' : '0') ||
-            control.update != (loaded && phase == "update" ? '1' : '0')) {
-          throw std::runtime_error(
-              "raw scan requires unconditional native control events for its "
-              "route");
-        }
-      }
+      CheckRawControls(result, phase_active, phase);
       return result;
     };
     CheckPreserved(replay, held, desired);
@@ -7087,6 +7398,7 @@ class ScanScheduler::Impl {
   bool data_reset_dependencies_ = false, feedback_resets_ = false;
   bool primary_state_indexed_ = false;
   std::optional<std::vector<size_t>> primary_state_candidates_;
+  std::optional<ParallelRawProfile> parallel_raw_profile_;
   size_t reset_passes_ = 0, reset_work_ = 0;
   std::vector<std::vector<Key>> clients_;
   std::vector<size_t> client_route_counts_;
@@ -7186,6 +7498,13 @@ Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
     std::vector<ScanStep>* preparations, const RawObservation& observe) {
+  if (std::any_of(operations.begin(), operations.end(),
+                  [&](const auto& operation) {
+                    return impl_->ParallelRawTarget(operation);
+                  })) {
+    throw std::runtime_error(
+        "parallel raw scans require the ApplyRawScans vector API");
+  }
   std::vector<std::pair<Operation, std::string>> observations;
   const RawObservation sample =
       observe ? RawObservation{[&](const auto& operation, const auto& bits) {
@@ -7237,6 +7556,34 @@ Operation ScanScheduler::ApplyScans(
   };
   auto result = execute();
   impl_->InvalidateRawRoute();
+  for (const auto& [operation, bits] : observations) observe(operation, bits);
+  return result;
+}
+
+std::vector<Operation> ScanScheduler::ApplyRawScans(
+    const std::vector<Operation>& operations,
+    const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
+    std::vector<ScanStep>* preparations, const RawObservation& observe) {
+  if (std::none_of(operations.begin(), operations.end(),
+                   [&](const auto& operation) {
+                     return impl_->ParallelRawTarget(operation);
+                   })) {
+    return {ApplyScans(operations, preserved, assigned, preparations, observe)};
+  }
+  ScanScheduler trial(*this);
+  std::vector<std::pair<Operation, std::string>> observations;
+  const RawObservation sample =
+      observe ? RawObservation{[&](const auto& operation, const auto& bits) {
+        observations.emplace_back(operation, bits);
+      }}
+              : RawObservation{};
+  std::set<size_t> written;
+  auto result = trial.impl_->ApplyParallelRawScans(
+      operations, preserved, assigned ? &written : nullptr, sample);
+  impl_.swap(trial.impl_);
+  impl_->InvalidateRawRoute();
+  if (assigned) *assigned = std::move(written);
+  if (preparations) preparations->clear();
   for (const auto& [operation, bits] : observations) observe(operation, bits);
   return result;
 }
