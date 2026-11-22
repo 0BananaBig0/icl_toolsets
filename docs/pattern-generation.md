@@ -8434,6 +8434,8 @@ the known Minor labeling issue remains deferred, and generated replay has its
 own expanded Apply structure. Input/binary/output hashes and exact commands
 are retained in scale/results.json.
 
+Task153 checkpoint; [Task154](#task154-primary-solver-state-in-callback-heavy-models)
+subsequently improves the same primary-scheduling case.
 These measurements demonstrate1024 targets/four callback groups within the
 existing limits. End-to-end PIO scheduling grows faster than target count in
 this workload; no linear runtime or speedup is claimed. Larger routine batches
@@ -8471,3 +8473,61 @@ histories and the71-method CLI suite. All117 stashes are preserved. Merge
 receipts and executable hashes are in
 build/callback-execution-20261123/merged/receipt.json. Broad item4 remains pending
 for the callback cases listed above; this increment does not close that item.
+
+
+## Task154: primary solver state in callback-heavy models
+
+Repeated endpoint Applies in a model with many unused callback DataRegisters
+previously rebuilt symbolic values for all of those registers. Task154 keeps a
+conservative topology index so primary-input solves omit irrelevant held callback
+storage from their symbolic snapshots. Concrete state, callback postconditions,
+manual assumptions and histories stay complete.
+
+Only unreferenced callback storage without WriteDataSource, reset association or
+ResetValue is eligible. Aliases, logic/mux/one-hot inputs, reset consumers and
+interface/TAP references keep their state. Explicit goals, reads, end-state
+requirements and reservations also retain the values they need. Values are read
+fresh for each solve, including after assumptions, resets and scheduler copies.
+The existing solver objectives, event/feedback/reset settlement, concrete replay
+and actual-observation paths are reused. Model and runtime limits stay unchanged.
+
+On the same GCC16.2.1/Linux WSL2 environment, three matched source repeats with
+four caller Apply groups and four-bit targets give:
+
+| Callback targets | Parent median s | Current median s | Speed ratio | Current peak RSS KiB |
+|---|---:|---:|---:|---:|
+| 64 | 0.2965 | 0.1867 | 1.59x | 76036 |
+| 256 | 2.0982 | 0.5930 | 3.54x | 81896 |
+| 1024 | 26.1918 | 2.6040 | 10.06x | 107008 |
+
+The1024-target case meets the<=10s,>=2x parent speed and256MiB budget. The report
+contains60 processes: parent/current plain, unused-declaration and callback source
+controls plus current flat/generated callback replay. Every pattern matches its
+parent control exactly. A20-process alternating256-target follow-up also retains
+exact hashes; plain medians are0.0598/0.0701s and unused-declaration medians
+0.0381/0.0354s (parent/current). These small control timings vary, so the speed
+claim applies to the measured callback workload above.
+
+The maintained driver reuses the existing callback input builder and records
+mode-specific requested bits, actual emitted Apply/write counts, environment,
+commands and input/output/executable hashes. Run from the repository root:
+
+~~~sh
+python3 tests/src/pattern/benchmark_primary_callback_state.py \
+  --binary build/icl-pattern-generation --parent /path/to/parent/icl-pattern-generation \
+  --output build/primary-callback-state-scale --repeats 3
+~~~
+
+The original wide-alias memory budget and guide example also pass. Nine new
+CLI compatibility methods cover fresh postconditions, known/unknown held data,
+aliases, logic/mux/one-hot consumers, reset relationships, ordinary ownership,
+end-state requirements and nested/flat identities. A native scheduler test checks
+complete concrete state, copy independence, fresh assumptions, reset behavior,
+preserved masks and actual observations.
+
+This increment does not optimize referenced/aliased/resettable storage or add
+automatic callbacks, new scheduling topologies or a hardware transport. Other
+solver/network validation costs remain. Broad item10 and the other pending
+inventory requirements stay open. Full qualification and independent review are
+in progress; receipts will be recorded under
+build/primary-callback-state-20261123/.

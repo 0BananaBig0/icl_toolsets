@@ -56,6 +56,11 @@ tests per generator,14 native/14 sanitizer suites,24 quality checks and packagin
 Automatic downstream/mixed/merged callback groups and modeled/physical callback
 histories remain open; see the [current guide](pattern-generation.md#task153-explicit-dataregister-callback-execution).
 
+Task154's conservative primary-state index improves the measured1,024-target
+callback source workload from26.19s to2.60s with exact parent/flat/generated
+pattern matches. Nine compatibility methods and native state/copy checks pass;
+full qualification/review remain in progress. Broader item10 is pending.
+
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters preserve never-read/sparse unknown bits and explicit history; opt-in PIO and serial-register reads, including bound TAPs, supply selected-frame observations and exact failure counts; default applied observations remain unavailable and initial/no-cared-comparison status is known zero | Complete runtime command coverage and broader real-pair generation |
