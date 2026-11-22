@@ -152,12 +152,104 @@ Module Top {
   Require(scheduler.Value("a") + scheduler.Value("b") != "11",
           "final state cannot replace earlier enabled observations");
 }
+void TestDataReadbackPlanes() {
+  pattern::Design design;
+  design.AddIcl("data.icl", R"(
+Module Top {
+ DataInPort data[3:0]; DataInPort enable;
+ DataRegister value[3:0] {WriteDataSource data; WriteEnSource enable; ResetValue 0;}
+ DataOutPort q[3:0] {Source value;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  const std::vector<pattern::Operation> operations{
+      {"iState", {"enable", "0"}, "test", {}},
+      {"iState", {"value", "9"}, "test", {}},
+      {"iRead", {"value", "0"}, "test", {}},
+      {"iApply", {}, "test", {}},
+      {"iState", {"value", "15", "-LastReadValue"}, "test", {}}};
+  const auto* updates = readback(operations, false);
+  Require(updates && updates->failures == 2 && updates->bits.size() == 4,
+          "stored1001 versus expected0000 counts two actual failures");
+  for (const auto& bit : updates->bits) {
+    Require(
+        bit.node == netlist.node_ids.at("value") && bit.read == '?' &&
+            bit.miscompare == (bit.index == 0 || bit.index == 3 ? '1' : '0'),
+        "later manual read history suppresses only the older read plane");
+  }
+}
+void TestDataFrameEventOracle() {
+  pattern::Design design;
+  design.AddIcl("events.icl", R"(
+Module Top {
+ DataInPort data[3:0]; DataInPort enable;
+ DataRegister value[3:0] {WriteDataSource data; WriteEnSource enable; ResetValue 0;}
+ DataOutPort q[3:0] {Source value;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("enable", "0");
+  scheduler.Assume("data", "0000");
+  scheduler.Assume("value", "1010");
+  std::map<int64_t, char> observed;
+  const auto steps = scheduler.Apply(
+      {{"iRead", {"value", "0"}, "test", {}},
+       {"iWrite", {"value", "3"}, "test", {}}},
+      false, {}, true, false, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          Require(bits[i].node == netlist.node_ids.at("value"),
+                  "listener identifies the logical stored target");
+          observed.emplace(bits[i].index, values[i]);
+        }
+      });
+  pattern::NetworkState oracle(netlist);
+  oracle.Reset();
+  oracle.SetGlobalReset('0', '0');
+  oracle.Assume(netlist.node_ids.at("enable"), "0");
+  oracle.Assume(netlist.node_ids.at("data"), "0000");
+  oracle.Assume(netlist.node_ids.at("value"), "1010");
+  size_t reads = 0;
+  for (const auto& step : steps) {
+    std::map<size_t, std::string> pins;
+    for (const auto& [name, bits] : step.writes) {
+      const auto id = netlist.node_ids.at(name);
+      if (netlist.nodes[id].model == pattern::ModelKind::kPort) {
+        pins.emplace(id, bits);
+      }
+    }
+    if (!pins.empty()) oracle.ApplyInputs(pins);
+    for (const auto& [name, bits] : step.writes) {
+      const auto id = netlist.node_ids.at(name);
+      if (netlist.nodes[id].model == pattern::ModelKind::kRegister) {
+        Require(oracle.Value(id) == bits,
+                "goal markers describe independently reached storage");
+      }
+    }
+    if (step.expected.count("q")) {
+      ++reads;
+      Require(oracle.Value(netlist.node_ids.at("q")) == "1010",
+              "actual physical output is old data at the selected read frame");
+    }
+  }
+  Require(reads == 1 && observed.size() == 4,
+          "one complete stored observation is delivered");
+  for (const auto& [index, value] : observed) {
+    Require(value == ((10 >> index) & 1 ? '1' : '0'),
+            "callback matches independently observed physical output");
+  }
+  Require(oracle.Value(netlist.node_ids.at("value")) == "0011" &&
+              scheduler.Value("value") == "0011",
+          "actual pin events reach final3 after observing old10");
+}
 }  // namespace
 int main() {
   try {
     TestReadModel();
     TestModeledReadback();
     TestScheduledObservations();
+    TestDataReadbackPlanes();
+    TestDataFrameEventOracle();
     std::cout << "readback tests passed\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

@@ -40,21 +40,21 @@ Interfaces: existing Runtime::Readback/ReadbackUpdates '?' plane sentinels,
 QueuedAccesses::ReadModel and ScanScheduler::PioObservation/Apply stay in place.
 Same factory/flag API; no new state engine/history format.
 
-- [ ] Add native/CLI REDs: assumed9/expected0 returns9/status2; read9/write6 in
+- [x] Add native/CLI REDs: assumed9/expected0 returns9/status2; read9/write6 in
       one apply observes9/leaves6; delayed manual read15 leaves mismatch1001/
       count2. Cover partial/inverted/manual-mismatch history.
-- [ ] Run python3 tests/src/pattern/test_modeled_data_readback.py build/icl-pattern-generation;
+- [x] Run python3 tests/src/pattern/test_modeled_data_readback.py build/icl-pattern-generation;
       retain actual semantic failures separately from API/build failures.
-- [ ] Allow DataRegister, exclude other register kinds/TAPs. In history-only
+- [x] Allow DataRegister, exclude other register kinds/TAPs. In history-only
       Process(iState), validate physical bits and suppress only the matching
       plane of existing pending deltas using '?'.
-- [ ] Current mode note becomes modeled PIO/DataRegister readback; no live
+- [x] Current mode note becomes modeled PIO/DataRegister readback; no live
       device. Filter former combinational note too; copy only when needed.
-- [ ] Cover unknown/count/clear, overlaps/X, queued/control state, reset/
+- [x] Cover unknown/count/clear, overlaps/X, queued/control state, reset/
       reservations, DAG/feedback, prefix/files/once-only Tcl, local-reset
       procedure bytes and unsupported boundaries. Prove three-form replay and
       legacy migration. Native oracle never assigns expected/goal markers.
-- [ ] Focused new/existing CLI, native readback/runtime/scheduler callers and
+- [x] Focused new/existing CLI, native readback/runtime/scheduler callers and
       changed-code format/tidy/C++17 pass; commit and ledger.
 
 ### Task2: Scale, qualification, documentation and integration

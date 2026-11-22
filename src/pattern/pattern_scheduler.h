@@ -33,7 +33,8 @@ struct ScanStep {
 // The borrowed netlist must outlive the scheduler.
 class ScanScheduler {
  public:
-  // Storage-free PIO bits at their selected concrete replay frame.
+  // PIO-accessed data bits at their selected concrete replay frame.
+  // This is not a serial/TAP capture observation contract.
   // Delivery is tentative until Apply returns successfully.
   using PioObservation =
       std::function<void(const std::vector<BitReference>&, const std::string&)>;

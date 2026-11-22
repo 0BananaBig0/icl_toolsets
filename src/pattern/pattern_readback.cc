@@ -24,11 +24,11 @@ class ModelReadback {
     if (!netlist.taps.empty() ||
         std::any_of(netlist.nodes.begin(), netlist.nodes.end(),
                     [](const auto& node) {
-                      return node.model == ModelKind::kRegister;
+                      return node.model == ModelKind::kRegister &&
+                             node.kind != "DataRegister";
                     })) {
       throw std::runtime_error(
-          "modeled readback requires combinational PIO without storage or "
-          "TAPs");
+          "modeled readback excludes ScanRegisters and TAPs");
     }
   }
 
@@ -143,6 +143,14 @@ class ModelReadback {
       } else {
         for (const auto& bit : target.bits) {
           ValidateStateTarget(netlist_, bit.node);
+          const auto found = positions_.find({bit.node, bit.index});
+          if (found == positions_.end()) continue;
+          auto& update = updates_.bits[found->second];
+          if (args[2] == "-LastReadValue") {
+            update.read = '?';
+          } else {
+            update.miscompare = '?';
+          }
         }
       }
     } else if (op.command == "iTake" || op.command == "iRelease") {
