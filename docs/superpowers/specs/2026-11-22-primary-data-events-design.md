@@ -41,3 +41,10 @@ Require focused RED/GREEN, native/dynamic/static/SAN/quality/package checks and
 frozen inputs/products, one fresh independent whole-branch review, then merge,
 push and delete only the completed branch. Broad inventory items stay pending
 until their stated acceptance is met. Coverage item1 remains excluded.
+
+Final fix pass: share explicit DataRegister goal retention across primary and
+mixed paths when no emitted controller write carries its intent. Native checks
+apply only real events, then check markers against actual storage. Two additional
+methods prove four mixed/four source-ordered primary RED cases, then seven-method
+GREEN. Require33 fresh gates,56x913 per variant and108 scale processes. Preserve
+pre-review/interrupted receipts; no second review or physical timing claim.

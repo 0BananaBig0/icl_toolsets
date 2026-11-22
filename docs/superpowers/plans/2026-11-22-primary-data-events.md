@@ -33,3 +33,10 @@ Files: guide/model/tracker/spec/plan.
 - [x] Run required native/dynamic/static/SAN/quality/package checks and freeze.
 - [x] Update supported scope and precise evidence; author guide example check.
 - [x] Commit, ledger, one fresh independent review; integrate per standing choice.
+
+Final fix pass: share explicit DataRegister goal retention across primary and
+mixed paths when no emitted controller write carries its intent. Native checks
+apply only real events, then check markers against actual storage. Two additional
+methods prove four mixed/four source-ordered primary RED cases, then seven-method
+GREEN. Require33 fresh gates,56x913 per variant and108 scale processes. Preserve
+pre-review/interrupted receipts; no second review or physical timing claim.
