@@ -50,4 +50,4 @@ New maintained test scripts under tests/. Preserve117 stashes and other worktree
 - [x] Run full native/sanitizer, dynamic/static generator, affected format/tidy/strict C++17 and source-package gates; expect no failures or falsely claimed unavailable suites.
 - [x] Obtain one fresh independent whole-branch review; fix Important/Critical findings in one test-first verified pass, no rereview. Ledger dispositions and any remaining Minor findings.
 - [x] Update current documentation/inventory with actual results and remaining scope; commit.
-- [ ] Merge into master, verify integrated source/product hashes and focused checks, push, detach reused worktree and delete merged branch; archive only own ledger.
+- [x] Merge into master, verify integrated source/product hashes and focused checks, push, detach reused worktree and delete merged branch; archive only own ledger.

@@ -8317,3 +8317,9 @@ tests/src/pattern/benchmark_modeled_raw_readback.py, providing current and
 parent executable paths. Short process timings are noisy; no global speedup
 or wider startup/topology qualification is claimed. Hardware timing, live
 transport, vendor equivalence and independent reader usability remain unverified.
+
+Task152 is integrated into master. Seven integration checks pass against all
+4011 qualified source inputs and16 copied native products; the31-product
+qualification manifest remains verified. The merged task branch is deleted,
+and all117 stashes are preserved. Integration receipts are under
+build/modeled-raw-readback-20261122/merged/.
