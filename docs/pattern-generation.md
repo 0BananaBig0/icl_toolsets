@@ -8130,6 +8130,42 @@ timed histories, applied callbacks and device transport remain open. This
 increment neither inserts RTL nor signs off physical timing. The mode note
 remains modeled register/PIO readback; no live device.
 
-Qualification, independent review and measured scale evidence will be recorded
-here after completion. The author walkthrough is not an independent usability
+Final qualification, independent review and measured scale evidence follow. The author walkthrough is not an independent usability
 reader assessment.
+
+
+Task151 final qualification passes 38 recorded gates: all 14 native and 14
+leak-enabled ASAN/UBSAN native suites, 60 suites/978 methods for each dynamic
+and static generator, 16 TAP/16 standalone/16 data/17 PIO/71 CLI sanitizer
+methods, 18 affected format/tidy/strict C++17 checks and source packaging.
+All 4008 input hashes and 31 executable hashes are verified. Coverage item1
+remains excluded with unchanged thresholds.
+
+The fresh independent reviewer used direct source/tool access and independently
+ran the 16 new dynamic methods, native readback and selected inversion/IR-lane
+probes. Verdict: 0 Critical, 1 Important, 2 Minor. The Important subscriber-error
+finding is fixed in one test-first verified pass. Public Apply now commits the
+complete state and finishes route invalidation before external notification.
+A subscriber exception leaves that completed transaction committed; a following
+read keeps its data and raw normalization uses the new route. Tests cover native
+standalone, regular/general and ordinary/physical TAP paths. Both stale-fill
+and stale-route regressions failed before their fixes. Interrupted earlier runs
+are retained as partial evidence, never a full pass; no rereview is claimed.
+
+Two Minor findings are deferred: compiled help does not explicitly explain
+modeled physical comparison behavior, and the walkthrough numeric prose lacks
+spaces in several places. The guide explains the behavior and its executed
+examples produce the five correct notes. These are not runtime failures.
+
+The final 144-process scale matrix repeats original/flat/generated forms three
+times for parent/current, default/unused/queried controls. It covers prepared
+32-bit and 512-bit single-TAP chains, two unequal TAP lanes, and physical 32-bit
+replay. Matching ordinary outputs and replay forms agree. Queried three-replay
+medians are single32=0.294s, single512=0.545s, multiple=0.947s, physical32=0.294s. Commands, sizes, RSS, hashes and environment are
+recorded under build/modeled-tap-readback-20261122/scale-qualified/.
+Short process timings are noisy; no global speedup is claimed.
+The initial implicit-setup 512-bit parent invocation reaches the existing
+solver limit; explicit IR preparation passes matched parent/current controls.
+No limit was raised and the prepared-chain measurement does not qualify every
+wide startup sequence. Hardware timing, device transport, vendor equivalence
+and an independent usability reader are not established by these checks.

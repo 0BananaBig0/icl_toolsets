@@ -35,8 +35,8 @@ New maintained tests under tests/src/pattern/. Preserve117 stashes and unrelated
 ### Task 2: Review, full qualification and integration
 **Files:** Update README.md, docs/pattern-generation.md, pattern-model-coverage.md, remaining-work.md.
 **Interfaces:** Consumes Task1 behavior; publishes runnable model example and bounded current evidence.
-- [ ] Run example and equivalent parent/current single/multiple TAP scale controls with larger supported widths; record command/input/time/RSS/hash evidence.
-- [ ] Run required full native/sanitizer, dynamic/static generator, affected format/tidy/strict C++17 and source-packaging checks. Expected: zero failures, no unsupported suite represented as run.
-- [ ] Obtain one fresh independent whole-branch review; fix Important/Critical findings in one test-first verified pass, no rereview; ledger all dispositions.
-- [ ] Update current docs/inventory and record actual counts/limits; commit.
+- [x] Run example and equivalent parent/current single/multiple TAP scale controls with larger supported widths; record command/input/time/RSS/hash evidence.
+- [x] Run required full native/sanitizer, dynamic/static generator, affected format/tidy/strict C++17 and source-packaging checks. Expected: zero failures, no unsupported suite represented as run.
+- [x] Obtain one fresh independent whole-branch review; fix Important/Critical findings in one test-first verified pass, no rereview; ledger all dispositions.
+- [x] Update current docs/inventory and record actual counts/limits; commit.
 - [ ] Merge into master, verify source/product hashes and integrated focused tests, push, detach reused worktree and delete merged task branch; archive only own ledger.
