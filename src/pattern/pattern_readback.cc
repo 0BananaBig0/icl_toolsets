@@ -209,11 +209,12 @@ class ModelReadback {
         throw std::runtime_error(
             "mixed raw preparation cannot use iApply -together");
       }
-      if (raw_pending_.empty() || !pending_.Empty())
+      if (raw_pending_.empty() || !pending_.Empty()) {
         scheduler_->Apply(
             accesses, raw_pending_.empty() && together, reservations_.Values(),
             true, physical_,
             bits.empty() ? ScanScheduler::PioObservation{} : observe);
+      }
       if (actual.find('?') != std::string::npos) {
         throw std::runtime_error(
             "modeled apply did not observe every read bit");

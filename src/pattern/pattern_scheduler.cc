@@ -7114,8 +7114,9 @@ Operation ScanScheduler::ApplyScans(
       const auto requests = trial.impl_->RawRequests(operations, true);
       auto prefix = trial.impl_->PrepareScans(requests, preserved);
       std::vector<Operation> latest;
-      for (const auto& [name, operation] : requests)
+      for (const auto& [name, operation] : requests) {
         latest.push_back(operation);
+      }
       std::set<size_t> written;
       auto result = trial.impl_->ApplyScans(
           latest, preserved, assigned ? &written : nullptr, sample);

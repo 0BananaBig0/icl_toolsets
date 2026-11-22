@@ -4469,3 +4469,17 @@ exact physical-PDL mode. Default diagnostics and existing resource/topology/
 synthetic-target guards remain. Raw/interface/chain and timed histories remain
 open. See [the runnable example](pattern-generation.md#task151-modeled-bound-tap-observations).
 Final post-fix evidence:38 gates,14 native/14 sanitizer suites,60x978 methods per generator,18 quality checks, packaging,144 scale processes and4008 input/31 executable hashes. One Important subscriber-state/cache issue is fixed by shared post-commit, post-route-cleanup delivery; two Minor help/prose findings are deferred. Earlier interrupted runs are partial, not full qualification.
+
+## Task152: raw interface and opaque parallel-chain observations
+
+Existing native scalar root/child and bound single-TAP IR/DR raw requests now
+produce actual returned-word histories. Register and raw histories remain
+independent. Named root opaque parallel chains support variable widths, reset
+defaults and declared stable inputs; unknown storage returns x, with cared
+unknown comparisons preserving an unknown count. Provider deltas validate
+atomically, and public raw callbacks run after transaction commit and route
+cleanup. Physical PDL's existing iScan guard remains.
+
+See the [examples and limits](pattern-generation.md#task152-raw-interface-and-chain-readback).
+Broader modeled parallel/multiple-TAP raw, opaque child, raw merge, timed,
+callback and transport work remains pending.

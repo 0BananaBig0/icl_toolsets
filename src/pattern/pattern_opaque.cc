@@ -319,8 +319,9 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
       throw std::runtime_error(message);
     }
   }
-  if (!queue.Pending().empty())
+  if (!queue.Pending().empty()) {
     throw std::runtime_error("unapplied opaque scan operations");
+  }
   return result;
 }
 }  // namespace pattern

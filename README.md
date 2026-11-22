@@ -470,10 +470,12 @@ Disjoint named chains may use separate vector input/output lanes.
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
 Use --model_readback for concrete PIO and serial-register observations,
-including bound TAPs. It returns bitwise miscompares and exact failure counts
-during generation. It is opt-in and uses no
-device transport; raw/interface/chain and timed histories remain open.
-See the [runnable readback example](docs/pattern-generation.md#task151-modeled-bound-tap-observations).
+including bound TAPs and existing scalar raw interface scans. Named opaque
+parallel chains return unknown data with separate variable-width histories.
+The mode returns bitwise miscompares and failure counts during generation.
+It is opt-in and uses no device transport; timed histories and broader raw
+topologies remain open.
+See the [runnable readback examples](docs/pattern-generation.md#task152-raw-interface-and-chain-readback).
 
 The generator's [verification record](docs/pattern-generation.md#current-verification)
 lists regression and replay checks, along with the strict coverage gate that

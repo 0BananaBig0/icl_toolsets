@@ -60,8 +60,9 @@ if {[iGetReadData client -bin] ne "0b1001"} {error {reset lost raw history}}
     if (kind == 1) invalid.scans[0].chain = "wrong";
     if (kind == 2) invalid.scans[0].read = "100";
     if (kind == 3) invalid.scans[0].miscompare = "100?";
-    if (kind == 4)
+    if (kind == 4) {
       invalid.scans.push_back({"client", "default", "0000", "0000"});
+    }
     if (kind == 5) invalid.bits.push_back({netlist.nodes.size(), 0, '1', '1'});
     bool first = true;
     pattern::Runtime rejected(
