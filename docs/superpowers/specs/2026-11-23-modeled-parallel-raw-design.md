@@ -47,7 +47,8 @@ cannot change controls/routes during a CSU; use the existing concrete engine
 for their capture values. Every register reset must be direct/virtual and known
 inactive at execution. Common control terminals must be direct root pins or
 virtual defaults; no storage-derived clocks/resets/enables or other stateful
-control feedback. Preserve existing unsupported iMerge/readback/physical guards.
+control feedback. Preserve existing unsupported iMerge/readback/physical guards and the raw
+iApplyEndState exclusion; exact raw CSU must not silently ignore a directive.
 
 Require iReset before actual modeled replay. Normalization validates target,
 chain, options, numeric data and payload bounds before replacement/reset cancel.
@@ -149,3 +150,6 @@ source packaging, hashes and integration checks. Merge/push into direct parent
 master, detach reused worktree, delete this completed branch and archive only
 its own ledger. Preserve117 stashes and unrelated worktrees/ledgers. Coverage1
 and broader pending capabilities retain their current acceptance.
+
+Builder check: fresh read-only /root/modeled_parallel_raw_builder_check reports
+nothing important left. Inline execution and user-delegated choices continue.
