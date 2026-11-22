@@ -35,9 +35,13 @@ struct ReadbackUpdate {
   int64_t index = 0;
   char read = '?', miscompare = '?';
 };
+struct ScanReadbackUpdate {
+  std::string target, chain, read, miscompare;
+};
 struct ReadbackUpdates {
   std::vector<ReadbackUpdate> bits;
   std::optional<uint64_t> failures;
+  std::vector<ScanReadbackUpdate> scans{};
 };
 
 // Only the generator evaluates PDL. Editor tools continue using Document alone.

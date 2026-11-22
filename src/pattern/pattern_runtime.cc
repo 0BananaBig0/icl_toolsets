@@ -577,6 +577,10 @@ class Runtime::Impl {
     for (const auto& [key, scan] : raw_care) {
       if (scan.second) zero_status_known = false;
     }
+    for (const auto& [key, scan] : raw_care) {
+      raw_read_history_[key.second] = std::string(scan.first, '?');
+      raw_miscompare_history_[key.second] = std::string(scan.first, '?');
+    }
     for (const auto& [id, care] : read_care) {
       if (care.find('1') != std::string::npos) zero_status_known = false;
       for (auto* history : {&read_history_, &miscompare_history_}) {
@@ -608,6 +612,22 @@ class Runtime::Impl {
         }
       }
     }
+    std::vector<std::pair<std::string, std::string>> scan_keys;
+    std::set<std::pair<std::string, std::string>> seen;
+    for (const auto& update : updates->scans) {
+      const auto key = std::make_pair(
+          update.target, ScanChainName(update.target, update.chain));
+      const auto applied = raw_read_history_.find(key);
+      if (!netlist_ || applied == raw_read_history_.end() ||
+          !seen.insert(key).second ||
+          update.read.size() != applied->second.size() ||
+          update.miscompare.size() != applied->second.size() ||
+          update.read.find_first_not_of("01x") != std::string::npos ||
+          update.miscompare.find_first_not_of("01x") != std::string::npos) {
+        throw std::runtime_error("invalid modeled raw readback delta");
+      }
+      scan_keys.push_back(key);
+    }
     for (const auto& update : updates->bits) {
       const auto merge = [&](History& history, char value) {
         if (value == '?') return;
@@ -624,13 +644,18 @@ class Runtime::Impl {
       merge(read_history_, update.read);
       merge(miscompare_history_, update.miscompare);
     }
+    for (size_t i = 0; i < updates->scans.size(); ++i) {
+      raw_read_history_[scan_keys[i]] = updates->scans[i].read;
+      raw_miscompare_history_[scan_keys[i]] = updates->scans[i].miscompare;
+    }
     zero_status_known_ =
         updates->failures && (clear_status || *updates->failures == 0);
     return updates;
   }
 
   std::string HistoryValue(const std::string& name, const std::string& target,
-                           const std::string& format) {
+                           const std::string& format,
+                           const std::string& chain = "") {
     const auto unavailable = [&] {
       throw std::runtime_error(
           name +
@@ -645,6 +670,33 @@ class Runtime::Impl {
       unavailable();
     }
     if (!netlist_) unavailable();
+    const auto node = netlist_->node_ids.find(target);
+    const bool client = node != netlist_->node_ids.end() &&
+                        netlist_->nodes[node->second].scan_interface &&
+                        (netlist_->nodes[node->second].scan_interface->kind ==
+                             ScanInterfaceKind::kClient ||
+                         netlist_->nodes[node->second].scan_interface->kind ==
+                             ScanInterfaceKind::kClientTap);
+    if (client || (target == "unnamed" && node == netlist_->node_ids.end() &&
+                   netlist_->taps.size() == 1)) {
+      const auto key = std::make_pair(target, ScanChainName(target, chain));
+      const auto& history =
+          name == "iGetReadData" ? raw_read_history_ : raw_miscompare_history_;
+      auto entry = history.find(key);
+      if (entry == history.end()) {
+        throw std::runtime_error(
+            "raw readback requires a preceding applied iScan");
+      }
+      if (entry->second.find('?') != std::string::npos) {
+        UpdateReadback(false);
+        entry = history.find(key);
+      }
+      if (entry->second.find('?') != std::string::npos) unavailable();
+      return FormatHistory(entry->second, format);
+    }
+    if (!chain.empty()) {
+      throw std::runtime_error("readback chain requires a client interface");
+    }
     const auto resolved = ResolvePdlTarget(*netlist_, target);
     ValidatePdlAccessTarget(*netlist_, resolved, true);
     const bool read = name == "iGetReadData";
@@ -667,6 +719,11 @@ class Runtime::Impl {
       if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
       bits += data;
     }
+    return FormatHistory(bits, format);
+  }
+
+  std::string FormatHistory(const std::string& bits,
+                            const std::string& format) {
     if (format == "-dec") {
       if (bits.find('x') != std::string::npos) return "X";
       if (Tcl_ExprString(interpreter_.get(), ("0b" + bits).c_str()) != TCL_OK) {
@@ -1002,17 +1059,20 @@ class Runtime::Impl {
     }
     if (name == "iGetReadData" || name == "iGetMiscompares" ||
         name == "iGetStatus") {
-      if (std::find(words.begin() + 1, words.end(), "-chain") != words.end()) {
-        throw std::runtime_error(name +
-                                 " requires hardware readback; unavailable "
-                                 "during static generation");
+      std::string chain, format;
+      for (size_t i = 2; i < words.size(); ++i) {
+        if (words[i] == "-chain") {
+          chain = words.at(++i);
+        } else {
+          format = words[i];
+        }
       }
       const auto value = HistoryValue(
           name,
           words.size() > 1
               ? (name == "iGetStatus" ? words[1] : JoinPath(prefix(), words[1]))
               : "",
-          words.size() > 2 ? words[2] : "");
+          format, chain);
       Tcl_SetObjResult(
           interpreter_.get(),
           Tcl_NewStringObj(value.data(), static_cast<int>(value.size())));
@@ -1106,6 +1166,8 @@ class Runtime::Impl {
   bool scan_clients_loaded_ = false;
   std::map<std::string, std::set<std::string>> scan_clients_;
   History read_history_, miscompare_history_;
+  using RawHistory = std::map<std::pair<std::string, std::string>, std::string>;
+  RawHistory raw_read_history_, raw_miscompare_history_;
   bool zero_status_known_ = true;
   std::unique_ptr<z3::context> history_context_;
   std::map<std::string, const InstanceScope*> instance_scopes_;

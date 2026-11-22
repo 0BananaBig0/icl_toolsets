@@ -24,6 +24,62 @@ void Fails(Action action, const std::string& expected) {
   }
   throw std::runtime_error("expected error: " + expected);
 }
+void TestRawReadbackProvider() {
+  pattern::Design design;
+  design.AddIcl("raw-updates.icl", R"(
+Module Top {
+ ScanInPort si; ScanOutPort so; SelectPort sel;
+ DataInPort p; DataOutPort q {Source p;}
+ ScanInterface client {Port si; Port so; Port sel; DefaultLoadValue 4'b0;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ReadbackUpdates updates;
+  updates.scans = {{"client", "", "1001", "1001"}};
+  updates.failures = 2;
+  size_t calls = 0;
+  pattern::Runtime runtime(
+      design, netlist, false,
+      [&](const auto&, bool) -> const pattern::ReadbackUpdates* {
+        ++calls;
+        return &updates;
+      });
+  runtime.Execute("raw-updates.pdl", R"(
+iScan client -chain default 4 -si 6 -so 0; iApply
+if {[iGetReadData client -hex] ne "0x9"} {error {raw hex}}
+if {[iGetMiscompares client -dec] ne "9"} {error {raw mask}}
+iReset
+if {[iGetReadData client -bin] ne "0b1001"} {error {reset lost raw history}}
+)");
+  Require(calls == 1, "raw getters reuse a validated provider delta");
+  runtime.Finish();
+  for (int kind = 0; kind < 6; ++kind) {
+    pattern::ReadbackUpdates invalid;
+    invalid.scans = {{"client", "", "1001", "1001"}};
+    invalid.bits = {{netlist.node_ids.at("q"), 0, '1', '1'}};
+    if (kind == 0) invalid.scans[0].target = "missing";
+    if (kind == 1) invalid.scans[0].chain = "wrong";
+    if (kind == 2) invalid.scans[0].read = "100";
+    if (kind == 3) invalid.scans[0].miscompare = "100?";
+    if (kind == 4)
+      invalid.scans.push_back({"client", "default", "0000", "0000"});
+    if (kind == 5) invalid.bits.push_back({netlist.nodes.size(), 0, '1', '1'});
+    bool first = true;
+    pattern::Runtime rejected(
+        design, netlist, false,
+        [&](const auto&, bool) -> const pattern::ReadbackUpdates* {
+          if (!first) return nullptr;
+          first = false;
+          return &invalid;
+        });
+    rejected.Execute("atomic-raw.pdl", R"(
+iRead q 0; iScan client 4 -so 0; iApply
+if {![catch {iGetReadData client}]} {error {invalid raw delta accepted}}
+if {![catch {iGetReadData client}]} {error {partial raw delta published}}
+if {![catch {iGetReadData q}]} {error {partial bit delta published}}
+if {![catch {iGetStatus}]} {error {partial status published}}
+)");
+  }
+}
 void TestReadbackAdapter() {
   pattern::Design design;
   design.AddIcl("readback.icl", R"(
@@ -924,7 +980,8 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestReadbackAdapter,
+  for (const auto test : {TestRawReadbackProvider,
+                          TestReadbackAdapter,
                           TestMalformedReadbackUpdates,
                           TestWriteOptionNormalization,
                           TestCallbackAccessBoundary,

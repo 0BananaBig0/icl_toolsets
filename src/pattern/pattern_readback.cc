@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "pattern/pattern_access_queue.h"
+#include "pattern/pattern_opaque.h"
 #include "pattern/pattern_resources.h"
 #include "pattern/pattern_scheduler.h"
 #include "pattern/pattern_state.h"
@@ -20,10 +21,22 @@ namespace {
 class ModelReadback {
  public:
   ModelReadback(const Netlist& netlist, bool physical)
-      : netlist_(netlist),
-        physical_(physical),
-        scheduler_(netlist),
-        reservations_(netlist) {
+      : netlist_(netlist), physical_(physical), reservations_(netlist) {
+    const bool opaque =
+        netlist.taps.empty() &&
+        std::any_of(
+            netlist.nodes.begin(), netlist.nodes.end(),
+            [](const auto& node) { return node.scan_interface.has_value(); }) &&
+        std::none_of(
+            netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
+              return node.model == ModelKind::kRegister ||
+                     node.kind == "DataInPort" || node.kind == "DataOutPort";
+            });
+    if (opaque) {
+      opaque_ = std::make_unique<OpaqueScanQueue>(DescribeOpaqueScans(netlist));
+    } else {
+      scheduler_ = std::make_unique<ScanScheduler>(netlist);
+    }
     if (std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
               return node.model == ModelKind::kRegister &&
@@ -42,15 +55,18 @@ class ModelReadback {
         const auto& op = operations[i];
         if (op.command != "iWrite" && op.command != "iRead" &&
             op.command != "iApply" && op.command != "iState" &&
-            op.command != "iReset" && op.command != "iTake" &&
-            op.command != "iRelease" && op.command != "iNote") {
+            op.command != "iScan" && op.command != "iReset" &&
+            op.command != "iTake" && op.command != "iRelease" &&
+            op.command != "iNote") {
           throw std::runtime_error(op.origin +
                                    ": modeled readback does not support " +
                                    op.command + " histories");
         }
       }
       updates_.bits.clear();
+      updates_.scans.clear();
       positions_.clear();
+      raw_positions_.clear();
       for (; cursor_ < operations.size(); ++cursor_) {
         const auto& op = operations[cursor_];
         try {
@@ -71,15 +87,43 @@ class ModelReadback {
   }
 
  private:
+  char Mismatch(char expected, char actual) {
+    const char mismatch = expected == 'x'      ? '0'
+                          : actual == 'x'      ? 'x'
+                          : actual == expected ? '0'
+                                               : '1';
+    if (mismatch == 'x') failures_.reset();
+    if (mismatch == '1' && failures_) ++*failures_;
+    return mismatch;
+  }
+  void ObserveRaw(const Operation& scan, const std::string& actual) {
+    const auto fields = ReadScanFields(scan);
+    const auto expected = scan.arguments[fields.expected].substr(2);
+    if (actual.size() != expected.size() ||
+        actual.find_first_not_of("01x") != std::string::npos) {
+      throw std::runtime_error("invalid modeled raw observation");
+    }
+    std::string mismatches;
+    mismatches.reserve(actual.size());
+    for (size_t i = 0; i < actual.size(); ++i) {
+      mismatches += Mismatch(expected[i], actual[i]);
+    }
+    const auto key =
+        std::make_pair(scan.arguments[fields.target], fields.chain);
+    const auto [position, inserted] =
+        raw_positions_.emplace(key, updates_.scans.size());
+    ScanReadbackUpdate update{key.first, key.second, actual,
+                              std::move(mismatches)};
+    if (inserted) {
+      updates_.scans.push_back(std::move(update));
+    } else {
+      updates_.scans[position->second] = std::move(update);
+    }
+  }
   void Observe(const std::vector<BitReference>& bits,
                const std::string& expected, const std::string& actual) {
     for (size_t i = 0; i < bits.size(); ++i) {
-      const char mismatch = expected[i] == 'x'         ? '0'
-                            : actual[i] == 'x'         ? 'x'
-                            : actual[i] == expected[i] ? '0'
-                                                       : '1';
-      if (mismatch == 'x') failures_.reset();
-      if (mismatch == '1' && failures_) ++*failures_;
+      const char mismatch = Mismatch(expected[i], actual[i]);
       const auto& bit = bits[i];
       const auto [position, inserted] = positions_.emplace(
           std::make_pair(bit.node, bit.index), updates_.bits.size());
@@ -95,6 +139,46 @@ class ModelReadback {
   void Process(const Operation& op) {
     reservations_.Enter(op.call_stack);
     const auto& args = op.arguments;
+    if (opaque_) {
+      if (op.command == "iScan") {
+        opaque_->Add(context_, op);
+      } else if (op.command == "iApply") {
+        const auto requested = opaque_->Pending();
+        opaque_->Apply(op);
+        for (const auto& [name, scan] : requested) {
+          const auto fields = ReadScanFields(scan);
+          ObserveRaw(scan,
+                     std::string(scan.arguments[fields.input].size() - 2, 'x'));
+        }
+      } else if (op.command == "iReset") {
+        opaque_->Reset(op);
+      } else if (op.command != "iNote") {
+        throw std::runtime_error("unsupported operation with opaque scans: " +
+                                 op.command);
+      }
+      return;
+    }
+    if (op.command == "iScan") {
+      auto scan = scheduler_->NormalizeScan(op, true);
+      const auto fields = ReadScanFields(scan);
+      const auto key =
+          std::make_pair(fields.instruction, scan.arguments[fields.target]);
+      const size_t previous =
+          raw_pending_.count(key)
+              ? raw_pending_.at(key)
+                        .arguments[ReadScanFields(raw_pending_.at(key)).input]
+                        .size() -
+                    2
+              : 0;
+      const size_t bits = raw_pending_bits_ - previous +
+                          scan.arguments[fields.input].size() - 2;
+      if (bits > 1024 * 1024) {
+        throw std::runtime_error("raw scan queued payload resource limit");
+      }
+      raw_pending_[key] = std::move(scan);
+      raw_pending_bits_ = bits;
+      return;
+    }
     if (op.command == "iWrite" || op.command == "iRead") {
       const auto target = ResolvePdlTarget(netlist_, args.at(0));
       ValidatePdlAccessTarget(netlist_, target, op.command == "iRead");
@@ -120,27 +204,51 @@ class ModelReadback {
               }
             }
           };
-      scheduler_.Apply(
-          accesses, ValidatePdlApplyOptions(args), reservations_.Values(), true,
-          physical_, bits.empty() ? ScanScheduler::PioObservation{} : observe);
+      const bool together = ValidatePdlApplyOptions(args);
+      if (together && !raw_pending_.empty() && !pending_.Empty()) {
+        throw std::runtime_error(
+            "mixed raw preparation cannot use iApply -together");
+      }
+      if (raw_pending_.empty() || !pending_.Empty())
+        scheduler_->Apply(
+            accesses, raw_pending_.empty() && together, reservations_.Values(),
+            true, physical_,
+            bits.empty() ? ScanScheduler::PioObservation{} : observe);
       if (actual.find('?') != std::string::npos) {
         throw std::runtime_error(
             "modeled apply did not observe every read bit");
       }
-      reservations_.Assigned(accesses, scheduler_);
+      reservations_.Assigned(accesses, *scheduler_);
       Observe(bits, expected, actual);
       pending_.Clear();
+      if (!raw_pending_.empty()) {
+        std::vector<Operation> scans;
+        for (const auto& [key, scan] : raw_pending_) scans.push_back(scan);
+        std::set<size_t> assigned;
+        std::vector<ScanStep> preparations;
+        scheduler_->ApplyScans(
+            scans, reservations_.Values(),
+            reservations_.Values().empty() ? nullptr : &assigned, &preparations,
+            [&](const auto& scan, const auto& actual) {
+              ObserveRaw(scan, actual);
+            });
+        reservations_.AssignedScans(assigned, *scheduler_);
+        raw_pending_.clear();
+        raw_pending_bits_ = 0;
+      }
     } else if (op.command == "iReset") {
-      scheduler_.Reset(!args.empty(), physical_);
+      scheduler_->Reset(!args.empty(), physical_);
       reservations_.Reset();
       pending_.Clear();
+      raw_pending_.clear();
+      raw_pending_bits_ = 0;
     } else if (op.command == "iState") {
       const auto target = ResolvePdlTarget(netlist_, args.at(0));
       const auto bits = PdlNumber(context_, args.at(1), target.bits.size());
       if (args.size() != 3 || args[2] == "-LastWrittenValue") {
-        scheduler_.Assume(args[0], bits);
+        scheduler_->Assume(args[0], bits);
         pending_.Assume(target, bits);
-        reservations_.Assigned({op}, scheduler_);
+        reservations_.Assigned({op}, *scheduler_);
       } else {
         for (const auto& bit : target.bits) {
           ValidateStateTarget(netlist_, bit.node);
@@ -162,13 +270,17 @@ class ModelReadback {
   const Netlist& netlist_;
   bool physical_;
   z3::context context_;
-  ScanScheduler scheduler_;
+  std::unique_ptr<ScanScheduler> scheduler_;
+  std::unique_ptr<OpaqueScanQueue> opaque_;
+  std::map<std::pair<bool, std::string>, Operation> raw_pending_;
+  size_t raw_pending_bits_ = 0;
   ResourceReservations reservations_;
   QueuedAccesses pending_;
   size_t cursor_ = 0;
   std::optional<uint64_t> failures_{0};
   ReadbackUpdates updates_;
   std::map<std::pair<size_t, int64_t>, size_t> positions_;
+  std::map<std::pair<std::string, std::string>, size_t> raw_positions_;
   std::exception_ptr error_;
 };
 }  // namespace
