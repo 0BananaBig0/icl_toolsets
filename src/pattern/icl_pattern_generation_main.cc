@@ -17,6 +17,7 @@
 #include <tuple>
 #include <vector>
 
+#include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_clock.h"
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_merge.h"
@@ -176,64 +177,6 @@ void ValidateResetSources(const pattern::Netlist& netlist) {
     verified.insert(path.begin(), path.end());
   }
 }
-class QueuedAccesses {
- public:
-  bool Empty() const { return operations_.empty(); }
-  void Clear() {
-    operations_.clear();
-    values_.clear();
-    references_.clear();
-  }
-  void Add(const pattern::Operation& operation,
-           const pattern::PdlTarget& target, std::string bits) {
-    const size_t index = operations_.size();
-    operations_.push_back(operation);
-    values_.push_back(std::move(bits));
-    for (size_t i = 0; i < target.bits.size(); ++i) {
-      const auto& bit = target.bits[i];
-      references_[{bit.node, bit.index, operation.command == "iRead"}]
-          .push_back({index, i, bit.inverted});
-    }
-  }
-  void Assume(const pattern::PdlTarget& target, const std::string& bits) {
-    for (size_t i = 0; i < target.bits.size(); ++i) {
-      const auto& bit = target.bits[i];
-      const char value = Invert(bits[i], bit.inverted);
-      for (bool read : {false, true}) {
-        const auto found = references_.find({bit.node, bit.index, read});
-        if (found == references_.end()) continue;
-        auto& references = found->second;
-        const auto last = references.back();
-        // Retire overwritten references once, avoiding repeated queue scans.
-        for (const auto& ref : references) {
-          values_[ref.operation][ref.offset] = 'x';
-        }
-        values_[last.operation][last.offset] = Invert(value, last.inverted);
-        references.assign(1, last);
-      }
-    }
-  }
-  const std::vector<pattern::Operation>& Operations() {
-    for (size_t i = 0; i < operations_.size(); ++i) {
-      operations_[i].arguments.resize(2);
-      operations_[i].arguments[1] = "0b" + values_[i];
-    }
-    return operations_;
-  }
-
- private:
-  struct Reference {
-    size_t operation, offset;
-    bool inverted;
-  };
-  static char Invert(char bit, bool inverted) {
-    return inverted && bit != 'x' ? (bit == '1' ? '0' : '1') : bit;
-  }
-  std::vector<pattern::Operation> operations_;
-  std::vector<std::string> values_;
-  std::map<std::tuple<size_t, int64_t, bool>, std::vector<Reference>>
-      references_;
-};
 using ResetEdits = std::map<std::pair<size_t, size_t>, std::string>;
 using ResetVariants = std::map<std::pair<size_t, size_t>,
                                std::map<std::vector<std::string>, std::string>>;
@@ -393,7 +336,7 @@ std::string Generate(
   pattern::SystemClocks clocks =
       initial_clocks ? *initial_clocks : pattern::SystemClocks(netlist);
   z3::context context;
-  QueuedAccesses pending;
+  pattern::QueuedAccesses pending;
   std::map<std::string, pattern::Operation> pending_scans;
   size_t pending_scan_bits = 0;
   std::string result =

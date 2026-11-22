@@ -2146,6 +2146,10 @@ class ScanScheduler::Impl {
       }
     }
   }
+  std::string ReadBits(const std::vector<BitReference>& bits) const {
+    return state_.ReadBits(bits);
+  }
+
   std::string Value(const std::string& target) const {
     return state_.ReadBits(ResolvePdlTarget(netlist_, target).bits);
   }
@@ -6862,6 +6866,10 @@ Operation ScanScheduler::ApplyScans(
   if (preparations) preparations->clear();
   return result;
 }
+std::string ScanScheduler::ReadBits(const std::vector<BitReference>& bits) const {
+  return impl_->ReadBits(bits);
+}
+
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);
 }

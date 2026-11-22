@@ -7,6 +7,7 @@
 #include <string>
 
 #include "pattern/pattern_netlist.h"
+#include "pattern/pattern_state.h"
 
 namespace {
 void Require(bool value, const std::string& message) {
@@ -22,6 +23,89 @@ void Fails(Action action, const std::string& expected) {
     return;
   }
   throw std::runtime_error("expected error: " + expected);
+}
+void TestReadbackAdapter() {
+  pattern::Design design;
+  design.AddIcl("readback.icl", R"(
+Module Leaf {DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}}
+Module Top {
+ DataInPort p[3:0]; Instance leaf Of Leaf {InputPort p = p;}
+ DataOutPort q[3:0] {Source leaf.q;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::NetworkState actual(netlist);
+  actual.Assume(netlist.node_ids.at("p"), "1111");
+  const auto q = netlist.node_ids.at("leaf.q");
+  pattern::ReadbackUpdates updates;
+  uint64_t failures = 4;
+  bool first = true, cleared = false;
+  pattern::Runtime runtime(
+      design, netlist, true,
+      [&](const std::vector<pattern::Operation>& operations,
+          bool clear) -> const pattern::ReadbackUpdates* {
+        Require(operations.size() == 3 && operations.back().command == "iApply",
+                "readback consumes the executed normalized stream");
+        updates.bits.clear();
+        if (first) {
+          const auto value = actual.Value(q);
+          for (size_t i = 0; i < value.size(); ++i) {
+            updates.bits.push_back(
+                {q, static_cast<int64_t>(3 - i), value[i], '1'});
+          }
+          first = false;
+        }
+        updates.failures = failures;
+        if (clear) {
+          failures = 0;
+          cleared = true;
+        }
+        return &updates;
+      });
+  runtime.Execute("readback.pdl", R"(
+set calls 0
+proc value {} {global calls; incr calls; return 15}
+iState p [value]
+iPrefix leaf
+iRead q 0
+iApply
+if {[iGetReadData q] ne "0b1111"} {error {expected data used as observation}}
+if {[iGetReadData q -hex] ne "0xf"} {error {bad hex observation}}
+if {[iGetReadData q -dec] ne "15"} {error {bad decimal observation}}
+if {[iGetMiscompares q] ne "0b1111"} {error {bad miscompare plane}}
+if {[iGetStatus] != 4} {error {status must count failing bits}}
+if {[iGetStatus -clear] != 4} {error {clear must return old global count}}
+if {[iGetStatus] != 0} {error {count was not cleared}}
+if {$calls != 1} {error {readback reevaluated Tcl}}
+)");
+  runtime.Finish();
+  Require(cleared && runtime.operations().size() == 3,
+          "prefixed clear reaches adapter without changing source operations");
+}
+void TestMalformedReadbackUpdates() {
+  pattern::Design design;
+  design.AddIcl("updates.icl",
+                "Module Top {DataInPort p[3:0];"
+                "DataOutPort q[3:0] {Source p;}}");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ReadbackUpdates updates;
+  updates.bits = {{netlist.node_ids.at("q"), 0, '1', '1'},
+                  {netlist.nodes.size(), 0, '1', '1'}};
+  updates.failures = 1;
+  size_t calls = 0;
+  pattern::Runtime runtime(design, netlist, false,
+                           [&](const std::vector<pattern::Operation>&,
+                               bool) -> const pattern::ReadbackUpdates* {
+                             return ++calls == 1 ? &updates : nullptr;
+                           });
+  runtime.Execute("updates.pdl", R"(
+iRead q 0
+iApply
+if {![catch {iGetReadData q}]} {error {invalid observation accepted}}
+if {![catch {iGetReadData {q[0]}}]} {error {partial observation escaped}}
+)");
+  runtime.Finish();
+  Require(calls == 2,
+          "invalid updates must leave selected history unavailable");
 }
 void TestWriteOptionNormalization() {
   pattern::Design design;
@@ -840,7 +924,9 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestWriteOptionNormalization,
+  for (const auto test : {TestReadbackAdapter,
+                          TestMalformedReadbackUpdates,
+                          TestWriteOptionNormalization,
                           TestCallbackAccessBoundary,
                           TestConstructorAndParseFailures,
                           TestNestedPendingEndOfStream,

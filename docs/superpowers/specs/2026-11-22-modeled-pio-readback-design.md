@@ -78,8 +78,13 @@ existing shared evaluator so overlapping/wide targets do not reevaluate a graph
 per bit or object. Build the effective unique read-bit/expected model, then batch
 the observation. History is per physical node/index; inversion affects read data
 and expected data, not miscompare masks. Sparse delta indexing must preserve only
-the latest update per bit and allow a later manual history assignment to suppress
-that plane's pending delta. Counter history persists across delta deliveries.
+the latest update per bit without copying full history. Counter history persists across delta deliveries.
+
+Current target validation permits reads of observable outputs/storage, while
+manual history assignments permit storage and unconnected root inputs/selects.
+With storage excluded these target sets are disjoint. Preserve that existing
+boundary; the adapter need not add unreachable manual-output override machinery.
+Core known manual histories continue to bypass unsupported modeled execution.
 
 An explicit --model_readback flag creates the adapter; programs without queries
 do not initialize its scheduler. Include the flag in help/current usage docs.

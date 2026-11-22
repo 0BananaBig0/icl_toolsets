@@ -62,6 +62,7 @@ class ScanScheduler {
                        std::set<size_t>* assigned = nullptr,
                        std::vector<ScanStep>* preparations = nullptr);
   std::string Value(const std::string& target) const;
+  std::string ReadBits(const std::vector<BitReference>& bits) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.
   std::vector<std::vector<Operation>> ResetPrerequisites(

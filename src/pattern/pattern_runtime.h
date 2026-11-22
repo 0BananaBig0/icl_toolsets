@@ -3,7 +3,10 @@
 #ifndef ICL_TOOLSETS_SRC_PATTERN_PATTERN_RUNTIME_H_
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_RUNTIME_H_
 
+#include <cstdint>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -27,12 +30,25 @@ struct Operation {
   std::vector<std::string> call_stack;
 };
 
+struct ReadbackUpdate {
+  size_t node = 0;
+  int64_t index = 0;
+  char read = '?', miscompare = '?';
+};
+struct ReadbackUpdates {
+  std::vector<ReadbackUpdate> bits;
+  std::optional<uint64_t> failures;
+};
+
 // Only the generator evaluates PDL. Editor tools continue using Document alone.
 class Runtime {
  public:
+  // Updates are deltas for this append-only stream, valid until the next call.
+  using Readback = std::function<const ReadbackUpdates*(
+      const std::vector<Operation>&, bool clear_status)>;
   Runtime(const Design& design, const std::string& top);
   Runtime(const Design& design, const Netlist& netlist,
-          bool trace_source = false);
+          bool trace_source = false, Readback readback = {});
   ~Runtime();
   Runtime(const Runtime&) = delete;
   Runtime& operator=(const Runtime&) = delete;
