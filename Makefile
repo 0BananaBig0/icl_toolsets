@@ -1118,6 +1118,7 @@ python3 tests/src/pattern/test_data_register_state.py $1
 python3 tests/src/pattern/test_data_register_feedback.py $1
 python3 tests/src/pattern/test_data_register_callback_model.py $1
 python3 tests/src/pattern/test_write_value_options.py $1
+python3 tests/src/pattern/test_primary_data_events.py $1
 python3 tests/src/pattern/test_data_reset_dependencies.py $1
 python3 tests/src/pattern/test_queued_state.py $1
 python3 tests/src/pattern/test_observation_state.py $1

@@ -3280,16 +3280,7 @@ class ScanScheduler::Impl {
           fills.at(id) = fill;
           frame.activation.emplace(id, active);
           if (touched.count(id)) {
-            auto requested_drive = context_.bool_val(false);
-            const auto inputs = data_plan.primary_inputs.find(id);
-            if (inputs != data_plan.primary_inputs.end()) {
-              for (size_t pin : inputs->second) {
-                if (frame.drives.count(pin)) {
-                  requested_drive = requested_drive || frame.drives.at(pin);
-                }
-              }
-            }
-            touched.at(id) = touched.at(id) || (enabled && requested_drive);
+            touched.at(id) = touched.at(id) || enabled;
           }
           values->Assign({{id, next.at(id)}});
         }
@@ -3483,6 +3474,11 @@ class ScanScheduler::Impl {
             throw std::runtime_error(
                 "symbolic/concrete primary data fill mismatch");
           }
+          const auto goal = goals.find(id);
+          if (goal != goals.end() && event != control_events.end() &&
+              event->second && replay.Value(id) == goal->second) {
+            AppendDataGoalIntent(id, goal->second, &step);
+          }
         }
         AppendDataEndOverrides(replay, &step);
         if (!step.writes.empty() || !step.expected.empty()) {
@@ -3509,6 +3505,23 @@ class ScanScheduler::Impl {
         "budget");
   }
 
+  void AppendDataGoalIntent(size_t id, const std::string& goal,
+                            ScanStep* step) const {
+    const auto& plan = state_.DataRegisters();
+    const auto written = [&](const auto& sources) {
+      const auto found = sources.find(id);
+      return found != sources.end() &&
+             std::any_of(
+                 found->second.begin(), found->second.end(),
+                 [&](size_t driver) {
+                   return step->writes.count(netlist_.nodes[driver].name);
+                 });
+    };
+    // Retain data-goal intent unless emitted controller writes carry it.
+    if (!written(plan.primary_inputs) && !written(plan.scan_inputs)) {
+      step->writes.emplace(netlist_.nodes[id].name, goal);
+    }
+  }
   void AppendDataEndOverrides(const NetworkState& replay,
                               ScanStep* step) const {
     if (!step->writes.empty()) {
@@ -5556,15 +5569,10 @@ class ScanScheduler::Impl {
       }
     }
     required.insert(data_controllers.begin(), data_controllers.end());
-    std::vector<size_t> autonomous_feedback_goals;
+    std::vector<size_t> data_write_goals;
     for (const auto& group : data_plan.groups) {
-      if (!group.feedback) continue;
       for (size_t id : group.nodes) {
-        if (explicit_goals.count(id) &&
-            data_plan.primary_inputs.at(id).empty() &&
-            data_plan.scan_inputs.at(id).empty()) {
-          autonomous_feedback_goals.push_back(id);
-        }
+        if (explicit_goals.count(id)) data_write_goals.push_back(id);
       }
     }
     const auto [access_context, grouped_reads, read_order] =
@@ -6268,12 +6276,11 @@ class ScanScheduler::Impl {
         UpdateStorageFill(frame, model, replay, reset, control_events, step,
                           event, fill);
         if (!step.writes.empty()) {
-          // Physical scans alone do not preserve autonomous data-goal fill
-          // intent.
-          for (size_t id : autonomous_feedback_goals) {
+          // Retain data-goal intent unless emitted controller writes carry it.
+          for (size_t id : data_write_goals) {
             if (model.eval(frame.active.at(id), true).is_true() &&
                 replay.Value(id) == goals.at(id)) {
-              step.writes.emplace(netlist_.nodes[id].name, goals.at(id));
+              AppendDataGoalIntent(id, goals.at(id), &step);
             }
           }
         }
