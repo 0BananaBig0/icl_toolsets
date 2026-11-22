@@ -76,8 +76,31 @@ void TestLegacyLaunchEdge() {
   pattern::Design design;
   design.AddIcl("legacy_edge_guard.icl",
                 "Module Top {ScanInPort si; ScanOutPort so {Source si; "
-                "LaunchEdge Falling;}}");
+                "LaunchEdge Falling;} SelectPort sel; "
+                "ScanInterface client {Port si; Port so; Port sel;} "
+                "Enum E {idle = 1'b0;} Enum Named {LaunchEdge = 1'b1;} "
+                "DataInPort data; LogicSignal logic {data;} DataInPort select; "
+                "ScanMux mux SelectedBy select {1'b0: si; 1'b1: si;}}");
   const auto original = pattern::Elaborate(design, "Top");
+  const auto legitimate = pattern::SerializeIcl(original);
+  Require(legitimate.find("LaunchEdge = 1'b1;") != std::string::npos,
+          "a legitimate enum member named LaunchEdge remains valid");
+  for (const std::string name : {"client", "E", "logic", "mux"}) {
+    for (const std::string value : {"Source", "LaunchEdge"}) {
+      auto invalid = original;
+      invalid.nodes.at(invalid.node_ids.at(name)).properties["LaunchEdge"] =
+          original.NodeAt("so").properties.at(value);
+      bool rejected = false;
+      try {
+        pattern::SerializeIcl(invalid);
+      } catch (const std::runtime_error& error) {
+        rejected =
+            std::string(error.what()).find("invalid legacy LaunchEdge") !=
+            std::string::npos;
+      }
+      Require(rejected, name + " must not silently discard a launch property");
+    }
+  }
   for (int mutation = 0; mutation < 5; ++mutation) {
     auto invalid = original;
     auto& node = invalid.nodes.at(invalid.node_ids.at("so"));
