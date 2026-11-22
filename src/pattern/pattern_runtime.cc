@@ -434,6 +434,51 @@ class Runtime::Impl {
     }
   }
 
+  std::string ScanChainName(const std::string& name, const std::string& chain) {
+    if (!netlist_) return chain;
+    if (!scan_clients_loaded_) {
+      for (const auto& node : netlist_->nodes) {
+        if (!node.scan_interface ||
+            (node.scan_interface->kind != ScanInterfaceKind::kClient &&
+             node.scan_interface->kind != ScanInterfaceKind::kClientTap)) {
+          continue;
+        }
+        auto& chains = scan_clients_[node.name];
+        for (const auto& item : node.scan_interface->chains) {
+          chains.insert(item.name);
+        }
+      }
+      if (!netlist_->node_ids.count("unnamed") && netlist_->taps.size() == 1) {
+        const bool declared = std::any_of(
+            netlist_->nodes.begin(), netlist_->nodes.end(),
+            [](const auto& node) {
+              return node.scope == 0 && node.scan_interface.has_value();
+            });
+        const auto interfaces = EffectiveScanInterfaces(*netlist_);
+        if (!declared && std::any_of(interfaces.begin(), interfaces.end(),
+                                     [](const auto& binding) {
+                                       return binding.scope == 0 &&
+                                              binding.interface.kind ==
+                                                  ScanInterfaceKind::kClientTap;
+                                     })) {
+          scan_clients_["unnamed"];
+        }
+      }
+      scan_clients_loaded_ = true;
+    }
+    const auto found = scan_clients_.find(name);
+    if (found == scan_clients_.end()) {
+      throw std::runtime_error("raw scan target must be a client interface");
+    }
+    if (found->second.empty() && (chain.empty() || chain == "default")) {
+      return "";
+    }
+    if (chain.empty() || !found->second.count(chain)) {
+      throw std::runtime_error("raw scan requires a valid client chain");
+    }
+    return chain;
+  }
+
   void InvalidateReadHistory(const Operation& apply) {
     const bool together = ValidatePdlApplyOptions(apply.arguments);
     if (!pending_) return;
@@ -447,7 +492,9 @@ class Runtime::Impl {
     bool zero_status_known = zero_status_known_;
     bool accesses = false, fallback_read = false;
     std::unordered_map<size_t, std::string> read_care;
-    std::map<std::pair<bool, std::string>, std::pair<size_t, bool>> raw_care;
+    std::map<std::pair<bool, std::pair<std::string, std::string>>,
+             std::pair<size_t, bool>>
+        raw_care;
     size_t raw_bits = 0;
     // Validate discarded operands too; commit history only after the whole
     // queue.
@@ -455,45 +502,17 @@ class Runtime::Impl {
       const auto& operation = *it;
       if (operation.command == "iScan") {
         const auto scan = NormalizeScan(*history_context_, operation);
-        const bool instruction = scan.arguments[0] == "-ir";
-        const size_t offset = instruction ? 1 : 0;
-        const auto& name = scan.arguments[offset];
-        if (netlist_) {
-          const auto found = netlist_->node_ids.find(name);
-          bool client = false;
-          if (found != netlist_->node_ids.end()) {
-            const auto& interface =
-                netlist_->nodes[found->second].scan_interface;
-            client =
-                interface && (interface->kind == ScanInterfaceKind::kClient ||
-                              interface->kind == ScanInterfaceKind::kClientTap);
-          } else if (name == "unnamed" && netlist_->taps.size() == 1) {
-            if (!implicit_tap_client_) {
-              const bool declared = std::any_of(
-                  netlist_->nodes.begin(), netlist_->nodes.end(),
-                  [](const auto& node) {
-                    return node.scope == 0 && node.scan_interface.has_value();
-                  });
-              const auto interfaces = EffectiveScanInterfaces(*netlist_);
-              implicit_tap_client_ =
-                  !declared &&
-                  std::any_of(interfaces.begin(), interfaces.end(),
-                              [](const auto& binding) {
-                                return binding.scope == 0 &&
-                                       binding.interface.kind ==
-                                           ScanInterfaceKind::kClientTap;
-                              });
-            }
-            client = *implicit_tap_client_;
-          }
-          if (!client || (instruction && netlist_->taps.empty())) {
-            throw std::runtime_error(
-                "raw scan target must be a client interface");
-          }
+        const auto fields = ReadScanFields(scan);
+        const auto& name = scan.arguments[fields.target];
+        const auto chain = ScanChainName(name, fields.chain);
+        if (fields.instruction && netlist_ && netlist_->taps.empty()) {
+          throw std::runtime_error(
+              "raw scan target must be a client interface");
         }
-        const auto key = std::make_pair(instruction, name);
+        const auto key =
+            std::make_pair(fields.instruction, std::make_pair(name, chain));
         auto& latest = raw_care[key];
-        const auto& expected = scan.arguments[5 + offset];
+        const auto& expected = scan.arguments[fields.expected];
         const size_t width = expected.size() - 2;
         raw_bits = raw_bits - latest.first + width;
         if (raw_bits > 1024 * 1024) {
@@ -1084,7 +1103,8 @@ class Runtime::Impl {
   std::optional<size_t> main_merge_action_;
   const Design& design_;
   const Netlist* netlist_;
-  std::optional<bool> implicit_tap_client_;
+  bool scan_clients_loaded_ = false;
+  std::map<std::string, std::set<std::string>> scan_clients_;
   History read_history_, miscompare_history_;
   bool zero_status_known_ = true;
   std::unique_ptr<z3::context> history_context_;
