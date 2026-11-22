@@ -48,7 +48,7 @@
 - [x] Run unit/protocol tests RED→GREEN, full fresh maintained audit, default/namespace/reference native and CLI regressions. Verify expected1016canonical/56unsupported/691original failures and1763effective models/1334files; investigate real disagreements rather than changing expectations. Measure normal/sanitizer batch<=10s/512MiB and retain hashes. Commit/task-done.
 
 ### Task 3: Full qualification, independent review and integration
-**Files:** Update README.md as warranted, docs/pattern-generation.md, docs/pattern-model-coverage.md, docs/remaining-work.md, this spec/plan and owned evidence.
+**Files:** Maintain selected BUILD_DIR parser passthrough in Makefile with tests/test_makefile_model_corpus.py; update README.md as warranted, docs/pattern-generation.md, docs/pattern-model-coverage.md, docs/remaining-work.md, this spec/plan and owned evidence.
 **Interfaces:** Native/CLI Task1 behavior and Task2 actual audited registry; exact executable/input hashes qualify results.
 - [ ] Run14 native/14 leak-enabled sanitizer suites, full dynamic/static generator regressions including new module, source/enum/flat/corpus affected sanitizer CLI and audit unit/protocol/helper checks, changed-code format/tidy/strict C++17, existing parser/dedup policy and source packaging. Expected zero unexpected failures; excluded strict coverage1 remains unchanged/unrun.
 - [ ] Measure three fresh normal/sanitizer corpus invocations at maintained size, record wall/RSS/environment/all input/product hashes and representative case outcomes; each<=10s/512MiB. Preserve current callback1024-target<=10s and wide-alias<=256MiB using existing measured drivers/controls on current binaries; do not reuse prior whole-tree acceptance claims against changed source.

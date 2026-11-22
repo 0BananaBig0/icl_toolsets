@@ -811,10 +811,11 @@ corpuscheck: $(BUILD_DIR)/icl_corpus_inventory $(BIN) model-corpus-check
 	python3 tests/tests/test_eda_corpus.py
 	python3 tests/tests/test_audit_icl_corpus.py
 	MODEL_INVENTORY=$(abspath $(BUILD_DIR)/pattern_netlist_inventory) python3 tests/tests/src/pattern/test_audit_model_corpus.py
+	python3 tests/test_makefile_model_corpus.py
 
 .PHONY: model-corpus-check
 model-corpus-check: $(BUILD_DIR)/icl_corpus_inventory $(BUILD_DIR)/pattern_netlist_inventory
-	python3 tests/audit_icl_corpus.py --policy tests/cases/deduplication.json --report $(BUILD_DIR)/model_source_corpus.json
+	python3 tests/audit_icl_corpus.py --inventory $(BUILD_DIR)/icl_corpus_inventory --policy tests/cases/deduplication.json --report $(BUILD_DIR)/model_source_corpus.json
 	python3 tests/src/pattern/audit_model_corpus.py --corpus-report $(BUILD_DIR)/model_source_corpus.json --inventory $(BUILD_DIR)/pattern_netlist_inventory --report $(BUILD_DIR)/model_source_audit.json
 
 $(BUILD_DIR)/pattern_netlist_inventory: tests/src/pattern/pattern_netlist_inventory.cc $(BUILD_DIR)/pattern/pattern_flatten.o $(BUILD_DIR)/utility/json.o $(BUILD_DIR)/pattern/pattern_logic.o $(BUILD_DIR)/pattern/pattern_netlist.o $(BUILD_DIR)/pattern/pattern_design.o $(BUILD_DIR)/pattern/pattern_bsdl.o $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)

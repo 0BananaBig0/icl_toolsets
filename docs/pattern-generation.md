@@ -8706,3 +8706,136 @@ ownership and readback, dynamic/static parallel CLI, scalar raw histories,
 resource reservations and the71-method main CLI suite. All117 stashes remain.
 The receipt is build/modeled-parallel-raw-20261123/merged/receipt.json.
 Broader inventory items6/8 remain open.
+
+
+## Task156: default model and source round-trip audit
+
+Bare control-output declarations such as ToSelectPort forwarded; now retain
+a valid semicolon form when their bodies are empty. Attributes and explicit
+or inferred Sources retain their bodies, and other empty-port spellings
+remain unchanged. Native cases cover supported To* kinds in root and child
+scopes. The following previously failed while producing associated flat ICL.
+
+Save model.icl:
+
+~~~icl
+Module Chains {
+ ScanInPort si;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanOutPort so {Source r[0];}
+ ToSelectPort forwarded;
+}
+~~~
+
+Save source.pdl and run it through the concrete model endpoint:
+
+~~~tcl
+iPDLLevel 1
+iReset
+iWrite r 9; iApply
+iRead r 9; iWrite r 6; iApply
+iNote [iGetReadData r -dec]
+iRead r 6; iApply
+iNote [iGetReadData r -dec]
+~~~
+
+~~~sh
+icl-pattern-generation --icl model.icl --pdl source.pdl \
+  --top_module Chains --model_readback --debug --output result.pdl
+~~~
+
+The notes are the real captured9 and6, with three nonempty Apply groups.
+Original, associated-flat and generated-PDL replay produce identical pattern
+bytes. This is author-verified modeled execution; no device was accessed.
+
+Undefined RefEnum declarations now identify the missing scoped name through
+the existing source/node diagnostic, for example unknown RefEnum Missing.
+A missing table does not escape as map::at. Valid forward/scoped/specialized
+enum tables, symbolic reset/default values and existing kind/width errors
+retain their behavior. Failed generation preserves the previous output file.
+
+### Run the maintained corpus model audit
+
+~~~sh
+make model-corpus-check
+~~~
+
+This builds the existing shared-frontend corpus inventory and the new public
+model inventory. It writes build/model_source_corpus.json and
+build/model_source_audit.json. BUILD_DIR selects both helper executables;
+corpuscheck includes this target and the related producer/protocol/build
+selection regression tests.
+
+The current inventory is2562 ICL files, with1228 parser-rejected inputs still
+checked for byte provenance. The1334 parser-accepted files contain1765 module
+declarations and1763 effective default module identities after existing
+per-file ordered overrides. Of these default models:
+
+| Actual outcome | Count | Meaning |
+|---|---:|---|
+| Required canonical roundtrip | 1016 | Real SerializeIcl, flat load/elaboration and repeated SerializeIcl bytes agree |
+| Explicitly unsupported serialization | 56 | 44 unbound AccessLinks, seven PortGroups and five LaunchEdge properties |
+| Original default elaboration failure | 691 | Reported actual errors; many fixtures are intentionally incomplete or require dependencies/parameters |
+
+PASS requires every pinned canonical model, exact unsupported boundaries,
+complete current file/module coverage and no internal map::at diagnostics.
+It does not assert that all parser-accepted grammar examples are runnable
+models, or prove physical/vendor equivalence. Unbound AccessLinks are checked
+before external model/BSDL binding; the report never invents a binding,
+dependency or parameter value. Valid instance specializations reached by a
+selected module use the existing elaborator.
+
+Each registry identity combines corpus-relative file and effective qualified
+module key, preserving namespaces and ordered overrides. Parser fixture
+module_keys supplement the existing unchanged definition hashes. Source
+collection and hash validation include rejected files and the same generated
+tree exclusion as the parser audit. A changed, missing or newly added input,
+omitted/duplicated backend result, failed/empty process, canonical failure or
+changed unsupported boundary fails the audit. Failure writes a fresh failed
+report, replacing any old success. One batch native process loads each file
+once and visits its effective default tops; it does not launch per module.
+
+The explicit registry is tests/cases/model_source_acceptance.json. Update
+required/unsupported identities deliberately after proving a newly supported
+model and its canonical replay. An unsupported case becoming canonical also
+requests a registry update, so acceptance changes are reviewable.
+
+### Sanitizer audit and measured scope
+
+For a separate sanitizer build, use the same build directory and compiler
+flags for building and running both helpers:
+
+~~~sh
+make -j2 BUILD_DIR=build/model-audit-san CXX=clang++ \
+  CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -MMD -MP' \
+  build/model-audit-san/icl_corpus_inventory \
+  build/model-audit-san/pattern_netlist_inventory
+ASAN_OPTIONS=detect_leaks=1:allocator_release_to_os_interval_ms=500 \
+UBSAN_OPTIONS=halt_on_error=1 \
+make BUILD_DIR=build/model-audit-san CXX=clang++ \
+  CXXFLAGS='-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -MMD -MP' \
+  model-corpus-check
+~~~
+
+The500ms setting releases unused allocator pages to the OS. The installed
+runtime still retains its256MiB global and1024KiB thread quarantine, redzones,
+leak detection and undefined-behavior checks. The default5,000ms release
+interval retains about579MiB across this roughly4s batch; it is not the
+qualified512MiB configuration. Releasing the original Netlist early had no
+measured peak benefit, so that trial was removed.
+
+Three fresh normal and three configured leak-sanitizer batch runs pass the
+same10s/512MiB bounds. Normal peak is104404KiB/max1.5248s; sanitizer peak is
+484700KiB/max4.2325s. The input size, all input/registry/helper/report hashes,
+commands, runtime flags and platform/compiler versions are recorded in
+build/model-source-audit-20261123/batch-scale/results.json. These measurements
+qualify the maintained1334-file/1763-module workload; broader inputs require
+their own evidence.
+
+Eight new generator methods, native source/flatten/default checks, eight
+producer and eight protocol methods pass, including direct parent RED
+evidence for12 broken serializations and14 internal enum messages. The
+required full native/dynamic/static/sanitizer/quality/package qualification
+and independent whole-branch review are in progress. Remaining source
+specializations, model semantics, binding/event support and wider vendor
+round-trips still belong to unfinished inventory11/12 and related items.
