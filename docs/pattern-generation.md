@@ -8875,3 +8875,10 @@ The unchanged C++ full suites and exact post-fix corpus/protocol/producer gates
 are bound to actual current source/tool/log hashes; earlier gates are retained
 separately. Receipts are in build/model-source-audit-20261123/final.
 Integration and branch cleanup remain pending.
+
+Task156 is integrated into master. Nine integration checks pass on4024
+matching inputs and19 copied qualified native tools/suites: netlist/flatten/
+state, dynamic/static source-audit CLI, complete corpus policy/default audit
+and producer8/protocol13/Make3, source literals/typed ports and71-method main
+CLI. All117 stashes remain. Receipt:
+build/model-source-audit-20261123/merged/receipt.json. Broader11/12 remains open.

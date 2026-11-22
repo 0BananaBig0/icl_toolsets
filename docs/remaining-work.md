@@ -118,3 +118,6 @@ invalid empty ToSelectPort serializations. Fourteen missing-enum inputs now
 report names/source context. Declared unsupported and original elaboration
 errors stay visible, without invented dependencies or defaults. All52 qualification gates and92 measured processes pass after five test-first
 Important fixes; one Minor remains deferred. Broader11/12 acceptance remains open.
+
+Task156 is merged into master; nine integration checks,4024 input hashes,
+19 copied qualified native products and117 preserved stashes are verified.
