@@ -4453,3 +4453,9 @@ update behavior remains authoritative. No second simulator or device
 transport is introduced. Bound-TAP, raw/clock/merge, callback execution and
 interface/chain observations remain open.
 See [the runnable example and limits](pattern-generation.md#task150-modeled-standalone-scan-observations).
+
+Task150 post-fix evidence:37 gates,14 native/14 sanitizer suites,59x962
+methods per generator,18 quality checks, source packaging,144 scale processes
+and4007 input/31 executable hashes. A fresh direct review found two Important
+fast-path delivery gaps; one verified fix pass resolves both. No Minor findings
+or declined cases remain. The pre-review run is explicitly partial.

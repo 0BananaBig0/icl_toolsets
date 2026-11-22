@@ -32,8 +32,8 @@ Defaults and schedules remain unchanged. New maintained tests live under tests/.
 ### Task 2: Qualification and delivery
 **Files:** Modify docs/pattern-generation.md, docs/pattern-model-coverage.md, docs/remaining-work.md and relevant README text.
 **Interfaces:** Consumes Task1 semantics; produces verified user guidance and retained qualification evidence.
-- [ ] Run required native/sanitizer, complete dynamic/static generator suites, affected formatting/tidy/strict compilation and source packaging; expect zero failures/skips beyond documented baseline.
-- [ ] Measure equivalent parent/current single-chain and larger multi-register inputs with/without queries; retain sizes, commands and timings.
-- [ ] Obtain fresh whole-branch independent review, resolve Important/Critical findings in one test-first verified pass, ledger dispositions.
-- [ ] Update docs with actual results and bounded remaining work; commit.
+- [x] Run required native/sanitizer, complete dynamic/static generator suites, affected formatting/tidy/strict compilation and source packaging; expect zero failures/skips beyond documented baseline.
+- [x] Measure equivalent parent/current single-chain and larger multi-register inputs with/without queries; retain sizes, commands and timings.
+- [x] Obtain fresh whole-branch independent review, resolve Important/Critical findings in one test-first verified pass, ledger dispositions.
+- [x] Update docs with actual results and bounded remaining work; commit.
 - [ ] Merge to master, verify integrated outputs, push and confirm upstream, detach reused worktree and delete merged child branch.
