@@ -706,7 +706,8 @@ class Runtime::Impl {
       return FormatHistory(entry->second, format);
     }
     if (!chain.empty()) {
-      throw std::runtime_error("readback chain requires a client interface");
+      throw std::runtime_error(
+          "hardware readback chain requires a client interface");
     }
     const auto resolved = ResolvePdlTarget(*netlist_, target);
     ValidatePdlAccessTarget(*netlist_, resolved, true);
