@@ -50,6 +50,12 @@ are historical checkpoints; statements such as “not implemented” there descr
 that checkpoint, not the current CLI. Passing native tests does not establish
 full model coverage or Tessent equivalence.
 
+Task153 adds qualified explicit callback-only DataRegister procedure execution
+and source-preserving reset replay. All43 post-fix gates pass, including63x1048
+tests per generator,14 native/14 sanitizer suites,24 quality checks and packaging.
+Automatic downstream/mixed/merged callback groups and modeled/physical callback
+histories remain open; see the [current guide](pattern-generation.md#task153-explicit-dataregister-callback-execution).
+
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters preserve never-read/sparse unknown bits and explicit history; opt-in PIO and serial-register reads, including bound TAPs, supply selected-frame observations and exact failure counts; default applied observations remain unavailable and initial/no-cared-comparison status is known zero | Complete runtime command coverage and broader real-pair generation |
