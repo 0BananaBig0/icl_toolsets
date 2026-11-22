@@ -26,8 +26,8 @@ Native tests prove scalar/vector, inverted/source/Enable, repeated children,
 scope and property preservation plus repeated canonical equality. CLI tests
 prove nonempty source/flat/generated replay, invalid values/placements and
 previous-output protection. Corpus audit must determine actual new outcomes:
-four former LaunchEdge-only defaults should become canonical; SIB_mux also
-contains PortGroups, so it should advance to that explicit existing boundary
+one former LaunchEdge-only default becomes canonical; the other four SIB
+models also contain PortGroups and advance to that explicit existing boundary
 without being mislabeled canonical. Never erase that blocker.
 
 Performance is linear in emitted properties, one existing token per property,

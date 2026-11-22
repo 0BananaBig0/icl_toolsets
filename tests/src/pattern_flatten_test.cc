@@ -17,6 +17,90 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestLegacyLaunchEdge() {
+  for (bool child : {false, true}) {
+    pattern::Design design;
+    const std::string leaf =
+        "ScanInPort si[3:2]; ScanOutPort so[5:4] {Source ~si; "
+        "Enable 1'b1; LaunchEdge /* legacy */ Falling; Attribute marker;}";
+    design.AddIcl("legacy_edge.icl",
+                  child ? "Module Leaf {" + leaf +
+                              "} Module Top {ScanInPort si[1:0]; "
+                              "Instance left Of Leaf {InputPort si = si;} "
+                              "Instance right Of Leaf {InputPort si = ~si;}}"
+                        : "Module Top {" + leaf + "}");
+    const auto original = pattern::Elaborate(design, "Top");
+    auto text = pattern::SerializeIcl(original);
+    for (int round = 0; round < 3; ++round) {
+      pattern::Design flat;
+      flat.AddIcl("legacy_edge.flat.icl", text);
+      const auto restored = pattern::Elaborate(flat, "Top");
+      Require(
+          pattern::SerializeIcl(restored) == text,
+          "legacy launch edge remains canonical across repeated flattening");
+      for (const std::string name :
+           child ? std::vector<std::string>{"left.so", "right.so"}
+                 : std::vector<std::string>{"so"}) {
+        const auto& before = original.NodeAt(name);
+        const auto& after = restored.NodeAt(name);
+        Require(after.kind == "ScanOutPort" && after.left == 5 &&
+                    after.right == 4 && after.attributes.count("marker") &&
+                    after.properties.count("LaunchEdge") &&
+                    after.inputs.at("Enable").size() == 1 &&
+                    after.inputs.at("Enable")[0].constant == '1' &&
+                    original.scopes[before.scope].path ==
+                        restored.scopes[after.scope].path,
+                "launch edge retains vector, signals, Enable, attributes and "
+                "scope");
+        const auto& source = before.inputs.at("Source");
+        const auto& flat_source = after.inputs.at("Source");
+        Require(source.size() == flat_source.size(), "source width survives");
+        for (size_t bit = 0; bit < source.size(); ++bit) {
+          Require(original.nodes.at(source[bit].node).name ==
+                          restored.nodes.at(flat_source[bit].node).name &&
+                      source[bit].index == flat_source[bit].index &&
+                      source[bit].inverted == flat_source[bit].inverted,
+                  "source bit order and inversion survive");
+        }
+        const auto expression = after.properties.at("LaunchEdge");
+        const auto& tokens = restored.scopes.at(expression.scope)
+                                 .definition.document->driver()
+                                 .unit()
+                                 .tokens();
+        Require(expression.end == expression.begin + 1 &&
+                    tokens.at(expression.begin).text == "Falling",
+                "restored property retains its actual accepted value");
+      }
+    }
+  }
+  pattern::Design design;
+  design.AddIcl("legacy_edge_guard.icl",
+                "Module Top {ScanInPort si; ScanOutPort so {Source si; "
+                "LaunchEdge Falling;}}");
+  const auto original = pattern::Elaborate(design, "Top");
+  for (int mutation = 0; mutation < 5; ++mutation) {
+    auto invalid = original;
+    auto& node = invalid.nodes.at(invalid.node_ids.at("so"));
+    auto& expression = node.properties.at("LaunchEdge");
+    if (mutation == 0) --expression.end;
+    if (mutation == 1) expression = node.properties.at("Source");
+    if (mutation == 2) node.kind = "DataOutPort";
+    if (mutation == 3) {
+      expression.begin = expression.end = static_cast<size_t>(-1);
+    }
+    if (mutation == 4) expression.scope = invalid.scopes.size();
+    bool rejected = false;
+    try {
+      pattern::SerializeIcl(invalid);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("invalid legacy LaunchEdge") !=
+                 std::string::npos;
+    }
+    Require(rejected,
+            "malformed launch property must not be coerced to Falling");
+  }
+}
+
 void TestEmptyControlOutputs() {
   for (const std::string kind :
        {"ToSelectPort", "ToCaptureEnPort", "ToShiftEnPort", "ToUpdateEnPort",
@@ -1197,6 +1281,7 @@ int main() {
     TestChildInputDefaultMetadataGuards();
     TestSegmentedPortRoundTrip();
     TestSegmentedMetadataGuards();
+    TestLegacyLaunchEdge();
     TestEmptyControlOutputs();
     TestFlatCallbacks();
     TestFlatClockInputKinds();

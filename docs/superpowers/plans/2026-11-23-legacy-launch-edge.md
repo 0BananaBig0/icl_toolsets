@@ -35,7 +35,7 @@ docs/pattern-generation.md and docs/remaining-work.md.
 Create tests/src/pattern/test_legacy_launch_edge.py.
 
 **Interfaces:** Consumes NetlistNode.properties Expression and existing parsed token
-storage scoped by node.scope; produces unchanged std::string SerializeIcl(const Netlist&).
+storage scoped by the property's Expression.scope; produces unchanged std::string SerializeIcl(const Netlist&).
 
 - [ ] Add native root/vector/inverted/Enable and repeated-child canonical property
       assertions plus malformed property span/value/kind rejection; add CLI source/
@@ -44,9 +44,9 @@ storage scoped by node.scope; produces unchanged std::string SerializeIcl(const 
       Expected: failure specifically at flat property not implemented: LaunchEdge.
 - [ ] Add only the existing accepted token's guarded serialization in Declaration.
       Run flatten/netlist/state and CLI dynamic/static. Expected: all pass.
-- [ ] Run actual maintained corpus, promote only proven four canonical identities
-      and change SIB_mux to its PortGroup boundary; register new CLI suite in both
-      generator variants. Expected:1020canonical/52unsupported/691original errors.
+- [ ] Run actual maintained corpus, promote only the proven canonical identity
+      and change the four SIB models to their PortGroup boundary; register new CLI suite in both
+      generator variants. Expected:1017canonical/55unsupported/691original errors.
 - [ ] Run full14native/14leakSAN, both full generator variants, selected normal/SAN
       parser/model corpus+8producer/13protocol/3Make, C++ quality and source packaging.
       Expected: every gate exit0, no skipped required suite; record exact source/tool hashes.

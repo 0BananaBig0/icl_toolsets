@@ -863,6 +863,7 @@
     "cases/pass/warptap/wsp1500_chain.icl::blk2",
     "cases/pass/warptap/wsp1500_chain.icl::blk2_core",
     "cases/pass/warptap/wsp1500_chain.icl::blk_core",
+    "cases/published/scan_out_port/legacy_falling.icl::Example",
     "cases/standard/access_link/ieee_examples.icl::Child",
     "cases/standard/address_port/example.icl::Example",
     "cases/standard/alias/standard_examples.icl::Leaf",
@@ -1215,23 +1216,19 @@
     },
     "cases/pass/ours/tessent_style_derived.icl::SIB_mux": {
       "stage": "serialize",
-      "diagnostic": "flat property is not implemented: LaunchEdge"
+      "diagnostic": "flat serialization is not implemented for PortGroup"
     },
     "cases/pass/published/liu_sib_and_chip_icl.icl::SIB": {
       "stage": "serialize",
-      "diagnostic": "flat property is not implemented: LaunchEdge"
+      "diagnostic": "flat serialization is not implemented for PortGroup"
     },
     "cases/pass/published/published_sib_and_chip.icl::SIB": {
       "stage": "serialize",
-      "diagnostic": "flat property is not implemented: LaunchEdge"
+      "diagnostic": "flat serialization is not implemented for PortGroup"
     },
     "cases/pass/published/real.icl::SIB": {
       "stage": "serialize",
-      "diagnostic": "flat property is not implemented: LaunchEdge"
-    },
-    "cases/published/scan_out_port/legacy_falling.icl::Example": {
-      "stage": "serialize",
-      "diagnostic": "flat property is not implemented: LaunchEdge"
+      "diagnostic": "flat serialization is not implemented for PortGroup"
     },
     "cases/standard/access_link/ieee_examples.icl::Top": {
       "stage": "serialize",
