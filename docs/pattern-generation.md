@@ -8434,6 +8434,8 @@ the known Minor labeling issue remains deferred, and generated replay has its
 own expanded Apply structure. Input/binary/output hashes and exact commands
 are retained in scale/results.json.
 
+Task153 checkpoint; [Task154](#task154-primary-solver-state-in-callback-heavy-models)
+subsequently improves the same primary-scheduling case.
 These measurements demonstrate1024 targets/four callback groups within the
 existing limits. End-to-end PIO scheduling grows faster than target count in
 this workload; no linear runtime or speedup is claimed. Larger routine batches
@@ -8471,3 +8473,83 @@ histories and the71-method CLI suite. All117 stashes are preserved. Merge
 receipts and executable hashes are in
 build/callback-execution-20261123/merged/receipt.json. Broad item4 remains pending
 for the callback cases listed above; this increment does not close that item.
+
+
+## Task154: primary solver state in callback-heavy models
+
+Repeated endpoint Applies in a model with many unused callback DataRegisters
+previously rebuilt symbolic values for all of those registers. Task154 keeps a
+conservative topology index so primary-input solves omit irrelevant held callback
+storage from their symbolic snapshots. Concrete state, callback postconditions,
+manual assumptions and histories stay complete.
+
+Only unreferenced callback storage without WriteDataSource, reset association or
+ResetValue is eligible. Aliases, logic/mux/one-hot inputs, reset consumers and
+interface/TAP references keep their state. Explicit goals, reads, end-state
+requirements and reservations also retain the values they need. Values are read
+fresh for each solve, including after assumptions, resets and scheduler copies.
+The existing solver objectives, event/feedback/reset settlement, concrete replay
+and actual-observation paths are reused. Model and runtime limits stay unchanged.
+
+On the same GCC16.2.1/Linux WSL2 environment, three matched source repeats with
+four caller Apply groups and four-bit targets give:
+
+| Callback targets | Parent median s | Current median s | Speed ratio | Current peak RSS KiB |
+|---|---:|---:|---:|---:|
+| 64 | 0.2754 | 0.1659 | 1.66x | 76236 |
+| 256 | 2.0898 | 0.5743 | 3.64x | 81688 |
+| 1024 | 26.2120 | 2.6123 | 10.03x | 106920 |
+
+The1024-target case meets the<=10s,>=2x parent speed and256MiB budget. The report
+contains60 processes: parent/current plain, unused-declaration and callback source
+controls plus current flat/generated callback replay. Every pattern matches its
+parent control exactly. A20-process alternating256-target follow-up also retains
+exact hashes; plain medians are0.0598/0.0701s and unused-declaration medians
+0.0381/0.0354s (parent/current). These small control timings vary, so the speed
+claim applies to the measured callback workload above.
+
+The maintained driver reuses the existing callback input builder and records
+mode-specific requested bits, actual emitted Apply/write counts, environment,
+commands and input/output/executable hashes. Run from the repository root:
+
+~~~sh
+python3 tests/src/pattern/benchmark_primary_callback_state.py \
+  --binary build/icl-pattern-generation --parent /path/to/parent/icl-pattern-generation \
+  --output build/primary-callback-state-scale --repeats 3
+~~~
+
+The original wide-alias memory budget and guide example also pass. Nine compatibility methods plus a benchmark-repeatability regression
+ cover fresh postconditions, known/unknown held data,
+aliases, logic/mux/one-hot consumers, reset relationships, ordinary ownership,
+end-state requirements and nested/flat identities. A native scheduler test checks
+complete concrete state, copy independence, fresh assumptions, reset behavior,
+preserved masks and actual observations.
+
+This increment does not optimize referenced/aliased/resettable storage or add
+automatic callbacks, new scheduling topologies or a hardware transport. Other
+solver/network validation costs remain. Broad item10 and the other pending
+inventory requirements stay open.
+
+The fresh independent review found no scheduler correctness blocker and verified
+30 additional multi-route parent/current cases. Its one Important finding was
+a benchmark false-green on stale output. A regression first proved that a
+successful no-output candidate could reuse old artifacts; the single fix pass
+gives every measured process a fresh retained output/debug directory and requires
+fresh pattern and flat model files. The corrected60-process run passes with the
+same qualified executable. Original valid measurements remain in scale/; final
+fresh-directory measurements and exact commands are in scale-final/results.json.
+
+All46 qualification gates pass:14 native/14 leak-enabled ASan/UBSan native suites,
+64 suites/1058 tests per generator,13 affected sanitizer CLI modules, six changed
+C++ format/tidy/strict C++17 checks and source-distribution packaging. Hash checks
+verify4016 source inputs and31 products, including the benchmark executable.
+The new10-method primary-state module, including stale-output rejection, passes
+on dynamic/static and sanitizer generators. Guide source/flat/generated replay,
+six wide-alias budget processes and20 alternating control processes also pass.
+
+One review Minor remains deferred: the ownership negative test checks failure and
+preserved output, but could also pass on a future parser/setup failure; the
+reviewer confirmed its current intended diagnostic is reserved storage =0011.
+Full-suite execution is author-run evidence; performance outside this workload
+retains its separate acceptance criteria. Qualification, review dispositions and
+hash receipts are under build/primary-callback-state-20261123/final/.

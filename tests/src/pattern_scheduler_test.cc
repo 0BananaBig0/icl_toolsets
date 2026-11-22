@@ -24,6 +24,56 @@ namespace {
 void Require(bool condition, const char* message) {
   if (!condition) throw std::runtime_error(message);
 }
+void TestPrimaryCallbackStateSnapshots() {
+  std::string source = R"(
+Module Top {
+ DataInPort p[3:0];
+ DataRegister unused[3:0] {WriteCallBack Top store <D> <R>;}
+ DataRegister retained[3:0] {WriteCallBack Top store <D> <R>;}
+ DataOutPort q[3:0] {Source retained;}
+)";
+  for (size_t i = 0; i < 128; ++i) {
+    source += "DataRegister spare" + std::to_string(i) +
+              " {WriteCallBack Top store <D> <R>;}\n";
+  }
+  source += "}\n";
+  pattern::Design design;
+  design.AddIcl("callback-state.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto unused = netlist.node_ids.at("unused");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Assume("unused", "1001");
+  scheduler.Assume("retained", "0110");
+  scheduler.Assume("p", "0000");
+  scheduler.Apply({{"iWrite", {"p", "3"}, "test", {}}}, false,
+                  {{unused, "1001"}});
+  Require(scheduler.Value("unused") == "1001" &&
+              scheduler.Value("retained") == "0110",
+          "primary event preserves unused and referenced callback storage");
+  pattern::ScanScheduler copied(scheduler);
+  scheduler.Assume("unused", "0010");
+  copied.Assume("unused", "0100");
+  scheduler.Apply({{"iWrite", {"p", "7"}, "test", {}}}, false,
+                  {{unused, "0010"}});
+  copied.Apply({{"iWrite", {"p", "5"}, "test", {}}}, false, {{unused, "0100"}});
+  Require(
+      scheduler.Value("unused") == "0010" && copied.Value("unused") == "0100",
+      "copied candidate IDs retain independent fresh assumed values");
+  std::string observed;
+  scheduler.Apply({{"iRead", {"q", "0"}, "test", {}}}, false,
+                  {{unused, "0010"}}, true, false,
+                  [&](const auto&, const auto& bits) { observed = bits; });
+  Require(observed == "0110", "referenced callback state supplies actual data");
+  scheduler.Reset();
+  Require(
+      scheduler.Value("unused") == "0010" && copied.Value("unused") == "0100",
+      "reset retains unreset callback storage without mutating a copy");
+  scheduler.Assume("retained", "xxxx");
+  scheduler.Apply({{"iRead", {"q", "0"}, "test", {}}}, false,
+                  {{unused, "0010"}}, true, false,
+                  [&](const auto&, const auto& bits) { observed = bits; });
+  Require(observed == "xxxx", "unknown callback state stays unknown");
+}
 void TestPrimaryDataEvents() {
   for (bool connected : {false, true}) {
     for (bool cascade : {false, true}) {
@@ -6780,6 +6830,10 @@ void TestGroupedScanEndpoints() {
 int main(int argc, char* argv[]) {
   try {
     if (argc != 1) {
+      if (argc == 2 && std::string(argv[1]) == "--primary-callback-state") {
+        TestPrimaryCallbackStateSnapshots();
+        return 0;
+      }
       if (argc == 2 && std::string(argv[1]) == "--primary-data-events") {
         TestPrimaryDataEvents();
         return 0;
@@ -6815,7 +6869,8 @@ int main(int argc, char* argv[]) {
         return 0;
       }
       Require(argc == 2 && std::string(argv[1]) == "--primary-limits",
-              "expected --primary-limits, --reset-backend, --clock-snapshots, "
+              "expected --primary-limits, --primary-callback-state, "
+              "--reset-backend, --clock-snapshots, "
               "--raw-reservations or no test arguments");
       TestGroupedPrimaryScale();
       TestPrimaryLimits();
@@ -6826,6 +6881,7 @@ int main(int argc, char* argv[]) {
     TestRawTapUnknownInput();
     TestRawTapUnknownStableRollback();
     TestPrimaryDataEvents();
+    TestPrimaryCallbackStateSnapshots();
     TestAutomaticChildRawPreparation();
     TestRawTapMultipleDrScans();
     TestRawTapBuiltinDrScans();

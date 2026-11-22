@@ -446,6 +446,9 @@ requests. Callback-only groups support masks, aliases, instance namespaces and
 source-preserving local-reset releases. Automatic downstream callbacks, mixed
 caller groups, callback histories and physical callback output remain open.
 See the [callback example and limits](docs/pattern-generation.md#task153-explicit-dataregister-callback-execution).
+For callback-heavy models with unused storage, the measured1,024-target
+primary-scheduling case improves from26.21s to2.61s with matching output;
+see the [workload and limits](docs/pattern-generation.md#task154-primary-solver-state-in-callback-heavy-models).
 
 Scalar `OneHotScanGroup` returns also work on standalone and single-TAP scan
 networks, including nested groups and inverted returns. Scheduling requires one
