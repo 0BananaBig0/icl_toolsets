@@ -477,8 +477,9 @@ class Runtime::Impl {
     const size_t begin = pending_operation_;
     const auto first = operations_.begin() + begin;
     if (std::none_of(first, operations_.end(),
-                     [](const auto& op) { return op.callback; }))
+                     [](const auto& op) { return op.callback; })) {
       return false;
+    }
     if (ValidatePdlApplyOptions(apply.arguments)) {
       throw std::runtime_error(
           "callback groups do not support iApply -together");
@@ -1381,8 +1382,9 @@ class Runtime::Impl {
           });
       if (operation.callback) {
         ValidatePdlAccessTarget(*netlist_, target, read);
-        if (!history_context_)
+        if (!history_context_) {
           history_context_ = std::make_unique<z3::context>();
+        }
         const auto bits = operation.arguments.size() > 1
                               ? PdlDataValue(*history_context_, *netlist_,
                                              target, operation.arguments[1])

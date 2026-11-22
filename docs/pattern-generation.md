@@ -7506,6 +7506,10 @@ no speedup or global-optimality claim. Coverage item1 remains excluded.
 
 ## Task145: typed DataRegister callback declarations
 
+Historical declaration checkpoint. [Task153](#task153-explicit-dataregister-callback-execution)
+adds explicit callback-only execution; the invocation restrictions below describe
+Task145's earlier implementation.
+
 ReadCallBack and WriteCallBack declarations now retain resolved namespace and
 procedure names, with distinct data/register placeholders and literal arguments.
 Each declaration resolves parameters in its own elaborated instance. Numbers use
@@ -8323,3 +8327,96 @@ Task152 is integrated into master. Seven integration checks pass against all
 qualification manifest remains verified. The merged task branch is deleted,
 and all117 stashes are preserved. Integration receipts are under
 build/modeled-raw-readback-20261122/merged/.
+
+## Task153: explicit DataRegister callback execution
+
+Explicit direct or aliased DataRegister accesses with a matching ReadCallBack or
+WriteCallBack now invoke their prewritten PDL procedure at iApply. The procedure
+queues and applies real endpoint operations through the existing runtime. It may
+use ordinary endpoint calls, merges, reservations and timing commands within
+their existing supported limits. A pending body tail is applied before return.
+
+For example, save this model as example.icl:
+
+~~~icl
+Module Example {
+  DataInPort p[3:0];
+  DataOutPort q[3:0] {Source p;}
+  DataRegister value[3:0] {WriteCallBack Example store <D> <R>;}
+  DataRegister observed[3:0] {
+    ReadCallBack Example load <D> <R>;
+    ReadDataSource p;
+  }
+}
+~~~
+
+Save these procedures and requests as example.pdl:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Example
+iProc store {data reg} {iWrite p $data}
+iProc load {data reg} {iRead q $data}
+iWrite value 9; iApply
+iRead observed 9; iApply
+~~~
+
+Run from the repository root after building the generator:
+
+~~~sh
+build/icl-pattern-generation --icl example.icl --pdl example.pdl \
+  --top_module Example --output out/example.pdl --debug
+~~~
+
+The output drives p to 0b1001, applies it, records the declared logical
+postcondition with iState value 0b1001, then compares q against 0b1001.
+The postcondition is an assumption about callback-controlled storage outside ICL
+connectivity. It does not prove that a user-written procedure implements its
+declared protocol. Read expectations never become actual observations; callback
+readback histories remain unsupported.
+
+<D> receives a full declaration-order binary mask, with x for unrequested bits.
+Repeated requests coalesce once per register and read/write mode; latest values
+win by resolved bit identity, including inversion through aliases. An all-x read
+still invokes its procedure. <R> is the register name relative to the actual
+ancestor module instance named by the callback namespace, without indices.
+A namespace may include a PDL subnamespace; module parameters come from that
+ancestor instance. Quoted literal "<D>" and "<R>" remain literal arguments.
+Procedure definitions are looked up at invocation time, so ordered replacement
+and loading between files work.
+
+No procedure runs when a request is queued. iReset cancels the pending requests,
+including ones whose procedure has not been loaded. Every binding is preflighted
+before the first callback in a group. An invocation error preserves completed
+effects but blocks iApply and Finish until iReset discards unfinished endpoint
+requests; retry by requeueing after that reset. Preflight errors can be corrected
+and retried without reset because no procedure has run. Recursive register/mode
+callback cycles reject with their existing output artifacts preserved.
+
+Caller Apply groups must contain only callback requests. Mixed callback/ordinary
+or raw groups, aliases spanning both kinds, -together, and a callback Apply
+inside an active iMerge reject before invocation. Logical callback storage
+cannot be taken or released, including by a whole-instance reservation; ordinary
+endpoint resource checks still apply. Automatic callbacks needed while solving
+downstream access goals remain open.
+
+--model_readback and --physical_pdl reject executed callbacks before artifact
+publication. Reset-canceled requests remain valid in those modes. Native
+applications can supply actual readback providers, but this increment does not
+certify a provider for callback histories or a hardware transport.
+
+--debug preserves callback declarations and original module scopes in flat ICL.
+Generated PDL contains endpoint operations and declared write postconditions.
+--local_reset hoists actual endpoint reset prerequisites before the whole
+original callback request/caller group, preserving procedure bytes, prefixes and
+once-only Tcl arguments. The emitted pattern follows the same verified release
+order as the rewritten source. Source, flat ICL, generated PDL and reset-source
+replay are compared in the focused tests.
+
+The maintained scale driver is tests/src/pattern/benchmark_callback_execution.py.
+It measures 64/256/1024 four-bit targets with four Apply groups, matched
+parent/current callback-free and unused-declaration controls, and flat/generated
+replay. Commands, elapsed time, peak RSS, inputs and output hashes are recorded
+under build/callback-execution-20261123/. Final measurements and qualification
+receipts are added after their checks finish. Existing runtime limits remain
+unchanged; no vendor-equivalence, live-device or timing-signoff claim is made.

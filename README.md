@@ -440,6 +440,13 @@ value before the same scan's Update; a read and write can share that scan.
 Shared-address write banks use address groups to avoid searching write-order
 permutations; already-satisfied values share the required controller update.
 
+Explicit DataRegister ReadCallBack/WriteCallBack requests now execute their
+PDL procedures at iApply, using real endpoint operations. Reset cancels queued
+requests. Callback-only groups support masks, aliases, instance namespaces and
+source-preserving local-reset releases. Automatic downstream callbacks, mixed
+caller groups, callback histories and physical callback output remain open.
+See the [callback example and limits](docs/pattern-generation.md#task153-explicit-dataregister-callback-execution).
+
 Scalar `OneHotScanGroup` returns also work on standalone and single-TAP scan
 networks, including nested groups and inverted returns. Scheduling requires one
 known-enabled contributor and holds the other contributors disabled; inactive
