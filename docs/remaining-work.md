@@ -121,3 +121,14 @@ Important fixes; one Minor remains deferred. Broader11/12 acceptance remains ope
 
 Task156 is merged into master; nine integration checks,4024 input hashes,
 19 copied qualified native products and117 preserved stashes are verified.
+
+## Task157 legacy launch declaration increment
+
+The existing ScanOutPort LaunchEdge Falling compatibility form now survives
+canonical flattening with its original source, Enable, attributes and scope.
+This preserves declarations through the current model; it adds no physical
+launch timing semantics. The maintained default audit moves one identity to
+canonical acceptance (1017 total); four other legacy SIB models reach their
+existing PortGroup boundary (55 explicit unsupported total). The 691 original
+elaboration errors remain visible. Broader 11/12 remains pending.
+Qualification, review and integration are in progress.
