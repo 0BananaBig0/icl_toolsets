@@ -8561,3 +8561,114 @@ snapshots, native readback, dynamic/static primary-state tests, explicit
 callbacks, observation state and the71-method CLI suite. All117 stashes remain.
 Integration receipts are in
 build/primary-callback-state-20261123/merged/receipt.json. Broad item10 remains open.
+
+
+## Task155: modeled parallel raw scans
+
+One explicit root Client ScanInterface can now execute named fixed disjoint
+ScanRegister chains under common direct root controls or their existing
+virtual defaults. Each group emits one iScan per field and one iApply. Names,
+including a chain literally named default, stay independent when requests are
+replaced or spread across PDL files.
+
+Save the following as model.icl:
+
+~~~icl
+Module Chains {
+ ScanInPort si[3:2];
+ ScanRegister a[3:0] {ScanInSource si[3]; CaptureSource a; ResetValue 0;}
+ ScanRegister b[1:0] {ScanInSource si[2]; CaptureSource b; ResetValue 0;}
+ ScanOutPort so[5:4] {Source a[0], b[0];}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanInterface client {
+  Port sel; Port ce; Port se; Port ue; Port ck;
+  Chain first {Port si[3]; Port so[5];}
+  Chain second {Port si[2]; Port so[4];}
+ }
+}
+~~~
+
+Save this as source.pdl:
+
+~~~tcl
+iPDLLevel 1
+iReset
+iScan client -chain first 4 -si 9 -so 15
+iScan client -chain second 2 -si 2 -so 3
+iApply -together
+iNote [iGetReadData client -chain first -dec]
+iNote [iGetReadData client -chain second -dec]
+iNote [iGetStatus -clear]
+iScan client -chain first 4 -si 6 -so 0
+iScan client -chain second 2 -si 1 -so 0
+iApply
+iNote [iGetReadData client -chain first -dec]
+iNote [iGetReadData client -chain second -dec]
+iNote [iGetStatus]
+~~~
+
+Run the modeled endpoint:
+
+~~~sh
+icl-pattern-generation --icl model.icl --pdl source.pdl \
+  --top_module Chains --model_readback --debug --output result.pdl
+~~~
+
+The six numeric notes are 0, 0, 6, 9, 2, 3. The first capture returns the real
+reset values despite the deliberately different expected values15/3. The
+second capture returns the preceding loaded9/2, while the update loads6/1.
+The status counts cared mismatching bits and -clear resets that count.
+These are concrete model observations; this example does not access a device.
+
+Unequal fields share capture, the maximum field length's shift clocks and
+update. Shorter fields have leading zero shift-in clocks and ignored trailing
+shift-out clocks, following the ordinary native lane convention. Actual
+returns are the first field-length samples after capture. Input/output
+inversion, indexed ports, ascending registers, multiple registers per field,
+constant/unknown capture data and static aliases retain their native meaning.
+The implementation uses the existing concrete capture and complete-shift
+engine; it does not allocate a field-count by maximum-length matrix.
+
+When a fixed field is omitted, generated output reuses its current controlling
+fill, clears expected comparisons and marks its static input stable. This
+preserves its storage. Only explicit requests create source raw history or
+claim assigned storage; implicit output commands do not fabricate source
+observations. Raw histories and ordinary register histories remain separate.
+Known explicit assignments refresh the existing held-storage value policy;
+unknown assignments cannot replace protected numeric storage. Existing root
+port side effects and mixed ordinary preparation remain: mixed preparation
+with iApply -together rejects.
+
+All fields validate before a raw group changes state, fill or assigned storage.
+A failed group publishes no observation; a subscriber exception after commit
+retains the completed hardware state. Numeric operands validate even for
+replaced/canceled requests. iReset can cancel a valid queued length before
+replay; an executed field must match its modeled physical length, and actual
+raw replay requires explicit iReset first. Effective aggregate explicit and
+implicit fields are limited to1,048,576 bits before payload completion.
+
+This increment requires every modeled ScanRegister to belong to exactly one
+static field, unique SI/SO endpoints, inactive direct/virtual resets and
+unconditional common controls. It rejects shared or hidden scan storage,
+muxed/gated/dynamic routes, hierarchical/child/TAP clients, event-driven
+DataRegisters and iApplyEndState. Held/event-free data and combinational
+capture sources are supported. Physical raw PDL, modeled merged/timed
+readback and live transport retain their existing guards. Wider item6/8
+topologies and the rest of the unfinished inventory remain pending.
+
+The vector C++ API ApplyRawScans returns canonical scan commands only; its
+caller emits the original Apply. The previous single-result APIs reject named
+parallel requests before execution. Scalar/child/TAP calls delegate to the
+existing scalar implementation.
+
+The dedicated CLI module has14 methods, with native per-clock differential,
+rollback, copy, implicit-fill, ownership and postcommit callback checks.
+Ninety fresh measured processes cover8/32/64 chains at32/512/4096 bits and a
+skewed262,144-bit field with63 short fields, each in source/flat/generated
+forms with scalar and opaque controls. The prior binary rejects modeled
+parallel raw, and is recorded as a negative control. Commands, input/product
+hashes, time and RSS live under build/modeled-parallel-raw-20261123/scale.
+The driver enforces45s/process and512MiB for these representative cases.
+
+Full qualification and independent review are in progress; these focused and
+scale results do not yet establish final integration acceptance.

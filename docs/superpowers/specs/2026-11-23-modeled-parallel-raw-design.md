@@ -153,3 +153,5 @@ and broader pending capabilities retain their current acceptance.
 
 Builder check: fresh read-only /root/modeled_parallel_raw_builder_check reports
 nothing important left. Inline execution and user-delegated choices continue.
+
+Execution checkpoint: native and14-method CLI compatibility gates pass;90 fresh scale/control processes and the runnable example pass exact replay. Final full qualification/review is pending; no broad inventory closure is claimed.

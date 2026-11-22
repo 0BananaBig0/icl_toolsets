@@ -4503,3 +4503,23 @@ and57 matched scale processes. Both Important review findings pass test-first
 fixes and the full post-fix suite. Two current Minor findings and the prior
 Task151 numeric-prose Minor remain deferred; no rereview. See the guide for
 their exact limits and the existing physical raw-PDL rejection ruling.
+
+
+## Task155: fixed modeled parallel raw observations
+
+One explicit root client now replays disjoint named static ScanRegister
+fields with common controls, including unequal lengths, vector/inverted
+paths, constant/unknown captures and current-fill completion. Actual source
+histories belong only to explicit fields. Numeric held-storage assignments,
+rollback and postcommit publication follow the native scalar contracts.
+The old single-result API rejects parallel; the vector API returns all fields.
+
+Fourteen CLI methods and native per-clock reference cases pass, along with
+the focused dynamic/static compatibility run. Ninety fresh scale/control
+processes pass exact replay and the representative45s/512MiB bounds.
+Full regression, independent review and integration are still in progress.
+
+See [the runnable guide](pattern-generation.md#task155-modeled-parallel-raw-scans).
+Hierarchical/dynamic/shared/hidden/gated routes, multiple TAPs, opaque children,
+raw merge, timed histories, transport and the other pending inventory remain
+outside this increment. Coverage item1 remains excluded.

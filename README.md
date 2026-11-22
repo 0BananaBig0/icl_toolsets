@@ -579,6 +579,10 @@ See the [generator guide](docs/pattern-generation.md) for commands, limits,
 round-trip checks and validation evidence. The four editor tools remain
 independent of PDL execution and pattern generation.
 
+Fixed disjoint modeled root parallel raw chains now retain actual per-chain
+readback under one common capture/shift/update group. See the
+[parallel raw example and limits](docs/pattern-generation.md#task155-modeled-parallel-raw-scans).
+
 ## Documentation and license
 
 The [documentation index](docs/README.md) links user guides, architecture,
