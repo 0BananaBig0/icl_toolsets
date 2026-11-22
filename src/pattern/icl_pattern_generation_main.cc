@@ -501,10 +501,7 @@ std::string Generate(
         covered = end;
       }
       if (rewritten) rewritten->push_back(operation);
-      if (operation.callback) {
-        if (rewritten) rewritten->push_back(operation);
-        continue;
-      }
+      if (operation.callback) continue;
       if (operation.command == "iWrite" || operation.command == "iRead") {
         // Reset may discard this queue, but malformed operands still fail.
         const auto target =
@@ -1028,6 +1025,10 @@ int main(int argc, char** argv) {
         }
         rewritten_source += state.cleanup;
         verify_source(rewritten_source, expected, state.verify);
+        if (runtime.CallbacksExecuted()) {
+          pdl =
+              GenerateMerged(network.netlist, expected, options.model_readback);
+        }
         return rewritten_source;
       };
       try {

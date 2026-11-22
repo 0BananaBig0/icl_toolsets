@@ -155,9 +155,20 @@ class Runtime::Impl {
   const std::vector<std::string>& warnings() const { return warnings_; }
   int Level() const { return level_; }
   std::vector<SourceAction> SourceActions(bool whole_commands) const {
-    if (!whole_commands) return actions_;
+    auto actions = actions_;
+    for (const auto& [marker, end] : callback_action_ends_) {
+      auto owner =
+          std::upper_bound(actions.begin(), actions.end(), marker,
+                           [](size_t index, const SourceAction& action) {
+                             return index < action.begin;
+                           });
+      if (owner == actions.begin()) continue;
+      --owner;
+      if (owner->end > marker) owner->end = std::max(owner->end, end);
+    }
+    if (!whole_commands) return actions;
     std::map<size_t, SourceAction> starts;
-    for (const auto& action : actions_) {
+    for (const auto& action : actions) {
       if (action.end > action.begin) starts.emplace(action.begin, action);
     }
     for (auto action : compounds_) {
@@ -613,12 +624,18 @@ class Runtime::Impl {
       callback_failed_ = true;
       pending_ = true;
       pending_operation_ = begin;
-      for (size_t anchor : anchors)
-        callback_action_ends_[anchor] = operations_.size();
+      if (trace_source_) {
+        for (size_t anchor : anchors) {
+          callback_action_ends_[anchor] = operations_.size();
+        }
+      }
       throw;
     }
-    for (size_t anchor : anchors)
-      callback_action_ends_[anchor] = operations_.size() + 1;
+    if (trace_source_) {
+      for (size_t anchor : anchors) {
+        callback_action_ends_[anchor] = operations_.size() + 1;
+      }
+    }
     pending_ = false;
     return true;
   }

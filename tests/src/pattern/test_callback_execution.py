@@ -25,6 +25,34 @@ iProc load {data reg} {
 """
 
 
+RESET_MODEL = """Module Leaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister wire[3:0] {ScanInSource si; CaptureSource wire; ResetValue 0;}
+ ScanOutPort so {Source wire[0];}
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+}
+Module Chains {
+ ScanInPort si; ScanOutPort so {Source child.so;}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck;
+ DataInPort p; ResetPort global;
+ ScanRegister rst {ScanInSource si; CaptureSource rst; ResetValue 1;}
+ DataMux reset_gate SelectedBy rst {1'b0: global; 1'b1: 1'b1;}
+ Instance child Of Leaf {InputPort si = rst; InputPort sel = sel;
+  InputPort ce = ce; InputPort se = se; InputPort ue = ue;
+  InputPort tck = tck; InputPort reset = reset_gate;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port global;}
+}
+"""
+STORE_DEF = """iProc store {data reg} {
+ iWrite p 1; iApply
+ iWrite child.wire $data
+}
+"""
+REQUEST_DEF = "iProc request {data} {iWrite child.value $data}\n"
+RESET_PROCS = "iPDLLevel 1\niProcsForModule Chains\n" + STORE_DEF + REQUEST_DEF
+
+
 class CallbackExecution(unittest.TestCase):
     setUp = cli.SimultaneousChains.setUp
     run_tool = cli.SimultaneousChains.run_tool
@@ -32,6 +60,42 @@ class CallbackExecution(unittest.TestCase):
 
     def notes(self, output):
         return [line[6:] for line in output.splitlines() if line.startswith(b"iNote ")]
+
+    def reset_replay(self, body, source=RESET_MODEL, second=""):
+        import subprocess
+        icl, pdl = self.root / "source.icl", self.root / "source.pdl"
+        icl.write_text(source)
+        pdl.write_text(RESET_PROCS + body)
+        inputs = [pdl]
+        if second:
+            other = self.root / "second.pdl"
+            other.write_text(second)
+            inputs.append(other)
+
+        def lower(model, output, rewritten):
+            command = [str(cli.BIN), "--icl", str(model), "--top_module", "Chains",
+                       "--output", str(self.root / output), "--debug",
+                       "--local_reset", str(self.root / rewritten)]
+            for path in inputs:
+                command += ["--pdl", str(path)]
+            result = subprocess.run(command, text=True, capture_output=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return (self.root / output).read_bytes()
+
+        output = lower(icl, "result.pdl", "reset.pdl")
+        rewritten = (self.root / "reset.pdl").read_text()
+        self.assertIn(STORE_DEF, rewritten)
+        self.assertIn(REQUEST_DEF, rewritten)
+        self.assertEqual(output, lower(self.root / "debug/Chains.icl",
+                                       "flat/result.pdl", "flat/reset.pdl"))
+        self.assertEqual(output, self.run_tool(
+            icl, self.root / "result.pdl", "generated/result.pdl"))
+        self.assertEqual(output, self.run_tool(
+            icl, self.root / "reset.pdl", "rewritten/result.pdl"))
+        self.assertEqual(output, self.run_tool(
+            self.root / "debug/Chains.icl", self.root / "reset.pdl",
+            "flat-rewritten/result.pdl"))
+        return output, rewritten
 
     def rejected(self, body, diagnostic, source=MODEL):
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
@@ -333,6 +397,68 @@ iApply; iNote $calls
 """
         output = self.replay(source, body)
         self.assertEqual(self.notes(output), [b"2"])
+
+    def test_reset_release_spans_multiple_callback_applies(self):
+        output, _ = self.reset_replay("iReset; iWrite child.value 9; iApply")
+        self.assertIn(b"iWrite rst 0b0", output)
+        self.assertIn(b"iWrite child.wire 0b1001", output)
+
+    def test_returned_call_anchor_covers_callback_expansion(self):
+        output, _ = self.reset_replay("iReset; iCall request 9; iApply")
+        self.assertIn(b"iState child.value 0b1001", output)
+
+    def test_prefixed_callback_reset_rewrite(self):
+        output, _ = self.reset_replay(
+            "iReset; iPrefix child; iWrite value 9; iApply; iPrefix -")
+        self.assertIn(b"iWrite rst 0b0", output)
+
+    def test_repeated_callback_reset_site_and_once_only_arguments(self):
+        output, rewritten = self.reset_replay("""iReset
+set calls 0
+proc word {} {global calls; incr calls; return 9}
+foreach unused {a b} {iCall request [word]; iApply}
+if {$calls != 2} {error {callback arguments reevaluated}}
+""")
+        self.assertEqual(output.count(b"iState child.value 0b1001"), 2)
+        self.assertIn("proc word", rewritten)
+
+    def test_split_file_callback_reset_queue(self):
+        output, _ = self.reset_replay("iReset; iCall request 9", second="iApply")
+        self.assertIn(b"iWrite child.wire 0b1001", output)
+
+    def test_reset_cancels_callback_before_endpoint_release(self):
+        output, _ = self.reset_replay(
+            "iReset; iCall request 9; iReset; iWrite child.wire 6; iApply")
+        self.assertNotIn(b"iWrite p", output)
+        self.assertNotIn(b"iState child.value", output)
+        self.assertIn(b"iWrite child.wire 0b0110", output)
+
+    def test_caught_callback_failure_reset_replay(self):
+        output, rewritten = self.reset_replay("""iProc store {data reg} {
+ iWrite p 1; iApply
+ iWrite child.wire $data
+ if {$data eq "0b1001"} {error broken}
+}
+iReset; iCall request 9
+if {![catch {iApply}]} {error {callback did not fail}}
+iReset; iCall request 6; iApply
+""")
+        self.assertNotIn(b"iWrite child.wire 0b1001", output)
+        self.assertIn(b"iWrite child.wire 0b0110", output)
+        self.assertIn("if {$data eq", rewritten)
+
+    def test_read_callback_reset_replay(self):
+        source = RESET_MODEL.replace(
+            "WriteCallBack Chains store <D> <R>;",
+            "ReadCallBack Chains load <D> <R>; ReadDataSource wire;")
+        output, _ = self.reset_replay("""iProc load {data reg} {
+ iWrite p 1; iApply
+ iRead child.wire $data
+}
+iReset; iRead child.value 9; iApply
+""", source=source)
+        self.assertIn(b"iRead child.wire 0b1001", output)
+        self.assertNotIn(b"iState child.value", output)
 
     def test_wrong_ancestor_namespace_rejects(self):
         self.rejected("iWrite value 9; iApply", "callback namespace",

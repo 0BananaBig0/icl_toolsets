@@ -196,6 +196,29 @@ if {![catch {iGetReadData observed[1:0]}]} {
 )");
   runtime.Finish();
 }
+void TestCallbackActionSpan() {
+  pattern::Design design;
+  design.AddIcl("callback-span.icl", kCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist, true);
+  runtime.Execute("span.pdl", R"(
+iProcsForModule Top -iProcNameSpace api
+iProc store {data reg literal number} {iNote setup; iApply; iWrite p $data}
+iProc request {data} {iWrite first.value $data}
+iCall api::request 9
+iApply
+)");
+  runtime.Finish();
+  for (bool whole : {false, true}) {
+    const auto actions = runtime.SourceActions(whole);
+    Require(
+        actions.size() == 1 && actions[0].begin == 0 &&
+            actions[0].end == runtime.operations().size() &&
+            actions[0].arguments ==
+                std::vector<std::string>{"api::request", "9"},
+        "callback source anchor spans every endpoint Apply and outer Apply");
+  }
+}
 void CheckInvalidRawProviderMode(bool mixed) {
   const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_ir/";
   const auto read = [&](const std::string& name) {
@@ -1195,6 +1218,7 @@ int main() {
                           TestCaughtCallbackReturnsToCaller,
                           TestCallbackCycles,
                           TestCallbackPartialHistory,
+                          TestCallbackActionSpan,
                           TestRawProviderRejectsRegularIr,
                           TestRawProviderRejectsMixedModes,
                           TestRawReadbackProvider,
