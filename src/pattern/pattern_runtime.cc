@@ -600,8 +600,7 @@ class Runtime::Impl {
                                            'x'))
                       .first;
         }
-        entry->second.at(HistoryOffset({update.node, update.index, false})) =
-            value;
+        entry->second.at(HistoryOffset({update.node, update.index})) = value;
       };
       merge(read_history_, update.read);
       merge(miscompare_history_, update.miscompare);

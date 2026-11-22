@@ -65,7 +65,7 @@ class QueuedAccesses {
       const auto [node, index, read] = key;
       if (!read) continue;
       const auto& last = references.back();
-      result.first.push_back({node, index, false});
+      result.first.push_back({node, index});
       result.second +=
           Invert(values_[last.operation][last.offset], last.inverted);
     }

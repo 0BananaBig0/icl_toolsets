@@ -1,5 +1,7 @@
 // Copyright 2026 The ICL Toolsets Authors.
 // SPDX-License-Identifier: MIT
+#include "pattern/pattern_readback.h"
+
 #include <iostream>
 #include <map>
 #include <stdexcept>
@@ -60,10 +62,49 @@ Module Top {
   queue.Clear();
   Require(queue.ReadModel().first.empty(), "clear discards read model");
 }
+void TestModeledReadback() {
+  pattern::Design design;
+  design.AddIcl("model.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iState", {"p", "15"}, "test", {}},
+      {"iRead", {"q", "0"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  const auto* update = readback(operations, false);
+  Require(
+      update && update->bits.size() == 4 && update->failures == 4,
+      "actual observation counts four failures, independent of expected zero");
+  for (const auto& bit : update->bits) {
+    Require(bit.read == '1' && bit.miscompare == '1',
+            "actual one differs from expected zero");
+  }
+  update = readback(operations, true);
+  Require(update && update->bits.empty() && update->failures == 4,
+          "repeated query delivers no stale delta and clears old count");
+  update = readback(operations, false);
+  Require(update && update->bits.empty() && update->failures == 0,
+          "clear takes effect on the next query");
+  for (const std::string command : {"iScan", "iMerge", "iClock"}) {
+    const auto unsupported = pattern::MakeModeledReadback(netlist);
+    bool rejected = false;
+    try {
+      unsupported({{command, {}, "unsupported", {}}}, false);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find(command + " histories") !=
+                 std::string::npos;
+    }
+    Require(rejected, "unsupported histories cannot produce observations");
+  }
+}
 }  // namespace
 int main() {
   try {
     TestReadModel();
+    TestModeledReadback();
     std::cout << "readback tests passed\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';

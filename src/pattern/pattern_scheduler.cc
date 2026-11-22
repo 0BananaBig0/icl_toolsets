@@ -6866,7 +6866,8 @@ Operation ScanScheduler::ApplyScans(
   if (preparations) preparations->clear();
   return result;
 }
-std::string ScanScheduler::ReadBits(const std::vector<BitReference>& bits) const {
+std::string ScanScheduler::ReadBits(
+    const std::vector<BitReference>& bits) const {
   return impl_->ReadBits(bits);
 }
 

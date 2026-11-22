@@ -22,6 +22,7 @@
 #include "pattern/pattern_flatten.h"
 #include "pattern/pattern_merge.h"
 #include "pattern/pattern_opaque.h"
+#include "pattern/pattern_readback.h"
 #include "pattern/pattern_resources.h"
 #include "pattern/pattern_runtime.h"
 #include "pattern/pattern_scheduler.h"
@@ -37,12 +38,16 @@ struct Options {
   std::vector<std::string> icl, pdl;
   std::vector<std::pair<std::string, std::string>> bsdl;
   std::string top, output, log, local_reset;
-  bool debug = false, physical = false;
+  bool debug = false, physical = false, model_readback = false;
 };
 Options Parse(int argc, char** argv) {
   Options result;
   for (int i = 1; i < argc; ++i) {
     const std::string option = argv[i];
+    if (option == "--model_readback") {
+      result.model_readback = true;
+      continue;
+    }
     if (option == "--physical_pdl") {
       result.physical = true;
       continue;
@@ -774,6 +779,8 @@ int main(int argc, char** argv) {
            "CSU\n"
            "                       per iApply; use again when replaying "
            "output\n"
+           "  --model_readback     Model combinational PIO readback (no live "
+           "device)\n"
            "  --debug              Also write debug/<top>.icl beside output\n"
            "  --log PATH           Copy diagnostics to a file\n"
            "  --local_reset PATH   Insert reset releases into the main "
@@ -831,9 +838,14 @@ int main(int argc, char** argv) {
     CheckPaths(inputs, {output, debug, options.log, options.local_reset});
     log_path = options.log;
     const auto network = pattern::ElaborateTapNetwork(design, top);
+    if (options.model_readback) {
+      messages += std::string(pattern::kModeledReadbackNote) + "\n";
+    }
     if (!options.local_reset.empty()) ValidateResetSources(network.netlist);
-    pattern::Runtime runtime(design, network.netlist,
-                             !options.local_reset.empty());
+    pattern::Runtime runtime(
+        design, network.netlist, !options.local_reset.empty(),
+        options.model_readback ? pattern::MakeModeledReadback(network.netlist)
+                               : pattern::Runtime::Readback{});
     std::vector<std::string> sources;
     std::string local_reset;
     for (const auto& path : options.pdl) {
@@ -842,17 +854,46 @@ int main(int argc, char** argv) {
       if (!options.local_reset.empty()) sources.push_back(source);
     }
     runtime.Finish();
-    const auto pdl =
+    auto modeled_operations = std::vector<pattern::Operation>{};
+    const auto* output_operations = &runtime.operations();
+    if (options.model_readback) {
+      modeled_operations = runtime.operations();
+      modeled_operations.erase(
+          std::remove_if(modeled_operations.begin(), modeled_operations.end(),
+                         [](const auto& operation) {
+                           return operation.command == "iNote" &&
+                                  operation.arguments ==
+                                      std::vector<std::string>{
+                                          pattern::kModeledReadbackNote};
+                         }),
+          modeled_operations.end());
+      output_operations = &modeled_operations;
+    }
+    auto pdl =
         options.physical
-            ? Generate(network.netlist, runtime.operations(), nullptr, nullptr,
+            ? Generate(network.netlist, *output_operations, nullptr, nullptr,
                        nullptr, nullptr, nullptr, true, nullptr, nullptr, true)
-            : GenerateMerged(network.netlist, runtime.operations());
+            : GenerateMerged(network.netlist, *output_operations);
+    if (options.model_readback) {
+      const auto header =
+          "iPDLLevel 0\n" +
+          Command({"iProcsForModule", network.netlist.top_module});
+      if (pdl.compare(0, header.size(), header) != 0) {
+        throw std::runtime_error("missing generated PDL header");
+      }
+      pdl.insert(header.size(),
+                 Command({"iNote", pattern::kModeledReadbackNote}));
+    }
     if (!options.local_reset.empty()) {
       const auto verify_source =
           [&](const std::string& source,
               const std::vector<pattern::Operation>& expected,
               const std::string& completion) {
-            pattern::Runtime verified(design, network.netlist);
+            pattern::Runtime verified(
+                design, network.netlist, false,
+                options.model_readback
+                    ? pattern::MakeModeledReadback(network.netlist)
+                    : pattern::Runtime::Readback{});
             verified.Execute(options.local_reset, source);
             if (verified.Level() != runtime.Level()) {
               throw std::runtime_error(
