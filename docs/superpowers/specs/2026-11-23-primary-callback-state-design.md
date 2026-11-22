@@ -101,3 +101,6 @@ regressions, affected sanitizer CLI checks, format/tidy/strict C++17, packaging,
 hash and matched scale checks. Preserve partial evidence separately.
 Merge/push into direct parentmaster, remove this completed branch and archive
 only this plan's ledger; preserve117 stashes and unrelated worktrees/ledgers.
+
+Builder check: fresh read-only /root/primary_callback_state_builder_check reports
+nothing important left. Inline implementation and user-delegated choices continue.
