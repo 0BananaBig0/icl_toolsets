@@ -61,7 +61,7 @@ new tests/src/pattern/test_modeled_readback.py.
       execute guide example; distinguish author walkthrough and code review.
 - [x] Complete ledger, one fresh independent final review on most capable model;
       regrade actual effects and declined items; one verified fix pass, no rereview.
-- [ ] Merge direct parent master, verify qualified root hashes/focused checks,
+- [x] Merge direct parent master, verify qualified root hashes/focused checks,
       push/confirm origin, detach reused worktree/delete only completed branch.
       Archive only this ledger; preserve117 stashes and sibling workspaces.
       Coverage item1 remains excluded; continue other open inventory items.
@@ -76,3 +76,7 @@ and compares actual reads independently of expected data. No rereview is used.
 Require35 fresh qualification steps,57x930 per variant,30 quality gates and108
 fresh scale processes on final code. Pre-review partial/scale receipts remain
 archived separately; no full pre-review qualification pass is claimed.
+
+Integrated as7b3149252b5a158403b238a1735cf79428498b73; origin confirmed,
+six merged checks pass,16 normal products and4005 source inputs hash verified.
+Completed task branch deleted;117 stashes and sibling workspaces preserved.
