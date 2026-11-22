@@ -8825,8 +8825,8 @@ qualified512MiB configuration. Releasing the original Netlist early had no
 measured peak benefit, so that trial was removed.
 
 Three fresh normal and three configured leak-sanitizer batch runs pass the
-same10s/512MiB bounds. Normal peak is104404KiB/max1.5248s; sanitizer peak is
-484700KiB/max4.2325s. The input size, all input/registry/helper/report hashes,
+same10s/512MiB bounds. Post-fix normal peak is104436KiB/max0.9734s;
+sanitizer peak is485176KiB/max4.3360s. The input size, all input/registry/helper/report hashes,
 commands, runtime flags and platform/compiler versions are recorded in
 build/model-source-audit-20261123/batch-scale/results.json. These measurements
 qualify the maintained1334-file/1763-module workload; broader inputs require
@@ -8834,9 +8834,11 @@ their own evidence.
 
 Eight new generator methods, native source/flatten/default checks, eight
 producer and13 protocol methods pass, including direct parent RED
-evidence for12 broken serializations and14 internal enum messages. The
-required full native/dynamic/static/sanitizer/quality/package qualification
-and independent whole-branch review are in progress. Remaining source
+evidence for12 broken serializations and14 internal enum messages. All52 final qualification gates pass:14 native/14 leak-enabled sanitizer
+suites,66x1082 methods per dynamic/static generator,15 C++ quality checks,
+normal/selected-sanitizer corpus and producer/protocol checks, packaging and
+4024 input/36 product hashes. One final independent review found five
+Important issues, all fixed in one test-first pass; one Minor is deferred. Remaining source
 specializations, model semantics, binding/event support and wider vendor
 round-trips still belong to unfinished inventory11/12 and related items.
 
@@ -8848,7 +8850,7 @@ metadata, rejects contradictory success/error records, matches complete
 unsupported diagnostics, selects both test-runner helpers by build variant,
 and checks source file sets/digests plus the helper digest before and after
 execution. A failed or changing run cannot keep a prior success under these
-handled paths. Post-fix full qualification is in progress; no rereview is used.
+handled paths. Post-fix full qualification passes; no rereview is used.
 
 One Minor remains deferred: the standalone native helper checks its output
 stream before its final buffered flush, so a late write failure can still
@@ -8862,4 +8864,14 @@ Post-fix selected-parser producer8/protocol13 and normal corpus/three Make
 lifecycle/selection tests pass. Their exact source/tool/log hashes are retained
 in review-fix/focused-receipt.json so the final executor can replace earlier
 pre-fix gates without pretending they covered the corrected audit. All52 final
-gates and six post-fix corpus performance measurements remain required.
+gates and six post-fix corpus performance measurements now pass.
+
+The preserved callback budget also passes: the1,024-target/four-group source
+median is2.5622s against the original reference's26.2754s,
+within10s. Sixty callback scale/replay and20 alternating controls retain exact
+patterns; six wide-alias runs peak162912KiB, below256MiB.
+Together with six corpus batches these are92 qualified measured processes.
+The unchanged C++ full suites and exact post-fix corpus/protocol/producer gates
+are bound to actual current source/tool/log hashes; earlier gates are retained
+separately. Receipts are in build/model-source-audit-20261123/final.
+Integration and branch cleanup remain pending.

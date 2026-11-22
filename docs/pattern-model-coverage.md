@@ -4547,5 +4547,8 @@ or parameters. Both namespace and ordered replacement behavior are audited.
 Six fresh normal/configured leak-sanitizer batch measurements meet10s/512MiB;
 the documented500ms unused-page release preserves full ASAN quarantines and
 checks. Default sanitizer retention does not meet that memory configuration.
-Full qualification and independent review are running; broader inventory11/12
-and excluded coverage1 remain unchanged. See [the commands and exact limits](pattern-generation.md#task156-default-model-and-source-round-trip-audit).
+All52 final qualification gates pass:14 native/14 sanitizer suites,66x1082
+per generator,15 quality checks, packaging and4024 input/36 product hashes.
+Five Important review issues pass one test-first fix cycle; one Minor remains
+deferred, with no rereview. All92 measured corpus/callback/control/alias
+processes pass. Broader inventory11/12 and excluded coverage1 remain unchanged. See [the commands and exact limits](pattern-generation.md#task156-default-model-and-source-round-trip-audit).
