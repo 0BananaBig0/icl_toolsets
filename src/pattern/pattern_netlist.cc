@@ -1964,9 +1964,13 @@ class Elaborator {
         const auto ref = node.properties.find("RefEnum");
         if (ref != node.properties.end()) {
           const auto& tokens = SourceTokens(netlist_, node.scope);
-          node.enumeration =
-              netlist_.node_ids.at(Path(netlist_.scopes[node.scope].path,
-                                        tokens[ref->second.begin].text));
+          const auto name = Path(netlist_.scopes[node.scope].path,
+                                 tokens[ref->second.begin].text);
+          const auto found = netlist_.node_ids.find(name);
+          if (found == netlist_.node_ids.end()) {
+            throw std::runtime_error("unknown RefEnum " + name);
+          }
+          node.enumeration = found->second;
           if (netlist_.nodes[*node.enumeration].model != ModelKind::kEnum) {
             throw std::runtime_error("RefEnum does not name an Enum");
           }

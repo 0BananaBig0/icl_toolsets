@@ -30,6 +30,53 @@ void Fails(Action action, const std::string& expected) {
   throw std::runtime_error("expected failure: " + expected);
 }
 
+void TestRefEnumSourceDiagnostics() {
+  for (const auto& declaration :
+       {"DataInPort p {RefEnum Missing;}",
+        "DataInPort source; Alias p = source {RefEnum Missing;}",
+        "ScanInPort si; ScanRegister p {ScanInSource si; RefEnum Missing;}",
+        "DataRegister p {RefEnum Missing; ResetValue 0;}",
+        "DataInPort p[3:2] {RefEnum Missing;} DataInPort p[1:0];"}) {
+    pattern::Design design;
+    design.AddIcl("refenum_missing.icl",
+                  "Module Top {\n" + std::string(declaration) + "\n}");
+    bool rejected = false;
+    try {
+      pattern::Elaborate(design, "Top");
+    } catch (const std::runtime_error& error) {
+      const std::string message = error.what();
+      rejected = message.find("refenum_missing.icl:") != std::string::npos &&
+                 message.find(": p") != std::string::npos &&
+                 message.find("RefEnum") != std::string::npos &&
+                 message.find("Missing") != std::string::npos;
+    }
+    Require(rejected, "missing RefEnum reports source, owner and enum name");
+  }
+  pattern::Design design;
+  design.AddIcl("scoped_forward_enum.icl", R"(
+Module Leaf {
+ Parameter initial = 2'b00;
+ ScanInPort si;
+ ScanRegister r[1:0] {
+  ScanInSource si; RefEnum E; ResetValue closed; DefaultLoadValue closed;
+ }
+ Enum E {closed = $initial; open = 2'b11;}
+}
+Module Top {
+ Instance first Of Leaf;
+ Instance second Of Leaf {Parameter initial = 2'b10;}
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  Require(
+      netlist.NodeAt("first.r").constants.at("ResetValue").data == "00" &&
+          netlist.NodeAt("second.r").constants.at("ResetValue").data == "10" &&
+          netlist.NodeAt("first.r").enumeration !=
+              netlist.NodeAt("second.r").enumeration,
+      "forward enums retain specialized scoped identities and symbolic "
+      "defaults");
+}
+
 void TestClockSignalSources() {
   for (const std::string binding : {"~root", "1'b0", "1'b1", "1'bx"}) {
     pattern::Design design;
@@ -4257,7 +4304,8 @@ void TestGroupedGeneratedTapPins() {
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestGroupedGeneratedTapPins,
+  for (const auto test : {TestRefEnumSourceDiagnostics,
+                          TestGroupedGeneratedTapPins,
                           TestSegmentedPortBindingBoundaries,
                           TestSegmentedPortBindings,
                           TestSegmentedPortBindingErrors,

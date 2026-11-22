@@ -17,6 +17,64 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestEmptyControlOutputs() {
+  for (const std::string kind :
+       {"ToSelectPort", "ToCaptureEnPort", "ToShiftEnPort", "ToUpdateEnPort",
+        "ToTCKPort", "ToResetPort", "ToIRSelectPort", "ToClockPort"}) {
+    for (bool child : {false, true}) {
+      const std::string body =
+          "TCKPort tck; TMSPort tms; ClockPort clock; ScanInPort si; " + kind +
+          " out;";
+      pattern::Design design;
+      design.AddIcl(
+          "empty_control.icl",
+          child ? "Module Leaf {" + body +
+                      "} Module Top {TCKPort tck; TMSPort tms; ClockPort clock;"
+                      "Instance leaf Of Leaf {InputPort tck = tck; "
+                      "InputPort tms = tms; InputPort clock = clock;}}"
+                : "Module Top {" + body + "}");
+      const auto original = pattern::Elaborate(design, "Top");
+      const auto text = pattern::SerializeIcl(original);
+      pattern::Design flat;
+      flat.AddIcl("empty_control.flat.icl", text);
+      const auto restored = pattern::Elaborate(flat, "Top");
+      Require(pattern::SerializeIcl(restored) == text,
+              kind + " default is canonical after root/child flattening");
+      const auto name = child ? "leaf.out" : "out";
+      const auto& before = original.NodeAt(name);
+      const auto& after = restored.NodeAt(name);
+      Require(
+          before.kind == after.kind && original.scopes[before.scope].path ==
+                                           restored.scopes[after.scope].path,
+          "restored control defaults retain their original scope and kind");
+      if (!child) {
+        Require(text.find("\n  ScanInPort n7369 {\n  }\n") != std::string::npos,
+                "unrelated empty input port retains its existing spelling");
+      }
+    }
+  }
+  for (const auto& property : {"Attribute marker;", "Source sel;"}) {
+    pattern::Design design;
+    design.AddIcl("nonempty_control.icl",
+                  "Module Top {SelectPort sel; ToSelectPort out {" +
+                      std::string(property) + "}}");
+    const auto original = pattern::Elaborate(design, "Top");
+    const auto text = pattern::SerializeIcl(original);
+    pattern::Design flat;
+    flat.AddIcl("nonempty_control.flat.icl", text);
+    const auto restored = pattern::Elaborate(flat, "Top");
+    Require(pattern::SerializeIcl(restored) == text,
+            "nonempty control output bodies survive canonical replay");
+    if (std::string(property).find("Attribute") == 0) {
+      Require(restored.NodeAt("out").attributes.count("marker") == 1,
+              "empty-body fix retains control output attributes");
+    } else {
+      Require(!restored.NodeAt("out").inputs.at("Source").empty(),
+              "empty-body fix retains explicit control output sources");
+    }
+  }
+}
+
 void TestFlatCallbacks() {
   pattern::Design design;
   design.AddIcl("callback_flat.icl", R"(
@@ -1139,6 +1197,7 @@ int main() {
     TestChildInputDefaultMetadataGuards();
     TestSegmentedPortRoundTrip();
     TestSegmentedMetadataGuards();
+    TestEmptyControlOutputs();
     TestFlatCallbacks();
     TestFlatClockInputKinds();
     TestFlatClockInputPropertyGuards();

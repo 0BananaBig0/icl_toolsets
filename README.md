@@ -583,6 +583,10 @@ Fixed disjoint modeled root parallel raw chains now retain actual per-chain
 readback under one common capture/shift/update group. See the
 [parallel raw example and limits](docs/pattern-generation.md#task155-modeled-parallel-raw-scans).
 
+Use make model-corpus-check to audit per-file default models against an explicit
+canonical/unsupported registry, with current source and tool evidence. See the
+[model audit commands and limits](docs/pattern-generation.md#task156-default-model-and-source-round-trip-audit).
+
 ## Documentation and license
 
 The [documentation index](docs/README.md) links user guides, architecture,

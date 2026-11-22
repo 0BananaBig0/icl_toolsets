@@ -4528,3 +4528,27 @@ See [the runnable guide](pattern-generation.md#task155-modeled-parallel-raw-scan
 Hierarchical/dynamic/shared/hidden/gated routes, multiple TAPs, opaque children,
 raw merge, timed histories, transport and the other pending inventory remain
 outside this increment. Coverage item1 remains excluded.
+
+
+## Task156: default source model and canonical corpus audit
+
+Empty control-output bodies retain valid semicolon declarations and missing
+RefEnum tables have source/node/name diagnostics. Native and eight CLI
+methods retain scoped/forward/specialized enum and flat defaults.
+
+The checked corpus contains2562 ICL files:1228 parser-rejected inputs keep
+byte provenance;1334 accepted files yield1763 effective module defaults.
+Actual canonical successes are1016;56 declared serialization boundaries and
+691 original elaboration failures remain explicit. The model inventory
+performs actual public-API flat roundtrips, with exact file/module identities
+and fresh report/protocol checks. It does not supply missing models, bindings
+or parameters. Both namespace and ordered replacement behavior are audited.
+
+Six fresh normal/configured leak-sanitizer batch measurements meet10s/512MiB;
+the documented500ms unused-page release preserves full ASAN quarantines and
+checks. Default sanitizer retention does not meet that memory configuration.
+All52 final qualification gates pass:14 native/14 sanitizer suites,66x1082
+per generator,15 quality checks, packaging and4024 input/36 product hashes.
+Five Important review issues pass one test-first fix cycle; one Minor remains
+deferred, with no rereview. All92 measured corpus/callback/control/alias
+processes pass. Broader inventory11/12 and excluded coverage1 remain unchanged. See [the commands and exact limits](pattern-generation.md#task156-default-model-and-source-round-trip-audit).

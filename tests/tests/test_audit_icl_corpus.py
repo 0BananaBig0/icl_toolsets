@@ -2,6 +2,7 @@
 """Exercise duplicate detection using the real shared parser and source bytes."""
 import json
 import hashlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -9,6 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
+INVENTORY = Path(os.environ.get('PARSER_INVENTORY', ROOT / 'build/icl_corpus_inventory'))
 
 
 class AuditTest(unittest.TestCase):
@@ -24,7 +26,7 @@ class AuditTest(unittest.TestCase):
 
     def audit(self, policy=None):
         command = [sys.executable, str(ROOT / 'tests/audit_icl_corpus.py'),
-                   '--root', str(self.root), '--inventory', str(ROOT / 'build/icl_corpus_inventory'),
+                   '--root', str(self.root), '--inventory', str(INVENTORY),
                    '--report', str(self.root / 'report.json')]
         if policy is not None:
             path = self.root / 'policy.json'
@@ -33,6 +35,18 @@ class AuditTest(unittest.TestCase):
         run = subprocess.run(command, capture_output=True, text=True)
         report = self.root / 'report.json'
         return run, json.loads(report.read_text()) if report.exists() else {}
+
+    def test_module_keys_preserve_namespaces_and_ordered_overrides(self):
+        self.source('names.icl', 'NameSpace N; Module A {} '
+                    'Module A {Attribute replacement;} Module B {}')
+        self.source('other.icl', 'NameSpace Q; Module A {}')
+        self.source('bad.icl', 'Module Broken {')
+        run, report = self.audit()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(report['fixtures']['names.icl']['module_keys'],
+                         ['N::A', 'N::A', 'N::B'])
+        self.assertEqual(report['fixtures']['other.icl']['module_keys'], ['Q::A'])
+        self.assertEqual(report['fixtures']['bad.icl']['module_keys'], [])
 
     def test_identical_files_and_lexical_modules_are_separate_findings(self):
         self.source('a.icl', 'Module A { Attribute s = "} // not a comment"; }')
@@ -57,7 +71,7 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(report['rejected'], ['invalid.icl'])
         self.assertEqual(report['module_duplicates'], [])
-        strict = subprocess.run([str(ROOT / 'build/icl_corpus_inventory'),
+        strict = subprocess.run([str(INVENTORY),
                                  str(self.root / 'invalid.icl')], capture_output=True)
         self.assertNotEqual(strict.returncode, 0, 'normal importer must still reject invalid input')
 
