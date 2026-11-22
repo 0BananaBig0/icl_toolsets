@@ -8699,3 +8699,10 @@ wide-alias processes also pass, for179 measured processes total. The wide
 alias peak163108KiB remains below256MiB. This proves the recorded workloads,
 not broader topology or performance acceptance. Qualification receipts are in
 build/modeled-parallel-raw-20261123/final; integration remains pending.
+
+Task155 is integrated into master. Seven integration checks pass against4018
+matching inputs and16 copied qualified executables: native parallel/copy/
+ownership and readback, dynamic/static parallel CLI, scalar raw histories,
+resource reservations and the71-method main CLI suite. All117 stashes remain.
+The receipt is build/modeled-parallel-raw-20261123/merged/receipt.json.
+Broader inventory items6/8 remain open.

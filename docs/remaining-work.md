@@ -106,3 +106,6 @@ fields with their current fill. Source/flat/generated exact replay, native
 rollback/ownership/copy tests and93 scale/control processes pass. All47 post-fix qualification gates and179 performance/control processes pass;
 review's four Important issues are fixed and two Minors deferred. Items6/8 remain
 pending for the broader topologies, raw merge and transport work.
+
+Task155 is merged into master; seven integration checks,4018 input hashes,
+16 copied qualified executables and117 preserved stashes are verified.
