@@ -34,7 +34,8 @@ struct ScanStep {
 class ScanScheduler {
  public:
   // Logical bits at their selected PIO frame or serial return.
-  // Delivery is tentative until Apply returns successfully.
+  // State is committed before delivery; subscriber errors do not undo it.
+  // Publish observations only after Apply returns successfully.
   using Observation =
       std::function<void(const std::vector<BitReference>&, const std::string&)>;
   using PioObservation = Observation;

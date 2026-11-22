@@ -19,6 +19,47 @@ namespace {
 void Require(bool value, const char* message) {
   if (!value) throw std::runtime_error(message);
 }
+void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
+                                   const pattern::Netlist& netlist,
+                                   const std::string& target,
+                                   const std::string& committed,
+                                   const std::string& next_read, bool physical,
+                                   bool write) {
+  std::vector<pattern::Operation> operations{
+      {"iRead", {target, "0"}, "test", {}}};
+  if (write) operations.push_back({"iWrite", {target, "6"}, "test", {}});
+  size_t calls = 0;
+  bool propagated = false;
+  try {
+    scheduler->Apply(operations, false, {}, true, physical,
+                     [&](const auto&, const auto&) {
+                       ++calls;
+                       throw std::runtime_error("listener failure");
+                     });
+  } catch (const std::runtime_error& error) {
+    propagated =
+        std::string(error.what()).find("listener failure") != std::string::npos;
+  }
+  Require(propagated && calls == 1, "subscriber failure propagates once");
+  Require(scheduler->Value(target) == committed,
+          "subscriber failure retains completed transaction state");
+  std::map<std::pair<size_t, int64_t>, char> observed;
+  scheduler->Apply(
+      {{"iRead", {target, "0b" + next_read}, "test", {}}}, false, {}, true,
+      physical, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          observed.emplace(std::make_pair(bits[i].node, bits[i].index),
+                           values[i]);
+        }
+      });
+  std::string actual;
+  for (const auto& bit : pattern::ResolvePdlTarget(netlist, target).bits) {
+    actual += observed.at({bit.node, bit.index});
+  }
+  Require(
+      actual == next_read && scheduler->Value(target) == committed,
+      "following read observes committed data without restoring stale fill");
+}
 void TestReadModel() {
   pattern::Design design;
   design.AddIcl("queue.icl", R"(
@@ -230,21 +271,26 @@ void TestFastObserverExceptions() {
     pattern::ScanScheduler scheduler(netlist);
     scheduler.Reset();
     scheduler.Assume(native ? "open" : "cap_enable", "1");
-    size_t calls = 0;
-    bool thrown = false;
-    try {
-      scheduler.Apply({{"iRead", {"child.value", "0"}, "test", {}}}, false, {},
-                      true, false, [&](const auto&, const auto&) {
-                        ++calls;
-                        throw std::runtime_error("listener failure");
-                      });
-    } catch (const std::runtime_error& error) {
-      thrown = std::string(error.what()).find("listener failure") !=
-               std::string::npos;
-    }
-    Require(thrown && calls == 1,
-            "accepted fast replay propagates subscriber errors without retry");
+    scheduler.Assume("child.value", native ? "00001001" : "1001");
+    CheckCommittedObserverFailure(&scheduler, netlist, "child.value",
+                                  native ? "00000110" : "1001",
+                                  native ? "00000110" : "1010", false, native);
   }
+}
+void TestGeneralObserverException() {
+  pattern::Design design;
+  design.AddIcl("general.icl", R"(
+Module Top {
+ ScanInPort si;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanOutPort so {Source r[0];}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("r", "1001");
+  CheckCommittedObserverFailure(&scheduler, netlist, "r", "0110", "0110", false,
+                                true);
 }
 void TestTapReturnOracle() {
   const std::string directory =
@@ -311,23 +357,15 @@ void TestTapReturnOracle() {
     Require(observed.at(bit) == (bit == 0 || bit == 3 ? '1' : '0'),
             "logical observations agree with independently sampled TDO");
   }
-  pattern::ScanScheduler throwing(netlist);
-  throwing.Reset();
-  throwing.Assume("core.r", "00001001");
-  size_t calls = 0;
-  bool propagated = false;
-  try {
-    throwing.Apply({{"iRead", {"core.r", "0"}, "test", {}}}, false, {}, true,
-                   false, [&](const auto&, const auto&) {
-                     ++calls;
-                     throw std::runtime_error("tap listener failure");
-                   });
-  } catch (const std::runtime_error& error) {
-    propagated = std::string(error.what()).find("tap listener failure") !=
-                 std::string::npos;
+  for (bool physical : {false, true}) {
+    pattern::ScanScheduler throwing(netlist);
+    throwing.Reset(false, physical);
+    throwing.Apply({{"iWrite", {"tap.INSTRUCTION", "3"}, "test", {}}}, false,
+                   {}, true, physical);
+    throwing.Assume("core.r", "00001001");
+    CheckCommittedObserverFailure(&throwing, netlist, "core.r", "00000110",
+                                  "00000110", physical, true);
   }
-  Require(propagated && calls == 1,
-          "TAP subscriber failure cannot retry accepted replay");
 }
 void TestDataReadbackPlanes() {
   pattern::Design design;
@@ -427,6 +465,7 @@ int main() {
     TestScheduledObservations();
     TestSerialEventOracle();
     TestFastObserverExceptions();
+    TestGeneralObserverException();
     TestTapReturnOracle();
     TestDataReadbackPlanes();
     TestDataFrameEventOracle();

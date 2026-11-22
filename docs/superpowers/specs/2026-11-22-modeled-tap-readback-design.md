@@ -15,6 +15,8 @@ Runtime readback and emitted output generation must select the same scheduler be
 
 Give MakeModeledReadback an explicit physical-mode overload while retaining its one-argument entry point. ModelReadback stores the mode and forwards it to both Reset and Apply. Main passes options.physical to both Runtime factories. Remove the blanket TAP exclusion once actual observation paths exist; retain storage/operation guards. Do not add a new CLI option or mode-note migration: the current register/PIO note already covers register observations. Update current help/docs and replace the obsolete Task150 TAP-rejection assertion with a bound-TAP success/default/lazy control.
 
+Review correction: public Apply buffers internal selected-frame observations until Solve succeeds and commits state/fill/execution, then invokes subscribers outside its rollback catch. A subscriber exception propagates once and leaves the completed state committed, consistently for native standalone, regular, general and TAP paths. The next read must neither restore stale fill nor change committed storage. This shared boundary avoids a separate rollback mechanism per fast path. Public header and native follow-up-read tests pin this choice.
+
 ## Source and normative basis
 IEEE1687-2014 §8.4.1–8.4.3 (local /tmp/item11-1687.txt pp185–187) governs actual first observation per CSU, latest per-index history, formats, mismatch masks and per-bit counts. Existing BSDL/ICL defines concrete widths, captures and opcodes; do not invent device data. IEEE1149.1-2001(R2008) §7.1 IR capture low bits01 and §10.1.1(b) bypass capture-zero are already modeled by TapExecution and must remain true. This change is simulator software, not RTL or physical timing signoff.
 
