@@ -7,12 +7,12 @@ explicit direct/aliased callback accesses at Apply, including nested instances,
 subnamespaces, parameters, masks, queue replacement, cancellation, real endpoint
 accesses, source/flat/generated replay and local-reset source rewriting.
 The user has delegated implementation choices and opted out of further questions;
-these design choices are ours. No product implementation before the builder check.
+these design choices are ours. The fresh builder check is complete; its sole error-queue question is resolved below.
 
 This increment supports callback-only caller Apply groups. Ordinary endpoint
 accesses inside callback procedures use existing queues, applies, resets,
 reservations and timing semantics. Mixed caller callback/ordinary/raw queues and
-callback Apply -together reject before invoking any callback because this first
+callback Apply -together or a callback invoked inside iMerge reject before invoking any callback because this first
 increment does not certify their shared declarative barrier. Ordinary access
 groups before/after callbacks retain their path. Automatic callback invocation
 while justifying downstream goals remains pending. Item4 is not closed by this
@@ -74,10 +74,19 @@ If a callback returns with queued endpoint accesses, apply that tail before
 returning. This completes the callback's access before later callbacks or caller
 operations run. Existing explicit body applies are retained. An outer source
 Apply remains expressible even when the callback tail already applied.
-Uncaught errors retain atomic output publication. Caught Tcl errors have iCall's
-partial-side-effect semantics; no interpreter/transaction rollback is promised.
-Restore caller bookkeeping on error so reset cancellation and explicit retry
-are well-defined; an explicit retry may repeat completed procedure effects.
+Uncaught errors retain atomic output publication. Once invocation starts,
+a caught callback error keeps completed applies and Tcl side effects, preserves
+unfinished endpoint operations in the append-only stream, and marks the callback
+queue failed. No subsequent Apply or Finish may publish/flush that queue until
+iReset cancels its unfinished requests and clears the flag. Retrying then requires
+requeueing the desired logical access. This differs deliberately from unrestricted
+iCall retry so stale endpoint requests cannot flush or a completed callback repeat
+implicitly. No interpreter/transaction rollback is promised. Namespace/procedure/
+mixed-queue/argument preflight failures before invocation have no effects and do
+not poison the queue: loading/replacing a missing procedure can precede a retry.
+A callback may catch an inner error and perform iReset/recovery explicitly.
+Restore pending-span bookkeeping on invocation error so Reset covers unfinished
+requests. This resolves the fresh builder check's sole Important question.
 
 ## Controlling state and readback boundaries
 After a successful write callback and its endpoint applies, emit an explicit
@@ -96,6 +105,15 @@ callback markers and CLI model mode rejects an executed callback, preserving the
 boundary against invented callback observations/counts. Physical mode rejects
 callbacks explicitly. Manual state/history assumptions retain existing semantics.
 
+## Initial merge/ownership boundaries
+Reject a logical callback Apply within an active iMerge before any invocation.
+A callback body may use existing ordinary endpoint merge groups; callback requests
+inside such a group remain unsupported. This prevents merge pre-processing from
+treating logical markers as physical storage. Markers outside merged groups must
+be copied unchanged through merge preprocessing. Direct take/release of logical
+callback storage rejects; real endpoint resources retain ordinary enforcement.
+These are declared initial boundaries, not completion of broader item4/7 work.
+
 ## Reset rewriting and other consumers
 Keep original logical request markers as source-action anchors. Extend their
 owning completed main write/read/call action through the callback expansion and
@@ -107,13 +125,11 @@ Filter logical markers in reset-prerequisite/local-reset target analysis and
 skip their hardware lowering after processing their source-action anchor.
 Preserve procedure bytes, evaluated arguments, prefixes and per-invocation
 occurrence dispatch. Endpoint reservations and automatic reset releases keep
-their existing enforcement. Direct take/release of unmodeled callback storage
-is unsupported unless its current implementation already supplies a proven
-contract; reject misleading access rather than declaring ownership established.
+their existing enforcement. Direct take/release of logical callback storage remains unsupported.
 
 ## Cost and verification
-No dependencies or RTL edits. Work is O(total queued operand bits plus emitted
-procedure commands and indexed metadata/action lookups); cache ancestor bindings
+No dependencies or RTL edits. Work is O(B log B + emitted procedure commands and indexed metadata/action
+lookups), where B is the queued operand bit count; cache ancestor bindings
 and retire overwritten bit references once. Use existing limits. Measure matched
 parent/current callback-free and unused-declaration controls, and64/256/1024
 callback targets/repeated applies with elapsed time/RSS, bounded input sizes and
