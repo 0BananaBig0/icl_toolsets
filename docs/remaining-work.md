@@ -51,3 +51,15 @@ the broader items above or strict coverage item 1.
 
 See [model acceptance](pattern-model-coverage.md#current-evidence-and-remaining-work)
 and [current verification](pattern-generation.md#current-verification).
+
+## Task152 qualified increment
+
+Actual scalar root/child and bound single-TAP raw return histories, plus strict
+root opaque named-chain execution/unknown histories, pass40 qualification
+gates,62x1008 tests per generator,14 native/14 sanitizer suites,30 quality
+checks, packaging,4011 input/31 executable hashes and57 scale processes.
+Both Important review findings are fixed in one test-first pass; two current
+Minor findings and the prior Task151 numeric-prose Minor remain deferred.
+Broader item6/8 topologies, callbacks, timed histories and device transport
+remain pending. Physical PDL retains its raw iScan rejection; use normal raw
+PDL for these histories. Coverage item1 remains excluded.

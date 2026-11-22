@@ -4483,3 +4483,10 @@ cleanup. Physical PDL's existing iScan guard remains.
 See the [examples and limits](pattern-generation.md#task152-raw-interface-and-chain-readback).
 Broader modeled parallel/multiple-TAP raw, opaque child, raw merge, timed,
 callback and transport work remains pending.
+
+Final Task152 evidence:40 gates,14 native/14 sanitizer suites,62x1008 tests
+per generator,30 quality checks, packaging,4011 input/31 executable hashes
+and57 matched scale processes. Both Important review findings pass test-first
+fixes and the full post-fix suite. Two current Minor findings and the prior
+Task151 numeric-prose Minor remain deferred; no rereview. See the guide for
+their exact limits and the existing physical raw-PDL rejection ruling.

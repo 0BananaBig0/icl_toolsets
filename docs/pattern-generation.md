@@ -8277,3 +8277,43 @@ the earlier walkthrough's numeric-prose Minor finding remains deferred.
 
 The two author examples have been executed; they are not an independent reader
 assessment. Qualification and measured scale results follow below.
+
+
+Task152 final qualification passes all 40 recorded gates: 14 native and
+14 leak-enabled ASAN/UBSAN native suites, 62 suites/1008 tests for each
+dynamic and static generator, 18 raw/12 opaque/16 TAP/16 standalone/16
+data/17 PIO/71 CLI sanitizer tests, 30 affected format/tidy/strict C++17
+checks and source packaging. All 4011 input hashes and 31 executable
+hashes match. Qualified code is e36f0dc. Evidence is under
+build/modeled-raw-readback-20261122/final/. Coverage item1 remains excluded
+with unchanged thresholds.
+
+The fresh independent review found 0 Critical, 2 Important and 2 Minor
+issues. One test-first fix pass resolves both Important issues: invalid
+IR/mixed-mode provider requests reject before publishing widths or changing
+prior histories, and opaque resets record default availability without
+expanding unused payloads. An 800-reset scalar/parallel test with a one-megabit
+unused default failed at 1.356/1.301s before the fix and passed at
+0.0558/0.0547s afterwards, with identical output. Existing diagnostic wording
+is retained. All full post-fix checks pass; interrupted earlier runs remain
+partial evidence. No rereview is claimed.
+
+Deferred Minor findings are the binary TAP completeness check occurring
+after inversion (no supported route misses a sample), an older Task151
+sentence in inventory item6 that still says raw/interface/chain histories
+remain open, and the prior Task151 walkthrough's numeric-prose spacing.
+Current Task152 support and remaining topology limits are stated above.
+
+The final 57-process scale matrix repeats matched parent/current
+default/unused/queried controls three times. It covers 32/512-bit roots,
+a 512-bit child interval inside a 520-bit root, a prepared 512-bit TAP
+route, and 32 opaque chains of4096 bits each. Valid schedules agree after
+removing observation notes. Queried CLI medians are root32=0.1393s,
+root512=0.1177s, child512=0.1082s, TAP512=0.3688s and opaque32x4096=0.0823s.
+Peak queried RSS ranges from68492 to124608KiB. Inputs, apply counts, commands,
+environment, hashes and preserved executables are under
+build/modeled-raw-readback-20261122/scale-final/. Reproduce with
+tests/src/pattern/benchmark_modeled_raw_readback.py, providing current and
+parent executable paths. Short process timings are noisy; no global speedup
+or wider startup/topology qualification is claimed. Hardware timing, live
+transport, vendor equivalence and independent reader usability remain unverified.
