@@ -225,55 +225,68 @@ void OpaqueScanQueue::Reset(const Operation& operation) {
   pending_.clear();
   pending_bits_ = 0;
   stable_.clear();
-  for (const auto& [name, bits] : model_.defaults) {
-    auto scan = operation;
-    scan.command = "iScan";
-    scan.arguments = {model_.client};
-    if (!name.empty()) {
-      scan.arguments.insert(scan.arguments.end(), {"-chain", name});
-    }
-    scan.arguments.insert(
-        scan.arguments.end(),
-        {std::to_string(bits.size()), "-si", "0b" + bits, "-so",
-         "0b" + std::string(bits.size(), 'x'), "-stable"});
-    stable_.emplace(name, std::move(scan));
-  }
+  defaults_available_ = true;
+  unknown_lengths_.clear();
 }
 std::vector<Operation> OpaqueScanQueue::Apply(const Operation& operation) {
   ValidatePdlApplyOptions(operation.arguments);
   if (pending_.empty()) return {};
-  auto executed = pending_;
-  if (!model_.defaults.count("")) {
-    for (const auto& [name, bits] : model_.defaults) {
-      if (executed.count(name)) continue;
+  const bool parallel = !model_.defaults.count("");
+  size_t bits = pending_bits_;
+  if (parallel) {
+    for (const auto& [name, load] : model_.defaults) {
+      if (pending_.count(name)) continue;
       const auto known = stable_.find(name);
-      if (known == stable_.end()) {
+      if (known == stable_.end() &&
+          (!defaults_available_ || unknown_lengths_.count(name))) {
         throw std::runtime_error(
             "opaque parallel scan chain length is unknown");
       }
-      auto scan = known->second;
-      const auto fields = ReadScanFields(scan);
-      scan.arguments[fields.expected] =
-          "0b" + std::string(scan.arguments[fields.input].size() - 2, 'x');
+      const size_t width =
+          known == stable_.end()
+              ? load.size()
+              : known->second.arguments[ReadScanFields(known->second).input]
+                        .size() -
+                    2;
+      if (width > kMaxScanBits - bits) {
+        throw std::runtime_error("opaque scan queued payload resource limit");
+      }
+      bits += width;
+    }
+  }
+  auto executed = pending_;
+  if (parallel) {
+    for (const auto& [name, load] : model_.defaults) {
+      if (executed.count(name)) continue;
+      const auto known = stable_.find(name);
+      auto scan = known == stable_.end() ? operation : known->second;
+      if (known == stable_.end()) {
+        scan.command = "iScan";
+        scan.arguments = {model_.client, "-chain",
+                          name,          std::to_string(load.size()),
+                          "-si",         "0b" + load,
+                          "-so",         "0b" + std::string(load.size(), 'x'),
+                          "-stable"};
+      } else {
+        const auto fields = ReadScanFields(scan);
+        scan.arguments[fields.expected] =
+            "0b" + std::string(scan.arguments[fields.input].size() - 2, 'x');
+      }
       executed.emplace(name, std::move(scan));
     }
-  }
-  size_t bits = 0;
-  for (const auto& [name, scan] : executed) {
-    bits += scan.arguments[ReadScanFields(scan).input].size() - 2;
-  }
-  if (bits > kMaxScanBits) {
-    throw std::runtime_error("opaque scan queued payload resource limit");
+    for (const auto& [name, scan] : pending_) {
+      if (scan.arguments.back() == "-stable") {
+        stable_.insert_or_assign(name, scan);
+        unknown_lengths_.erase(name);
+      } else {
+        stable_.erase(name);
+        unknown_lengths_.insert(name);
+      }
+    }
   }
   std::vector<Operation> result;
-  for (auto& [name, scan] : executed) {
-    if (scan.arguments.back() == "-stable") {
-      stable_.insert_or_assign(name, scan);
-    } else {
-      stable_.erase(name);
-    }
-    result.push_back(std::move(scan));
-  }
+  result.reserve(executed.size() + 1);
+  for (auto& [name, scan] : executed) result.push_back(std::move(scan));
   result.push_back(operation);
   pending_.clear();
   pending_bits_ = 0;

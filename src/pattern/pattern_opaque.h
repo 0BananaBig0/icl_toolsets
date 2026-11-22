@@ -7,6 +7,7 @@
 
 #include <map>
 #include <optional>
+#include <set>
 #include <utility>
 #include <vector>
 
@@ -45,6 +46,8 @@ class OpaqueScanQueue {
  private:
   OpaqueScanModel model_;
   size_t pending_bits_ = 0;
+  bool defaults_available_ = false;
+  std::set<std::string> unknown_lengths_;
   std::map<std::string, Operation> pending_, stable_;
 };
 // No result without iScan. Otherwise validate a root opaque client and lower

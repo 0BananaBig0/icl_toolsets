@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Opaque parallel queues retain per-chain lengths and stable controlling data."""
 import unittest
+import time
 
 import test_opaque_root_scan as helpers
 
@@ -114,6 +115,29 @@ iApply; iNote [iGetStatus]
     def test_queued_payload_limit_includes_implicit_lanes(self):
         self.rejected("iReset; iScan client -chain first 1048576; iApply\n",
                       "resource", MODEL)
+
+    def test_repeated_reset_does_not_expand_unused_defaults(self):
+        body = "iReset;\n" * 800
+        for parallel in (False, True):
+            with self.subTest(parallel=parallel):
+                source = MODEL if parallel else helpers.MODEL
+                small = source if parallel else source.replace(
+                    "8'b00000000", "4'b0")
+                large = source.replace("4'b0" if parallel else "8'b00000000",
+                                       "1048576'b0")
+                commands = (body + "iScan client -chain first 4; "
+                            "iScan client -chain second 7; iApply\n" if parallel
+                            else body + "iScan client 4; iApply\n")
+                samples, outputs = [], []
+                for model in (small, large):
+                    icl, pdl = self.files(commands, model)
+                    start = time.monotonic()
+                    outputs.append(self.run_tool(icl, pdl))
+                    samples.append(time.monotonic() - start)
+                self.assertEqual(outputs[0], outputs[1])
+                print("opaque reset: parallel=", parallel, "resets=800 seconds=", samples)
+                self.assertLess(samples[1], max(0.5, samples[0] * 8),
+                                "reset expanded unused default payloads")
 
     def test_many_named_chains_scale(self):
         count, width = 32, 4096

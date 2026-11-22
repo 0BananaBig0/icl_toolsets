@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_runtime.h"
 
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 
 #include "pattern/pattern_netlist.h"
 #include "pattern/pattern_state.h"
+#include "pattern/pattern_tap.h"
 
 namespace {
 void Require(bool value, const std::string& message) {
@@ -24,6 +27,44 @@ void Fails(Action action, const std::string& expected) {
   }
   throw std::runtime_error("expected error: " + expected);
 }
+void CheckInvalidRawProviderMode(bool mixed) {
+  const std::string folder = "tests/cases/ours/pattern_generation/raw_tap_ir/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream stream(folder + name);
+    Require(stream.good(), "raw Runtime TAP fixture opens");
+    return std::string((std::istreambuf_iterator<char>(stream)), {});
+  };
+  pattern::Design design;
+  design.AddIcl("raw.icl", read("model.icl"));
+  design.AddBsdl("raw.bsdl", read("model.bsdl"), "RawIrProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "RawIrTop");
+  pattern::ReadbackUpdates updates;
+  updates.scans = {{"jtag", "", "1001", "0000"}};
+  updates.failures = 0;
+  size_t calls = 0;
+  pattern::Runtime runtime(
+      design, network.netlist, false,
+      [&](const auto&, bool) -> const pattern::ReadbackUpdates* {
+        ++calls;
+        return &updates;
+      });
+  runtime.Execute("initial.pdl", R"(
+iReset; iScan -ir jtag 4; iApply
+if {[iGetReadData jtag] ne "0b1001"} {error {initial raw history}}
+)");
+  runtime.Execute("queued.pdl", mixed ? "iScan jtag 8; iScan -ir jtag 4"
+                                      : "iScan -ir core.client 4");
+  runtime.Execute("rejected.pdl", R"(
+if {![catch {iApply}]} {error {invalid raw mode accepted}}
+iReset
+if {[iGetReadData jtag] ne "0b1001"} {error {invalid Apply lost prior history}}
+if {![catch {iGetReadData core.client}]} {error {invalid IR published width}}
+)");
+  Require(calls == 1,
+          "invalid raw mode never reaches provider or invalidates history");
+}
+void TestRawProviderRejectsRegularIr() { CheckInvalidRawProviderMode(false); }
+void TestRawProviderRejectsMixedModes() { CheckInvalidRawProviderMode(true); }
 void TestRawReadbackProvider() {
   pattern::Design design;
   design.AddIcl("raw-updates.icl", R"(
@@ -981,7 +1022,9 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestRawReadbackProvider,
+  for (const auto test : {TestRawProviderRejectsRegularIr,
+                          TestRawProviderRejectsMixedModes,
+                          TestRawReadbackProvider,
                           TestReadbackAdapter,
                           TestMalformedReadbackUpdates,
                           TestWriteOptionNormalization,

@@ -443,6 +443,9 @@ class Runtime::Impl {
              node.scan_interface->kind != ScanInterfaceKind::kClientTap)) {
           continue;
         }
+        if (node.scan_interface->kind == ScanInterfaceKind::kClientTap) {
+          tap_clients_.insert(node.name);
+        }
         auto& chains = scan_clients_[node.name];
         for (const auto& item : node.scan_interface->chains) {
           chains.insert(item.name);
@@ -462,6 +465,7 @@ class Runtime::Impl {
                                                   ScanInterfaceKind::kClientTap;
                                      })) {
           scan_clients_["unnamed"];
+          tap_clients_.insert("unnamed");
         }
       }
       scan_clients_loaded_ = true;
@@ -496,6 +500,7 @@ class Runtime::Impl {
              std::pair<size_t, bool>>
         raw_care;
     size_t raw_bits = 0;
+    std::optional<bool> raw_mode;
     // Validate discarded operands too; commit history only after the whole
     // queue.
     for (auto it = first; it != operations_.end(); ++it) {
@@ -505,10 +510,16 @@ class Runtime::Impl {
         const auto fields = ReadScanFields(scan);
         const auto& name = scan.arguments[fields.target];
         const auto chain = ScanChainName(name, fields.chain);
-        if (fields.instruction && netlist_ && netlist_->taps.empty()) {
+        if (fields.instruction && netlist_ &&
+            (netlist_->taps.empty() || !tap_clients_.count(name))) {
           throw std::runtime_error(
-              "raw scan target must be a client interface");
+              "raw IR target must be a client TAP interface");
         }
+        if (raw_mode && *raw_mode != fields.instruction) {
+          throw std::runtime_error(
+              "mixed raw IR and data scans are unsupported");
+        }
+        raw_mode = fields.instruction;
         const auto key =
             std::make_pair(fields.instruction, std::make_pair(name, chain));
         auto& latest = raw_care[key];
@@ -1164,6 +1175,7 @@ class Runtime::Impl {
   const Design& design_;
   const Netlist* netlist_;
   bool scan_clients_loaded_ = false;
+  std::set<std::string> tap_clients_;
   std::map<std::string, std::set<std::string>> scan_clients_;
   History read_history_, miscompare_history_;
   using RawHistory = std::map<std::pair<std::string, std::string>, std::string>;
