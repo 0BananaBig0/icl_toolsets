@@ -452,7 +452,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | iClock/iClockOverride and relative waits work on qualified clock-only routes; restricted state-free absolute waits preserve literal time. General stateful time/clock events remain pending. |
-| Observation getters | `iGetReadData`/`iGetMiscompares` evaluate fully supplied explicit history; applied reads invalidate their target bits. Provably zero `iGetStatus` is supported; applied-read observations and interface/chain history remain unavailable. |
+| Observation getters | Explicit history and provably zero status remain available by default. Opt in to --model_readback for applied combinational PIO observations, bitwise miscompares and exact per-bit failure counts; see [modeled readback](#task148-modeled-combinational-pio-readback). Stateful/interface/chain and live-device observations remain open. |
 
 This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
@@ -7742,3 +7742,107 @@ is74524/78368/78752KiB. Goals differ between controls and the new case; no speed
 is claimed. Together the final records contain108 successful processes. The
 initial proposed control exposed the known parent replay discrepancy and remains
 archived separately under mixed-scale-initial-control/, outside the final record.
+
+## Task148: modeled combinational PIO readback
+
+Use --model_readback when a PDL computation needs the modeled value of an
+applied output read. This mode obtains concrete combinational PIO observations
+from the scheduler; expected read values remain comparison data. Diagnostics
+and generated PDL identify modeled execution explicitly.
+
+Save this as model.icl:
+
+~~~icl
+Module ModelTop {
+ DataInPort p[3:0];
+ DataOutPort q[3:0] {Source p;}
+}
+~~~
+
+Save observe.pdl as follows. The expected zero deliberately disagrees with
+the assumed input 15, so all four compared bits fail:
+
+~~~tcl
+iPDLLevel 1
+iState p 15
+iRead q 0; iApply
+iNote [iGetReadData q -hex]
+iNote [iGetMiscompares q -bin]
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+~~~
+
+~~~sh
+icl-pattern-generation --icl model.icl --pdl observe.pdl \
+  --top_module ModelTop --model_readback --output result.pdl
+~~~
+
+The notes contain 0xf, 0b1111, 4 and 0, in order. The clear query returns the old
+global failure count 4; the next query sees 0. These are generation-time model
+results. Replaying generated PDL preserves the single mode note and resolved
+notes; original and associated-flat inputs also agree.
+
+Only networks without storage nodes or bound TAPs are eligible for newly needed
+model observations. Supported operation histories contain ordinary reads/writes/
+applies, state assumptions, resets, reservations and notes. Raw scans, merge
+groups and clock operations remain outside this increment. Output/alias access
+obeys existing observability checks. Existing manual-history and known-zero
+queries retain their behavior. Enabling the flag without a model query does not
+initialize an additional scheduler.
+
+History is per physical bit, with sparse and inverted aliases supported.
+Repeated reads replace expected bits; X removes comparison care but still
+observes the bit. An unknown actual value remains x. A cared comparison against
+unknown data makes accumulated status unknown; status then fails without
+returning or clearing an invented count. Failure counts accumulate over applies;
+reset cancels queues without clearing the count. Never-read bits stay x.
+Manual history flags retain existing storage/root-input target rules and do not
+assign observable output history in this bounded mode.
+
+The adapter consumes newly appended normalized operations once, batches concrete
+reads and delivers only newly observed history bits. It does not reexecute Tcl
+arguments or procedures. Local-reset rewriting preserves source and procedure
+bytes and identifies modeled execution in diagnostics.
+
+The runnable example above was executed as an author walkthrough, separately
+from technical regression checks. Its receipt is under
+build/modeled-pio-readback-20261122/author-example/. An independent usability
+reader is not claimed. Full verification and final review results follow below.
+
+One independent direct review found0Critical/2Important/1Minor. A verified
+fix pass captures each bit at its actual selected concrete replay frame,
+including access groups that need multiple frames; status clear immediately
+caches known zero; label filtering copies history only when needed. The two
+new CLI methods first reproduce three failing subcases, then all17 pass per
+variant. A native oracle independently applies emitted pin writes and checks
+observations against the resulting concrete output values. Expected values
+never assign oracle state. The superseded final-state batch getter is removed.
+There is no post-fix rereview or independent post-fix approval claim.
+
+The final scale record contains108 successful processes:64/128 applies over
+32-bit targets and8 applies over1024-bit targets with two sparse read bits.
+Each uses four families, three repeats and source/flat/generated forms. Raw
+generated bytes agree within each family; parent/current default controls match
+and unused/queried modeled outputs match. Commands, environment, hashes, time
+and peak RSS are under build/modeled-pio-readback-20261122/scale/.
+
+| Family |128 applies,32 bits: three-form median(s) | Peak RSS(KiB) |8 applies,1024 bits: three-form median(s) | Peak RSS(KiB) |
+|---|---:|---:|---:|---:|
+|parent-default|0.646|75888|4.460|117152|
+|current-default|0.596|75764|4.509|116900|
+|current-unused|0.645|75836|4.459|117208|
+|current-queried|0.946|110076|7.068|150504|
+
+Queried runs do additional model work on source/flat inputs; generated replay
+contains resolved commands/notes. These measurements establish compatibility and
+observed cost at these sizes, without a speedup or larger-scale claim.
+Pre-review receipts are retained under pre-review-scale/ and pre-review-partial/;
+the interrupted pre-review broader run is not a full qualification pass.
+
+All35 post-fix qualification steps pass:14 native and14 leak-enabled ASan/UBSan
+native suites,57 suites/930 tests for each dynamic/static generator,17 focused/
+71 main sanitizer methods,30 changed-code format/tidy/strict C++17 gates and
+source packaging. Frozen hashes verify4005 source/test/build inputs and31
+products. Evidence is under build/modeled-pio-readback-20261122/final/.
+The final108 scale processes use the same qualified generator binary.
+Coverage item1 remains excluded with unchanged thresholds.

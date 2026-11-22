@@ -4384,3 +4384,35 @@ constant-source cases; an additional54-process mixed record gives108 total.
 No physical timing or broad vendor-equivalence claim is
 made; broader items remain tracked in [remaining work](remaining-work.md).
 See [the evidence](pattern-generation.md#task147-actual-primary-events-and-autonomous-dag-goals).
+
+## Task148: opt-in modeled PIO observations
+
+--model_readback supplies actual observations for applied output/alias reads in
+storage-free, TAP-free combinational PIO networks. Expected data determines
+comparison care, without assigning observed data. Per-bit history, inversions,
+unknowns, exact accumulated failure counts and known-count clear are supported.
+Clock/raw/merge histories requiring new observations, stateful and interface/
+chain histories and live transport remain open.
+
+A direct independent review found two Important defects and one Minor cost:
+final-state sampling loses earlier access-group observations; status clear left
+a stale nonzero cache; labeling always copied history. One verified fix pass
+captures batched actual selected-frame observations, immediately caches known
+zero after successful clear, and copies only when removing an existing label.
+Two added CLI methods reproduce three failing subcases, then17 methods pass
+for both generator variants. A native oracle independently replays emitted pin
+events and checks observed values. No rereview or independent post-fix approval
+is claimed. The108-process scale record preserves parent/current controls and
+source/flat/generated agreement, with wider sparse reads and no speedup claim.
+
+See [the runnable example, limits and evidence](pattern-generation.md#task148-modeled-combinational-pio-readback)
+and [remaining work](remaining-work.md). Full post-fix qualification is recorded
+with that example after its gates finish. Coverage item1 remains excluded.
+
+All35 post-fix qualification steps pass:14 native and14 leak-enabled ASan/UBSan
+native suites,57 suites/930 tests for each dynamic/static generator,17 focused/
+71 main sanitizer methods,30 changed-code format/tidy/strict C++17 gates and
+source packaging. Frozen hashes verify4005 source/test/build inputs and31
+products. Evidence is under build/modeled-pio-readback-20261122/final/.
+The final108 scale processes use the same qualified generator binary.
+Coverage item1 remains excluded with unchanged thresholds.

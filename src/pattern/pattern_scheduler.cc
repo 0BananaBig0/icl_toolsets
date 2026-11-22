@@ -2153,7 +2153,7 @@ class ScanScheduler::Impl {
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
       std::optional<size_t> permitted_tap_data = std::nullopt,
-      bool physical = false) {
+      bool physical = false, const PioObservation& observe = {}) {
     if (physical && !tap_) {
       throw std::runtime_error(
           "physical PDL requires one exact physical TAP CSU");
@@ -2171,7 +2171,8 @@ class ScanScheduler::Impl {
       // Match Solve's empty-apply exit before constructing an event proof.
       if (operations.empty() && !NeedsEndState(end_states_)) return {};
       return Solve(operations, together, kMaxSteps, {}, true, preserved,
-                   explicit_writes, std::nullopt, permitted_tap_data, physical);
+                   explicit_writes, std::nullopt, permitted_tap_data, physical,
+                   observe);
     } catch (const std::exception& error) {
       fill_ = previous_fill;
       std::string message = together ? "iApply -together: " : "";
@@ -2980,7 +2981,8 @@ class ScanScheduler::Impl {
   }
   std::vector<ScanStep> SolvePrimaryWrites(
       const std::vector<Operation>& operations, bool together,
-      const std::map<size_t, std::string>& preserved, bool explicit_writes) {
+      const std::map<size_t, std::string>& preserved, bool explicit_writes,
+      const PioObservation& observe = {}) {
     const auto& data_plan = state_.DataRegisters();
     std::map<size_t, std::string> goals;
     std::map<size_t, std::map<int64_t, char>> reads;
@@ -3464,6 +3466,15 @@ class ScanScheduler::Impl {
                 "symbolic/concrete primary replay mismatch at " +
                 netlist_.nodes[id].name);
           }
+        }
+        if (observe) {
+          std::vector<BitReference> bits;
+          for (const auto& choice : frame.reads) {
+            if (model.eval(choice.selected, true).is_true()) {
+              bits.push_back({choice.bit.first, choice.bit.second});
+            }
+          }
+          if (!bits.empty()) observe(bits, replay.ReadBits(bits));
         }
         for (size_t id : data_plan.order) {
           const auto event = control_events.find(id);
@@ -5311,7 +5322,7 @@ class ScanScheduler::Impl {
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true, std::optional<bool> event_mode = false,
       std::optional<size_t> permitted_tap_data = std::nullopt,
-      bool physical = false) {
+      bool physical = false, const PioObservation& observe = {}) {
     const auto end_goals = EndGoals(operations);
     if (operations.empty() && !NeedsEndState(end_goals)) return {};
     if (roots_.empty() && registers_.empty() && !tap_ &&
@@ -5322,7 +5333,7 @@ class ScanScheduler::Impl {
                           .access_together.empty();
             })) {
       return SolvePrimaryWrites(operations, together, preserved,
-                                explicit_writes);
+                                explicit_writes, observe);
     }
     if (tap_ && !tap_ready_) {
       throw std::runtime_error(
@@ -6235,6 +6246,16 @@ class ScanScheduler::Impl {
                 "symbolic/concrete mixed-input replay mismatch");
           }
         }
+        if (observe) {
+          std::vector<BitReference> bits;
+          for (const auto& [id, requested] : data_reads) {
+            if (!model.eval(frame.read.at(id), true).is_true()) continue;
+            for (const auto& [index, expected] : requested) {
+              bits.push_back({id, index});
+            }
+          }
+          if (!bits.empty()) observe(bits, replay.ReadBits(bits));
+        }
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           bool complete = true;
@@ -6791,10 +6812,10 @@ void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
 std::vector<ScanStep> ScanScheduler::Apply(
     const std::vector<Operation>& operations, bool together,
     const std::map<size_t, std::string>& preserved, bool explicit_writes,
-    bool physical) {
+    bool physical, const PioObservation& observe) {
   impl_->InvalidateRawRoute();
   auto steps = impl_->Apply(operations, together, preserved, explicit_writes,
-                            std::nullopt, physical);
+                            std::nullopt, physical, observe);
   // A failed native attempt may cache the pre-state before symbolic fallback.
   impl_->InvalidateRawRoute();
   return steps;
@@ -6862,6 +6883,7 @@ Operation ScanScheduler::ApplyScans(
   if (preparations) preparations->clear();
   return result;
 }
+
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);
 }

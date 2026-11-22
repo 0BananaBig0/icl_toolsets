@@ -38,8 +38,10 @@ std::string CommandName(std::string name) {
 class Runtime::Impl {
  public:
   Impl(const Design& design, const std::string& top,
-       const Netlist* netlist = nullptr, bool trace_source = false)
+       const Netlist* netlist = nullptr, bool trace_source = false,
+       Readback readback = {})
       : trace_source_(trace_source),
+        readback_(std::move(readback)),
         design_(design),
         netlist_(netlist),
         top_(top),
@@ -568,6 +570,46 @@ class Runtime::Impl {
     zero_status_known_ = zero_status_known;
   }
 
+  const ReadbackUpdates* UpdateReadback(bool clear_status) {
+    if (!readback_) return nullptr;
+    const auto* updates = readback_(operations_, clear_status);
+    if (!updates) return nullptr;
+    for (const auto& update : updates->bits) {
+      if (!netlist_ || update.node >= netlist_->nodes.size()) {
+        throw std::runtime_error("invalid modeled readback node");
+      }
+      const auto& node = netlist_->nodes[update.node];
+      if (update.index < std::min(node.left, node.right) ||
+          update.index > std::max(node.left, node.right)) {
+        throw std::runtime_error("invalid modeled readback bit index");
+      }
+      for (char value : {update.read, update.miscompare}) {
+        if (value != '0' && value != '1' && value != 'x' && value != '?') {
+          throw std::runtime_error("invalid modeled readback value");
+        }
+      }
+    }
+    for (const auto& update : updates->bits) {
+      const auto merge = [&](History& history, char value) {
+        if (value == '?') return;
+        auto entry = history.find(update.node);
+        if (entry == history.end()) {
+          entry = history
+                      .emplace(update.node,
+                               std::string(netlist_->nodes[update.node].Width(),
+                                           'x'))
+                      .first;
+        }
+        entry->second.at(HistoryOffset({update.node, update.index})) = value;
+      };
+      merge(read_history_, update.read);
+      merge(miscompare_history_, update.miscompare);
+    }
+    zero_status_known_ =
+        updates->failures && (clear_status || *updates->failures == 0);
+    return updates;
+  }
+
   std::string HistoryValue(const std::string& name, const std::string& target,
                            const std::string& format) {
     const auto unavailable = [&] {
@@ -577,6 +619,10 @@ class Runtime::Impl {
     };
     if (name == "iGetStatus") {
       if (zero_status_known_) return "0";
+      if (const auto* updates = UpdateReadback(target == "-clear")) {
+        if (updates->failures) return std::to_string(*updates->failures);
+        throw std::runtime_error("modeled readback status is unknown");
+      }
       unavailable();
     }
     if (!netlist_) unavailable();
@@ -584,6 +630,14 @@ class Runtime::Impl {
     ValidatePdlAccessTarget(*netlist_, resolved, true);
     const bool read = name == "iGetReadData";
     const auto& history = read ? read_history_ : miscompare_history_;
+    if (std::any_of(resolved.bits.begin(), resolved.bits.end(),
+                    [&](const auto& bit) {
+                      const auto entry = history.find(bit.node);
+                      return entry != history.end() &&
+                             entry->second.at(HistoryOffset(bit)) == '?';
+                    })) {
+      UpdateReadback(false);
+    }
     std::string bits;
     bits.reserve(resolved.bits.size());
     for (const auto& bit : resolved.bits) {
@@ -935,7 +989,10 @@ class Runtime::Impl {
                                  "during static generation");
       }
       const auto value = HistoryValue(
-          name, words.size() > 1 ? JoinPath(prefix(), words[1]) : "",
+          name,
+          words.size() > 1
+              ? (name == "iGetStatus" ? words[1] : JoinPath(prefix(), words[1]))
+              : "",
           words.size() > 2 ? words[2] : "");
       Tcl_SetObjResult(
           interpreter_.get(),
@@ -1019,6 +1076,7 @@ class Runtime::Impl {
 
   bool has_callbacks_ = false;
   bool trace_source_ = false;
+  Readback readback_;
   size_t source_count_ = 0;
   std::vector<SourceAction> actions_;
   std::vector<SourceAction> compounds_;
@@ -1055,9 +1113,9 @@ class Runtime::Impl {
 Runtime::Runtime(const Design& design, const std::string& top)
     : impl_(std::make_unique<Impl>(design, top)) {}
 Runtime::Runtime(const Design& design, const Netlist& netlist,
-                 bool trace_source)
+                 bool trace_source, Readback readback)
     : impl_(std::make_unique<Impl>(design, netlist.top_module, &netlist,
-                                   trace_source)) {}
+                                   trace_source, std::move(readback))) {}
 Runtime::~Runtime() = default;
 void Runtime::Execute(const std::string& path, const std::string& text) {
   impl_->Execute(path, text);
