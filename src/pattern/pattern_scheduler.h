@@ -33,8 +33,7 @@ struct ScanStep {
 // The borrowed netlist must outlive the scheduler.
 class ScanScheduler {
  public:
-  // Logical bits at their selected PIO frame or standalone serial return.
-  // Bound TAP observations are not supported.
+  // Logical bits at their selected PIO frame or serial return.
   // Delivery is tentative until Apply returns successfully.
   using Observation =
       std::function<void(const std::vector<BitReference>&, const std::string&)>;

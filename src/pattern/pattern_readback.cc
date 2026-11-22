@@ -19,16 +19,17 @@ namespace pattern {
 namespace {
 class ModelReadback {
  public:
-  explicit ModelReadback(const Netlist& netlist)
-      : netlist_(netlist), scheduler_(netlist), reservations_(netlist) {
-    if (!netlist.taps.empty() ||
-        std::any_of(
+  ModelReadback(const Netlist& netlist, bool physical)
+      : netlist_(netlist),
+        physical_(physical),
+        scheduler_(netlist),
+        reservations_(netlist) {
+    if (std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
               return node.model == ModelKind::kRegister &&
                      node.kind != "DataRegister" && node.kind != "ScanRegister";
             })) {
-      throw std::runtime_error(
-          "modeled readback excludes bound TAPs and unsupported storage");
+      throw std::runtime_error("modeled readback excludes unsupported storage");
     }
   }
 
@@ -121,7 +122,7 @@ class ModelReadback {
           };
       scheduler_.Apply(
           accesses, ValidatePdlApplyOptions(args), reservations_.Values(), true,
-          false, bits.empty() ? ScanScheduler::PioObservation{} : observe);
+          physical_, bits.empty() ? ScanScheduler::PioObservation{} : observe);
       if (actual.find('?') != std::string::npos) {
         throw std::runtime_error(
             "modeled apply did not observe every read bit");
@@ -130,7 +131,7 @@ class ModelReadback {
       Observe(bits, expected, actual);
       pending_.Clear();
     } else if (op.command == "iReset") {
-      scheduler_.Reset(!args.empty());
+      scheduler_.Reset(!args.empty(), physical_);
       reservations_.Reset();
       pending_.Clear();
     } else if (op.command == "iState") {
@@ -159,6 +160,7 @@ class ModelReadback {
   }
 
   const Netlist& netlist_;
+  bool physical_;
   z3::context context_;
   ScanScheduler scheduler_;
   ResourceReservations reservations_;
@@ -172,10 +174,13 @@ class ModelReadback {
 }  // namespace
 
 Runtime::Readback MakeModeledReadback(const Netlist& netlist) {
-  return [&netlist, model = std::shared_ptr<ModelReadback>{}](
+  return MakeModeledReadback(netlist, false);
+}
+Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical) {
+  return [&netlist, physical, model = std::shared_ptr<ModelReadback>{}](
              const std::vector<Operation>& operations,
              bool clear_status) mutable -> const ReadbackUpdates* {
-    if (!model) model = std::make_shared<ModelReadback>(netlist);
+    if (!model) model = std::make_shared<ModelReadback>(netlist, physical);
     return model->Read(operations, clear_status);
   };
 }

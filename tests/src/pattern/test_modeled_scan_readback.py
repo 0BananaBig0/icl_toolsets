@@ -128,7 +128,7 @@ iNote [iGetReadData r -dec]; iNote [iGetStatus]
 """)
         self.assertEqual(self.notes(output), [b"9", b"2"])
 
-    def test_bound_tap_is_lazy_and_rejection_preserves_output(self):
+    def test_bound_tap_is_lazy_and_observes_unknown_capture(self):
         fixture = cli.ROOT / "tests/cases/ours/pattern_generation/access_link"
         source = (fixture / "simple.icl").read_text().replace("Module AccessTop", "Module Chains")
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
@@ -139,11 +139,10 @@ iNote [iGetReadData r -dec]; iNote [iGetStatus]
         default = self.run_tool(icl, pdl, "default.pdl", modeled=False, extra=extra)
         self.assertEqual([line for line in modeled.splitlines() if helpers.LABEL not in line],
                          default.splitlines())
-        pdl.write_text("iPDLLevel 1; iReset; iRead core.r 0; iApply; iGetStatus")
-        output = self.root / "result.pdl"
-        output.write_bytes(b"preserve")
-        self.assertIn("bound TAPs", self.run_tool(icl, pdl, ok=False, extra=extra))
-        self.assertEqual(output.read_bytes(), b"preserve")
+        pdl.write_text("iPDLLevel 1; iReset; iRead core.r 0; iApply; "
+                       "iNote [iGetReadData core.r -bin]; "
+                       "if {![catch {iGetStatus}]} {error {unknown status returned}}")
+        self.assertIn(b"iNote 0bxxxxxxxx", self.run_tool(icl, pdl, extra=extra))
 
     def test_both_legacy_notes_migrate_once(self):
         for note in ("modeled combinational PIO readback; no live device",

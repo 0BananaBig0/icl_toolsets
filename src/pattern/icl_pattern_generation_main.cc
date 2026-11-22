@@ -315,7 +315,9 @@ std::string Generate(
     const pattern::ResourceReservations* initial_reservations = nullptr,
     bool finalize = true, const pattern::SystemClocks* initial_clocks = nullptr,
     ResetVariants* variants = nullptr, bool physical = false,
-    ResetOccurrences* occurrences = nullptr) {
+    ResetOccurrences* occurrences = nullptr, bool modeled_readback = false) {
+  pattern::ScanScheduler::Observation observe;
+  if (modeled_readback) observe = [](const auto&, const auto&) {};
   if (physical) {
     const std::set<std::string> allowed = {
         "iWrite", "iRead", "iApply", "iReset", "iNote", "iTake", "iRelease"};
@@ -418,7 +420,8 @@ std::string Generate(
           try {
             ResetEdits strict;
             Generate(netlist, group, nullptr, &strict, nullptr, &scheduler,
-                     &reservations, false, &clocks);
+                     &reservations, false, &clocks, nullptr, physical, nullptr,
+                     modeled_readback);
             ready = true;
           } catch (const std::runtime_error&) {
             // A failed preview leaves the live state for prerequisite planning.
@@ -439,7 +442,8 @@ std::string Generate(
         for (const auto& layer : prerequisites) {
           reservations.CheckAutomaticWrites(layer);
           scheduler.CheckLocalResets(layer);
-          scheduler.Apply(layer, false, reservations.Values(), false);
+          scheduler.Apply(layer, false, reservations.Values(), false, physical,
+                          observe);
           clocks.Invalidate();
           if (rewritten) {
             rewritten->insert(rewritten->end(), layer.begin(), layer.end());
@@ -536,7 +540,8 @@ std::string Generate(
             const auto& accesses = pending.Operations();
             if (edits) scheduler.CheckLocalResets(accesses);
             const auto steps =
-                scheduler.Apply(accesses, false, reservations.Values());
+                scheduler.Apply(accesses, false, reservations.Values(), true,
+                                physical, observe);
             clocks.Invalidate();
             reservations.Assigned(accesses, scheduler);
             append_steps(steps);
@@ -563,7 +568,7 @@ std::string Generate(
         const auto& accesses = pending.Operations();
         if (edits) scheduler.CheckLocalResets(accesses);
         const auto steps = scheduler.Apply(
-            accesses, together, reservations.Values(), true, physical);
+            accesses, together, reservations.Values(), true, physical, observe);
         clocks.Invalidate();
         reservations.Assigned(accesses, scheduler);
         append_steps(steps);
@@ -683,8 +688,8 @@ std::string Generate(
       });
   if (finalize && had_transaction) {
     try {
-      append_steps(
-          scheduler.Apply({}, false, reservations.Values(), false, physical));
+      append_steps(scheduler.Apply({}, false, reservations.Values(), false,
+                                   physical, observe));
     } catch (const std::exception& error) {
       const auto& last = operations.back();
       std::string message =
@@ -701,7 +706,8 @@ std::string Generate(
   return result;
 }
 std::string GenerateMerged(const pattern::Netlist& netlist,
-                           const std::vector<pattern::Operation>& operations) {
+                           const std::vector<pattern::Operation>& operations,
+                           bool modeled_readback = false) {
   const bool raw =
       std::any_of(operations.begin(), operations.end(),
                   [](const auto& op) { return op.command == "iScan"; });
@@ -720,20 +726,23 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
       }
     }
   }
+  const auto generate = [&](const auto& ordered) {
+    return Generate(netlist, ordered, nullptr, nullptr, nullptr, nullptr,
+                    nullptr, true, nullptr, nullptr, false, nullptr,
+                    modeled_readback);
+  };
   // Inspect raw operations before merging can erase unsupported interactions.
   if (const auto opaque = GenerateOpaque(netlist, operations)) return *opaque;
   if (std::none_of(operations.begin(), operations.end(),
                    [](const auto& op) { return op.command == "iMerge"; })) {
-    return Generate(netlist, operations);
+    return generate(operations);
   }
   try {
-    return Generate(netlist,
-                    pattern::MergeOperations(netlist, operations, true));
+    return generate(pattern::MergeOperations(netlist, operations, true));
   } catch (const std::runtime_error&) {
     // A joint goal may be unreachable even when separate calls are valid.
     // Generate owns a fresh scheduler, so failed trials cannot leak state.
-    return Generate(netlist,
-                    pattern::MergeOperations(netlist, operations, false));
+    return generate(pattern::MergeOperations(netlist, operations, false));
   }
 }
 void CheckPaths(const std::vector<std::string>& inputs,
@@ -844,8 +853,9 @@ int main(int argc, char** argv) {
     if (!options.local_reset.empty()) ValidateResetSources(network.netlist);
     pattern::Runtime runtime(
         design, network.netlist, !options.local_reset.empty(),
-        options.model_readback ? pattern::MakeModeledReadback(network.netlist)
-                               : pattern::Runtime::Readback{});
+        options.model_readback
+            ? pattern::MakeModeledReadback(network.netlist, options.physical)
+            : pattern::Runtime::Readback{});
     std::vector<std::string> sources;
     std::string local_reset;
     for (const auto& path : options.pdl) {
@@ -874,11 +884,12 @@ int main(int argc, char** argv) {
           modeled_operations.end());
       output_operations = &modeled_operations;
     }
-    auto pdl =
-        options.physical
-            ? Generate(network.netlist, *output_operations, nullptr, nullptr,
-                       nullptr, nullptr, nullptr, true, nullptr, nullptr, true)
-            : GenerateMerged(network.netlist, *output_operations);
+    auto pdl = options.physical
+                   ? Generate(network.netlist, *output_operations, nullptr,
+                              nullptr, nullptr, nullptr, nullptr, true, nullptr,
+                              nullptr, true, nullptr, options.model_readback)
+                   : GenerateMerged(network.netlist, *output_operations,
+                                    options.model_readback);
     if (options.model_readback) {
       const auto header =
           "iPDLLevel 0\n" +
@@ -896,9 +907,9 @@ int main(int argc, char** argv) {
               const std::string& completion) {
             pattern::Runtime verified(
                 design, network.netlist, false,
-                options.model_readback
-                    ? pattern::MakeModeledReadback(network.netlist)
-                    : pattern::Runtime::Readback{});
+                options.model_readback ? pattern::MakeModeledReadback(
+                                             network.netlist, options.physical)
+                                       : pattern::Runtime::Readback{});
             verified.Execute(options.local_reset, source);
             if (verified.Level() != runtime.Level()) {
               throw std::runtime_error(
@@ -920,7 +931,9 @@ int main(int argc, char** argv) {
                   "targets");
             }
             ResetEdits strict;
-            Generate(network.netlist, actual, nullptr, &strict);
+            Generate(network.netlist, actual, nullptr, &strict, nullptr,
+                     nullptr, nullptr, true, nullptr, nullptr, false, nullptr,
+                     options.model_readback);
           };
       const auto rewrite = [&](bool whole_commands, bool after_arguments,
                                bool dispatch_arguments = false,
@@ -934,7 +947,8 @@ int main(int argc, char** argv) {
         Generate(network.netlist, runtime.operations(), &actions, &edits,
                  &expected, nullptr, nullptr, true, nullptr,
                  dispatch_arguments ? &variants : nullptr, false,
-                 dispatch_occurrences ? &occurrences : nullptr);
+                 dispatch_occurrences ? &occurrences : nullptr,
+                 options.model_readback);
         const auto state = dispatch_occurrences
                                ? InvocationEdits(sources, actions, occurrences,
                                                  runtime.Level(), &edits)
