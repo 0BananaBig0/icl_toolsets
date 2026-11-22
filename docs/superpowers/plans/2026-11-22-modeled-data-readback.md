@@ -59,18 +59,25 @@ Same factory/flag API; no new state engine/history format.
 
 ### Task2: Scale, qualification, documentation and integration
 
-- [ ] Measure parent/current defaults and current unused/queried mode at8/16
+- [x] Measure parent/current defaults and current unused/queried mode at8/16
       applies x16bits plus larger/sparse registers;3 repeats x3 forms. Save
       command/input/environment/hash/time/RSS, control equality and failures.
       Preserve limits/deadlines; no unlike-workload speedup claims.
-- [ ] Freeze code/tests; all14 native/all14 leak-enabled native SAN suites,
+- [x] Freeze code/tests; all14 native/all14 leak-enabled native SAN suites,
       full dynamic/static CLI, focused/main SAN, C++ quality and packaging.
       Record actual suite/test counts and input/product identities.
-- [ ] Execute guide example as author walkthrough; update README/current
+- [x] Execute guide example as author walkthrough; update README/current
       command table/model/tracker with DataRegister support and remaining limits.
-- [ ] One fresh independent final review; regrade real effects/declined items.
+- [x] One fresh independent final review; regrade real effects/declined items.
       One verified fix pass with appropriate fresh qualification; no rereview.
       Retain pre-fix/partial receipts without claiming complete passes.
 - [ ] Merge master, verify qualified root hashes/focused callers, push/confirm
       origin, delete completed branch, detach reused worktree and archive only
       own ledger. Retain117 stashes. Coverage1 excluded; continue inventory.
+
+Review:0Critical/0Important/2Minor, both accepted. Behavioral2641965 passes36
+full gates/58x946 per variant/14 native+14 SAN/15 quality/packaging and108 scale
+processes. One help/assertion-only fix20931ff passes13 focused checks/312 methods,
+15 quality and packaging; native28/other4004 inputs unchanged. Final4006 inputs/
+31 products verified. Preserve both evidence layers; no rereview/full post-help
+regression claim. Integration next.

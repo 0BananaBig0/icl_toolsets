@@ -452,7 +452,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | iClock/iClockOverride and relative waits work on qualified clock-only routes; restricted state-free absolute waits preserve literal time. General stateful time/clock events remain pending. |
-| Observation getters | Explicit history and provably zero status remain available by default. Opt in to --model_readback for applied combinational PIO observations, bitwise miscompares and exact per-bit failure counts; see [modeled readback](#task148-modeled-combinational-pio-readback). Stateful/interface/chain and live-device observations remain open. |
+| Observation getters | Explicit history and known-zero status remain available by default. --model_readback supplies actual PIO/DataRegister observations, bitwise miscompares and exact failure counts at selected frames; see [the example and limits](#task149-modeled-dataregister-observations-through-pio). ScanRegister/TAP, interface/chain and live-device observations remain open. |
 
 This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
@@ -7846,3 +7846,114 @@ source packaging. Frozen hashes verify4005 source/test/build inputs and31
 products. Evidence is under build/modeled-pio-readback-20261122/final/.
 The final108 scale processes use the same qualified generator binary.
 Coverage item1 remains excluded with unchanged thresholds.
+
+## Task149: modeled DataRegister observations through PIO
+
+--model_readback now includes DataRegisters reached through existing PIO routes.
+It uses the same concrete scheduler and event model as ordinary generation,
+capturing the first actual observation at its selected frame. ScanRegisters,
+bound TAPs, clock/raw/merge histories requiring new observations, callback
+execution and device transport remain outside this increment.
+
+Save data.icl:
+
+~~~icl
+Module ModelData {
+ DataInPort data[3:0]; DataInPort enable;
+ DataRegister value[3:0] {
+  WriteDataSource data; WriteEnSource enable; ResetValue 0;
+ }
+ DataOutPort q[3:0] {Source value;}
+}
+~~~
+
+Save observe.pdl:
+
+~~~tcl
+iPDLLevel 1
+iReset; iState enable 0
+iWrite value 9; iApply
+iRead value 0; iWrite value 6; iApply
+iNote [iGetReadData value -hex]
+iNote [iGetStatus]
+iState value 15 -LastReadValue
+iNote [iGetReadData value -dec]
+iRead q 6; iApply
+iNote [iGetReadData q -hex]
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+~~~
+
+~~~sh
+icl-pattern-generation --icl data.icl --pdl observe.pdl --top_module ModelData --model_readback --output result.pdl
+~~~
+
+The notes contain 0x9, 2, 15, 0x6, 2 and 0. Modeled pin events first store 9.
+The next apply observes that old value before storing 6; its expected 0 produces
+two failing bits. Manual LastReadValue 15 changes only the history plane, while a
+later applied output read still observes actual storage 6. Status clear returns
+the old count 2, then leaves known zero. Model results use declared ICL state and
+events; the mode has no connection to a device.
+
+A DataRegister's manual read/miscompare history can overlap pending model
+observations. The lazy adapter suppresses only older undelivered bits of that
+plane; later applied observations supersede both planes. It preserves physical
+bit identity, sparse/inverted/ascending aliases, unknown values and independent
+failure counts. Unknown status cannot be returned or cleared numerically.
+Controlling state still rewrites queued access values; history-only state does
+not alter hardware or queues. Reset cancels pending accesses without clearing
+history/counts, and a later applied read can observe reset storage.
+
+Writes retain the scheduler's existing reset requirements. The retained
+unreset read/write control fails under its unknown reset state; this feature
+does not relax it. DAG/feedback, ownership and routing remain governed by the
+existing concrete model and reachability/resource checks.
+
+The current mode note is modeled PIO/DataRegister readback; no live device.
+Input containing the former combinational mode note migrates to one current
+note; subsequent original/flat/generated replay is stable. Default mode leaves
+ordinary notes unchanged. Tcl arguments remain once-only; local-reset rewriting
+preserves procedure bytes.
+
+The example was executed as an author walkthrough, with receipt under
+build/modeled-data-readback-20261122/author-example/. Technical checks and the
+independent code review are separate; no independent usability reader is claimed.
+Full qualification, scale and review evidence is recorded below.
+
+The 108-process scale record at behavioral head2641965 compares matched
+parent/current defaults and current unused/queried mode. It uses8/16 applies
+over one16-bit DataRegister and8 applies over32 four-bit registers with two
+sparse read bits, three repeats and three replay forms. Default controls match;
+unused/queried current outputs match; each family's three forms agree.
+Commands, input sizes, environment, binary hashes, wall time and RSS are under
+build/modeled-data-readback-20261122/scale/. No speedup or larger-scale claim.
+
+| Family |16 applies,16 bits: three-form median(s) | Peak RSS(KiB) |32 registers,two sparse bits: three-form median(s) | Peak RSS(KiB) |
+|---|---:|---:|---:|---:|
+|parent-default|0.445|75676|3.355|88200|
+|current-default|0.445|75684|3.306|88252|
+|current-unused|0.395|75716|3.356|88228|
+|current-queried|0.646|109676|6.166|122924|
+
+Full qualification at2641965 passes36 steps:14 native/14 leak-enabled native
+ASan/UBSan suites,58 suites/946 tests per dynamic/static generator,16 new/17
+existing readback/71 main sanitizer methods,15 C++ quality gates and source
+packaging. One fresh independent review found0Critical/0Important/2Minor:
+stale CLI help scope and unordered partial-history assertions. Both are fixed
+in one verified pass; no rereview or independent post-fix approval is claimed.
+
+That pass changes only the CLI help literal and stronger ordered/help test
+assertions. It passes13 focused checks covering312 dynamic/static/sanitizer
+methods,15 C++ quality gates and fresh packaging. All28 native binaries and4004
+other inputs retain their full-baseline hashes. Final manifests verify4006
+inputs/31 products. The full baseline and its three generator snapshots remain
+under final/; final help/assertion checks and manifests are under
+final/post-review/. Scale measurements use the immutable2641965 binary; later
+help/assertion changes do not alter model or scheduling code.
+
+The reviewer assessed relayed actual source/diffs/docs/tests because its command
+host was unavailable. Its independently selected partial-unknown probe passed
+both getter orders and original/flat/generated forms (six root-executed jobs):
+read10x1, mismatch1x01, status2 then0 after clear. No independent full gate rerun,
+checkout inspection, live transport or independent usability reader is claimed.
+Coverage1 remains excluded with unchanged thresholds.
