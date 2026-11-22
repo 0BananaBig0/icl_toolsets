@@ -13,56 +13,6 @@
 namespace pattern {
 namespace {
 constexpr size_t kMaxScanBits = 1024 * 1024;
-const NetlistNode& OpaqueClient(const Netlist& netlist) {
-  const NetlistNode* client = nullptr;
-  const std::set<std::string> pins = {
-      "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
-      "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
-  if (netlist.scopes.size() != 1 || !netlist.taps.empty()) {
-    throw std::runtime_error(
-        "opaque scans require a root client without hierarchy or TAPs");
-  }
-  for (const auto& node : netlist.nodes) {
-    if (node.scan_interface) {
-      if (client || node.scope != 0 ||
-          node.scan_interface->kind != ScanInterfaceKind::kClient ||
-          !node.scan_interface->chains.empty()) {
-        throw std::runtime_error(
-            "opaque scans require one single-chain client");
-      }
-      client = &node;
-    } else if (node.model != ModelKind::kPort || !pins.count(node.kind) ||
-               node.scope != 0 || node.Width() != 1 || !node.inputs.empty() ||
-               node.reset) {
-      throw std::runtime_error(
-          "opaque scans require scalar unsourced root pins without modeled "
-          "state");
-    }
-  }
-  if (!client || EffectiveScanInterfaces(netlist).size() != 1) {
-    throw std::runtime_error("opaque scans require one explicit root client");
-  }
-  const auto& load = client->scan_interface->default_load;
-  if (!load || load->is_string || !load->sized || load->data.empty() ||
-      load->data.size() > kMaxScanBits) {
-    throw std::runtime_error(
-        "opaque scans require a numeric explicitly sized DefaultLoadValue "
-        "between 1 and 1048576 bits");
-  }
-  std::set<std::string> kinds;
-  for (const auto& bit : client->scan_interface->ports) {
-    if (bit.node >= netlist.nodes.size() || bit.inverted ||
-        !kinds.insert(netlist.nodes[bit.node].kind).second) {
-      throw std::runtime_error(
-          "opaque scan interface pins must be direct and unique");
-    }
-  }
-  if (!kinds.count("ScanInPort") || !kinds.count("ScanOutPort")) {
-    throw std::runtime_error(
-        "opaque scan interface requires scan input and output");
-  }
-  return *client;
-}
 size_t ScanLength(z3::context& context, const std::string& text) {
   const auto bits = PdlNumber(context, text, 21);
   size_t length = 0;
@@ -98,16 +48,16 @@ std::string ScanData(z3::context& context, const std::string& text,
 }
 }  // namespace
 
-Operation NormalizeScan(z3::context& context, const std::string& target,
-                        const Operation& operation) {
+static Operation NormalizeRequest(z3::context& context,
+                                  const std::string& target,
+                                  const Operation& operation, bool named) {
   const auto& args = operation.arguments;
   if (args.size() < 2 || args[0] != target) {
     throw std::runtime_error("scan target must be the root client " + target);
   }
   size_t length = 1;
-  // Tessent names the sole unnamed chain "default" in exported PDL.
   if (args[1] == "-chain") {
-    if (args.size() < 4 || args[2] != "default") {
+    if (args.size() < 4 || (!named && args[2] != "default")) {
       throw std::runtime_error("unsupported opaque scan chain selection");
     }
     length = 3;
@@ -133,8 +83,28 @@ Operation NormalizeScan(z3::context& context, const std::string& target,
   auto result = operation;
   result.arguments = {target, std::to_string(width), "-si", "0b" + input,
                       "-so",  "0b" + expected};
+  if (named && length == 3) {
+    result.arguments.insert(result.arguments.begin() + 1, {"-chain", args[2]});
+  }
   if (stable) result.arguments.push_back("-stable");
   return result;
+}
+Operation NormalizeScan(z3::context& context, const std::string& target,
+                        const Operation& operation) {
+  return NormalizeRequest(context, target, operation, false);
+}
+ScanFields ReadScanFields(const Operation& operation) {
+  ScanFields fields;
+  fields.instruction = operation.arguments.at(0) == "-ir";
+  fields.target = fields.instruction ? 1 : 0;
+  fields.length = fields.target + 1;
+  if (operation.arguments.at(fields.length) == "-chain") {
+    fields.chain = operation.arguments.at(fields.length + 1);
+    fields.length += 2;
+  }
+  fields.input = fields.length + 2;
+  fields.expected = fields.length + 4;
+  return fields;
 }
 Operation NormalizeScan(z3::context& context, const Operation& operation) {
   auto data = operation;
@@ -144,8 +114,182 @@ Operation NormalizeScan(z3::context& context, const Operation& operation) {
   if (data.arguments.size() < 2) {
     throw std::runtime_error("raw scan requires client and length");
   }
-  auto result = NormalizeScan(context, data.arguments[0], data);
+  auto result = NormalizeRequest(context, data.arguments[0], data, true);
   if (instruction) result.arguments.insert(result.arguments.begin(), "-ir");
+  return result;
+}
+OpaqueScanModel DescribeOpaqueScans(const Netlist& netlist) {
+  if (netlist.scopes.size() != 1 || !netlist.taps.empty()) {
+    throw std::runtime_error(
+        "opaque scans require a root client without hierarchy or TAPs");
+  }
+  const NetlistNode* client = nullptr;
+  for (const auto& node : netlist.nodes) {
+    if (!node.scan_interface) continue;
+    if (client || node.scope != 0 ||
+        node.scan_interface->kind != ScanInterfaceKind::kClient) {
+      throw std::runtime_error("opaque scans require one root client");
+    }
+    client = &node;
+  }
+  if (!client || EffectiveScanInterfaces(netlist).size() != 1) {
+    throw std::runtime_error("opaque scans require one explicit root client");
+  }
+  const auto& interface = *client->scan_interface;
+  const bool parallel = !interface.chains.empty();
+  const std::set<std::string> pins = {
+      "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
+      "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
+  for (const auto& node : netlist.nodes) {
+    if (node.scan_interface) continue;
+    const bool data = node.kind == "ScanInPort" || node.kind == "ScanOutPort";
+    if (node.model != ModelKind::kPort || !pins.count(node.kind) ||
+        node.scope != 0 || (node.Width() != 1 && !(parallel && data)) ||
+        !node.inputs.empty() || node.reset) {
+      throw std::runtime_error(
+          "opaque scans require unsourced root pins without modeled state");
+    }
+  }
+  const auto validate_ports = [&](const auto& ports, bool require_data) {
+    std::set<std::string> kinds;
+    for (const auto& bit : ports) {
+      if (bit.node >= netlist.nodes.size() || bit.inverted ||
+          !kinds.insert(netlist.nodes[bit.node].kind).second) {
+        throw std::runtime_error(
+            "opaque scan interface pins must be direct and unique");
+      }
+    }
+    if (require_data &&
+        (!kinds.count("ScanInPort") || !kinds.count("ScanOutPort"))) {
+      throw std::runtime_error(
+          "opaque scan interface requires scan input and output");
+    }
+  };
+  OpaqueScanModel model{client->name, {}};
+  const auto add_load = [&](const std::string& name, const auto& load) {
+    if (!load || load->is_string || !load->sized || load->data.empty() ||
+        load->data.size() > kMaxScanBits) {
+      throw std::runtime_error(
+          "opaque scans require a numeric explicitly sized DefaultLoadValue "
+          "between 1 and 1048576 bits");
+    }
+    model.defaults.emplace(name, load->data);
+  };
+  validate_ports(interface.ports, !parallel);
+  if (parallel) {
+    for (const auto& chain : interface.chains) {
+      validate_ports(chain.ports, true);
+      add_load(chain.name, chain.default_load);
+    }
+  } else {
+    add_load("", interface.default_load);
+  }
+  return model;
+}
+Operation NormalizeOpaqueScan(z3::context& context,
+                              const OpaqueScanModel& model,
+                              const Operation& operation) {
+  const bool scalar = model.defaults.count("");
+  auto scan = scalar ? NormalizeScan(context, model.client, operation)
+                     : NormalizeScan(context, operation);
+  const auto fields = ReadScanFields(scan);
+  if (fields.instruction || scan.arguments[fields.target] != model.client ||
+      !model.defaults.count(fields.chain)) {
+    throw std::runtime_error("opaque scan requires a valid client chain");
+  }
+  return scan;
+}
+void OpaqueScanQueue::Add(z3::context& context, const Operation& operation) {
+  auto scan = NormalizeOpaqueScan(context, model_, operation);
+  const auto fields = ReadScanFields(scan);
+  const auto found = pending_.find(fields.chain);
+  const size_t previous =
+      found == pending_.end()
+          ? 0
+          : found->second.arguments[ReadScanFields(found->second).input]
+                    .size() -
+                2;
+  const size_t bits =
+      pending_bits_ - previous + scan.arguments[fields.input].size() - 2;
+  if (bits > kMaxScanBits) {
+    throw std::runtime_error("opaque scan queued payload resource limit");
+  }
+  pending_.insert_or_assign(fields.chain, std::move(scan));
+  pending_bits_ = bits;
+}
+void OpaqueScanQueue::Reset(const Operation& operation) {
+  if (!operation.arguments.empty() &&
+      operation.arguments != std::vector<std::string>{"-sync"}) {
+    throw std::runtime_error("unsupported opaque iReset option");
+  }
+  pending_.clear();
+  pending_bits_ = 0;
+  stable_.clear();
+  defaults_available_ = true;
+  unknown_lengths_.clear();
+}
+std::vector<Operation> OpaqueScanQueue::Apply(const Operation& operation) {
+  ValidatePdlApplyOptions(operation.arguments);
+  if (pending_.empty()) return {};
+  const bool parallel = !model_.defaults.count("");
+  size_t bits = pending_bits_;
+  if (parallel) {
+    for (const auto& [name, load] : model_.defaults) {
+      if (pending_.count(name)) continue;
+      const auto known = stable_.find(name);
+      if (known == stable_.end() &&
+          (!defaults_available_ || unknown_lengths_.count(name))) {
+        throw std::runtime_error(
+            "opaque parallel scan chain length is unknown");
+      }
+      const size_t width =
+          known == stable_.end()
+              ? load.size()
+              : known->second.arguments[ReadScanFields(known->second).input]
+                        .size() -
+                    2;
+      if (width > kMaxScanBits - bits) {
+        throw std::runtime_error("opaque scan queued payload resource limit");
+      }
+      bits += width;
+    }
+  }
+  auto executed = pending_;
+  if (parallel) {
+    for (const auto& [name, load] : model_.defaults) {
+      if (executed.count(name)) continue;
+      const auto known = stable_.find(name);
+      auto scan = known == stable_.end() ? operation : known->second;
+      if (known == stable_.end()) {
+        scan.command = "iScan";
+        scan.arguments = {model_.client, "-chain",
+                          name,          std::to_string(load.size()),
+                          "-si",         "0b" + load,
+                          "-so",         "0b" + std::string(load.size(), 'x'),
+                          "-stable"};
+      } else {
+        const auto fields = ReadScanFields(scan);
+        scan.arguments[fields.expected] =
+            "0b" + std::string(scan.arguments[fields.input].size() - 2, 'x');
+      }
+      executed.emplace(name, std::move(scan));
+    }
+    for (const auto& [name, scan] : pending_) {
+      if (scan.arguments.back() == "-stable") {
+        stable_.insert_or_assign(name, scan);
+        unknown_lengths_.erase(name);
+      } else {
+        stable_.erase(name);
+        unknown_lengths_.insert(name);
+      }
+    }
+  }
+  std::vector<Operation> result;
+  result.reserve(executed.size() + 1);
+  for (auto& [name, scan] : executed) result.push_back(std::move(scan));
+  result.push_back(operation);
+  pending_.clear();
+  pending_bits_ = 0;
   return result;
 }
 std::optional<std::vector<Operation>> LowerOpaqueScans(
@@ -159,29 +303,20 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
           [](const auto& node) { return node.kind == "ScanRegister"; })) {
     return std::nullopt;
   }
-  const auto& client = OpaqueClient(netlist);
+  OpaqueScanQueue queue(DescribeOpaqueScans(netlist));
   z3::context context;
-  std::optional<Operation> pending;
   std::vector<Operation> result;
   for (const auto& operation : operations) {
     try {
       if (operation.command == "iScan") {
         // Validate before replacement: even a discarded assignment must be
         // valid.
-        pending = NormalizeScan(context, client.name, operation);
+        queue.Add(context, operation);
       } else if (operation.command == "iApply") {
-        ValidatePdlApplyOptions(operation.arguments);
-        if (pending) {
-          result.push_back(std::move(*pending));
-          result.push_back(operation);
-        }
-        pending.reset();
+        auto executed = queue.Apply(operation);
+        result.insert(result.end(), executed.begin(), executed.end());
       } else if (operation.command == "iReset") {
-        if (!operation.arguments.empty() &&
-            operation.arguments != std::vector<std::string>{"-sync"}) {
-          throw std::runtime_error("unsupported opaque iReset option");
-        }
-        pending.reset();
+        queue.Reset(operation);
         result.push_back(operation);
       } else if (operation.command == "iNote") {
         result.push_back(operation);
@@ -197,7 +332,9 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
       throw std::runtime_error(message);
     }
   }
-  if (pending) throw std::runtime_error("unapplied opaque scan operations");
+  if (!queue.Pending().empty()) {
+    throw std::runtime_error("unapplied opaque scan operations");
+  }
   return result;
 }
 }  // namespace pattern

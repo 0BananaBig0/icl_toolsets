@@ -39,6 +39,8 @@ class ScanScheduler {
   using Observation =
       std::function<void(const std::vector<BitReference>&, const std::string&)>;
   using PioObservation = Observation;
+  using RawObservation =
+      std::function<void(const Operation&, const std::string&)>;
   explicit ScanScheduler(const Netlist& netlist);
   ScanScheduler(const ScanScheduler& other);
   ~ScanScheduler();
@@ -69,6 +71,16 @@ class ScanScheduler {
                        const std::map<size_t, std::string>& preserved = {},
                        std::set<size_t>* assigned = nullptr,
                        std::vector<ScanStep>* preparations = nullptr);
+  Operation ApplyScan(const Operation& operation,
+                      const std::map<size_t, std::string>& preserved,
+                      std::set<size_t>* assigned,
+                      std::vector<ScanStep>* preparations,
+                      const RawObservation& observe);
+  Operation ApplyScans(const std::vector<Operation>& operations,
+                       const std::map<size_t, std::string>& preserved,
+                       std::set<size_t>* assigned,
+                       std::vector<ScanStep>* preparations,
+                       const RawObservation& observe);
   std::string Value(const std::string& target) const;
   // Reset-only control writes, grouped by dependency depth; no SIB setup.
   // Unwritten masks use '1' for taken bits that must not be assigned.

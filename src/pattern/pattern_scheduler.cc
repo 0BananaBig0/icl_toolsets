@@ -1248,6 +1248,11 @@ class ScanScheduler::Impl {
     std::optional<size_t> permitted;
     std::map<std::string, std::string> loads, expected;
     std::string input, output;
+    struct Returned {
+      size_t id, begin;
+      bool inverted;
+    };
+    std::vector<Returned> returned;
   };
   std::optional<RawTapRequest> TapScans(
       const std::vector<Operation>& operations) {
@@ -1302,6 +1307,7 @@ class ScanScheduler::Impl {
       request.assigned.insert(id);
       const auto& node = netlist_.nodes[id];
       begin -= node.Width();
+      request.returned.push_back({id, begin, suffix});
       const auto load = InvertBits(input.substr(begin, node.Width()),
                                    path.inverted != suffix);
       const auto compare =
@@ -1328,21 +1334,54 @@ class ScanScheduler::Impl {
   }
   std::vector<ScanStep> ApplyTapScan(
       const RawTapRequest& request,
-      const std::map<size_t, std::string>& preserved) {
+      const std::map<size_t, std::string>& preserved,
+      const RawObservation& observe) {
     InvalidateRawRoute();
     const size_t offset = request.instruction ? 1 : 0;
     if (request.operation.arguments[3 + offset].find('x') !=
         std::string::npos) {
-      return ApplyLiteralTapScan(request, preserved);
+      return ApplyLiteralTapScan(request, preserved, observe);
     }
-    auto steps =
-        Apply(request.accesses, false, preserved, true, request.permitted);
+    std::map<size_t, std::string> captured;
+    if (observe) {
+      for (const auto& item : request.returned) {
+        captured.emplace(item.id,
+                         std::string(netlist_.nodes[item.id].Width(), '?'));
+      }
+    }
+    const Observation sample =
+        observe ? Observation{[&](const auto& bits, const auto& values) {
+          for (size_t i = 0; i < bits.size(); ++i) {
+            const auto found = captured.find(bits[i].node);
+            if (found == captured.end()) continue;
+            const auto& node = netlist_.nodes[bits[i].node];
+            const auto offset = static_cast<size_t>(
+                node.left >= node.right ? node.left - bits[i].index
+                                        : bits[i].index - node.left);
+            if (found->second[offset] == '?') found->second[offset] = values[i];
+          }
+        }}
+                : Observation{};
+    auto steps = Apply(request.accesses, false, preserved, true,
+                       request.permitted, false, sample);
     InvalidateRawRoute();
+    if (observe) {
+      std::string actual(request.width, '?');
+      for (const auto& item : request.returned) {
+        actual.replace(item.begin, captured.at(item.id).size(),
+                       InvertBits(captured.at(item.id), item.inverted));
+      }
+      if (actual.find('?') != std::string::npos) {
+        throw std::runtime_error("raw TAP replay did not observe every bit");
+      }
+      observe(request.operation, actual);
+    }
     return steps;
   }
   std::vector<ScanStep> ApplyLiteralTapScan(
       const RawTapRequest& request,
-      const std::map<size_t, std::string>& preserved) {
+      const std::map<size_t, std::string>& preserved,
+      const RawObservation& observe) {
     const auto fail = [] {
       throw std::runtime_error(
           "literal raw TAP input requires one qualified exact CSU");
@@ -1373,8 +1412,10 @@ class ScanScheduler::Impl {
     }
     // Reuse ordinary validation on a disposable binary proof, never its fill.
     Impl proof(*this);
+    const Observation proof_observer =
+        observe ? Observation{[](const auto&, const auto&) {}} : Observation{};
     const auto steps = proof.Apply(request.accesses, false, preserved, true,
-                                   request.permitted);
+                                   request.permitted, false, proof_observer);
     if (steps.size() != 1) fail();
     auto step = steps.front();
     const size_t offset = request.instruction ? 1 : 0;
@@ -1418,8 +1459,15 @@ class ScanScheduler::Impl {
     const std::vector<std::pair<BitReference, ScanLane>> lanes = {
         {path.input,
          {step.input, step.output, step.serial, step.serial_expected}}};
+    std::string actual(request.width, '?');
+    const auto sample = [&](size_t tick, const NetworkState&) {
+      if (observe) {
+        actual[request.width - 1 - tick] =
+            run->ReadTdo(netlist_.taps.begin()->first);
+      }
+    };
     const auto [writable, reset_held] =
-        ReplayTapStep(step, lanes, controls, run.get(), check);
+        ReplayTapStep(step, lanes, controls, run.get(), check, sample);
     if (!run->TakeResetEvents().empty()) fail();
     for (const auto& [id, control] : controls) {
       if (!writable.count(id) ||
@@ -1447,6 +1495,7 @@ class ScanScheduler::Impl {
     execution_ = std::move(run);
     fill_ = std::move(fill);
     InvalidateRawRoute();
+    if (observe) observe(request.operation, actual);
     return {std::move(step)};
   }
   void CheckRawTapStable(const RawTapRequest& request) {
@@ -1547,7 +1596,8 @@ class ScanScheduler::Impl {
   }
   Operation ApplyScans(const std::vector<Operation>& operations,
                        const std::map<size_t, std::string>& preserved,
-                       std::set<size_t>* assigned) {
+                       std::set<size_t>* assigned,
+                       const RawObservation& observe = {}) {
     const auto latest = RawRequests(operations);
     std::map<size_t, std::pair<size_t, std::string>> intervals;
     for (const auto& request : latest) {
@@ -1611,9 +1661,36 @@ class ScanScheduler::Impl {
                           "-so",
                           "0b" + expected};
     if (stable) physical.arguments.push_back("-stable");
+    std::map<size_t, std::string> captured;
+    std::vector<std::pair<size_t, bool>> returned;
+    std::vector<size_t> offsets;
+    std::map<std::string, RawSlice> slices;
+    if (observe) {
+      returned = root.registers;
+      offsets = root.offsets;
+      for (const auto& [id, suffix] : returned) captured.emplace(id, "");
+      for (const auto& [name, operation] : latest) {
+        slices.emplace(name, RawSubchain(name));
+      }
+    }
+    const size_t width = root.width;
     auto result =
         ReplayScan(physical, stable_clients, preserved, explicit_registers,
-                   latest.count(netlist_.nodes[root.client].name) != 0);
+                   latest.count(netlist_.nodes[root.client].name) != 0, nullptr,
+                   observe ? &captured : nullptr);
+    if (observe) {
+      std::string actual(width, 'x');
+      for (size_t i = 0; i < returned.size(); ++i) {
+        const auto [id, suffix] = returned[i];
+        actual.replace(offsets[i], captured.at(id).size(),
+                       InvertBits(captured.at(id), suffix));
+      }
+      for (const auto& [name, operation] : latest) {
+        const auto& slice = slices.at(name);
+        observe(operation, InvertBits(actual.substr(slice.offset, slice.width),
+                                      slice.output_inverted));
+      }
+    }
     if (assigned) *assigned = std::move(explicit_registers);
     return result;
   }
@@ -7003,50 +7080,76 @@ Operation ScanScheduler::NormalizeScan(const Operation& operation,
 Operation ScanScheduler::ApplyScan(
     const Operation& operation, const std::map<size_t, std::string>& preserved,
     std::set<size_t>* assigned, std::vector<ScanStep>* preparations) {
-  return ApplyScans({operation}, preserved, assigned, preparations);
+  return ApplyScans({operation}, preserved, assigned, preparations, {});
 }
 Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
     std::vector<ScanStep>* preparations) {
-  const auto tap = impl_->TapScans(operations);
-  if (!tap) {
-    if (!preparations) {
-      return impl_->ApplyScans(operations, preserved, assigned);
+  return ApplyScans(operations, preserved, assigned, preparations, {});
+}
+Operation ScanScheduler::ApplyScan(
+    const Operation& operation, const std::map<size_t, std::string>& preserved,
+    std::set<size_t>* assigned, std::vector<ScanStep>* preparations,
+    const RawObservation& observe) {
+  return ApplyScans({operation}, preserved, assigned, preparations, observe);
+}
+Operation ScanScheduler::ApplyScans(
+    const std::vector<Operation>& operations,
+    const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
+    std::vector<ScanStep>* preparations, const RawObservation& observe) {
+  std::vector<std::pair<Operation, std::string>> observations;
+  const RawObservation sample =
+      observe ? RawObservation{[&](const auto& operation, const auto& bits) {
+        observations.emplace_back(operation, bits);
+      }}
+              : RawObservation{};
+  const auto execute = [&]() -> Operation {
+    const auto tap = impl_->TapScans(operations);
+    if (!tap) {
+      if (!preparations) {
+        return impl_->ApplyScans(operations, preserved, assigned, sample);
+      }
+      ScanScheduler trial(*this);
+      const auto requests = trial.impl_->RawRequests(operations, true);
+      auto prefix = trial.impl_->PrepareScans(requests, preserved);
+      std::vector<Operation> latest;
+      for (const auto& [name, operation] : requests) {
+        latest.push_back(operation);
+      }
+      std::set<size_t> written;
+      auto result = trial.impl_->ApplyScans(
+          latest, preserved, assigned ? &written : nullptr, sample);
+      impl_.swap(trial.impl_);
+      if (assigned) *assigned = std::move(written);
+      *preparations = std::move(prefix);
+      return result;
     }
     ScanScheduler trial(*this);
-    const auto requests = trial.impl_->RawRequests(operations, true);
-    auto prefix = trial.impl_->PrepareScans(requests, preserved);
-    std::vector<Operation> latest;
-    for (const auto& [name, operation] : requests) latest.push_back(operation);
-    std::set<size_t> written;
-    auto result = trial.impl_->ApplyScans(latest, preserved,
-                                          assigned ? &written : nullptr);
+    const auto steps = trial.impl_->ApplyTapScan(*tap, preserved, sample);
+    const size_t offset = tap->instruction ? 1 : 0;
+    const auto input = tap->operation.arguments[3 + offset].substr(2);
+    const auto expected = tap->operation.arguments[5 + offset].substr(2);
+    if (steps.size() != 1 || steps[0].instruction != tap->instruction ||
+        !steps[0].lanes.empty() || steps[0].input != tap->input ||
+        steps[0].output != tap->output || steps[0].loads != tap->loads ||
+        steps[0].writes != tap->loads || steps[0].expected != tap->expected ||
+        steps[0].serial != std::string(input.rbegin(), input.rend()) ||
+        steps[0].serial_expected !=
+            std::string(expected.rbegin(), expected.rend())) {
+      throw std::runtime_error("raw TAP scan requires one exact requested CSU");
+    }
+    trial.impl_->CheckRawTapStable(*tap);
+    auto result = tap->operation;
+    auto written = tap->assigned;
     impl_.swap(trial.impl_);
     if (assigned) *assigned = std::move(written);
-    *preparations = std::move(prefix);
+    if (preparations) preparations->clear();
     return result;
-  }
-  ScanScheduler trial(*this);
-  const auto steps = trial.impl_->ApplyTapScan(*tap, preserved);
-  const size_t offset = tap->instruction ? 1 : 0;
-  const auto input = tap->operation.arguments[3 + offset].substr(2);
-  const auto expected = tap->operation.arguments[5 + offset].substr(2);
-  if (steps.size() != 1 || steps[0].instruction != tap->instruction ||
-      !steps[0].lanes.empty() || steps[0].input != tap->input ||
-      steps[0].output != tap->output || steps[0].loads != tap->loads ||
-      steps[0].writes != tap->loads || steps[0].expected != tap->expected ||
-      steps[0].serial != std::string(input.rbegin(), input.rend()) ||
-      steps[0].serial_expected !=
-          std::string(expected.rbegin(), expected.rend())) {
-    throw std::runtime_error("raw TAP scan requires one exact requested CSU");
-  }
-  trial.impl_->CheckRawTapStable(*tap);
-  auto result = tap->operation;
-  auto written = tap->assigned;
-  impl_.swap(trial.impl_);
-  if (assigned) *assigned = std::move(written);
-  if (preparations) preparations->clear();
+  };
+  auto result = execute();
+  impl_->InvalidateRawRoute();
+  for (const auto& [operation, bits] : observations) observe(operation, bits);
   return result;
 }
 

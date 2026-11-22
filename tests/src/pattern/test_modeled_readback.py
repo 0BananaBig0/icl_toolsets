@@ -181,7 +181,7 @@ iNote [iGetReadData q -bin]
                               self.run_tool(icl, pdl, ok=False))
                 self.assertEqual(output.read_bytes(), b"preserve")
 
-    def test_raw_history_rejected_and_known_manual_history_preserved(self):
+    def test_raw_history_and_known_manual_history_are_independent(self):
         source = """Module Chains {
  ScanInPort si; SelectPort sel; CaptureEnPort ce;
  ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
@@ -197,9 +197,15 @@ iState r 5 -LastReadValue; iNote [iGetReadData r -dec]
 """)
         self.assertIn(b"iNote 5\n", self.run_tool(icl, pdl))
         pdl.write_text("""iPDLLevel 1
-iReset; iScan client 4 -si 0 -so 0; iApply; iGetStatus
+iReset; iState r 5 -LastReadValue
+iScan client 4 -si 0 -so 0; iApply
+iNote [iGetReadData client -bin]
+iNote [iGetStatus]; iNote [iGetReadData r -dec]
 """)
-        self.assertIn("modeled readback", self.run_tool(icl, pdl, ok=False))
+        result = self.run_tool(icl, pdl)
+        self.assertIn(b"iNote 0b0000", result)
+        self.assertIn(b"iNote 0\n", result)
+        self.assertIn(b"iNote 5\n", result)
 
     def test_local_reset_preserves_procedure_source(self):
         body = """iProc observe {} {

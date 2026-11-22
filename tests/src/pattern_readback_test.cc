@@ -60,6 +60,104 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
 }
+void TestRawObservationCommit() {
+  pattern::Design design;
+  design.AddIcl("raw.icl", R"(
+Module Top {
+ ScanInPort si; ScanOutPort so {Source r[0];}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port ck;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("r", "1001");
+  std::set<size_t> assigned;
+  std::vector<pattern::ScanStep> preparations;
+  bool thrown = false;
+  try {
+    scheduler.ApplyScan(
+        {"iScan", {"client", "4", "-si", "6", "-so", "0"}, "raw", {}}, {},
+        &assigned, &preparations, [&](const auto& operation, const auto& bits) {
+          Require(bits == "1001" && operation.arguments[3] == "0b0110",
+                  "raw callback carries actual return and canonical request");
+          throw std::runtime_error("raw listener failure");
+        });
+  } catch (const std::runtime_error& error) {
+    thrown = std::string(error.what()).find("raw listener failure") !=
+             std::string::npos;
+  }
+  Require(thrown && scheduler.Value("r") == "0110" &&
+              assigned.count(netlist.node_ids.at("r")) && preparations.empty(),
+          "raw subscriber failure retains committed state and outputs");
+  std::string actual;
+  scheduler.ApplyScan({"iScan", {"client", "4", "-si", "0"}, "next", {}}, {},
+                      nullptr, nullptr,
+                      [&](const auto&, const auto& bits) { actual = bits; });
+  Require(actual == "0110" && scheduler.Value("r") == "0000",
+          "next raw call uses committed state after callback error");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  const auto* updates =
+      readback({{"iReset", {}, "raw", {}},
+                {"iWrite", {"r", "9"}, "raw", {}},
+                {"iApply", {}, "raw", {}},
+                {"iScan", {"client", "4", "-si", "6", "-so", "0"}, "raw", {}},
+                {"iApply", {}, "raw", {}}},
+               false);
+  Require(updates && updates->bits.empty() && updates->scans.size() == 1 &&
+              updates->scans[0].read == "1001" &&
+              updates->scans[0].miscompare == "1001" && updates->failures == 2,
+          "raw adapter observes independently without register history");
+}
+void TestRawTapObservationCommit() {
+  const std::string folder =
+      "tests/cases/ours/pattern_generation/raw_tap_builtin_dr/";
+  const auto read = [&](const std::string& name) {
+    std::ifstream stream(folder + name);
+    Require(stream.good(), "raw TAP observer fixture opens");
+    return std::string((std::istreambuf_iterator<char>(stream)), {});
+  };
+  pattern::Design design;
+  design.AddIcl("raw-tap.icl", read("model.icl"));
+  design.AddBsdl("raw-tap.bsdl", read("model.bsdl"), "BuiltinDrProbe");
+  const auto network = pattern::ElaborateTapNetwork(design, "BuiltinDrTop");
+  for (bool literal : {false, true}) {
+    pattern::ScanScheduler scheduler(network.netlist);
+    scheduler.Reset();
+    scheduler.ApplyScan(
+        {"iScan", {"-ir", "jtag", "4", "-si", "3"}, "setup", {}});
+    scheduler.Assume("core.r", "00001001");
+    std::set<size_t> assigned;
+    std::vector<pattern::ScanStep> preparations;
+    bool thrown = false;
+    const std::string committed = literal ? "0x1001x0" : "00000110";
+    try {
+      scheduler.ApplyScan(
+          {"iScan",
+           {"jtag", "8", "-si", "0b" + committed, "-so", "0"},
+           "raw-tap",
+           {}},
+          {}, &assigned, &preparations, [&](const auto&, const auto& bits) {
+            Require(bits == "00001001", "raw TAP observes actual old data");
+            throw std::runtime_error("raw TAP listener failure");
+          });
+    } catch (const std::runtime_error& error) {
+      thrown = std::string(error.what()).find("raw TAP listener failure") !=
+               std::string::npos;
+    }
+    Require(thrown && scheduler.Value("core.r") == committed &&
+                assigned.count(network.netlist.node_ids.at("core.r")) &&
+                preparations.empty(),
+            "raw TAP subscriber failure preserves committed transaction");
+    std::string actual;
+    scheduler.ApplyScan({"iScan", {"jtag", "8", "-si", "0"}, "next", {}}, {},
+                        nullptr, nullptr,
+                        [&](const auto&, const auto& bits) { actual = bits; });
+    Require(actual == committed && scheduler.Value("core.r") == "00000000",
+            "raw TAP follow-up observes committed binary/literal state");
+  }
+}
 void TestReadModel() {
   pattern::Design design;
   design.AddIcl("queue.icl", R"(
@@ -133,7 +231,7 @@ Module Top {
   update = readback(operations, false);
   Require(update && update->bits.empty() && update->failures == 0,
           "clear takes effect on the next query");
-  for (const std::string command : {"iScan", "iMerge", "iClock"}) {
+  for (const std::string command : {"iMerge", "iClock"}) {
     const auto unsupported = pattern::MakeModeledReadback(netlist);
     bool rejected = false;
     try {
@@ -493,6 +591,8 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestRawObservationCommit();
+    TestRawTapObservationCommit();
     TestReadModel();
     TestModeledReadback();
     TestScheduledObservations();

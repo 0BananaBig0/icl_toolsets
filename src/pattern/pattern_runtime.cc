@@ -434,6 +434,55 @@ class Runtime::Impl {
     }
   }
 
+  std::string ScanChainName(const std::string& name, const std::string& chain) {
+    if (!netlist_) return chain;
+    if (!scan_clients_loaded_) {
+      for (const auto& node : netlist_->nodes) {
+        if (!node.scan_interface ||
+            (node.scan_interface->kind != ScanInterfaceKind::kClient &&
+             node.scan_interface->kind != ScanInterfaceKind::kClientTap)) {
+          continue;
+        }
+        if (node.scan_interface->kind == ScanInterfaceKind::kClientTap) {
+          tap_clients_.insert(node.name);
+        }
+        auto& chains = scan_clients_[node.name];
+        for (const auto& item : node.scan_interface->chains) {
+          chains.insert(item.name);
+        }
+      }
+      if (!netlist_->node_ids.count("unnamed") && netlist_->taps.size() == 1) {
+        const bool declared = std::any_of(
+            netlist_->nodes.begin(), netlist_->nodes.end(),
+            [](const auto& node) {
+              return node.scope == 0 && node.scan_interface.has_value();
+            });
+        const auto interfaces = EffectiveScanInterfaces(*netlist_);
+        if (!declared && std::any_of(interfaces.begin(), interfaces.end(),
+                                     [](const auto& binding) {
+                                       return binding.scope == 0 &&
+                                              binding.interface.kind ==
+                                                  ScanInterfaceKind::kClientTap;
+                                     })) {
+          scan_clients_["unnamed"];
+          tap_clients_.insert("unnamed");
+        }
+      }
+      scan_clients_loaded_ = true;
+    }
+    const auto found = scan_clients_.find(name);
+    if (found == scan_clients_.end()) {
+      throw std::runtime_error("raw scan target must be a client interface");
+    }
+    if (found->second.empty() && (chain.empty() || chain == "default")) {
+      return "";
+    }
+    if (chain.empty() || !found->second.count(chain)) {
+      throw std::runtime_error("raw scan requires a valid client chain");
+    }
+    return chain;
+  }
+
   void InvalidateReadHistory(const Operation& apply) {
     const bool together = ValidatePdlApplyOptions(apply.arguments);
     if (!pending_) return;
@@ -447,53 +496,34 @@ class Runtime::Impl {
     bool zero_status_known = zero_status_known_;
     bool accesses = false, fallback_read = false;
     std::unordered_map<size_t, std::string> read_care;
-    std::map<std::pair<bool, std::string>, std::pair<size_t, bool>> raw_care;
+    std::map<std::pair<bool, std::pair<std::string, std::string>>,
+             std::pair<size_t, bool>>
+        raw_care;
     size_t raw_bits = 0;
+    std::optional<bool> raw_mode;
     // Validate discarded operands too; commit history only after the whole
     // queue.
     for (auto it = first; it != operations_.end(); ++it) {
       const auto& operation = *it;
       if (operation.command == "iScan") {
         const auto scan = NormalizeScan(*history_context_, operation);
-        const bool instruction = scan.arguments[0] == "-ir";
-        const size_t offset = instruction ? 1 : 0;
-        const auto& name = scan.arguments[offset];
-        if (netlist_) {
-          const auto found = netlist_->node_ids.find(name);
-          bool client = false;
-          if (found != netlist_->node_ids.end()) {
-            const auto& interface =
-                netlist_->nodes[found->second].scan_interface;
-            client =
-                interface && (interface->kind == ScanInterfaceKind::kClient ||
-                              interface->kind == ScanInterfaceKind::kClientTap);
-          } else if (name == "unnamed" && netlist_->taps.size() == 1) {
-            if (!implicit_tap_client_) {
-              const bool declared = std::any_of(
-                  netlist_->nodes.begin(), netlist_->nodes.end(),
-                  [](const auto& node) {
-                    return node.scope == 0 && node.scan_interface.has_value();
-                  });
-              const auto interfaces = EffectiveScanInterfaces(*netlist_);
-              implicit_tap_client_ =
-                  !declared &&
-                  std::any_of(interfaces.begin(), interfaces.end(),
-                              [](const auto& binding) {
-                                return binding.scope == 0 &&
-                                       binding.interface.kind ==
-                                           ScanInterfaceKind::kClientTap;
-                              });
-            }
-            client = *implicit_tap_client_;
-          }
-          if (!client || (instruction && netlist_->taps.empty())) {
-            throw std::runtime_error(
-                "raw scan target must be a client interface");
-          }
+        const auto fields = ReadScanFields(scan);
+        const auto& name = scan.arguments[fields.target];
+        const auto chain = ScanChainName(name, fields.chain);
+        if (fields.instruction && netlist_ &&
+            (netlist_->taps.empty() || !tap_clients_.count(name))) {
+          throw std::runtime_error(
+              "raw IR scan target must be a client TAP interface");
         }
-        const auto key = std::make_pair(instruction, name);
+        if (raw_mode && *raw_mode != fields.instruction) {
+          throw std::runtime_error(
+              "mixed raw IR and data scans are unsupported");
+        }
+        raw_mode = fields.instruction;
+        const auto key =
+            std::make_pair(fields.instruction, std::make_pair(name, chain));
         auto& latest = raw_care[key];
-        const auto& expected = scan.arguments[5 + offset];
+        const auto& expected = scan.arguments[fields.expected];
         const size_t width = expected.size() - 2;
         raw_bits = raw_bits - latest.first + width;
         if (raw_bits > 1024 * 1024) {
@@ -558,6 +588,10 @@ class Runtime::Impl {
     for (const auto& [key, scan] : raw_care) {
       if (scan.second) zero_status_known = false;
     }
+    for (const auto& [key, scan] : raw_care) {
+      raw_read_history_[key.second] = std::string(scan.first, '?');
+      raw_miscompare_history_[key.second] = std::string(scan.first, '?');
+    }
     for (const auto& [id, care] : read_care) {
       if (care.find('1') != std::string::npos) zero_status_known = false;
       for (auto* history : {&read_history_, &miscompare_history_}) {
@@ -589,6 +623,22 @@ class Runtime::Impl {
         }
       }
     }
+    std::vector<std::pair<std::string, std::string>> scan_keys;
+    std::set<std::pair<std::string, std::string>> seen;
+    for (const auto& update : updates->scans) {
+      const auto key = std::make_pair(
+          update.target, ScanChainName(update.target, update.chain));
+      const auto applied = raw_read_history_.find(key);
+      if (!netlist_ || applied == raw_read_history_.end() ||
+          !seen.insert(key).second ||
+          update.read.size() != applied->second.size() ||
+          update.miscompare.size() != applied->second.size() ||
+          update.read.find_first_not_of("01x") != std::string::npos ||
+          update.miscompare.find_first_not_of("01x") != std::string::npos) {
+        throw std::runtime_error("invalid modeled raw readback delta");
+      }
+      scan_keys.push_back(key);
+    }
     for (const auto& update : updates->bits) {
       const auto merge = [&](History& history, char value) {
         if (value == '?') return;
@@ -605,13 +655,18 @@ class Runtime::Impl {
       merge(read_history_, update.read);
       merge(miscompare_history_, update.miscompare);
     }
+    for (size_t i = 0; i < updates->scans.size(); ++i) {
+      raw_read_history_[scan_keys[i]] = updates->scans[i].read;
+      raw_miscompare_history_[scan_keys[i]] = updates->scans[i].miscompare;
+    }
     zero_status_known_ =
         updates->failures && (clear_status || *updates->failures == 0);
     return updates;
   }
 
   std::string HistoryValue(const std::string& name, const std::string& target,
-                           const std::string& format) {
+                           const std::string& format,
+                           const std::string& chain = "") {
     const auto unavailable = [&] {
       throw std::runtime_error(
           name +
@@ -626,6 +681,34 @@ class Runtime::Impl {
       unavailable();
     }
     if (!netlist_) unavailable();
+    const auto node = netlist_->node_ids.find(target);
+    const bool client = node != netlist_->node_ids.end() &&
+                        netlist_->nodes[node->second].scan_interface &&
+                        (netlist_->nodes[node->second].scan_interface->kind ==
+                             ScanInterfaceKind::kClient ||
+                         netlist_->nodes[node->second].scan_interface->kind ==
+                             ScanInterfaceKind::kClientTap);
+    if (client || (target == "unnamed" && node == netlist_->node_ids.end() &&
+                   netlist_->taps.size() == 1)) {
+      const auto key = std::make_pair(target, ScanChainName(target, chain));
+      const auto& history =
+          name == "iGetReadData" ? raw_read_history_ : raw_miscompare_history_;
+      auto entry = history.find(key);
+      if (entry == history.end()) {
+        throw std::runtime_error(
+            "raw readback requires a preceding applied iScan");
+      }
+      if (entry->second.find('?') != std::string::npos) {
+        UpdateReadback(false);
+        entry = history.find(key);
+      }
+      if (entry->second.find('?') != std::string::npos) unavailable();
+      return FormatHistory(entry->second, format);
+    }
+    if (!chain.empty()) {
+      throw std::runtime_error(
+          "hardware readback chain requires a client interface");
+    }
     const auto resolved = ResolvePdlTarget(*netlist_, target);
     ValidatePdlAccessTarget(*netlist_, resolved, true);
     const bool read = name == "iGetReadData";
@@ -648,6 +731,11 @@ class Runtime::Impl {
       if (read && bit.inverted && data != 'x') data = data == '1' ? '0' : '1';
       bits += data;
     }
+    return FormatHistory(bits, format);
+  }
+
+  std::string FormatHistory(const std::string& bits,
+                            const std::string& format) {
     if (format == "-dec") {
       if (bits.find('x') != std::string::npos) return "X";
       if (Tcl_ExprString(interpreter_.get(), ("0b" + bits).c_str()) != TCL_OK) {
@@ -983,17 +1071,20 @@ class Runtime::Impl {
     }
     if (name == "iGetReadData" || name == "iGetMiscompares" ||
         name == "iGetStatus") {
-      if (std::find(words.begin() + 1, words.end(), "-chain") != words.end()) {
-        throw std::runtime_error(name +
-                                 " requires hardware readback; unavailable "
-                                 "during static generation");
+      std::string chain, format;
+      for (size_t i = 2; i < words.size(); ++i) {
+        if (words[i] == "-chain") {
+          chain = words.at(++i);
+        } else {
+          format = words[i];
+        }
       }
       const auto value = HistoryValue(
           name,
           words.size() > 1
               ? (name == "iGetStatus" ? words[1] : JoinPath(prefix(), words[1]))
               : "",
-          words.size() > 2 ? words[2] : "");
+          format, chain);
       Tcl_SetObjResult(
           interpreter_.get(),
           Tcl_NewStringObj(value.data(), static_cast<int>(value.size())));
@@ -1084,8 +1175,12 @@ class Runtime::Impl {
   std::optional<size_t> main_merge_action_;
   const Design& design_;
   const Netlist* netlist_;
-  std::optional<bool> implicit_tap_client_;
+  bool scan_clients_loaded_ = false;
+  std::set<std::string> tap_clients_;
+  std::map<std::string, std::set<std::string>> scan_clients_;
   History read_history_, miscompare_history_;
+  using RawHistory = std::map<std::pair<std::string, std::string>, std::string>;
+  RawHistory raw_read_history_, raw_miscompare_history_;
   bool zero_status_known_ = true;
   std::unique_ptr<z3::context> history_context_;
   std::map<std::string, const InstanceScope*> instance_scopes_;

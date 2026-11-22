@@ -8169,3 +8169,151 @@ solver limit; explicit IR preparation passes matched parent/current controls.
 No limit was raised and the prepared-chain measurement does not qualify every
 wide startup sequence. Hardware timing, device transport, vendor equivalence
 and an independent usability reader are not established by these checks.
+
+## Task152: raw interface and chain readback
+
+Use --model_readback with existing native scalar root/child scans and bound
+single-TAP raw IR/DR scans. iGetReadData and iGetMiscompares now accept their
+client interface and, for named opaque parallel chains, -chain NAME. Binary,
+hexadecimal and decimal formatting matches register getters. A raw getter
+requires a preceding applied iScan to establish its width. IR and DR share
+the latest applied history for that interface; register histories remain separate.
+
+For example, save this model as native.icl:
+
+~~~icl
+Module RawModel {
+ ScanInPort si; ScanOutPort so {Source r[0];}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort tck;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck;}
+}
+~~~
+
+Save these commands as native.pdl:
+
+~~~tcl
+iPDLLevel 1
+iReset; iWrite r 9; iApply
+iScan client 4 -si 6 -so 0; iApply
+iNote [iGetReadData client -dec]
+iNote [iGetMiscompares client -bin]
+iNote [iGetStatus -clear]; iNote [iGetStatus]
+~~~
+
+Run:
+
+~~~sh
+icl-pattern-generation --icl native.icl --pdl native.pdl --top_module RawModel --model_readback --output result.pdl
+~~~
+
+The four notes are 9, 0b1001, 2 and 0. Capture returns the old value 9 before
+loading 6. Comparing those four returned bits with zero produces two failures;
+-clear returns that old count and then clears it. Expected data and scan inputs
+are never treated as observations.
+
+Opaque storage has no declared behavior. Its actual returned data is x even
+after reset, a DefaultLoadValue declaration, or a preceding known scan input.
+For example, save this as opaque.icl:
+
+~~~icl
+Module OpaqueModel {
+ ScanInPort si[1:0]; ScanOutPort so[1:0]; SelectPort sel;
+ ScanInterface client {
+  Port sel;
+  Chain first {Port si[1]; Port so[1]; DefaultLoadValue 4'b0;}
+  Chain second {Port si[0]; Port so[0]; DefaultLoadValue 7'b0;}
+ }
+}
+~~~
+
+Save these commands as opaque.pdl:
+
+~~~tcl
+iPDLLevel 1
+iReset
+iScan client -chain first 4 -si 9 -so 0 -stable
+iScan client -chain second 7 -si 5 -stable
+iApply
+iNote [iGetReadData client -chain first -hex]
+iNote [iGetReadData client -chain second -bin]
+iNote [iGetMiscompares client -chain second -dec]
+if {[catch {iGetStatus -clear}]} {iNote {unknown failure count}}
+~~~
+
+Run:
+
+~~~sh
+icl-pattern-generation --icl opaque.icl --pdl opaque.pdl --top_module OpaqueModel --model_readback --output result.pdl
+~~~
+
+The notes are 0xX, 0bxxxxxxx, 0 and unknown failure count. The first chain's
+cared comparison is unknown. The second chain has no cared expected bits, so
+its miscompare mask is zero. Clearing an unknown count does not make it known.
+
+Named parallel requests require an explicit valid chain. Each chain keeps its
+own variable width and last queued request. Shared controls execute every chain:
+after explicit reset, an omitted chain uses its sized default; later it can
+reuse the last input declared -stable. Implicit reused lanes compare no bits
+and add no source history. Omitting a chain whose next length is unknown
+rejects the access. Empty Apply performs no opaque scan. The total executed
+payload, including implicit lanes, is limited to 1048576 bits.
+
+Only latest applied source requests supply raw histories and failure counts.
+Reset cancels pending requests and preserves prior observations and counts.
+Scalar -chain default remains the existing unnamed-chain alias; a declared
+parallel chain named default is a distinct named chain. Prefixes qualify the
+interface name. Values substituted by Tcl execute once, including across PDL
+input files. A subscriber exception propagates after an accepted transaction
+commits; its assigned outputs and state remain committed.
+
+Physical PDL continues to reject raw iScan. Existing ordinary physical modeled
+comparisons still count actual failures. Unsupported modeled parallel/multiple-
+TAP raw routes, opaque children, raw merge, timed histories, applied callbacks
+and device transport remain open. The existing mode note is retained for
+generated-file compatibility. The prior Task151 compiled-help omission is now
+covered by explicit raw-history and physical-comparison help assertions;
+the earlier walkthrough's numeric-prose Minor finding remains deferred.
+
+The two author examples have been executed; they are not an independent reader
+assessment. Qualification and measured scale results follow below.
+
+
+Task152 final qualification passes all 40 recorded gates: 14 native and
+14 leak-enabled ASAN/UBSAN native suites, 62 suites/1008 tests for each
+dynamic and static generator, 18 raw/12 opaque/16 TAP/16 standalone/16
+data/17 PIO/71 CLI sanitizer tests, 30 affected format/tidy/strict C++17
+checks and source packaging. All 4011 input hashes and 31 executable
+hashes match. Qualified code is e36f0dc. Evidence is under
+build/modeled-raw-readback-20261122/final/. Coverage item1 remains excluded
+with unchanged thresholds.
+
+The fresh independent review found 0 Critical, 2 Important and 2 Minor
+issues. One test-first fix pass resolves both Important issues: invalid
+IR/mixed-mode provider requests reject before publishing widths or changing
+prior histories, and opaque resets record default availability without
+expanding unused payloads. An 800-reset scalar/parallel test with a one-megabit
+unused default failed at 1.356/1.301s before the fix and passed at
+0.0558/0.0547s afterwards, with identical output. Existing diagnostic wording
+is retained. All full post-fix checks pass; interrupted earlier runs remain
+partial evidence. No rereview is claimed.
+
+Deferred Minor findings are the binary TAP completeness check occurring
+after inversion (no supported route misses a sample), an older Task151
+sentence in inventory item6 that still says raw/interface/chain histories
+remain open, and the prior Task151 walkthrough's numeric-prose spacing.
+Current Task152 support and remaining topology limits are stated above.
+
+The final 57-process scale matrix repeats matched parent/current
+default/unused/queried controls three times. It covers 32/512-bit roots,
+a 512-bit child interval inside a 520-bit root, a prepared 512-bit TAP
+route, and 32 opaque chains of4096 bits each. Valid schedules agree after
+removing observation notes. Queried CLI medians are root32=0.1393s,
+root512=0.1177s, child512=0.1082s, TAP512=0.3688s and opaque32x4096=0.0823s.
+Peak queried RSS ranges from68492 to124608KiB. Inputs, apply counts, commands,
+environment, hashes and preserved executables are under
+build/modeled-raw-readback-20261122/scale-final/. Reproduce with
+tests/src/pattern/benchmark_modeled_raw_readback.py, providing current and
+parent executable paths. Short process timings are noisy; no global speedup
+or wider startup/topology qualification is claimed. Hardware timing, live
+transport, vendor equivalence and independent reader usability remain unverified.

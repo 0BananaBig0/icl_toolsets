@@ -555,7 +555,11 @@ std::string Generate(
           const auto scan = scheduler.ApplyScans(
               scans, reservations.Values(),
               reservations.Values().empty() ? nullptr : &assigned,
-              &preparations);
+              &preparations,
+              modeled_readback
+                  ? pattern::ScanScheduler::RawObservation{[](const auto&,
+                                                              const auto&) {}}
+                  : pattern::ScanScheduler::RawObservation{});
           reservations.AssignedScans(assigned, scheduler);
           append_steps(preparations);
           result += OperationText(scan);
@@ -790,6 +794,10 @@ int main(int argc, char** argv) {
            "output\n"
            "  --model_readback     Model register/PIO readback (no live "
            "device)\n"
+           "                       Includes raw interface/chain history; "
+           "opaque data is x.\n"
+           "                       In physical mode, count observed comparison "
+           "failures.\n"
            "  --debug              Also write debug/<top>.icl beside output\n"
            "  --log PATH           Copy diagnostics to a file\n"
            "  --local_reset PATH   Insert reset releases into the main "

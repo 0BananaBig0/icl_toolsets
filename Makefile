@@ -1120,6 +1120,7 @@ python3 tests/src/pattern/test_client_scan_controls.py $1
 python3 tests/src/pattern/test_system_clocks.py $1
 python3 tests/src/pattern/test_segmented_ports.py $1
 python3 tests/src/pattern/test_opaque_root_scan.py $1
+python3 tests/src/pattern/test_opaque_parallel_scan.py $1
 python3 tests/src/pattern/test_modeled_root_scan.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
 python3 tests/src/pattern/test_multiple_client_interfaces.py $1
@@ -1139,6 +1140,7 @@ python3 tests/src/pattern/test_modeled_readback.py $1
 python3 tests/src/pattern/test_modeled_data_readback.py $1
 python3 tests/src/pattern/test_modeled_scan_readback.py $1
 python3 tests/src/pattern/test_modeled_tap_readback.py $1
+python3 tests/src/pattern/test_modeled_raw_readback.py $1
 python3 tests/src/pattern/test_data_reset_releases.py $1
 python3 tests/src/pattern/test_feedback_resets.py $1
 python3 tests/src/pattern/test_hidden_client_events.py $1
