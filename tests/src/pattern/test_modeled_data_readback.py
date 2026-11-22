@@ -234,7 +234,7 @@ if {$calls != 1} {error {argument evaluated twice}}
         help_result = subprocess.run([str(cli.BIN), "--help"], capture_output=True,
                                      text=True, timeout=45)
         self.assertEqual(help_result.returncode, 0, help_result.stderr)
-        self.assertIn("Model PIO/DataRegister readback", help_result.stdout)
+        self.assertIn("Model register/PIO readback", help_result.stdout)
         legacy = "modeled combinational PIO readback; no live device"
         output = self.replay(
             BASE, "iPDLLevel 1; iNote {" + legacy + "}; "

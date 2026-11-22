@@ -22,13 +22,13 @@ class ModelReadback {
   explicit ModelReadback(const Netlist& netlist)
       : netlist_(netlist), scheduler_(netlist), reservations_(netlist) {
     if (!netlist.taps.empty() ||
-        std::any_of(netlist.nodes.begin(), netlist.nodes.end(),
-                    [](const auto& node) {
-                      return node.model == ModelKind::kRegister &&
-                             node.kind != "DataRegister";
-                    })) {
+        std::any_of(
+            netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
+              return node.model == ModelKind::kRegister &&
+                     node.kind != "DataRegister" && node.kind != "ScanRegister";
+            })) {
       throw std::runtime_error(
-          "modeled readback excludes ScanRegisters and TAPs");
+          "modeled readback excludes bound TAPs and unsupported storage");
     }
   }
 

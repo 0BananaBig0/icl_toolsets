@@ -452,7 +452,7 @@ atomic failures and source/flat/generated-PDL replay.
 | `iMerge` | Flatten nested blocks; order direct notes first; batch compatible register and connected/computed data/control-port accesses, including slices/aliases/X masks, using disjoint dependency ownership and serial fallback. |
 | `iTake`, `iRelease` | ScanRegisters, DataRegisters, DataInPort/DataOutPort, AddressPort/ReadEnPort/WriteEnPort, their indexed/alias resources and instance members; bit-level protection after applied writes or `iState`, inherited ownership and scoped release. All declared port kinds support membership; Tessent default-instance and persistent takes are supported within the input stream. Assignment/frequency and broader pattern-set lifecycle remain unsupported. |
 | System-clock commands | iClock/iClockOverride and relative waits work on qualified clock-only routes; restricted state-free absolute waits preserve literal time. General stateful time/clock events remain pending. |
-| Observation getters | Explicit history and known-zero status remain available by default. --model_readback supplies actual PIO/DataRegister observations, bitwise miscompares and exact failure counts at selected frames; see [the example and limits](#task149-modeled-dataregister-observations-through-pio). ScanRegister/TAP, interface/chain and live-device observations remain open. |
+| Observation getters | Explicit history and known-zero status remain available by default. --model_readback supplies actual PIO and standalone serial register observations, bitwise miscompares and exact failure counts; see [the example and limits](#task150-modeled-standalone-scan-observations). Bound-TAP, interface/chain and live-device observations remain open. |
 
 This table describes generator execution. The formatter and LSP have separate,
 broader syntax support and never execute PDL.
@@ -7909,7 +7909,7 @@ unreset read/write control fails under its unknown reset state; this feature
 does not relax it. DAG/feedback, ownership and routing remain governed by the
 existing concrete model and reachability/resource checks.
 
-The current mode note is modeled PIO/DataRegister readback; no live device.
+The Task149 mode note was modeled PIO/DataRegister readback; no live device.
 Input containing the former combinational mode note migrates to one current
 note; subsequent original/flat/generated replay is stable. Default mode leaves
 ordinary notes unchanged. Tcl arguments remain once-only; local-reset rewriting
@@ -7957,3 +7957,96 @@ both getter orders and original/flat/generated forms (six root-executed jobs):
 read10x1, mismatch1x01, status2 then0 after clear. No independent full gate rerun,
 checkout inspection, live transport or independent usability reader is claimed.
 Coverage1 remains excluded with unchanged thresholds.
+
+## Task150: modeled standalone scan observations
+
+--model_readback now includes ScanRegisters and DataRegisters read through
+existing standalone or client-controlled serial routes. The concrete replay
+samples the actual return wire immediately before each shift edge, decodes
+chain order and inversion, and maps capture cells back to their logical data
+targets. The qualified native shortcut retains batched shifting: its fixed
+route and uninterrupted-shift checks prove captured shift storage equals the
+decoded return, so it exports that actual storage after capture. Speculative
+read shortcuts publish observations only after accepting the trial.
+Readback comes from the first selected read in an Apply, before its
+subsequent update; expected data only controls mismatch masks and counts.
+
+Save scan.icl:
+
+~~~icl
+Module ScanModel {
+ ScanInPort si;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanOutPort so {Source r[0];}
+}
+~~~
+
+Save observe.pdl:
+
+~~~tcl
+iPDLLevel 1
+iReset; iWrite r 9; iApply
+iRead r 0; iWrite r 6; iApply
+iNote [iGetReadData r -dec]
+iNote [iGetMiscompares r -bin]
+iNote [iGetStatus -clear]
+iRead r 6; iApply
+iNote [iGetReadData r -dec]
+iNote [iGetStatus]
+~~~
+
+~~~sh
+icl-pattern-generation --icl scan.icl --pdl observe.pdl --top_module ScanModel --model_readback --output result.pdl
+~~~
+
+The notes are9,0b1001,2,6,0. The first read sees stored9 before the
+same Apply writes6. Two bits differ from expected0; clearing returns2 and
+leaves zero. A later read sees6. Sparse/inverted aliases, unknown captures,
+manual history planes and source-order rules retain their existing semantics.
+Unknown cared-for data makes the numeric failure count unavailable.
+
+Supported disjoint unequal lanes sample from tick zero and ignore trailing
+return padding. Existing scan clocks, route restrictions, reset/update
+semantics and resource checks still apply. Reset-held update cells continue
+shifting under the existing model; this extension does not change cell timing.
+
+The current note is modeled register/PIO readback; no live device. Both older
+combinational and PIO/DataRegister notes migrate to one current note. Without
+a getter query the adapter remains lazy; ordinary output differs only by the
+opt-in model note. Bound TAPs, raw/clock/merge histories, applied callbacks,
+interface/chain histories and real-device transport remain outside this
+increment. Applied histories requiring unsupported operations reject before
+publishing observations and preserve an existing output file.
+
+The author walkthrough and qualification records are retained under
+build/modeled-scan-readback-20261122/. They are model/replay evidence, not
+physical timing signoff or an independent usability-reader assessment.
+
+
+Task150 final qualification passes37 recorded gates:14 native and14
+leak-enabled ASAN/UBSAN native suites,59 suites/962 methods for each dynamic
+and static generator,16 scan/16 data/17 PIO/71 CLI sanitizer methods,18 affected
+format/tidy/strict C++17 gates and source packaging. All4007 qualified input
+hashes and31 executable hashes are verified. Coverage item1 stays excluded
+with unchanged thresholds.
+
+The fresh independent reviewer inspected source and ran probes directly:
+0Critical,2Important,0Minor, no declined-to-judge cases. Both missing-observer
+paths (native ordinary scans and speculative regular reads) are resolved in
+one test-first verified fix pass. Native captures retain batched shifting;
+speculative observations remain private until accepted. Subscriber exceptions
+propagate outside fallback catches. The full results above are after fixes.
+No rereview or independent usability-reader assessment is claimed.
+The interrupted pre-review run is retained as partial evidence.
+
+Scale evidence contains144 parent/current processes: three repeats of each
+original/flat/generated form, with default, unused-mode and queried-mode
+controls. Inputs cover8/16 Applies on16-bit storage,32 chained four-bit
+registers with sparse reads, and four read/write Applies plus route setup on a4096-bit native chain with
+two requested bits. Three-replay queried medians are0.244–0.444 seconds;
+the4096-bit native case is0.294 seconds, with maximum queried RSS112324 KiB
+across these cases on the recorded WSL2/GCC16.2.1/Z3 4.13.3 environment.
+Matched ordinary outputs and replay forms agree. These short, noisy process
+measurements establish the tested scale, not a global speedup or a million-bit
+modeled-readback qualification. Commands, input sizes, hashes and timings are
+retained in build/modeled-scan-readback-20261122/scale/.
