@@ -469,6 +469,11 @@ Disjoint named chains may use separate vector input/output lanes.
 `iState` can record numeric assumptions for scan registers and top-level
 DataInPort/SelectPort pins without generating a hardware transaction. Internal
 ports and controller-owned instruction state cannot be overwritten this way.
+Use --model_readback for concrete combinational PIO observations, bitwise
+miscompares and exact failure counts during generation. It is opt-in and uses no
+device transport; stateful/interface/chain observations remain open. See the
+[runnable readback example](docs/pattern-generation.md#task148-modeled-combinational-pio-readback).
+
 The generator's [verification record](docs/pattern-generation.md#current-verification)
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.

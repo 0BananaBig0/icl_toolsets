@@ -25,43 +25,54 @@ dependencies separate from existing parser/replay objects. Tests stay under test
 ### Task1: Core observation contract and shared queue
 Files: runtime.h/.cc, scheduler.h/.cc, new pattern_access_queue.h,
 generator, runtime/readback native tests and Makefile.
-- [ ] Retain actual parent readback-unavailable evidence separately from compile RED.
-- [ ] Add failing callback contract tests, then sparse validated history updates,
+- [x] Retain actual parent readback-unavailable evidence separately from compile RED.
+- [x] Add failing callback contract tests, then sparse validated history updates,
       optional uint64 status, global clear handling and unchanged default fallback.
-- [ ] Extract existing QueuedAccesses unchanged; add unique physical ReadModel
+- [x] Extract existing QueuedAccesses unchanged; add unique physical ReadModel
       projection using last references/masks/inversions and queued assumptions.
-- [ ] Add batched scheduler ReadBits via existing evaluator; test real queue behavior.
-- [ ] Register native readback test/coverage wiring; focused dynamic/static runtime,
+- [x] Add batched scheduler ReadBits via existing evaluator; test real queue behavior.
+- [x] Register native readback test/coverage wiring; focused dynamic/static runtime,
       queue/scheduler and connected CLI checks; commit and ledger.
 
 ### Task2: Lazy model adapter and explicit mode
 Files: new pattern_readback.h/.cc, generator, Makefile, native readback test,
 new tests/src/pattern/test_modeled_readback.py.
-- [ ] Write failing real-model tests; distinguish missing interface/option RED from
+- [x] Write failing real-model tests; distinguish missing interface/option RED from
       actual applied-readback failure before implementing the adapter.
-- [ ] Implement lazy solver-layer factory, monotonic new-operation cursor,
+- [x] Implement lazy solver-layer factory, monotonic new-operation cursor,
       shared queue/resources/state/reset semantics and batched actual observations.
-- [ ] Preserve per-bit source-order history and manual overrides with sparse deltas;
+- [x] Preserve per-bit source-order history and manual overrides with sparse deltas;
       count effective care-bit mismatches; unknown counts stay undetermined.
-- [ ] Add --model_readback/help/diagnostics and stable normal-output iNote label;
+- [x] Add --model_readback/help/diagnostics and stable normal-output iNote label;
       preserve local-reset source text and immutable procedure definitions.
-- [ ] Test values/formats/aliases/masks/count/clear/unknowns/overlaps/queued state,
+- [x] Test values/formats/aliases/masks/count/clear/unknowns/overlaps/queued state,
       cancellation/resources/prefix/files/once-only arguments, atomic failures,
       default and unsupported controls, original/flat/generated replay.
-- [ ] Measure matched parent/current no-query controls, unused mode and queried
+- [x] Measure matched parent/current no-query controls, unused mode and queried
       mode at64/128 applies/32bits,3repeats/3forms; supported wider/sparse case.
       Record time/RSS/environment/hashes without unequal-workload speedup claims.
-- [ ] Focused native/dynamic/static and connected callers pass; commit and ledger.
+- [x] Focused native/dynamic/static and connected callers pass; commit and ledger.
 
 ### Task3: Qualification, documentation and integration
-- [ ] Freeze code/tests;14 native/14 leak-enabled ASan/UBSan suites, complete
+- [x] Freeze code/tests;14 native/14 leak-enabled ASan/UBSan suites, complete
       dynamic/static CLI suites, focused/main sanitizer checks, changed-code
       format/tidy/strict C++17 and packaging. Verify actual counts and identities.
-- [ ] Update guide/model/README/tracker with bounded support and exact evidence;
+- [x] Update guide/model/README/tracker with bounded support and exact evidence;
       execute guide example; distinguish author walkthrough and code review.
-- [ ] Complete ledger, one fresh independent final review on most capable model;
+- [x] Complete ledger, one fresh independent final review on most capable model;
       regrade actual effects and declined items; one verified fix pass, no rereview.
 - [ ] Merge direct parent master, verify qualified root hashes/focused checks,
       push/confirm origin, detach reused worktree/delete only completed branch.
       Archive only this ledger; preserve117 stashes and sibling workspaces.
       Coverage item1 remains excluded; continue other open inventory items.
+
+Independent review at073f30e found0Critical/2Important/1Minor: multi-frame
+post-state sampling, stale known-zero status after clear, and avoidable whole
+history copying for mode labels. One fix pass captures actual scheduled-frame
+observations, caches zero after successful known clear, and copies only when an
+existing label must be removed. Two new CLI methods have three semantic RED
+subcases;17 methods pass after fixes. A native oracle replays emitted pin events
+and compares actual reads independently of expected data. No rereview is used.
+Require35 fresh qualification steps,57x930 per variant,30 quality gates and108
+fresh scale processes on final code. Pre-review partial/scale receipts remain
+archived separately; no full pre-review qualification pass is claimed.

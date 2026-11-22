@@ -71,20 +71,21 @@ and reuse it unchanged for overlaps, masks and queued-state rewriting. Process
 ordinary applies, assumptions, reservations and resets in the same order as
 Generate. Unsupported histories are diagnosed before reporting model results.
 
-Without registers or TAPs, the existing primary scheduling path uses one frame.
-Read values from its actual post-Apply concrete state, never from expected masks.
-Expose a batched ReadBits accessor on ScanScheduler backed by NetworkState's
-existing shared evaluator so overlapping/wide targets do not reevaluate a graph
-per bit or object. Build the effective unique read-bit/expected model, then batch
-the observation. History is per physical node/index; inversion affects read data
-and expected data, not miscompare masks. Sparse delta indexing must preserve only
-the latest update per bit without copying full history. Counter history persists across delta deliveries.
+Combinational access groups can still require multiple replay frames. Capture
+each requested bit at its selected concrete read frame, rather than sampling
+the final scheduler state. Add an optional storage-free PIO observation callback
+to Apply and its concrete primary/general replay paths. Batch the selected bits
+through NetworkState's existing shared evaluator. Callbacks are tentative until
+Apply succeeds; the adapter retains first observations in an apply-local buffer,
+checks every explicit read was observed, then publishes sparse deltas/counters.
+Implicit group members do not invent explicit history. Default callers have no
+observation callback. Remove the superseded final-state batch getter.
 
-Current target validation permits reads of observable outputs/storage, while
-manual history assignments permit storage and unconnected root inputs/selects.
-With storage excluded these target sets are disjoint. Preserve that existing
-boundary; the adapter need not add unreachable manual-output override machinery.
-Core known manual histories continue to bypass unsupported modeled execution.
+History uses physical node/index; inversion affects read data/expectations,
+not miscompare masks. Sparse indexing keeps only the latest delta per bit.
+Current validation permits manual history assignments to storage/root inputs,
+while this bounded model observes outputs; these target sets are disjoint.
+Known manual history continues to bypass unsupported model execution.
 
 An explicit --model_readback flag creates the adapter; programs without queries
 do not initialize its scheduler. Include the flag in help/current usage docs.
@@ -125,3 +126,14 @@ changed-code quality and packaging gates, frozen identities, one fresh independe
 whole-branch review and one verified fix pass if needed. Integrate/push/delete the
 completed branch under the standing instruction. Coverage item1 remains excluded
 with unchanged thresholds and its previous failed measurement retained.
+
+Independent review at073f30e found0Critical/2Important/1Minor: multi-frame
+post-state sampling, stale known-zero status after clear, and avoidable whole
+history copying for mode labels. One fix pass captures actual scheduled-frame
+observations, caches zero after successful known clear, and copies only when an
+existing label must be removed. Two new CLI methods have three semantic RED
+subcases;17 methods pass after fixes. A native oracle replays emitted pin events
+and compares actual reads independently of expected data. No rereview is used.
+Require35 fresh qualification steps,57x930 per variant,30 quality gates and108
+fresh scale processes on final code. Pre-review partial/scale receipts remain
+archived separately; no full pre-review qualification pass is claimed.
