@@ -460,6 +460,128 @@ iReset; iRead child.value 9; iApply
         self.assertIn(b"iRead child.wire 0b1001", output)
         self.assertNotIn(b"iState child.value", output)
 
+    def test_callback_arity_is_preflighted_before_any_effect(self):
+        source = MODEL.replace(" Alias low", """
+ DataRegister other[3:0] {WriteCallBack Chains bad <D> <R>;}
+ Alias low""")
+        body = PROCS + """
+set calls 0
+iProc store {d r} {global calls; incr calls; iWrite p $d}
+iProc bad {d} {error invoked}
+iWrite value 9; iWrite other 6
+if {![catch {iApply} message] || [string first {argument} $message] < 0} {
+ error {bad arity not detected}
+}
+if {$calls != 0} {error {callback ran before arity preflight}}
+iProc bad {d {r default}} {global calls; incr calls; iWrite p $d}
+iApply
+if {$calls != 2} {error {preflight retry lost original queue}}
+iProc bad {args} {global calls; incr calls; iWrite p [lindex $args 0]}
+iWrite other 1; iApply
+if {$calls != 3} {error {variadic callback arity rejected}}
+"""
+        self.replay(source, body)
+
+    def test_access_together_callback_alias_is_rejected_before_effects(self):
+        source = MODEL.replace(" Alias low", """
+ DataRegister other[3:0] {WriteCallBack Chains store <D> <R>;}
+ Alias pair[7:0] = value, other {AccessTogether;}
+ Alias low""")
+        for target in ("pair", "pair[7:4]"):
+            with self.subTest(target=target):
+                self.rejected("iWrite " + target + " 9; iApply",
+                              "AccessTogether", source)
+
+    def test_unclosed_callback_merge_recovers_after_reset(self):
+        for before_error, committed in (
+                ("", False), ("iCall endpoint 9;", True),
+                ("iCall unfinished 9;", False)):
+            with self.subTest(before_error=before_error):
+                body = PROCS + """
+iProc endpoint {data} {iWrite p $data; iApply}
+iProc unfinished {data} {iWrite p $data; error broken}
+iProc store {data reg} {iMerge -begin; """ + before_error + """ error broken}
+iWrite value 9
+if {![catch {iApply}]} {error {callback did not fail}}
+iReset
+iProc store {data reg} {iWrite p $data}
+iWrite value 6; iApply
+"""
+                output = self.replay(MODEL, body)
+                self.assertIn(b"iWrite p 0b0110", output)
+                self.assertEqual(b"iWrite p 0b1001" in output, committed)
+
+    def test_qualified_namespace_beats_shorter_ancestor_name(self):
+        source = """Module A {
+ DataRegister value[3:0] {WriteCallBack A::Top::api store <D> <R>;}
+}
+NameSpace A;
+Module Top {Instance child Of ::A;}
+NameSpace;
+Module Chains {Instance outer Of A::Top;}
+"""
+        pdl = """iPDLLevel 1
+iProcsForModule A::Top -iProcNameSpace api
+iProc store {data reg} {iNote "$reg=$data"}
+iWrite outer.child.value 9; iApply
+"""
+        output = self.replay(source, pdl)
+        self.assertEqual(self.notes(output), [b"child.value=0b1001"])
+
+    def test_implicit_callback_tail_has_bounded_depth_and_reset_recovery(self):
+        source = "Module Chains {DataInPort p;" + "".join(
+            "DataRegister r%d {WriteCallBack Chains store <D> <R>;}" % i
+            for i in range(160)) + "}"
+        pdl = """iPDLLevel 1
+iProcsForModule Chains
+iProc store {data reg} {
+ set next [expr {[string range $reg 1 end] + 1}]
+ if {$next < 160} {iWrite r$next $data} else {iWrite p $data}
+}
+iWrite r0 1
+if {![catch {iApply} message] || [string first {recursion limit} $message] < 0} {
+ error {implicit callback chain escaped recursion limit}
+}
+iReset
+iProc store {data reg} {iWrite p $data}
+iWrite r0 0; iApply
+"""
+        output = self.replay(source, pdl)
+        self.assertIn(b"iWrite p 0b0", output)
+        self.assertNotIn(b"iWrite p 0b1", output)
+
+    def test_callback_inner_reset_cannot_expose_modeled_endpoint_histories(self):
+        import subprocess
+        icl, pdl = self.root / "source.icl", self.root / "source.pdl"
+        icl.write_text(MODEL)
+        pdl.write_text(PROCS + """
+iProc load {data reg} {iReset; iWrite p 0; iApply; iRead q $data; iApply}
+iRead observed 9; iApply; iGetReadData q
+""")
+        output = self.root / "result.pdl"
+        output.write_bytes(b"retained artifact")
+        result = subprocess.run(
+            [str(cli.BIN), "--icl", str(icl), "--pdl", str(pdl),
+             "--top_module", "Chains", "--output", str(output), "--model_readback"],
+            text=True, capture_output=True, timeout=45)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("modeled readback excludes callback histories",
+                      result.stdout + result.stderr)
+        self.assertEqual(output.read_bytes(), b"retained artifact")
+
+    def test_failed_open_merge_reset_source_replay(self):
+        output, _ = self.reset_replay("""iProc store {data reg} {
+ iMerge -begin; error broken
+}
+iReset; iCall request 9
+if {![catch {iApply}]} {error {callback did not fail}}
+iReset
+iProc store {data reg} {iWrite p 1; iApply; iWrite child.wire $data}
+iCall request 6; iApply
+""")
+        self.assertIn(b"iWrite child.wire 0b0110", output)
+        self.assertNotIn(b"iWrite child.wire 0b1001", output)
+
     def test_wrong_ancestor_namespace_rejects(self):
         self.rejected("iWrite value 9; iApply", "callback namespace",
                       MODEL.replace("Chains store", "Missing store"))

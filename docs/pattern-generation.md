@@ -8386,15 +8386,18 @@ Procedure definitions are looked up at invocation time, so ordered replacement
 and loading between files work.
 
 No procedure runs when a request is queued. iReset cancels the pending requests,
-including ones whose procedure has not been loaded. Every binding is preflighted
+including ones whose procedure has not been loaded. Every binding and current procedure argument count is preflighted
 before the first callback in a group. An invocation error preserves completed
 effects but blocks iApply and Finish until iReset discards unfinished endpoint
 requests; retry by requeueing after that reset. Preflight errors can be corrected
 and retried without reset because no procedure has run. Recursive register/mode
-callback cycles reject with their existing output artifacts preserved.
+callback cycles reject with their existing output artifacts preserved. Implicit callback tails also
+share the existing 128-level procedure budget. Reset recovery closes unwound
+merge boundaries in the internal operation stream, preserving completed work
+while reset discards the unfinished queue.
 
 Caller Apply groups must contain only callback requests. Mixed callback/ordinary
-or raw groups, aliases spanning both kinds, -together, and a callback Apply
+or raw groups, aliases spanning both kinds, AccessTogether callback aliases, -together, and a callback Apply
 inside an active iMerge reject before invocation. Logical callback storage
 cannot be taken or released, including by a whole-instance reservation; ordinary
 endpoint resource checks still apply. Automatic callbacks needed while solving
@@ -8417,6 +8420,39 @@ The maintained scale driver is tests/src/pattern/benchmark_callback_execution.py
 It measures 64/256/1024 four-bit targets with four Apply groups, matched
 parent/current callback-free and unused-declaration controls, and flat/generated
 replay. Commands, elapsed time, peak RSS, inputs and output hashes are recorded
-under build/callback-execution-20261123/. Final measurements and qualification
-receipts are added after their checks finish. Existing runtime limits remain
+under build/callback-execution-20261123/. Final qualification receipts
+are added after their checks finish. Existing runtime limits remain
 unchanged; no vendor-equivalence, live-device or timing-signoff claim is made.
+
+
+The scale run passes 51 processes. At 64/256/1024 callback targets with four
+Apply groups, median source wall times are 0.2523/2.0236/25.9599 s and peak RSS
+is 77656/83520/107056 KiB. Matched parent/current callback-free controls at1024
+targets take0.0535/0.0550 s; unused-declaration controls take0.0634/0.0643 s.
+The controls each access one four-bit endpoint per Apply. The driver's
+operand_bits_per_apply/applies fields describe the original callback fixture;
+the known Minor labeling issue remains deferred, and generated replay has its
+own expanded Apply structure. Input/binary/output hashes and exact commands
+are retained in scale/results.json.
+
+These measurements demonstrate1024 targets/four callback groups within the
+existing limits. End-to-end PIO scheduling grows faster than target count in
+this workload; no linear runtime or speedup is claimed. Larger routine batches
+or a tighter throughput requirement call for measured scheduler work under item10
+before extending this demonstrated scale.
+
+A separate maintained benchmark, tests/src/pattern/benchmark_callback_alias.py,
+covers one wide alias spanning4096/16384 one-bit callback targets. Before the
+review fix,16384 targets use366828 KiB RSS and fail its256 MiB budget. Requests
+now retain source indices into the immutable pending snapshot instead of copying
+the full operand for each target. Six corrected runs pass: at16384 targets,
+median wall time is0.3322 s and peak RSS163376 KiB. This isolates request/storage
+cost with empty callback bodies and does not measure hardware protocol work.
+Receipts are in wide-alias-test-red/ and wide-alias-green/.
+
+The fresh whole-branch review found0 Critical,7 Important and1 Minor findings.
+The single fix pass adds regressions for preflight arity, AccessTogether
+obligations, callback invocation context across inner resets, unwind/retry of
+open merges, fully qualified ancestor binding, wide-alias memory and implicit
+tail recursion limits. Forty focused callback methods and native runtime/readback
+checks pass. Full post-fix qualification remains pending.

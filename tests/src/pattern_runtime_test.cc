@@ -163,8 +163,9 @@ iProcsForModule Top -iProcNameSpace api
 iProc store {data reg literal number} {
  set target first.value
 )";
-    if (indirect)
+    if (indirect) {
       procedure += " if {$reg eq {first.value}} {set target second.value}\n";
+    }
     procedure += R"(
  iWrite $target $data; iApply
 }

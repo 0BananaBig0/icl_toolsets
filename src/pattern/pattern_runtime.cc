@@ -60,7 +60,7 @@ class Runtime::Impl {
     for (const char* command : {"after", "vwait", "update", "interp"}) {
       Tcl_DeleteCommand(interpreter_.get(), command);
     }
-    Tcl_SetRecursionLimit(interpreter_.get(), 128);
+    Tcl_SetRecursionLimit(interpreter_.get(), kRecursionLimit);
     Tcl_CreateObjTrace(interpreter_.get(), 0, 0, Trace, this, nullptr);
     for (const auto& name : pdl::Keywords()) {
       if (!pdl::FindCommandSpec(name)) continue;
@@ -215,10 +215,12 @@ class Runtime::Impl {
     size_t command = 0;
     int level = 1;
   };
+  static constexpr size_t kRecursionLimit = 128;
   struct Procedure {
     std::string tcl_name, origin;
     int level;
     std::vector<std::string> parameters;
+    size_t minimum_arguments = 0, maximum_arguments = 0;
   };
   using ProcedureKey = std::tuple<std::string, std::string, std::string>;
 
@@ -452,20 +454,24 @@ class Runtime::Impl {
     const auto& descriptor = read ? *node.read_callback : *node.write_callback;
     auto owner = descriptor.name_space;
     if (owner.rfind("::", 0) == 0) owner.erase(0, 2);
-    size_t scope = node.scope;
+    size_t scope = node.scope, matched = 0;
+    std::optional<CallbackBinding> binding;
     while (true) {
       const auto& ancestor = netlist_->scopes.at(scope);
       const auto module = ancestor.definition.name();
-      if (owner == module || owner.rfind(module + "::", 0) == 0) {
-        CallbackBinding binding{
+      if ((owner == module || owner.rfind(module + "::", 0) == 0) &&
+          (!binding || module.size() > matched)) {
+        matched = module.size();
+        binding = CallbackBinding{
             ancestor.path,
             {module, owner == module ? "" : owner.substr(module.size() + 2),
              descriptor.procedure}};
-        return callback_bindings_.emplace(key, std::move(binding))
-            .first->second;
       }
       if (scope == 0) break;
       scope = ancestor.parent;
+    }
+    if (binding) {
+      return callback_bindings_.emplace(key, std::move(*binding)).first->second;
     }
     throw std::runtime_error(
         "callback namespace must name an ancestor module: " +
@@ -492,7 +498,7 @@ class Runtime::Impl {
     using Key = std::pair<size_t, bool>;
     struct Request {
       Key key;
-      Operation source;
+      size_t source;
       std::string data, requested;
     };
     QueuedAccesses queue;
@@ -508,6 +514,10 @@ class Runtime::Impl {
               "mixed callback and ordinary accesses require separate Applies");
         }
         const auto target = ResolvePdlTarget(*netlist_, op.arguments.at(0));
+        if (!target.access_together.empty()) {
+          throw std::runtime_error(
+              "callback AccessTogether aliases are unsupported");
+        }
         const auto data = PdlDataValue(*history_context_, *netlist_, target,
                                        op.arguments.at(1));
         for (const auto& bit : target.bits) {
@@ -519,7 +529,7 @@ class Runtime::Impl {
           }
           const Key key{bit.node, read};
           if (positions.emplace(key, requests.size()).second) {
-            requests.push_back({key, op, std::string(node.Width(), 'x'),
+            requests.push_back({key, i, std::string(node.Width(), 'x'),
                                 std::string(node.Width(), '0')});
           }
         }
@@ -553,6 +563,15 @@ class Runtime::Impl {
         throw std::runtime_error("undefined iProc for callback " +
                                  netlist_->nodes[request.key.first].name);
       }
+      const auto& definition = procedures_.at(binding.procedure);
+      const auto& node = netlist_->nodes.at(request.key.first);
+      const auto& descriptor =
+          request.key.second ? *node.read_callback : *node.write_callback;
+      if (descriptor.arguments.size() < definition.minimum_arguments ||
+          descriptor.arguments.size() > definition.maximum_arguments) {
+        throw std::runtime_error("wrong callback argument count for " +
+                                 node.name);
+      }
       if (std::find(callback_stack_.begin(), callback_stack_.end(),
                     request.key) != callback_stack_.end()) {
         throw std::runtime_error("callback cycle at " +
@@ -562,6 +581,7 @@ class Runtime::Impl {
     pending_ = false;
     try {
       for (const auto& request : requests) {
+        const auto& source = pending.at(request.source);
         const auto [id, read] = request.key;
         const auto& node = netlist_->nodes.at(id);
         const auto& descriptor =
@@ -595,8 +615,8 @@ class Runtime::Impl {
           InvokeProcedure(
               definition, binding.instance, arguments,
               std::string(read ? "ReadCallBack " : "WriteCallBack ") +
-                  node.name + " at " + request.source.origin,
-              request.source.origin, true);
+                  node.name + " at " + source.origin,
+              source.origin, true);
         } catch (...) {
           callback_stack_.pop_back();
           throw;
@@ -617,8 +637,10 @@ class Runtime::Impl {
           operations_.push_back(
               {"iState",
                {node.name, "0b" + request.data, "-LastWrittenValue"},
-               request.source.origin,
-               request.source.call_stack});
+               source.origin,
+               source.call_stack,
+               false,
+               true});
         }
       }
     } catch (...) {
@@ -1055,6 +1077,9 @@ class Runtime::Impl {
                        const std::vector<std::string>& arguments,
                        const std::string& invocation, const std::string& origin,
                        bool apply_tail = false) {
+    if (frames_.size() >= kRecursionLimit) {
+      throw std::runtime_error("PDL procedure recursion limit exceeded");
+    }
     std::vector<std::string> call{definition.tcl_name};
     if (!definition.parameters.empty()) {
       const auto scope = instance_scopes_.find(instance);
@@ -1089,6 +1114,22 @@ class Runtime::Impl {
       }
       frames_.pop_back();
     } catch (const std::exception& error) {
+      if (!callback_stack_.empty()) {
+        for (size_t i = merges_.size(); i > merge_count; --i) {
+          std::vector<std::string> stack;
+          for (size_t frame = 0; frame < merges_[i - 1].depth; ++frame) {
+            if (!frames_[frame].invocation.empty()) {
+              stack.push_back(frames_[frame].invocation);
+            }
+          }
+          operations_.push_back({"iMerge",
+                                 {"-end"},
+                                 merges_[i - 1].origin,
+                                 std::move(stack),
+                                 false,
+                                 true});
+        }
+      }
       merges_.resize(merge_count);
       frames_.pop_back();
       throw std::runtime_error(std::string(error.what()) + "\n  while " +
@@ -1222,10 +1263,17 @@ class Runtime::Impl {
       bool valid = false;
       const auto formals = pdl::SplitList(words[2], &valid);
       if (!valid) throw std::runtime_error("invalid iProc argument list");
-      for (const auto& formal : formals) {
+      size_t minimum_arguments = 0, maximum_arguments = formals.size();
+      for (size_t index = 0; index < formals.size(); ++index) {
+        const auto& formal = formals[index];
         const auto fields = pdl::SplitList(formal, &valid);
         if (!valid || fields.empty()) {
           throw std::runtime_error("invalid iProc argument");
+        }
+        if (index + 1 == formals.size() && fields[0] == "args") {
+          maximum_arguments = std::numeric_limits<size_t>::max();
+        } else if (fields.size() == 1) {
+          minimum_arguments = index + 1;
         }
         if (std::find(parameters.begin(), parameters.end(), fields[0]) !=
             parameters.end()) {
@@ -1247,7 +1295,8 @@ class Runtime::Impl {
                             " overrides " + old->second.origin);
       }
       procedures_.insert_or_assign(
-          key, Procedure{tcl_name, origin, level_, std::move(parameters)});
+          key, Procedure{tcl_name, origin, level_, std::move(parameters),
+                         minimum_arguments, maximum_arguments});
       return;
     }
     if (name == "iPrefix") {
@@ -1310,6 +1359,7 @@ class Runtime::Impl {
       return;
     }
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
+    operation.callback_execution = !callback_stack_.empty();
     if (name == "iWrite" && operation.arguments.size() > 2) {
       // Every mode permits a load; retain the native explicit-load policy.
       operation.arguments.resize(2);
@@ -1401,7 +1451,11 @@ class Runtime::Impl {
       if (callback_failed_) {
         throw std::runtime_error("failed callback queue requires iReset");
       }
-      if (!ExecuteCallbacks(operation)) InvalidateReadHistory(operation);
+      if (ExecuteCallbacks(operation)) {
+        operation.callback_execution = true;
+      } else {
+        InvalidateReadHistory(operation);
+      }
     }
     if (name == "iReset") callback_failed_ = false;
     if (name == "iApply" || name == "iReset") pending_ = false;

@@ -39,7 +39,11 @@ Append a default-false internal Operation flag identifying a logical callback
 request; retain command, evaluated/qualified target, canonical data, origin and
 call stack. The append-only public operation vector never rewrites records seen
 by a readback consumer. Existing aggregate initializers remain source-compatible.
-Only accesses touching a matching callback descriptor use this flag. Validate
+A second default-false Operation::callback_execution flag marks invoked body
+operations, postconditions and the completed outer Apply. ModelReadback rejects
+this context even if a body reset cancels pending markers. No synthetic command
+or mutation of published request records is needed.
+Only accesses touching a matching callback descriptor use the request flag. Validate
 target/data/options when queued, including discarded/canceled numeric data.
 Normal operations retain their representation.
 
@@ -51,13 +55,16 @@ per-bit values; controlling iState patches queued requests as on existing paths.
 Group each effective callback register/mode once with a full declaration-order
 <D> mask, x in unrequested bits. Preserve first effective target occurrence order,
 while last bit assignment wins. An all-x read remains a request to observe.
-Validate every request, namespace and procedure binding before the first call.
+Validate every request, namespace, current procedure binding and accepted
+argument count (including defaults/variadic formals) before the first call.
+AccessTogether callback aliases reject until all grouped obligations are supported.
 Reset cancels logical requests without requiring a loaded procedure. Finish
 retains the existing unapplied-command diagnostic.
 
 ## Binding and invocation
 Resolve each callback's ancestor module and optional PDL subnamespace against
-the node's actual instance ancestry, caching static binding metadata. Strip only
+the node's actual instance ancestry, choosing the longest complete module-name
+match before treating a suffix as a PDL subnamespace and caching static binding metadata. Strip only
 a leading global ::. Reuse ProcedureKey and current procedure-definition lookup
 so definitions loaded/replaced between files behave like iCall. <R> is relative
 to that ancestor instance, with no range. Pass constants/placeholders using Tcl
@@ -148,3 +155,9 @@ native/sanitizer/dynamic/static/quality/packaging acceptance and coverage exclus
 One fresh builder check, inline implementation plan, one fresh independent final
 review, one verified blocking-fix pass, no rereview. Commit/merge/push/delete this
 task branch; preserve117 stashes, other detached worktrees and sibling ledgers.
+
+Review resolutions: callback requests retain indices into the immutable pending
+snapshot rather than copying whole wide operands. Implicit tails share the128-level
+procedure budget. On callback failure, append closing boundaries for merge frames
+being unwound; completed operations persist and caller reset discards unfinished
+queues. These are Important correctness/performance fixes within Task153.

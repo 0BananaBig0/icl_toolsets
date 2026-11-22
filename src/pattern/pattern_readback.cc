@@ -54,6 +54,10 @@ class ModelReadback {
       bool callback_pending = callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
+        if (op.callback_execution) {
+          throw std::runtime_error(
+              op.origin + ": modeled readback excludes callback histories");
+        }
         if (op.callback) {
           callback_pending = true;
           continue;

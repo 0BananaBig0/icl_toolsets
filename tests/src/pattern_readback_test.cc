@@ -158,6 +158,30 @@ void TestRawTapObservationCommit() {
             "raw TAP follow-up observes committed binary/literal state");
   }
 }
+void TestCallbackResetCannotEnableModelReadback() {
+  pattern::Design design;
+  design.AddIcl("callback-model-reset.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister observed[3:0] {ReadCallBack Top load <D> <R>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iRead", {"observed", "9"}, "test", {}, true},
+      {"iReset", {}, "callback", {}, false, true},
+      {"iWrite", {"p", "0"}, "callback", {}, false, true},
+      {"iApply", {}, "callback", {}, false, true},
+      {"iRead", {"q", "9"}, "callback", {}, false, true},
+      {"iApply", {}, "callback", {}, false, true}};
+  bool rejected = false;
+  try {
+    readback(operations, false);
+  } catch (const std::exception& error) {
+    rejected = std::string(error.what()).find("callback") != std::string::npos;
+  }
+  Require(rejected, "callback inner reset must not enable modeled histories");
+}
 void TestCallbackHistoryBoundary() {
   pattern::Design design;
   design.AddIcl("callback-history.icl", R"(
@@ -619,6 +643,7 @@ int main() {
   try {
     TestRawObservationCommit();
     TestRawTapObservationCommit();
+    TestCallbackResetCannotEnableModelReadback();
     TestCallbackHistoryBoundary();
     TestReadModel();
     TestModeledReadback();

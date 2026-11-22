@@ -30,6 +30,8 @@ struct Operation {
   std::vector<std::string> call_stack;
   // Logical callback request; endpoint operations are appended at Apply.
   bool callback = false;
+  // Invocation context survives resets inside callback bodies.
+  bool callback_execution = false;
 };
 
 struct ReadbackUpdate {
