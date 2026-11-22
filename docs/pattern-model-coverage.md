@@ -57,9 +57,11 @@ Automatic downstream/mixed/merged callback groups and modeled/physical callback
 histories remain open; see the [current guide](pattern-generation.md#task153-explicit-dataregister-callback-execution).
 
 Task154's conservative primary-state index improves the measured1,024-target
-callback source workload from26.19s to2.60s with exact parent/flat/generated
-pattern matches. Nine compatibility methods and native state/copy checks pass;
-full qualification/review remain in progress. Broader item10 is pending.
+callback source workload from26.21s to2.61s with exact parent/flat/generated
+pattern matches. Ten focused methods and native state/copy checks pass; all46
+qualification gates,64x1058 per generator,14 native/14 sanitizer suites,
+six quality checks and packaging pass. The single Important review finding is
+fixed; one Minor is deferred. Broader item10 is pending.
 
 | Area | Current implementation/evidence | Remaining acceptance work |
 |---|---|---|

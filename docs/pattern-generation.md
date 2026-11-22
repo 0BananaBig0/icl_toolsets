@@ -8496,9 +8496,9 @@ four caller Apply groups and four-bit targets give:
 
 | Callback targets | Parent median s | Current median s | Speed ratio | Current peak RSS KiB |
 |---|---:|---:|---:|---:|
-| 64 | 0.2965 | 0.1867 | 1.59x | 76036 |
-| 256 | 2.0982 | 0.5930 | 3.54x | 81896 |
-| 1024 | 26.1918 | 2.6040 | 10.06x | 107008 |
+| 64 | 0.2754 | 0.1659 | 1.66x | 76236 |
+| 256 | 2.0898 | 0.5743 | 3.64x | 81688 |
+| 1024 | 26.2120 | 2.6123 | 10.03x | 106920 |
 
 The1024-target case meets the<=10s,>=2x parent speed and256MiB budget. The report
 contains60 processes: parent/current plain, unused-declaration and callback source
@@ -8518,8 +8518,8 @@ python3 tests/src/pattern/benchmark_primary_callback_state.py \
   --output build/primary-callback-state-scale --repeats 3
 ~~~
 
-The original wide-alias memory budget and guide example also pass. Nine new
-CLI compatibility methods cover fresh postconditions, known/unknown held data,
+The original wide-alias memory budget and guide example also pass. Nine compatibility methods plus a benchmark-repeatability regression
+ cover fresh postconditions, known/unknown held data,
 aliases, logic/mux/one-hot consumers, reset relationships, ordinary ownership,
 end-state requirements and nested/flat identities. A native scheduler test checks
 complete concrete state, copy independence, fresh assumptions, reset behavior,
@@ -8528,6 +8528,28 @@ preserved masks and actual observations.
 This increment does not optimize referenced/aliased/resettable storage or add
 automatic callbacks, new scheduling topologies or a hardware transport. Other
 solver/network validation costs remain. Broad item10 and the other pending
-inventory requirements stay open. Full qualification and independent review are
-in progress; receipts will be recorded under
-build/primary-callback-state-20261123/.
+inventory requirements stay open.
+
+The fresh independent review found no scheduler correctness blocker and verified
+30 additional multi-route parent/current cases. Its one Important finding was
+a benchmark false-green on stale output. A regression first proved that a
+successful no-output candidate could reuse old artifacts; the single fix pass
+gives every measured process a fresh retained output/debug directory and requires
+fresh pattern and flat model files. The corrected60-process run passes with the
+same qualified executable. Original valid measurements remain in scale/; final
+fresh-directory measurements and exact commands are in scale-final/results.json.
+
+All46 qualification gates pass:14 native/14 leak-enabled ASan/UBSan native suites,
+64 suites/1058 tests per generator,13 affected sanitizer CLI modules, six changed
+C++ format/tidy/strict C++17 checks and source-distribution packaging. Hash checks
+verify4016 source inputs and31 products, including the benchmark executable.
+The new10-method primary-state module, including stale-output rejection, passes
+on dynamic/static and sanitizer generators. Guide source/flat/generated replay,
+six wide-alias budget processes and20 alternating control processes also pass.
+
+One review Minor remains deferred: the ownership negative test checks failure and
+preserved output, but could also pass on a future parser/setup failure; the
+reviewer confirmed its current intended diagnostic is reserved storage =0011.
+Full-suite execution is author-run evidence; performance outside this workload
+retains its separate acceptance criteria. Qualification, review dispositions and
+hash receipts are under build/primary-callback-state-20261123/final/.
