@@ -155,3 +155,13 @@ Broader11/12 remains open; coverage1 remains excluded.
 
 Task158 is merged into master; thirteen integration checks, 4026 input hashes,
 19 copied qualified native products and 117 preserved stashes are verified.
+
+## Task159 write-callback endpoint observation increment
+
+The active branch enables --model_readback for actual ordinary endpoint
+observations during explicit write callbacks. Abstract callback storage and
+requested/generated postconditions never become actual observations, including
+mixed/inverted alias assumptions and reset defaults. Invoked read callbacks,
+physical callbacks, automatic/mixed/together/merged dispatch and broader timing
+remain open. This increment does not close whole items4 or6, or excluded item1.
+Qualification and integration evidence will be recorded after verification.

@@ -60,6 +60,107 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
 }
+void TestWriteCallbackEndpointReadback() {
+  pattern::Design design;
+  design.AddIcl("write_callback_readback.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Top store <D> <R>;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  const std::vector<pattern::Operation> ops{
+      {"iReset", {}, "test", {}},
+      {"iWrite", {"value", "9"}, "test", {}, true},
+      {"iWrite", {"p", "9"}, "callback", {}, false, true},
+      {"iApply", {}, "callback", {}, false, true},
+      {"iState",
+       {"value", "9", "-LastWrittenValue"},
+       "callback",
+       {},
+       false,
+       true},
+      {"iApply", {}, "test", {}, false, true},
+      {"iRead", {"q", "0"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  const auto* updates = readback(ops, true);
+  std::string actual, mismatches;
+  for (const auto& update : updates->bits) {
+    actual += update.read;
+    mismatches += update.miscompare;
+  }
+  Require(actual == "1001" && mismatches == "1001" && updates->failures == 2,
+          "write callback compares actual endpoint data and counts once");
+  Require(readback(ops, false)->failures == 0,
+          "callback endpoint status clears");
+}
+
+void TestCallbackAssumptionsCannotBecomeActualData() {
+  pattern::Design design;
+  design.AddIcl("callback_shadow.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Top store <D>; ResetValue 0;}
+ DataOutPort shadow[3:0] {Source value;}
+ Alias mixed[7:0] = value, p;
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> ops{
+      {"iReset", {}, "test", {}},
+      {"iState", {"mixed", "0b10011010", "-LastWrittenValue"}, "test", {}},
+      {"iRead", {"q", "0"}, "test", {}},
+      {"iRead", {"shadow", "0"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  const auto check = [&](const pattern::ReadbackUpdates* updates,
+                         const std::string& expected) {
+    std::map<std::pair<size_t, int64_t>, char> values;
+    for (const auto& bit : updates->bits) {
+      values.emplace(std::make_pair(bit.node, bit.index), bit.read);
+    }
+    const auto actual = [&](const std::string& name) {
+      std::string result;
+      for (const auto& bit : pattern::ResolvePdlTarget(netlist, name).bits) {
+        result += values.at({bit.node, bit.index});
+      }
+      return result;
+    };
+    Require(actual("q") == expected && actual("shadow") == "xxxx" &&
+                !updates->failures,
+            "mixed aliases preserve ordinary state but abstract storage is "
+            "unknown");
+  };
+  check(readback(ops, false), "1010");
+  ops.push_back({"iReset", {}, "test", {}});
+  ops.push_back({"iState", {"p", "3"}, "test", {}});
+  ops.push_back({"iRead", {"q", "0"}, "test", {}});
+  ops.push_back({"iRead", {"shadow", "0"}, "test", {}});
+  ops.push_back({"iApply", {}, "test", {}});
+  check(readback(ops, false), "0011");
+}
+
+void TestUnexpandedLogicalReadbackRejects() {
+  pattern::Design design;
+  design.AddIcl("unexpanded_callback.icl", R"(
+Module Top {
+ DataInPort p[3:0];
+ DataRegister observed[3:0] {ReadCallBack Top load <D>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  bool rejected = false;
+  try {
+    readback({{"iState", {"p", "9"}, "test", {}},
+              {"iRead", {"observed", "0"}, "test", {}},
+              {"iApply", {}, "test", {}}},
+             false);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("callback") != std::string::npos;
+  }
+  Require(rejected,
+          "unexpanded logical callback access cannot impersonate an endpoint");
+}
+
 void TestRawObservationCommit() {
   pattern::Design design;
   design.AddIcl("raw.icl", R"(
@@ -169,11 +270,11 @@ Module Top {
   auto readback = pattern::MakeModeledReadback(netlist);
   std::vector<pattern::Operation> operations{
       {"iRead", {"observed", "9"}, "test", {}, true},
-      {"iReset", {}, "callback", {}, false, true},
-      {"iWrite", {"p", "0"}, "callback", {}, false, true},
-      {"iApply", {}, "callback", {}, false, true},
-      {"iRead", {"q", "9"}, "callback", {}, false, true},
-      {"iApply", {}, "callback", {}, false, true}};
+      {"iReset", {}, "callback", {}, false, true, true},
+      {"iWrite", {"p", "0"}, "callback", {}, false, true, true},
+      {"iApply", {}, "callback", {}, false, true, true},
+      {"iRead", {"q", "9"}, "callback", {}, false, true, true},
+      {"iApply", {}, "callback", {}, false, true, true}};
   bool rejected = false;
   try {
     readback(operations, false);
@@ -641,6 +742,9 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestWriteCallbackEndpointReadback();
+    TestCallbackAssumptionsCannotBecomeActualData();
+    TestUnexpandedLogicalReadbackRejects();
     TestRawObservationCommit();
     TestRawTapObservationCommit();
     TestCallbackResetCannotEnableModelReadback();

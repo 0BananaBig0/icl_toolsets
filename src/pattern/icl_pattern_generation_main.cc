@@ -878,7 +878,7 @@ int main(int argc, char** argv) {
     }
     runtime.Finish();
     if (runtime.CallbacksExecuted()) {
-      if (options.model_readback) {
+      if (options.model_readback && runtime.ReadCallbacksExecuted()) {
         throw std::runtime_error(
             "modeled readback excludes callback histories");
       }
@@ -912,16 +912,6 @@ int main(int argc, char** argv) {
                               nullptr, true, nullptr, options.model_readback)
                    : GenerateMerged(network.netlist, *output_operations,
                                     options.model_readback);
-    if (options.model_readback) {
-      const auto header =
-          "iPDLLevel 0\n" +
-          Command({"iProcsForModule", network.netlist.top_module});
-      if (pdl.compare(0, header.size(), header) != 0) {
-        throw std::runtime_error("missing generated PDL header");
-      }
-      pdl.insert(header.size(),
-                 Command({"iNote", pattern::kModeledReadbackNote}));
-    }
     if (!options.local_reset.empty()) {
       const auto verify_source =
           [&](const std::string& source,
@@ -1060,6 +1050,17 @@ int main(int argc, char** argv) {
           }
         }
       }
+    }
+
+    if (options.model_readback) {
+      const auto header =
+          "iPDLLevel 0\n" +
+          Command({"iProcsForModule", network.netlist.top_module});
+      if (pdl.compare(0, header.size(), header) != 0) {
+        throw std::runtime_error("missing generated PDL header");
+      }
+      pdl.insert(header.size(),
+                 Command({"iNote", pattern::kModeledReadbackNote}));
     }
 
     for (const auto& warning : design.warnings()) messages += warning + "\n";

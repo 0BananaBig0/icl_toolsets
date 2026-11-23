@@ -295,8 +295,9 @@ iProc store {data reg} {
         import subprocess
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         icl.write_text(MODEL)
-        pdl.write_text(PROCS + "iWrite value 9; iApply")
-        for option in ("--model_readback", "--physical_pdl"):
+        for option, request in (("--model_readback", "iRead observed 9; iApply"),
+                                ("--physical_pdl", "iWrite value 9; iApply")):
+            pdl.write_text(PROCS + request)
             output = self.root / "result.pdl"
             output.write_bytes(b"retained artifact")
             result = subprocess.run(

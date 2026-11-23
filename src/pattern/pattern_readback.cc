@@ -45,6 +45,14 @@ class ModelReadback {
             })) {
       throw std::runtime_error("modeled readback excludes unsupported storage");
     }
+    callback_storage_.resize(netlist.nodes.size(), false);
+    for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+      const auto& node = netlist.nodes[id];
+      if (!node.read_callback && !node.write_callback) continue;
+      callback_storage_[id] = true;
+      callback_unknown_.emplace_back(node.name, std::string(node.Width(), 'x'));
+    }
+    MaskCallbackStorage();
   }
 
   const ReadbackUpdates* Read(const std::vector<Operation>& operations,
@@ -52,21 +60,40 @@ class ModelReadback {
     if (error_) std::rethrow_exception(error_);
     try {
       // Reject unsupported histories before exposing any observation delta.
-      bool callback_pending = callback_pending_;
+      bool read_pending = read_callback_pending_;
+      bool write_pending = write_callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
-        if (op.callback_execution) {
+        if (op.callback_read_execution ||
+            (physical_ && op.callback_execution)) {
           throw std::runtime_error(
               op.origin + ": modeled readback excludes callback histories");
         }
         if (op.callback) {
-          callback_pending = true;
+          if (op.command == "iRead") read_pending = true;
+          if (op.command == "iWrite") write_pending = true;
           continue;
         }
-        if (op.command == "iReset") callback_pending = false;
-        if (op.command == "iApply" && callback_pending) {
+        if (op.callback_execution) write_pending = false;
+        if (op.command == "iReset") {
+          read_pending = false;
+          write_pending = false;
+        }
+        if (op.command == "iApply" && (read_pending || write_pending)) {
           throw std::runtime_error(
               op.origin + ": modeled readback excludes callback histories");
+        }
+        if (!callback_unknown_.empty() &&
+            (op.command == "iWrite" || op.command == "iRead")) {
+          const auto target = ResolvePdlTarget(netlist_, op.arguments.at(0));
+          if (std::any_of(target.bits.begin(), target.bits.end(),
+                          [&](const auto& bit) {
+                            return callback_storage_.at(bit.node);
+                          })) {
+            throw std::runtime_error(
+                op.origin +
+                ": modeled readback excludes unexpanded callback access");
+          }
         }
         if (op.command != "iWrite" && op.command != "iRead" &&
             op.command != "iApply" && op.command != "iState" &&
@@ -78,7 +105,8 @@ class ModelReadback {
                                    op.command + " histories");
         }
       }
-      callback_pending_ = callback_pending;
+      read_callback_pending_ = read_pending;
+      write_callback_pending_ = write_pending;
       updates_.bits.clear();
       updates_.scans.clear();
       positions_.clear();
@@ -104,6 +132,11 @@ class ModelReadback {
   }
 
  private:
+  void MaskCallbackStorage() {
+    for (const auto& [name, bits] : callback_unknown_) {
+      scheduler_->Assume(name, bits);
+    }
+  }
   char Mismatch(char expected, char actual) {
     const char mismatch = expected == 'x'      ? '0'
                           : actual == 'x'      ? 'x'
@@ -256,14 +289,18 @@ class ModelReadback {
       }
     } else if (op.command == "iReset") {
       scheduler_->Reset(!args.empty(), physical_);
+      MaskCallbackStorage();
       reservations_.Reset();
       pending_.Clear();
       raw_pending_.clear();
       raw_pending_bits_ = 0;
     } else if (op.command == "iState") {
       const auto target = ResolvePdlTarget(netlist_, args.at(0));
-      const auto bits = PdlNumber(context_, args.at(1), target.bits.size());
+      auto bits = PdlNumber(context_, args.at(1), target.bits.size());
       if (args.size() != 3 || args[2] == "-LastWrittenValue") {
+        for (size_t i = 0; i < target.bits.size(); ++i) {
+          if (callback_storage_.at(target.bits[i].node)) bits[i] = 'x';
+        }
         scheduler_->Assume(args[0], bits);
         pending_.Assume(target, bits);
         reservations_.Assigned({op}, *scheduler_);
@@ -287,7 +324,10 @@ class ModelReadback {
 
   const Netlist& netlist_;
   bool physical_;
-  bool callback_pending_ = false;
+  bool read_callback_pending_ = false;
+  bool write_callback_pending_ = false;
+  std::vector<bool> callback_storage_;
+  std::vector<std::pair<std::string, std::string>> callback_unknown_;
   z3::context context_;
   std::unique_ptr<ScanScheduler> scheduler_;
   std::unique_ptr<OpaqueScanQueue> opaque_;
