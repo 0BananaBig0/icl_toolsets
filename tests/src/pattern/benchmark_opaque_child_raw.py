@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import subprocess
@@ -68,7 +69,7 @@ def main():
         parser.error("positive sizes and repeats required")
     binaries = {k: p.resolve() for k, p in (("current", args.binary), ("parent", args.parent), ("sanitized", args.sanitized))}
     args.output.mkdir(parents=True, exist_ok=True)
-    report = {"environment": platform.platform(), "binaries": {k: {"path": str(p), "sha256": digest(p)} for k, p in binaries.items()}, "runs": []}
+    report = {"environment": platform.platform(), "runtime_environment": {k: os.environ[k] for k in ("ASAN_OPTIONS", "UBSAN_OPTIONS") if k in os.environ}, "binaries": {k: {"path": str(p), "sha256": digest(p)} for k, p in binaries.items()}, "runs": []}
 
     def run(owner, kind, width, repeat, form, icl, pdl, expected, reference=None):
         root = Path(tempfile.mkdtemp(prefix="%s-%s-%d-%s-" % (owner, kind, width, form), dir=args.output))
@@ -90,7 +91,15 @@ def main():
             raise RuntimeError(form + " canonical replay differs")
         if elapsed > 10 or int(rss) > 512 * 1024:
             raise RuntimeError("opaque child exceeds10s/512MiB")
-        report["runs"].append({"owner": owner, "kind": kind, "opaque_width": width, "root_width": width + 8, "visible_parent_bits": 0 if kind == "root" else 8, "outer_probe_groups": 4, "repeat": repeat, "form": form, "command": command, "wall_seconds": elapsed, "time_seconds": float(seconds), "rss_kib": int(rss), "icl_sha256": digest(icl), "pdl_sha256": digest(pdl), "output_sha256": digest(output), "output_bytes": len(data.encode()), "fresh_getters": pdl.read_text().count("iGetReadData client -bin")})
+        scans = [line.split() for line in data.splitlines() if line.startswith("iScan ")]
+        csus = sum(line.startswith("iApply") for line in data.splitlines())
+        if any(scan[1] != "client" for scan in scans) or len(scans) > csus:
+            raise RuntimeError("benchmark canonical route dimensions are unsupported")
+        shifted_bits = sum(int(scan[2]) for scan in scans) + (csus - len(scans)) * (width + 8)
+        report["runs"].append({"owner": owner, "kind": kind, "grid_width": width,
+                               "opaque_width": width if kind == "opaque" else (width + 8 if kind == "root" else 0),
+                               "modeled_storage_bits": width + 8 if kind == "visible" else (8 if kind == "opaque" else 0),
+                               "csu_count": csus, "shifted_bits": shifted_bits, "root_width": width + 8, "visible_parent_bits": 0 if kind == "root" else 8, "outer_probe_groups": 4, "repeat": repeat, "form": form, "command": command, "wall_seconds": elapsed, "time_seconds": float(seconds), "rss_kib": int(rss), "icl_sha256": digest(icl), "pdl_sha256": digest(pdl), "output_sha256": digest(output), "output_bytes": len(data.encode()), "fresh_getters": pdl.read_text().count("iGetReadData client -bin")})
         (args.output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
         return data, output
 

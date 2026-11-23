@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Opaque child privacy, preparation length knowledge and actual scan histories."""
+import json
 import subprocess
 import unittest
 
@@ -7,6 +8,12 @@ import test_opaque_root_scan as cli
 from benchmark_opaque_child_raw import model
 
 MODEL = model()
+VISIBLE = (cli.ROOT / "tests/cases/ours/pattern_generation/static_child_scans/model.icl").read_text().split("Module Top", 1)[0].replace("Module ChildLeaf", "Module Visible")
+SIBLING = VISIBLE + MODEL.replace(" ScanRegister tail", """ Instance vis Of Visible {
+  InputPort si = child.so; InputPort sel = sel; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanRegister tail""").replace("ScanInSource child.so", "ScanInSource vis.so").replace("DefaultLoadValue 16'b0", "DefaultLoadValue 24'b0")
 
 
 class OpaqueChildRaw(unittest.TestCase):
@@ -150,6 +157,46 @@ if {![catch {iGetStatus -clear}]} {error {unknown opaque status accepted}}
         result = self.replay("iReset; iScan child.local 8 -si 0xa5 -stable; iApply; "
                              "iNote [iGetReadData child.local -bin]\n", source)
         self.assertEqual(self.notes(result), ["0bxxxxxxxx"])
+
+    def test_modeled_sibling_retains_opaque_stability(self):
+        for opaque in ("", "iScan child.local 8 -si 0xa5 -stable; "):
+            result = self.replay("iReset; " + opaque +
+                                 "iScan vis.local 8 -si 4; iApply; iWrite head 5; iApply\n", SIBLING)
+            scans = [line for line in result.splitlines() if line.startswith("iScan ")]
+            self.assertTrue(scans and all(line.endswith("-stable") for line in scans), scans)
+
+    def test_sparse_stable_payload_on_implicit_raw_traversal(self):
+        result = self.replay("iReset; iScan child.local 8 -si 0xff -stable; iApply; "
+                             "iScan child.local 8 -si 0b1xx0x0xx -stable; iApply; "
+                             "iScan vis.local 8 -si 4 -stable; iApply; iWrite head 5; iApply\n", SIBLING)
+        scans = [line for line in result.splitlines() if line.startswith("iScan ")]
+        self.assertEqual(scans[2].split()[4][2:][3:11], "1xx0x0xx")
+
+    def test_bit_specific_alias_allows_public_capture_only(self):
+        source = SIBLING.replace("InputPort si = child.so", "InputPort si = mix[1]")
+        source = source.replace(" ScanRegister tail", " Alias mix[1:0] = child.so, head[0];\n ScanRegister tail")
+        source = source.replace("CaptureSource tail;", "CaptureSource tail[4:1], mix[0];")
+        self.replay("iReset; iScan child.local 8 -si 1 -stable; iApply\n", source)
+        leaking = source.replace("CaptureSource tail[4:1], mix[0]", "CaptureSource tail[4:1], mix[1]")
+        self.rejected("iReset; iScan child.local 8 -si 1; iApply\n", "CaptureSource requires", leaking)
+
+    def test_benchmark_records_actual_workload_dimensions(self):
+        report = self.root / "measurement"
+        result = subprocess.run(["python3", str(cli.ROOT / "tests/src/pattern/benchmark_opaque_child_raw.py"),
+                                 "--binary", str(cli.BIN), "--parent", str(cli.BIN),
+                                 "--sanitized", str(cli.BIN), "--output", str(report),
+                                 "--sizes", "8", "--repeats", "1"], capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        rows = json.loads((report / "results.json").read_text())["runs"]
+        self.assertEqual(len(rows), 10)
+        for row in rows:
+            root_only = row["kind"] == "root"
+            self.assertEqual(row["grid_width"], 8)
+            self.assertEqual(row["root_width"], 16)
+            self.assertEqual(row["opaque_width"], 16 if root_only else (8 if row["kind"] == "opaque" else 0))
+            self.assertEqual(row["csu_count"], 4 if root_only else 9)
+            self.assertEqual(row["shifted_bits"], 64 if root_only else 144)
+            self.assertEqual(row["modeled_storage_bits"], 0 if root_only else (16 if row["kind"] == "visible" else 8))
 
     def test_width_and_side_channel_limits(self):
         self.rejected("iReset; iScan child.local 7; iApply\n", "length", MODEL)

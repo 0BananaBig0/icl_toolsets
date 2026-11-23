@@ -271,6 +271,15 @@ void TestOpaqueChildNativeStateAndPrivacy() {
       scheduler.Value("child.so") == "x" && scheduler.Value("head") == "101" &&
           scheduler.Value("tail") == "10011",
       "private state stays unknown after shifting while parent state commits");
+  const std::vector<pattern::Operation> private_reset{
+      {"iWrite", {private_name, "1"}, "private reset target", {}}};
+  Rejects([&] { scheduler.ResetPrerequisites(private_reset); }, "unknown");
+  Rejects([&] { scheduler.CheckLocalResets(private_reset); }, "unknown");
+  Rejects([&] { scheduler.ResetPrerequisites({}, {{expanded->storage, "0"}}); },
+          "reserved resource");
+  Rejects(
+      [&] { scheduler.ResetPrerequisites({}, {}, {{expanded->storage, "0"}}); },
+      "reserved resource");
   Rejects([&] { scheduler.Value(private_name); }, "unknown");
   Rejects([&] { scheduler.Assume(private_name, "00000000"); }, "unknown");
   Rejects(

@@ -400,35 +400,42 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
     }
   }
   struct Use {
-    size_t node;
+    Key bit;
     bool forward, terminal;
   };
-  std::vector<std::vector<Use>> uses(netlist.nodes.size());
+  std::map<Key, std::vector<Use>> uses;
   for (size_t id = 0; id < netlist.nodes.size(); ++id) {
     const auto& current = netlist.nodes[id];
     for (const auto& [role, bits] : current.inputs) {
-      for (const auto& bit : bits) {
-        if (bit.node >= uses.size()) continue;
-        uses[bit.node].push_back(
-            {id,
+      for (size_t offset = 0; offset < bits.size(); ++offset) {
+        const auto& bit = bits[offset];
+        if (bit.node >= netlist.nodes.size()) continue;
+        const auto index = current.left >= current.right
+                               ? current.left - static_cast<int64_t>(offset)
+                               : current.left + static_cast<int64_t>(offset);
+        uses[{bit.node, bit.index}].push_back(
+            {{id, index},
              role == "Source" && (current.kind == "ScanInPort" ||
                                   current.kind == "ScanOutPort" ||
                                   current.model == ModelKind::kAlias),
              role == "ScanInSource" && current.kind == "ScanRegister"});
       }
     }
-    if (current.reset && current.reset->node < uses.size()) {
-      uses[current.reset->node].push_back({id, false, false});
+    if (current.reset && current.reset->node < netlist.nodes.size()) {
+      uses[{current.reset->node, current.reset->index}].push_back(
+          {{id, current.left}, false, false});
     }
   }
-  std::vector<size_t> pending{pins.at("ScanOutPort")};
-  std::vector<bool> seen(netlist.nodes.size(), false);
+  std::vector<Key> pending{
+      {pins.at("ScanOutPort"), netlist.nodes[pins.at("ScanOutPort")].left}};
+  std::set<Key> seen;
   for (size_t i = 0; i < pending.size(); ++i) {
-    if (seen[pending[i]]) continue;
-    seen[pending[i]] = true;
-    for (const auto& use : uses[pending[i]]) {
+    if (!seen.insert(pending[i]).second) continue;
+    const auto found = uses.find(pending[i]);
+    if (found == uses.end()) continue;
+    for (const auto& use : found->second) {
       if (use.forward) {
-        pending.push_back(use.node);
+        pending.push_back(use.bit);
       } else if (!use.terminal) {
         return {};
       }

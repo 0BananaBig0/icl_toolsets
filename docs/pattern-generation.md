@@ -9208,6 +9208,9 @@ probe groups and three repeats. Source, flat and generated runs verify real
 root getters: three head bits, the opaque interval as x, and five tail bits.
 Generated probes replace all four literal notes with fresh getters. Visible
 capture-x and root-only opaque controls report their different parent-storage
-dimensions separately; their output is not claimed identical to the child
-configuration. The acceptance bound is10s/512MiB per process. No speedup is
+dimensions separately; each receipt distinguishes the requested grid width,
+actual opaque width, modeled storage, emitted CSU count and total shifted bits.
+An8-bit child has nine16-bit CSUs(144shifted bits); its root-only control has
+four16-bit CSUs(64shifted bits) and a16-bit opaque interval. Their output is not
+claimed identical to the child configuration. The acceptance bound is10s/512MiB per process. No speedup is
 claimed.
