@@ -9,7 +9,8 @@ this new child branch. Preserve117stashes and unrelated detached worktrees.
 
 Allow the existing model_readback option to observe actual modeled ordinary
 endpoint transactions executed by explicit WriteCallBack procedures. Keep
-logical callback-register histories unavailable, applied ReadCallBack histories
+actual logical callback-register observations unavailable (explicit manual history
+assumptions retain their existing meaning), applied ReadCallBack histories
 unsupported, and physical-PDL callbacks unsupported. Retain existing callback-only
 caller groups, merge/together/automatic-downstream limits. Do not close whole4/6.
 
@@ -116,7 +117,11 @@ no unmeasured speedup claims. Retain existing corpus/helper acceptance unchanged
 
 ## Workflow and completion
 
-Fresh builder check before plan; inline implementation. Scope files:
+Fresh builder /root/callback_endpoint_readback_builder_check reports nothing
+important left. Parent probe confirms an unknown abstract callback source remains
+0bxxxx with unknown status; invoked write callback endpoint replay currently
+fails at the intended blanket callback guard. Evidence under
+build/callback-endpoint-readback-20261123/discovery. Inline implementation. Scope files:
 pattern_runtime.h/.cc, pattern_readback.cc, icl_pattern_generation_main.cc;
 existing Runtime/readback native suites; new tests/src/pattern/ script and
 Make registration; current guide/tracker. Add scheduler support only if actual
