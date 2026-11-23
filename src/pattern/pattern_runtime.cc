@@ -1520,21 +1520,6 @@ class Runtime::Impl {
       }
     }
     CheckCallbackCallerWrite(operation);
-    const bool guarded_state =
-        name == "iState" && (operation.arguments.size() != 3 ||
-                             operation.arguments[2] == "-LastWrittenValue");
-    if (name == "iApply" || name == "iRunLoop" || guarded_state) {
-      for (const auto& writes : callback_caller_writes_) {
-        for (const auto& [key, value] : writes) {
-          const auto [id, index] = key;
-          const auto& node = netlist_->nodes.at(id);
-          auto [entry, inserted] =
-              operation.callback_preserved.try_emplace(id, node.Width(), 'x');
-          entry->second.at(node.left >= node.right ? node.left - index
-                                                   : index - node.left) = value;
-        }
-      }
-    }
     if (name == "iWrite" || name == "iRead" || name == "iScan") {
       if (!pending_) pending_operation_ = operations_.size();
       pending_ = true;
@@ -1550,6 +1535,21 @@ class Runtime::Impl {
             operation.callback_read_execution || read_callbacks_executed_;
       } else {
         InvalidateReadHistory(operation);
+      }
+    }
+    const bool guarded_state =
+        name == "iState" && (operation.arguments.size() != 3 ||
+                             operation.arguments[2] == "-LastWrittenValue");
+    if (name == "iApply" || name == "iRunLoop" || guarded_state) {
+      for (const auto& writes : callback_caller_writes_) {
+        for (const auto& [key, value] : writes) {
+          const auto [id, index] = key;
+          const auto& node = netlist_->nodes.at(id);
+          auto [entry, inserted] =
+              operation.callback_preserved.try_emplace(id, node.Width(), 'x');
+          entry->second.at(node.left >= node.right ? node.left - index
+                                                   : index - node.left) = value;
+        }
       }
     }
     if (name == "iReset") {

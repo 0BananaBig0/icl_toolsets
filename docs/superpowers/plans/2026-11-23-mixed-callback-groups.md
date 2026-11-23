@@ -40,10 +40,12 @@ writes instead of dropping known caller goals.
 - Normal64/256/1024 andSAN64 callback targets, four probe groups, three repeats/
   source-flat-generated <=10s/512MiB; fresh generated getters and actual request/
   CSU/operand/endpoint/postcondition counts. Preserve1024callback10s and16Kalias
-  256MiB budgets. Work O(queued bits + emitted operations), map log factors okay.
+  256MiB budgets. Queue work is O(queued bits + emitted operations), with map log factors.
+  Retained caller masks cost caller width times annotated boundaries; measured
+  scale fixes caller width at four bits, as recorded after final review.
 - Final15normal/15leakSAN native, both whole generators, selected SAN/corpus/
-  producer/protocol/Make/quality/source packaging. Expected71suites/1152methods
-  each after16newCLI methods,4033inputs/38products,59gates. Confirm actual counts.
+  producer/protocol/Make/quality/source packaging. Expected71suites/1153methods
+  each after17newCLI methods,4033inputs/38products,59gates. Confirm actual counts.
 - One fresh final independent review; one Critical/Important TDD fix pass,
   defer Minors/no rereview. Integrate/push/delete completed branch, then continue.
 
@@ -143,7 +145,8 @@ reset rewriting; benchmark is standalone Python standard library.
       test_sparse_alias_masks_status_clear,
       test_selected_batch_body_reset_and_unselected_tail,
       test_scale_receipt_counts_and_fresh_generated_getters.
-      Expected16CLI methods, source/flat/generated/reset-source and split replay
+      Expected17CLI methods after one review state-bypass regression;
+      source/flat/generated/reset-source and split replay
       agree, actual observed data/status remain independent of requested values,
       selected batch semantics match existing callback-only reference. Local
       reset may reject only existing impossible flush/ownership/reassertion
@@ -174,7 +177,7 @@ reset rewriting; benchmark is standalone Python standard library.
       execute every changed native product. Whole generators/affectedCLI/
       packaging run current code. Bind exact maintained inputs/products/
       measurements; expected59gates and
-      actual71x1152 eachvariant/4033inputs38products if no justified additions.
+      actual71x1153 eachvariant/4033inputs38products if no justified additions.
 - [ ] Merge into master; verify identical source/product hashes and focused
       root integration (existing20checks plus newCLI bothvariants=22checks,
       20copied normal products). Push, detach preservedWT/delete completed

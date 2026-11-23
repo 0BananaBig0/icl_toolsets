@@ -216,3 +216,18 @@ CLI regressions cover both derived-write directions, compatible derived writes,
 indirect controlling state and a merged ordinary endpoint body. Run fresh checks
 for every rebuilt/changed native product; reuse eligibility is byte-based, never
 assumed from filenames.
+
+## Final review correction
+A matching pending write exempts only prior-state preservation during the first
+native frame; it never exempts the complete caller mask from the frame's final
+concrete proof. Guarded state assumptions retain bits already established in
+native state even if a future queued write repeats them. Failed final proofs
+restore hardware state, fill, TAP execution and opaque queue before any
+subscriber delivery. Enclosing Apply masks are captured after nested expansion,
+so reset cannot resurrect canceled goals.
+
+The masks retained on annotated boundaries cost caller width times boundary
+count. Qualification fixes the protected caller at four bits and varies callback
+targets through1024; it does not establish additive scaling in both dimensions.
+The primary-only benchmark's zero scan-CSU/shift counts are expected fixture
+dimensions rather than independently observed scan counters.

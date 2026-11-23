@@ -291,8 +291,8 @@ class ModelReadback {
       if (raw_pending_.empty() || !pending_.Empty()) {
         scheduler_->Apply(
             accesses, raw_pending_.empty() && together, preserved, true,
-            physical_,
-            bits.empty() ? ScanScheduler::PioObservation{} : observe);
+            physical_, bits.empty() ? ScanScheduler::PioObservation{} : observe,
+            op.callback_preserved);
       }
       if (actual.find('?') != std::string::npos) {
         throw std::runtime_error(
@@ -329,8 +329,9 @@ class ModelReadback {
         for (size_t i = 0; i < target.bits.size(); ++i) {
           if (callback_storage_.at(target.bits[i].node)) bits[i] = 'x';
         }
-        scheduler_->Assume(args[0], bits,
-                           reservations_.CallbackConstraints(op, pending_));
+        scheduler_->Assume(
+            args[0], bits,
+            reservations_.CallbackConstraints(op, pending_, scheduler_.get()));
         pending_.Assume(target, bits);
         reservations_.Assigned({op}, *scheduler_);
       } else {

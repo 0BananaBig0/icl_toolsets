@@ -25,7 +25,8 @@ void ResourceReservations::Reset() {
   values_.clear();
 }
 std::map<size_t, std::string> ResourceReservations::CallbackConstraints(
-    const Operation& operation, const QueuedAccesses& pending) const {
+    const Operation& operation, const QueuedAccesses& pending,
+    const ScanScheduler* established) const {
   std::map<size_t, std::string> result;
   if (operation.callback_preserved.empty()) return result;
   const auto [written, values] = pending.WriteModel();
@@ -36,6 +37,8 @@ std::map<size_t, std::string> ResourceReservations::CallbackConstraints(
       throw std::runtime_error("invalid callback caller goal mask");
     }
     const auto& node = netlist_.nodes[id];
+    const auto current =
+        established ? established->Value(node.name) : std::string{};
     for (size_t i = 0; i < desired.size(); ++i) {
       if (desired[i] == 'x') continue;
       const auto index = node.left >= node.right
@@ -53,7 +56,8 @@ std::map<size_t, std::string> ResourceReservations::CallbackConstraints(
           throw std::runtime_error(
               "queued write conflicts with callback caller goal " + node.name);
         }
-        continue;
+        // A future write cannot release a caller goal already established.
+        if (!established || current.at(i) != desired[i]) continue;
       }
       auto [entry, inserted] = result.try_emplace(id, node.Width(), 'x');
       entry->second[i] = desired[i];

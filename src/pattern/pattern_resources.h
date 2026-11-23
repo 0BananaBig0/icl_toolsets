@@ -26,7 +26,8 @@ class ResourceReservations {
                      const ScanScheduler& scheduler);
   const std::map<size_t, std::string>& Values() const { return values_; }
   std::map<size_t, std::string> CallbackConstraints(
-      const Operation& operation, const QueuedAccesses& pending) const;
+      const Operation& operation, const QueuedAccesses& pending,
+      const ScanScheduler* established = nullptr) const;
   std::optional<std::map<size_t, std::string>> CallbackValues(
       const Operation& operation, const QueuedAccesses& pending) const;
 

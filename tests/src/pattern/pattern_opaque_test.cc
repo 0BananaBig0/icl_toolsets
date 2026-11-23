@@ -233,6 +233,42 @@ void TestOpaqueExpansionRequiresActiveStaticRoute() {
       !pattern::ExpandOpaqueChild(unsupported),
       "conditionally selected opaque route is outside the static expansion");
 }
+void TestCallbackCallerFrameProof() {
+  pattern::Design design;
+  design.AddIcl("caller-proof.icl", R"(
+Module Child {WriteEnPort we;}
+Module Top {WriteEnPort we; DataInPort p; DataOutPort q {Source p;}
+ Instance child Of Child {InputPort we = we;}}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto id = netlist.node_ids.at("we");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Apply({{"iWrite", {"we", "0"}, "setup", {}},
+                   {"iWrite", {"p", "0"}, "setup", {}}});
+  size_t deliveries = 0;
+  const pattern::ScanScheduler::PioObservation observe =
+      [&](const auto&, const auto&) { ++deliveries; };
+  bool rejected = false;
+  try {
+    scheduler.Apply({{"iWrite", {"we", "0"}, "caller", {}},
+                     {"iWrite", {"child.we", "1"}, "callback", {}},
+                     {"iWrite", {"p", "1"}, "callback", {}},
+                     {"iRead", {"q", "0"}, "observer", {}}},
+                    false, {}, true, false, observe, {{id, "0"}});
+  } catch (const std::exception&) {
+    rejected = true;
+  }
+  Require(
+      rejected && scheduler.Value("we") == "0" && scheduler.Value("p") == "0" &&
+          deliveries == 0,
+      "failed callback frame rolls back state and publishes no observations");
+  const auto steps =
+      scheduler.Apply({{"iWrite", {"we", "1"}, "caller", {}},
+                       {"iWrite", {"child.we", "1"}, "callback", {}}},
+                      false, {}, true, false, {}, {{id, "1"}});
+  Require(!steps.empty() && scheduler.Value("we") == "1",
+          "compatible mapped caller goal commits after a failed frame");
+}
 void TestOpaqueChildNativeStateAndPrivacy() {
   pattern::Design design;
   design.AddIcl("opaque.icl", kOpaqueChild);
@@ -503,7 +539,7 @@ int main() {
         TestCompletionFailureAndCopies, TestNamedRequiredCompletionAndBudget,
         TestUnusedOpaqueChildDoesNotChangePrimaryPaths,
         TestOpaqueExpansionRequiresActiveStaticRoute,
-        TestOpaqueChildNativeStateAndPrivacy,
+        TestCallbackCallerFrameProof, TestOpaqueChildNativeStateAndPrivacy,
         TestOpaqueChildLengthCopiesAndSubscriberCommit,
         TestOpaqueChildVisibleReferenceAndFlatOrigins,
         TestOpaqueChildWrappersWithoutVisibleStorage}) {

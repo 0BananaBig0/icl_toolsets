@@ -82,6 +82,17 @@ iRead q 9; iApply; iNote [iGetReadData q -dec]
 """
         self.assertEqual(self.notes(self.replay(MODEL, body)), [b"3", b"9"])
 
+        nested = MODEL.replace(" DataInPort p", """ DataRegister nested[3:0] {
+ WriteCallBack Chains nested_op <D>;} DataInPort p""")
+        body = PROCS + """iProc nested_op {d} {
+ iReset; iTake p -persistent; iWrite p $d; iApply
+}
+iProc store {d r} {iApply; iWrite nested $d; iApply}
+iReset; iWrite p 3; iWrite value 9; iApply
+iRead q 0; iApply; iNote [iGetReadData q -dec]
+"""
+        self.assertEqual(self.notes(self.replay(nested, body)), [b"9"])
+
     def test_compatible_and_rejected_write_collisions(self):
         result = self.replay(MODEL, PROCS + "iWrite p 9; iWrite value 9; iApply; "
                              "iRead q 0; iApply; iNote [iGetReadData q -dec]")
@@ -106,6 +117,30 @@ iRead q 9; iApply; iNote [iGetReadData q -dec]
                       "iWrite p 3; iWrite value 9; iApply", "caller", modeled=False)
         compatible = PROCS + ("iProc store {data reg} {iApply; iWrite q $data}; "
                               "iWrite p 3; iWrite value 3; iApply; "
+                              "iRead q 0; iApply; iNote [iGetReadData q -dec]")
+        self.assertEqual(self.notes(self.replay(MODEL, compatible)), [b"3"])
+
+        enable_model = """Module Child {WriteEnPort we;}
+Module Chains {WriteEnPort we; Instance child Of Child {InputPort we = we;}
+ DataRegister value {WriteCallBack Chains w <D>;}}"""
+        for caller, endpoint in (("we", "child.we"), ("child.we", "we")):
+            for prefix in ("", "iApply; iWrite " + caller + " 0; "):
+                body = ("iProc w {d} {" + prefix + "iWrite " + endpoint +
+                        " $d}; iReset; iWrite " + caller + " 0; iWrite value 1; iApply")
+                for modeled in (False, True):
+                    self.rejected(body, "caller", source=enable_model, modeled=modeled)
+            compatible = ("iPDLLevel 1; iProcsForModule Chains; iProc w {d} {iWrite " +
+                          endpoint + " $d}; iReset; iWrite " + caller +
+                          " 1; iWrite value 1; iApply")
+            output = self.replay(enable_model, compatible)
+            self.assertIn(b"iWrite we 0b1", output)
+
+    def test_pending_reassertion_cannot_bypass_state_guard(self):
+        for modeled in (False, True):
+            self.rejected("iProc store {data reg} {iApply; iWrite q 3; iState p 9; iReset}; "
+                          "iWrite q 3; iWrite value 9; iApply", "caller", modeled=modeled)
+        compatible = PROCS + ("iProc store {data reg} {iApply; iWrite q 3; iState p 3; iReset}; "
+                              "iWrite q 3; iWrite value 9; iApply; "
                               "iRead q 0; iApply; iNote [iGetReadData q -dec]")
         self.assertEqual(self.notes(self.replay(MODEL, compatible)), [b"3"])
 

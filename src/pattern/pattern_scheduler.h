@@ -57,7 +57,8 @@ class ScanScheduler {
       const std::vector<Operation>& operations, bool together = false,
       const std::map<size_t, std::string>& preserved = {},
       bool explicit_writes = true, bool physical = false,
-      const PioObservation& observe = {});
+      const PioObservation& observe = {},
+      const std::map<size_t, std::string>& caller_goals = {});
   // Raw scans target a known root route or disjoint accessible child
   // intervals, or a known-binary IR/full-path DR on one bound root
   // client-TAP. An ordinary queue may prepare a modeled client before its

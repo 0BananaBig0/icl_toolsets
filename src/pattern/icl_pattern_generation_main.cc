@@ -593,8 +593,9 @@ std::string Generate(
         }
         const auto& accesses = pending.Operations();
         if (edits) scheduler.CheckLocalResets(accesses);
-        const auto steps = scheduler.Apply(accesses, together, preserved, true,
-                                           physical, observe);
+        const auto steps =
+            scheduler.Apply(accesses, together, preserved, true, physical,
+                            observe, operation.callback_preserved);
         clocks.Invalidate();
         reservations.Assigned(accesses, scheduler);
         append_steps(steps);
@@ -673,7 +674,8 @@ std::string Generate(
                                              target.bits.size());
         if (controlling) {
           scheduler.Assume(
-              name, bits, reservations.CallbackConstraints(operation, pending));
+              name, bits,
+              reservations.CallbackConstraints(operation, pending, &scheduler));
           clocks.Invalidate();
           pending.Assume(target, bits);
           reservations.Assigned({operation}, scheduler);

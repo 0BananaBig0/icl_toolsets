@@ -2771,6 +2771,37 @@ class ScanScheduler::Impl {
     }
     return steps;
   }
+  std::vector<ScanStep> ApplyCallerGoals(
+      const std::vector<Operation>& operations, bool together,
+      const std::map<size_t, std::string>& preserved, bool explicit_writes,
+      bool physical, const PioObservation& observe,
+      const std::map<size_t, std::string>& caller_goals) {
+    if (caller_goals.empty()) {
+      return Apply(operations, together, preserved, explicit_writes,
+                   std::nullopt, physical, observe);
+    }
+    ValidateOpaquePreserved(caller_goals);
+    // Retain hardware state only; rebuilding structural solver caches is
+    // costly.
+    NetworkState previous(state_);
+    auto previous_fill = fill_;
+    auto previous_queue = opaque_queue_;
+    auto previous_execution =
+        execution_ ? std::make_unique<TapExecution>(*execution_) : nullptr;
+    try {
+      auto steps = Apply(operations, together, preserved, explicit_writes,
+                         std::nullopt, physical, observe);
+      CheckPreservedValues(caller_goals);
+      return steps;
+    } catch (...) {
+      state_.Restore(previous);
+      fill_ = std::move(previous_fill);
+      opaque_queue_ = std::move(previous_queue);
+      execution_ = std::move(previous_execution);
+      InvalidateRawRoute();
+      throw;
+    }
+  }
   std::vector<ScanStep> ApplyNative(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
@@ -7683,7 +7714,8 @@ void ScanScheduler::Assume(const std::string& target, const std::string& bits,
 std::vector<ScanStep> ScanScheduler::Apply(
     const std::vector<Operation>& operations, bool together,
     const std::map<size_t, std::string>& preserved, bool explicit_writes,
-    bool physical, const PioObservation& observe) {
+    bool physical, const PioObservation& observe,
+    const std::map<size_t, std::string>& caller_goals) {
   impl_->InvalidateRawRoute();
   std::vector<std::pair<std::vector<BitReference>, std::string>> observations;
   Observation collect;
@@ -7692,8 +7724,9 @@ std::vector<ScanStep> ScanScheduler::Apply(
       observations.emplace_back(bits, values);
     };
   }
-  auto steps = impl_->Apply(operations, together, preserved, explicit_writes,
-                            std::nullopt, physical, collect);
+  auto steps =
+      impl_->ApplyCallerGoals(operations, together, preserved, explicit_writes,
+                              physical, collect, caller_goals);
   // A failed native attempt may cache the pre-state before symbolic fallback.
   impl_->InvalidateRawRoute();
   // Notify after commit and route cleanup, outside the solver's fill rollback.
