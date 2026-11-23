@@ -94,7 +94,7 @@ corpus producer/model inventory/registry protocol.
 - [x] Commit and request one fresh independent whole-branch review. Test-first
       fix Critical/Important in one pass, deferMinors, no rereview; rerun affected
       full qualification after relevant source changes. Record all rulings.
-- [ ] Merge into master, verify exact merged inputs/products and focused integrated
+- [x] Merge into master, verify exact merged inputs/products and focused integrated
       checks, push/detach preserved worktree/delete merged branch/archive ownledger.
       Completion command: python3 /tmp/legacy-port-groups-completion-check.py.
       Expected: qualified/integrated receipts, clean pushed master, onlymaster,

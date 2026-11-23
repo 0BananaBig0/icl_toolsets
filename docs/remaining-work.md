@@ -152,3 +152,6 @@ Fresh108scale/6corpus/3guide-example processes pass with exact hashes and the
 measured10s/512MiB bounds. Independent review has noCritical/Minor finding.
 Master integration is pending.
 Broader11/12 remains open; coverage1 remains excluded.
+
+Task158 is merged into master; thirteen integration checks, 4026 input hashes,
+19 copied qualified native products and 117 preserved stashes are verified.

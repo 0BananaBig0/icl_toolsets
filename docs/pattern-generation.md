@@ -8999,3 +8999,7 @@ The guide example has three equal nonempty replays with the final binary;
 it is author-verified, with no independent reader claim. Physical timing,
 vendor equivalence and whole11/12 closure remain pending; coverage1 is excluded.
 Master integration is pending.
+
+Task158 is integrated into master. Thirteen integration checks pass on 4026
+matching input hashes and 19 copied qualified native products. All 117 stashes
+remain. Receipt: build/legacy-port-groups-20261123/merged/receipt.json.
