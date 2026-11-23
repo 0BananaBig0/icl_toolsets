@@ -2761,7 +2761,9 @@ void ValidatePortGroupMembers(const Netlist& netlist) {
         reject("member must name a local port");
       }
       const auto& port = netlist.nodes[bit.node];
-      if (port.model != ModelKind::kPort || port.scope != node.scope ||
+      if (port.model != ModelKind::kPort || port.kind.size() < 4 ||
+          port.kind.compare(port.kind.size() - 4, 4, "Port") != 0 ||
+          port.scope != node.scope ||
           bit.index < std::min(port.left, port.right) ||
           bit.index > std::max(port.left, port.right)) {
         reject("member must name a valid local port bit");

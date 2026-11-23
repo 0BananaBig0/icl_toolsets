@@ -8926,3 +8926,65 @@ coverage item1 remains excluded. Master integration is pending.
 Task157 is integrated into master. Eleven integration checks pass on 4025
 matching input hashes and 19 copied qualified native products. All 117 stashes
 remain. Receipt: build/legacy-launch-edge-20261123/merged/receipt.json.
+
+### Legacy named PortGroup annotations
+
+Task158 resolves the frontend's existing legacy compatibility form:
+
+    Module Example {
+      Parameter Width = 4;
+      PortGroup pins {p[$Width-1:0], out}
+      DataInPort p[3:0];
+      DataOutPort out[3:0] {Source p;}
+    }
+
+Use the existing generator command and installation described above; no new
+option or dependency is needed. For example, queue the following PDL:
+
+    iWrite p 9; iApply; iRead out 9; iApply
+
+The existing corpuscheck target runs the maintained model audit. Run focused
+replay cases with:
+
+    python3 tests/src/pattern/test_legacy_port_groups.py build/icl-pattern-generation
+
+A PortGroup lists actual local ports, with optional index/ranges. Forward
+declarations, comments, keyword names, reversed ranges and repeated members
+retain their bit order. Segmented port functions keep their existing typed
+behavior. Flattening rewrites references to physical flat port declarations;
+origin restoration recovers member/group instance paths and port kinds.
+Named legacy PortGroups are distinct from the implementation's segmented
+port-function groups.
+
+These declarations annotate membership. They do not drive data, own storage,
+create scan interfaces or add PDL access/reservation targets. Undefined or
+nonport members, invalid selections and malformed native/origin metadata fail
+with source/group context. No missing port or binding is invented. A list is
+bounded by the existing 1,048,576-bit resolver limit, with a 4,194,304-bit
+aggregate member-expansion limit across all legacy groups.
+
+The current complete default audit has 1024 canonical identities, 44 unsupported
+unbound AccessLinks and 695 original elaboration failures, across 1334 accepted
+files and 1763 effective module tops. Seven models are newly canonical: six
+former PortGroup serialization failures plus the commented LSP fixture, whose
+members were previously mistaken for properties. Five grammar-only fixtures
+with undefined members now report original elaboration errors. Earlier Task156
+counts describe that task's baseline. This is source/model acceptance evidence;
+broader inventory11/12 and physical timing/vendor equivalence remain open.
+
+The focused normal/static/SAN eight-method CLI suite and native netlist/flatten
+sanitizer checks pass. Fifteen C++ quality checks pass. The guide example is
+author-verified with three equal nonempty source/flat/generated replays; no
+independent reader check is claimed.
+
+All108 fresh scale invocations pass for1/64/1024groups x64memberbits, vector and
+segmented modes, three repeats each on normal/SAN tools. Every output matches
+the same control bytes. Maximum normal: 0.1153s / 79952KiB;
+maximum leak-SAN: 0.2669s / 156480KiB. Each remains within10s/512MiB.
+Six full-corpus runs also pass10s/512MiB: normal 1.1239s / 104316KiB,
+configured leak-SAN 4.4333s / 486280KiB, retaining the established
+500ms unused-page release/full quarantine. Exact commands, environment, input/
+tool/output hashes and RSS: build/legacy-port-groups-20261123/scale/results.json
+and batch-scale/results.json.
+
+Full qualification, independent final review and master integration are pending.

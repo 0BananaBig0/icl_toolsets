@@ -67,7 +67,7 @@ void TestLegacyPortGroupNativeGuards() {
                 "Module Leaf {DataInPort p;} Module Top {DataInPort p[3:0]; "
                 "PortGroup group {p} Instance child Of Leaf; DataRegister r;}");
   const auto original = pattern::Elaborate(design, "Top");
-  for (int mutation = 0; mutation < 12; ++mutation) {
+  for (int mutation = 0; mutation < 13; ++mutation) {
     auto invalid = original;
     auto& node = invalid.nodes.at(invalid.node_ids.at("group"));
     if (mutation == 0) node.port_group.clear();
@@ -83,6 +83,9 @@ void TestLegacyPortGroupNativeGuards() {
     if (mutation == 10) node.scope = invalid.scopes.size();
     if (mutation == 11) {
       node.port_group[0].virtual_signal = pattern::VirtualSignal::kGlobalReset;
+    }
+    if (mutation == 12) {
+      invalid.nodes.at(invalid.node_ids.at("p")).kind = "DataRegister";
     }
     bool rejected = false;
     try {

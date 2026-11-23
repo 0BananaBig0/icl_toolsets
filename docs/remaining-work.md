@@ -137,3 +137,17 @@ is pending.
 
 Task157 is merged into master; eleven integration checks, 4025 input hashes,
 19 copied qualified native products and 117 preserved stashes are verified.
+
+## Task158 legacy PortGroup increment
+
+Native membership now resolves declared local ports across commented/inline
+lists, keyword names, ranges, repeated instances and segmented functions.
+Valid annotations survive canonical flattening without adding data-flow or
+PDL target behavior. Current corpus:1024canonical/44unsupportedAccessLinks/
+695original elaboration errors. Seven actual models advance to canonical
+acceptance; five undefined-member fixtures are explicitly invalid models.
+Native focused13checks/15C++quality and eightCLI methods on bothvariants pass.
+All108 scale processes and6 full-corpus measurements pass10s/512MiB;
+focusedSAN native/CLI checks and author guide example pass. Full qualification,
+final review and integration are pending.
+Broader11/12 remains open; coverage1 remains excluded.
