@@ -4747,3 +4747,22 @@ uses LD_PRELOAD; the fully static ELF cannot load it, so static allocation
 counts are unmeasured. The complete static behavioral suite passed independently.
 Coverage item1 remains excluded. Corpus:1024 canonical/44 declared unsupported/
 695 original elaboration failures among1763 effective modules.
+
+
+
+## Transparent downstream callback qualification in progress
+
+Task163 invokes WriteCallBack prerequisites for selected transparent Source/Alias/
+selectable WriteDataSource paths, stages dependent ordinary requests until logical
+postconditions exist and retains cancellation, masks, source spans and caller
+goals. Existing explicit-before sequences avoid duplicate inferred invocation
+through logical callback declaration history; this history supplies no observed
+device values. Model/physical callback-history restrictions remain.
+
+Corecheckpoint867dc8d passed six new native cases and initial8CLI both normal/static,
+with346 compatibility methods and15 C++quality checks. Current16CLI pass normal/
+static/leak-enabled SAN, and19 preliminary connected-storage/wide processes pass
+(max4.2300s/373680KiB). Full repeated qualification and review remain pending. Parent explicit
+controls16/64/128 take0.2314/1.2178/4.0630s;256 takes15.8781s and remains broader
+item10 work. General symbolic/mux/control/serial automatic dependencies and other
+pending inventory remain open. Coverage1 is excluded.

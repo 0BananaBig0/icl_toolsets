@@ -443,6 +443,33 @@ class Runtime::Impl {
     }
   }
 
+  void RememberCallbackState(const Operation& operation) {
+    if (!has_callbacks_ || (operation.arguments.size() == 3 &&
+                            operation.arguments[2] != "-LastWrittenValue")) {
+      return;
+    }
+    const auto target = ResolvePdlTarget(*netlist_, operation.arguments.at(0));
+    if (std::none_of(
+            target.bits.begin(), target.bits.end(), [&](const auto& bit) {
+              return netlist_->nodes[bit.node].write_callback.has_value();
+            })) {
+      return;
+    }
+    if (!history_context_) history_context_ = std::make_unique<z3::context>();
+    const auto bits = PdlNumber(*history_context_, operation.arguments.at(1),
+                                target.bits.size());
+    for (size_t i = 0; i < target.bits.size(); ++i) {
+      const auto& bit = target.bits[i];
+      const auto& node = netlist_->nodes[bit.node];
+      if (!node.write_callback) continue;
+      auto [entry, inserted] =
+          callback_values_.try_emplace(bit.node, node.Width(), 'x');
+      char value = bits[i];
+      if (bit.inverted && value != 'x') value = value == '1' ? '0' : '1';
+      entry->second[HistoryOffset(bit)] = value;
+    }
+  }
+
   struct CallbackBinding {
     std::string instance;
     ProcedureKey procedure;
@@ -722,13 +749,14 @@ class Runtime::Impl {
               const char value =
                   source->inverted ? (values[i] == '1' ? '0' : '1') : values[i];
               const Bit key{source->node, source->index};
-              const auto [entry, inserted] = inferred.emplace(
-                  key, std::make_pair(value,
-                                      write_sources.at({bit.node, bit.index})));
+              const auto origin = write_sources.at({bit.node, bit.index});
+              const auto [entry, inserted] =
+                  inferred.emplace(key, std::make_pair(value, origin));
               if (!inserted && entry->second.first != value) {
                 throw std::runtime_error(
                     "conflicting callback prerequisite requirements");
               }
+              entry->second.second = std::min(entry->second.second, origin);
             }
           } else if (!read && values[i] != 'x') {
             caller_writes[{bit.node, bit.index}] = values[i];
@@ -738,6 +766,12 @@ class Runtime::Impl {
         auto& request = requests.at(position->second);
         request.data.at(offset) = values[i];
         request.requested.at(offset) = '1';
+      }
+    }
+    std::set<Key> explicit_callbacks;
+    if (automatic) {
+      for (const auto& request : requests) {
+        explicit_callbacks.insert(request.key);
       }
     }
     std::set<size_t> prerequisite_callbacks;
@@ -763,6 +797,25 @@ class Runtime::Impl {
     }
     std::vector<Operation> deferred;
     if (automatic) {
+      requests.erase(
+          std::remove_if(requests.begin(), requests.end(),
+                         [&](const auto& request) {
+                           if (explicit_callbacks.count(request.key)) {
+                             return false;
+                           }
+                           const auto known =
+                               callback_values_.find(request.key.first);
+                           if (known == callback_values_.end()) return false;
+                           for (size_t i = 0; i < request.data.size(); ++i) {
+                             if (request.requested[i] == '1' &&
+                                 request.data[i] != known->second[i]) {
+                               return false;
+                             }
+                           }
+                           prerequisite_callbacks.erase(request.key.first);
+                           return true;
+                         }),
+          requests.end());
       std::stable_sort(requests.begin(), requests.end(),
                        [](const auto& left, const auto& right) {
                          return left.source < right.source;
@@ -895,6 +948,7 @@ class Runtime::Impl {
             zero_status_known_ = false;
           }
         } else {
+          callback_values_[id] = request.data;
           operations_.push_back(
               {"iState",
                {node.name, "0b" + request.data, "-LastWrittenValue"},
@@ -1728,7 +1782,10 @@ class Runtime::Impl {
       if (!pending_) pending_operation_ = operations_.size();
       pending_ = true;
     }
-    if (name == "iState") RememberHistory(operation);
+    if (name == "iState") {
+      RememberHistory(operation);
+      RememberCallbackState(operation);
+    }
     if (name == "iApply") {
       if (callback_failed_) {
         throw std::runtime_error("failed callback queue requires iReset");
@@ -1758,6 +1815,7 @@ class Runtime::Impl {
     }
     if (name == "iReset") {
       ++callback_reset_generation_;
+      callback_values_.clear();
       callback_failed_ = false;
       for (auto& writes : callback_caller_writes_) writes.clear();
     }
@@ -1815,7 +1873,7 @@ class Runtime::Impl {
   bool scan_clients_loaded_ = false;
   std::set<std::string> tap_clients_;
   std::map<std::string, std::set<std::string>> scan_clients_;
-  History read_history_, miscompare_history_;
+  History read_history_, miscompare_history_, callback_values_;
   using RawHistory = std::map<std::pair<std::string, std::string>, std::string>;
   RawHistory raw_read_history_, raw_miscompare_history_;
   bool zero_status_known_ = true;

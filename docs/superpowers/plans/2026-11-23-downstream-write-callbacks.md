@@ -68,6 +68,12 @@ immutable logical markers and reuse existing dispatcher/queue/source consumers.
   survive callback bodies with getters, caught errors, split files and local
   reset insertion without mutable old operations or duplicate invocation.
 
+- Established logical callback declarations must not suppress explicit requests,
+  including no-care automatic groups; read/miscompare history must not seed them.
+  Task2's test_multiple_targets_and_explicit_requests covers established/changed/
+  explicit/no-care combinations; test_logical_and_observation_boundaries covers
+  actual versus requested data and old-observer-cursor rejection.
+
 ### Task 1: Transparent dependencies, staged queue and preflight
 **Files:** Modify src/pattern/pattern_runtime.cc, pattern_runtime.h,
 pattern_readback.cc, icl_pattern_generation_main.cc, Makefile,
@@ -182,3 +188,10 @@ Copy the new metadata in projection construction; pure and canceled requests kee
 false. Native dispatch asserts actual provenance without marking ReadCallBack.
 Sparse positives use minimal selected hardware; shared-enable whole-register
 collateral control rejects identically before/after inference.
+
+Task2 verified compatibility refinement: track only successful callback logical
+postconditions and controlling iState, clear on Reset, and filter matching
+inferred-only requests. An actual parent-valid explicit-before control otherwise
+runs callbacks twice. Explicit request keys must be retained even for automatic
+no-care groups. Existing History storage avoids repeated full-stream scans;
+this is no native scheduler preview or observation cache.

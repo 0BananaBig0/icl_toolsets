@@ -56,8 +56,11 @@ requirements coalesce. Contradictory demands through distinct downstream targets
 reject before procedure effects. Explicit versus inferred demands agree on
 overlapping known bits. Last-wins stays local to original target semantics;
 do not drop a distinct downstream goal to resolve a conflict.
-- Default explicit-write policy may invoke a prerequisite even if a prior logical
-value matches; add no skip-write optimization or actual-value inference.
+- Preserve established logical callback declarations: an automatic prerequisite
+whose entire needed mask already matches a successful callback postcondition or
+controlling iState needs no additional invocation. Explicit callback accesses
+still execute. Track only callback logical values, never observations or a native
+scheduler preview; invalidate this conservative history on iReset.
 - Keep original logical markers and append-only operations/source identity.
 Dependent ordinary requests enter the hardware queue after their prerequisites
 complete: body Apply cannot flush them before logical postconditions exist.
@@ -147,3 +150,11 @@ A second consumer probe without a getter still accepts because its readback
 provider is never called. The CLI's existing final callback-history validation
 must also check actual callback_prerequisite provenance before publication;
 keep the provider guard for getters inside procedures. No Runtime method needed.
+
+The matched parent explicit-before control runs each callback once, while the
+initial automatic implementation runs it twice. A named CLI regression now
+reproduces unexpected_extra_callback. Preserve this existing valid sequence with
+private incremental callback declaration history; rescanning the entire operation
+stream per inferred bit would be quadratic. Unknown bits and changed requirements
+still invoke; explicit requests cannot be skipped; read/miscompare history flags
+do not seed controlling values. Reset invalidates the private history.

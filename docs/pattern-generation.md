@@ -9516,3 +9516,82 @@ uses LD_PRELOAD; the fully static ELF cannot load it, so static allocation
 counts are unmeasured. The complete static behavioral suite passed independently.
 Coverage item1 remains excluded. Corpus:1024 canonical/44 declared unsupported/
 695 original elaboration failures among1763 effective modules.
+
+
+## Transparent downstream write callbacks
+
+A write to a selectable DataRegister can require a WriteCallBack on its
+WriteDataSource. The generator traces selected transparent Source/Alias and
+selectable WriteDataSource paths, combines effective masks, invokes the necessary
+procedures and then schedules the dependent ordinary requests. Callback
+arguments retain ranges, inversions and instance-relative names.
+
+Save this model as `downstream.icl`:
+
+```icl
+Module Chains {
+ DataInPort en;
+ DataInPort p[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en;}
+}
+```
+
+Save this program as `downstream.pdl`:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc store {data reg} {
+ iNote "$reg=$data"
+ iWrite en 0
+ iWrite p $data
+}
+iReset
+iWrite dest 9
+iApply
+```
+
+Generate from the source, its flattened model and the expanded program:
+
+```sh
+build/icl-pattern-generation --icl downstream.icl --pdl downstream.pdl --top_module Chains --output source.pdl --debug
+build/icl-pattern-generation --icl debug/Chains.icl --pdl downstream.pdl --top_module Chains --output flat.pdl
+build/icl-pattern-generation --icl downstream.icl --pdl source.pdl --top_module Chains --output generated.pdl
+```
+
+The source and flat runs call `store` with `value` and `0b1001`. Output writes
+`p=0b1001` while `en=0`, records the logical callback postcondition, then writes
+`en=1` for the ordinary destination. The generated replay reproduces expanded
+writes and the existing literal note; it does not invoke the procedure again.
+The note records the requested argument, rather than an observed device value.
+
+Effective same-target writes are last-wins. Compatible prerequisites through
+different targets share one callback invocation; contradictory masks reject
+before procedure effects. A matching established callback postcondition or
+controlling `iState` avoids a second inferred invocation. Explicit callback
+accesses still execute. The private declaration history is conservative and is
+invalidated by `iReset`; read/miscompare histories do not seed it.
+
+Dependent requests wait for their prerequisites. Other ordinary caller goals
+keep their existing protection during callback frames. A callback body reset
+cancels pending dependent requests without resurrecting them after return;
+already completed frames remain completed. Namespace binding, selected-bit
+ordering, once-only expressions, split files and caller-local reset rewriting
+retain their existing contracts.
+
+This support follows transparent write-data paths. Logic/mux-selected callback
+data, callback-dependent enables or addresses, automatic serial prerequisites
+and general cyclic staged scheduling remain open. Native proof still rejects
+shared-enable collateral unknowns when the matched explicit sequence also
+cannot execute. Plain expected reads do not request controlling callback writes.
+Actually invoked automatic callback histories reject `--model_readback`;
+physical callback output and active caller `iMerge` retain their guards.
+
+Task163 core checkpoint867dc8d passed all Runtime cases in normal/static native builds,
+eight initial CLI methods plus compatibility coverage totaling346 methods, and
+15 C++ format/tidy/C++17 checks. All16 current CLI methods pass normal/static and
+leak-enabled sanitizer builds, including a small benchmark receipt grid. A real
+preliminary grid of17 processes plus512/1024-bit payloads passes with a maximum
+4.2300s/373680KiB; it does not replace the full repeated matrix. Final review,
+whole regressions and integration remain open.
