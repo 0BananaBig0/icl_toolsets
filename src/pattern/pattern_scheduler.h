@@ -44,6 +44,7 @@ class ScanScheduler {
   explicit ScanScheduler(const Netlist& netlist);
   ScanScheduler(const ScanScheduler& other);
   ~ScanScheduler();
+  bool HasOpaqueChild() const;
   void Reset(bool synchronous = false, bool physical = false);
   // Preserved values use 'x' for unprotected bits, '0'/'1' for held bits.
   void Idle(uint64_t cycles,

@@ -45,7 +45,7 @@ class ModelReadback {
         physical_(physical),
         reservations_(netlist_) {
     const bool opaque =
-        netlist.taps.empty() &&
+        netlist.scopes.size() == 1 && netlist.taps.empty() &&
         std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(),
             [](const auto& node) { return node.scan_interface.has_value(); }) &&

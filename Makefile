@@ -418,7 +418,7 @@ COV_PATTERN := $(patsubst $(SRC_DIR)/%.cc,$(COV_DIR)/%.o,$(PATTERN_SOURCES))
 COV_BINARIES += $(COV_DIR)/pattern_design_test $(COV_DIR)/pattern_runtime_test
 COV_BINARIES += $(COV_DIR)/pattern_expression_test $(COV_DIR)/pattern_netlist_test
 COV_BINARIES += $(COV_DIR)/pattern_address_test $(COV_DIR)/pattern_bsdl_test
-COV_BINARIES += $(COV_DIR)/pattern_readback_test
+COV_BINARIES += $(COV_DIR)/pattern_readback_test $(COV_DIR)/pattern_opaque_test
 COV_BINARIES += $(COV_DIR)/pattern_access_link_test
 COV_BINARIES += $(COV_DIR)/pattern_tap_test $(COV_DIR)/pattern_state_test
 COV_BINARIES += $(COV_DIR)/pattern_symbolic_test $(COV_DIR)/pattern_scheduler_test $(COV_DIR)/icl-pattern-generation
@@ -513,6 +513,7 @@ coverage: $(COV_BINARIES)
 	@$(COV_DIR)/pattern_design_test
 	@$(COV_DIR)/pattern_runtime_test
 	@$(COV_DIR)/pattern_readback_test
+	@$(COV_DIR)/pattern_opaque_test
 	@$(COV_DIR)/pattern_expression_test
 	@$(COV_DIR)/pattern_bsdl_test
 	@$(COV_DIR)/pattern_access_link_test
@@ -1085,6 +1086,15 @@ $(COV_DIR)/pattern_readback_test: tests/src/pattern_readback_test.cc $(COV_SOLVE
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 check check-dynamic check-static: pattern-readback-check
 
+.PHONY: pattern-opaque-check
+pattern-opaque-check: $(BUILD_DIR)/pattern_opaque_test
+	@$(BUILD_DIR)/pattern_opaque_test
+$(BUILD_DIR)/pattern_opaque_test: tests/src/pattern/pattern_opaque_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+$(COV_DIR)/pattern_opaque_test: tests/src/pattern/pattern_opaque_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
+check check-dynamic check-static: pattern-opaque-check
+
 PATTERN_GENERATOR := $(BUILD_DIR)/icl-pattern-generation
 PATTERN_GENERATOR_STATIC := $(PATTERN_GENERATOR)-static
 $(BUILD_DIR)/pattern/icl_pattern_generation_main.o: CPPFLAGS += $(TCL_CFLAGS) $(Z3_CFLAGS)
@@ -1132,6 +1142,7 @@ python3 tests/src/pattern/test_system_clocks.py $1
 python3 tests/src/pattern/test_segmented_ports.py $1
 python3 tests/src/pattern/test_opaque_root_scan.py $1
 python3 tests/src/pattern/test_opaque_parallel_scan.py $1
+python3 tests/src/pattern/test_opaque_child_raw.py $1
 python3 tests/src/pattern/test_modeled_root_scan.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
 python3 tests/src/pattern/test_multiple_client_interfaces.py $1

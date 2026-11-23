@@ -74,7 +74,7 @@ fixed; one Minor is deferred. Broader item10 is pending.
 | Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage reset snapshot settlement preserve supported transient reset effects; Task144 adds bounded simultaneous DataRegister feedback from real old state, known/unknown convergence, self-disable history and scoped intermediate ownership checks in native and primary/mixed replay; all three Important review findings are fixed, including unknown mixed history, pending-read deltas and implicit OneHot controls, with14 replay methods and full post-fix qualification | Automatic downstream/mixed/merged DataRegister callbacks and invoked read-callback histories/physical output (Task153 adds explicit callback-only execution and reset-source replay; Task159 supports ordinary endpoint observations within write procedures), general gated/serial-dependent reset events (including changing external resets during data feedback) and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining corpus/reference qualification |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
-| Raw scans | Genuine opaque root-client lowering; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream ScanRegister reservations and explicit root port effects with retained locks; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Opaque child, parallel/multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, TAP established port ownership and broader vendor qualification; compatible modeled-child port locks now use actual edge/final checks |
+| Raw scans | Genuine opaque root-client lowering; one fixed declared-width opaque child on a complete scalar root route with private unknown capture and prior stable/default preparation; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream ScanRegister reservations and explicit root port effects with retained locks; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Broader opaque-child topology, shared/independent parallel and multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, TAP established port ownership and broader vendor qualification; compatible modeled-child port locks now use actual edge/final checks |
 | Serial/mixed scheduler | Shared parallel/scan frames, primary observations, register/mux/logic paths, SIB and bounded feedback reset prerequisites, read obligations, register/primary/computed-port AccessTogether groups, forwarded/logic/mux/one-hot port writes and partial/X writes; ScanRegister/DataRegister/primary-input iApplyEndState defaults, per-emitted-apply primary representation and final restoration; equivalent direct/inverted/forwarded observations and enabled alternatives on one path; simultaneous disjoint named client chains with aligned lanes/common events; independently selected clients (SelectPort or ShiftEn-only) and named-chain groups share hardware state, including reset-before-capture and transient reset history | Independent TAP phases, overlapping intermediate taps and broader access models |
 | Idle cycles | Literal TCK counts on standalone clients or reset common-phase TAPs; per-edge state/reset/fill replay, reservation rollback, fixed-point acceleration and retained output count; one forward TCK vendor fixture; checked relative system-clock waits on clock-only routes including direct declared differential partners, ordered muxes, exact fixed-ratio scaling, versioned overrides, typed Period oscillator roots, explicitly bound differential inputs with a common modeled phase origin and root-relative replay; named secondary sources on negative clock inputs with six matching source/normalized vendor exports; typed ToClockPort encodings for internal clock inputs with legacy loading and four fresh mapped direct/alias flat traces; metadata-gated physical clock names for native flat iClock/waits and four raw export replays; minimum -time waits with exact literal preservation on models without storage, opaque hardware, clock-driven data or forwarded test clocks | General implicit selection, inverted child clock phases, general intrinsic oscillator restoration/frequency, general vendor-flat output-source networks, general physical/native naming collisions, raw data/override names and negative vendor iClock targets, general bound differential phase relationships, general stateful absolute-time waits, general clock events and external time-dependent instrument behavior |
 | Optimization | Dependency-guided and shared-address write batches; nested iMerge normalization with disjoint multi-apply ScanRegister/DataRegister read/write batching, including slices, aliases and X masks, plus connected/computed data/control-port accesses with bounded dependency ownership and serial fallback; independent tree/finite-state oracles, concrete replay and common-update constraints | Broader merge optimization, timing/resources, whole-program optimization and broader scale/vendor qualification; no global optimality claim |
@@ -4555,3 +4555,57 @@ per generator,15 quality checks, packaging and4024 input/36 product hashes.
 Five Important review issues pass one test-first fix cycle; one Minor remains
 deferred, with no rereview. All92 measured corpus/callback/control/alias
 processes pass. Broader inventory11/12 and excluded coverage1 remain unchanged. See [the commands and exact limits](pattern-generation.md#task156-default-model-and-source-round-trip-audit).
+
+
+## Task160: fixed opaque child interval
+
+One declared-width scalar opaque leaf can occupy a complete native root route
+between modeled ScanRegisters or within pure scalar wrappers. Original node
+IDs and exports stay unchanged. A private immutable interval feeds the existing
+native scheduler; capture/reset/post-CSU hidden state is unknown, while input
+fill follows explicit/default/stable length knowledge. Native copies and
+transaction rollback retain queue state; subscriber failures retain committed
+state. Every ordinary preparation uses only prior knowledge, before the current
+raw request is consumed once. Root-only opaque and unrelated unused-child paths
+retain their existing behavior.
+
+CLI qualification covers source/flat/generated/reset-source replay, ordinary
+parent observations, raw history separation, masks/status, prefix/namespace/
+split inputs, inversions/aliases, reservations, cancellation and atomic errors.
+Performance and full-regression receipts are recorded with final qualification.
+Multiple/dynamic-width/parallel opaque children, gated selection, clocks/time,
+TAPs, raw merge, iApplyEndState and physical PDL remain unsupported. Broader
+items6/8 and excluded coverage1 are not closed by this increment.
+
+
+Task160 passes58 post-fix qualification gates:15 normal and15 leak-enabled
+sanitizer native suites,70 suites/1136 methods for each normal/static generator,
+19 opaque-child CLI methods in each variant and selected sanitizer,21 changed
+C++ format/tidy/C++17 checks, corpus/producer/protocol/Make checks and source
+packaging. Exact4031 maintained-input hashes and38 qualified products are bound
+in build/opaque-child-raw-20261123/final/receipt.json. The corpus retains1024
+canonical/44 declared-unsupported/695 original elaboration failures among1763
+effective modules. Broader source support and excluded coverage1 are unchanged.
+
+One independent review found0Critical/5Important/1Minor. One test-first pass
+fixes all five Important issues: physical-root stability with a non-stable modeled
+sibling, sparse stable opaque data during implicit raw traversal, private targets
+and reserved IDs in native reset queries, bit-specific alias side-channel
+classification, and actual benchmark CSU/shifted-bit/control-width receipts.
+The Minor remains deferred: an empty physical program can publish a header-only
+output, executing no CSU. Rulings and the full fix record are retained in
+build/opaque-child-raw-20261123/rulings.json; no second review was run.
+
+All102 fresh opaque/control processes,60 preserved callback controls, six
+wide-alias processes and six normal/configured-sanitizer corpus batches meet
+their bounds. Three exact guide invocations also pass, for177 measured/example
+processes in total. Maximum opaque normal runtime/RSS: 0.1820s/125388KiB; sanitizer:
+0.4152s/432632KiB. The16K callback alias peak is165072KiB within256MiB. Generated opaque
+runs execute four fresh root getters. Control receipts distinguish grid width,
+actual opaque width, modeled storage, nine versus four CSUs and their total
+shifted bits; no speedup or identical-workload claim is made. Commands, tool/
+input/output hashes and runtime environment are retained under
+build/opaque-child-raw-20261123/{final,scale-final,final-preserved,batch-scale,
+example}/. Pre-review measurements are retained separately and are not used as
+final-product measurements. The six corpus measurements retain unchanged
+inventory product and input hashes, verified against final qualification.

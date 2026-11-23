@@ -9109,3 +9109,141 @@ reader study.
 Task159 is merged into master;17 integration checks pass on4028 identical input
 hashes/19 copied qualified native products, with117 stashes preserved. Receipt:
 build/callback-endpoint-readback-20261123/merged/receipt.json.
+
+
+## One fixed-width opaque child on a scalar scan route
+
+One opaque leaf can sit between ordinary ScanRegisters on a complete static
+scalar root route. Its scalar ScanInterface must declare a numeric, explicitly
+sized DefaultLoadValue, and each request must use that declared width. Pure
+scalar wrappers are supported. The root controls must describe a supported
+native capture/shift/update route; child selection must follow the root
+SelectPort. Unrelated unused opaque branches keep their previous backend.
+
+Save this as opaque-child.icl:
+
+~~~icl
+Module ChildLeaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanOutPort so;
+ ScanInterface local { Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; DefaultLoadValue 8'b0; }
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister head[2:0] { ScanInSource si; CaptureSource head; ResetValue 3'b0; }
+ Instance child Of ChildLeaf {
+  InputPort si = head[0]; InputPort sel = sel; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+ }
+ ScanRegister tail[4:0] { ScanInSource child.so; CaptureSource tail; ResetValue 5'b0; }
+ ScanOutPort so { Source tail[0]; }
+ ScanInterface client {
+  Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;
+  DefaultLoadValue 16'b0;
+ }
+}
+~~~
+
+Save this as opaque-child.pdl:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Top
+iReset
+iWrite head 5; iWrite tail 19; iApply
+iScan child.local 8 -si 0xa5 -so 0x3c -stable; iApply
+iNote [iGetReadData child.local -bin]
+iRead head 5; iRead tail 19; iApply
+iNote [iGetReadData head -dec]; iNote [iGetReadData tail -dec]
+~~~
+
+Run the source, exported flat model and generated PDL:
+
+~~~sh
+build/icl-pattern-generation --icl opaque-child.icl --pdl opaque-child.pdl --top_module Top --output example/source.pdl --debug --model_readback
+build/icl-pattern-generation --icl example/debug/Top.icl --pdl opaque-child.pdl --top_module Top --output example/flat.pdl --model_readback
+build/icl-pattern-generation --icl opaque-child.icl --pdl example/source.pdl --top_module Top --output example/generated.pdl --model_readback
+~~~
+
+All three outputs contain result notes 0bxxxxxxxx, 5 and 19. The leaf's
+expected 0x3c comparison and requested 0xa5 input do not supply observed data:
+the opaque return stays unknown, while the surrounding registers retain their
+actual native values. This example was author-checked in all three forms.
+
+A nonempty ordinary parent access physically traverses the opaque interval.
+Every preparation CSU therefore needs its prior stable payload or a reset
+default. A current explicit child/full-root request is consumed only on its raw
+CSU, even when ordinary writes share its iApply. After a non-stable raw request,
+later implicit traversal rejects until another explicit stable request or iReset
+establishes length knowledge. Merely queuing a new request cannot authorize an
+earlier preparation CSU. Empty iApply adds no CSU. A full-root stable request
+also establishes the corresponding opaque interval's controlling fill.
+
+Private shift storage is never an exported instrument, public target, logical
+history or observation. --model_readback supplies actual parent capture bits and
+unknown opaque return bits for explicitly requested raw targets. Implicit
+traversal does not create raw history; child and root histories remain separate.
+Default/stable payloads control shift input only. Existing sparse comparisons,
+unknown failed-bit counts, reservations, reset cancellation and atomic output
+publication retain their meanings. Getters still require --model_readback or
+a real supplied transport.
+
+This support excludes multiple/dynamic-width/parallel opaque children, gated or
+muxed child selection, TAP routes, clock commands/overrides/idle or time waits,
+raw merge, iApplyEndState constraints and physical PDL. Existing complete-route,
+control, reset, ownership and aggregate 1MiBit limits still apply. It does not
+certify a live instrument, a vendor opaque export or all remaining raw/hierarchy
+configurations.
+
+The reproducible benchmark is:
+
+~~~sh
+python3 tests/src/pattern/benchmark_opaque_child_raw.py --binary build/icl-pattern-generation --parent /path/to/parent/icl-pattern-generation --sanitized /path/to/sanitized/icl-pattern-generation --output /tmp/opaque-child-measurements
+~~~
+
+It measures normal widths8/64/256/1024 and sanitizer widths8/64, each with four
+probe groups and three repeats. Source, flat and generated runs verify real
+root getters: three head bits, the opaque interval as x, and five tail bits.
+Generated probes replace all four literal notes with fresh getters. Visible
+capture-x and root-only opaque controls report their different parent-storage
+dimensions separately; each receipt distinguishes the requested grid width,
+actual opaque width, modeled storage, emitted CSU count and total shifted bits.
+An8-bit child has nine16-bit CSUs(144shifted bits); its root-only control has
+four16-bit CSUs(64shifted bits) and a16-bit opaque interval. Their output is not
+claimed identical to the child configuration. The acceptance bound is10s/512MiB per process. No speedup is
+claimed.
+
+
+Task160 passes58 post-fix qualification gates:15 normal and15 leak-enabled
+sanitizer native suites,70 suites/1136 methods for each normal/static generator,
+19 opaque-child CLI methods in each variant and selected sanitizer,21 changed
+C++ format/tidy/C++17 checks, corpus/producer/protocol/Make checks and source
+packaging. Exact4031 maintained-input hashes and38 qualified products are bound
+in build/opaque-child-raw-20261123/final/receipt.json. The corpus retains1024
+canonical/44 declared-unsupported/695 original elaboration failures among1763
+effective modules. Broader source support and excluded coverage1 are unchanged.
+
+One independent review found0Critical/5Important/1Minor. One test-first pass
+fixes all five Important issues: physical-root stability with a non-stable modeled
+sibling, sparse stable opaque data during implicit raw traversal, private targets
+and reserved IDs in native reset queries, bit-specific alias side-channel
+classification, and actual benchmark CSU/shifted-bit/control-width receipts.
+The Minor remains deferred: an empty physical program can publish a header-only
+output, executing no CSU. Rulings and the full fix record are retained in
+build/opaque-child-raw-20261123/rulings.json; no second review was run.
+
+All102 fresh opaque/control processes,60 preserved callback controls, six
+wide-alias processes and six normal/configured-sanitizer corpus batches meet
+their bounds. Three exact guide invocations also pass, for177 measured/example
+processes in total. Maximum opaque normal runtime/RSS: 0.1820s/125388KiB; sanitizer:
+0.4152s/432632KiB. The16K callback alias peak is165072KiB within256MiB. Generated opaque
+runs execute four fresh root getters. Control receipts distinguish grid width,
+actual opaque width, modeled storage, nine versus four CSUs and their total
+shifted bits; no speedup or identical-workload claim is made. Commands, tool/
+input/output hashes and runtime environment are retained under
+build/opaque-child-raw-20261123/{final,scale-final,final-preserved,batch-scale,
+example}/. Pre-review measurements are retained separately and are not used as
+final-product measurements. The six corpus measurements retain unchanged
+inventory product and input hashes, verified against final qualification.
