@@ -19,6 +19,7 @@ constexpr size_t kMaxObjects = 1000000;
 constexpr size_t kMaxWidth = 1024 * 1024;
 constexpr size_t kMaxDepth = 128;
 constexpr size_t kMaxMuxBits = 4 * 1024 * 1024;
+constexpr size_t kMaxPortGroupBits = 4 * 1024 * 1024;
 
 void SpendMuxBits(size_t bits, size_t* remaining) {
   if (bits > *remaining) {
@@ -1002,6 +1003,7 @@ class Elaborator {
     AddTopPorts();
     Connect();
     const bool restored = RestoreFlatOrigins(&netlist_);
+    ValidatePortGroupMembers(netlist_);
     AliasResolver terminal(netlist_);
     if (!restored) {
       InferResetPolarities(terminal);
@@ -1379,7 +1381,8 @@ class Elaborator {
             while (tokens[selector.end].text != "{") ++selector.end;
             node.properties.emplace("SelectedBy", selector);
           }
-          if (const auto* block = dynamic_cast<const icl::AstBlock*>(ast)) {
+          if (const auto* block = dynamic_cast<const icl::AstBlock*>(ast);
+              block && node.kind != "PortGroup") {
             for (const auto* item : block->body()) {
               if (dynamic_cast<const icl::AstComment*>(item)) continue;
               const auto* statement =
@@ -1517,6 +1520,23 @@ class Elaborator {
       }
     }
     return result;
+  }
+
+  void ConnectPortGroup(NetlistNode* node) {
+    try {
+      if (!port_group_bits_remaining_) {
+        throw std::runtime_error("member expansion bit limit exceeded");
+      }
+      const auto& module = netlist_.scopes[node->scope].definition;
+      auto expression = Tokens(module, *node->ast, node->scope);
+      expression.begin += 3;
+      --expression.end;
+      node->port_group = netlist_.Resolve(expression, 0, ReferenceUse::kAlias,
+                                          port_group_bits_remaining_);
+      port_group_bits_remaining_ -= node->port_group.size();
+    } catch (const std::runtime_error& error) {
+      throw std::runtime_error("PortGroup " + node->name + ": " + error.what());
+    }
   }
 
   void ConnectInterface(NetlistNode* node) const {
@@ -1952,6 +1972,10 @@ class Elaborator {
     for (auto& node : netlist_.nodes) {
       if (node.model == ModelKind::kEnum) continue;
       try {
+        if (node.kind == "PortGroup") {
+          ConnectPortGroup(&node);
+          continue;
+        }
         if (node.model == ModelKind::kInterface) {
           ConnectInterface(&node);
           continue;
@@ -2350,6 +2374,7 @@ class Elaborator {
   size_t logic_bits_remaining_ = 4 * 1024 * 1024;
   size_t address_bits_remaining_ = kMaxAddressBits;
   size_t one_hot_bits_remaining_ = 4 * 1024 * 1024;
+  size_t port_group_bits_remaining_ = kMaxPortGroupBits;
   size_t mux_bits_remaining_ = kMaxMuxBits;
   size_t inferred_control_bits_remaining_ = 4 * 1024 * 1024;
   std::map<std::string, Template> templates_;
@@ -2709,6 +2734,47 @@ void IndexPortGroups(Netlist* netlist) {
     }
     group.left = ascending.value_or(false) ? lower : upper;
     group.right = ascending.value_or(false) ? upper : lower;
+  }
+}
+
+void ValidatePortGroupMembers(const Netlist& netlist) {
+  size_t remaining = kMaxPortGroupBits;
+  for (const auto& node : netlist.nodes) {
+    if (node.kind != "PortGroup" && node.port_group.empty()) continue;
+    const auto reject = [&](const std::string& message) {
+      throw std::runtime_error(node.origin + ": PortGroup " + node.name + ": " +
+                               message);
+    };
+    if (node.kind != "PortGroup" || node.model != ModelKind::kGroup ||
+        node.scope >= netlist.scopes.size() || node.indexed || node.left != 0 ||
+        node.right != 0 || node.active_low || node.port_group.empty() ||
+        !node.properties.empty() || !node.attributes.empty() ||
+        !node.inputs.empty() || !node.constants.empty() || node.reset ||
+        !node.choices.empty() || !node.one_hot_sources.empty() ||
+        !node.logic.empty() || node.scan_interface || node.enumeration ||
+        node.clock_period || node.read_callback || node.write_callback) {
+      reject("invalid annotation representation");
+    }
+    if (node.port_group.size() > std::min(remaining, kMaxWidth)) {
+      reject("member expansion bit limit exceeded");
+    }
+    remaining -= node.port_group.size();
+    for (const auto& bit : node.port_group) {
+      if (bit.node >= netlist.nodes.size() || bit.inverted ||
+          bit.virtual_signal != VirtualSignal::kNone) {
+        reject("member must name a local port");
+      }
+      const auto& port = netlist.nodes[bit.node];
+      if (port.model != ModelKind::kPort || port.kind.size() < 4 ||
+          port.kind.compare(port.kind.size() - 4, 4, "Port") != 0 ||
+          port.scope != node.scope ||
+          (!port.indexed &&
+           (port.left != 0 || port.right != 0 || bit.index != 0)) ||
+          bit.index < std::min(port.left, port.right) ||
+          bit.index > std::max(port.left, port.right)) {
+        reject("member must name a valid local port bit");
+      }
+    }
   }
 }
 

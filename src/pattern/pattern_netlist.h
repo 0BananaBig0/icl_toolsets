@@ -137,6 +137,8 @@ struct NetlistNode {
   std::vector<LogicInstruction> logic;
   Attributes attributes;
   std::optional<ScanInterface> scan_interface;
+  // Legacy named port annotations; independent of segmented port functions.
+  std::vector<BitReference> port_group;
   std::string BaseName() const { return name.substr(0, name.find('[')); }
   size_t Width() const {
     return static_cast<size_t>(left > right ? left - right : right - left) + 1;
@@ -206,6 +208,8 @@ struct Netlist {
 
 // Validate and sort real port-function intervals once before resolving signals.
 void IndexPortGroups(Netlist* netlist);
+
+void ValidatePortGroupMembers(const Netlist& netlist);
 
 // Disjoint selector cubes not covered by any mux code; work is bounded.
 std::vector<std::string> UncoveredMuxCodes(const NetlistNode& node);

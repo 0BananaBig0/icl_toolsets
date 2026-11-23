@@ -155,6 +155,7 @@
     "cases/ours/lsp/library.icl::lib::Leaf",
     "cases/ours/lsp/library.icl::other::Leaf",
     "cases/ours/lsp/main.icl::Other",
+    "cases/ours/lsp/port_groups.icl::Groups",
     "cases/ours/module/Connection_identifier.icl::Connection",
     "cases/ours/module/Field_identifier.icl::Field",
     "cases/ours/module/PortGroup_identifier.icl::PortGroup",
@@ -568,15 +569,20 @@
     "cases/pass/ours/p2654_sib_mux_pre_corrected.icl::sib_mux_pre",
     "cases/pass/ours/param_bus_ranged_assign.icl::bus",
     "cases/pass/ours/parameter_declared.icl::bus",
+    "cases/pass/ours/portgroup_ranged_names.icl::m",
     "cases/pass/ours/ports_with_bit_ranges.icl::m",
     "cases/pass/ours/ragged_star_comment.icl::m",
     "cases/pass/ours/separated_decimal.icl::m",
     "cases/pass/ours/several_modules.icl::a",
     "cases/pass/ours/several_modules.icl::b",
     "cases/pass/ours/single_port.icl::m",
+    "cases/pass/ours/tessent_style_derived.icl::SIB_mux",
     "cases/pass/ours/toclockport.icl::m",
     "cases/pass/ours/unsized_hex_literal.icl::m",
     "cases/pass/published/asset_ijtag_demo_network.icl::BST_IO_LD_1Bit_Instr_1__LD_1Bit_Instr_1",
+    "cases/pass/published/liu_sib_and_chip_icl.icl::SIB",
+    "cases/pass/published/published_sib_and_chip.icl::SIB",
+    "cases/pass/published/real.icl::SIB",
     "cases/pass/published/semiwiki_tdr_module.icl::TDR",
     "cases/pass/published/thermal_sensor_blueprint.icl::thermal_sensor",
     "cases/pass/published2/sklp_feature_test.icl::Context",
@@ -1018,6 +1024,7 @@
     "cases/upstream/lexical/number_api_22.icl::NumberTest",
     "cases/upstream/lexical/number_api_23.icl::NumberTest",
     "cases/upstream/lexical/number_api_24.icl::NumberTest",
+    "golden/portgroup_with_comment.icl::m",
     "golden/ragged_star_comment.icl::m",
     "golden/star_comment_alignment.icl::m"
   ],
@@ -1134,18 +1141,6 @@
       "stage": "serialize",
       "diagnostic": "flat serialization is not implemented for AccessLink"
     },
-    "cases/ours/module/PortGroup_declaration.icl::M": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/ours/module/portgroup_comment_before_comma.icl::M": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/ours/module/portgroup_keyword.icl::M": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
     "cases/ours/pattern_generation/mixed_io/vendor.icl::MixedPrimaryDataProbe": {
       "stage": "serialize",
       "diagnostic": "flat serialization is not implemented for AccessLink"
@@ -1202,34 +1197,6 @@
       "stage": "serialize",
       "diagnostic": "flat serialization is not implemented for AccessLink"
     },
-    "cases/pass/ours/portgroup_comma_list.icl::m": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/pass/ours/portgroup_ranged_names.icl::m": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/pass/ours/portgroup_with_comments.icl::m": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/pass/ours/tessent_style_derived.icl::SIB_mux": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/pass/published/liu_sib_and_chip_icl.icl::SIB": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/pass/published/published_sib_and_chip.icl::SIB": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
-    "cases/pass/published/real.icl::SIB": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
-    },
     "cases/standard/access_link/ieee_examples.icl::Top": {
       "stage": "serialize",
       "diagnostic": "flat serialization is not implemented for AccessLink"
@@ -1237,10 +1204,6 @@
     "golden/ours_generic_accesslink.icl::M": {
       "stage": "serialize",
       "diagnostic": "flat serialization is not implemented for AccessLink"
-    },
-    "golden/portgroup_with_comment.icl::m": {
-      "stage": "serialize",
-      "diagnostic": "flat serialization is not implemented for PortGroup"
     }
   }
 }

@@ -311,7 +311,7 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
     }
   }
   if ((node.model == ModelKind::kGroup && node.kind != "OneHotScanGroup" &&
-       node.kind != "OneHotDataGroup") ||
+       node.kind != "OneHotDataGroup" && node.kind != "PortGroup") ||
       node.model == ModelKind::kAccessLink) {
     throw std::runtime_error(node.origin +
                              ": flat serialization is not implemented for " +
@@ -326,6 +326,9 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
       FlatKind(node.kind, internal_input,
                node.inputs.count("DifferentialInvOf"), default_input) +
       " " + FlatName(node.name) + Range(node);
+  if (node.kind == "PortGroup") {
+    return result + " {" + Signals(netlist, node.port_group) + "}\n";
+  }
   if (node.model == ModelKind::kAlias) {
     const auto source = node.inputs.find("Source");
     result += " = " + (source == node.inputs.end()
@@ -716,6 +719,7 @@ void RestoreTaps(Netlist* netlist, const Json& json) {
 }  // namespace
 
 std::string SerializeIcl(const Netlist& netlist) {
+  ValidatePortGroupMembers(netlist);
   const auto metadata = Metadata(netlist).Serialize();
   if (metadata.size() > kMaxMetadataBytes) {
     throw std::runtime_error("flat origin metadata limit exceeded");

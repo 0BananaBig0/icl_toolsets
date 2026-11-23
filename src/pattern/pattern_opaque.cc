@@ -141,7 +141,7 @@ OpaqueScanModel DescribeOpaqueScans(const Netlist& netlist) {
       "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
       "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
   for (const auto& node : netlist.nodes) {
-    if (node.scan_interface) continue;
+    if (node.scan_interface || node.kind == "PortGroup") continue;
     const bool data = node.kind == "ScanInPort" || node.kind == "ScanOutPort";
     if (node.model != ModelKind::kPort || !pins.count(node.kind) ||
         node.scope != 0 || (node.Width() != 1 && !(parallel && data)) ||

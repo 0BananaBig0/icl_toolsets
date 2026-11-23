@@ -17,6 +17,132 @@ void Require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
 
+void TestLegacyPortGroupRoundTrip() {
+  for (const std::string members :
+       {"si[3:0], so, sel, LaunchEdge, si[1:0]",
+        "/* before */ si[3:0] /* after */, so, // between\n"
+        "sel, LaunchEdge, si[1:0]"}) {
+    pattern::Design design;
+    design.AddIcl("port_group_flat.icl",
+                  "Module Leaf {PortGroup group {" + members +
+                      "} ScanInPort si[3:0]; ScanOutPort so[3:0] {Source si;} "
+                      "SelectPort sel; DataInPort LaunchEdge;} "
+                      "Module Top {ScanInPort si[7:0]; SelectPort sel; "
+                      "Instance left Of Leaf {InputPort si = si[7:4]; "
+                      "InputPort sel = sel;} "
+                      "Instance right Of Leaf {InputPort si = si[3:0]; "
+                      "InputPort sel = sel;}}");
+    const auto original = pattern::Elaborate(design, "Top");
+    const auto text = pattern::SerializeIcl(original);
+    pattern::Design flat;
+    flat.AddIcl("port_group.flat.icl", text);
+    const auto restored = pattern::Elaborate(flat, "Top");
+    Require(pattern::SerializeIcl(restored) == text,
+            "valid legacy PortGroups must canonically flatten");
+    for (const std::string name : {"left.group", "right.group"}) {
+      const auto& before = original.NodeAt(name);
+      const auto& after = restored.NodeAt(name);
+      Require(before.port_group.size() == after.port_group.size() &&
+                  !before.port_group.empty(),
+              "canonical group membership is nonempty and complete");
+      for (size_t i = 0; i < before.port_group.size(); ++i) {
+        const auto& a = before.port_group[i];
+        const auto& b = after.port_group[i];
+        Require(
+            original.nodes.at(a.node).name == restored.nodes.at(b.node).name &&
+                a.index == b.index && a.inverted == b.inverted,
+            "canonical group endpoint names/indices/order are exact");
+      }
+      Require(before.kind == "PortGroup" && before.kind == after.kind &&
+                  original.scopes[before.scope].path ==
+                      restored.scopes[after.scope].path,
+              "repeated legacy annotations retain original scope");
+    }
+  }
+}
+
+void TestLegacyPortGroupReviewGuards() {
+  pattern::Design design;
+  design.AddIcl(
+      "group_review.icl",
+      "Module Top {DataInPort p[3:0]; PortGroup g {p} DataRegister r;}");
+  const auto original = pattern::Elaborate(design, "Top");
+  std::string accepted;
+  for (int mutation = 0; mutation < 3; ++mutation) {
+    auto invalid = original;
+    auto& group = invalid.nodes.at(invalid.node_ids.at("g"));
+    if (mutation == 0) {
+      group.one_hot_sources.push_back(
+          {{}, pattern::OneHotSourceKind::kRegister, invalid.node_ids.at("r")});
+    }
+    if (mutation == 1) group.scan_interface = pattern::ScanInterface{};
+    if (mutation == 2) {
+      invalid.nodes.at(invalid.node_ids.at("p")).indexed = false;
+    }
+    bool rejected = false;
+    try {
+      pattern::SerializeIcl(invalid);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("PortGroup") != std::string::npos;
+    }
+    if (!rejected) {
+      accepted += mutation == 0   ? " contributor"
+                  : mutation == 1 ? " interface"
+                                  : " scalar";
+    }
+  }
+  Require(accepted.empty(), "unrejected malformed annotations:" + accepted);
+}
+
+void TestLegacyPortGroupNativeGuards() {
+  pattern::Design design;
+  design.AddIcl("port_group_guard.icl",
+                "Module Leaf {DataInPort p;} Module Top {DataInPort p[3:0]; "
+                "PortGroup group {p} Instance child Of Leaf; DataRegister r;}");
+  const auto original = pattern::Elaborate(design, "Top");
+  for (int mutation = 0; mutation < 13; ++mutation) {
+    auto invalid = original;
+    auto& node = invalid.nodes.at(invalid.node_ids.at("group"));
+    if (mutation == 0) node.port_group.clear();
+    if (mutation == 1) node.model = pattern::ModelKind::kPort;
+    if (mutation == 2) node.port_group[0].node = invalid.nodes.size();
+    if (mutation == 3) node.port_group[0].index = 99;
+    if (mutation == 4) node.port_group[0].node = invalid.node_ids.at("child.p");
+    if (mutation == 5) node.port_group[0].node = invalid.node_ids.at("r");
+    if (mutation == 6) node.port_group[0].node = static_cast<size_t>(-1);
+    if (mutation == 7) node.port_group[0].inverted = true;
+    if (mutation == 8) node.properties["LaunchEdge"] = {};
+    if (mutation == 9) node.attributes["marker"] = std::nullopt;
+    if (mutation == 10) node.scope = invalid.scopes.size();
+    if (mutation == 11) {
+      node.port_group[0].virtual_signal = pattern::VirtualSignal::kGlobalReset;
+    }
+    if (mutation == 12) {
+      invalid.nodes.at(invalid.node_ids.at("p")).kind = "DataRegister";
+    }
+    bool rejected = false;
+    try {
+      pattern::SerializeIcl(invalid);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("PortGroup") != std::string::npos;
+    }
+    Require(rejected,
+            "malformed legacy group must fail before flat serialization");
+  }
+  auto misplaced = original;
+  misplaced.nodes.at(misplaced.node_ids.at("p")).port_group =
+      original.NodeAt("group").port_group;
+  bool rejected = false;
+  try {
+    pattern::SerializeIcl(misplaced);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("PortGroup") != std::string::npos;
+  }
+  Require(rejected, "non-group nodes cannot silently discard membership");
+}
+
 void TestLegacyLaunchEdge() {
   for (bool child : {false, true}) {
     pattern::Design design;
@@ -1243,6 +1369,23 @@ void TestChildInputDefaultBindings() {
   }
 }
 
+void TestLegacyPortGroupMetadataGuard() {
+  const auto text =
+      WithMetadata("DataOutPort n702e70 {Source 1'b0;} PortGroup n67 {n702e70}",
+                   R"([["n702e70","p.p",1,"DataOutPort",false,null,[],false],
+          ["n67","g",0,"PortGroup",false,null,[],false]])",
+                   R"([["","Top",[],[]],["p","Top",[],[]]])");
+  pattern::Design design;
+  design.AddIcl("group_forged_scope.icl", text);
+  bool rejected = false;
+  try {
+    pattern::Elaborate(design, "Top");
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("PortGroup") != std::string::npos;
+  }
+  Require(rejected, "restored group cannot acquire a nonlocal endpoint");
+}
+
 void TestChildInputDefaultMetadataGuards() {
   const std::string body =
       "DataInPort n632e70[1:0] {DefaultLoadValue 2'b10;} "
@@ -1304,6 +1447,10 @@ int main() {
     TestChildInputDefaultMetadataGuards();
     TestSegmentedPortRoundTrip();
     TestSegmentedMetadataGuards();
+    TestLegacyPortGroupReviewGuards();
+    TestLegacyPortGroupRoundTrip();
+    TestLegacyPortGroupNativeGuards();
+    TestLegacyPortGroupMetadataGuard();
     TestLegacyLaunchEdge();
     TestEmptyControlOutputs();
     TestFlatCallbacks();
