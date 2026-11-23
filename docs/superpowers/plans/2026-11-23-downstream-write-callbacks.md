@@ -148,14 +148,14 @@ only for real test-first consumer failures, with design/ledger refinement.
 Benchmark reuses existing hash/command-count helpers, records its own connected
 hardware dimensions and actual PIO writes; no request notes as observations.
 
-- [ ] Addlast8CLI before implementing missing replay/benchmark:
+- [x] Addlast8CLI before implementing missing replay/benchmark:
       test_prefix_namespace_and_split_inputs, test_once_only_arguments_and_order,
       test_reset_rewrite_retains_procedure_bytes, test_repeated_and_returned_sites,
       test_nested_and_canceled_groups, test_logical_and_observation_boundaries,
       test_scale_receipts_and_physical_controls, test_wide_dependency_budget.
       Expected16total; source/flat/generated/reset replay agree and original
       procedure bytes survive. Reproduce/fix only actual consumer regressions.
-- [ ] Implement72regular processes: current inferred source/flat/generated at
+- [x] Implement72regular processes: current inferred source/flat/generated at
       16/64/128 (27), current explicit-before/unused source controls (18),
       parent matching explicit-before/unused (18), SANinferred16source/flat/
       generated (9); four value groups, threerepeats. Wide512/1024x3normal (6).
@@ -165,11 +165,11 @@ hardware dimensions and actual PIO writes; no request notes as observations.
       speedup. Full input/output/binary/environment provenance and original
       connected storage/target/operand counts. Expected all bounds unchanged.
       Preserve Task162243matrix+4allocationprobes; author-check3new guide commands.
-- [ ] Write complete model/PDL/commands and observed endpoint versus logical
+- [x] Write complete model/PDL/commands and observed endpoint versus logical
       callback explanation, reconcile current support and unfinished inventory.
       Expected no broaditem4completion or coverage1 claim; guideauthorchecked,
       independentreader only if actually performed.
-- [ ] Commit reviewableimplementation, dispatch onefreshwholebranchreview on
+- [x] Commit reviewableimplementation, dispatch onefreshwholebranchreview on
       parentb9e59e2..HEAD with this ReviewFocus/template/ledger rulings. Regrade
       declined behavior, one verified blockerfixpass; no rereview. Build all,
       execute full63gates/73x1189each/15normal15SAN/sourcepackage/actualquality,
@@ -207,3 +207,6 @@ The Minor exact postcondition-pair benchmark oracle is deferred, increasing the
 running Minor ledger from14 to15; payload identity remains functional-test work.
 Expected final counts:73suites/1189methods per generator,4039inputs/38products,
 63gates,20 downstream CLI methods,15quality and26 merged-result checks.
+
+
+Task163 passes63 final qualification gates:15 native and15 leak-enabled sanitizer suites,73 suites/1189 methods in each generator variant,15 C++ quality checks, source packaging and4039 input/38 product hashes. The72 regular downstream processes peak at4.2884s/373760KiB; six512/1024-bit runs peak at1.1308s/121236KiB. All324 new/preserved matrix and guide processes plus4 dynamic allocation probes pass. Independent review found0Critical/5Important/1Minor; one test-first pass fixes all five Important findings. The benchmark checks postcondition counts, widths and allowed names; exact ordered register/value pairs remain a deferred Minor. Functional regressions check identities and payloads. Integration is pending; broader inventory and excluded coverage item1 remain open.

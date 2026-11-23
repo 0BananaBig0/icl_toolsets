@@ -9586,12 +9586,11 @@ and general cyclic staged scheduling remain open. Native proof still rejects
 shared-enable collateral unknowns when the matched explicit sequence also
 cannot execute. Plain expected reads do not request controlling callback writes.
 Actually invoked automatic callback histories reject `--model_readback`;
-physical callback output and active caller `iMerge` retain their guards.
+physical callback output and actual dispatch inside active caller `iMerge`
+retain their guards. If filtering leaves no invocation, native raw/together/
+AccessTogether/iMerge semantics apply. Complete cared destination masks matching
+immediate controlling `iState` declarations need no load; these ordinary hints
+clear at Apply, iRunLoop and reset, and native proof remains authoritative.
+Mixed callback order follows effective operation and selected operand position.
 
-Task163 core checkpoint867dc8d passed all Runtime cases in normal/static native builds,
-eight initial CLI methods plus compatibility coverage totaling346 methods, and
-15 C++ format/tidy/C++17 checks. All16 current CLI methods pass normal/static and
-leak-enabled sanitizer builds, including a small benchmark receipt grid. A real
-preliminary grid of17 processes plus512/1024-bit payloads passes with a maximum
-4.2300s/373680KiB; it does not replace the full repeated matrix. Final review,
-whole regressions and integration remain open.
+Task163 passes63 final qualification gates:15 native and15 leak-enabled sanitizer suites,73 suites/1189 methods in each generator variant,15 C++ quality checks, source packaging and4039 input/38 product hashes. The72 regular downstream processes peak at4.2884s/373760KiB; six512/1024-bit runs peak at1.1308s/121236KiB. All324 new/preserved matrix and guide processes plus4 dynamic allocation probes pass. Independent review found0Critical/5Important/1Minor; one test-first pass fixes all five Important findings. The benchmark checks postcondition counts, widths and allowed names; exact ordered register/value pairs remain a deferred Minor. Functional regressions check identities and payloads. Integration is pending; broader inventory and excluded coverage item1 remain open.

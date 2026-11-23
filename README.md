@@ -613,7 +613,7 @@ The project uses the [MIT License](LICENSE). Third-party components and fixtures
 retain their notices; see [third-party notices](docs/third-party-notices.md) and
 [test sources](tests/cases/SOURCES.md).
 
-Transparent downstream WriteCallBack prerequisites are being qualified for
+Transparent downstream WriteCallBack prerequisites are supported for
 Source/Alias/selectable WriteDataSource paths. See the complete
 [model and replay commands](docs/pattern-generation.md#transparent-downstream-write-callbacks)
 and [remaining inventory](docs/remaining-work.md) for current boundaries.
