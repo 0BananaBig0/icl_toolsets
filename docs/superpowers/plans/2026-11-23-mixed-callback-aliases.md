@@ -36,8 +36,8 @@ markers and consume ordinary operations; Task161's queue/native proof stays shar
   Preserve old mixed/callback/wide/corpus budgets,243 total measured/example runs
   if the planned matrix remains appropriate; disclose distinct source command
   counts, no speedup claim. Caller width measured4, wider width unmeasured.
-- Expected72suites/1169methods eachgenerator,4035inputs/38products,60gates,
-  15normal/15leakSAN native. Quality count is actual (likely6).
+- Expected72suites/1169methods eachgenerator,4036inputs/38products,61gates,
+  15normal/15leakSAN native. Quality count is actual (nine).
 - After fresh builds, reuse only byte-unchanged native product + unchanged test
   source/runtime fixture + exact passing-log provenance. Every changed native,
   whole generators, affectedCLI and packaging execute fresh. Document reuse.
@@ -130,7 +130,7 @@ ModelReadback, original SourceAction begin/end and reset rewriting. Benchmark
 imports existing pure fixture/hash utilities where appropriate; keep actual
 mixed-alias dimensions and output checks explicit.
 
-- [ ] Add final8 methods before implementation:
+- [x] Add final8 methods before implementation:
       test_actual_getters_inside_write_procedures,
       test_canceled_mixed_reads_preserve_prior_history,
       test_prefix_namespace_split_files_once_only_arguments,
@@ -144,7 +144,7 @@ mixed-alias dimensions and output checks explicit.
       ReadCallBack model guard stays, canceled uninvoked reads keep prior data.
       Fix concrete shared caller regressions test-first, recording interface
       refinements in design/ledger before edits.
-- [ ] Watch realSAN64 memory RED536336KiB, add direct/nested hardware-alias
+- [x] Watch realSAN64 memory RED536336KiB, add direct/nested hardware-alias
       retention controls before editing the native index, then refine existing
       PrimaryStateCandidates to root only hardware references and expand reachable
       aliases transitively. Keep dynamic goal/read/end/reservation inclusion and
@@ -159,18 +159,18 @@ mixed-alias dimensions and output checks explicit.
       New grid81 + mixedwide4096/16384 x3=6. Preserve old mixed81, primarycallback60,
       purewide6, corpus6 andguide3 ->243 processes. Each grid process<=10s/512MiB,
       wide<=256MiB; no unmeasured speedup claim.
-- [ ] Write full guide model/procs/commands and actual3/9 example. Author-check
+- [x] Write full guide model/procs/commands and actual3/9 example. Author-check
       source/flat/generated3invocations; no independent reader claim. Reconcile
       current support/remaining bounds in README/model/tracker without closing
       broad4/6 or excluded1.
-- [ ] Commit final reviewed implementation selection via grouped storyteller.
+- [x] Commit final reviewed implementation selection via grouped storyteller.
       Request one fresh independent final review whole9fc1e55..HEAD with template
       and exact ReviewFocus. Regrade/rule all declined behavior; one Critical/
       Important RED->GREEN pass, defer Minors/no rereview. Fresh builds/byte-proof
-      native reuse only as specified. Run full60gates:15normal/15SAN native,
+      native reuse only as specified. Run full61gates:15normal/15SAN native,
       both72x1169 whole generators, selected SAN/newalias/oldmixed/opaque/history/
       raw/TAP/legacy/model/corpus/producer/protocol/Make, actualC++quality and
-      source packaging. Bind4035inputs/38products and matching final measurements.
+      source packaging. Bind4036inputs/38products and matching final measurements.
 - [ ] Merge directparentmaster and verify24root integration checks, identical
       input/product hashes and20copiednormalproducts. Push, detach preservedWT,
       delete completed branch, archive only this plan ledger and117stashes.
