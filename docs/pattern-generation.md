@@ -9390,3 +9390,70 @@ Task161 is merged into master;22 integration checks pass on4033 identical input
 hashes/20 copied qualified native products, preserving117 stashes. Receipt:
 build/mixed-callback-groups-20261123/merged/receipt.json. Broader original inventory
 items remain open as tracked; execution continues after this increment.
+
+
+## Mixed ordinary and callback alias bits
+
+One alias request can combine ordinary data with explicit callback registers.
+Ordinary bits retain their native access; each selected callback register invokes
+its procedure once with its own data and name. Inversion, partial ranges,
+segmented ports and duplicate references keep their resolved bit identities.
+Duplicates use the last specified bit; unselected ordinary bits and prior read
+histories stay untouched.
+
+Save this complete model as `mixed-alias.icl`:
+
+```icl
+Module Chains {
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+ Alias mixed[7:0]=spare,value;
+}
+```
+
+Save this program as `mixed-alias.pdl`:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc store {data reg} {iWrite p $data}
+iReset
+iWrite mixed 0x39
+iApply
+iRead spare_out 0; iRead q 0; iApply
+iNote [iGetReadData spare_out -dec]
+iNote [iGetReadData q -dec]
+```
+
+Run the source, flattened model and generated program:
+
+```sh
+build/icl-pattern-generation --icl mixed-alias.icl --pdl mixed-alias.pdl --top_module Chains --output mixed-source.pdl --model_readback --debug
+build/icl-pattern-generation --icl debug/Chains.icl --pdl mixed-alias.pdl --top_module Chains --output mixed-flat.pdl --model_readback
+build/icl-pattern-generation --icl mixed-alias.icl --pdl mixed-source.pdl --top_module Chains --output mixed-generated.pdl --model_readback
+```
+
+Each result contains `iNote 3` and `iNote 9` from actual ordinary observations.
+The high alias bits request `spare=3`; its low bits invoke `store` with `value=9`,
+which writes `p`. Abstract callback register storage stays unknown.
+
+A write selects WriteCallBack members; a read selects ReadCallBack members.
+Mixed reads require observable ordinary members; a DataInPort is a write target.
+Generation without `--model_readback` retains ordinary reads alongside a
+ReadCallBack procedure. Actually invoked read-callback histories still reject
+in modeled mode. A mixed read canceled before invocation preserves prior
+ordinary history and does not invoke a callback.
+
+Existing callback Apply/reset rules apply. A body Apply can flush ordinary
+requests; reset cancels still-pending ordinary requests and caller goals.
+Conflicting known caller/procedure values reject: a caller request for `p=3`
+cannot silently become the procedure's `p=9`. Caller-only local-reset rewriting
+retains the original iProc bytes, including mixed-alias callers.
+
+AccessTogether, `iApply -together`, callback dispatch inside an active iMerge,
+mixed raw requests, automatic downstream invocation and physical callback output
+retain their guards. Ordinary endpoint merges inside a procedure keep their
+existing behavior. Broader items4/6 and excluded coverage1 stay as tracked in
+[remaining work](remaining-work.md). Final qualification and measured limits
+are recorded after verification.

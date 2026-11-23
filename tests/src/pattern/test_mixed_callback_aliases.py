@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Mixed alias bits retain ordinary native accesses and explicit callbacks."""
+import json
+from pathlib import Path
+import subprocess
 import unittest
 
 import test_simultaneous_scan_chains as cli
 import test_modeled_readback as observations
 import test_mixed_callback_groups as groups
+import test_callback_execution as callbacks
 
 MODEL = groups.MODEL.replace(" Alias low", """ Alias mixed[7:0] = spare,value;
  Alias inverse[7:0] = ~mixed;
@@ -21,6 +25,7 @@ class MixedCallbackAliases(unittest.TestCase):
     run_tool = observations.ModeledReadback.run_tool
     replay = cli.SimultaneousChains.replay
     notes = groups.MixedCallbackGroups.notes
+    reset_replay = groups.MixedCallbackGroups.reset_replay
 
     def rejected(self, body, diagnostic, source=None, modeled=True, extra=()):
         return groups.MixedCallbackGroups.rejected(
@@ -166,6 +171,165 @@ Module Chains {WriteEnPort we; Instance child Of Child {InputPort we=we;}
         self.assertIn(b"iRead q 0b1001", output)
         self.rejected("iState spare 3; iState p 9; iRead reading 0x39; iApply",
                       "callback histories")
+
+
+    def test_actual_getters_inside_write_procedures(self):
+        body = PROCS + """iProc store {d r} {
+ iApply; iRead spare_out 9; iApply
+ iNote [iGetReadData spare_out -dec]
+ iNote [iGetMiscompares spare_out -bin]; iNote [iGetStatus -clear]
+ iWrite p $d
+}
+iReset; iWrite mixed 0x39; iApply
+iNote [iGetReadData spare_out -dec]; iNote [iGetStatus]
+iNote [iGetReadData value -bin]
+"""
+        self.assertEqual(self.notes(self.replay(MODEL, body)),
+                         [b"3", b"0b1010", b"2", b"3", b"0", b"0bxxxx"])
+
+    def test_canceled_mixed_reads_preserve_prior_history(self):
+        body = PROCS + """iReset; iState spare 3
+iRead spare_out[3:2] 0; iApply
+iRead reading 0x39; iReset
+iNote [iGetReadData spare_out -bin]
+iRead spare_out[1:0] 0; iApply
+iNote [iGetReadData spare_out -bin]
+"""
+        self.assertEqual(self.notes(self.replay(MODEL, body)), [b"0b00xx", b"0b0011"])
+
+    def test_prefix_namespace_split_files_once_only_arguments(self):
+        source = """Module Leaf {
+ DataInPort pin[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains::ops store <D> <R>;}
+ Alias mixed[7:0]=pin,value;
+}
+Module Chains {
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ Instance child Of Leaf {InputPort pin=spare;}
+}
+"""
+        icl, first, second = self.root / "source.icl", self.root / "first.pdl", self.root / "second.pdl"
+        icl.write_text(source)
+        first.write_text("""iPDLLevel 1
+iProcsForModule Chains -iProcNameSpace ops
+iProc store {d r} {if {$r ne "child.value"} {error relative}; iWrite p $d}
+iProcsForModule Chains
+set ::calls 0
+proc word {} {incr ::calls; return 0x39}
+iReset; iPrefix child; iWrite mixed [word]
+""")
+        second.write_text("""iPrefix -; iApply
+if {$::calls != 1} {error reevaluated}
+iRead spare_out 0; iRead q 0; iApply
+iNote [iGetReadData spare_out -dec]; iNote [iGetReadData q -dec]
+""")
+        result = self.run_tool(icl, first, extra=("--pdl", str(second)))
+        self.assertEqual(self.notes(result), [b"3", b"9"])
+        self.assertEqual(result, self.run_tool(self.root / "debug/Chains.icl", first,
+                                              "flat/result.pdl", extra=("--pdl", str(second))))
+        self.assertEqual(result, self.run_tool(icl, self.root / "result.pdl", "generated/result.pdl"))
+
+    def test_local_reset_rewrite_preserves_procedure_bytes(self):
+        source = callbacks.RESET_MODEL.replace(" DataInPort p;", """ DataInPort spare[3:0];
+ DataOutPort spare_out[3:0] {Source spare;}
+ Alias mixed[7:0]=spare,child.value;
+ DataInPort p;""")
+        result, rewritten = self.reset_replay(
+            "iReset; iWrite mixed 0x39; iApply; "
+            "iRead spare_out 0; iRead child.wire 0; iApply; "
+            "iNote [iGetReadData spare_out -dec]; iNote [iGetReadData child.wire -dec]",
+            source=source)
+        self.assertEqual(self.notes(result), [b"3", b"9"])
+        self.assertIn(callbacks.STORE_DEF, rewritten)
+        self.assertIn(callbacks.REQUEST_DEF, rewritten)
+
+    def test_repeated_sites_returned_calls_and_source_spans(self):
+        body = PROCS + """iProc request {word} {iWrite mixed $word; return ignored}
+iReset
+foreach word {0x39 0x46} {
+ iCall request $word; iApply
+ iRead spare_out 0; iRead q 0; iApply
+ iNote [iGetReadData spare_out -dec]; iNote [iGetReadData q -dec]
+}
+"""
+        self.assertEqual(self.notes(self.replay(MODEL, body)), [b"3", b"9", b"4", b"6"])
+
+    def test_sparse_masks_status_and_unknown_callback_storage(self):
+        body = PROCS + """iReset; iState spare 10
+iRead spare_out[3:2] 0; iApply
+iWrite duplicate 0b001001; iApply
+iNote [iGetReadData spare_out -bin]
+iRead spare_out[1:0] 0; iApply
+iNote [iGetReadData spare_out -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
+iNote [iGetReadData value -bin]
+"""
+        self.assertEqual(self.notes(self.replay(MODEL, body)),
+                         [b"0b10xx", b"0b1011", b"3", b"0", b"0bxxxx"])
+        source = MODEL.replace(" Alias mixed[7:0] = spare,value;", """ Enum Words {ThreeNine=8'b00111001;}
+ Alias mixed[7:0] = spare,value {RefEnum Words;}""")
+        output = self.replay(source, PROCS + """iWrite mixed ThreeNine; iApply
+iRead spare_out 0; iRead q 0; iApply
+iNote [iGetReadData spare_out -dec]; iNote [iGetReadData q -dec]
+""")
+        self.assertEqual(self.notes(output), [b"3", b"9"])
+
+    def test_scale_receipt_dimensions_and_generated_getters(self):
+        # Small receipt smoke; final qualification retains the full target grid.
+        output = self.root / "scale"
+        command = ["python3", str(Path(__file__).with_name("benchmark_mixed_callback_aliases.py")),
+                   "--binary", str(cli.BIN), "--parent", str(cli.BIN),
+                   "--sanitized", str(cli.BIN), "--output", str(output),
+                   "--sizes", "4", "--repeats", "1", "--wide-widths"]
+        result = subprocess.run(command, cwd=cli.ROOT, capture_output=True, text=True, timeout=90)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        report = json.loads((output / "results.json").read_text())
+        self.assertEqual(len(report["runs"]), 11)
+        self.assertEqual(report["wide_runs"], [])
+        for row in report["runs"]:
+            self.assertTrue(row["pio_only_verified"])
+            self.assertEqual((row["csu_count"], row["shifted_bits"]), (0, 0))
+            self.assertEqual(row["fresh_getters"], 0 if row["mode"] == "observer-off" else 4)
+            if row["mode"] in ("mixed", "separate", "observer-off"):
+                self.assertEqual((row["apply_count"], row["pio_frame_count"], row["empty_apply_count"]),
+                                 (24, 20, 4))
+                self.assertEqual(row["endpoint_writes"], 16)
+                self.assertEqual(row["callback_postconditions"], 16)
+                self.assertEqual(row["original_operand_bits"], 112)
+            else:
+                self.assertEqual(row["apply_count"], 8)
+            if row["mode"] == "mixed" and row["form"] == "source":
+                self.assertEqual(row["original_request_counts"]["iWrite"], 8)
+                self.assertEqual(row["declared_ordinary_bits"], 4)
+                self.assertEqual(row["declared_callback_bits"], 16)
+                self.assertEqual(row["declared_aliases"], 1)
+            if row["mode"] in ("separate", "unused") and row["form"] == "source":
+                self.assertEqual(row["declared_aliases"], 0)
+            if row["form"] == "generated":
+                body = Path(row["command"][row["command"].index("--pdl") + 1]).read_text()
+                self.assertEqual(body.count("iGetReadData spare_out -dec"), 4)
+                self.assertNotIn("iNote 1\n", body)
+
+    def test_wide_alias_compact_projection_budget(self):
+        # The dedicated normal benchmark measures4K/16K; this runs on every backend.
+        output = self.root / "wide"
+        command = ["python3", str(Path(__file__).with_name("benchmark_mixed_callback_aliases.py")),
+                   "--binary", str(cli.BIN), "--parent", str(cli.BIN),
+                   "--sanitized", str(cli.BIN), "--output", str(output),
+                   "--sizes", "--wide-widths", "64", "--repeats", "1"]
+        result = subprocess.run(command, cwd=cli.ROOT, capture_output=True, text=True, timeout=90)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        report = json.loads((output / "results.json").read_text())
+        self.assertEqual(report["runs"], [])
+        self.assertEqual(len(report["wide_runs"]), 1)
+        row = report["wide_runs"][0]
+        self.assertEqual(row["alias_width"], 64)
+        self.assertEqual(row["declared_callback_bits"], 60)
+        self.assertEqual(row["declared_ordinary_bits"], 4)
+        self.assertEqual(row["original_operand_bits"], 4 * (64 + 8))
+        self.assertEqual((row["apply_count"], row["pio_frame_count"], row["empty_apply_count"]), (12, 8, 4))
+        self.assertTrue(row["pio_only_verified"])
+        self.assertLessEqual(row["rss_kib"], 256 * 1024)
 
 
 if __name__ == "__main__":

@@ -183,3 +183,30 @@ Then continue the original remaining inventory, not end after this increment.
   ReadCallBack invoked; actual invoked reads keep existing model guards.
 - Source spans must own all projected runs and callback expansion without
   modifying iProc definitions or reevaluating arguments.
+- Native state pruning must retain direct/transitive hardware alias consumers
+  and explicit goal/read/end/reserved dependencies; PDL-only aliases must not
+  force irrelevant callback state into every frame.
+
+## Measured native-index refinement
+The real SAN64 mixed-alias source measures2.7601s/536336KiB, exceeding the unchanged
+512MiB cap. PrimaryStateCandidates conservatively retains every callback register
+named in any Alias Source, even when that alias exists only for PDL addressing.
+That defeats the existing irrelevant-callback-state optimization.
+
+Refine the existing index: root retention in non-alias hardware inputs, reset/
+choice/logic/interface fields and TAP metadata; follow any encountered aliases
+transitively through their sources. An otherwise unused PDL alias does not root
+hardware state. Keep explicit goals/reads/end-state/reservation inclusion in
+SolvePrimaryWrites unchanged. Add direct/nested alias hardware-consumer controls
+before changing the index, then prove the same failing SAN input/output bytes
+within the original cap. No new API/engine or sanitizer-setting change.
+
+Separately queued controls do not need a mixed alias declaration; omit that
+unused declaration in both parent/current controls and disclose that source
+declaration difference alongside command-count differences. Mixed cases retain
+the exact real alias workload. Receipt smoke usesN4 and a64-bit wide fixture on
+all backends; final acceptance still requires normal64/256/1024,SAN64 and normal
+wide4096/16384. The earlier unit composition incorrectly imposed the normal-only
+16K wide cap on every sanitizer role. This refinement does not weaken any full
+performance target. Additional scheduler/native quality/product checks follow
+actual changed files/binaries, not the earlier likely-six count.

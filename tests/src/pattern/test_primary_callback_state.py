@@ -53,20 +53,22 @@ iWrite value 2; iApply; iWrite p 5; iApply
         self.assertIn(b"iWrite p 0b0101", output)
 
     def test_alias_reference_preserves_goals_with_unknown_observations(self):
-        source = BASE[:-1] + """
-Alias view[3:0] = value;
+        for alias_source in ("value", "nested"):
+            aliases = "Alias nested[3:0]=value;" if alias_source == "nested" else ""
+            source = BASE[:-1] + aliases + """
+Alias view[3:0] = """ + alias_source + """;
 DataOutPort q[3:0] {Source view;}
 }"""
-        output = self.check(source, """iState value 9
+            output = self.check(source, """iState value 9
 iWrite p 3; iApply; iRead q 6; iApply
 iNote "[iGetReadData q] [iGetMiscompares q]"
 if {![catch {iGetStatus}]} {error {abstract alias produced known status}}
 iState value 0b1xx0; iWrite p 4; iApply; iRead q; iApply
 iNote [iGetReadData q]
-""", modeled=True)
-        self.assertIn(b"0bxxxx 0bxxxx", output)
-        self.assertIn(b"iRead q 0b0110", output)
-        self.assertIn(b"iNote 0bxxxx", output)
+    """, modeled=True)
+            self.assertIn(b"0bxxxx 0bxxxx", output)
+            self.assertIn(b"iRead q 0b0110", output)
+            self.assertIn(b"iNote 0bxxxx", output)
 
     def test_mux_and_logic_references_retain_callback_values(self):
         source = BASE[:-1] + """
@@ -127,6 +129,9 @@ DataMux reset_gate SelectedBy gate {1'b0: global; 1'b1: 1'b1;}
 Instance child Of Leaf {InputPort d = p; InputPort reset = reset_gate;}
 DataOutPort q[3:0] {Source child.q;}
 }"""
+        source = source.replace("DataMux reset_gate SelectedBy gate",
+                                "Alias gate_view=gate; Alias gate_nested=gate_view; "
+                                "DataMux reset_gate SelectedBy gate_nested")
         output = self.check(source, """iReset; iState gate 0
 iWrite p 9; iApply; iRead q 9; iApply; iNote [iGetReadData q -dec]
 iState gate 1; iWrite p 6; iApply; iRead q 0; iApply

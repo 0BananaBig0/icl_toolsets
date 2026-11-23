@@ -59,6 +59,9 @@ markers and consume ordinary operations; Task161's queue/native proof stays shar
   ReadCallBack invoked; actual invoked reads keep existing model guards.
 - Source spans must own all projected runs and callback expansion without
   modifying iProc definitions or reevaluating arguments.
+- Native state pruning must retain direct/transitive hardware alias consumers
+  and explicit goal/read/end/reserved dependencies; PDL-only aliases must not
+  force irrelevant callback state into every frame.
 
 ### Task 1: Compact runtime ordinary projections and callback preflight
 **Files:** Modify src/pattern/pattern_runtime.cc,
@@ -118,6 +121,9 @@ Create tests/src/pattern/benchmark_mixed_callback_aliases.py.
 Modify README.md, docs/pattern-generation.md, docs/pattern-model-coverage.md,
 docs/remaining-work.md. Only concrete shared caller failures justify changes
 in existing main/readback/merge/source-action code and relevant native tests.
+The measured SAN64 allocation regression also requires the spec's conservative
+PrimaryStateCandidates alias-reachability refinement in pattern_scheduler.cc
+and hardware-consumer controls in test_primary_callback_state.py.
 
 **Interfaces:** Consume Task1 projections without new public APIs. Reuse native
 ModelReadback, original SourceAction begin/end and reset rewriting. Benchmark
@@ -138,7 +144,12 @@ mixed-alias dimensions and output checks explicit.
       ReadCallBack model guard stays, canceled uninvoked reads keep prior data.
       Fix concrete shared caller regressions test-first, recording interface
       refinements in design/ledger before edits.
-- [ ] Implement mixed alias benchmark normal64/256/1024/SAN64,4groups,3repeats/
+- [ ] Watch realSAN64 memory RED536336KiB, add direct/nested hardware-alias
+      retention controls before editing the native index, then refine existing
+      PrimaryStateCandidates to root only hardware references and expand reachable
+      aliases transitively. Keep dynamic goal/read/end/reservation inclusion and
+      sanitizer settings unchanged; prove identical input/output within512MiB.
+      Implement mixed alias benchmark normal64/256/1024/SAN64,4groups,3repeats/
       source-flat-generated and separately queued parent/current controls.
       Keep actual4*(N+2)Applies/4*(N+1)PIOframes/4emptyouter/4*Nendpoint/
       postconditions/8spare writes; check all actual output accesses are intended
