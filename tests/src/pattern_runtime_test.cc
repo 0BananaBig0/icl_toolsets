@@ -297,6 +297,49 @@ Module Top {
   projected.Execute("apply.pdl", "iApply");
   projected.Finish();
 }
+void TestMixedAliasReadPayloadBudget() {
+  for (const int count : {1, 16, 64}) {
+    pattern::Design design;
+    std::string model =
+        "Module Top {DataInPort p[255:0]; "
+        "DataOutPort ordinary[255:0] {Source p;}";
+    std::string members = "ordinary";
+    for (int i = 0; i < count; ++i) {
+      const auto name = "value" + std::to_string(i);
+      model += "DataRegister " + name + "[" + std::to_string(256 / count - 1) +
+               ":0] {ReadCallBack Top load <D> <R>;}";
+      members += "," + name;
+    }
+    model += "Alias mixed[511:0] = " + members + ";}";
+    design.AddIcl("read-budget.icl", model);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::Runtime runtime(design, netlist);
+    runtime.Execute("read-budget.pdl",
+                    "iPDLLevel 1; iProcsForModule Top; "
+                    "iProc load {data reg} {lappend ::seen $reg}; "
+                    "iRead mixed 0; iApply");
+    runtime.Finish();
+    size_t argument_bytes = 0, invoked = 0;
+    for (const auto& op : runtime.operations()) {
+      for (const auto& argument : op.arguments) {
+        argument_bytes += argument.size();
+      }
+      if (!op.callback || !op.callback_read_execution) continue;
+      ++invoked;
+      Require(op.command == "iRead" &&
+                  op.origin.find("read-budget.pdl:") == 0 &&
+                  op.call_stack == runtime.operations().front().call_stack,
+              "compact read invocation retains command and source provenance");
+    }
+    Require(invoked == static_cast<size_t>(count) &&
+                runtime.ReadCallbacksExecuted(),
+            "every selected read callback records an invocation");
+    Require(argument_bytes <= 2048,
+            "mixed read retains bounded argument bytes independent of "
+            "callback count: " +
+                std::to_string(argument_bytes));
+  }
+}
 void TestMixedAliasHistory() {
   pattern::Design design;
   design.AddIcl("alias-history.icl", MixedAliasModel());
@@ -1738,6 +1781,7 @@ int main() {
   int failures = 0;
   for (const auto test : {TestMixedAliasProjection,
                           TestMixedAliasRanges,
+                          TestMixedAliasReadPayloadBudget,
                           TestMixedAliasHistory,
                           TestMixedAliasCallerGoals,
                           TestMixedAliasFailureScopes,

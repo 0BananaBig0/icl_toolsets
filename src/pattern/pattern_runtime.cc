@@ -524,10 +524,14 @@ class Runtime::Impl {
         if (left != right) name += ":" + std::to_string(right);
         name += "]";
       }
-      auto projected = operation;
-      projected.callback = false;
-      projected.arguments = {std::move(name), "0b" + data};
-      result.push_back(std::move(projected));
+      result.push_back({operation.command,
+                        {std::move(name), "0b" + data},
+                        operation.origin,
+                        operation.call_stack,
+                        false,
+                        operation.callback_execution,
+                        operation.callback_read_execution,
+                        operation.callback_preserved});
     }
     return result;
   }
@@ -593,6 +597,7 @@ class Runtime::Impl {
     QueuedAccesses queue;
     std::map<Key, size_t> positions;
     std::vector<Request> requests;
+    std::vector<bool> mixed_reads(pending.size(), false);
     std::vector<size_t> anchors;
     bool ordinary_pending = false;
     for (size_t i = 0; i < pending.size(); ++i) {
@@ -619,7 +624,10 @@ class Runtime::Impl {
         }
         for (const auto& bit : target.bits) {
           const auto& node = netlist_->nodes.at(bit.node);
-          if (!(read ? node.read_callback : node.write_callback)) continue;
+          if (!(read ? node.read_callback : node.write_callback)) {
+            mixed_reads[i] = read;
+            continue;
+          }
           const Key key{bit.node, read};
           if (positions.emplace(key, requests.size()).second) {
             requests.push_back({key, i, std::string(node.Width(), 'x'),
@@ -718,7 +726,13 @@ class Runtime::Impl {
           callbacks_executed_ = true;
           read_callbacks_executed_ = read_callbacks_executed_ || read;
           if (read) {
-            auto invocation = source;
+            auto invocation =
+                mixed_reads[request.source]
+                    ? Operation{"iRead",       {node.name, "0b" + request.data},
+                                source.origin, source.call_stack,
+                                true,          true,
+                                true,          source.callback_preserved}
+                    : source;
             invocation.callback_execution = true;
             invocation.callback_read_execution = true;
             consumed_callback_operations_.insert(operations_.size());

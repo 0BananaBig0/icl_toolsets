@@ -9434,7 +9434,9 @@ build/icl-pattern-generation --icl debug/Chains.icl --pdl mixed-alias.pdl --top_
 build/icl-pattern-generation --icl mixed-alias.icl --pdl mixed-source.pdl --top_module Chains --output mixed-generated.pdl --model_readback
 ```
 
-Each result contains `iNote 3` and `iNote 9` from actual ordinary observations.
+The source and flat runs evaluate the getters and contain `iNote 3` and
+`iNote 9` from ordinary observations. The generated input already contains
+these literal notes; its replay reproduces them without reevaluating getters.
 The high alias bits request `spare=3`; its low bits invoke `store` with `value=9`,
 which writes `p`. Abstract callback register storage stays unknown.
 
