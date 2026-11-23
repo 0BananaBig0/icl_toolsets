@@ -6,6 +6,7 @@
 #include <exception>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -19,10 +20,30 @@
 
 namespace pattern {
 namespace {
+std::optional<Netlist> ObservationNetlist(const Netlist& netlist) {
+  if (std::none_of(netlist.nodes.begin(), netlist.nodes.end(),
+                   [](const auto& node) {
+                     return node.read_callback || node.write_callback;
+                   })) {
+    return std::nullopt;
+  }
+  auto result = netlist;
+  for (auto& node : result.nodes) {
+    if (!node.read_callback && !node.write_callback) continue;
+    const auto reset = node.constants.find("ResetValue");
+    if (reset != node.constants.end()) {
+      reset->second.data.assign(node.Width(), 'x');
+    }
+  }
+  return result;
+}
 class ModelReadback {
  public:
   ModelReadback(const Netlist& netlist, bool physical)
-      : netlist_(netlist), physical_(physical), reservations_(netlist) {
+      : observation_netlist_(ObservationNetlist(netlist)),
+        netlist_(observation_netlist_ ? *observation_netlist_ : netlist),
+        physical_(physical),
+        reservations_(netlist_) {
     const bool opaque =
         netlist.taps.empty() &&
         std::any_of(
@@ -36,7 +57,7 @@ class ModelReadback {
     if (opaque) {
       opaque_ = std::make_unique<OpaqueScanQueue>(DescribeOpaqueScans(netlist));
     } else {
-      scheduler_ = std::make_unique<ScanScheduler>(netlist);
+      scheduler_ = std::make_unique<ScanScheduler>(netlist_);
     }
     if (std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
@@ -45,6 +66,14 @@ class ModelReadback {
             })) {
       throw std::runtime_error("modeled readback excludes unsupported storage");
     }
+    callback_storage_.resize(netlist.nodes.size(), false);
+    for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+      const auto& node = netlist.nodes[id];
+      if (!node.read_callback && !node.write_callback) continue;
+      callback_storage_[id] = true;
+      callback_unknown_.emplace_back(node.name, std::string(node.Width(), 'x'));
+    }
+    MaskCallbackStorage();
   }
 
   const ReadbackUpdates* Read(const std::vector<Operation>& operations,
@@ -52,21 +81,37 @@ class ModelReadback {
     if (error_) std::rethrow_exception(error_);
     try {
       // Reject unsupported histories before exposing any observation delta.
-      bool callback_pending = callback_pending_;
+      auto callback_pending = callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
-        if (op.callback_execution) {
+        if (op.callback_read_execution ||
+            (physical_ && op.callback_execution)) {
           throw std::runtime_error(
               op.origin + ": modeled readback excludes callback histories");
         }
         if (op.callback) {
-          callback_pending = true;
+          callback_pending.insert(op.call_stack);
           continue;
         }
-        if (op.command == "iReset") callback_pending = false;
-        if (op.command == "iApply" && callback_pending) {
-          throw std::runtime_error(
-              op.origin + ": modeled readback excludes callback histories");
+        if (op.command == "iReset") callback_pending.clear();
+        if (op.command == "iApply" && callback_pending.count(op.call_stack)) {
+          if (!op.callback_execution) {
+            throw std::runtime_error(
+                op.origin + ": modeled readback excludes callback histories");
+          }
+          callback_pending.erase(op.call_stack);
+        }
+        if (!callback_unknown_.empty() &&
+            (op.command == "iWrite" || op.command == "iRead")) {
+          const auto target = ResolvePdlTarget(netlist_, op.arguments.at(0));
+          if (std::any_of(target.bits.begin(), target.bits.end(),
+                          [&](const auto& bit) {
+                            return callback_storage_.at(bit.node);
+                          })) {
+            throw std::runtime_error(
+                op.origin +
+                ": modeled readback excludes unexpanded callback access");
+          }
         }
         if (op.command != "iWrite" && op.command != "iRead" &&
             op.command != "iApply" && op.command != "iState" &&
@@ -78,7 +123,7 @@ class ModelReadback {
                                    op.command + " histories");
         }
       }
-      callback_pending_ = callback_pending;
+      callback_pending_ = std::move(callback_pending);
       updates_.bits.clear();
       updates_.scans.clear();
       positions_.clear();
@@ -104,6 +149,11 @@ class ModelReadback {
   }
 
  private:
+  void MaskCallbackStorage() {
+    for (const auto& [name, bits] : callback_unknown_) {
+      scheduler_->Assume(name, bits);
+    }
+  }
   char Mismatch(char expected, char actual) {
     const char mismatch = expected == 'x'      ? '0'
                           : actual == 'x'      ? 'x'
@@ -256,14 +306,18 @@ class ModelReadback {
       }
     } else if (op.command == "iReset") {
       scheduler_->Reset(!args.empty(), physical_);
+      MaskCallbackStorage();
       reservations_.Reset();
       pending_.Clear();
       raw_pending_.clear();
       raw_pending_bits_ = 0;
     } else if (op.command == "iState") {
       const auto target = ResolvePdlTarget(netlist_, args.at(0));
-      const auto bits = PdlNumber(context_, args.at(1), target.bits.size());
+      auto bits = PdlNumber(context_, args.at(1), target.bits.size());
       if (args.size() != 3 || args[2] == "-LastWrittenValue") {
+        for (size_t i = 0; i < target.bits.size(); ++i) {
+          if (callback_storage_.at(target.bits[i].node)) bits[i] = 'x';
+        }
         scheduler_->Assume(args[0], bits);
         pending_.Assume(target, bits);
         reservations_.Assigned({op}, *scheduler_);
@@ -285,9 +339,12 @@ class ModelReadback {
     }
   }
 
+  std::optional<Netlist> observation_netlist_;
   const Netlist& netlist_;
   bool physical_;
-  bool callback_pending_ = false;
+  std::set<std::vector<std::string>> callback_pending_;
+  std::vector<bool> callback_storage_;
+  std::vector<std::pair<std::string, std::string>> callback_unknown_;
   z3::context context_;
   std::unique_ptr<ScanScheduler> scheduler_;
   std::unique_ptr<OpaqueScanQueue> opaque_;

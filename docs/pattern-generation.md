@@ -8403,10 +8403,11 @@ cannot be taken or released, including by a whole-instance reservation; ordinary
 endpoint resource checks still apply. Automatic callbacks needed while solving
 downstream access goals remain open.
 
---model_readback and --physical_pdl reject executed callbacks before artifact
-publication. Reset-canceled requests remain valid in those modes. Native
-applications can supply actual readback providers, but this increment does not
-certify a provider for callback histories or a hardware transport.
+--model_readback supports actual ordinary endpoint observations during explicit
+write callbacks, as described below. Invoked read callbacks and --physical_pdl
+callbacks still reject before artifact publication. Reset-canceled requests remain
+valid. Native applications can supply actual readback providers; no hardware
+transport is certified by modeled execution.
 
 --debug preserves callback declarations and original module scopes in flat ICL.
 Generated PDL contains endpoint operations and declared write postconditions.
@@ -9003,3 +9004,104 @@ Master integration is pending.
 Task158 is integrated into master. Thirteen integration checks pass on 4026
 matching input hashes and 19 copied qualified native products. All 117 stashes
 remain. Receipt: build/legacy-port-groups-20261123/merged/receipt.json.
+
+## Actual endpoint observations in write callbacks
+
+With --model_readback, explicit WriteCallBack procedures can read actual modeled
+ordinary endpoints, including reads inside the procedure. Expected iRead data
+only selects comparisons; it never supplies the returned value. For example:
+
+    Module Chains {
+      DataInPort p[3:0];
+      DataOutPort q[3:0] {Source p;}
+      DataRegister value[3:0] {WriteCallBack Chains store <D>;}
+    }
+
+    iPDLLevel 1
+    iProcsForModule Chains
+    iProc store {data} {iWrite p $data}
+    iWrite value 9; iApply
+    iRead q 0; iApply
+    iNote [iGetReadData q -dec]
+    iNote [iGetMiscompares q -bin]
+    iNote [iGetStatus -clear]; iNote [iGetStatus]
+
+Run the existing executable with --icl model.icl --pdl source.pdl
+--top_module Chains --output result.pdl --debug --model_readback.
+The notes are 9, 0b1001, 2, and 0. The global status counts the actual
+ordinary endpoint comparisons once, including comparisons in write procedures.
+PIO, selectable DataRegister and serial ScanRegister endpoints use their existing
+observation model, scopes, reservations, masks and history rules.
+
+Callback registers represent abstract logical storage outside ICL connectivity.
+Their requested <D> and generated iState postconditions are useful to goal
+generation, but remain unknown in the independent observation model. A no-op
+procedure cannot fabricate observed data. Outputs sourced from callback storage
+stay unknown, even after a declared ResetValue or an iState assignment through
+a mixed or inverted alias. Reset metadata is masked in a private observation
+network so asynchronous reset propagation during ordinary frames also remains
+unknown; the goal-generation network keeps its declared reset semantics.
+This also changes older declaration-only modeled histories: callback-typed
+storage reports unknown after a logical iState or ResetValue assignment.
+Explicit manual -LastReadValue/-LastMiscompareValue assumptions keep their
+existing meaning; these are supplied assumptions.
+
+Invoked ReadCallBack histories remain unsupported, including invocation inside
+a write callback or a read body that resets itself. A read request canceled by
+iReset before invocation is allowed, including cancellation inside a write body.
+An ordinary endpoint iRead in a write body is supported. Unexpanded logical
+callback data accesses are rejected by the native observer.
+
+Source, flat-model, generated and split-file replay use the same callback
+metadata to mask abstract storage. --local_reset verifies rewritten source with
+the same observer and preserves the modeled/no-live-device label in the final
+pattern. Physical callbacks, timed histories, automatic downstream dispatch,
+mixed callback/ordinary caller groups, together and merged callback dispatch
+retain their existing limits. A model-backend error remains terminal for that
+observer; procedure failures retain the existing reset-and-requeue recovery.
+
+Reproduce the bounded observation benchmark with:
+
+    python3 tests/src/pattern/benchmark_callback_endpoint_readback.py \
+      --binary build/icl-pattern-generation --parent /path/to/parent-executable \
+      --sanitized /path/to/sanitized-executable --output /tmp/callback-observations
+
+Generated measurements replace the four literal result notes with fresh getters
+at the corresponding group boundaries; their canonical output must still match
+the source result. This forces the lazy observer to execute on generated
+transactions. It checks actual four-group values, fresh source/flat/generated output, three
+repeats at 64/256/1024 targets and sanitizer64, and matched callback-free, unused
+and observer-off controls. Each run must stay within10s and512MiB.
+
+Task159 passes55 post-fix qualification gates:14 native/14 leak-enabled sanitizer
+native suites,69 suites/1117 methods for each normal/static generator,23 new
+endpoint-observation methods in each variant and sanitizer,18 changed-C++ checks,
+normal/selected-sanitizer corpus and producer/protocol/Make checks, source
+packaging,4028 maintained-input hashes and36 qualified products. The corpus
+retains1024 canonical/44 declared-unsupported/695 original elaboration failures
+among1763 effective modules; this increment does not claim wider source support.
+
+Independent review found0 Critical,5 Important and0 Minor issues. One test-first
+pass fixes all five: reset-frame abstract-state contamination, missing native
+read invocation before body/getters/errors, outer queued-read cancellation across
+an inner write Apply, duplicate labels after generated-prefix reset repair, and
+a generated benchmark that formerly replayed literal notes without observing.
+All pre-fix qualification/performance is archived separately.
+Updating seven historical Python expectations changed only that test file.
+Seventeen completed gates and52 generator modules are retained with an explicit
+hash proof covering all36 unchanged products and every other4027 input; the
+updated module, remaining modules, whole static generator and sanitizer checks
+run against the current expectations.
+
+All90 corrected observation/control measurements,60 preserved callback runs,
+six wide-alias runs and six normal/configured-sanitizer corpus batches pass.
+Maximum observed normal runtime/RSS: 6.5251s/148876KiB; sanitizer64: 1.3415s/513792KiB.
+Generated measurements execute four fresh getters; source/flat/generated bytes
+and matched parent/current controls agree. The16K alias peak is163676KiB within256MiB.
+Measurements include ordinary background build/test activity; no new speedup is
+claimed. Exact commands, binary/input/output hashes and environment are retained
+under build/callback-endpoint-readback-20261123/{final,scale,callback-scale,
+wide-alias,batch-scale}/. Strict coverage item1 and broader inventory limits stay
+unchanged. The exact guide example passes three matching source/flat/generated invocations
+with9/0b1001/2/0 result notes; this is author verification, not an independent
+reader study.

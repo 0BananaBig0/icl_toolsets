@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_runtime.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -38,6 +39,165 @@ Module Top {
  Instance first Of Leaf;
  Alias low[1:0] = first.value[1:0];
 })";
+void TestCallbackReadInvocationBeforeBody() {
+  pattern::Design design;
+  design.AddIcl("read_invocation.icl", R"(
+Module Top {
+ DataInPort p; DataOutPort q {Source p;}
+ DataRegister value {ReadCallBack Top load <D>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const std::string body : {"error failed", "iGetStatus; error failed"}) {
+    bool observed_invocation = false;
+    pattern::ReadbackUpdates updates;
+    updates.failures = 1;
+    const auto provider = [&](const std::vector<pattern::Operation>& ops,
+                              bool) {
+      observed_invocation =
+          std::any_of(ops.begin(), ops.end(), [](const auto& op) {
+            return op.callback && op.callback_read_execution;
+          });
+      return &updates;
+    };
+    pattern::Runtime runtime(design, netlist, false, provider);
+    runtime.Execute(
+        "read_invocation.pdl",
+        "iPDLLevel 1; iProcsForModule Top; iProc load {data} {" + body +
+            "}; iState p 1; iRead q 0; iApply; iGetStatus; iRead value 0; "
+            "if {![catch {iApply}]} {error expected}; iReset");
+    runtime.Finish();
+    Require(runtime.ReadCallbacksExecuted(), "test actually invoked read body");
+    Require(
+        std::any_of(runtime.operations().begin(), runtime.operations().end(),
+                    [](const auto& op) {
+                      return op.callback && op.callback_read_execution;
+                    }),
+        "invoked read records an immutable boundary before any body command");
+    if (body.find("iGetStatus") != std::string::npos) {
+      Require(observed_invocation,
+              "first getter sees read invocation even after earlier observer "
+              "cursor");
+    }
+  }
+}
+
+void TestCallbackReadInvocationProvenance() {
+  pattern::Design design;
+  design.AddIcl("callback_read_context.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Top store <D> <R>;}
+ DataRegister nested[3:0] {WriteCallBack Top inner <D> <R>;}
+ DataRegister observed[3:0] {ReadCallBack Top load <D> <R>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const std::string definitions = R"(
+iPDLLevel 1
+iProcsForModule Top
+iProc store {data reg} {iWrite p $data}
+iProc inner {data reg} {iWrite p $data}
+iProc load {data reg} {iReset; iWrite nested $data; iApply; iRead q $data}
+)";
+  for (const std::string body :
+       {"iWrite value 9; iApply",
+        "iRead observed 9; iReset; iWrite value 9; iApply",
+        "iProc store {data reg} {iRead observed 9; iReset; iWrite p $data}; "
+        "iWrite value 9; iApply"}) {
+    pattern::Runtime runtime(design, netlist);
+    runtime.Execute("write_only.pdl", definitions + body);
+    runtime.Finish();
+    Require(runtime.CallbacksExecuted() && !runtime.ReadCallbacksExecuted(),
+            "write/canceled-read contexts are not invoked read callbacks");
+    for (const auto& op : runtime.operations()) {
+      Require(!op.callback_read_execution,
+              "queued and canceled reads never acquire invocation provenance");
+    }
+  }
+  for (const std::string body :
+       {"iProc load {data reg} {}; iRead observed 9; iApply",
+        "iProc store {data reg} {iRead observed $data; iApply; "
+        "iNote returned; iWrite p 0}; iWrite value 9; iApply"}) {
+    pattern::Runtime nested(design, netlist);
+    nested.Execute("nested_read.pdl", definitions + body);
+    nested.Finish();
+    Require(nested.ReadCallbacksExecuted(),
+            "empty and nested reads record actual invocation");
+    bool completed = false;
+    for (const auto& op : nested.operations()) {
+      if (op.command == "iApply" && op.call_stack.empty()) {
+        Require(op.callback_execution && op.callback_read_execution,
+                "completed callback Apply retains an empty/nested read");
+        completed = true;
+      }
+      if (op.command == "iNote" && op.arguments[0] == "returned") {
+        Require(op.callback_execution && !op.callback_read_execution,
+                "returning to a write body restores read depth");
+      }
+    }
+    Require(completed, "empty/nested case reaches completed callback Apply");
+  }
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute(
+      "read_context.pdl",
+      definitions + "iRead observed 9; iApply; iReset; iWrite p 0; iApply");
+  runtime.Finish();
+  Require(runtime.ReadCallbacksExecuted(),
+          "actual read invocation is retained across resets");
+  bool reset = false, postcondition = false, completed = false;
+  for (const auto& op : runtime.operations()) {
+    if (!op.callback_execution) {
+      Require(!op.callback_read_execution,
+              "ordinary commands after callback have no read context");
+      continue;
+    }
+    Require(
+        op.callback_read_execution,
+        "read body, nested writes, tail and completed Applies retain context");
+    reset = reset || op.command == "iReset";
+    postcondition = postcondition ||
+                    (op.command == "iState" && op.arguments[0] == "nested");
+    completed = completed || (op.command == "iApply" && op.call_stack.empty());
+  }
+  Require(
+      reset && postcondition && completed,
+      "read provenance covers reset, synthetic write state and outer Apply");
+}
+
+void TestCallbackReadInvocationFailureRecovery() {
+  pattern::Design design;
+  design.AddIcl("callback_read_failure.icl", R"(
+Module Top {
+ DataInPort p;
+ DataRegister value {ReadCallBack Top load <D> <R>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("read_failure.pdl", R"(
+iPDLLevel 1
+iProcsForModule Top
+iProc load {data reg} {iMerge -begin; error broken}
+iRead value 0
+if {![catch {iApply}]} {error {expected callback error}}
+iReset; iWrite p 1; iApply
+)");
+  runtime.Finish();
+  Require(runtime.ReadCallbacksExecuted(),
+          "failed invoked read remains recorded");
+  bool unwound = false;
+  for (const auto& op : runtime.operations()) {
+    if (op.command == "iMerge" && op.arguments[0] == "-end") {
+      Require(op.callback_execution && op.callback_read_execution,
+              "synthetic merge recovery retains its read invocation");
+      unwound = true;
+    }
+    if (op.command == "iWrite" && op.arguments[0] == "p") {
+      Require(!op.callback_execution && !op.callback_read_execution,
+              "read depth is restored before caller reset/recovery");
+    }
+  }
+  Require(unwound, "test exercises synthetic merge unwind");
+}
+
 void TestCallbackQueueAndBinding() {
   pattern::Design design;
   design.AddIcl("callback.icl", kCallbackModel);
@@ -1214,7 +1374,10 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestCallbackQueueAndBinding,
+  for (const auto test : {TestCallbackReadInvocationBeforeBody,
+                          TestCallbackReadInvocationProvenance,
+                          TestCallbackReadInvocationFailureRecovery,
+                          TestCallbackQueueAndBinding,
                           TestCallbackFailureRecovery,
                           TestCaughtCallbackReturnsToCaller,
                           TestCallbackCycles,

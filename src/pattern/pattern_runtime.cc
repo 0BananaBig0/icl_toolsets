@@ -152,6 +152,7 @@ class Runtime::Impl {
 
   const std::vector<Operation>& operations() const { return operations_; }
   bool CallbacksExecuted() const { return callbacks_executed_; }
+  bool ReadCallbacksExecuted() const { return read_callbacks_executed_; }
   const std::vector<std::string>& warnings() const { return warnings_; }
   int Level() const { return level_; }
   std::vector<SourceAction> SourceActions(bool whole_commands) const {
@@ -610,17 +611,27 @@ class Runtime::Impl {
         }
         const auto definition = procedures_.at(binding.procedure);
         callback_stack_.push_back(request.key);
+        if (read) ++read_callback_depth_;
         try {
           callbacks_executed_ = true;
+          read_callbacks_executed_ = read_callbacks_executed_ || read;
+          if (read) {
+            auto invocation = source;
+            invocation.callback_execution = true;
+            invocation.callback_read_execution = true;
+            operations_.push_back(std::move(invocation));
+          }
           InvokeProcedure(
               definition, binding.instance, arguments,
               std::string(read ? "ReadCallBack " : "WriteCallBack ") +
                   node.name + " at " + source.origin,
               source.origin, true);
         } catch (...) {
+          if (read) --read_callback_depth_;
           callback_stack_.pop_back();
           throw;
         }
+        if (read) --read_callback_depth_;
         callback_stack_.pop_back();
         if (read) {
           for (auto* history : {&read_history_, &miscompare_history_}) {
@@ -640,7 +651,8 @@ class Runtime::Impl {
                source.origin,
                source.call_stack,
                false,
-               true});
+               true,
+               read_callback_depth_ != 0});
         }
       }
     } catch (...) {
@@ -1127,7 +1139,8 @@ class Runtime::Impl {
                                  merges_[i - 1].origin,
                                  std::move(stack),
                                  false,
-                                 true});
+                                 true,
+                                 read_callback_depth_ != 0});
         }
       }
       merges_.resize(merge_count);
@@ -1360,6 +1373,7 @@ class Runtime::Impl {
     }
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
     operation.callback_execution = !callback_stack_.empty();
+    operation.callback_read_execution = read_callback_depth_ != 0;
     if (name == "iWrite" && operation.arguments.size() > 2) {
       // Every mode permits a load; retain the native explicit-load policy.
       operation.arguments.resize(2);
@@ -1453,6 +1467,8 @@ class Runtime::Impl {
       }
       if (ExecuteCallbacks(operation)) {
         operation.callback_execution = true;
+        operation.callback_read_execution =
+            operation.callback_read_execution || read_callbacks_executed_;
       } else {
         InvalidateReadHistory(operation);
       }
@@ -1483,6 +1499,8 @@ class Runtime::Impl {
        callbacks_executed_ = false;
   std::map<std::pair<size_t, bool>, CallbackBinding> callback_bindings_;
   std::vector<std::pair<size_t, bool>> callback_stack_;
+  size_t read_callback_depth_ = 0;
+  bool read_callbacks_executed_ = false;
   std::set<std::string> callback_scopes_;
   std::map<size_t, size_t> callback_action_ends_;
   bool trace_source_ = false;
@@ -1546,4 +1564,7 @@ const std::vector<std::string>& Runtime::warnings() const {
 }
 int Runtime::Level() const { return impl_->Level(); }
 bool Runtime::CallbacksExecuted() const { return impl_->CallbacksExecuted(); }
+bool Runtime::ReadCallbacksExecuted() const {
+  return impl_->ReadCallbacksExecuted();
+}
 }  // namespace pattern
