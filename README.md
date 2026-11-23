@@ -444,11 +444,13 @@ Explicit DataRegister ReadCallBack/WriteCallBack requests now execute their
 PDL procedures at iApply, using real endpoint operations. Reset cancels queued
 requests. Groups support separate ordinary requests alongside explicit
 callbacks, with known caller write goals protected across procedure frames,
-including indirect native effects. Masks, ordinary-only/callback-only aliases,
-instance namespaces and source-preserving local-reset releases remain supported.
+including indirect native effects. Aliases can combine ordinary bits with
+explicit callbacks; inversion, sparse ranges, segmented ports and source-preserving
+local-reset releases retain their bit and procedure identities.
 --model_readback observes actual ordinary endpoints; abstract callback storage
-stays unknown. Invoked read-callback histories, automatic downstream callbacks,
-mixed ordinary/callback alias bits and physical callback output remain open.
+stays unknown. Invoked read-callback histories, automatic downstream callbacks
+and physical callback output remain open.
+See [mixed alias bits](docs/pattern-generation.md#mixed-ordinary-and-callback-alias-bits).
 See [mixed caller groups](docs/pattern-generation.md#mixed-ordinary-and-callback-caller-groups).
 See
 [write-callback observations](docs/pattern-generation.md#actual-endpoint-observations-in-write-callbacks).

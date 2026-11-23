@@ -3704,10 +3704,17 @@ class ScanScheduler::Impl {
       }
     }
     if (!count) return primary_state_candidates_;
+    std::vector<size_t> aliases;
+    std::vector<bool> seen_aliases(netlist_.nodes.size(), false);
     const auto retain = [&](size_t id) {
-      if (id < omitted.size() && omitted[id]) {
+      if (id >= omitted.size()) return;
+      if (omitted[id]) {
         omitted[id] = false;
         --count;
+      }
+      if (netlist_.nodes[id].model == ModelKind::kAlias && !seen_aliases[id]) {
+        seen_aliases[id] = true;
+        aliases.push_back(id);
       }
     };
     const auto retain_bits = [&](const std::vector<BitReference>& bits) {
@@ -3717,6 +3724,8 @@ class ScanScheduler::Impl {
       for (const auto& [name, id] : ids) retain(id);
     };
     for (const auto& node : netlist_.nodes) {
+      // A PDL-only alias is not a hardware dependency.
+      if (node.model == ModelKind::kAlias) continue;
       for (const auto& [role, bits] : node.inputs) retain_bits(bits);
       if (node.reset) retain(node.reset->node);
       for (const auto& choice : node.choices) retain_bits(choice.source);
@@ -3742,6 +3751,11 @@ class ScanScheduler::Impl {
       retain_ids(tap.scan_returns);
       retain_ids(tap.pins);
       retain_ids(tap.controls);
+    }
+    for (size_t i = 0; i < aliases.size(); ++i) {
+      for (const auto& [role, bits] : netlist_.nodes[aliases[i]].inputs) {
+        retain_bits(bits);
+      }
     }
     if (!count) return primary_state_candidates_;
     // Unreferenced callback storage has no event or constraint in this query.

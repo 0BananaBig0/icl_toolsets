@@ -474,7 +474,7 @@ $(COV_DIR)/pattern_flatten_test: tests/src/pattern_flatten_test.cc $(COV_DIR)/ut
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 $(COV_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(COV_DIR)/utility/json.o $(COV_PATTERN) $(COV_SHARED) $(COV_DIR)/pdl/pdl_document.o $(COV_DIR)/pattern/pattern_values.o $(COV_DIR)/pattern/pattern_opaque.o | check-z3
-	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(Z3_CFLAGS) $(filter %.cc %.o,$^) $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 $(COV_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(COV_DIR)/pattern/pattern_expression.o $(COV_SHARED)
 	$(CXX) $(CXXSTD) $(COV_CXXFLAGS) $(CPPFLAGS) $(filter %.cc %.o,$^) -o $@
@@ -874,14 +874,14 @@ pattern-runtime-check: $(BUILD_DIR)/pattern_runtime_test
 	@$(BUILD_DIR)/pattern_runtime_test
 
 $(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o $(BUILD_DIR)/pattern/pattern_opaque.o | check-z3
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
 pattern-runtime-static-check: $(BUILD_DIR)/pattern_runtime_test-static
 	@$(BUILD_DIR)/pattern_runtime_test-static
 
 $(BUILD_DIR)/pattern_runtime_test-static: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o $(BUILD_DIR)/pattern/pattern_opaque.o | check-z3 check-tcl-static
 	@if [ -z "$(Z3_STATIC_LIB)" ]; then echo 'error: static Z3 archive required; run make z3-deps' >&2; exit 1; fi
-	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
+	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) -static $^ $(TCL_STATIC_LIBS) $(Z3_STATIC_LIB) -lpthread -o $@
 
 $(UNIT_BIN): tests/unit_tests.cc $(SRC_DIR)/icl/format_tree.cc \
     $(SRC_DIR)/utility/json.cc $(SRC_DIR)/icl/icl_ast.h $(SRC_DIR)/icl/format_tree.h \
@@ -1158,6 +1158,7 @@ python3 tests/src/pattern/test_data_register_feedback.py $1
 python3 tests/src/pattern/test_data_register_callback_model.py $1
 python3 tests/src/pattern/test_callback_execution.py $1
 python3 tests/src/pattern/test_mixed_callback_groups.py $1
+python3 tests/src/pattern/test_mixed_callback_aliases.py $1
 python3 tests/src/pattern/test_callback_endpoint_readback.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1

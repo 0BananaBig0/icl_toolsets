@@ -12,6 +12,7 @@
 #include "pattern/pattern_netlist.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_tap.h"
+#include "pattern/pattern_values.h"
 
 namespace {
 void Require(bool value, const std::string& message) {
@@ -206,6 +207,237 @@ Module Top {
  DataRegister value[3:0] {WriteCallBack Top store <D>;}
  Alias inverted[3:0] = ~p;
 })";
+std::string MixedAliasModel() {
+  auto source = kMixedCallbackModel;
+  source.insert(source.rfind('}'), R"(
+ DataRegister observed[3:0] {ReadCallBack Top load <D>; ReadDataSource p;}
+ Alias mixed[7:0] = spare,value;
+ Alias reading[7:0] = history,observed;
+ Alias sparse[5:0] = spare[3],spare[1],value;
+ Alias conflict[7:0] = p,value;
+)");
+  return source;
+}
+void TestMixedAliasProjection() {
+  pattern::Design design;
+  design.AddIcl("mixed-alias.icl", MixedAliasModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("queue.pdl", R"(
+iProcsForModule Top; set ::calls 0
+iProc store {d} {incr ::calls; iWrite p $d}
+iWrite mixed 0x39
+)");
+  const auto before = runtime.operations();
+  Require(before.size() == 2 && before[0].callback && !before[1].callback &&
+              before[1].command == "iWrite" &&
+              before[1].arguments[1] == "0b0011",
+          "mixed alias appends one immutable marker and one ordinary run");
+  const auto ordinary =
+      pattern::ResolvePdlTarget(netlist, before[1].arguments[0]);
+  Require(ordinary.bits.size() == 4 &&
+              ordinary.bits.front().node == netlist.node_ids.at("spare"),
+          "projection targets the original ordinary node");
+  runtime.Execute("apply.pdl", "iApply; if {$::calls != 1} {error duplicate}");
+  runtime.Finish();
+  for (size_t i = 0; i < before.size(); ++i) {
+    const auto& a = before[i];
+    const auto& b = runtime.operations()[i];
+    Require(a.command == b.command && a.arguments == b.arguments &&
+                a.origin == b.origin && a.call_stack == b.call_stack &&
+                a.callback == b.callback &&
+                a.callback_execution == b.callback_execution &&
+                a.callback_read_execution == b.callback_read_execution &&
+                a.callback_preserved == b.callback_preserved,
+            "callback expansion never revises earlier operations");
+  }
+}
+void TestMixedAliasRanges() {
+  pattern::Design design;
+  design.AddIcl("sparse-alias.icl", MixedAliasModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("sparse.pdl",
+                  "iProcsForModule Top; iProc store {d} {iWrite p $d}; "
+                  "iWrite sparse 0b101001");
+  Require(runtime.operations().size() == 3,
+          "two disjoint selected ordinary bits produce exactly two runs");
+  std::map<int64_t, char> actual;
+  for (size_t i = 1; i < runtime.operations().size(); ++i) {
+    const auto& op = runtime.operations()[i];
+    const auto target = pattern::ResolvePdlTarget(netlist, op.arguments[0]);
+    Require(target.bits.size() == 1,
+            "sparse projection never widens its target");
+    actual[target.bits[0].index] = op.arguments[1].back();
+  }
+  Require(actual == std::map<int64_t, char>{{1, '0'}, {3, '1'}},
+          "sparse projection retains selected index values only");
+  runtime.Execute("apply.pdl", "iApply");
+  runtime.Finish();
+  pattern::Design segmented;
+  segmented.AddIcl("ascending.icl", R"(
+Module Top {
+ DataInPort spare[0:1]; DataInPort spare[2:3]; DataInPort p[3:0];
+ DataRegister value[3:0] {WriteCallBack Top store <D>;}
+ Alias mixed[7:0]=spare,value;
+})");
+  const auto split = pattern::Elaborate(segmented, "Top");
+  pattern::Runtime projected(segmented, split);
+  projected.Execute("ascending.pdl",
+                    "iProcsForModule Top; iProc store {d} {iWrite p $d}; "
+                    "iWrite mixed 0x39");
+  Require(projected.operations().size() == 3,
+          "ascending segmented ports use one run per selected segment");
+  for (size_t i = 1; i < projected.operations().size(); ++i) {
+    Require(
+        pattern::ResolvePdlTarget(split, projected.operations()[i].arguments[0])
+                .bits.size() == 2,
+        "canonical segmented projection resolves both selected bits");
+  }
+  projected.Execute("apply.pdl", "iApply");
+  projected.Finish();
+}
+void TestMixedAliasReadPayloadBudget() {
+  for (const int count : {1, 16, 64}) {
+    pattern::Design design;
+    std::string model =
+        "Module Top {DataInPort p[255:0]; "
+        "DataOutPort ordinary[255:0] {Source p;}";
+    std::string members = "ordinary";
+    for (int i = 0; i < count; ++i) {
+      const auto name = "value" + std::to_string(i);
+      model += "DataRegister " + name + "[" + std::to_string(256 / count - 1) +
+               ":0] {ReadCallBack Top load <D> <R>;}";
+      members += "," + name;
+    }
+    model += "Alias mixed[511:0] = " + members + ";}";
+    design.AddIcl("read-budget.icl", model);
+    const auto netlist = pattern::Elaborate(design, "Top");
+    pattern::Runtime runtime(design, netlist);
+    runtime.Execute("read-budget.pdl",
+                    "iPDLLevel 1; iProcsForModule Top; "
+                    "iProc load {data reg} {lappend ::seen $reg}; "
+                    "iRead mixed 0; iApply");
+    runtime.Finish();
+    size_t argument_bytes = 0, invoked = 0;
+    for (const auto& op : runtime.operations()) {
+      for (const auto& argument : op.arguments) {
+        argument_bytes += argument.size();
+      }
+      if (!op.callback || !op.callback_read_execution) continue;
+      ++invoked;
+      Require(op.command == "iRead" &&
+                  op.origin.find("read-budget.pdl:") == 0 &&
+                  op.call_stack == runtime.operations().front().call_stack,
+              "compact read invocation retains command and source provenance");
+    }
+    Require(invoked == static_cast<size_t>(count) &&
+                runtime.ReadCallbacksExecuted(),
+            "every selected read callback records an invocation");
+    Require(argument_bytes <= 2048,
+            "mixed read retains bounded argument bytes independent of "
+            "callback count: " +
+                std::to_string(argument_bytes));
+  }
+}
+void TestMixedAliasHistory() {
+  pattern::Design design;
+  design.AddIcl("alias-history.icl", MixedAliasModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime canceled(design, netlist);
+  canceled.Execute("cancel.pdl", R"(
+iState history 3 -LastReadValue
+iRead reading 0x39; iReset
+if {[iGetReadData history -dec] != 3} {error lost_history}
+)");
+  canceled.Finish();
+  Require(!canceled.ReadCallbacksExecuted(),
+          "canceled mixed read never records a callback invocation");
+  pattern::Runtime reset(design, netlist);
+  reset.Execute("body-reset.pdl", R"(
+iProcsForModule Top; iProc load {d} {iReset; iRead q $d}
+iState history 3 -LastReadValue
+iRead reading 0x39; iApply
+if {[iGetReadData history -dec] != 3} {error canceled_projection}
+)");
+  reset.Finish();
+  Require(reset.ReadCallbacksExecuted(),
+          "invoked read callback provenance survives its reset");
+  pattern::Runtime committed(design, netlist);
+  committed.Execute("committed.pdl", R"(
+iProcsForModule Top
+iProc store {d} {iApply; iState history 5 -LastReadValue; iWrite p $d}
+iState history 3 -LastReadValue
+iRead history 0; iWrite mixed 0x39; iApply
+if {[iGetReadData history -dec] != 5} {error outer_invalidation}
+)");
+  committed.Finish();
+}
+void TestMixedAliasCallerGoals() {
+  pattern::Design design;
+  design.AddIcl("alias-goals.icl", MixedAliasModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime conflict(design, netlist);
+  Fails(
+      [&] {
+        conflict.Execute("conflict.pdl",
+                         "iProcsForModule Top; iProc store {d} {iWrite p $d}; "
+                         "iWrite conflict 0x39; iApply");
+      },
+      "caller");
+  pattern::Runtime nested(design, netlist);
+  Fails(
+      [&] {
+        nested.Execute("nested.pdl",
+                       "iProcsForModule Top; "
+                       "iProc store {d} {iWrite mixed 0x29; iApply}; "
+                       "iWrite spare 3; iWrite value 9; iApply");
+      },
+      "caller");
+  pattern::Runtime compatible(design, netlist);
+  compatible.Execute("compatible.pdl",
+                     "iProcsForModule Top; iProc store {d} {iWrite p $d}; "
+                     "iWrite conflict 0x99; iApply");
+  compatible.Finish();
+}
+void TestMixedAliasFailureScopes() {
+  pattern::Design design;
+  design.AddIcl("alias-failure.icl", MixedAliasModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("failure.pdl", R"(
+iProcsForModule Top; set ::calls 0
+iProc store {d} {incr ::calls; iWrite mixed 0x39; iApply}
+iWrite mixed 0x39
+if {![catch {iApply}]} {error cycle_accepted}
+if {![catch {iApply}]} {error poison_lost}
+iReset; iProc store {d} {incr ::calls; iWrite p $d}
+iWrite mixed 0x36; iApply
+if {$::calls != 2} {error retry_count}
+)");
+  runtime.Finish();
+}
+void TestMixedAliasSourceSpans() {
+  pattern::Design design;
+  design.AddIcl("alias-span.icl", MixedAliasModel());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist, true);
+  runtime.Execute("span.pdl", R"(
+iProcsForModule Top; iProc store {d} {iWrite p $d}
+iWrite mixed 0x39
+)");
+  auto actions = runtime.SourceActions(false);
+  Require(actions.size() == 1 && actions[0].begin == 0 && actions[0].end == 2,
+          "one source command owns its marker and ordinary projection");
+  runtime.Execute("apply.pdl", "iApply");
+  runtime.Finish();
+  for (bool whole : {false, true}) {
+    actions = runtime.SourceActions(whole);
+    Require(actions.size() == 1 && actions[0].begin == 0 &&
+                actions[0].end == runtime.operations().size(),
+            "source span extends across projection and callback expansion");
+  }
+}
 void TestMixedCallbackFrameGoals() {
   pattern::Design design;
   design.AddIcl("frame-goals.icl", kMixedCallbackModel);
@@ -1547,7 +1779,14 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestMixedCallbackFrameGoals,
+  for (const auto test : {TestMixedAliasProjection,
+                          TestMixedAliasRanges,
+                          TestMixedAliasReadPayloadBudget,
+                          TestMixedAliasHistory,
+                          TestMixedAliasCallerGoals,
+                          TestMixedAliasFailureScopes,
+                          TestMixedAliasSourceSpans,
+                          TestMixedCallbackFrameGoals,
                           TestMixedCallbackQueue,
                           TestMixedCallbackHistory,
                           TestMixedCallbackCallerWrites,

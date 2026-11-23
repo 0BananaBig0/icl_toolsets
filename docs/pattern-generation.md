@@ -9390,3 +9390,129 @@ Task161 is merged into master;22 integration checks pass on4033 identical input
 hashes/20 copied qualified native products, preserving117 stashes. Receipt:
 build/mixed-callback-groups-20261123/merged/receipt.json. Broader original inventory
 items remain open as tracked; execution continues after this increment.
+
+
+## Mixed ordinary and callback alias bits
+
+One alias request can combine ordinary data with explicit callback registers.
+Ordinary bits retain their native access; each selected callback register invokes
+its procedure once with its own data and name. Inversion, partial ranges,
+segmented ports and duplicate references keep their resolved bit identities.
+Duplicates use the last specified bit; unselected ordinary bits and prior read
+histories stay untouched.
+
+Save this complete model as `mixed-alias.icl`:
+
+```icl
+Module Chains {
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+ Alias mixed[7:0]=spare,value;
+}
+```
+
+Save this program as `mixed-alias.pdl`:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc store {data reg} {iWrite p $data}
+iReset
+iWrite mixed 0x39
+iApply
+iRead spare_out 0; iRead q 0; iApply
+iNote [iGetReadData spare_out -dec]
+iNote [iGetReadData q -dec]
+```
+
+Run the source, flattened model and generated program:
+
+```sh
+build/icl-pattern-generation --icl mixed-alias.icl --pdl mixed-alias.pdl --top_module Chains --output mixed-source.pdl --model_readback --debug
+build/icl-pattern-generation --icl debug/Chains.icl --pdl mixed-alias.pdl --top_module Chains --output mixed-flat.pdl --model_readback
+build/icl-pattern-generation --icl mixed-alias.icl --pdl mixed-source.pdl --top_module Chains --output mixed-generated.pdl --model_readback
+```
+
+The source and flat runs evaluate the getters and contain `iNote 3` and
+`iNote 9` from ordinary observations. The generated input already contains
+these literal notes; its replay reproduces them without reevaluating getters.
+The high alias bits request `spare=3`; its low bits invoke `store` with `value=9`,
+which writes `p`. Abstract callback register storage stays unknown.
+
+A write selects WriteCallBack members; a read selects ReadCallBack members.
+Mixed reads require observable ordinary members; a DataInPort is a write target.
+Generation without `--model_readback` retains ordinary reads alongside a
+ReadCallBack procedure. Actually invoked read-callback histories still reject
+in modeled mode. A mixed read canceled before invocation preserves prior
+ordinary history and does not invoke a callback.
+
+Existing callback Apply/reset rules apply. A body Apply can flush ordinary
+requests; reset cancels still-pending ordinary requests and caller goals.
+Conflicting known caller/procedure values reject: a caller request for `p=3`
+cannot silently become the procedure's `p=9`. Caller-only local-reset rewriting
+retains the original iProc bytes, including mixed-alias callers.
+
+AccessTogether, `iApply -together`, callback dispatch inside an active iMerge,
+mixed raw requests, automatic downstream invocation and physical callback output
+retain their guards. Ordinary endpoint merges inside a procedure keep their
+existing behavior. Broader items4/6 and excluded coverage1 stay as tracked in
+[remaining work](remaining-work.md). Final qualification and measured limits
+are recorded after verification.
+
+
+Task162 qualifies mixed ordinary/callback alias bits while preserving the
+original request and compact ordinary runs. Full, partial, sparse, inverted,
+nested, duplicate and ascending segmented selections retain actual ordinary
+history and once-only callback dispatch. Invoked read-callback modeled histories,
+active callback iMerge, automatic downstream invocation and physical callbacks
+retain their existing limits.
+
+All61 final gates pass:15 normal/15 leak-enabled sanitizer native suites,
+72 suites/1169 methods per normal/static generator,16 mixed-alias CLI methods
+per build and selected sanitizer, nine C++ format/tidy/C++17 checks, complete
+corpus/producer/protocol checks and source packaging. Exact4036 input hashes and
+38 products are recorded in build/mixed-callback-aliases-20261123/final/receipt.json.
+All changed native products, whole generators and packaging executed fresh;
+nine quality checks retain exact source and raw-log provenance.
+
+One independent review found0Critical/2Important/1Minor. One test-first pass
+fixes both payload-copy costs and clarifies the guide. The512-bit sparse write
+changes from258 full-payload allocations to2, matching the contiguous control's2;
+canceled reset-only controls remain0. A maintained dynamic allocation
+probe covers four processes. Mixed reads retain register-local invocation
+payloads and immutable original requests; native1/16/64-callback fixtures enforce
+a2KiB total argument budget and source provenance. Pure-callback stream behavior
+stays unchanged. No new Minor is deferred and no second review ran. Rulings:
+build/mixed-callback-aliases-20261123/rulings.json.
+
+The243-process matrix passes:81 new mixed/control, six4096/16384-bit mixed
+aliases,81 preserved mixed-group,60 callback, six pure-wide-alias, six corpus
+batches and three guide invocations. New regular-grid maximum: 8.2675s/520192KiB
+within10s/512MiB; mixed-wide peak:114324KiB within10s/256MiB. Normal target counts
+are64/256/1024; sanitizer target count64, with leak detection and UBSAN halt.
+The smaller unit receipt smoke grid does not replace these measurements.
+Each observed generated benchmark uses fresh getters. The guide's generated
+replay instead reproduces existing literal notes, as explicitly documented.
+
+Separate and unused parent/current controls omit the PDL-only mixed alias
+declaration; receipts disclose declared_aliases and actual command/operand/frame
+counts. Hardware output matches separately queued mixed controls; no identical
+source-workload speedup is claimed. The scheduler retains aliases reached from
+hardware, explicit requests and reservations without rooting PDL-only aliases.
+Before/after identical-input/output evidence for the measured sanitizer state
+index fix is retained in index-performance-proof.json; ASAN settings and caps
+are unchanged. Wider caller masks and broader inventory cases remain open.
+
+One separate1024 control first measured10.8987s. Alternating exact-input
+diagnostics measured current8.1817–9.0434s and parent8.2896–10.1874s with
+identical outputs, showing timing variability and no demonstrated regression.
+The final grid resumed only unrun rows after validating existing binary,
+environment and artifact hashes; caps stayed unchanged. The failed measurement
+and six diagnostic runs remain separately recorded under scale-timing-first-attempt/
+and control-diagnose/. Results establish the measured runs, not a
+hard wall-time guarantee on a noisy host. Dynamic allocation instrumentation
+uses LD_PRELOAD; the fully static ELF cannot load it, so static allocation
+counts are unmeasured. The complete static behavioral suite passed independently.
+Coverage item1 remains excluded. Corpus:1024 canonical/44 declared unsupported/
+695 original elaboration failures among1763 effective modules.
