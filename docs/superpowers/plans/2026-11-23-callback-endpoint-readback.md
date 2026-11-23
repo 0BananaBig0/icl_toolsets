@@ -80,26 +80,26 @@ Assume masks callback storage at initialization/reset; written-state assumptions
 mask callback bits while retaining ordinary alias bits. Never expose direct
 unexpanded callback data operations as actual native data transactions.
 
-- [ ] Native and CLI RED for real write-body endpoint observations, wrong expected
+- [x] Native and CLI RED for real write-body endpoint observations, wrong expected
       values, no-op callbacks, unknown shadow outputs, generated postconditions/
       mixed aliases, logical-target rejection, canceled/read-invoked contexts.
       Parent executable and real unknown-source probe are retained.
-- [ ] Replace blanket context rejection with typed read-context/applied-read
+- [x] Replace blanket context rejection with typed read-context/applied-read
       rejection; skip logical markers; replay real existing endpoint operations.
       Preserve physical/timing/reader-error boundaries and incremental cancellation.
       CLI permits invoked write callbacks with model_readback, keeps read/physical guards.
-- [ ] Run source/flat/generated and local-reset/split-file replay with actual
+- [x] Run source/flat/generated and local-reset/split-file replay with actual
       PIO/selectableDataReg/serial-or-boundTAP endpoints, nested masks/namespaces,
       sparse/inverted histories, status/clear, errors/recovery and reservations.
       Expected actual values/mismatch counts derive from prior native state/frames;
       logical data remains unknown or explicitly unavailable, never requested data.
-- [ ] Register suite in both generators. Document exact example/commands,
+- [x] Register suite in both generators. Document exact example/commands,
       actual-vs-logical/manual data and retained limits. Run focused normal/static/
       SAN, full ordinary callback compatibility and all changedC++quality.
-- [ ] Measure specified scale/controls on exact tools; preserve parent/control and
+- [x] Measure specified scale/controls on exact tools; preserve parent/control and
       fresh output provenance. Expected all bounds and source/flat/generated values
       pass; no stale artifacts or unmeasured improvement claim.
-- [ ] Commit; one fresh final independent review. Test-first fix Critical/Important
+- [x] Commit; one fresh final independent review. Test-first fix Critical/Important
       in one pass, deferMinors/no rereview. Run required full qualification after
       relevant fixes and bind all source/product/performance hashes.
 - [ ] Merge master, verify exact merged inputs/products/focused checks, push,
