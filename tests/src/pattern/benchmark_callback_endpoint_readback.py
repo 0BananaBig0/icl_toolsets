@@ -102,6 +102,18 @@ def main():
                         for form, flat, body in (
                                 ("flat", output.parent / "debug/Top.icl", pdl),
                                 ("generated", model, output)):
+                            if form == "generated":
+                                probe = body.read_text().replace("iPDLLevel 0", "iPDLLevel 1", 1)
+                                for value in range(1, 5):
+                                    literal = "iNote %d\n" % value
+                                    if probe.count(literal) != 1:
+                                        raise RuntimeError("missing generated group boundary")
+                                    probe = probe.replace(literal,
+                                                          "iNote [iGetReadData q -dec]\n", 1)
+                                body = output.parent / "generated-observations.pdl"
+                                body.write_text(probe)
+                                if body.read_text().count("iGetReadData q -dec") != 4:
+                                    raise RuntimeError("generated observation requires four fresh getters")
                             replay, _ = run(owner, mode, count, repeat,
                                             form, flat, body, root)
                             if replay != reference:

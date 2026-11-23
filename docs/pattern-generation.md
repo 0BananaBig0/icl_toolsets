@@ -9038,7 +9038,10 @@ Their requested <D> and generated iState postconditions are useful to goal
 generation, but remain unknown in the independent observation model. A no-op
 procedure cannot fabricate observed data. Outputs sourced from callback storage
 stay unknown, even after a declared ResetValue or an iState assignment through
-a mixed or inverted alias. Explicit manual -LastReadValue/-LastMiscompareValue
+a mixed or inverted alias. Reset metadata is masked in a private observation
+network so asynchronous reset propagation during ordinary frames also remains
+unknown; the goal-generation network keeps its declared reset semantics.
+Explicit manual -LastReadValue/-LastMiscompareValue
 assumptions keep their existing meaning; these are supplied assumptions.
 
 Invoked ReadCallBack histories remain unsupported, including invocation inside
@@ -9061,6 +9064,9 @@ Reproduce the bounded observation benchmark with:
       --binary build/icl-pattern-generation --parent /path/to/parent-executable \
       --sanitized /path/to/sanitized-executable --output /tmp/callback-observations
 
-It checks actual four-group values, fresh source/flat/generated output, three
+Generated measurements replace the four literal result notes with fresh getters
+at the corresponding group boundaries; their canonical output must still match
+the source result. This forces the lazy observer to execute on generated
+transactions. It checks actual four-group values, fresh source/flat/generated output, three
 repeats at 64/256/1024 targets and sanitizer64, and matched callback-free, unused
 and observer-off controls. Each run must stay within10s and512MiB.

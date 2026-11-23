@@ -263,5 +263,71 @@ iNote [iGetReadData q -dec]; iNote [iGetReadData shadow -bin]
         self.assertEqual(self.notes(output), [b"5", b"0bxxxx"])
 
 
+    def test_uninvoked_sibling_read_canceled_after_write_error(self):
+        body = PROCS.replace(" iWrite p $data",
+                             " iWrite p $data; iApply; error failed")
+        output = self.replay(MODEL, body + """
+iWrite value 9; iRead observed 9
+if {![catch {iApply}]} {error {expected write error}}
+iReset; iWrite p 5; iApply; iRead q 0; iApply
+iNote [iGetReadData q -dec]
+""")
+        self.assertEqual(self.notes(output), [b"5"])
+
+    def test_unused_callback_local_reset_does_not_break_other_observations(self):
+        source = """Module Child {
+ ResetPort rst;
+ DataRegister value[3:0] {WriteCallBack Chains store <D>; ResetValue 9;}
+}
+Module Chains {
+ DataInPort p[3:0]; DataInPort reset; DataOutPort q[3:0] {Source p;}
+ ResetPort global;
+ DataMux reset_gate SelectedBy reset {1'b0: global; 1'b1: 1'b1;}
+ Instance c Of Child {InputPort rst = reset_gate;}
+}"""
+        output = self.replay(source, """iPDLLevel 1
+iReset; iState reset 1; iWrite p 5; iApply; iRead q 0; iApply
+iNote [iGetReadData q -bin]
+""")
+        self.assertEqual(self.notes(output), [b"0b0101"])
+
+    def test_serial_frames_cannot_materialize_callback_reset_value(self):
+        source = """Module Child {
+ ResetPort rst;
+ DataRegister value[3:0] {WriteCallBack Chains store <D>; ResetValue 9;}
+ DataOutPort shadow[3:0] {Source value;}
+}
+""" + cli.NETWORK.replace("  SelectPort sel;", """
+ ResetPort global; DataInPort reset;
+ DataMux reset_gate SelectedBy reset {1'b0: global; 1'b1: 1'b1;}
+ Instance c Of Child {InputPort rst = reset_gate;}
+ DataOutPort shadow[3:0] {Source c.shadow;}
+  SelectPort sel;""")
+        output = self.replay(source, """iPDLLevel 1
+iReset; iState reset 1; iWrite a 5; iApply
+iState reset 0; iRead shadow 0; iApply
+iNote [iGetReadData shadow -bin]
+if {![catch {iGetStatus}]} {error {reset value became actual callback data}}
+""")
+        self.assertEqual(self.notes(output), [b"0bxxxx"])
+
+    def test_generated_prefix_note_survives_local_reset_exactly_once(self):
+        icl, prefix, body = (self.root / n for n in
+                             ("source.icl", "prefix.pdl", "body.pdl"))
+        icl.write_text(callbacks.RESET_MODEL)
+        prefix.write_text("iPDLLevel 1\n")
+        self.run_tool(icl, prefix, "prefix-result.pdl")
+        body.write_text(callbacks.RESET_PROCS + """
+iReset; iCall request 9; iApply; iRead child.wire 0; iApply
+iNote [iGetReadData child.wire -dec]
+""")
+        output = self.run_tool(icl, self.root / "prefix-result.pdl",
+                               extra=("--pdl", str(body), "--local_reset",
+                                      str(self.root / "reset.pdl")))
+        self.assertEqual(output.count(observations.LABEL), 1)
+        self.assertEqual(output, self.run_tool(
+            icl, self.root / "result.pdl", "generated/result.pdl"))
+
+
 if __name__ == "__main__":
     unittest.main()

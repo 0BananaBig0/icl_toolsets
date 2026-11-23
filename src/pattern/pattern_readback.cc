@@ -6,6 +6,7 @@
 #include <exception>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
@@ -19,10 +20,30 @@
 
 namespace pattern {
 namespace {
+std::optional<Netlist> ObservationNetlist(const Netlist& netlist) {
+  if (std::none_of(netlist.nodes.begin(), netlist.nodes.end(),
+                   [](const auto& node) {
+                     return node.read_callback || node.write_callback;
+                   })) {
+    return std::nullopt;
+  }
+  auto result = netlist;
+  for (auto& node : result.nodes) {
+    if (!node.read_callback && !node.write_callback) continue;
+    const auto reset = node.constants.find("ResetValue");
+    if (reset != node.constants.end()) {
+      reset->second.data.assign(node.Width(), 'x');
+    }
+  }
+  return result;
+}
 class ModelReadback {
  public:
   ModelReadback(const Netlist& netlist, bool physical)
-      : netlist_(netlist), physical_(physical), reservations_(netlist) {
+      : observation_netlist_(ObservationNetlist(netlist)),
+        netlist_(observation_netlist_ ? *observation_netlist_ : netlist),
+        physical_(physical),
+        reservations_(netlist_) {
     const bool opaque =
         netlist.taps.empty() &&
         std::any_of(
@@ -36,7 +57,7 @@ class ModelReadback {
     if (opaque) {
       opaque_ = std::make_unique<OpaqueScanQueue>(DescribeOpaqueScans(netlist));
     } else {
-      scheduler_ = std::make_unique<ScanScheduler>(netlist);
+      scheduler_ = std::make_unique<ScanScheduler>(netlist_);
     }
     if (std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
@@ -60,8 +81,7 @@ class ModelReadback {
     if (error_) std::rethrow_exception(error_);
     try {
       // Reject unsupported histories before exposing any observation delta.
-      bool read_pending = read_callback_pending_;
-      bool write_pending = write_callback_pending_;
+      auto callback_pending = callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
         if (op.callback_read_execution ||
@@ -70,18 +90,16 @@ class ModelReadback {
               op.origin + ": modeled readback excludes callback histories");
         }
         if (op.callback) {
-          if (op.command == "iRead") read_pending = true;
-          if (op.command == "iWrite") write_pending = true;
+          callback_pending.insert(op.call_stack);
           continue;
         }
-        if (op.callback_execution) write_pending = false;
-        if (op.command == "iReset") {
-          read_pending = false;
-          write_pending = false;
-        }
-        if (op.command == "iApply" && (read_pending || write_pending)) {
-          throw std::runtime_error(
-              op.origin + ": modeled readback excludes callback histories");
+        if (op.command == "iReset") callback_pending.clear();
+        if (op.command == "iApply" && callback_pending.count(op.call_stack)) {
+          if (!op.callback_execution) {
+            throw std::runtime_error(
+                op.origin + ": modeled readback excludes callback histories");
+          }
+          callback_pending.erase(op.call_stack);
         }
         if (!callback_unknown_.empty() &&
             (op.command == "iWrite" || op.command == "iRead")) {
@@ -105,8 +123,7 @@ class ModelReadback {
                                    op.command + " histories");
         }
       }
-      read_callback_pending_ = read_pending;
-      write_callback_pending_ = write_pending;
+      callback_pending_ = std::move(callback_pending);
       updates_.bits.clear();
       updates_.scans.clear();
       positions_.clear();
@@ -322,10 +339,10 @@ class ModelReadback {
     }
   }
 
+  std::optional<Netlist> observation_netlist_;
   const Netlist& netlist_;
   bool physical_;
-  bool read_callback_pending_ = false;
-  bool write_callback_pending_ = false;
+  std::set<std::vector<std::string>> callback_pending_;
   std::vector<bool> callback_storage_;
   std::vector<std::pair<std::string, std::string>> callback_unknown_;
   z3::context context_;

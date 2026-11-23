@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_runtime.h"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -38,6 +39,48 @@ Module Top {
  Instance first Of Leaf;
  Alias low[1:0] = first.value[1:0];
 })";
+void TestCallbackReadInvocationBeforeBody() {
+  pattern::Design design;
+  design.AddIcl("read_invocation.icl", R"(
+Module Top {
+ DataInPort p; DataOutPort q {Source p;}
+ DataRegister value {ReadCallBack Top load <D>; ReadDataSource p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const std::string body : {"error failed", "iGetStatus; error failed"}) {
+    bool observed_invocation = false;
+    pattern::ReadbackUpdates updates;
+    updates.failures = 1;
+    const auto provider = [&](const std::vector<pattern::Operation>& ops,
+                              bool) {
+      observed_invocation =
+          std::any_of(ops.begin(), ops.end(), [](const auto& op) {
+            return op.callback && op.callback_read_execution;
+          });
+      return &updates;
+    };
+    pattern::Runtime runtime(design, netlist, false, provider);
+    runtime.Execute(
+        "read_invocation.pdl",
+        "iPDLLevel 1; iProcsForModule Top; iProc load {data} {" + body +
+            "}; iState p 1; iRead q 0; iApply; iGetStatus; iRead value 0; "
+            "if {![catch {iApply}]} {error expected}; iReset");
+    runtime.Finish();
+    Require(runtime.ReadCallbacksExecuted(), "test actually invoked read body");
+    Require(
+        std::any_of(runtime.operations().begin(), runtime.operations().end(),
+                    [](const auto& op) {
+                      return op.callback && op.callback_read_execution;
+                    }),
+        "invoked read records an immutable boundary before any body command");
+    if (body.find("iGetStatus") != std::string::npos) {
+      Require(observed_invocation,
+              "first getter sees read invocation even after earlier observer "
+              "cursor");
+    }
+  }
+}
+
 void TestCallbackReadInvocationProvenance() {
   pattern::Design design;
   design.AddIcl("callback_read_context.icl", R"(
@@ -1331,7 +1374,8 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestCallbackReadInvocationProvenance,
+  for (const auto test : {TestCallbackReadInvocationBeforeBody,
+                          TestCallbackReadInvocationProvenance,
                           TestCallbackReadInvocationFailureRecovery,
                           TestCallbackQueueAndBinding,
                           TestCallbackFailureRecovery,

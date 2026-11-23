@@ -615,6 +615,12 @@ class Runtime::Impl {
         try {
           callbacks_executed_ = true;
           read_callbacks_executed_ = read_callbacks_executed_ || read;
+          if (read) {
+            auto invocation = source;
+            invocation.callback_execution = true;
+            invocation.callback_read_execution = true;
+            operations_.push_back(std::move(invocation));
+          }
           InvokeProcedure(
               definition, binding.instance, arguments,
               std::string(read ? "ReadCallBack " : "WriteCallBack ") +

@@ -1019,6 +1019,11 @@ int main(int argc, char** argv) {
         rewritten_source += state.cleanup;
         verify_source(rewritten_source, expected, state.verify);
         if (runtime.CallbacksExecuted()) {
+          if (options.model_readback) {
+            expected.erase(
+                std::remove_if(expected.begin(), expected.end(), is_model_note),
+                expected.end());
+          }
           pdl =
               GenerateMerged(network.netlist, expected, options.model_readback);
         }
