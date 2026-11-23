@@ -134,7 +134,12 @@ class ModelReadback {
         try {
           Process(op);
         } catch (const std::exception& error) {
-          throw std::runtime_error(op.origin + ": " + error.what());
+          throw std::runtime_error(
+              op.origin + ": " +
+              (op.callback_preserved.empty()
+                   ? ""
+                   : "while preserving callback caller goals: ") +
+              error.what());
         }
       }
       updates_.failures = failures_;
@@ -254,6 +259,13 @@ class ModelReadback {
                             : std::string(target.bits.size(), 'x');
       pending_.Add(op, target, bits);
     } else if (op.command == "iApply") {
+      const auto caller_values = reservations_.CallbackValues(op, pending_);
+      const auto& preserved =
+          caller_values ? *caller_values : reservations_.Values();
+      if (!op.callback_preserved.empty() && !raw_pending_.empty()) {
+        throw std::runtime_error(
+            "raw scans with callback caller goals are unsupported");
+      }
       const auto& accesses = pending_.Operations();
       const auto [bits, expected] = pending_.ReadModel();
       std::map<std::pair<size_t, int64_t>, size_t> requested;
@@ -278,9 +290,9 @@ class ModelReadback {
       }
       if (raw_pending_.empty() || !pending_.Empty()) {
         scheduler_->Apply(
-            accesses, raw_pending_.empty() && together, reservations_.Values(),
-            true, physical_,
-            bits.empty() ? ScanScheduler::PioObservation{} : observe);
+            accesses, raw_pending_.empty() && together, preserved, true,
+            physical_, bits.empty() ? ScanScheduler::PioObservation{} : observe,
+            op.callback_preserved);
       }
       if (actual.find('?') != std::string::npos) {
         throw std::runtime_error(
@@ -295,9 +307,8 @@ class ModelReadback {
         std::set<size_t> assigned;
         std::vector<ScanStep> preparations;
         scheduler_->ApplyRawScans(
-            scans, reservations_.Values(),
-            reservations_.Values().empty() ? nullptr : &assigned, &preparations,
-            [&](const auto& scan, const auto& actual) {
+            scans, preserved, preserved.empty() ? nullptr : &assigned,
+            &preparations, [&](const auto& scan, const auto& actual) {
               ObserveRaw(scan, actual);
             });
         reservations_.AssignedScans(assigned, *scheduler_);
@@ -318,7 +329,9 @@ class ModelReadback {
         for (size_t i = 0; i < target.bits.size(); ++i) {
           if (callback_storage_.at(target.bits[i].node)) bits[i] = 'x';
         }
-        scheduler_->Assume(args[0], bits);
+        scheduler_->Assume(
+            args[0], bits,
+            reservations_.CallbackConstraints(op, pending_, scheduler_.get()));
         pending_.Assume(target, bits);
         reservations_.Assigned({op}, *scheduler_);
       } else {

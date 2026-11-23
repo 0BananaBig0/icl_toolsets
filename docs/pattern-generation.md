@@ -9252,3 +9252,136 @@ Task160 is merged into master;20 integration checks pass on4031 identical input
 hashes/20 copied qualified native products, preserving117 stashes. Receipt:
 build/opaque-child-raw-20261123/merged/receipt.json. Broader items2–8/10–12 stay
 open as tracked; the next increment continues the original requested inventory.
+
+
+## Mixed ordinary and callback caller groups
+
+An Apply can contain separate ordinary requests and explicitly requested
+DataRegister callbacks. Ordinary requests stay in the hardware queue while
+the procedure runs. Existing explicit and implicit callback tail Applies keep
+their order; reset cancels unexecuted hardware requests. Known ordinary caller
+write goals stay protected until the selected callback group returns.
+
+Save this as mixed-callback.icl:
+
+~~~icl
+Module Chains {
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Chains store <D>;}
+}
+~~~
+
+Save this as mixed-callback.pdl:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc store {data} {iWrite p $data}
+iReset
+iWrite spare 3; iWrite value 9; iApply
+iRead spare_out 0; iRead q 0; iApply
+iNote [iGetReadData spare_out -dec]
+iNote [iGetReadData q -dec]
+~~~
+
+Run source, exported flat ICL and generated PDL:
+
+~~~sh
+build/icl-pattern-generation --icl mixed-callback.icl --pdl mixed-callback.pdl --top_module Chains --output example/source.pdl --debug --model_readback
+build/icl-pattern-generation --icl example/debug/Chains.icl --pdl mixed-callback.pdl --top_module Chains --output example/flat.pdl --model_readback
+build/icl-pattern-generation --icl mixed-callback.icl --pdl example/source.pdl --top_module Chains --output example/generated.pdl --model_readback
+~~~
+
+The result notes are3 and9 in each form. The zero comparisons do not supply
+observed data: spare_out and q reflect actual native endpoint values. Abstract
+callback storage remains unknown. This is author verification, not an
+independent reader study; final qualification records the executed invocations.
+
+For example, iWrite p3 together with iWrite value9 rejects because store
+would replace the ordinary caller's3 with9. A compatible p9/value9 group is
+allowed. Direct conflicting or unknown endpoint writes and controlling state
+assumptions reject before those commands are recorded. Indirect effects, such
+as writing q and thereby driving p, are checked by native preservation at
+frame/state boundaries. Native checks cover callback waits as well; no extra
+writes, assumed observations or preparation cycles are added to enforce goals.
+
+Static targets, data, callback bindings, argument counts and cycles are checked
+before procedures execute. A body can have earlier committed inner Applies
+before a later error; they are not fictitiously rolled back. Existing Tcl
+callback failure poisoning and reset recovery remain. A body reset clears
+pending ordinary requests and caller write constraints; the already selected
+callback batch retains its existing iteration semantics. A canceled ordinary
+read keeps its prior history, and outer completion does not invalidate a read
+already completed by an inner Apply. Native/model execution failures retain the
+existing fail-closed observation rules.
+
+The ordinary request can use an ordinary-only alias, and callbacks can use
+callback-only aliases, masks, namespace/prefix and split inputs. One alias
+combining ordinary and callback bits remains unsupported, as do automatic
+downstream invocation, invoking callbacks within an active iMerge,
+iApply -together, mixed raw caller requests, physical callback output and actual
+invoked ReadCallBack histories. ReadCallBack generation keeps its previous
+non-model behavior. Existing ordinary endpoint merges within a callback body
+retain their normal pending-queue rules. Unsupported or conflicting programs
+preserve previously published output/debug/reset artifacts on failure.
+
+The benchmark command is:
+
+~~~sh
+python3 tests/src/pattern/benchmark_mixed_callback_groups.py --binary build/icl-pattern-generation --parent /path/to/parent/icl-pattern-generation --sanitized /path/to/sanitized/icl-pattern-generation --output /tmp/mixed-callback-measurements
+~~~
+
+The grid uses64/256/1024 normal targets and64 sanitizer targets, four probe
+groups and three source/flat/generated repeats, bounded by10s/512MiB per
+process. Every generated observation executes a fresh spare_out getter.
+Ordinary, unused-callback and observer-off controls report their different
+request/declared-storage/postcondition dimensions, not an identical workload
+or a speedup claim.
+
+These are primary-I/O models: scan storage, scan CSUs and shifted bits are
+zero. For N invoked callbacks, the output has4*(N+2) Applies, including
+4*(N+1) nonempty PIO frames and four empty outer Applies, with4*N endpoint
+writes and callback postconditions. The extra Applies are existing implicit
+callback tail completions. Ordinary/unused controls have eight nonempty PIO
+Applies and four endpoint writes; all modes have eight spare writes. Receipts
+measure these counts from the actual output and distinguish original versus
+generated input operand counts.
+
+
+Task161 passes59 final qualification gates:15 normal and15 leak-enabled sanitizer
+native suites,71 suites/1153 methods for each normal/static generator,17 mixed
+caller CLI methods in each variant and selected sanitizer,30 changed C++
+format/tidy/C++17 checks, corpus/producer/protocol/Make checks and source packaging.
+The30 quality checks retain exact unchanged-source and passing-log provenance;
+whole generators, changed native products and packaging executed current code.
+Exact4033 maintained-input hashes and38 qualified products are bound in
+build/mixed-callback-groups-20261123/final/receipt.json.
+
+One independent review found1Critical/1Important/3Minor. One test-first pass
+fixes the blockers: complete concrete caller-goal proof with rollback before
+observation delivery, established state protection despite queued reassertions,
+and surviving mask snapshots after nested callback reset. Three Minors remain
+deferred: the unused split-reset helper second-file path duplicates incorporated
+input; benchmark zero scan counts are expected dimensions rather than independent
+scan-output counters; retained caller masks cost caller width times annotated
+boundaries. The measured caller width is four bits through1024 callback targets;
+wider caller-width scaling remains unmeasured. Full rulings and concrete fixes:
+build/mixed-callback-groups-20261123/rulings.json. No second review was run.
+
+All81 fresh mixed/control processes,60 preserved callback controls, six wide
+aliases and six normal/configured-sanitizer corpus batches meet their bounds.
+Three exact guide invocations pass, for156 measured/example processes. Mixed
+grid maximum runtime/RSS: 9.5725s/520176KiB within10s/512MiB;16K callback alias peak:
+165244KiB within256MiB. Each observed/generated mixed run executes four fresh getters.
+Receipts disclose actual emitted Applies, PIO frames, empty Applies, endpoint
+writes and postconditions; no scan performance or identical-workload speedup is
+claimed. Commands, input/output/product hashes and runtime environments are under
+build/mixed-callback-groups-20261123/{final,scale-final,final-preserved,batch-scale,
+example}/. Pre-fix measurements remain separately archived with an explicit path
+mapping and are not final-product measurements.
+
+The corpus retains1024 canonical/44 declared-unsupported/695 original elaboration
+failures among1763 effective modules. General automatic callbacks, mixed-bit
+aliases, broader histories/topologies and other remaining inventory work stay
+open. Coverage item1 remains excluded.

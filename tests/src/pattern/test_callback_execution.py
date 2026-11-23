@@ -262,7 +262,7 @@ iReset; iWrite child.value 9; iApply
         self.assertIn(b"iWrite child.wire 0b1001", output)
         self.assertIn(b"iState child.value 0b1001", output)
 
-    def test_mixed_and_together_reject_before_invocation(self):
+    def test_conflicting_mixed_and_together_rejected(self):
         for body in ("iWrite value 9; iWrite p 3; iApply",
                      "iWrite p 3; iWrite value 9; iApply",
                      "iWrite value 9; iApply -together"):

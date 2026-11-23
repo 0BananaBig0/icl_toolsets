@@ -3,12 +3,14 @@
 #ifndef ICL_TOOLSETS_SRC_PATTERN_PATTERN_RESOURCES_H_
 #define ICL_TOOLSETS_SRC_PATTERN_PATTERN_RESOURCES_H_
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
 #include "pattern/pattern_scheduler.h"
 namespace pattern {
+class QueuedAccesses;
 // Persistent takes belong to main; protection starts at applied writes/iState.
 class ResourceReservations {
  public:
@@ -23,6 +25,11 @@ class ResourceReservations {
   void AssignedScans(const std::set<size_t>& registers,
                      const ScanScheduler& scheduler);
   const std::map<size_t, std::string>& Values() const { return values_; }
+  std::map<size_t, std::string> CallbackConstraints(
+      const Operation& operation, const QueuedAccesses& pending,
+      const ScanScheduler* established = nullptr) const;
+  std::optional<std::map<size_t, std::string>> CallbackValues(
+      const Operation& operation, const QueuedAccesses& pending) const;
 
  private:
   std::map<size_t, std::string> Targets(const std::string& name) const;

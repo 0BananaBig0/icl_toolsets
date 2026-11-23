@@ -71,7 +71,7 @@ fixed; one Minor is deferred. Broader item10 is pending.
 | Shared frontends and ordered inputs | Shared ICL AST/PDL tree; Design/Runtime tests and CLI ordered overrides; reset cancels queued reads/writes across file and call boundaries with operand validation; observation-history iState flags are forwarded without hardware or queue mutation; getters preserve never-read/sparse unknown bits and explicit history; opt-in PIO and serial-register reads, including bound TAPs, supply selected-frame observations and exact failure counts; default applied observations remain unavailable and initial/no-cared-comparison status is known zero | Complete runtime command coverage and broader real-pair generation |
 | Elaboration and values | Namespaces, specialization, arithmetic, ranges, aliases, enum and compiled logic; typed contiguous vector-port functions retain per-function attributes/enums/properties, selected access eligibility, child bindings and associated-flat identities (Task142 reviewed; two blockers fixed and post-fix qualification passes); hierarchical hardware references require child output ports, while aliases cannot bypass child-output boundaries and deep aliases remain PDL-only under §6.5.2(g), with its prose conflict documented; direct ScanOutPort register sources require the declared rightmost bit; explicit unsized-inversion rejection under §6.3.12(m), with conflicting-example/Tessent acceptance documented; source-located diagnostics; ordinary-data terminal-kind eligibility is checked after flat type restoration with bit-specific aliases and the two-input ScanMux ToIRSelect exception; checked Sources enforce local terminals/direct-child outputs and raw-alias ownership after origin restoration; generated TAP boundaries use explicit outputs | Remaining source scope/direction and contextual source-kind rules, broader alias-rule interpretation, and corpus specialization |
 | Address/one-hot models | Contributor/domain/default/alias resolution; primary-, scan- and mixed-driven DataRegister writes/reads; nested OneHotScanGroup selection, indexed vector lanes feeding a scalar chain, inferred simultaneous disjoint interface-free vector returns and canonical replay | Overlapping returns, independently controlled lanes and broader model qualification |
-| Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage reset snapshot settlement preserve supported transient reset effects; Task144 adds bounded simultaneous DataRegister feedback from real old state, known/unknown convergence, self-disable history and scoped intermediate ownership checks in native and primary/mixed replay; all three Important review findings are fixed, including unknown mixed history, pending-read deltas and implicit OneHot controls, with14 replay methods and full post-fix qualification | Automatic downstream/mixed/merged DataRegister callbacks and invoked read-callback histories/physical output (Task153 adds explicit callback-only execution and reset-source replay; Task159 supports ordinary endpoint observations within write procedures), general gated/serial-dependent reset events (including changing external resets during data feedback) and complete vendor builtin models |
+| Native hardware state | Unknown initial state, reset propagation, separate shift/update storage, addressed DataRegister events, clock edges and event-free ScanRegister/DataRegister/top-level pin assumptions; pending default state overwrites overlapping write/compare values by resolved bit identity; no-event reads preserve storage and fill across primary, mixed and hidden-client paths; known write/reset history and mixed-storage reset snapshot settlement preserve supported transient reset effects; Task144 adds bounded simultaneous DataRegister feedback from real old state, known/unknown convergence, self-disable history and scoped intermediate ownership checks in native and primary/mixed replay; all three Important review findings are fixed, including unknown mixed history, pending-read deltas and implicit OneHot controls, with14 replay methods and full post-fix qualification | Automatic downstream/mixed-alias/merged DataRegister callbacks and invoked read-callback histories/physical output (Task153 adds explicit callback-only execution and reset-source replay; Task159 supports ordinary endpoint observations within write procedures; Task161 adds separate ordinary/callback caller groups with native goal preservation), general gated/serial-dependent reset events (including changing external resets during data feedback) and complete vendor builtin models |
 | AccessLink/TAP | BSDL reader, IR/DR datapaths, FSM, child wiring and runtime metadata restored from flat ICL; explicit IR PDL reads/writes and ordered apply replay, with nine fresh SIB/reset directional certificates; common-phase multiple TAPs on equivalent root TCKs with per-IR metadata, aligned lanes, explicit reset connectivity and batched pin/clock snapshots | Independent TAP phases, shared serial storage, implicit multi-TAP reset ownership and remaining corpus/reference qualification |
 | ScanInterface controls | Runtime explicit/implicit membership; single-TAP phase-qualified visible/hidden capture, shift and update events with concrete replay; standalone explicit/inferred clients drive bound phase/clock pins; complete-path proof or bounded hidden-event planning, indexed lanes, primary-enable preparation and concrete clock sampling covered | Shared-chain, serial-derived controls and general independently gated events |
 | Raw scans | Genuine opaque root-client lowering; one fixed declared-width opaque child on a complete scalar root route with private unknown capture and prior stable/default preparation; static modeled root and accessible hierarchical child intervals, disjoint setup queues, binary held-selector/SIB routes and local stable proof; serial aliases/inversion, typed root controls, explicit reset, native CSU replay, TCK waits, default-chain spelling and partial-X controlling fill; bounded single-stream ScanRegister reservations and explicit root port effects with retained locks; ordinary preparation before root or child raw replay in either source order and automatic parent setup for known modeled child-local routes; IR and complete ordered instrument/builtin DR on one bound scalar root TAP, including literal X input on canonical phase/reset profiles | Broader opaque-child topology, shared/independent parallel and multi-TAP raw scans, raw merges, Tessent2026.2 literal-X export, TAP established port ownership and broader vendor qualification; compatible modeled-child port locks now use actual edge/final checks |
@@ -4614,3 +4614,62 @@ Task160 is merged into master;20 integration checks pass on4031 identical input
 hashes/20 copied qualified native products, preserving117 stashes. Receipt:
 build/opaque-child-raw-20261123/merged/receipt.json. Broader items2–8/10–12 stay
 open as tracked; the next increment continues the original requested inventory.
+
+
+## Task161: mixed caller queues and native goal preservation
+
+Separate ordinary operations and explicitly requested callbacks share a caller
+Apply. Selected callback positions prevent duplicate invocation while ordinary
+requests remain live through real explicit/implicit tail Apply and reset
+boundaries. QueuedAccesses still controls bit merging and static preflight.
+Known caller masks reach the existing native reservation/state/wait checks,
+including indirect driver effects; no new event engine or fabricated actual
+state is introduced. Guarded state assumptions commit only after a successful
+native trial, retaining opaque private-ID privacy and rollback.
+
+Focused coverage includes source orders, partial/inverted aliases, direct and
+indirect compatible/conflicting writes, controlling state, ordinary endpoint
+merges, cycles, preflight effects, reset/error recovery, fixed selected-batch
+iteration, inner/outer history boundaries, local-reset procedure immutability,
+namespaces/prefix/split files and once-only arguments. Qualification and measured
+grid evidence are recorded after verification. Broad items4/6 remain open for
+mixed alias bits, automatic downstream invocation, callback merge/read histories/
+physical output and general conflicting temporal restoration.
+
+
+Task161 passes59 final qualification gates:15 normal and15 leak-enabled sanitizer
+native suites,71 suites/1153 methods for each normal/static generator,17 mixed
+caller CLI methods in each variant and selected sanitizer,30 changed C++
+format/tidy/C++17 checks, corpus/producer/protocol/Make checks and source packaging.
+The30 quality checks retain exact unchanged-source and passing-log provenance;
+whole generators, changed native products and packaging executed current code.
+Exact4033 maintained-input hashes and38 qualified products are bound in
+build/mixed-callback-groups-20261123/final/receipt.json.
+
+One independent review found1Critical/1Important/3Minor. One test-first pass
+fixes the blockers: complete concrete caller-goal proof with rollback before
+observation delivery, established state protection despite queued reassertions,
+and surviving mask snapshots after nested callback reset. Three Minors remain
+deferred: the unused split-reset helper second-file path duplicates incorporated
+input; benchmark zero scan counts are expected dimensions rather than independent
+scan-output counters; retained caller masks cost caller width times annotated
+boundaries. The measured caller width is four bits through1024 callback targets;
+wider caller-width scaling remains unmeasured. Full rulings and concrete fixes:
+build/mixed-callback-groups-20261123/rulings.json. No second review was run.
+
+All81 fresh mixed/control processes,60 preserved callback controls, six wide
+aliases and six normal/configured-sanitizer corpus batches meet their bounds.
+Three exact guide invocations pass, for156 measured/example processes. Mixed
+grid maximum runtime/RSS: 9.5725s/520176KiB within10s/512MiB;16K callback alias peak:
+165244KiB within256MiB. Each observed/generated mixed run executes four fresh getters.
+Receipts disclose actual emitted Applies, PIO frames, empty Applies, endpoint
+writes and postconditions; no scan performance or identical-workload speedup is
+claimed. Commands, input/output/product hashes and runtime environments are under
+build/mixed-callback-groups-20261123/{final,scale-final,final-preserved,batch-scale,
+example}/. Pre-fix measurements remain separately archived with an explicit path
+mapping and are not final-product measurements.
+
+The corpus retains1024 canonical/44 declared-unsupported/695 original elaboration
+failures among1763 effective modules. General automatic callbacks, mixed-bit
+aliases, broader histories/topologies and other remaining inventory work stay
+open. Coverage item1 remains excluded.

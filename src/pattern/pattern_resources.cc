@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
+#include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_values.h"
 namespace pattern {
 ResourceReservations::ResourceReservations(const Netlist& netlist)
@@ -21,6 +23,67 @@ void ResourceReservations::Reset() {
   for (auto& owner : owners_) owner.clear();
   counts_.clear();
   values_.clear();
+}
+std::map<size_t, std::string> ResourceReservations::CallbackConstraints(
+    const Operation& operation, const QueuedAccesses& pending,
+    const ScanScheduler* established) const {
+  std::map<size_t, std::string> result;
+  if (operation.callback_preserved.empty()) return result;
+  const auto [written, values] = pending.WriteModel();
+  for (const auto& [id, desired] : operation.callback_preserved) {
+    if (id >= netlist_.nodes.size() ||
+        desired.size() != netlist_.nodes[id].Width() ||
+        desired.find_first_not_of("01x") != std::string::npos) {
+      throw std::runtime_error("invalid callback caller goal mask");
+    }
+    const auto& node = netlist_.nodes[id];
+    const auto current =
+        established ? established->Value(node.name) : std::string{};
+    for (size_t i = 0; i < desired.size(); ++i) {
+      if (desired[i] == 'x') continue;
+      const auto index = node.left >= node.right
+                             ? node.left - static_cast<int64_t>(i)
+                             : node.left + static_cast<int64_t>(i);
+      const auto key = std::make_pair(id, index);
+      const auto found = std::lower_bound(
+          written.begin(), written.end(), key,
+          [](const auto& bit, const auto& wanted) {
+            return std::make_pair(bit.node, bit.index) < wanted;
+          });
+      if (found != written.end() && found->node == id &&
+          found->index == index && values[found - written.begin()] != 'x') {
+        if (values[found - written.begin()] != desired[i]) {
+          throw std::runtime_error(
+              "queued write conflicts with callback caller goal " + node.name);
+        }
+        // A future write cannot release a caller goal already established.
+        if (!established || current.at(i) != desired[i]) continue;
+      }
+      auto [entry, inserted] = result.try_emplace(id, node.Width(), 'x');
+      entry->second[i] = desired[i];
+    }
+  }
+  return result;
+}
+std::optional<std::map<size_t, std::string>>
+ResourceReservations::CallbackValues(const Operation& operation,
+                                     const QueuedAccesses& pending) const {
+  const auto caller = CallbackConstraints(operation, pending);
+  if (caller.empty()) return std::nullopt;
+  auto result = values_;
+  for (const auto& [id, mask] : caller) {
+    auto [entry, inserted] = result.try_emplace(id, mask.size(), 'x');
+    for (size_t i = 0; i < mask.size(); ++i) {
+      if (mask[i] == 'x') continue;
+      if (entry->second[i] != 'x' && entry->second[i] != mask[i]) {
+        throw std::runtime_error(
+            "reserved resource conflicts with callback caller goal " +
+            netlist_.nodes[id].name);
+      }
+      entry->second[i] = mask[i];
+    }
+  }
+  return result;
 }
 void ResourceReservations::Enter(const std::vector<std::string>& call_stack) {
   size_t common = 0;

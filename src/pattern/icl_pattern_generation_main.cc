@@ -545,6 +545,14 @@ std::string Generate(
         pending_scan_bits = size;
         pending_scans[key] = std::move(scan);
       } else if (operation.command == "iApply") {
+        const auto caller_values =
+            reservations.CallbackValues(operation, pending);
+        const auto& preserved =
+            caller_values ? *caller_values : reservations.Values();
+        if (!operation.callback_preserved.empty() && !pending_scans.empty()) {
+          throw std::runtime_error(
+              "raw scans with callback caller goals are unsupported");
+        }
         const bool together =
             pattern::ValidatePdlApplyOptions(operation.arguments);
         if (!pending_scans.empty()) {
@@ -555,9 +563,8 @@ std::string Generate(
             }
             const auto& accesses = pending.Operations();
             if (edits) scheduler.CheckLocalResets(accesses);
-            const auto steps =
-                scheduler.Apply(accesses, false, reservations.Values(), true,
-                                physical, observe);
+            const auto steps = scheduler.Apply(accesses, false, preserved, true,
+                                               physical, observe);
             clocks.Invalidate();
             reservations.Assigned(accesses, scheduler);
             append_steps(steps);
@@ -569,8 +576,7 @@ std::string Generate(
           std::set<size_t> assigned;
           std::vector<pattern::ScanStep> preparations;
           const auto applied = scheduler.ApplyRawScans(
-              scans, reservations.Values(),
-              reservations.Values().empty() ? nullptr : &assigned,
+              scans, preserved, preserved.empty() ? nullptr : &assigned,
               &preparations,
               modeled_readback
                   ? pattern::ScanScheduler::RawObservation{[](const auto&,
@@ -587,8 +593,9 @@ std::string Generate(
         }
         const auto& accesses = pending.Operations();
         if (edits) scheduler.CheckLocalResets(accesses);
-        const auto steps = scheduler.Apply(
-            accesses, together, reservations.Values(), true, physical, observe);
+        const auto steps =
+            scheduler.Apply(accesses, together, preserved, true, physical,
+                            observe, operation.callback_preserved);
         clocks.Invalidate();
         reservations.Assigned(accesses, scheduler);
         append_steps(steps);
@@ -609,12 +616,16 @@ std::string Generate(
         result += Command(
             {"iClock", clocks.Check(operation.arguments.at(0), scheduler)});
       } else if (operation.command == "iRunLoop") {
+        const auto caller_values =
+            reservations.CallbackValues(operation, pending);
+        const auto& preserved =
+            caller_values ? *caller_values : reservations.Values();
         if (!pending.Empty()) {
           throw std::runtime_error("iRunLoop has unapplied operations");
         }
         const auto& args = operation.arguments;
         if (args.size() == 2 && args[0] == "-time") {
-          clocks.CheckTimeWait(reservations.Values());
+          clocks.CheckTimeWait(preserved);
           clocks.Invalidate();
           result += Command({"iRunLoop", "-time", args[1]});
         } else {
@@ -644,12 +655,12 @@ std::string Generate(
             cycles = (cycles << 1) | (bit == '1');
           }
           if (system_clock.empty()) {
-            scheduler.Idle(cycles, reservations.Values());
+            scheduler.Idle(cycles, preserved);
             clocks.Invalidate();
             result += Command({"iRunLoop", std::to_string(cycles), "-tck"});
           } else {
-            const auto wait = clocks.Wait(system_clock, cycles, scheduler,
-                                          reservations.Values());
+            const auto wait =
+                clocks.Wait(system_clock, cycles, scheduler, preserved);
             result += Command(
                 {"iRunLoop", std::to_string(wait.second), "-sck", wait.first});
           }
@@ -662,7 +673,9 @@ std::string Generate(
         const auto bits = pattern::PdlNumber(context, operation.arguments.at(1),
                                              target.bits.size());
         if (controlling) {
-          scheduler.Assume(name, bits);
+          scheduler.Assume(
+              name, bits,
+              reservations.CallbackConstraints(operation, pending, &scheduler));
           clocks.Invalidate();
           pending.Assume(target, bits);
           reservations.Assigned({operation}, scheduler);
@@ -691,7 +704,11 @@ std::string Generate(
             operation.command);
       }
     } catch (const std::exception& error) {
-      std::string message = operation.origin + ": " + error.what();
+      std::string message = operation.origin + ": " +
+                            (operation.callback_preserved.empty()
+                                 ? ""
+                                 : "while preserving callback caller goals: ") +
+                            error.what();
       for (const auto& frame : operation.call_stack) {
         message += "\n  while " + frame;
       }
