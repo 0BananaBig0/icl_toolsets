@@ -4635,3 +4635,41 @@ namespaces/prefix/split files and once-only arguments. Qualification and measure
 grid evidence are recorded after verification. Broad items4/6 remain open for
 mixed alias bits, automatic downstream invocation, callback merge/read histories/
 physical output and general conflicting temporal restoration.
+
+
+Task161 passes59 final qualification gates:15 normal and15 leak-enabled sanitizer
+native suites,71 suites/1153 methods for each normal/static generator,17 mixed
+caller CLI methods in each variant and selected sanitizer,30 changed C++
+format/tidy/C++17 checks, corpus/producer/protocol/Make checks and source packaging.
+The30 quality checks retain exact unchanged-source and passing-log provenance;
+whole generators, changed native products and packaging executed current code.
+Exact4033 maintained-input hashes and38 qualified products are bound in
+build/mixed-callback-groups-20261123/final/receipt.json.
+
+One independent review found1Critical/1Important/3Minor. One test-first pass
+fixes the blockers: complete concrete caller-goal proof with rollback before
+observation delivery, established state protection despite queued reassertions,
+and surviving mask snapshots after nested callback reset. Three Minors remain
+deferred: the unused split-reset helper second-file path duplicates incorporated
+input; benchmark zero scan counts are expected dimensions rather than independent
+scan-output counters; retained caller masks cost caller width times annotated
+boundaries. The measured caller width is four bits through1024 callback targets;
+wider caller-width scaling remains unmeasured. Full rulings and concrete fixes:
+build/mixed-callback-groups-20261123/rulings.json. No second review was run.
+
+All81 fresh mixed/control processes,60 preserved callback controls, six wide
+aliases and six normal/configured-sanitizer corpus batches meet their bounds.
+Three exact guide invocations pass, for156 measured/example processes. Mixed
+grid maximum runtime/RSS: 9.5725s/520176KiB within10s/512MiB;16K callback alias peak:
+165244KiB within256MiB. Each observed/generated mixed run executes four fresh getters.
+Receipts disclose actual emitted Applies, PIO frames, empty Applies, endpoint
+writes and postconditions; no scan performance or identical-workload speedup is
+claimed. Commands, input/output/product hashes and runtime environments are under
+build/mixed-callback-groups-20261123/{final,scale-final,final-preserved,batch-scale,
+example}/. Pre-fix measurements remain separately archived with an explicit path
+mapping and are not final-product measurements.
+
+The corpus retains1024 canonical/44 declared-unsupported/695 original elaboration
+failures among1763 effective modules. General automatic callbacks, mixed-bit
+aliases, broader histories/topologies and other remaining inventory work stay
+open. Coverage item1 remains excluded.

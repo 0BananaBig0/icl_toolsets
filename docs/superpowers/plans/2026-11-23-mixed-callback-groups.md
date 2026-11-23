@@ -137,7 +137,7 @@ a transactional guarded NativeScheduler.Assume overload; the refinement below
 records the proof and caller scope. Reuse modeled-readback, source action and
 reset rewriting; benchmark is standalone Python standard library.
 
-- [ ] Add final8CLI methods: test_split_prefix_namespace_arguments,
+- [x] Add final8CLI methods: test_split_prefix_namespace_arguments,
       test_local_reset_source_and_immutable_procedures,
       test_repeated_source_sites_and_returned_calls,
       test_getters_inside_body_and_after_outer_apply,
@@ -151,7 +151,7 @@ reset rewriting; benchmark is standalone Python standard library.
       selected batch semantics match existing callback-only reference. Local
       reset may reject only existing impossible flush/ownership/reassertion
       cases atomically. Fix concrete shared caller failures test-first.
-- [ ] Implement reproducible benchmark normal64/256/1024 andSAN64,3repeats/
+- [x] Implement reproducible benchmark normal64/256/1024 andSAN64,3repeats/
       source-flat-generated. Prepare spare with an ordinary Apply before each
       mixed group, then queue ordinary spare write/read plusNcallback writes,
       Apply and fresh spare_out getter (actual1/2/3/4). Report four probes and
@@ -163,11 +163,11 @@ reset rewriting; benchmark is standalone Python standard library.
       parent ordinary/unused18 gives81processes. Controls disclose different
       callback/storage/request dimensions; no speedup claim.
       Run fresh grid and preserved callback/alias/corpus budgets; expected bounds.
-- [ ] Write one exact guide example with full model/procs/commands and actual
+- [x] Write one exact guide example with full model/procs/commands and actual
       source/flat/generated3/9 notes, plus conflict/reset/history limitations.
       Author-check3invocations; no independent reader claim. Reconcile current
       README/model/tracker support without closing broad items4/6.
-- [ ] Commit; request one fresh final independent review of whole0c79c35..HEAD.
+- [x] Commit; request one fresh final independent review of whole0c79c35..HEAD.
       Resolve/regrade all declined behavior; one Critical/Important TDD pass,
       defer Minors/no rereview. Run15normal+15leakSAN native, both whole
       generators, selected SAN histories/callbacks/new suite/opaque child,
