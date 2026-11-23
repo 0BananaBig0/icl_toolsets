@@ -86,38 +86,39 @@ src/pattern/pattern_scheduler.h/.cc, tests/src/pattern/pattern_opaque_test.cc.
 **Interfaces:** Add immutable OpaqueChildModel (copied Netlist, original-node
 boundary, opaque client/private-register identity/default) and
 std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(const Netlist&).
-Return null for no opaque child; reject unsupported detected opaque-child
-topology before any execution. ScanScheduler owns/shares the model across copies
+Return null when no eligible scan-only opaque-child route exists; preserve the
+existing backend for unrelated PIO/data/TAP networks and its fail-closed checks
+for unsupported opaque accesses. ScanScheduler owns/shares the model across copies
 and exposes bool HasOpaqueChild() const for CLI capability checks. Reuse Task1
 Complete for transaction-local native queue state. Public existing methods/
 step types retain signatures.
 
-- [ ] Add native RED for3-bit head/8-bit opaque/5-bit tail. iReset; write head5/
+- [x] Add native RED for3-bit head/8-bit opaque/5-bit tail. iReset; write head5/
       tail19; apply; raw child8 with0xa5/expected0x3c; observe childxxxxxxxx and
       actual parent5/19. Assert root/direct-child canonical payload offsets,
       copies/stable/default/unknown tracking and full-root -stable projection.
       Add native targets/privacy/Value tests, failed ownership/length rollback,
       observer throw after commit and empty-Apply/no-extra-frame assertions.
-- [ ] Implement one validated immutable expansion with preserved original IDs,
+- [x] Implement one validated immutable expansion with preserved original IDs,
       x CaptureSource/reset/private post-CSU state and DefaultLoadValue controlling
       fill, scalar linked root controls, no opaque SO data/control side-channel.
       Existing RawTemplate/route checks decide whether the expanded static route
       is supported. Copies reuse owned immutable data and copy queue state.
-- [ ] Integrate ordinary parent register Apply and raw ApplyScans/ApplyRawScans.
+- [x] Integrate ordinary parent register Apply and raw ApplyScans/ApplyRawScans.
       Validate original public targets before adding private goals; enforce prior
       stable/default in every ordinary/preparation frame, consume current raw
       data once, reject unsupported optimization/clock/physical modes.
       Filter private step names/observation IDs and remask private state on commit.
       Native raw preparation must either enforce prior known fill or fail in a
       trial; private register width never proves unknown opaque post-length.
-- [ ] Test mixed known-prior preparation+non-stable raw success; after non-stable
+- [x] Test mixed known-prior preparation+non-stable raw success; after non-stable
       completion, a new mixed group rejects preparation without prior knowledge
       and cannot silently reuse the current request. Test reset recovery and
       transactional native snapshots/subscriber commit. Expected RED→GREEN.
-- [ ] Run focused native/new checks plus existing scheduler/readback native,
+- [x] Run focused native/new checks plus existing scheduler/readback native,
       affected C++quality and relevant raw/root CLI compatibility on unchanged
       supported backends. Expected pass; no new CLI support claim until Task3.
-- [ ] Commit/task-done using python3 /tmp/opaque-child-raw-task2-check.py with
+- [x] Commit/task-done using python3 /tmp/opaque-child-raw-task2-check.py with
       exact executed inputs/products/logs. Expected native/state/queue/privacy.
 
 ### Task 3: Public CLI/readback, complete qualification and integration

@@ -12,7 +12,11 @@ Retarget one black-box child's scalar ScanInterface embedded in a complete
 static root scan route, including real ScanRegisters before and after it.
 Keep parent controlling values, capture/update/reset/ownership behavior,
 source/flat/generated/local-reset replay and actual ordinary parent observations.
-Opaque return bits remain unknown; expected -so data and prior -si/default/stable
+Only eligible scan-only routes activate this backend. Unrelated primary/data/
+TAP or otherwise unsupported networks retain the existing native backend;
+unsupported opaque accesses still fail through its existing route checks.
+Do not reject previously supported PIO merely because an unused opaque child
+exists. Opaque return bits remain unknown; expected -so data and prior -si/default/stable
 controlling data must never become observations.
 
 The exact parent rejects tests/cases/ours/pattern_generation/static_child_scans

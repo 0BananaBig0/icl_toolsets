@@ -114,7 +114,14 @@ std::string Decode(const z3::model& model, const SymbolicValue& value) {
 class ScanScheduler::Impl {
  public:
   explicit Impl(const Netlist& netlist)
-      : netlist_(netlist), state_(netlist), one_hot_(netlist) {
+      : Impl(netlist, ExpandOpaqueChild(netlist)) {}
+  Impl(const Netlist& source, std::shared_ptr<const OpaqueChildModel> opaque)
+      : source_(source),
+        opaque_model_(std::move(opaque)),
+        netlist_(opaque_model_ ? opaque_model_->netlist : source),
+        state_(netlist_),
+        one_hot_(netlist_) {
+    const auto& netlist = netlist_;
     if (!netlist.taps.empty()) {
       tap_ = &netlist.taps.begin()->second;
       for (const auto& [name, tap] : netlist.taps) {
@@ -412,6 +419,12 @@ class ScanScheduler::Impl {
     if (client_controls_) {
       register_ports_ = TapExecution(netlist).RegisterInterfaces();
     }
+    if (opaque_model_) {
+      RawTemplate();
+      opaque_queue_.emplace(
+          OpaqueScanModel{netlist.nodes[opaque_model_->client].name,
+                          {{"", opaque_model_->default_load}}});
+    }
   }
 
   void CheckIndependentChains(const std::map<Key, Key>& inputs) const {
@@ -440,9 +453,10 @@ class ScanScheduler::Impl {
     }
   }
 
-  Impl(const Impl& other) : Impl(other.netlist_) {
+  Impl(const Impl& other) : Impl(other.source_, other.opaque_model_) {
     state_.Restore(other.state_);
     fill_ = other.fill_;
+    opaque_queue_ = other.opaque_queue_;
     global_resets_ = other.global_resets_;
     tap_ready_ = other.tap_ready_;
     control_masks_ = other.control_masks_;
@@ -454,6 +468,85 @@ class ScanScheduler::Impl {
     if (other.execution_) {
       execution_ = std::make_unique<TapExecution>(*other.execution_);
     }
+  }
+  bool HasOpaqueChild() const { return opaque_model_ != nullptr; }
+  void MaskOpaqueState() {
+    if (!opaque_model_) return;
+    const auto unknown = std::string(opaque_model_->default_load.size(), 'x');
+    state_.SetRegister(opaque_model_->storage, unknown, unknown);
+  }
+  void ResetOpaqueState() {
+    if (!opaque_queue_) return;
+    opaque_queue_->Reset({"iReset", {}, "opaque child reset", {}});
+    MaskOpaqueState();
+  }
+  void ValidateOpaquePreserved(
+      const std::map<size_t, std::string>& preserved) const {
+    if (!opaque_model_) return;
+    for (const auto& [id, value] : preserved) {
+      if (id >= opaque_model_->source_nodes) {
+        throw std::runtime_error("unknown opaque child reserved resource");
+      }
+    }
+  }
+  void FilterOpaqueAssigned(std::set<size_t>* assigned) const {
+    if (opaque_model_ && assigned) {
+      assigned->erase(assigned->lower_bound(opaque_model_->source_nodes),
+                      assigned->end());
+    }
+  }
+  std::optional<OpaqueScanQueue> OpaqueRawState(
+      const std::vector<Operation>& operations,
+      const std::map<size_t, std::string>& preserved) {
+    if (!opaque_model_) return {};
+    ValidateOpaquePreserved(preserved);
+    auto candidate = *opaque_queue_;
+    const auto& name = netlist_.nodes[opaque_model_->client].name;
+    const auto opaque = RawSubchain(name);
+    for (const auto& operation : operations) {
+      const size_t target =
+          !operation.arguments.empty() && operation.arguments[0] == "-ir" ? 1
+                                                                          : 0;
+      if (operation.arguments.size() <= target ||
+          !source_.node_ids.count(operation.arguments[target])) {
+        throw std::runtime_error("unknown opaque child scan target");
+      }
+      const auto scan = NormalizeScan(operation);
+      const auto slice = RawSubchain(scan.arguments[0]);
+      const auto end = slice.offset + slice.width;
+      const auto opaque_end = opaque.offset + opaque.width;
+      if (end <= opaque.offset || slice.offset >= opaque_end) continue;
+      if (slice.offset > opaque.offset || end < opaque_end) {
+        throw std::runtime_error(
+            "opaque child requires a complete scan interval");
+      }
+      auto projected = scan;
+      projected.arguments = {
+          name,
+          std::to_string(opaque.width),
+          "-si",
+          "0b" +
+              InvertBits(
+                  InvertBits(scan.arguments[3].substr(2), slice.input_inverted)
+                      .substr(opaque.offset - slice.offset, opaque.width),
+                  opaque.input_inverted),
+          "-so",
+          "0b" +
+              InvertBits(
+                  InvertBits(scan.arguments[5].substr(2), slice.output_inverted)
+                      .substr(opaque.offset - slice.offset, opaque.width),
+                  opaque.output_inverted)};
+      if (scan.arguments.back() == "-stable") {
+        projected.arguments.push_back("-stable");
+      }
+      candidate.Add(context_, projected);
+    }
+    candidate.Complete({"iApply", {}, "opaque child raw completion", {}});
+    return candidate;
+  }
+  void CommitOpaqueState(std::optional<OpaqueScanQueue> queue) {
+    if (queue) opaque_queue_ = std::move(queue);
+    MaskOpaqueState();
   }
   std::optional<std::vector<ScanStep>> TryRegularReads(
       const std::vector<Operation>& operations, bool together,
@@ -2331,6 +2424,10 @@ class ScanScheduler::Impl {
     return result;
   }
   void Reset(bool synchronous, bool physical = false) {
+    if (opaque_model_ && physical) {
+      throw std::runtime_error(
+          "physical opaque child execution is unsupported");
+    }
     if (tap_) {
       auto run = std::make_unique<TapExecution>(*execution_);
       std::map<size_t, std::string> asserted, released, trst;
@@ -2481,6 +2578,9 @@ class ScanScheduler::Impl {
   }
 
   void Idle(uint64_t cycles, const std::map<size_t, std::string>& preserved) {
+    if (opaque_model_) {
+      throw std::runtime_error("timed opaque child execution is unsupported");
+    }
     if (cycles == 0) return;
     if (tap_ && !tap_ready_) {
       throw std::runtime_error("TCK idle replay requires explicit iReset");
@@ -2559,6 +2659,7 @@ class ScanScheduler::Impl {
     fill_ = std::move(fill);
   }
   void Assume(const std::string& target, const std::string& bits) {
+    if (opaque_model_) ResolvePdlTarget(source_, target);
     const auto resolved = ResolvePdlTarget(netlist_, target);
     if (bits.size() != resolved.bits.size() ||
         bits.find_first_not_of("01x") != std::string::npos) {
@@ -2589,13 +2690,76 @@ class ScanScheduler::Impl {
     }
   }
   std::string Value(const std::string& target) const {
-    return state_.ReadBits(ResolvePdlTarget(netlist_, target).bits);
+    return state_.ReadBits(
+        ResolvePdlTarget(opaque_model_ ? source_ : netlist_, target).bits);
   }
   std::vector<ScanStep> Apply(
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
       std::optional<size_t> permitted_tap_data = std::nullopt,
       bool physical = false, const PioObservation& observe = {}) {
+    if (!opaque_model_) {
+      return ApplyNative(operations, together, preserved, explicit_writes,
+                         permitted_tap_data, physical, observe);
+    }
+    if (physical || !explicit_writes || permitted_tap_data) {
+      throw std::runtime_error("unsupported opaque child execution mode");
+    }
+    ValidateOpaquePreserved(preserved);
+    if (operations.empty()) return {};
+    for (const auto& operation : operations) {
+      if (operation.command != "iWrite" && operation.command != "iRead") {
+        throw std::runtime_error(
+            "opaque child ordinary access requires a ScanRegister");
+      }
+      const auto target = ResolvePdlTarget(source_, operation.arguments.at(0));
+      for (const auto& bit : target.bits) {
+        if (bit.node >= source_.nodes.size() ||
+            source_.nodes[bit.node].kind != "ScanRegister") {
+          throw std::runtime_error(
+              "opaque child ordinary access requires a ScanRegister");
+        }
+      }
+    }
+    auto queue = *opaque_queue_;
+    const auto complete =
+        queue.Complete({"iApply", {}, "opaque child parent completion", {}});
+    const auto fields = ReadScanFields(complete.front());
+    auto expanded = operations;
+    const auto& private_name = netlist_.nodes[opaque_model_->storage].name;
+    expanded.push_back(
+        {"iWrite",
+         {private_name, complete.front().arguments[fields.input]},
+         operations.front().origin,
+         operations.front().call_stack});
+    const PioObservation public_observe =
+        observe ? PioObservation{[&](const auto& bits, const auto& values) {
+          std::vector<BitReference> public_bits;
+          std::string public_values;
+          for (size_t i = 0; i < bits.size(); ++i) {
+            if (bits[i].node < opaque_model_->source_nodes) {
+              public_bits.push_back(bits[i]);
+              public_values += values[i];
+            }
+          }
+          if (!public_bits.empty()) observe(public_bits, public_values);
+        }}
+                : PioObservation{};
+    auto steps = ApplyNative(expanded, together, preserved, explicit_writes,
+                             permitted_tap_data, physical, public_observe);
+    CommitOpaqueState(std::move(queue));
+    for (auto& step : steps) {
+      step.loads.erase(private_name);
+      step.writes.erase(private_name);
+      step.expected.erase(private_name);
+    }
+    return steps;
+  }
+  std::vector<ScanStep> ApplyNative(
+      const std::vector<Operation>& operations, bool together,
+      const std::map<size_t, std::string>& preserved, bool explicit_writes,
+      std::optional<size_t> permitted_tap_data, bool physical,
+      const PioObservation& observe) {
     if (physical && !tap_) {
       throw std::runtime_error(
           "physical PDL requires one exact physical TAP CSU");
@@ -7416,7 +7580,10 @@ class ScanScheduler::Impl {
     }
     return step;
   }
+  const Netlist& source_;
+  std::shared_ptr<const OpaqueChildModel> opaque_model_;
   const Netlist& netlist_;
+  std::optional<OpaqueScanQueue> opaque_queue_;
   NetworkState state_;
   OneHotReadResolver one_hot_;
   const TapRuntimeModel* tap_ = nullptr;
@@ -7467,9 +7634,11 @@ ScanScheduler::ScanScheduler(const Netlist& netlist)
 ScanScheduler::ScanScheduler(const ScanScheduler& other)
     : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
+bool ScanScheduler::HasOpaqueChild() const { return impl_->HasOpaqueChild(); }
 void ScanScheduler::Reset(bool synchronous, bool physical) {
   impl_->InvalidateRawRoute();
   impl_->Reset(synchronous, physical);
+  impl_->ResetOpaqueState();
 }
 void ScanScheduler::Idle(uint64_t cycles,
                          const std::map<size_t, std::string>& preserved) {
@@ -7535,6 +7704,7 @@ Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
     std::vector<ScanStep>* preparations, const RawObservation& observe) {
+  auto opaque = impl_->OpaqueRawState(operations, preserved);
   if (std::any_of(operations.begin(), operations.end(),
                   [&](const auto& operation) {
                     return impl_->ParallelRawTarget(operation);
@@ -7557,6 +7727,11 @@ Operation ScanScheduler::ApplyScans(
       ScanScheduler trial(*this);
       const auto requests = trial.impl_->RawRequests(operations, true);
       auto prefix = trial.impl_->PrepareScans(requests, preserved);
+      if (trial.impl_->HasOpaqueChild() && !prefix.empty()) {
+        throw std::runtime_error(
+            "opaque child raw preparation requires a prior stable native "
+            "frame");
+      }
       std::vector<Operation> latest;
       for (const auto& [name, operation] : requests) {
         latest.push_back(operation);
@@ -7592,6 +7767,8 @@ Operation ScanScheduler::ApplyScans(
     return result;
   };
   auto result = execute();
+  impl_->CommitOpaqueState(std::move(opaque));
+  impl_->FilterOpaqueAssigned(assigned);
   impl_->InvalidateRawRoute();
   for (const auto& [operation, bits] : observations) observe(operation, bits);
   return result;

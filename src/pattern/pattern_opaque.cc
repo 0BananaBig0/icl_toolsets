@@ -186,6 +186,288 @@ OpaqueScanModel DescribeOpaqueScans(const Netlist& netlist) {
   }
   return model;
 }
+std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
+    const Netlist& netlist) {
+  if (netlist.scopes.size() <= 1 || !netlist.taps.empty()) return {};
+  const std::set<std::string> scan_ports = {
+      "ScanInPort",   "ScanOutPort",     "SelectPort",    "CaptureEnPort",
+      "ShiftEnPort",  "UpdateEnPort",    "TCKPort",       "ResetPort",
+      "ToSelectPort", "ToCaptureEnPort", "ToShiftEnPort", "ToUpdateEnPort",
+      "ToTCKPort",    "ToResetPort"};
+  for (const auto& current : netlist.nodes) {
+    if (current.scan_interface || current.kind == "PortGroup" ||
+        current.kind == "ScanRegister") {
+      continue;
+    }
+    if (current.model == ModelKind::kPort && scan_ports.count(current.kind) &&
+        current.Width() == 1) {
+      continue;
+    }
+    if (current.model == ModelKind::kAlias && !current.reset &&
+        current.inputs.size() == 1 && current.inputs.count("Source") &&
+        current.inputs.at("Source").size() == current.Width()) {
+      continue;
+    }
+    return {};
+  }
+  std::vector<size_t> candidates;
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& node = netlist.nodes[id];
+    if (!node.scope || !node.scan_interface) continue;
+    const auto opaque_output = [&](const auto& ports) {
+      return std::any_of(ports.begin(), ports.end(), [&](const auto& bit) {
+        return bit.node < netlist.nodes.size() &&
+               netlist.nodes[bit.node].kind == "ScanOutPort" &&
+               !netlist.nodes[bit.node].inputs.count("Source");
+      });
+    };
+    if (opaque_output(node.scan_interface->ports) ||
+        std::any_of(node.scan_interface->chains.begin(),
+                    node.scan_interface->chains.end(), [&](const auto& chain) {
+                      return opaque_output(chain.ports);
+                    })) {
+      candidates.push_back(id);
+    }
+  }
+  if (candidates.empty()) return {};
+  if (candidates.size() != 1 || !netlist.taps.empty()) {
+    return {};
+  }
+  const auto client = candidates.front();
+  const auto& node = netlist.nodes[client];
+  const auto& interface = *node.scan_interface;
+  if (interface.kind != ScanInterfaceKind::kClient ||
+      !interface.chains.empty()) {
+    return {};
+  }
+  const auto& load = interface.default_load;
+  if (!load || load->is_string || !load->sized || load->data.empty() ||
+      load->data.size() > kMaxScanBits) {
+    return {};
+  }
+  const std::set<std::string> kinds = {
+      "ScanInPort",  "ScanOutPort",  "SelectPort", "CaptureEnPort",
+      "ShiftEnPort", "UpdateEnPort", "TCKPort",    "ResetPort"};
+  std::map<std::string, size_t> pins;
+  for (const auto& bit : interface.ports) {
+    if (bit.node >= netlist.nodes.size() || bit.inverted) {
+      return {};
+    }
+    const auto& pin = netlist.nodes[bit.node];
+    if (pin.scope != node.scope || pin.Width() != 1 || bit.index != pin.left ||
+        !kinds.count(pin.kind) || !pins.emplace(pin.kind, bit.node).second) {
+      return {};
+    }
+  }
+  if (!pins.count("ScanInPort") || !pins.count("ScanOutPort")) {
+    return {};
+  }
+  for (const auto& scope : netlist.scopes) {
+    if (scope.parent == node.scope) return {};
+  }
+  size_t root = netlist.nodes.size();
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& current = netlist.nodes[id];
+    if (current.scan_interface && current.scope == 0) {
+      if (root != netlist.nodes.size() ||
+          current.scan_interface->kind != ScanInterfaceKind::kClient ||
+          !current.scan_interface->chains.empty()) {
+        return {};
+      }
+      root = id;
+    }
+    if (current.kind == "ScanMux" || (current.model == ModelKind::kRegister &&
+                                      current.kind != "ScanRegister")) {
+      return {};
+    }
+    if (current.scope == node.scope && current.kind != "PortGroup" &&
+        !current.scan_interface && current.model != ModelKind::kAlias &&
+        (current.model != ModelKind::kPort || !kinds.count(current.kind) ||
+         current.Width() != 1)) {
+      return {};
+    }
+  }
+  if (root == netlist.nodes.size()) return {};
+  std::map<std::string, BitReference> root_pins;
+  for (const auto& pin : netlist.nodes[root].scan_interface->ports) {
+    if (pin.node >= netlist.nodes.size() || pin.inverted ||
+        netlist.nodes[pin.node].scope != 0 ||
+        !root_pins.emplace(netlist.nodes[pin.node].kind, pin).second) {
+      return {};
+    }
+  }
+  if (!root_pins.count("ScanInPort") || !root_pins.count("ScanOutPort")) {
+    return {};
+  }
+  const auto source = [&](BitReference bit) -> std::optional<BitReference> {
+    if (bit.node >= netlist.nodes.size()) return {};
+    const auto& current = netlist.nodes[bit.node];
+    const auto input = current.inputs.find("Source");
+    if (input == current.inputs.end()) return {};
+    const auto offset = current.left >= current.right
+                            ? current.left - bit.index
+                            : bit.index - current.left;
+    if (offset < 0 || static_cast<size_t>(offset) >= input->second.size()) {
+      return {};
+    }
+    return input->second[static_cast<size_t>(offset)];
+  };
+  using Key = std::pair<size_t, int64_t>;
+  const auto input = root_pins.at("ScanInPort");
+  auto serial = root_pins.at("ScanOutPort");
+  bool active = false;
+  std::set<Key> route;
+  std::set<size_t> registers;
+  while (serial.node != input.node || serial.index != input.index) {
+    if (serial.node >= netlist.nodes.size() ||
+        !route.emplace(serial.node, serial.index).second) {
+      return {};
+    }
+    if (serial.node == pins.at("ScanOutPort")) {
+      active = true;
+      serial = {pins.at("ScanInPort"),
+                netlist.nodes[pins.at("ScanInPort")].left};
+      continue;
+    }
+    const auto& current = netlist.nodes[serial.node];
+    if (current.kind == "ScanRegister") {
+      if (serial.index != current.right ||
+          !registers.insert(serial.node).second ||
+          !current.inputs.count("ScanInSource") ||
+          current.inputs.at("ScanInSource").size() != 1) {
+        return {};
+      }
+      serial = current.inputs.at("ScanInSource")[0];
+    } else {
+      const auto next = source(serial);
+      if (!next) return {};
+      serial = *next;
+    }
+  }
+  const auto register_count = std::count_if(
+      netlist.nodes.begin(), netlist.nodes.end(),
+      [](const auto& current) { return current.kind == "ScanRegister"; });
+  if (!active || registers.size() != static_cast<size_t>(register_count)) {
+    return {};
+  }
+
+  std::map<Key, BitReference> terminals;
+  const auto terminal = [&](BitReference bit) -> std::optional<BitReference> {
+    std::vector<std::pair<Key, bool>> trail;
+    std::set<Key> visited;
+    bool inverted = false;
+    BitReference result;
+    while (true) {
+      inverted = inverted != bit.inverted;
+      bit.inverted = false;
+      if (bit.node >= netlist.nodes.size()) {
+        result = bit;
+        result.inverted = inverted;
+        break;
+      }
+      const Key key{bit.node, bit.index};
+      const auto cached = terminals.find(key);
+      if (cached != terminals.end()) {
+        result = cached->second;
+        result.inverted = result.inverted != inverted;
+        break;
+      }
+      if (!visited.insert(key).second) return {};
+      const auto next = source(bit);
+      if (!next) {
+        result = bit;
+        result.inverted = inverted;
+        break;
+      }
+      trail.emplace_back(key, inverted);
+      bit = *next;
+    }
+    for (const auto& [key, prefix] : trail) {
+      auto value = result;
+      value.inverted = value.inverted != prefix;
+      terminals.emplace(key, value);
+    }
+    return result;
+  };
+  for (const auto& current : netlist.nodes) {
+    if (current.scope == 0 || current.kind != "SelectPort") continue;
+    const auto end =
+        terminal({netlist.node_ids.at(current.name), current.left});
+    const auto select = root_pins.find("SelectPort");
+    if (!end || select == root_pins.end() || end->node != select->second.node ||
+        end->index != select->second.index || end->inverted) {
+      return {};
+    }
+  }
+  struct Use {
+    size_t node;
+    bool forward, terminal;
+  };
+  std::vector<std::vector<Use>> uses(netlist.nodes.size());
+  for (size_t id = 0; id < netlist.nodes.size(); ++id) {
+    const auto& current = netlist.nodes[id];
+    for (const auto& [role, bits] : current.inputs) {
+      for (const auto& bit : bits) {
+        if (bit.node >= uses.size()) continue;
+        uses[bit.node].push_back(
+            {id,
+             role == "Source" && (current.kind == "ScanInPort" ||
+                                  current.kind == "ScanOutPort" ||
+                                  current.model == ModelKind::kAlias),
+             role == "ScanInSource" && current.kind == "ScanRegister"});
+      }
+    }
+    if (current.reset && current.reset->node < uses.size()) {
+      uses[current.reset->node].push_back({id, false, false});
+    }
+  }
+  std::vector<size_t> pending{pins.at("ScanOutPort")};
+  std::vector<bool> seen(netlist.nodes.size(), false);
+  for (size_t i = 0; i < pending.size(); ++i) {
+    if (seen[pending[i]]) continue;
+    seen[pending[i]] = true;
+    for (const auto& use : uses[pending[i]]) {
+      if (use.forward) {
+        pending.push_back(use.node);
+      } else if (!use.terminal) {
+        return {};
+      }
+    }
+  }
+  auto model = std::make_shared<OpaqueChildModel>();
+  model->netlist = netlist;
+  model->source_nodes = netlist.nodes.size();
+  model->client = client;
+  model->root = root;
+  model->storage = netlist.nodes.size();
+  model->default_load = load->data;
+  NetlistNode storage;
+  storage.name = netlist.scopes.at(node.scope).path + ".__opaque_scan_state";
+  while (model->netlist.node_ids.count(storage.name)) storage.name += "_";
+  storage.kind = "ScanRegister";
+  storage.model = ModelKind::kRegister;
+  storage.origin = node.origin;
+  storage.scope = node.scope;
+  storage.left = static_cast<int64_t>(load->data.size()) - 1;
+  storage.indexed = true;
+  storage.inputs["ScanInSource"] = {
+      {pins.at("ScanInPort"), netlist.nodes[pins.at("ScanInPort")].left}};
+  storage.inputs["CaptureSource"].resize(load->data.size());
+  auto unknown = *load;
+  unknown.data.assign(load->data.size(), 'x');
+  storage.constants["ResetValue"] = std::move(unknown);
+  storage.constants["DefaultLoadValue"] = *load;
+  if (pins.count("ResetPort")) {
+    const auto& reset = netlist.nodes[pins.at("ResetPort")];
+    storage.reset =
+        BitReference{pins.at("ResetPort"), reset.left, 'x', reset.active_low};
+  }
+  model->netlist.node_ids.emplace(storage.name, model->storage);
+  model->netlist.nodes.push_back(std::move(storage));
+  model->netlist.nodes[pins.at("ScanOutPort")].inputs["Source"] = {
+      {model->storage, 0}};
+  return model;
+}
 Operation NormalizeOpaqueScan(z3::context& context,
                               const OpaqueScanModel& model,
                               const Operation& operation) {

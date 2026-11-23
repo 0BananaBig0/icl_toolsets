@@ -6,6 +6,7 @@
 #include <z3++.h>
 
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <utility>
@@ -35,6 +36,14 @@ OpaqueScanModel DescribeOpaqueScans(const Netlist& netlist);
 Operation NormalizeOpaqueScan(z3::context& context,
                               const OpaqueScanModel& model,
                               const Operation& operation);
+// Private shift interval; original node IDs and the exported model stay intact.
+struct OpaqueChildModel {
+  Netlist netlist;
+  size_t source_nodes = 0, client = 0, root = 0, storage = 0;
+  std::string default_load;
+};
+std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
+    const Netlist& netlist);
 class OpaqueScanQueue {
  public:
   explicit OpaqueScanQueue(OpaqueScanModel model) : model_(std::move(model)) {}
