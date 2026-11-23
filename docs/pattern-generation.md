@@ -9105,3 +9105,7 @@ wide-alias,batch-scale}/. Strict coverage item1 and broader inventory limits sta
 unchanged. The exact guide example passes three matching source/flat/generated invocations
 with9/0b1001/2/0 result notes; this is author verification, not an independent
 reader study.
+
+Task159 is merged into master;17 integration checks pass on4028 identical input
+hashes/19 copied qualified native products, with117 stashes preserved. Receipt:
+build/callback-endpoint-readback-20261123/merged/receipt.json.

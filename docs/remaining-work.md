@@ -169,3 +169,7 @@ generator,18 C++ quality,4028 input/36 product hashes). All five Important revie
 findings are fixed in one test-first pass; no Minor findings.90 actual-observation,
 60 existing-callback, six alias and six corpus measurements pass their bounds.
 Integration evidence is recorded after the merge.
+
+Task159 is merged into master;17 integration checks pass on4028 identical input
+hashes/19 copied qualified native products, with117 stashes preserved. Receipt:
+build/callback-endpoint-readback-20261123/merged/receipt.json.

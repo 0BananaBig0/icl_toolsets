@@ -102,7 +102,7 @@ unexpanded callback data operations as actual native data transactions.
 - [x] Commit; one fresh final independent review. Test-first fix Critical/Important
       in one pass, deferMinors/no rereview. Run required full qualification after
       relevant fixes and bind all source/product/performance hashes.
-- [ ] Merge master, verify exact merged inputs/products/focused checks, push,
+- [x] Merge master, verify exact merged inputs/products/focused checks, push,
       detach preserved worktree/delete merged branch/archive only ownledger.
       Completion command: python3 /tmp/callback-endpoint-readback-completion-check.py.
       Expected clean pushed master/onlymaster,117stashes and complete evidence;
