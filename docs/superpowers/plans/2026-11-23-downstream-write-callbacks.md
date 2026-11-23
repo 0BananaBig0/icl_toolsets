@@ -69,7 +69,8 @@ immutable logical markers and reuse existing dispatcher/queue/source consumers.
   reset insertion without mutable old operations or duplicate invocation.
 
 ### Task 1: Transparent dependencies, staged queue and preflight
-**Files:** Modify src/pattern/pattern_runtime.cc, Makefile,
+**Files:** Modify src/pattern/pattern_runtime.cc, pattern_runtime.h,
+pattern_readback.cc, icl_pattern_generation_main.cc, Makefile,
 tests/src/pattern_runtime_test.cc.
 Create tests/src/pattern/test_downstream_write_callbacks.py.
 Only concrete guard/consumer failures justify src/pattern/pattern_readback.cc or
@@ -80,10 +81,12 @@ optional<BitReference>, with immutable-path cache and selected-bit work budget.
 Prepare effective callback prerequisites inside ExecuteCallbacks(Operation),
 reusing its existing request record and dispatcher. Private staged operations
 associate original stream indices with ordinary payloads; reset generation/
-consumption follows existing group boundaries. Public Runtime/Operation unchanged.
+consumption follows existing group boundaries. Public Runtime methods unchanged;
+Operation gains trailing default-false callback_prerequisite actual-invocation
+provenance as justified by the verified consumer refinement below.
 Task2 consumes this behavior through unchanged generator commands/SourceActions.
 
-- [ ] task-start/read brief, recordBASE. Add6native tests:
+- [x] task-start/read brief, recordBASE. Add6native tests:
       TestDownstreamCallbackDispatch (endpointp9 before desten1, original marker
       immutable, callback once, original ordinary goal eventually scheduled);
       TestDownstreamCallbackMasks (selected/sparse/inverted/ascending and effective
@@ -102,7 +105,7 @@ Task2 consumes this behavior through unchanged generator commands/SourceActions.
       test_preflight_and_failure_recovery, test_read_and_unsupported_mode_guards.
       Expected actual missing-dispatch RED against immutable parent, no weakened
       ordinary invalid-target/history/physical/merge guards.
-- [ ] Implement selected-bit WriteCallbackSource through transparent port/Alias/
+- [x] Implement selected-bit WriteCallbackSource through transparent port/Alias/
       selectable-data sources. Cache immutable path results, preserve cumulative
       inversion and index mapping; leave ordinary cycles to native execution.
       In Command classify/stage dependent ordinary members without early native
@@ -112,13 +115,17 @@ Task2 consumes this behavior through unchanged generator commands/SourceActions.
       Reuse binding/arity/cycle and body dispatch. Append staged native requests
       only after surviving prerequisites and logical postconditions, before their
       final outer Apply. Body reset generation cancels stale staged records.
-      Expected native6+CLI8GREEN, pure/mixed explicit streams unchanged.
-- [ ] Run allRuntime normal/static; new8CLI normal/static; existing40callback,
+      Add compact actual-prerequisite markers and reject their provenance in the
+      readback provider and final CLI publication guard, as proved by the actual
+      false-acceptance negative. Expected native6+CLI8GREEN, pure/mixed explicit
+      streams unchanged.
+- [x] Run allRuntime normal/static; new8CLI normal/static; existing40callback,
       17mixedgroup,16mixedalias,23endpoint,10primarycallback,15queued,
       30observation and14feedback CLI each variant. Run changed-range C++format/
-      tidy/C++17. Expected allpass and unchanged public APIs, named failures only
+      tidy/C++17. Expected allpass with only the verified trailing provenance field API change;
+      named failures only
       if an existing expectation becomes obsolete while preserving real negatives.
-- [ ] Bind exact source/product/log hashes in task1receipt. Finalize selected
+- [x] Bind exact source/product/log hashes in task1receipt. Finalize selected
       diff, groupedstorytellercommit, task-done with
       python3 /tmp/downstream-write-callbacks-task1-check.py.
       Expected core independently testable before expanded qualification.
@@ -165,3 +172,13 @@ hardware dimensions and actual PIO writes; no request notes as observations.
       push/detach/delete ownbranch/archive ownledger with117stashes preserved.
       task-done: python3 /tmp/downstream-write-callbacks-completion-check.py.
       Expected clean pushedmaster/onlymaster; continue broader inventory.
+
+### Verified Task1 refinement
+The real modeled automatic-history negative falsely accepted after core dispatch.
+Add src/pattern/pattern_runtime.h's trailing default-false bool
+Operation.callback_prerequisite and compact invocation markers; update
+src/pattern/pattern_readback.cc to reject actual invocation before any new delta.
+Copy the new metadata in projection construction; pure and canceled requests keep
+false. Native dispatch asserts actual provenance without marking ReadCallBack.
+Sparse positives use minimal selected hardware; shared-enable whole-register
+collateral control rejects identically before/after inference.

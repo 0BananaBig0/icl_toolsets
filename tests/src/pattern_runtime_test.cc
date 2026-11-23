@@ -199,6 +199,199 @@ iReset; iWrite p 1; iApply
   Require(unwound, "test exercises synthetic merge unwind");
 }
 
+const std::string kDownstreamCallbackModel = R"(
+Module Top {
+ DataInPort en; DataInPort p[3:0]; DataOutPort endpoint[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Top store <D> <R>;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en;}
+ DataRegister other[3:0] {WriteDataSource value; WriteEnSource en;}
+ DataRegister sparse[1:0] {WriteDataSource value[3],value[1]; WriteEnSource en;}
+ DataRegister tiny {WriteDataSource value[0]; WriteEnSource en;}
+ Alias duplicate[1:0] = tiny,~tiny;
+ Alias inverted[3:0] = ~dest;
+ DataRegister hold {WriteDataSource hold; WriteEnSource en; ResetValue 1'b0;}
+})";
+const std::string kDownstreamCallbackProcs =
+    "iPDLLevel 1; iProcsForModule Top; set ::calls 0; "
+    "iProc store {data reg} {incr ::calls; iWrite en 0; iWrite p $data}; ";
+void TestDownstreamCallbackDispatch() {
+  pattern::Design design;
+  design.AddIcl("downstream.icl", kDownstreamCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("queue.pdl", kDownstreamCallbackProcs + "iWrite dest 9");
+  const auto before = runtime.operations();
+  Require(before.size() == 1 && before[0].callback &&
+              before[0].arguments[0] == "dest",
+          "downstream write starts with an immutable logical request");
+  runtime.Execute("apply.pdl",
+                  "iApply; if {$::calls != 1} {error missing_dispatch}");
+  runtime.Finish();
+  const auto& after = runtime.operations();
+  Require(std::any_of(after.begin(), after.end(),
+                      [](const auto& op) {
+                        return op.callback_prerequisite && op.callback &&
+                               op.callback_execution &&
+                               !op.callback_read_execution &&
+                               op.arguments[0] == "value" &&
+                               op.arguments[1] == "0b1001";
+                      }) &&
+              !runtime.ReadCallbacksExecuted(),
+          "actual automatic write invocation has compact distinct provenance");
+  Require(after[0].command == before[0].command &&
+              after[0].arguments == before[0].arguments &&
+              after[0].origin == before[0].origin &&
+              after[0].call_stack == before[0].call_stack &&
+              after[0].callback == before[0].callback &&
+              after[0].callback_execution == before[0].callback_execution &&
+              after[0].callback_read_execution ==
+                  before[0].callback_read_execution &&
+              after[0].callback_preserved == before[0].callback_preserved &&
+              after[0].callback_prerequisite == before[0].callback_prerequisite,
+          "automatic dispatch never revises an earlier logical request");
+  const auto postcondition =
+      std::find_if(after.begin(), after.end(), [](const auto& op) {
+        return op.command == "iState" && op.arguments[0] == "value" &&
+               op.arguments[1] == "0b1001";
+      });
+  const auto dependent =
+      std::find_if(after.begin(), after.end(), [&](const auto& op) {
+        return !op.callback && op.command == "iWrite" &&
+               pattern::ResolvePdlTarget(netlist, op.arguments[0])
+                       .bits.front()
+                       .node == netlist.node_ids.at("dest");
+      });
+  Require(postcondition != after.end() && dependent != after.end() &&
+              postcondition < dependent && dependent->arguments[1] == "0b1001",
+          "dependent native write follows its callback postcondition");
+}
+void TestDownstreamCallbackMasks() {
+  pattern::Design design;
+  design.AddIcl("downstream-masks.icl", kDownstreamCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const auto& [body, data] :
+       {std::pair<std::string, std::string>{"iWrite sparse 2", "0b1x0x"},
+        {"iWrite inverted 6", "0b1001"},
+        {"iWrite duplicate 0", "0bxxx1"},
+        {"iWrite dest 3; iWrite dest 9", "0b1001"},
+        {"iWrite dest 9; iWrite other 9", "0b1001"},
+        {"iWrite value 9; iWrite dest 9", "0b1001"}}) {
+    pattern::Runtime runtime(design, netlist);
+    runtime.Execute("masks.pdl",
+                    kDownstreamCallbackProcs +
+                        "iProc store {data reg} {incr ::calls; "
+                        "if {$data ne \"" +
+                        data + "\"} {error wrong_mask}; iWrite p $data}; " +
+                        body +
+                        "; iApply; if {$::calls != 1} {error callback_count}");
+    runtime.Finish();
+  }
+}
+void TestDownstreamCallbackReset() {
+  pattern::Design design;
+  design.AddIcl("downstream-reset.icl", kDownstreamCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime canceled(design, netlist);
+  canceled.Execute("cancel.pdl",
+                   kDownstreamCallbackProcs +
+                       "iWrite dest 9; iReset; "
+                       "if {$::calls != 0} {error canceled_invocation}");
+  canceled.Finish();
+  Require(!canceled.CallbacksExecuted(),
+          "reset cancels uninvoked prerequisites");
+  pattern::Runtime reset(design, netlist);
+  reset.Execute("body-reset.pdl",
+                kDownstreamCallbackProcs +
+                    "iProc store {d r} {incr ::calls; iReset; iWrite p $d}; "
+                    "iWrite dest 9; iApply; "
+                    "if {$::calls != 1} {error missing_dispatch}");
+  reset.Finish();
+  Require(std::none_of(reset.operations().begin(), reset.operations().end(),
+                       [&](const auto& op) {
+                         return !op.callback && op.command == "iWrite" &&
+                                pattern::ResolvePdlTarget(netlist,
+                                                          op.arguments[0])
+                                        .bits.front()
+                                        .node == netlist.node_ids.at("dest");
+                       }),
+          "body reset never restores the canceled dependent write");
+}
+void TestDownstreamCallbackPreflight() {
+  pattern::Design design;
+  auto model = kDownstreamCallbackModel;
+  model.insert(model.rfind('}'), R"(
+ DataRegister peer[3:0] {WriteCallBack Top missing <D>;}
+ DataRegister remote[3:0] {WriteDataSource peer; WriteEnSource en;}
+)");
+  design.AddIcl("downstream-preflight.icl", model);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("preflight.pdl", kDownstreamCallbackProcs + R"(
+iWrite dest 9; iWrite remote 9
+if {![catch {iApply}]} {error missing_not_detected}
+if {$::calls != 0} {error early_effects}
+iReset
+iProc store {data reg} {incr ::calls; iWrite dest $data; iApply}
+iWrite dest 9
+if {![catch {iApply}]} {error cycle_not_detected}
+if {![catch {iApply}]} {error poison_lost}
+iReset
+iProc store {data reg} {incr ::calls; iWrite p $data}
+iWrite dest 6; iApply
+if {$::calls != 2} {error retry_count}
+)");
+  runtime.Finish();
+}
+void TestDownstreamCallbackGoals() {
+  pattern::Design design;
+  design.AddIcl("downstream-goals.icl", kDownstreamCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime conflict(design, netlist);
+  Fails(
+      [&] {
+        conflict.Execute(
+            "conflict.pdl",
+            kDownstreamCallbackProcs + "iWrite p 3; iWrite dest 9; iApply");
+      },
+      "caller");
+  pattern::Runtime derived(design, netlist);
+  derived.Execute("derived.pdl", kDownstreamCallbackProcs + R"(
+iWrite dest 3; iWrite other 9
+if {![catch {iApply}]} {error conflict_not_detected}
+if {$::calls != 0} {error early_effects}
+iReset
+iWrite p 9; iWrite dest 9; iApply
+if {$::calls != 1} {error compatible_count}
+)");
+  derived.Finish();
+  pattern::Runtime feedback(design, netlist);
+  feedback.Execute("feedback.pdl", kDownstreamCallbackProcs +
+                                       "iState hold 0; iWrite hold 0; iApply");
+  feedback.Finish();
+  Require(!feedback.CallbacksExecuted(),
+          "ordinary self feedback does not create a callback dependency");
+}
+void TestDownstreamCallbackSpans() {
+  pattern::Design design;
+  design.AddIcl("downstream-spans.icl", kDownstreamCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist, true);
+  runtime.Execute("spans.pdl",
+                  kDownstreamCallbackProcs +
+                      "set ::args 0; iWrite dest [expr {[incr ::args]+8}]");
+  runtime.Execute("apply.pdl",
+                  "iApply; if {$::args != 1 || $::calls != 1} "
+                  "{error once_only}");
+  runtime.Finish();
+  for (bool whole : {false, true}) {
+    const auto actions = runtime.SourceActions(whole);
+    Require(actions.size() == 1 && actions[0].begin == 0 &&
+                actions[0].end == runtime.operations().size() &&
+                actions[0].arguments == std::vector<std::string>{"dest", "9"},
+            "original write owns all staged expansion and evaluated arguments");
+  }
+}
+
 const std::string kMixedCallbackModel = R"(
 Module Top {
  DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
@@ -1779,7 +1972,13 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestMixedAliasProjection,
+  for (const auto test : {TestDownstreamCallbackDispatch,
+                          TestDownstreamCallbackMasks,
+                          TestDownstreamCallbackReset,
+                          TestDownstreamCallbackPreflight,
+                          TestDownstreamCallbackGoals,
+                          TestDownstreamCallbackSpans,
+                          TestMixedAliasProjection,
                           TestMixedAliasRanges,
                           TestMixedAliasReadPayloadBudget,
                           TestMixedAliasHistory,

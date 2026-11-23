@@ -483,9 +483,55 @@ class Runtime::Impl {
     return operations_[index].callback &&
            !consumed_callback_operations_.count(index);
   }
-  std::vector<Operation> CallbackOrdinaryAccesses(
-      const Operation& operation, const PdlTarget& target,
-      const std::string& bits) const {
+  std::optional<BitReference> WriteCallbackSource(BitReference bit) {
+    using Bit = std::pair<size_t, int64_t>;
+    std::vector<std::pair<Bit, bool>> path;
+    std::set<Bit> visiting;
+    std::optional<BitReference> result;
+    while (bit.node != std::numeric_limits<size_t>::max()) {
+      const Bit key{bit.node, bit.index};
+      const auto cached = callback_sources_.find(key);
+      if (cached != callback_sources_.end()) {
+        result = cached->second;
+        if (result) result->inverted = result->inverted != bit.inverted;
+        break;
+      }
+      if (!visiting.insert(key).second) break;
+      if (!callback_dependency_budget_--) {
+        throw std::runtime_error("callback dependency resource limit exceeded");
+      }
+      path.push_back({key, bit.inverted});
+      const auto& node = netlist_->nodes.at(bit.node);
+      if (node.write_callback) {
+        result = bit;
+        break;
+      }
+      const char* role = nullptr;
+      if (node.kind == "DataRegister" &&
+          !node.constants.count("AddressValue")) {
+        role = "WriteDataSource";
+      } else if ((node.model == ModelKind::kAlias ||
+                  node.kind == "DataInPort" || node.kind == "DataOutPort") &&
+                 !node.inputs.count("Enable") &&
+                 !node.properties.count("EnableSource")) {
+        role = "Source";
+      }
+      if (!role || !node.inputs.count(role)) break;
+      auto next = node.inputs.at(role).at(HistoryOffset(bit));
+      next.inverted = next.inverted != bit.inverted;
+      bit = next;
+    }
+    for (const auto& [key, inverted] : path) {
+      auto source = result;
+      if (source) source->inverted = source->inverted != inverted;
+      callback_sources_.emplace(key, source);
+    }
+    return result;
+  }
+  std::vector<Operation> CallbackOrdinaryAccesses(const Operation& operation,
+                                                  const PdlTarget& target,
+                                                  const std::string& bits,
+                                                  bool deferred = false) {
     const bool read = operation.command == "iRead";
     std::map<std::pair<size_t, int64_t>, char> ordinary;
     for (size_t i = 0; i < target.bits.size(); ++i) {
@@ -495,6 +541,8 @@ class Runtime::Impl {
                : node.write_callback.has_value()) {
         continue;
       }
+      const bool automatic = !read && WriteCallbackSource(bit).has_value();
+      if (automatic != deferred) continue;
       const char value = bit.inverted && bits[i] != 'x'
                              ? (bits[i] == '1' ? '0' : '1')
                              : bits[i];
@@ -531,7 +579,8 @@ class Runtime::Impl {
                         false,
                         operation.callback_execution,
                         operation.callback_read_execution,
-                        operation.callback_preserved});
+                        operation.callback_preserved,
+                        operation.callback_prerequisite});
     }
     return result;
   }
@@ -598,6 +647,7 @@ class Runtime::Impl {
     std::map<Key, size_t> positions;
     std::vector<Request> requests;
     std::vector<bool> mixed_reads(pending.size(), false);
+    std::map<std::pair<size_t, int64_t>, size_t> write_sources;
     std::vector<size_t> anchors;
     bool ordinary_pending = false;
     for (size_t i = 0; i < pending.size(); ++i) {
@@ -617,6 +667,11 @@ class Runtime::Impl {
                               ? PdlDataValue(*history_context_, *netlist_,
                                              target, op.arguments[1])
                               : std::string(target.bits.size(), 'x');
+        if (!read) {
+          for (const auto& bit : target.bits) {
+            write_sources[{bit.node, bit.index}] = i;
+          }
+        }
         if (!op.callback) {
           ordinary_pending = true;
           queue.Add(op, target, data);
@@ -647,15 +702,35 @@ class Runtime::Impl {
                                        target.bits.size()));
       }
     }
-    std::map<std::pair<size_t, int64_t>, char> caller_writes;
+    using Bit = std::pair<size_t, int64_t>;
+    std::map<Bit, char> caller_writes, effective_writes;
+    std::map<Bit, std::pair<char, size_t>> inferred;
+    bool automatic = false;
     for (bool read : {false, true}) {
       const auto [bits, values] = read ? queue.ReadModel() : queue.WriteModel();
       for (size_t i = 0; i < bits.size(); ++i) {
         const auto& bit = bits[i];
         const size_t offset = HistoryOffset(bit);
+        if (!read) effective_writes[{bit.node, bit.index}] = values[i];
         const auto position = positions.find({bit.node, read});
         if (position == positions.end()) {
-          if (!read && values[i] != 'x') {
+          const auto source =
+              read ? std::optional<BitReference>{} : WriteCallbackSource(bit);
+          if (source) {
+            automatic = true;
+            if (values[i] != 'x') {
+              const char value =
+                  source->inverted ? (values[i] == '1' ? '0' : '1') : values[i];
+              const Bit key{source->node, source->index};
+              const auto [entry, inserted] = inferred.emplace(
+                  key, std::make_pair(value,
+                                      write_sources.at({bit.node, bit.index})));
+              if (!inserted && entry->second.first != value) {
+                throw std::runtime_error(
+                    "conflicting callback prerequisite requirements");
+              }
+            }
+          } else if (!read && values[i] != 'x') {
             caller_writes[{bit.node, bit.index}] = values[i];
           }
           continue;
@@ -665,6 +740,48 @@ class Runtime::Impl {
         request.requested.at(offset) = '1';
       }
     }
+    std::set<size_t> prerequisite_callbacks;
+    for (const auto& [bit, inferred_value] : inferred) {
+      const auto [id, index] = bit;
+      prerequisite_callbacks.insert(id);
+      const auto [value, source] = inferred_value;
+      const Key key{id, false};
+      if (positions.emplace(key, requests.size()).second) {
+        requests.push_back({key, source,
+                            std::string(netlist_->nodes[id].Width(), 'x'),
+                            std::string(netlist_->nodes[id].Width(), '0')});
+      }
+      auto& request = requests.at(positions.at(key));
+      request.source = std::min(request.source, source);
+      const auto offset = HistoryOffset({id, index});
+      if (request.data[offset] != 'x' && request.data[offset] != value) {
+        throw std::runtime_error(
+            "explicit write conflicts with callback prerequisite");
+      }
+      request.data[offset] = value;
+      request.requested[offset] = '1';
+    }
+    std::vector<Operation> deferred;
+    if (automatic) {
+      std::stable_sort(requests.begin(), requests.end(),
+                       [](const auto& left, const auto& right) {
+                         return left.source < right.source;
+                       });
+      for (const auto& operation : pending) {
+        if (!operation.callback || operation.command != "iWrite") continue;
+        const auto target =
+            ResolvePdlTarget(*netlist_, operation.arguments.at(0));
+        std::string data;
+        for (const auto& bit : target.bits) {
+          char value = effective_writes.at({bit.node, bit.index});
+          if (bit.inverted && value != 'x') value = value == '1' ? '0' : '1';
+          data += value;
+        }
+        auto accesses = CallbackOrdinaryAccesses(operation, target, data, true);
+        for (auto& access : accesses) deferred.push_back(std::move(access));
+      }
+    }
+    const size_t reset_generation = callback_reset_generation_;
     // Preflight all static bindings and loaded procedures before any effects.
     for (const auto& request : requests) {
       const auto& binding = BindCallback(request.key.first, request.key.second);
@@ -725,14 +842,30 @@ class Runtime::Impl {
         try {
           callbacks_executed_ = true;
           read_callbacks_executed_ = read_callbacks_executed_ || read;
+          if (!read && prerequisite_callbacks.count(id)) {
+            consumed_callback_operations_.insert(operations_.size());
+            operations_.push_back({"iWrite",
+                                   {node.name, "0b" + request.data},
+                                   source.origin,
+                                   source.call_stack,
+                                   true,
+                                   true,
+                                   read_callback_depth_ != 0,
+                                   source.callback_preserved,
+                                   true});
+          }
           if (read) {
-            auto invocation =
-                mixed_reads[request.source]
-                    ? Operation{"iRead",       {node.name, "0b" + request.data},
-                                source.origin, source.call_stack,
-                                true,          true,
-                                true,          source.callback_preserved}
-                    : source;
+            auto invocation = mixed_reads[request.source]
+                                  ? Operation{"iRead",
+                                              {node.name, "0b" + request.data},
+                                              source.origin,
+                                              source.call_stack,
+                                              true,
+                                              true,
+                                              true,
+                                              source.callback_preserved,
+                                              source.callback_prerequisite}
+                                  : source;
             invocation.callback_execution = true;
             invocation.callback_read_execution = true;
             consumed_callback_operations_.insert(operations_.size());
@@ -770,6 +903,13 @@ class Runtime::Impl {
                false,
                true,
                read_callback_depth_ != 0});
+        }
+      }
+      if (reset_generation == callback_reset_generation_ && !deferred.empty()) {
+        if (!pending_) pending_operation_ = operations_.size();
+        pending_ = true;
+        for (auto& operation : deferred) {
+          operations_.push_back(std::move(operation));
         }
       }
       if (pending_) InvalidateReadHistory(apply);
@@ -1564,7 +1704,8 @@ class Runtime::Impl {
           target.bits.begin(), target.bits.end(), [&](const auto& bit) {
             const auto& node = netlist_->nodes.at(bit.node);
             return (read ? node.read_callback : node.write_callback)
-                .has_value();
+                       .has_value() ||
+                   (!read && WriteCallbackSource(bit).has_value());
           });
       if (operation.callback) {
         ValidatePdlAccessTarget(*netlist_, target, read);
@@ -1616,6 +1757,7 @@ class Runtime::Impl {
       }
     }
     if (name == "iReset") {
+      ++callback_reset_generation_;
       callback_failed_ = false;
       for (auto& writes : callback_caller_writes_) writes.clear();
     }
@@ -1646,6 +1788,10 @@ class Runtime::Impl {
     }
   }
 
+  std::map<std::pair<size_t, int64_t>, std::optional<BitReference>>
+      callback_sources_;
+  size_t callback_dependency_budget_ = 4 * 1024 * 1024;
+  size_t callback_reset_generation_ = 0;
   bool has_callbacks_ = false, callback_failed_ = false,
        callbacks_executed_ = false;
   std::map<std::pair<size_t, bool>, CallbackBinding> callback_bindings_;

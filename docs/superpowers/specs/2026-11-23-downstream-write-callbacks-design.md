@@ -120,3 +120,30 @@ declined behavior/costs. Qualify final state; merge into direct parentmaster,
 verify identical source/product hashes and integration, push, detach retained
 worktree, delete completed branch and archive only this plan's ledger. Continue
 the original inventory afterward.
+
+## Proven consumer refinement
+
+After private runtime staging, five of eight CLI methods and five of six native
+tests pass. The automatic modeled-history negative unexpectedly succeeds with
+the real generator. Existing flags distinguish read callbacks and body context,
+but cannot identify actual automatic write prerequisite invocation without
+confusing it with explicit writes or canceled requests.
+
+Add default-false Operation.callback_prerequisite at the end of the aggregate,
+meaning actual automatic WriteCallBack invocation provenance. Append one compact
+register-local marker immediately before invocation, preserving source/stack;
+do not copy the downstream payload per callback. ModelReadback rejects that
+provenance before processing any new observation delta. Pure explicit streams
+and canceled/no-care automatic requests retain false. This is the one required
+public record refinement, proved by the CLI false acceptance; no new Runtime
+method or scheduler engine is needed.
+
+Sparse fixture diagnosis shows minimal selected-bit hardware succeeds for both
+explicit and automatic control. Adding unselected whole registers on the same
+enable rejects both at existing native proof. Keep that negative, and use
+minimal valid hardware for positive sparse/ascending/duplicate-mask cases.
+
+A second consumer probe without a getter still accepts because its readback
+provider is never called. The CLI's existing final callback-history validation
+must also check actual callback_prerequisite provenance before publication;
+keep the provider guard for getters inside procedures. No Runtime method needed.
