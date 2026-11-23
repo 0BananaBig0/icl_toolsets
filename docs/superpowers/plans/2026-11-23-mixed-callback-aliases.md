@@ -71,7 +71,7 @@ preserving negative mode/conflict coverage and truthful method names.
 PdlTarget,string) -> vector<Operation>. Existing public Operation/Runtime APIs,
 hardware queues and readback/source-action callers unchanged.
 
-- [ ] task-start/read brief and recordedBASE. Add native RED cases:
+- [x] task-start/read brief and recordedBASE. Add native RED cases:
       TestMixedAliasProjection (marker + compact ordinary run, callback once,
       endpoint retained, prior entries immutable);
       TestMixedAliasRanges (ascending/reversed/inverted/duplicate/segmented bits,
@@ -94,7 +94,7 @@ hardware queues and readback/source-action callers unchanged.
       test_read_callback_generation_and_model_guard.
       Run native/new8 against unchanged product; Expected actual guard RED and
       no weakened existing invalid-target/unsupported-mode checks.
-- [ ] Implement CallbackOrdinaryAccesses with original per-bit identity/last
+- [x] Implement CallbackOrdinaryAccesses with original per-bit identity/last
       occurrence and inversion-normalized values. Aggregate selected indices per
       node, coalesce consecutive runs in declaration direction and build canonical
       BaseName ranges/scalars. No X widening. Prepare and caller-check every run
@@ -103,11 +103,11 @@ hardware queues and readback/source-action callers unchanged.
       In ExecuteCallbacks skip ordinary bits when building callback positions;
       reuse full-target queue validation/coalescing and existing ordinary pending/
       consumed-index/known-goal logic. Expected6newnative/8CLI GREEN.
-- [ ] Build normal/static generator and Runtime native with existing Z3/Tcl pins.
+- [x] Build normal/static generator and Runtime native with existing Z3/Tcl pins.
       Run all Runtime cases/new8CLI bothvariants plus40callback,17mixed-groups,
       23endpoint-history,10primary-callback,15queued and30observation methods.
       Run changed-range format/tidy/C++17. Expected all pass; no public API change.
-- [ ] Bind exact executed source/product/log hashes in task1 receipt; stage final
+- [x] Bind exact executed source/product/log hashes in task1 receipt; stage final
       diff, use grouped storyteller message, commit, task-done with
       python3 /tmp/mixed-callback-aliases-task1-check.py. Expected core proven
       before expanded replay/benchmark work.

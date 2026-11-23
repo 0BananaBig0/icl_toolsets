@@ -483,6 +483,54 @@ class Runtime::Impl {
     return operations_[index].callback &&
            !consumed_callback_operations_.count(index);
   }
+  std::vector<Operation> CallbackOrdinaryAccesses(
+      const Operation& operation, const PdlTarget& target,
+      const std::string& bits) const {
+    const bool read = operation.command == "iRead";
+    std::map<std::pair<size_t, int64_t>, char> ordinary;
+    for (size_t i = 0; i < target.bits.size(); ++i) {
+      const auto& bit = target.bits[i];
+      const auto& node = netlist_->nodes.at(bit.node);
+      if (read ? node.read_callback.has_value()
+               : node.write_callback.has_value()) {
+        continue;
+      }
+      const char value = bit.inverted && bits[i] != 'x'
+                             ? (bits[i] == '1' ? '0' : '1')
+                             : bits[i];
+      ordinary[{bit.node, bit.index}] = value;
+    }
+    std::vector<Operation> result;
+    auto next = ordinary.begin();
+    while (next != ordinary.end()) {
+      const auto id = next->first.first;
+      const auto& node = netlist_->nodes.at(id);
+      auto left = next->first.second, right = left;
+      std::string data(1, next->second);
+      ++next;
+      while (next != ordinary.end() && next->first.first == id &&
+             next->first.second == right + 1) {
+        right = next->first.second;
+        data += next->second;
+        ++next;
+      }
+      if (node.left >= node.right) {
+        std::swap(left, right);
+        std::reverse(data.begin(), data.end());
+      }
+      auto name = node.BaseName();
+      if (node.indexed) {
+        name += "[" + std::to_string(left);
+        if (left != right) name += ":" + std::to_string(right);
+        name += "]";
+      }
+      auto projected = operation;
+      projected.callback = false;
+      projected.arguments = {std::move(name), "0b" + data};
+      result.push_back(std::move(projected));
+    }
+    return result;
+  }
   void CheckCallbackCallerWrite(const Operation& operation) {
     const bool state = operation.command == "iState" &&
                        (operation.arguments.size() != 3 ||
@@ -571,11 +619,7 @@ class Runtime::Impl {
         }
         for (const auto& bit : target.bits) {
           const auto& node = netlist_->nodes.at(bit.node);
-          if (!(read ? node.read_callback : node.write_callback)) {
-            throw std::runtime_error(
-                "mixed callback and ordinary alias bits require separate "
-                "Applies");
-          }
+          if (!(read ? node.read_callback : node.write_callback)) continue;
           const Key key{bit.node, read};
           if (positions.emplace(key, requests.size()).second) {
             requests.push_back({key, i, std::string(node.Width(), 'x'),
@@ -1497,6 +1541,7 @@ class Runtime::Impl {
         }
       }
     }
+    std::vector<Operation> callback_ordinary;
     if ((name == "iWrite" || name == "iRead") && has_callbacks_) {
       const auto target =
           ResolvePdlTarget(*netlist_, operation.arguments.at(0));
@@ -1517,6 +1562,10 @@ class Runtime::Impl {
                                              target, operation.arguments[1])
                               : std::string(target.bits.size(), 'x');
         operation.arguments = {operation.arguments[0], "0b" + bits};
+        callback_ordinary = CallbackOrdinaryAccesses(operation, target, bits);
+        for (const auto& projected : callback_ordinary) {
+          CheckCallbackCallerWrite(projected);
+        }
       }
     }
     CheckCallbackCallerWrite(operation);
@@ -1578,6 +1627,9 @@ class Runtime::Impl {
       }
     }
     operations_.push_back(std::move(operation));
+    for (auto& projected : callback_ordinary) {
+      operations_.push_back(std::move(projected));
+    }
   }
 
   bool has_callbacks_ = false, callback_failed_ = false,

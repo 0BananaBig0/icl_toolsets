@@ -316,8 +316,8 @@ if {$::calls != 2} {error canceled_tail}
             self.assertEqual(row["fresh_getters"], 0 if row["mode"] == "observer-off" else 4)
 
     def test_retained_guards(self):
-        mixed = MODEL.replace(" Alias spare_inv", " Alias mixed[7:0] = value, spare;\n Alias spare_inv")
-        self.rejected("iWrite mixed 0x93; iApply", "alias", mixed)
+        mixed = MODEL.replace(" Alias spare_inv", " Alias mixed[7:0] = value, p;\n Alias spare_inv")
+        self.rejected("iWrite mixed 0x93; iApply", "caller", mixed)
         self.rejected("iWrite spare 3; iWrite value 9; iApply -together", "together")
         self.rejected("iMerge -begin; iWrite spare 3; iWrite value 9; iApply; iMerge -end", "Merge")
         self.rejected("iWrite spare 3; iWrite value 9; iApply", "callback", modeled=False,
