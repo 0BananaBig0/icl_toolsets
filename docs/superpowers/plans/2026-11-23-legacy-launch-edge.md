@@ -37,22 +37,22 @@ Create tests/src/pattern/test_legacy_launch_edge.py.
 **Interfaces:** Consumes NetlistNode.properties Expression and existing parsed token
 storage scoped by the property's Expression.scope; produces unchanged std::string SerializeIcl(const Netlist&).
 
-- [ ] Add native root/vector/inverted/Enable and repeated-child canonical property
+- [x] Add native root/vector/inverted/Enable and repeated-child canonical property
       assertions plus malformed property span/value/kind rejection; add CLI source/
       flat/generated nonempty writes/reads and invalid value/placement artifact guards.
-- [ ] Build/run focused native and CLI tests against unchanged serializer.
+- [x] Build/run focused native and CLI tests against unchanged serializer.
       Expected: failure specifically at flat property not implemented: LaunchEdge.
-- [ ] Add only the existing accepted token's guarded serialization in Declaration.
+- [x] Add only the existing accepted token's guarded serialization in Declaration.
       Run flatten/netlist/state and CLI dynamic/static. Expected: all pass.
-- [ ] Run actual maintained corpus, promote only the proven canonical identity
+- [x] Run actual maintained corpus, promote only the proven canonical identity
       and change the four SIB models to their PortGroup boundary; register new CLI suite in both
       generator variants. Expected:1017canonical/55unsupported/691original errors.
-- [ ] Run full14native/14leakSAN, both full generator variants, selected normal/SAN
+- [x] Run full14native/14leakSAN, both full generator variants, selected normal/SAN
       parser/model corpus+8producer/13protocol/3Make, C++ quality and source packaging.
       Expected: every gate exit0, no skipped required suite; record exact source/tool hashes.
-- [ ] Measure three normal/three configuredSAN fresh audit runs <=10s/512MiB.
+- [x] Measure three normal/three configuredSAN fresh audit runs <=10s/512MiB.
       Expected:6 valid complete reports, exact environment/command/hashes and RSS.
-- [ ] Document behavior/evidence/physical-timing limit. Commit; one fresh independent
+- [x] Document behavior/evidence/physical-timing limit. Commit; one fresh independent
       final review; test-first fix Critical/Important once, defer Minors, no rereview.
 - [ ] Merge into master, verify matching inputs/products and focused integrated checks,
       push, detach preserved worktree, delete merged branch, archive own ledger.

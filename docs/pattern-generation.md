@@ -8903,5 +8903,22 @@ Four legacy SIB models advance to their existing PortGroup boundary and are
 still unsupported. The expectation registry records each exact outcome.
 Broader inventory items 11/12 remain open.
 
-Qualification and integration evidence will be recorded after the required
-checks and independent review finish.
+Task157 qualification passes all 53 checks after the single Important review
+fix: 14 native/14 sanitizer native suites, 67 suites/1085 test methods per
+generator, selected normal/SAN corpus and producer8/protocol13/Make3 checks,
+six C++ quality checks and source packaging. Exact 4025 source inputs and 36
+products are verified in build/legacy-launch-edge-20261123/final/receipt.json.
+
+Six fresh corpus measurements pass the unchanged 10s/512MiB limits. Normal
+maximum: 1.0726s/104396KiB. Configured leak-SAN
+maximum: 4.3357s/485176KiB, with the established
+500ms unused-page release and unchanged quarantine/leak/UB checks. Commands,
+environment and hashes: build/legacy-launch-edge-20261123/batch-scale/results.json.
+
+The independent review reported 0 Critical, 1 Important and 2 Minor findings.
+The Important silent-loss case is fixed test-first before the full fresh run;
+specialized native serializers now reject an illegal property while legitimate
+Enum members named LaunchEdge remain valid. Deferred Minors: the earlier
+operator table retains Task156 counts, and the native fixed-point loop reparses
+the same canonical text. Physical timing/vendor equivalence remains unverified;
+coverage item1 remains excluded. Master integration is pending.

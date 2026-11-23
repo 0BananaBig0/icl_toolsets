@@ -131,4 +131,6 @@ launch timing semantics. The maintained default audit moves one identity to
 canonical acceptance (1017 total); four other legacy SIB models reach their
 existing PortGroup boundary (55 explicit unsupported total). The 691 original
 elaboration errors remain visible. Broader 11/12 remains pending.
-Qualification, review and integration are in progress.
+All 53 qualification checks and six corpus measurements pass after one
+Important test-first review fix; two Minors are deferred. Master integration
+is pending.
