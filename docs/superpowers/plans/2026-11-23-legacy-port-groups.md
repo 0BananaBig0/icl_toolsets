@@ -76,22 +76,22 @@ docs/pattern-generation.md and docs/remaining-work.md.
 unchanged SerializeIcl public behavior. Reuse existing CLI replay helpers and
 corpus producer/model inventory/registry protocol.
 
-- [ ] Add meaningful CLI tests for nonempty source/flat/generated replay of root/
+- [x] Add meaningful CLI tests for nonempty source/flat/generated replay of root/
       vector/commented/keyword/hierarchical/segmented/SIB cases, failed-definition
       prior-artifact protection, and forbidden group access/reservation targets.
       Register the suite in both full generator variants. Expected: all pass on Task1.
-- [ ] Run fresh full actual corpus, inspect every changed identity, then update only
+- [x] Run fresh full actual corpus, inspect every changed identity, then update only
       proven outcomes in registry. Expected: all valid PortGroups canonical, unknown
       member fixtures original elaboration errors, all other acceptance preserved.
-- [ ] Measure108 fresh scale/replay invocations at the global counts/modes/budgets
+- [x] Measure108 fresh scale/replay invocations at the global counts/modes/budgets
       and6 full-corpus batches. Expected: exact output equality, complete fresh
       artifacts, all measured bounds with environment/input/tool/output hashes.
-- [ ] Document install/existing command usage, annotation semantics/current counts,
+- [x] Document install/existing command usage, annotation semantics/current counts,
       limits and exact example. Full14native/14leakSAN, both complete generators,
       normal/configuredSAN parser+model corpus/producer8/protocol13/Make3,
       changedC++format/tidy/C++17 and source packaging. Expected: every required
       gate exit0, no skipped required suite; exact source/product receipts.
-- [ ] Commit and request one fresh independent whole-branch review. Test-first
+- [x] Commit and request one fresh independent whole-branch review. Test-first
       fix Critical/Important in one pass, deferMinors, no rereview; rerun affected
       full qualification after relevant source changes. Record all rulings.
 - [ ] Merge into master, verify exact merged inputs/products and focused integrated

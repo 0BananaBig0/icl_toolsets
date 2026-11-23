@@ -8972,19 +8972,30 @@ with undefined members now report original elaboration errors. Earlier Task156
 counts describe that task's baseline. This is source/model acceptance evidence;
 broader inventory11/12 and physical timing/vendor equivalence remain open.
 
-The focused normal/static/SAN eight-method CLI suite and native netlist/flatten
-sanitizer checks pass. Fifteen C++ quality checks pass. The guide example is
-author-verified with three equal nonempty source/flat/generated replays; no
-independent reader check is claimed.
+Task158 passes all 54 post-fix qualification checks: 14 native/14 sanitizer
+native suites, 68 suites/1094 test methods per generator, nine focused CLI
+methods on all variants, normal/selected-SAN corpus and producer8/protocol13/
+Make3 checks, 21 C++ quality checks and source packaging. Exact 4026 input
+hashes and 36 products: build/legacy-port-groups-20261123/final/receipt.json.
 
-All108 fresh scale invocations pass for1/64/1024groups x64memberbits, vector and
-segmented modes, three repeats each on normal/SAN tools. Every output matches
-the same control bytes. Maximum normal: 0.1153s / 79952KiB;
-maximum leak-SAN: 0.2669s / 156480KiB. Each remains within10s/512MiB.
-Six full-corpus runs also pass10s/512MiB: normal 1.1239s / 104316KiB,
-configured leak-SAN 4.4333s / 486280KiB, retaining the established
-500ms unused-page release/full quarantine. Exact commands, environment, input/
-tool/output hashes and RSS: build/legacy-port-groups-20261123/scale/results.json
-and batch-scale/results.json.
+The independent review reported 0 Critical, 3 Important and 0 Minor findings.
+One test-first pass fixes all three: valid annotations preserve scalar/parallel
+opaque and modeled raw scans and their actual/unknown histories; incompatible
+native hardware payloads reject before register collection or metadata;
+unindexed member ports require canonical scalar bounds/index zero. Full fresh
+qualification passed after those fixes; no rereview was used.
 
-Full qualification, independent final review and master integration are pending.
+All108 fresh final scale processes pass10s/512MiB at1/64/1024groups x64memberbits,
+vector/segmented modes, three repeats each on normal/SAN tools, with identical
+control/source/flat/generated output. Max normal: 0.1161s/80032KiB;
+max leak-SAN: 0.3157s/159224KiB. Six fresh full-corpus runs pass
+the same limits: normal 1.1241s/104352KiB, configured leak-SAN
+5.2867s/473028KiB with the established500ms unused-page release and
+unchanged quarantine/leak/UB checks. Exact commands, environment/input/tool/
+output hashes and RSS are recorded in scale/results.json and
+batch-scale/results.json under build/legacy-port-groups-20261123/.
+Pre-review measurements are retained separately and are not final evidence.
+The guide example has three equal nonempty replays with the final binary;
+it is author-verified, with no independent reader claim. Physical timing,
+vendor equivalence and whole11/12 closure remain pending; coverage1 is excluded.
+Master integration is pending.

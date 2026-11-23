@@ -146,8 +146,9 @@ Valid annotations survive canonical flattening without adding data-flow or
 PDL target behavior. Current corpus:1024canonical/44unsupportedAccessLinks/
 695original elaboration errors. Seven actual models advance to canonical
 acceptance; five undefined-member fixtures are explicitly invalid models.
-Native focused13checks/15C++quality and eightCLI methods on bothvariants pass.
-All108 scale processes and6 full-corpus measurements pass10s/512MiB;
-focusedSAN native/CLI checks and author guide example pass. Full qualification,
-final review and integration are pending.
+All54 qualification checks pass after three test-first Important fixes, with
+14native/14SAN,68x1094 methods per generator, nineCLI methods and21C++quality.
+Fresh108scale/6corpus/3guide-example processes pass with exact hashes and the
+measured10s/512MiB bounds. Independent review has noCritical/Minor finding.
+Master integration is pending.
 Broader11/12 remains open; coverage1 remains excluded.
