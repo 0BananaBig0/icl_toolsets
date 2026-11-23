@@ -873,6 +873,10 @@ $(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pa
 pattern-runtime-check: $(BUILD_DIR)/pattern_runtime_test
 	@$(BUILD_DIR)/pattern_runtime_test
 
+.PHONY: pattern-runtime-dependency-budget-check
+pattern-runtime-dependency-budget-check: $(BUILD_DIR)/pattern_runtime_test
+	python3 tests/src/pattern/test_runtime_dependency_budget.py $(BUILD_DIR)/pattern_runtime_test
+
 $(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o $(BUILD_DIR)/pattern/pattern_opaque.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 

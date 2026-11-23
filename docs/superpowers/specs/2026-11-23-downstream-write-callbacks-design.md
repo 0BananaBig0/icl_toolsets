@@ -74,8 +74,9 @@ actual observations. Do not synthesize observed values.
 - A body reset cancels pending dependent requests and goals; never restore them
 after return. Completed frames stay completed. Keep current caught-failure,
 poison/reset/retry behavior; add no automatic retry.
-- Keep callback ownership restrictions and raw/together/AccessTogether/active
-caller iMerge guards. Physical automatic callback output and modeled automatic
+- Apply raw/together/AccessTogether/active caller iMerge restrictions only when
+a callback will actually run; zero-invocation groups retain native semantics.
+Keep callback ownership restrictions. Physical automatic callback output and modeled automatic
 callback histories reject before artifact publication.
 - Source actions own the prerequisite plus dependent expansion, preserving
 arguments/origins/call stacks and once-only expressions. Source/flat/generated,
@@ -158,3 +159,20 @@ private incremental callback declaration history; rescanning the entire operatio
 stream per inferred bit would be quadratic. Unknown bits and changed requirements
 still invoke; explicit requests cannot be skipped; read/miscompare history flags
 do not seed controlling values. Reset invalidates the private history.
+
+
+## Final review refinements
+
+The independent whole-change review found five Important defects. One test-first
+pass limits nested deferred work to active anchors, skips loading destinations
+whose complete cared mask matches immediate controlling iState declarations,
+retains native group semantics when invocation count is zero, orders callbacks
+by effective operation and selected operand position, and leaves an exhausted
+traversal budget at zero after caught errors.
+
+Ordinary declaration hints are private planning inputs, cleared at Apply,
+iRunLoop and reset; the native scheduler still proves every restored request.
+They do not represent observations or duplicate hardware replay. Mixed explicit
+callback ordering uses last effective writes; pure explicit ordering is retained.
+The resource regression compiles the production implementation with a two-step
+budget, without adding a public testing API or changing the shipped limit.

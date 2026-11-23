@@ -91,6 +91,67 @@ class DownstreamWriteCallbacks(unittest.TestCase):
             icl, self.root / "reset.pdl", "rewritten/result.pdl", modeled=False))
         return output, rewritten
 
+    def test_nested_prerequisites_keep_outer_pending_writes(self):
+        source = MODEL.replace("DataInPort en;", "DataInPort go; DataInPort en;").replace(
+            " Alias inverse", """ DataRegister peer[3:0] {WriteCallBack Chains store <D> <R>;}
+ DataRegister remote[3:0] {WriteDataSource peer; WriteEnSource go;}
+ Alias inverse""")
+        body = """iProc store {data reg} {
+ incr ::calls
+ if {$reg eq "value"} {iWrite remote 6; iApply}
+ iNote "$reg=$data"; iWrite en 0; iWrite go 0; iWrite p $data
+}
+iWrite spare 0; iWrite dest 9; iApply
+if {$::calls != 2} {error count}
+"""
+        output = self.generation_replay(body, source)
+        self.assertEqual(self.notes(output), [b"peer=0b0110", b"value=0b1001"])
+        same_target = body.replace("iWrite remote 6; iApply",
+                                   "iState value $data; iWrite remote 6; iWrite dest $data; iApply")
+        self.assertEqual(self.notes(self.generation_replay(same_target, source)),
+                         [b"peer=0b0110", b"value=0b1001"])
+
+    def test_held_destinations_need_no_callback(self):
+        for body in ["iState dest 9; iWrite dest 9; iApply",
+                     "iState dest 3; iState other 9; iWrite dest 3; iWrite other 9; iApply"]:
+            with self.subTest(body=body):
+                output = self.generation_replay(body + "; if {$::calls} {error count}")
+                self.assertEqual(self.notes(output), [])
+        unbound = MODEL.replace("Chains store <D> <R>", "Chains missing <D> <R>")
+        self.assertEqual(self.notes(self.generation_replay(
+            "iState dest 9; iWrite dest 9; iApply", unbound)), [])
+        output = self.generation_replay("iState dest 3; iWrite dest 9; iApply")
+        self.assertEqual(self.notes(output), [b"value=0b1001"])
+
+    def test_zero_invocation_groups_preserve_native_options(self):
+        for body in [
+                "iWrite value 9; iApply; iWrite dest 9; iApply -together",
+                "iState value 9; iState dest 9; iWrite dest 0bxxxx; iApply -together",
+                "iWrite value 9; iApply; iProc access {} {iWrite dest 9; iApply}; "
+                "iMerge -begin; iCall access; iMerge -end"]:
+            with self.subTest(body=body):
+                self.generation_replay(body)
+        source = MODEL.replace(" Alias inverse", " Alias pair[7:0] = dest,other {AccessTogether;} Alias inverse")
+        output = self.generation_replay(
+            "iState value 9; iState dest 9; iState other 9; iWrite pair 0x99; iApply -together", source)
+        self.assertEqual(self.notes(output), [])
+        icl, pdl = self.root / "source.icl", self.root / "source.pdl"
+        icl.write_text(MODEL)
+        pdl.write_text(PROCS + "iState value 9; iState dest 9; iWrite dest 0bxxxx; iApply -together")
+        self.run_tool(icl, pdl, modeled=True)
+
+    def test_inferred_order_uses_effective_operand_positions(self):
+        source = MODEL.replace("DataInPort en;", "DataInPort go; DataInPort en;").replace(
+            " Alias inverse", """ DataRegister peer[3:0] {WriteCallBack Chains store <D> <R>;}
+ DataRegister remote[3:0] {WriteDataSource peer; WriteEnSource go;}
+ Alias reverse[7:0] = remote,dest;
+ Alias inverse""")
+        proc = "iProc store {data reg} {incr ::calls; iNote \"$reg=$data\"; iWrite en 0; iWrite go 0; iWrite p $data}; "
+        for writes in ["iWrite reverse 0x69", "iWrite value 3; iWrite remote 6; iWrite value 9; iWrite dest 9"]:
+            with self.subTest(writes=writes):
+                output = self.generation_replay(proc + writes + "; iApply", source)
+                self.assertEqual(self.notes(output), [b"peer=0b0110", b"value=0b1001"])
+
     def test_direct_and_forwarded_paths(self):
         output = self.generation_replay(
             "iWrite dest 9; iApply; if {$::calls != 1} {error count}")

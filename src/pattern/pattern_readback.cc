@@ -95,7 +95,16 @@ class ModelReadback {
               op.origin + ": modeled readback excludes callback histories");
         }
         if (op.callback) {
-          callback_pending.insert(op.call_stack);
+          const auto target = ResolvePdlTarget(netlist_, op.arguments.at(0));
+          if (std::any_of(target.bits.begin(), target.bits.end(),
+                          [&](const auto& bit) {
+                            const auto& node = netlist_.nodes.at(bit.node);
+                            return (op.command == "iRead" ? node.read_callback
+                                                          : node.write_callback)
+                                .has_value();
+                          })) {
+            callback_pending.insert(op.call_stack);
+          }
           continue;
         }
         if (op.command == "iReset") callback_pending.clear();

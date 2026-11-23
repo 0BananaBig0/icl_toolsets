@@ -29,7 +29,8 @@ immutable logical markers and reuse existing dispatcher/queue/source consumers.
   immutable source stream, consumed markers and source spans retain Task162.
 - Body reset cancels staged requests; failed queues require reset/retry. Binding,
   arity and cycles preflight before effects. No independent preview scheduler.
-- Keep raw/together/AccessTogether/active-iMerge/ownership restrictions. Physical
+- Keep raw/together/AccessTogether/active-iMerge restrictions for actual dispatch
+  and retain ownership restrictions. Physical
   and modeled automatic callback histories reject before artifact publication.
 - Pure and mixed explicit callback behavior stays qualified. Public APIs stay
   unchanged unless an actual regression proves need and design is refined first.
@@ -43,8 +44,8 @@ immutable logical markers and reuse existing dispatcher/queue/source consumers.
   controls may contain extra empty Applies; compare physical frames separately.
 - Retain Task162243process matrix and4dynamicallocationprobes. New72regular+
   6wide+3guide ->324matrix/example processes, subject to measured design refinement.
-- Expected73suites/1185methods eachgenerator after16newCLI;4038inputs/38products,
-  15normal/15leakSAN native,62gates using prior61 plus newSANCLI. Actual C++quality.
+- Expected73suites/1189methods eachgenerator after20newCLI;4039inputs/38products,
+  15normal/15leakSAN native,63gates using prior61 plus newSANCLI plus production budget fault injection. Actual C++quality.
 - Build first; reuse only exact unchanged source/product + passing log evidence.
   Every changed product and wholegenerator/package must execute current code.
 - One fresh whole-parent review, one Critical/Important TDD pass, defer Minors/
@@ -171,8 +172,8 @@ hardware dimensions and actual PIO writes; no request notes as observations.
 - [ ] Commit reviewableimplementation, dispatch onefreshwholebranchreview on
       parentb9e59e2..HEAD with this ReviewFocus/template/ledger rulings. Regrade
       declined behavior, one verified blockerfixpass; no rereview. Build all,
-      execute full62gates/73x1185each/15normal15SAN/sourcepackage/actualquality,
-      source/product hashes and all measurement receipts. Expected exact4038input/
+      execute full63gates/73x1189each/15normal15SAN/sourcepackage/actualquality,
+      source/product hashes and all measurement receipts. Expected exact4039input/
       38products and no in-scope blocker; retain unavailable tools as unrun.
 - [ ] Merge into master, run26integrationchecks on identicalinputs/20copiedproducts,
       push/detach/delete ownbranch/archive ownledger with117stashes preserved.
@@ -195,3 +196,14 @@ inferred-only requests. An actual parent-valid explicit-before control otherwise
 runs callbacks twice. Explicit request keys must be retained even for automatic
 no-care groups. Existing History storage avoids repeated full-stream scans;
 this is no native scheduler preview or observation cache.
+
+
+Final review: 0Critical/5Important/1Minor. All five Important cases reproduced
+before fixes (four CLI methods/eight subcase failures and the compiled production
+budget test). One fix pass addresses them; no rereview. The additional
+AccessTogether fixture initially lacked an established prerequisite and failed
+identically on immutable parent and head; declaring value9 makes both pass.
+The Minor exact postcondition-pair benchmark oracle is deferred, increasing the
+running Minor ledger from14 to15; payload identity remains functional-test work.
+Expected final counts:73suites/1189methods per generator,4039inputs/38products,
+63gates,20 downstream CLI methods,15quality and26 merged-result checks.

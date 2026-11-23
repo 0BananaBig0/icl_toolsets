@@ -449,21 +449,14 @@ class Runtime::Impl {
       return;
     }
     const auto target = ResolvePdlTarget(*netlist_, operation.arguments.at(0));
-    if (std::none_of(
-            target.bits.begin(), target.bits.end(), [&](const auto& bit) {
-              return netlist_->nodes[bit.node].write_callback.has_value();
-            })) {
-      return;
-    }
     if (!history_context_) history_context_ = std::make_unique<z3::context>();
     const auto bits = PdlNumber(*history_context_, operation.arguments.at(1),
                                 target.bits.size());
     for (size_t i = 0; i < target.bits.size(); ++i) {
       const auto& bit = target.bits[i];
       const auto& node = netlist_->nodes[bit.node];
-      if (!node.write_callback) continue;
-      auto [entry, inserted] =
-          callback_values_.try_emplace(bit.node, node.Width(), 'x');
+      auto& history = node.write_callback ? callback_values_ : callback_held_;
+      auto [entry, inserted] = history.try_emplace(bit.node, node.Width(), 'x');
       char value = bits[i];
       if (bit.inverted && value != 'x') value = value == '1' ? '0' : '1';
       entry->second[HistoryOffset(bit)] = value;
@@ -524,9 +517,10 @@ class Runtime::Impl {
         break;
       }
       if (!visiting.insert(key).second) break;
-      if (!callback_dependency_budget_--) {
+      if (callback_dependency_budget_ == 0) {
         throw std::runtime_error("callback dependency resource limit exceeded");
       }
+      --callback_dependency_budget_;
       path.push_back({key, bit.inverted});
       const auto& node = netlist_->nodes.at(bit.node);
       if (node.write_callback) {
@@ -655,28 +649,22 @@ class Runtime::Impl {
       }
     }
     if (!selected) return false;
-    if (ValidatePdlApplyOptions(apply.arguments)) {
-      throw std::runtime_error(
-          "callback groups do not support iApply -together");
-    }
-    if (!merges_.empty()) {
-      throw std::runtime_error(
-          "callback execution inside iMerge is unsupported");
-    }
     const std::vector<Operation> pending(first, operations_.end());
     using Key = std::pair<size_t, bool>;
+    using Order = std::pair<size_t, size_t>;
     struct Request {
       Key key;
-      size_t source;
+      Order source;
       std::string data, requested;
     };
     QueuedAccesses queue;
     std::map<Key, size_t> positions;
     std::vector<Request> requests;
     std::vector<bool> mixed_reads(pending.size(), false);
-    std::map<std::pair<size_t, int64_t>, size_t> write_sources;
+    std::map<std::pair<size_t, int64_t>, Order> write_sources;
     std::vector<size_t> anchors;
     bool ordinary_pending = false;
+    bool access_together = false, raw_access = false;
     for (size_t i = 0; i < pending.size(); ++i) {
       const auto& op = pending[i];
       if (op.callback && consumed_callback_operations_.count(begin + i)) {
@@ -685,18 +673,16 @@ class Runtime::Impl {
       const bool read = op.command == "iRead";
       if (read || op.command == "iWrite") {
         const auto target = ResolvePdlTarget(*netlist_, op.arguments.at(0));
-        if (!target.access_together.empty()) {
-          throw std::runtime_error(
-              "callback AccessTogether aliases are unsupported");
-        }
+        access_together = access_together || !target.access_together.empty();
         ValidatePdlAccessTarget(*netlist_, target, read);
         const auto data = op.arguments.size() > 1
                               ? PdlDataValue(*history_context_, *netlist_,
                                              target, op.arguments[1])
                               : std::string(target.bits.size(), 'x');
         if (!read) {
-          for (const auto& bit : target.bits) {
-            write_sources[{bit.node, bit.index}] = i;
+          for (size_t operand = 0; operand < target.bits.size(); ++operand) {
+            const auto& bit = target.bits[operand];
+            write_sources[{bit.node, bit.index}] = {i, operand};
           }
         }
         if (!op.callback) {
@@ -712,15 +698,17 @@ class Runtime::Impl {
           }
           const Key key{bit.node, read};
           if (positions.emplace(key, requests.size()).second) {
-            requests.push_back({key, i, std::string(node.Width(), 'x'),
+            requests.push_back({key,
+                                {i, 0},
+                                std::string(node.Width(), 'x'),
                                 std::string(node.Width(), '0')});
           }
         }
         queue.Add(op, target, data);
         anchors.push_back(begin + i);
       } else if (op.command == "iScan") {
-        throw std::runtime_error(
-            "mixed callback and raw accesses require separate Applies");
+        raw_access = true;
+        ordinary_pending = true;
       } else if (op.command == "iState" &&
                  (op.arguments.size() != 3 ||
                   op.arguments[2] == "-LastWrittenValue")) {
@@ -731,8 +719,19 @@ class Runtime::Impl {
     }
     using Bit = std::pair<size_t, int64_t>;
     std::map<Bit, char> caller_writes, effective_writes;
-    std::map<Bit, std::pair<char, size_t>> inferred;
+    std::map<Bit, std::pair<char, Order>> inferred;
     bool automatic = false;
+    const auto writes = queue.WriteModel();
+    std::set<size_t> loading;
+    for (size_t i = 0; i < writes.first.size(); ++i) {
+      const auto& bit = writes.first[i];
+      const auto held = callback_held_.find(bit.node);
+      if (writes.second[i] != 'x' &&
+          (held == callback_held_.end() ||
+           held->second[HistoryOffset(bit)] != writes.second[i])) {
+        loading.insert(bit.node);
+      }
+    }
     for (bool read : {false, true}) {
       const auto [bits, values] = read ? queue.ReadModel() : queue.WriteModel();
       for (size_t i = 0; i < bits.size(); ++i) {
@@ -745,7 +744,7 @@ class Runtime::Impl {
               read ? std::optional<BitReference>{} : WriteCallbackSource(bit);
           if (source) {
             automatic = true;
-            if (values[i] != 'x') {
+            if (values[i] != 'x' && loading.count(bit.node)) {
               const char value =
                   source->inverted ? (values[i] == '1' ? '0' : '1') : values[i];
               const Bit key{source->node, source->index};
@@ -770,8 +769,17 @@ class Runtime::Impl {
     }
     std::set<Key> explicit_callbacks;
     if (automatic) {
-      for (const auto& request : requests) {
+      std::map<size_t, Order> effective_sources;
+      for (const auto& [bit, origin] : write_sources) {
+        const auto [entry, inserted] =
+            effective_sources.emplace(bit.first, origin);
+        if (!inserted) entry->second = std::min(entry->second, origin);
+      }
+      for (auto& request : requests) {
         explicit_callbacks.insert(request.key);
+        if (!request.key.second) {
+          request.source = effective_sources.at(request.key.first);
+        }
       }
     }
     std::set<size_t> prerequisite_callbacks;
@@ -820,8 +828,31 @@ class Runtime::Impl {
                        [](const auto& left, const auto& right) {
                          return left.source < right.source;
                        });
-      for (const auto& operation : pending) {
-        if (!operation.callback || operation.command != "iWrite") continue;
+      if (requests.empty()) {
+        // Keep native alias/group semantics when no callback will run.
+        for (const auto anchor : anchors) {
+          auto operation = pending.at(anchor - begin);
+          const auto target =
+              ResolvePdlTarget(*netlist_, operation.arguments[0]);
+          std::string data;
+          for (const auto& bit : target.bits) {
+            char value = effective_writes.at({bit.node, bit.index});
+            if (bit.inverted && value != 'x') value = value == '1' ? '0' : '1';
+            data += value;
+          }
+          operation.arguments[1] = "0b" + data;
+          operation.callback = false;
+          operations_.push_back(std::move(operation));
+          consumed_callback_operations_.insert(anchor);
+          if (trace_source_) {
+            callback_action_ends_[anchor] = operations_.size() + 1;
+          }
+        }
+        return false;
+      }
+      for (const auto anchor : anchors) {
+        const auto& operation = pending.at(anchor - begin);
+        if (operation.command != "iWrite") continue;
         const auto target =
             ResolvePdlTarget(*netlist_, operation.arguments.at(0));
         std::string data;
@@ -833,6 +864,22 @@ class Runtime::Impl {
         auto accesses = CallbackOrdinaryAccesses(operation, target, data, true);
         for (auto& access : accesses) deferred.push_back(std::move(access));
       }
+    }
+    if (ValidatePdlApplyOptions(apply.arguments)) {
+      throw std::runtime_error(
+          "callback groups do not support iApply -together");
+    }
+    if (!merges_.empty()) {
+      throw std::runtime_error(
+          "callback execution inside iMerge is unsupported");
+    }
+    if (access_together) {
+      throw std::runtime_error(
+          "callback AccessTogether aliases are unsupported");
+    }
+    if (raw_access) {
+      throw std::runtime_error(
+          "mixed callback and raw accesses require separate Applies");
     }
     const size_t reset_generation = callback_reset_generation_;
     // Preflight all static bindings and loaded procedures before any effects.
@@ -862,7 +909,7 @@ class Runtime::Impl {
     pending_ = ordinary_pending;
     try {
       for (const auto& request : requests) {
-        const auto& source = pending.at(request.source);
+        const auto& source = pending.at(request.source.first);
         const auto [id, read] = request.key;
         const auto& node = netlist_->nodes.at(id);
         const auto& descriptor =
@@ -908,7 +955,7 @@ class Runtime::Impl {
                                    true});
           }
           if (read) {
-            auto invocation = mixed_reads[request.source]
+            auto invocation = mixed_reads[request.source.first]
                                   ? Operation{"iRead",
                                               {node.name, "0b" + request.data},
                                               source.origin,
@@ -1813,6 +1860,9 @@ class Runtime::Impl {
         }
       }
     }
+    if (name == "iApply" || name == "iRunLoop" || name == "iReset") {
+      callback_held_.clear();
+    }
     if (name == "iReset") {
       ++callback_reset_generation_;
       callback_values_.clear();
@@ -1873,7 +1923,7 @@ class Runtime::Impl {
   bool scan_clients_loaded_ = false;
   std::set<std::string> tap_clients_;
   std::map<std::string, std::set<std::string>> scan_clients_;
-  History read_history_, miscompare_history_, callback_values_;
+  History read_history_, miscompare_history_, callback_values_, callback_held_;
   using RawHistory = std::map<std::pair<std::string, std::string>, std::string>;
   RawHistory raw_read_history_, raw_miscompare_history_;
   bool zero_status_known_ = true;
