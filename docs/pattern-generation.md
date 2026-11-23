@@ -9385,3 +9385,8 @@ The corpus retains1024 canonical/44 declared-unsupported/695 original elaboratio
 failures among1763 effective modules. General automatic callbacks, mixed-bit
 aliases, broader histories/topologies and other remaining inventory work stay
 open. Coverage item1 remains excluded.
+
+Task161 is merged into master;22 integration checks pass on4033 identical input
+hashes/20 copied qualified native products, preserving117 stashes. Receipt:
+build/mixed-callback-groups-20261123/merged/receipt.json. Broader original inventory
+items remain open as tracked; execution continues after this increment.

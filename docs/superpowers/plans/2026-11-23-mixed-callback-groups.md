@@ -178,7 +178,7 @@ reset rewriting; benchmark is standalone Python standard library.
       packaging run current code. Bind exact maintained inputs/products/
       measurements; expected59gates and
       actual71x1153 eachvariant/4033inputs38products if no justified additions.
-- [ ] Merge into master; verify identical source/product hashes and focused
+- [x] Merge into master; verify identical source/product hashes and focused
       root integration (existing20checks plus newCLI bothvariants=22checks,
       20copied normal products). Push, detach preservedWT/delete completed
       branch, archive only this ledger, preserve117stashes. task-done command
