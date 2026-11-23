@@ -291,6 +291,25 @@ std::string FlatKind(const std::string& kind, bool internal_input,
 }
 
 std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
+  const auto launch = node.properties.find("LaunchEdge");
+  if (launch != node.properties.end() &&
+      !(node.model == ModelKind::kEnum && node.kind == "Enum" &&
+        node.constants.count("LaunchEdge"))) {
+    const auto& expression = launch->second;
+    if (node.kind != "ScanOutPort" || node.model != ModelKind::kPort ||
+        expression.scope >= netlist.scopes.size()) {
+      throw std::runtime_error(node.origin + ": invalid legacy LaunchEdge");
+    }
+    const auto& tokens = netlist.scopes[expression.scope]
+                             .definition.document->driver()
+                             .unit()
+                             .tokens();
+    if (expression.begin >= tokens.size() ||
+        expression.end != expression.begin + 1 ||
+        tokens[expression.begin].text != "Falling") {
+      throw std::runtime_error(node.origin + ": invalid legacy LaunchEdge");
+    }
+  }
   if ((node.model == ModelKind::kGroup && node.kind != "OneHotScanGroup" &&
        node.kind != "OneHotDataGroup") ||
       node.model == ModelKind::kAccessLink) {
@@ -405,6 +424,8 @@ std::string Declaration(const Netlist& netlist, const NetlistNode& node) {
           }
         }
         result += ";\n";
+      } else if (name == "LaunchEdge") {
+        result += "LaunchEdge Falling;\n";
       } else if (name == "Period" && node.clock_period) {
         result += "Period " + std::to_string(node.clock_period->magnitude) +
                   " " + node.clock_period->unit + ";\n";

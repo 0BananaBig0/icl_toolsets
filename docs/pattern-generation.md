@@ -8882,3 +8882,43 @@ state, dynamic/static source-audit CLI, complete corpus policy/default audit
 and producer8/protocol13/Make3, source literals/typed ports and71-method main
 CLI. All117 stashes remain. Receipt:
 build/model-source-audit-20261123/merged/receipt.json. Broader11/12 remains open.
+
+### Accepted legacy scan-output launch declarations
+
+Task157 preserves the existing compatibility form in canonical flat ICL:
+
+    ScanOutPort so { Source r[0]; LaunchEdge Falling; }
+
+The frontend still accepts only Falling on ScanOutPort. Flattening retains
+the property, source bit order/inversion, Enable, attributes and original
+instance ownership, including repeated children. Source, flat and generated
+PDL replay use the existing native model; preserving this declaration does
+not add a physical launch-edge timing model or certify hardware timing.
+
+The full maintained default audit now has 1017 canonical identities, 55
+explicit unsupported serializations (44 unbound AccessLinks and 11 PortGroups)
+and 691 original elaboration failures across 1334 accepted files and 1763
+effective modules. One former LaunchEdge-only model is newly canonical.
+Four legacy SIB models advance to their existing PortGroup boundary and are
+still unsupported. The expectation registry records each exact outcome.
+Broader inventory items 11/12 remain open.
+
+Task157 qualification passes all 53 checks after the single Important review
+fix: 14 native/14 sanitizer native suites, 67 suites/1085 test methods per
+generator, selected normal/SAN corpus and producer8/protocol13/Make3 checks,
+six C++ quality checks and source packaging. Exact 4025 source inputs and 36
+products are verified in build/legacy-launch-edge-20261123/final/receipt.json.
+
+Six fresh corpus measurements pass the unchanged 10s/512MiB limits. Normal
+maximum: 1.0726s/104396KiB. Configured leak-SAN
+maximum: 4.3357s/485176KiB, with the established
+500ms unused-page release and unchanged quarantine/leak/UB checks. Commands,
+environment and hashes: build/legacy-launch-edge-20261123/batch-scale/results.json.
+
+The independent review reported 0 Critical, 1 Important and 2 Minor findings.
+The Important silent-loss case is fixed test-first before the full fresh run;
+specialized native serializers now reject an illegal property while legitimate
+Enum members named LaunchEdge remain valid. Deferred Minors: the earlier
+operator table retains Task156 counts, and the native fixed-point loop reparses
+the same canonical text. Physical timing/vendor equivalence remains unverified;
+coverage item1 remains excluded. Master integration is pending.
