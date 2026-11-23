@@ -198,6 +198,143 @@ iReset; iWrite p 1; iApply
   Require(unwound, "test exercises synthetic merge unwind");
 }
 
+const std::string kMixedCallbackModel = R"(
+Module Top {
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
+ DataRegister history[3:0] {WriteDataSource spare; WriteEnSource 1'b1;}
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+ DataRegister value[3:0] {WriteCallBack Top store <D>;}
+ Alias inverted[3:0] = ~p;
+})";
+void TestMixedCallbackQueue() {
+  pattern::Design design;
+  design.AddIcl("mixed.icl", kMixedCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const std::string queue :
+       {"iWrite spare 3; iWrite value 9;", "iWrite value 9; iWrite spare 3;"}) {
+    pattern::Runtime runtime(design, netlist, true);
+    runtime.Execute("mixed.pdl",
+                    "iPDLLevel 1; iProcsForModule Top; set ::calls 0; "
+                    "iProc store {data} {incr ::calls; iWrite p $data}; " +
+                        queue);
+    const auto before = runtime.operations();
+    runtime.Execute("mixed-apply.pdl",
+                    "iApply; if {$::calls != 1} {error duplicate}");
+    runtime.Finish();
+    size_t ordinary = 0, endpoints = 0;
+    for (const auto& op : runtime.operations()) {
+      if (op.command != "iWrite" || op.callback) continue;
+      ordinary += op.arguments[0] == "spare" && op.arguments[1] == "3";
+      endpoints += op.arguments[0] == "p" && op.arguments[1] == "0b1001";
+    }
+    Require(ordinary == 1 && endpoints == 1,
+            "mixed queue retains ordinary goal and executes callback once");
+    for (size_t i = 0; i < before.size(); ++i) {
+      const auto& left = before[i];
+      const auto& right = runtime.operations()[i];
+      Require(left.command == right.command &&
+                  left.arguments == right.arguments &&
+                  left.origin == right.origin &&
+                  left.call_stack == right.call_stack &&
+                  left.callback == right.callback &&
+                  left.callback_execution == right.callback_execution &&
+                  left.callback_read_execution == right.callback_read_execution,
+              "callback expansion never revises earlier operation entries");
+    }
+  }
+}
+void TestMixedCallbackHistory() {
+  pattern::Design design;
+  design.AddIcl("mixed-history.icl", kMixedCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("mixed-history.pdl", R"(
+iPDLLevel 1; iProcsForModule Top
+iState history 3 -LastReadValue
+iProc store {data} {iReset; iWrite p $data}
+iRead history 0; iWrite value 9; iApply
+if {[iGetReadData history -dec] != 3} {error canceled_history}
+iProc store {data} {iApply; iState history 5 -LastReadValue; iWrite p $data}
+iRead history 0; iWrite value 6; iApply
+if {[iGetReadData history -dec] != 5} {error completed_history_invalidated}
+)");
+  runtime.Finish();
+}
+void TestMixedCallbackCallerWrites() {
+  pattern::Design design;
+  design.AddIcl("mixed-goals.icl", kMixedCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const std::string header =
+      "iPDLLevel 1; iProcsForModule Top; iProc store {data} {iWrite p $data}; ";
+  pattern::Runtime compatible(design, netlist);
+  compatible.Execute("compatible.pdl",
+                     header + "iWrite p 9; iWrite value 9; iApply");
+  compatible.Finish();
+  for (const std::string queue : {"iWrite p 3; iWrite value 9;",
+                                  "iWrite inverted 0b1100; iWrite value 9;",
+                                  "iWrite p[1:0] 3; iWrite value 9;",
+                                  "iWrite p 3; iWrite value 0bxxxx;"}) {
+    pattern::Runtime conflict(design, netlist);
+    Fails([&] { conflict.Execute("conflict.pdl", header + queue + "iApply"); },
+          "caller");
+  }
+  pattern::Runtime state_conflict(design, netlist);
+  Fails(
+      [&] {
+        state_conflict.Execute("state-conflict.pdl",
+                               "iPDLLevel 1; iProcsForModule Top; "
+                               "iProc store {data} {iState p 9}; "
+                               "iWrite p 3; iWrite value 9; iApply");
+      },
+      "caller");
+  pattern::Runtime canceled(design, netlist);
+  canceled.Execute("canceled-goal.pdl",
+                   "iPDLLevel 1; iProcsForModule Top; "
+                   "iProc store {data} {iReset; iWrite p $data}; "
+                   "iWrite p 3; iWrite value 9; iApply");
+  canceled.Finish();
+}
+void TestMixedCallbackFailureScopes() {
+  pattern::Design design;
+  design.AddIcl("mixed-failure.icl", kMixedCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime invalid(design, netlist);
+  invalid.Execute("mixed-invalid.pdl", R"(
+iPDLLevel 1; iProcsForModule Top; set ::calls 0
+iProc store {data} {incr ::calls; iWrite p $data}
+iWrite spare 16; iWrite value 9
+if {![catch {iApply}]} {error invalid_payload_accepted}
+if {$::calls != 0} {error callback_before_preflight}
+iReset
+)");
+  invalid.Finish();
+  pattern::Runtime cycle(design, netlist);
+  Fails(
+      [&] {
+        cycle.Execute("mixed-cycle.pdl",
+                      "iPDLLevel 1; iProcsForModule Top; "
+                      "iProc store {data} {iWrite value $data; iApply}; "
+                      "iWrite spare 3; iWrite value 9; iApply");
+      },
+      "cycle");
+  pattern::Runtime retry(design, netlist);
+  retry.Execute("mixed-retry.pdl", R"(
+iPDLLevel 1; iProcsForModule Top; set ::calls 0
+iProc store {data} {incr ::calls; iWrite p $data; iApply; error stopped}
+iWrite spare 3; iWrite value 9
+if {![catch {iApply}]} {error callback_did_not_fail}
+if {$::calls != 1} {error duplicate_or_missing}
+if {![catch {iApply} message] || [string first {requires iReset} $message] < 0} {
+ error failed_queue_not_poisoned
+}
+iReset
+iProc store {data} {incr ::calls; iWrite p $data}
+iWrite spare 4; iWrite value 6; iApply
+if {$::calls != 2} {error retry_count}
+)");
+  retry.Finish();
+}
+
 void TestCallbackQueueAndBinding() {
   pattern::Design design;
   design.AddIcl("callback.icl", kCallbackModel);
@@ -1374,7 +1511,11 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestCallbackReadInvocationBeforeBody,
+  for (const auto test : {TestMixedCallbackQueue,
+                          TestMixedCallbackHistory,
+                          TestMixedCallbackCallerWrites,
+                          TestMixedCallbackFailureScopes,
+                          TestCallbackReadInvocationBeforeBody,
                           TestCallbackReadInvocationProvenance,
                           TestCallbackReadInvocationFailureRecovery,
                           TestCallbackQueueAndBinding,

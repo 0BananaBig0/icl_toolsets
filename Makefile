@@ -1157,6 +1157,7 @@ python3 tests/src/pattern/test_data_register_state.py $1
 python3 tests/src/pattern/test_data_register_feedback.py $1
 python3 tests/src/pattern/test_data_register_callback_model.py $1
 python3 tests/src/pattern/test_callback_execution.py $1
+python3 tests/src/pattern/test_mixed_callback_groups.py $1
 python3 tests/src/pattern/test_callback_endpoint_readback.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1

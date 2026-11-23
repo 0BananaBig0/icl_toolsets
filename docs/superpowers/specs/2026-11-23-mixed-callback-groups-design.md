@@ -48,7 +48,8 @@ This increment covers separately queued ordinary operations and callback
 requests, including ordinary-only aliases and callback-only aliases. A single
 alias mixing callback and ordinary bits remains rejected by the existing
 explicit guard. AccessTogether aliases, iApply -together, raw requests mixed
-with callbacks, callback iMerge, automatic downstream invocation, physical PDL
+with callbacks, callback invocation inside an active iMerge, automatic
+downstream invocation, physical PDL
 and actual invoked ReadCallBack histories remain unsupported. Ordinary actual
 histories within write callbacks and mixed groups are supported via existing
 --model_readback. ReadCallBack generation keeps its existing non-model support.
@@ -79,7 +80,11 @@ range. Selected callback requests are already an in-flight batch and retain
 the existing fixed-batch iteration semantics; reset does not invent a new
 iteration rule for that batch. Calls without an inner Apply leave their
 endpoint/ordinary requests for the outer Apply. A pending wait remains subject
-to the existing unapplied-operation guard; no automatic flush.
+to the existing unapplied-operation guard; no automatic flush. A group containing
+only selected logical markers has no pending hardware requests, preserving
+existing ordinary endpoint merges/waits inside its procedures. Mark each actual
+read-invocation provenance record consumed at append time; newly queued logical
+requests inside a body share execution flags but must still execute/cycle-check.
 
 Read-history invalidation must occur on the actual Apply boundary for the
 remaining pending hardware requests, including the callback tail. Abstract

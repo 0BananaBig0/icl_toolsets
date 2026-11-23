@@ -77,7 +77,7 @@ std::vector<std::map<std::pair<size_t,int64_t>,char>> callback_caller_writes_.
 These are active-group metadata, cleared at a safe outer Apply/reset boundary.
 The guard returns immediately when all active caller maps are empty.
 
-- [ ] Add native RED TestMixedCallbackQueue (ordinary spare3 plus callback9,
+- [x] Add native RED TestMixedCallbackQueue (ordinary spare3 plus callback9,
       both source orders; one invocation, both hardware writes retained).
       Add TestMixedCallbackHistory (prior ordinary LastReadValue3; a pending
       read canceled by a body reset keeps3; completed inner reads are not
@@ -88,7 +88,7 @@ The guard returns immediately when all active caller maps are empty.
       calls counter; nested cycles; committed inner frame/error/reset retry;
       callback-only old operation entries remain unchanged).
       Run focused native RED; expected existing separate-Applies rejection.
-- [ ] Add first8CLI methods: test_orders_and_actual_values,
+- [x] Add first8CLI methods: test_orders_and_actual_values,
       test_ordinary_reads_and_callback_tail, test_inner_apply_and_selected_batch,
       test_body_reset_cancels_reads_and_writes,
       test_compatible_and_rejected_write_collisions,
@@ -99,7 +99,7 @@ The guard returns immediately when all active caller maps are empty.
       invocation per selected request, prior canceled history3, atomic old
       output/debug/reset artifacts on failure; unsupported mixtures remain
       rejected. Register suite in existing Make generator macro.
-- [ ] Run newCLI RED with current dynamic binary and archive failure logs.
+- [x] Run newCLI RED with current dynamic binary and archive failure logs.
       Implement PendingCallback filtering by original operation position,
       uniform QueuedAccesses validation/coalescing, callback-only argument
       extraction and scoped consumed-index/caller-mask stack. Retain live
@@ -110,12 +110,12 @@ The guard returns immediately when all active caller maps are empty.
       iState before history/pending/stream mutation; compare canonical resolved
       bit identities, not alias spelling. Reset clears active masks in place.
       Expected native and8CLI GREEN; no old callback behavior regression.
-- [ ] Build normal/static generator and runtime native with established Z3/Tcl
+- [x] Build normal/static generator and runtime native with established Z3/Tcl
       paths. Run native, new8CLI eachvariant plus existing40callback,
       23endpoint-observation and primary-callback/queued/history compatibility.
       Run changed C++ format/tidy/C++17. Expected all pass and immutable earlier
       operation entries remain byte/field unchanged.
-- [ ] Commit and task-done using python3 /tmp/mixed-callback-groups-task1-check.py
+- [x] Commit and task-done using python3 /tmp/mixed-callback-groups-task1-check.py
       binding exact executed source/product/log hashes. Expected runtime queue/
       history/goal contract proved before expanding CLI qualification.
 
