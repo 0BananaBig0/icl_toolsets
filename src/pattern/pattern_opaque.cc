@@ -580,6 +580,7 @@ std::vector<Operation> OpaqueScanQueue::Complete(const Operation& operation) {
 }
 std::optional<std::vector<Operation>> LowerOpaqueScans(
     const Netlist& netlist, const std::vector<Operation>& operations) {
+  if (netlist.scopes.size() > 1) return std::nullopt;
   if (std::none_of(operations.begin(), operations.end(),
                    [](const auto& op) { return op.command == "iScan"; })) {
     return std::nullopt;

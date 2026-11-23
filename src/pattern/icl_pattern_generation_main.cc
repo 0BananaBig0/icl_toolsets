@@ -338,6 +338,17 @@ std::string Generate(
   }
   pattern::ScanScheduler scheduler = initial ? pattern::ScanScheduler(*initial)
                                              : pattern::ScanScheduler(netlist);
+  if (scheduler.HasOpaqueChild()) {
+    for (const auto& operation : operations) {
+      if (physical || operation.command == "iClock" ||
+          operation.command == "iClockOverride" ||
+          operation.command == "iOverrideScanInterface" ||
+          operation.command == "iRunLoop" || operation.command == "iMerge") {
+        throw std::runtime_error(operation.origin +
+                                 ": unsupported opaque child execution mode");
+      }
+    }
+  }
   pattern::ResourceReservations reservations =
       initial_reservations ? *initial_reservations
                            : pattern::ResourceReservations(netlist);
@@ -717,6 +728,11 @@ std::string Generate(
 std::string GenerateMerged(const pattern::Netlist& netlist,
                            const std::vector<pattern::Operation>& operations,
                            bool modeled_readback = false) {
+  if (std::any_of(operations.begin(), operations.end(),
+                  [](const auto& op) { return op.command == "iMerge"; }) &&
+      pattern::ExpandOpaqueChild(netlist)) {
+    throw std::runtime_error("unsupported opaque child merge");
+  }
   const bool raw =
       std::any_of(operations.begin(), operations.end(),
                   [](const auto& op) { return op.command == "iScan"; });
@@ -731,7 +747,10 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
       if (!allowed.count(op.command)) {
         throw std::runtime_error(
             op.origin +
-            ": unsupported operation with modeled raw scans: " + op.command);
+            (pattern::ExpandOpaqueChild(netlist)
+                 ? ": unsupported opaque child operation: "
+                 : ": unsupported operation with modeled raw scans: ") +
+            op.command);
       }
     }
   }

@@ -2702,11 +2702,11 @@ class ScanScheduler::Impl {
       return ApplyNative(operations, together, preserved, explicit_writes,
                          permitted_tap_data, physical, observe);
     }
+    ValidateOpaquePreserved(preserved);
+    if (operations.empty() && !physical && !permitted_tap_data) return {};
     if (physical || !explicit_writes || permitted_tap_data) {
       throw std::runtime_error("unsupported opaque child execution mode");
     }
-    ValidateOpaquePreserved(preserved);
-    if (operations.empty()) return {};
     for (const auto& operation : operations) {
       if (operation.command != "iWrite" && operation.command != "iRead") {
         throw std::runtime_error(

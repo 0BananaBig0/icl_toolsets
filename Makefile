@@ -1142,6 +1142,7 @@ python3 tests/src/pattern/test_system_clocks.py $1
 python3 tests/src/pattern/test_segmented_ports.py $1
 python3 tests/src/pattern/test_opaque_root_scan.py $1
 python3 tests/src/pattern/test_opaque_parallel_scan.py $1
+python3 tests/src/pattern/test_opaque_child_raw.py $1
 python3 tests/src/pattern/test_modeled_root_scan.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
 python3 tests/src/pattern/test_multiple_client_interfaces.py $1

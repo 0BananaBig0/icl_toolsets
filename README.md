@@ -490,6 +490,12 @@ It is opt-in and uses no device transport; timed histories and broader raw
 topologies remain open.
 See the [runnable readback examples](docs/pattern-generation.md#task152-raw-interface-and-chain-readback).
 
+One declared-width opaque scalar child can be traversed between modeled parent
+ScanRegisters, including pure scalar wrappers. Stable/default input supports
+implicit preparation; actual opaque returns remain unknown. Dynamic/multiple/
+parallel opaque children, raw merges, clock operations and physical PDL remain
+unsupported. See the [opaque-child example](docs/pattern-generation.md#one-fixed-width-opaque-child-on-a-scalar-scan-route).
+
 The generator's [verification record](docs/pattern-generation.md#current-verification)
 lists regression and replay checks, along with the strict coverage gate that
 remains unmet.
