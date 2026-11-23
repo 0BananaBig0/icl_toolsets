@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Primary scheduling retains every observable callback storage obligation."""
+"""Goal scheduling retains callback obligations; abstract observations stay unknown."""
 import shutil
 import subprocess
 import unittest
@@ -52,19 +52,21 @@ iWrite value 2; iApply; iWrite p 5; iApply
         self.assertIn(b"iState value 0b0010", output)
         self.assertIn(b"iWrite p 0b0101", output)
 
-    def test_alias_reference_preserves_actual_known_and_unknown_history(self):
+    def test_alias_reference_preserves_goals_with_unknown_observations(self):
         source = BASE[:-1] + """
 Alias view[3:0] = value;
 DataOutPort q[3:0] {Source view;}
 }"""
         output = self.check(source, """iState value 9
 iWrite p 3; iApply; iRead q 6; iApply
-iNote "[iGetReadData q] [iGetMiscompares q] [iGetStatus]"
+iNote "[iGetReadData q] [iGetMiscompares q]"
+if {![catch {iGetStatus}]} {error {abstract alias produced known status}}
 iState value 0b1xx0; iWrite p 4; iApply; iRead q; iApply
 iNote [iGetReadData q]
 """, modeled=True)
-        self.assertIn(b"0b1001 0b1111 4", output)
-        self.assertIn(b"iNote 0b1xx0", output)
+        self.assertIn(b"0bxxxx 0bxxxx", output)
+        self.assertIn(b"iRead q 0b0110", output)
+        self.assertIn(b"iNote 0bxxxx", output)
 
     def test_mux_and_logic_references_retain_callback_values(self):
         source = BASE[:-1] + """
@@ -79,8 +81,9 @@ iWrite p 3; iApply; iRead q 6; iRead bit 0; iApply
 iNote "[iGetReadData q -dec] [iGetReadData bit -dec]"
 iState value 7; iRead bit 1; iApply; iNote [iGetReadData bit -dec]
 """, modeled=True)
-        self.assertIn(b"iNote {6 0}", output)
-        self.assertIn(b"iNote 1", output)
+        self.assertIn(b"iNote {X X}", output)
+        self.assertIn(b"iRead q 0b0110", output)
+        self.assertIn(b"iNote X", output)
 
     def test_one_hot_reference_retains_callback_values(self):
         source = """Module Leaf {
@@ -98,8 +101,9 @@ DataOutPort q[3:0] {Source selected;}
 iWrite p 3; iApply; iRead q 6; iApply; iNote [iGetReadData q -dec]
 iState pick 1; iRead q 9; iApply; iNote [iGetReadData q -dec]
 """, modeled=True)
-        self.assertIn(b"iNote 6", output)
-        self.assertIn(b"iNote 9", output)
+        self.assertEqual(output.count(b"iNote X\n"), 2)
+        self.assertIn(b"iRead q 0b0110", output)
+        self.assertIn(b"iRead q 0b1001", output)
 
     def test_resettable_callback_storage_retains_reset_value(self):
         source = BASE.replace("WriteCallBack", "ResetValue 0; WriteCallBack")
@@ -107,7 +111,8 @@ iState pick 1; iRead q 9; iApply; iNote [iGetReadData q -dec]
         output = self.check(source, """iState value 9; iReset
 iWrite p 3; iApply; iRead q 0; iApply; iNote [iGetReadData q -dec]
 """, modeled=True)
-        self.assertIn(b"iNote 0", output)
+        self.assertIn(b"iNote X", output)
+        self.assertIn(b"iRead q 0b0000", output)
 
     def test_callback_state_feeding_child_reset_is_retained(self):
         source = """Module Leaf {
@@ -127,8 +132,11 @@ iWrite p 9; iApply; iRead q 9; iApply; iNote [iGetReadData q -dec]
 iState gate 1; iWrite p 6; iApply; iRead q 0; iApply
 iNote [iGetReadData q -dec]
 """, modeled=True)
-        self.assertIn(b"iNote 9", output)
-        self.assertIn(b"iNote 0", output)
+        self.assertEqual(output.count(b"iNote X\n"), 2)
+        self.assertIn(b"iState gate 0b0", output)
+        self.assertIn(b"iState gate 0b1", output)
+        self.assertIn(b"iRead q 0b1001", output)
+        self.assertIn(b"iRead q 0b0000", output)
 
     def test_ordinary_storage_ownership_still_blocks_automatic_change(self):
         source = BASE[:-1] + """
@@ -149,7 +157,8 @@ DataOutPort q[3:0] {Source value; Attribute iApplyEndState = 9;}
         output = self.check(source, """iReset; iWrite p 3; iApply
 iRead q 9; iApply; iNote [iGetReadData q -dec]
 """, modeled=True)
-        self.assertIn(b"iNote 9", output)
+        self.assertIn(b"iNote X", output)
+        self.assertIn(b"iRead q 0b1001", output)
 
     def test_nested_callback_storage_flat_identity_is_retained(self):
         source = """Module Leaf {
@@ -165,8 +174,11 @@ iWrite p 3; iApply; iRead q 9; iApply; iNote [iGetReadData q -dec]
 iState child.held 2; iWrite p 4; iApply
 iRead q 2; iApply; iNote [iGetReadData q -dec]
 """, modeled=True)
-        self.assertIn(b"iNote 9", output)
-        self.assertIn(b"iNote 2", output)
+        self.assertEqual(output.count(b"iNote X\n"), 2)
+        self.assertIn(b"iState child.held 0b1001", output)
+        self.assertIn(b"iState child.held 0b0010", output)
+        self.assertIn(b"iRead q 0b1001", output)
+        self.assertIn(b"iRead q 0b0010", output)
 
 
     def test_benchmark_rejects_stale_output_from_noop_candidate(self):
