@@ -30,6 +30,84 @@ void Fails(Action action, const std::string& expected) {
   throw std::runtime_error("expected failure: " + expected);
 }
 
+void TestLegacyPortGroupMembership() {
+  pattern::Design design;
+  design.AddIcl("port_members.icl", R"(
+Module Top {
+ Parameter start = 3;
+ PortGroup plain {si[$start:2], enable, si[2:3], Source, LaunchEdge, Attribute}
+ PortGroup comments {si[$start:2] /* after */, // between
+ enable, si[2:3], Source, LaunchEdge, Attribute}
+ ScanInPort si[3:2]; SelectPort enable;
+ DataInPort Source; DataInPort LaunchEdge; DataInPort Attribute;
+ PortGroup segmented {bus[0:3], bus[3:0], bus[1]}
+ DataInPort bus[3:2]; DataInPort bus[1:0];
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const std::vector<std::pair<std::string, int64_t>> expected = {
+      {"si", 3}, {"si", 2},     {"enable", 0},     {"si", 2},
+      {"si", 3}, {"Source", 0}, {"LaunchEdge", 0}, {"Attribute", 0}};
+  for (const std::string name : {"plain", "comments"}) {
+    const auto& group = netlist.NodeAt(name);
+    Require(
+        group.properties.empty() && group.inputs.empty() &&
+            group.port_group.size() == expected.size(),
+        "legacy membership is independent of AST layout and data-flow inputs");
+    for (size_t i = 0; i < expected.size(); ++i) {
+      const auto& ref = group.port_group[i];
+      Require(netlist.nodes.at(ref.node).name == expected[i].first &&
+                  ref.index == expected[i].second && !ref.inverted,
+              "legacy member order, duplicate and keyword identity is exact");
+    }
+  }
+  const auto& bits = netlist.NodeAt("segmented").port_group;
+  Require(bits.size() == 9,
+          "segmented members retain both directions and repeats");
+  for (size_t i = 0; i < bits.size(); ++i) {
+    const int64_t index = i < 4   ? static_cast<int64_t>(i)
+                          : i < 8 ? 7 - static_cast<int64_t>(i)
+                                  : 1;
+    Require(bits[i].index == index &&
+                netlist.nodes.at(bits[i].node).BaseName() == "bus",
+            "segmented references retain each actual bit/function");
+  }
+}
+
+void TestLegacyPortGroupBudget() {
+  const auto source = [](bool overflow) {
+    return std::string(
+               "Module Top {DataInPort p[1048575:0]; "
+               "PortGroup a {p} PortGroup b {p} "
+               "PortGroup c {p} PortGroup d {p}") +
+           (overflow ? "PortGroup extra {p[0]}" : "") + "}";
+  };
+  {
+    pattern::Design design;
+    design.AddIcl("group_budget.icl", source(false));
+    const auto netlist = pattern::Elaborate(design, "Top");
+    size_t count = 0;
+    for (const auto& node : netlist.nodes) count += node.port_group.size();
+    Require(count == 4 * 1024 * 1024,
+            "legacy group expansion reaches the exact aggregate bound");
+  }
+  pattern::Design design;
+  design.AddIcl("group_budget_over.icl", source(true));
+  Fails([&] { pattern::Elaborate(design, "Top"); }, "PortGroup");
+}
+
+void TestLegacyPortGroupInvalidMembers() {
+  for (const std::string body :
+       {"ScanInPort si; PortGroup group {missing}",
+        "ScanInPort si; ScanRegister r {ScanInSource si;} PortGroup group {r}",
+        "ScanInPort si[3:0]; PortGroup group {si[4]}",
+        "DataInPort data; Alias a = data; PortGroup group {a}"}) {
+    pattern::Design design;
+    design.AddIcl("port_group_error.icl", "Module Top {" + body + "}");
+    Fails([&] { pattern::Elaborate(design, "Top"); }, "PortGroup");
+  }
+}
+
 void TestRefEnumSourceDiagnostics() {
   for (const auto& declaration :
        {"DataInPort p {RefEnum Missing;}",
@@ -4304,7 +4382,10 @@ void TestGroupedGeneratedTapPins() {
 
 int main() {
   int failures = 0;
-  for (const auto test : {TestRefEnumSourceDiagnostics,
+  for (const auto test : {TestLegacyPortGroupInvalidMembers,
+                          TestLegacyPortGroupMembership,
+                          TestLegacyPortGroupBudget,
+                          TestRefEnumSourceDiagnostics,
                           TestGroupedGeneratedTapPins,
                           TestSegmentedPortBindingBoundaries,
                           TestSegmentedPortBindings,

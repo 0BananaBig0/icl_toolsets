@@ -46,23 +46,23 @@ Add void ValidatePortGroupMembers(const Netlist&), enforcing the spec's member
 and representation rules. Consume existing Netlist::Resolve, Expression scopes,
 BitReference and Signals; SerializeIcl signature/schema stay unchanged.
 
-- [ ] Add native positive canonical/membership tests for inline/comments/keywords/
+- [x] Add native positive canonical/membership tests for inline/comments/keywords/
       duplicates/vector/parameter/forward/segmented/repeated-child forms, plus
       unknown/nonport/range negatives. Add malformed payload/type/scope/index/
       constant/inversion/properties/attrs and forged-origin guards, PDL annotation
       target rejection, aggregate4MiBit boundary/beyond.
-- [ ] Build/run separate netlist and flatten REDs on unchanged implementation.
+- [x] Build/run separate netlist and flatten REDs on unchanged implementation.
       Expected: unknown members wrongly accepted; valid groups cannot serialize.
-- [ ] Add the dedicated payload, skip generic PortGroup body property collection,
+- [x] Add the dedicated payload, skip generic PortGroup body property collection,
       resolve braced source tokens for both AST layouts using existing limits,
       and debit4MiBit aggregate budget before over-expansion.
-- [ ] Implement shared validation after origin restoration and before serialization;
+- [x] Implement shared validation after origin restoration and before serialization;
       emit PortGroup with existing flattened signal rendering. Preserve segmented
       port handling and genuine keyword members.
-- [ ] Run native netlist/flatten/state and relevant existing CLI source/segmented/
+- [x] Run native netlist/flatten/state and relevant existing CLI source/segmented/
       launch/default/model suites on dynamic/static generators. Expected: all pass,
       exact member references/order/canonical bytes and meaningful negative diagnostics.
-- [ ] Commit native deliverable; completion command:
+- [x] Commit native deliverable; completion command:
       python3 /tmp/legacy-port-groups-task1-check.py.
       Expected: focused native/CLI/quality evidence and exact source/product hashes verified.
 
