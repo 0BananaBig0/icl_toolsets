@@ -4,6 +4,7 @@ import subprocess
 import unittest
 
 import test_simultaneous_scan_chains as cli
+import test_modeled_readback as observations
 
 
 def annotation_network(count, segmented=False):
@@ -135,6 +136,65 @@ iWrite a 9; iApply; iRead b 2; iApply; iRelease b
                 source = (cli.ROOT / "tests/cases" / name).read_text()
                 source = source.replace("Module " + top + " ", "Module Chains ", 1)
                 self.reject(source, cli.PDL, "PortGroup")
+
+    def test_raw_scalar_and_parallel_annotations_preserve_control_and_history(self):
+        opaque = (cli.ROOT / "tests/cases/ours/pattern_generation/"
+                  "opaque_root_scan/model.icl").read_text()
+        opaque = opaque.replace("Module Opaque", "Module Chains")
+        modeled = opaque.replace("DefaultLoadValue 8'b00000000;", "")
+        modeled = modeled.replace("ScanOutPort so;",
+                                  "ScanOutPort so {Source r[0];}")
+        modeled = modeled.rsplit("}", 1)[0] + (
+            "ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}}\n")
+        parallel = opaque.replace("ScanInPort si;", "ScanInPort si[3:2];")
+        parallel = parallel.replace("ScanOutPort so;", "ScanOutPort so[5:4];")
+        parallel = parallel.replace("Port si; Port so;", (
+            "Chain first {Port si[3]; Port so[5]; DefaultLoadValue 4'b0;} "
+            "Chain second {Port si[2]; Port so[4]; DefaultLoadValue 2'b0;}"))
+        parallel = parallel.replace("DefaultLoadValue 8'b00000000;", "")
+
+        def replay_raw(source, body, observed, tag):
+            icl, pdl = self.root / "raw.icl", self.root / "raw.pdl"
+            icl.write_text(source)
+            pdl.write_text(body)
+            outputs = []
+            first = self.root / tag / "source/result.pdl"
+            for form in ("source", "flat", "generated"):
+                model = first.parent / "debug/Chains.icl" if form == "flat" else icl
+                commands = first if form == "generated" else pdl
+                output = tag + "/" + form + "/result.pdl"
+                outputs.append(observations.ModeledReadback.run_tool(
+                    self, model, commands, output, modeled=observed))
+            self.assertEqual(outputs[0], outputs[1])
+            self.assertEqual(outputs[0], outputs[2])
+            return outputs[0]
+
+        for name, model, opaque_mode, chains in (
+                ("opaque", opaque, True, False),
+                ("modeled", modeled, False, False),
+                ("opaque-parallel", parallel, True, True),
+                ("modeled-parallel", cli.NETWORK, False, True)):
+            for observed in (False, True):
+                with self.subTest(model=name, observed=observed):
+                    request = ("iScan client -chain first 4" if chains else
+                               "iScan client 4")
+                    select = " -chain first" if chains else ""
+                    note = f"iNote [iGetReadData client{select} -bin]\n" if observed else ""
+                    other = "iScan client -chain second 2 -si 1;" if chains else ""
+                    body = ("iPDLLevel 1\niReset\n" + request + " -si 6;" +
+                            other + "iApply;\n" + note +
+                            request + " -si 0;" + other + "iApply;\n" + note)
+                    tag = name + str(observed)
+                    control = replay_raw(model, body, observed, tag + "-control")
+                    annotated = model.rsplit("}", 1)[0] + (
+                        "PortGroup pins {si, so}\n}\n")
+                    output = replay_raw(annotated, body, observed, tag + "-annotated")
+                    self.assertEqual(output, control)
+                    if observed:
+                        notes = [line[6:] for line in output.splitlines()
+                                 if line.startswith(b"iNote ") and b"modeled " not in line]
+                        self.assertEqual(notes, [b"0bxxxx", b"0bxxxx"] if opaque_mode
+                                         else [b"0b0000", b"0b0110"])
 
     def test_group_is_not_a_pdl_access_or_reservation_target(self):
         source = cli.NETWORK.rsplit("}", 1)[0] + "PortGroup pins {si, so, sel}\n}\n"

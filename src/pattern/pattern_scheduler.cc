@@ -711,6 +711,7 @@ class ScanScheduler::Impl {
     size_t client = kMissing;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
+      if (node.kind == "PortGroup") continue;
       if (node.constants.count("iApplyEndState")) fail();
       if (node.scan_interface) {
         if (node.scan_interface->kind != ScanInterfaceKind::kClient ||

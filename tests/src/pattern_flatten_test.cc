@@ -61,6 +61,40 @@ void TestLegacyPortGroupRoundTrip() {
   }
 }
 
+void TestLegacyPortGroupReviewGuards() {
+  pattern::Design design;
+  design.AddIcl(
+      "group_review.icl",
+      "Module Top {DataInPort p[3:0]; PortGroup g {p} DataRegister r;}");
+  const auto original = pattern::Elaborate(design, "Top");
+  std::string accepted;
+  for (int mutation = 0; mutation < 3; ++mutation) {
+    auto invalid = original;
+    auto& group = invalid.nodes.at(invalid.node_ids.at("g"));
+    if (mutation == 0) {
+      group.one_hot_sources.push_back(
+          {{}, pattern::OneHotSourceKind::kRegister, invalid.node_ids.at("r")});
+    }
+    if (mutation == 1) group.scan_interface = pattern::ScanInterface{};
+    if (mutation == 2) {
+      invalid.nodes.at(invalid.node_ids.at("p")).indexed = false;
+    }
+    bool rejected = false;
+    try {
+      pattern::SerializeIcl(invalid);
+    } catch (const std::runtime_error& error) {
+      rejected =
+          std::string(error.what()).find("PortGroup") != std::string::npos;
+    }
+    if (!rejected) {
+      accepted += mutation == 0   ? " contributor"
+                  : mutation == 1 ? " interface"
+                                  : " scalar";
+    }
+  }
+  Require(accepted.empty(), "unrejected malformed annotations:" + accepted);
+}
+
 void TestLegacyPortGroupNativeGuards() {
   pattern::Design design;
   design.AddIcl("port_group_guard.icl",
@@ -1413,6 +1447,7 @@ int main() {
     TestChildInputDefaultMetadataGuards();
     TestSegmentedPortRoundTrip();
     TestSegmentedMetadataGuards();
+    TestLegacyPortGroupReviewGuards();
     TestLegacyPortGroupRoundTrip();
     TestLegacyPortGroupNativeGuards();
     TestLegacyPortGroupMetadataGuard();

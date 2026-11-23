@@ -2746,9 +2746,13 @@ void ValidatePortGroupMembers(const Netlist& netlist) {
                                message);
     };
     if (node.kind != "PortGroup" || node.model != ModelKind::kGroup ||
-        node.scope >= netlist.scopes.size() || node.indexed ||
-        node.port_group.empty() || !node.properties.empty() ||
-        !node.attributes.empty() || !node.inputs.empty()) {
+        node.scope >= netlist.scopes.size() || node.indexed || node.left != 0 ||
+        node.right != 0 || node.active_low || node.port_group.empty() ||
+        !node.properties.empty() || !node.attributes.empty() ||
+        !node.inputs.empty() || !node.constants.empty() || node.reset ||
+        !node.choices.empty() || !node.one_hot_sources.empty() ||
+        !node.logic.empty() || node.scan_interface || node.enumeration ||
+        node.clock_period || node.read_callback || node.write_callback) {
       reject("invalid annotation representation");
     }
     if (node.port_group.size() > std::min(remaining, kMaxWidth)) {
@@ -2764,6 +2768,8 @@ void ValidatePortGroupMembers(const Netlist& netlist) {
       if (port.model != ModelKind::kPort || port.kind.size() < 4 ||
           port.kind.compare(port.kind.size() - 4, 4, "Port") != 0 ||
           port.scope != node.scope ||
+          (!port.indexed &&
+           (port.left != 0 || port.right != 0 || bit.index != 0)) ||
           bit.index < std::min(port.left, port.right) ||
           bit.index > std::max(port.left, port.right)) {
         reject("member must name a valid local port bit");
