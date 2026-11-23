@@ -9247,3 +9247,8 @@ build/opaque-child-raw-20261123/{final,scale-final,final-preserved,batch-scale,
 example}/. Pre-review measurements are retained separately and are not used as
 final-product measurements. The six corpus measurements retain unchanged
 inventory product and input hashes, verified against final qualification.
+
+Task160 is merged into master;20 integration checks pass on4031 identical input
+hashes/20 copied qualified native products, preserving117 stashes. Receipt:
+build/opaque-child-raw-20261123/merged/receipt.json. Broader items2–8/10–12 stay
+open as tracked; the next increment continues the original requested inventory.

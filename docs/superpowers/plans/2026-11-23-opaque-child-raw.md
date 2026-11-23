@@ -157,7 +157,7 @@ APIs remain; no new CLI option or public private endpoint.
       fixpass, deferMinors/no rereview. Run full15native/15SAN, both whole
       generators, selected SAN/corpus/protocol/Make/quality/source packaging.
       Bind exact maintained-input/product/measurement receipts; expected all pass.
-- [ ] Merge master, verify identical merged inputs/products and focused checks,
+- [x] Merge master, verify identical merged inputs/products and focused checks,
       push, detach preserved worktree/delete merged branch/archive only ownledger.
       task-done command python3 /tmp/opaque-child-raw-completion-check.py.
       Expected clean pushed master/onlymaster,117stashes and all receipts; continue
