@@ -9214,3 +9214,36 @@ An8-bit child has nine16-bit CSUs(144shifted bits); its root-only control has
 four16-bit CSUs(64shifted bits) and a16-bit opaque interval. Their output is not
 claimed identical to the child configuration. The acceptance bound is10s/512MiB per process. No speedup is
 claimed.
+
+
+Task160 passes58 post-fix qualification gates:15 normal and15 leak-enabled
+sanitizer native suites,70 suites/1136 methods for each normal/static generator,
+19 opaque-child CLI methods in each variant and selected sanitizer,21 changed
+C++ format/tidy/C++17 checks, corpus/producer/protocol/Make checks and source
+packaging. Exact4031 maintained-input hashes and38 qualified products are bound
+in build/opaque-child-raw-20261123/final/receipt.json. The corpus retains1024
+canonical/44 declared-unsupported/695 original elaboration failures among1763
+effective modules. Broader source support and excluded coverage1 are unchanged.
+
+One independent review found0Critical/5Important/1Minor. One test-first pass
+fixes all five Important issues: physical-root stability with a non-stable modeled
+sibling, sparse stable opaque data during implicit raw traversal, private targets
+and reserved IDs in native reset queries, bit-specific alias side-channel
+classification, and actual benchmark CSU/shifted-bit/control-width receipts.
+The Minor remains deferred: an empty physical program can publish a header-only
+output, executing no CSU. Rulings and the full fix record are retained in
+build/opaque-child-raw-20261123/rulings.json; no second review was run.
+
+All102 fresh opaque/control processes,60 preserved callback controls, six
+wide-alias processes and six normal/configured-sanitizer corpus batches meet
+their bounds. Three exact guide invocations also pass, for177 measured/example
+processes in total. Maximum opaque normal runtime/RSS: 0.1820s/125388KiB; sanitizer:
+0.4152s/432632KiB. The16K callback alias peak is165072KiB within256MiB. Generated opaque
+runs execute four fresh root getters. Control receipts distinguish grid width,
+actual opaque width, modeled storage, nine versus four CSUs and their total
+shifted bits; no speedup or identical-workload claim is made. Commands, tool/
+input/output hashes and runtime environment are retained under
+build/opaque-child-raw-20261123/{final,scale-final,final-preserved,batch-scale,
+example}/. Pre-review measurements are retained separately and are not used as
+final-product measurements. The six corpus measurements retain unchanged
+inventory product and input hashes, verified against final qualification.

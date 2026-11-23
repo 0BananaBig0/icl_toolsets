@@ -136,23 +136,23 @@ than the root-only opaque lowering/readback classifier. Clock/override/physical
 calls fail closed for this backend. Existing source/reset rewriting and observer
 APIs remain; no new CLI option or public private endpoint.
 
-- [ ] CLI RED for parent-first and raw child access, actual parent/x opaque
+- [x] CLI RED for parent-first and raw child access, actual parent/x opaque
       history, default/stable implicit traversal and non-stable follow-up rejection.
       Use immutable parent discovery probes. Add source/flat/generated/reset-source/
       split/prefix/namespace/inversion/alias/masks/status/reservations/error tests,
       nonempty outputs, atomic retained previous output/debug/reset artifacts.
-- [ ] Update classifier/capability callers and required exposure guards only;
+- [x] Update classifier/capability callers and required exposure guards only;
       register the suite in both generators. Expected all source/flat/generated
       replays preserve original target behavior and public operation privacy.
-- [ ] Add benchmark with fresh invocation directories and actual four-group
+- [x] Add benchmark with fresh invocation directories and actual four-group
       full-root probe data: expected parent head/tail bits around opaque x.
       Replace exactly four generated result notes with fresh getters at level1;
       compare canonical outputs and dimensions/tool/input/output hashes.
       Run specified normal/SAN grids and matched controls; expected all bounds.
-- [ ] Document exact example/commands, visible controlling vs unknown actual
+- [x] Document exact example/commands, visible controlling vs unknown actual
       state, width/stable/preparation constraints and all retained limits.
       Author-check example source/flat/generated; do not claim independent reader.
-- [ ] Commit; one fresh final independent review of whole bf000ae..HEAD range.
+- [x] Commit; one fresh final independent review of whole bf000ae..HEAD range.
       Regrade/resolve all declined behavior, one test-first Critical/Important
       fixpass, deferMinors/no rereview. Run full15native/15SAN, both whole
       generators, selected SAN/corpus/protocol/Make/quality/source packaging.
