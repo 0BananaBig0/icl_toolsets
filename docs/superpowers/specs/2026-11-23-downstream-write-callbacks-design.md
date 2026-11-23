@@ -8,7 +8,7 @@ user design approval. Broader inventory work continues afterward.
 
 ## Intended behavior and evidence
 
-IEEE1687-2014 clause6.4.9, printed119–121, describes invoking WriteCallBack when
+IEEE1687-2014 clause6.4.9, printed117, describes invoking WriteCallBack when
 the register must supply data to a downstream write. Local extracted standard:
 `/tmp/item11-1687.txt:6152–6161`. Existing explicit callbacks execute correctly,
 but direct downstream requests cannot discover their prerequisites.
@@ -104,7 +104,7 @@ logical scheduling. Check endpoint PDL/substituted data, not literal notes as
 observations. Modeled/physical negatives protect existing artifacts.
 
 Measure matched explicit-before controls first to choose representative counts;
-target normal16/64/256 and sanitizer16 if actual baseline supports them. Record
+use normal16/64/128 and sanitizer16. Parent explicit controls measured16:0.2314s/76264KiB,64:1.2178s/89008KiB,128:4.0630s/122516KiB. The256 control takes15.8781s/230404KiB, outside10s before this branch; retain that measured wider-scale limitation under item10. Revisit the supported count when optimizing hardware-referenced callback state. Record
 sizes and justify refinements before implementation. Each selected process must
 meet10s/512MiB; wide payload checks10s/256MiB. Work should track selected dependency
 bits plus emitted operations, with map log factors. Reuse path results within a
