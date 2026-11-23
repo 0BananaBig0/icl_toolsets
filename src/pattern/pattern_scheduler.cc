@@ -489,6 +489,12 @@ class ScanScheduler::Impl {
       }
     }
   }
+  void CheckPreservedValues(const std::map<size_t, std::string>& preserved) {
+    ValidateOpaquePreserved(preserved);
+    const auto desired = DesiredPreserved(preserved, {}, false, {});
+    auto held = preserved;
+    CheckPreserved(state_, held, desired);
+  }
   void FilterOpaqueAssigned(std::set<size_t>* assigned) const {
     if (opaque_model_ && assigned) {
       assigned->erase(assigned->lower_bound(opaque_model_->source_nodes),
@@ -7661,6 +7667,18 @@ void ScanScheduler::Idle(uint64_t cycles,
 void ScanScheduler::Assume(const std::string& target, const std::string& bits) {
   impl_->InvalidateRawRoute();
   impl_->Assume(target, bits);
+}
+void ScanScheduler::Assume(const std::string& target, const std::string& bits,
+                           const std::map<size_t, std::string>& preserved) {
+  if (preserved.empty()) {
+    Assume(target, bits);
+    return;
+  }
+  impl_->ValidateOpaquePreserved(preserved);
+  ScanScheduler trial(*this);
+  trial.Assume(target, bits);
+  trial.impl_->CheckPreservedValues(preserved);
+  impl_.swap(trial.impl_);
 }
 std::vector<ScanStep> ScanScheduler::Apply(
     const std::vector<Operation>& operations, bool together,

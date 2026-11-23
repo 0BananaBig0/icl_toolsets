@@ -280,6 +280,16 @@ void TestOpaqueChildNativeStateAndPrivacy() {
   Rejects(
       [&] { scheduler.ResetPrerequisites({}, {}, {{expanded->storage, "0"}}); },
       "reserved resource");
+  const auto head = netlist.node_ids.at("head");
+  Rejects([&] { scheduler.Assume("head", "000", {{head, "101"}}); },
+          "reserved resource");
+  Require(scheduler.Value("head") == "101",
+          "guarded state assumption failure preserves native state");
+  Rejects(
+      [&] {
+        scheduler.Assume("head", "101", {{expanded->storage, "00000000"}});
+      },
+      "reserved resource");
   Rejects([&] { scheduler.Value(private_name); }, "unknown");
   Rejects([&] { scheduler.Assume(private_name, "00000000"); }, "unknown");
   Rejects(

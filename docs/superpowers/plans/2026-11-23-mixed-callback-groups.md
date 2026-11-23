@@ -128,9 +128,12 @@ docs/remaining-work.md. Required caller fixes, if proven by failing tests, stay
 in src/pattern/{pattern_runtime.cc,pattern_readback.cc,
 icl_pattern_generation_main.cc} and their existing native tests.
 
-**Interfaces:** Consume Task1 queue/goal/history behavior with unchanged public
-Runtime/Operation APIs. Reuse existing modeled-readback, source action and reset
-rewriting interfaces; benchmark is standalone Python standard library.
+**Interfaces:** Consume Task1 queue/goal/history behavior. The concrete native
+indirect-write regression requires default-empty Operation.callback_preserved
+caller masks, shared ResourceReservations.CallbackConstraints/CallbackValues and
+a transactional guarded NativeScheduler.Assume overload; the refinement below
+records the proof and caller scope. Reuse modeled-readback, source action and
+reset rewriting; benchmark is standalone Python standard library.
 
 - [ ] Add final8CLI methods: test_split_prefix_namespace_arguments,
       test_local_reset_source_and_immutable_procedures,
@@ -149,7 +152,9 @@ rewriting interfaces; benchmark is standalone Python standard library.
       source-flat-generated. Prepare spare with an ordinary Apply before each
       mixed group, then queue ordinary spare write/read plusNcallback writes,
       Apply and fresh spare_out getter (actual1/2/3/4). Report four probes and
-      actual8CSUs, explicit operand bits, endpoint writes and4*Npostconditions.
+      actual4*(N+2)emitted Applies/4*(N+1)PIOframes/4emptyouterApplies/
+      0scanCSUs, explicit operand bits,4*Nendpointwrites and4*Npostconditions.
+      Ordinary/unused controls emit8nonemptyPIOApplies/4endpointwrites.
       Generated probes replace exactly4literal notes with fresh level1 getters.
       Current observed27+SAN9 plus current ordinary/unused/observer-off27 and
       parent ordinary/unused18 gives81processes. Controls disclose different
@@ -164,7 +169,11 @@ rewriting interfaces; benchmark is standalone Python standard library.
       defer Minors/no rereview. Run15normal+15leakSAN native, both whole
       generators, selected SAN histories/callbacks/new suite/opaque child,
       corpus/producer/protocol/Make/changed C++ quality/source packaging.
-      Bind exact maintained inputs/products/measurements; expected59gates and
+      After fresh full builds, reuse only exact-byte unchanged native products
+      with unchanged test-source/fixture hashes and prior passing-log provenance;
+      execute every changed native product. Whole generators/affectedCLI/
+      packaging run current code. Bind exact maintained inputs/products/
+      measurements; expected59gates and
       actual71x1152 eachvariant/4033inputs38products if no justified additions.
 - [ ] Merge into master; verify identical source/product hashes and focused
       root integration (existing20checks plus newCLI bothvariants=22checks,
@@ -172,3 +181,43 @@ rewriting interfaces; benchmark is standalone Python standard library.
       branch, archive only this ledger, preserve117stashes. task-done command
       python3 /tmp/mixed-callback-groups-completion-check.py. Expected clean
       pushed master/onlymaster, then continue original remaining inventory.
+
+
+## Native caller preservation refinement
+
+A concrete Task2 probe (build discovery in /tmp/mixed-indirect-caller-jilzuem2)
+shows why a runtime target check alone is insufficient: after an inner Apply,
+iWrite q9 can drive q's source p from the caller's3 to9. Add the minimal
+required interface handoff: Operation::callback_preserved is a default-empty
+map<size_t,string> of desired ordinary caller masks by original node ID,
+never observed values. Snapshot it on callback Apply/controlling iState/idle
+boundaries. Source operation entries remain immutable; no public PDL command.
+
+Add ResourceReservations::CallbackValues(const Operation&,
+const QueuedAccesses&) const -> optional<map<size_t,string>>. Merge these
+caller constraints with existing reservations; known direct pending writes
+matching the desired mask need no prior-state protection on their first frame.
+A conflicting direct queued value rejects. Remaining known bits use existing
+native preserved-resource proofs, including derived ports/clocked effects.
+No extra writes or CSUs are introduced. Both Generate and ModelReadback use
+the same helper; annotate caller context on failures without hiding the cause.
+
+Add ScanScheduler::Assume(target,bits,preserved) as an overload. Empty masks
+retain the old fast path; guarded assumptions use a native trial, existing
+resource-value validation/concrete preservation and commit only on success.
+Reject private opaque IDs as at the other public native boundaries. Callback
+reset clears masks; actual invoked-read history/physical/raw boundaries remain.
+Protect waits through existing preserved-map Idle/Wait APIs. Preserve masks
+through merge processing or retain annotated Applies as barriers if required
+by the actual regression. This extends the initially expected runtime-only
+file surface to pattern_runtime.h, pattern_resources.h/.cc,
+pattern_scheduler.h/.cc, main/readback and the affected native tests; the
+existing private-state/solver machinery remains the sole event authority.
+
+Native test TestMixedCallbackFrameGoals verifies exact Apply/state snapshots,
+no prior-operation mutation and reset cancellation. Existing opaque native
+privacy test verifies guarded-Assume rollback/private-ID rejection. Same-method
+CLI regressions cover both derived-write directions, compatible derived writes,
+indirect controlling state and a merged ordinary endpoint body. Run fresh checks
+for every rebuilt/changed native product; reuse eligibility is byte-based, never
+assumed from filenames.

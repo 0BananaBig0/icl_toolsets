@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -34,6 +35,8 @@ struct Operation {
   bool callback_execution = false;
   // Actually invoked ReadCallBack context, including nested calls and resets.
   bool callback_read_execution = false;
+  // Desired caller masks at native boundaries, never observed device values.
+  std::map<size_t, std::string> callback_preserved{};
 };
 
 struct ReadbackUpdate {

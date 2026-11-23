@@ -78,8 +78,10 @@ completes the ordinary/endpoint queue through the existing dispatcher; an inner
 reset cancels unexecuted hardware requests and establishes the next pending
 range. Selected callback requests are already an in-flight batch and retain
 the existing fixed-batch iteration semantics; reset does not invent a new
-iteration rule for that batch. Calls without an inner Apply leave their
-endpoint/ordinary requests for the outer Apply. A pending wait remains subject
+iteration rule for that batch. Preserve InvokeProcedure's existing implicit tail Apply on callback completion:
+callbacks without an explicit final Apply still flush pending endpoint/ordinary
+requests there. The caller's outer Apply can therefore be an empty boundary;
+do not coalesce distinct callback completions into one frame. A pending wait remains subject
 to the existing unapplied-operation guard; no automatic flush. A group containing
 only selected logical markers has no pending hardware requests, preserving
 existing ordinary endpoint merges/waits inside its procedures. Mark each actual
@@ -145,7 +147,7 @@ with4-bit independent ordinary input and actual spare_out observations. Normal
 process <=10s/512MiB. Four generated probe boundaries must replace literal
 notes with fresh ordinary getters; assert returned1/2/3/4 and callback counts.
 Matched ordinary-only/unused/observer-off controls report actual request counts,
-emitted Applies, operand bits, endpoint writes and callback postconditions.
+emitted Applies, actual scan CSUs (zero for this primary-only workload), operand bits, endpoint writes and callback postconditions.
 Use fresh directories and bind binary/input/output hashes and environment.
 Avoid repeated full-netlist/group scans per callback: work proportional to
 queued bits plus emitted operations (ordered-map log factors acceptable), with
@@ -166,7 +168,51 @@ final independent review; one Critical/Important TDD fix pass, defer Minors,
 no rereview. Final required checks:15normal and15leakSAN native suites, both
 whole generators, selected SAN callback/runtime/model/raw histories, corpus/
 producer/protocol/Make, affected C++ format/tidy/C++17 and source packaging.
-Bind exact current maintained inputs/products and all measurements. Merge
+Bind exact current maintained inputs/products and all measurements. After a
+fresh complete build, a previously passed native gate may be reused only when
+its executable bytes, test source and runtime fixtures remain unchanged; store
+the exact hash/log provenance and rerun every changed native product. Whole
+generators and affected CLI/source packaging always run on the current code. Merge
 verified work into master, run identical-input/product integration checks,
 push/delete the completed branch/archive only this ledger/preserve117stashes,
 and continue the original inventory.
+
+
+## Native caller preservation refinement
+
+A concrete Task2 probe (build discovery in /tmp/mixed-indirect-caller-jilzuem2)
+shows why a runtime target check alone is insufficient: after an inner Apply,
+iWrite q9 can drive q's source p from the caller's3 to9. Add the minimal
+required interface handoff: Operation::callback_preserved is a default-empty
+map<size_t,string> of desired ordinary caller masks by original node ID,
+never observed values. Snapshot it on callback Apply/controlling iState/idle
+boundaries. Source operation entries remain immutable; no public PDL command.
+
+Add ResourceReservations::CallbackValues(const Operation&,
+const QueuedAccesses&) const -> optional<map<size_t,string>>. Merge these
+caller constraints with existing reservations; known direct pending writes
+matching the desired mask need no prior-state protection on their first frame.
+A conflicting direct queued value rejects. Remaining known bits use existing
+native preserved-resource proofs, including derived ports/clocked effects.
+No extra writes or CSUs are introduced. Both Generate and ModelReadback use
+the same helper; annotate caller context on failures without hiding the cause.
+
+Add ScanScheduler::Assume(target,bits,preserved) as an overload. Empty masks
+retain the old fast path; guarded assumptions use a native trial, existing
+resource-value validation/concrete preservation and commit only on success.
+Reject private opaque IDs as at the other public native boundaries. Callback
+reset clears masks; actual invoked-read history/physical/raw boundaries remain.
+Protect waits through existing preserved-map Idle/Wait APIs. Preserve masks
+through merge processing or retain annotated Applies as barriers if required
+by the actual regression. This extends the initially expected runtime-only
+file surface to pattern_runtime.h, pattern_resources.h/.cc,
+pattern_scheduler.h/.cc, main/readback and the affected native tests; the
+existing private-state/solver machinery remains the sole event authority.
+
+Native test TestMixedCallbackFrameGoals verifies exact Apply/state snapshots,
+no prior-operation mutation and reset cancellation. Existing opaque native
+privacy test verifies guarded-Assume rollback/private-ID rejection. Same-method
+CLI regressions cover both derived-write directions, compatible derived writes,
+indirect controlling state and a merged ordinary endpoint body. Run fresh checks
+for every rebuilt/changed native product; reuse eligibility is byte-based, never
+assumed from filenames.

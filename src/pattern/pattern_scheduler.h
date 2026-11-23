@@ -50,6 +50,8 @@ class ScanScheduler {
   void Idle(uint64_t cycles,
             const std::map<size_t, std::string>& preserved = {});
   void Assume(const std::string& target, const std::string& bits);
+  void Assume(const std::string& target, const std::string& bits,
+              const std::map<size_t, std::string>& preserved);
   // Physical mode replays one exact binary TAP CSU; writes are scan loads.
   std::vector<ScanStep> Apply(
       const std::vector<Operation>& operations, bool together = false,

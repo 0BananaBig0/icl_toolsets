@@ -206,6 +206,41 @@ Module Top {
  DataRegister value[3:0] {WriteCallBack Top store <D>;}
  Alias inverted[3:0] = ~p;
 })";
+void TestMixedCallbackFrameGoals() {
+  pattern::Design design;
+  design.AddIcl("frame-goals.icl", kMixedCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto spare = netlist.node_ids.at("spare");
+  pattern::Runtime runtime(design, netlist);
+  runtime.Execute("frame-goals.pdl", R"(
+iPDLLevel 1; iProcsForModule Top
+iProc store {data} {iApply; iState p 0; iWrite p $data}
+iWrite spare 3; iWrite value 9; iApply
+)");
+  runtime.Finish();
+  size_t protected_applies = 0, protected_states = 0;
+  for (const auto& op : runtime.operations()) {
+    if (op.callback_preserved.empty()) continue;
+    Require(op.callback_preserved.size() == 1 &&
+                op.callback_preserved.at(spare) == "0011",
+            "callback boundaries retain desired caller bits by original ID");
+    protected_applies += op.command == "iApply";
+    protected_states += op.command == "iState";
+  }
+  Require(protected_applies == 2 && protected_states == 1,
+          "explicit/tail Apply and controlling state carry caller constraints");
+  pattern::Runtime reset(design, netlist);
+  reset.Execute("reset-frame-goals.pdl", R"(
+iPDLLevel 1; iProcsForModule Top
+iProc store {data} {iReset; iWrite p $data}
+iWrite spare 3; iWrite value 9; iApply
+)");
+  reset.Finish();
+  for (const auto& op : reset.operations()) {
+    Require(op.callback_preserved.empty(),
+            "body reset cancels pending caller goal constraints");
+  }
+}
 void TestMixedCallbackQueue() {
   pattern::Design design;
   design.AddIcl("mixed.icl", kMixedCallbackModel);
@@ -232,14 +267,15 @@ void TestMixedCallbackQueue() {
     for (size_t i = 0; i < before.size(); ++i) {
       const auto& left = before[i];
       const auto& right = runtime.operations()[i];
-      Require(left.command == right.command &&
-                  left.arguments == right.arguments &&
-                  left.origin == right.origin &&
-                  left.call_stack == right.call_stack &&
-                  left.callback == right.callback &&
-                  left.callback_execution == right.callback_execution &&
-                  left.callback_read_execution == right.callback_read_execution,
-              "callback expansion never revises earlier operation entries");
+      Require(
+          left.command == right.command && left.arguments == right.arguments &&
+              left.origin == right.origin &&
+              left.call_stack == right.call_stack &&
+              left.callback == right.callback &&
+              left.callback_execution == right.callback_execution &&
+              left.callback_read_execution == right.callback_read_execution &&
+              left.callback_preserved == right.callback_preserved,
+          "callback expansion never revises earlier operation entries");
     }
   }
 }
@@ -1511,7 +1547,8 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestMixedCallbackQueue,
+  for (const auto test : {TestMixedCallbackFrameGoals,
+                          TestMixedCallbackQueue,
                           TestMixedCallbackHistory,
                           TestMixedCallbackCallerWrites,
                           TestMixedCallbackFailureScopes,
