@@ -32,6 +32,8 @@ struct Operation {
   bool callback = false;
   // Invocation context survives resets inside callback bodies.
   bool callback_execution = false;
+  // Actually invoked ReadCallBack context, including nested calls and resets.
+  bool callback_read_execution = false;
 };
 
 struct ReadbackUpdate {
@@ -67,6 +69,7 @@ class Runtime {
   const std::vector<std::string>& warnings() const;
   int Level() const;
   bool CallbacksExecuted() const;
+  bool ReadCallbacksExecuted() const;
   std::vector<SourceAction> SourceActions(bool whole_commands = false) const;
 
  private:
