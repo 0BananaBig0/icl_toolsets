@@ -54,7 +54,7 @@ storage scoped by the property's Expression.scope; produces unchanged std::strin
       Expected:6 valid complete reports, exact environment/command/hashes and RSS.
 - [x] Document behavior/evidence/physical-timing limit. Commit; one fresh independent
       final review; test-first fix Critical/Important once, defer Minors, no rereview.
-- [ ] Merge into master, verify matching inputs/products and focused integrated checks,
+- [x] Merge into master, verify matching inputs/products and focused integrated checks,
       push, detach preserved worktree, delete merged branch, archive own ledger.
       Completion command: python3 /tmp/legacy-launch-edge-completion-check.py.
       Expected: qualified/integrated exact evidence, clean pushed master, only master,

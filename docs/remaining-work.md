@@ -134,3 +134,6 @@ elaboration errors remain visible. Broader 11/12 remains pending.
 All 53 qualification checks and six corpus measurements pass after one
 Important test-first review fix; two Minors are deferred. Master integration
 is pending.
+
+Task157 is merged into master; eleven integration checks, 4025 input hashes,
+19 copied qualified native products and 117 preserved stashes are verified.

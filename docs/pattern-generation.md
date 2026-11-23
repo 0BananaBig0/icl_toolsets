@@ -8922,3 +8922,7 @@ Enum members named LaunchEdge remain valid. Deferred Minors: the earlier
 operator table retains Task156 counts, and the native fixed-point loop reparses
 the same canonical text. Physical timing/vendor equivalence remains unverified;
 coverage item1 remains excluded. Master integration is pending.
+
+Task157 is integrated into master. Eleven integration checks pass on 4025
+matching input hashes and 19 copied qualified native products. All 117 stashes
+remain. Receipt: build/legacy-launch-edge-20261123/merged/receipt.json.
