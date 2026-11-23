@@ -67,7 +67,11 @@ source network retains its existing lifetime contract. Export/debug/flat ICL and
 Runtime resolve only the original model. Reject native public target operations
 that reference private nodes. Strip private loads/writes/expected names from
 returned public ScanSteps; no hidden endpoint may appear in generated PDL or
-become publicly addressable. Validate that the opaque SO is used only along the
+become publicly addressable. Mask the private update/shift state back to x after
+each committed CSU without changing its controlling fill; public Value/state and
+observation surfaces must not report requested bits as hidden instrument data.
+Filter any private IDs from public logical observation vectors as well as step
+maps. Validate that the opaque SO is used only along the
 serial path, not as an ordinary data/reset/selector source. No DataRegister/
 callback/other unmodeled side channel is admitted by this bounded scan-only route.
 
@@ -101,6 +105,17 @@ stable completion because its CSU traverses that interval. Full-root -stable
 also establishes the opaque interval's stable controlling payload; without it,
 later implicit traversal requires another explicit request or reset.
 
+Completion is per physical CSU, not per outer PDL Apply. Mixed ordinary/raw
+groups retain the existing ordinary preparation followed by raw execution:
+every preparation frame uses only the previously established stable/reset-default
+payload, while the current explicit child/full-root request is consumed exactly
+on its requested final raw CSU. Reject preparation without prior knowledge even
+if a new non-stable request is queued in the same group. A prior stable/default
+payload can justify multiple preparation frames because native private write
+goals constrain it in every frame. Unexpected raw preparatory CSUs must either
+enforce that prior payload or reject transactionally; never use the pending
+non-stable request twice. Test mixed known-prior success and unknown-prior failure.
+
 Use transaction-local queue copies and commit queue metadata together with native
 state/fill. Failure leaves both reusable snapshots intact. After committed native
 work, a subscriber exception must leave both state and opaque metadata committed,
@@ -131,6 +146,9 @@ TDD:
   atomic retained output/debug/reset files on unsupported interactions.
 - Preserve all root opaque and modeled-child behavior, callback budgets and
   scalar/parallel/TAP observations. New maintained scripts under tests/src/pattern/.
+  Add a focused tests/src/pattern/pattern_opaque_test.cc native suite, wired into
+  normal/COV check targets, to test this subsystem without rerunning the large
+  general scheduler suite for every focused iteration.
 
 Measure four outer groups at opaque widths8/64/256/1024, parent3+5, three repeats
 source/flat/generated normal; sanitizer8/64. Each run<=10s/512MiB. Generated
@@ -142,7 +160,7 @@ lowering control where semantically comparable; report actual payload/CSU counts
 fresh artifact and tool/input/output hashes, timings/RSS, no unmeasured speedup.
 Retain current normal1024callback10s and16Kwide-alias256MiB budgets.
 
-Full14native/14leakSAN, both whole generators, selected SAN observation/corpus/
+Full15native/15leakSAN (including the new focused opaque suite), both whole generators, selected SAN observation/corpus/
 producer/protocol/Make and changedC++ quality/source packaging remain required.
 One fresh independent final review; one Critical/Important test-first fix pass,
 deferMinors/no rereview. Verify exact merged sources/products and focused checks,
@@ -152,3 +170,11 @@ Builder choices: internal helper names/representation and exact placement of
 existing validation calls. Resolve routine code details from current native
 source; do not weaken the stated privacy, queue, event, rollback or performance
 contracts. No user-specific design approval is claimed.
+
+Builder check /root/opaque_child_raw_builder_check raised one Important question
+about per-CSU consumption in mixed groups. The preceding explicit rule settles
+it from existing generation/readback behavior; there are no remaining important
+questions and no user-specific approval is claimed. The focused native target is
+our implementation-economy choice; it adds one suite rather than weakening any
+existing verification. Larger variable-width/multiple-child topologies remain
+separate inventory work.
