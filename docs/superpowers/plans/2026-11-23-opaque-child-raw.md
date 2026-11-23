@@ -59,23 +59,23 @@ stable payloads, and commits queue tracking only on success. Existing Apply
 validates options, returns empty for an empty queue, otherwise calls Complete.
 No change to NormalizeOpaqueScan/ReadScanFields/queued payload limits.
 
-- [ ] Write TestScalarCompletionDefaultStableUnknown and
+- [x] Write TestScalarCompletionDefaultStableUnknown and
       TestCompletionFailureAndCopies in the new native suite. After reset:
       default8'b0 yields iScan client8 -si00000000 -soxxxxxxxx -stable.
       Explicit8-bit0xa5/-so0x3c/-stable followed by Complete reuses0xa5 with
       all-x expected; non-stable0x5a makes later implicit Complete reject.
       Copy/reset/canceled invalid requests and named-chain behavior remain isolated.
       Assert empty Apply still emits no CSU even after reset/stable.
-- [ ] Add pattern-opaque-check, build/pattern_opaque_test and matching COV target/
+- [x] Add pattern-opaque-check, build/pattern_opaque_test and matching COV target/
       registration by reusing readback-test link objects/flags; no Runtime linkage.
       Run focused native RED: missing Complete API/required implicit behavior.
-- [ ] Factor existing completion, share scalar/named stable/unknown handling, keep
+- [x] Factor existing completion, share scalar/named stable/unknown handling, keep
       validation-before-mutation and existing payload limits. Expected GREEN.
-- [ ] Build normal/static generator + focused native; run native and existing
+- [x] Build normal/static generator + focused native; run native and existing
       test_opaque_root_scan.py/test_opaque_parallel_scan.py dynamic/static.
       Run affected C++format/tidy/C++17. Expected all pass, root bytes unchanged
       and1MiBit root/repeated-reset tests remain within their existing checks.
-- [ ] Commit and task-done using python3 /tmp/opaque-child-raw-task1-check.py,
+- [x] Commit and task-done using python3 /tmp/opaque-child-raw-task1-check.py,
       verifying exact executed source/product/log hashes. Expected focused contract.
 
 ### Task 2: Native private opaque interval and per-CSU queue contracts

@@ -41,6 +41,8 @@ class OpaqueScanQueue {
   void Add(z3::context& context, const Operation& operation);
   void Reset(const Operation& operation);
   std::vector<Operation> Apply(const Operation& operation);
+  // One required CSU, including implicit default/stable scan data.
+  std::vector<Operation> Complete(const Operation& operation);
   const std::map<std::string, Operation>& Pending() const { return pending_; }
 
  private:
