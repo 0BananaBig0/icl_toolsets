@@ -171,7 +171,7 @@ mixed-alias dimensions and output checks explicit.
       both72x1169 whole generators, selected SAN/newalias/oldmixed/opaque/history/
       raw/TAP/legacy/model/corpus/producer/protocol/Make, actualC++quality and
       source packaging. Bind4036inputs/38products and matching final measurements.
-- [ ] Merge directparentmaster and verify24root integration checks, identical
+- [x] Merge directparentmaster and verify24root integration checks, identical
       input/product hashes and20copiednormalproducts. Push, detach preservedWT,
       delete completed branch, archive only this plan ledger and117stashes.
       task-done: python3 /tmp/mixed-callback-aliases-completion-check.py.
