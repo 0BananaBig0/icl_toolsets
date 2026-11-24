@@ -10,6 +10,12 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
+Latest: Task167 supports actual native logical merge histories and preserves
+their source-time event order in generated patterns.
+15 fresh normal/15 sanitizer native suites, normal/static77x1243 methods and
+all 378 matched observations/replays pass; 36 wide-PIO memory misses remain.
+See [Task167 evidence](remaining-work.md#task167-qualified-increment).
+
 Latest: Task166 supports modeled raw scans inside valid merge calls.
 Full normal/static 76x1223 tests, affected sanitizer checks and 84 matched
 measurements pass; unchanged native results are retained with exact proof.
@@ -9671,9 +9677,10 @@ caught incomplete return cannot transfer queued work to a sibling call. Prefligh
 retry within the same call remains supported. A failed callback still poisons its queue, and reset cannot be
 used to recover while the merge remains active. Caller resource reservations,
 callback preflight and -together/AccessTogether/raw-group restrictions remain.
-Modeled iMerge histories remain unsupported when a getter requests observation
-deltas; read-callback/automatic history and physical callback-output guards also
-remain. These restrictions do not prevent ordinary expanded replay.
+Task167 supports modeled merge histories on existing native logical routes;
+provider requests serialize merge calls to preserve source-time observations.
+Read-callback/automatic history and physical callback-output guards remain.
+These restrictions do not prevent ordinary expanded replay.
 
 Task164 passes 64 final qualification gates: 15 normal and 15 leak-enabled
 sanitizer native suites, 74 suites and 1,208 methods in each generator
@@ -9779,3 +9786,63 @@ compare word, and each Apply boundary. It records all timing/memory misses
 before returning failure; timeout runs have a native child deadline.
 Committed wide cases currently use low-valued data; high-bit coverage is
 a deferred fixture Minor, with separate independent probes retained.
+
+## Modeled merge histories (Task167)
+
+With --model_readback, getters inside called merge procedures or after
+iMerge -end return actual model captures on existing logical PIO, register,
+serial, named-chain and bound TAP routes. They do not return the expected
+comparison value. Separate raw/register histories, sparse/unknown/inverted bits,
+status accumulation and clear semantics follow the existing readback contract.
+
+For a model with DataInPort p[3:0] and DataOutPort q[3:0] sourced from p:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc sample {word} {
+ iWrite p $word; iRead q 0; iApply
+ iNote [iGetReadData q -dec]
+}
+iMerge -begin
+iCall sample 9
+iCall sample 6
+iMerge -end
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+```
+
+Generate with --model_readback. The four notes are 9, 6, 4, 0: two actual
+captured words, four accumulated failing bits, then cleared status.
+The source, flat model, generated pattern and local-reset rewrite retain the
+same trajectory. The local-reset rewrite preserves literal procedure definitions.
+
+Once an actual provider request includes a merge marker, generation serializes
+all merges in that program. This preserves histories used by Tcl branches:
+batching an unrelated write earlier can otherwise change an implicit register
+load before a read. Merely enabling model mode does not disable batching.
+Manual/cached/never-read histories and known-zero status served without the
+provider retain existing scheduling, as do requests before any merge.
+Merge markers create no input, clock, reset, Apply or capture event.
+
+Explicit write callbacks may expose ordinary endpoint histories. Invoked read
+callbacks, automatic callback histories, timed histories, opaque merge routes
+and physical merged histories remain guarded. No live device transport is added.
+
+Reproduce the bounded measurement matrix:
+
+```sh
+python3 tests/src/pattern/benchmark_merged_readback.py \
+  --binary build/icl-pattern-generation \
+  --parent build/merged-readback-20261124/parent/icl-pattern-generation \
+  --sanitized build/connection-hierarchy-sanitize/icl-pattern-generation \
+  --output /tmp/icl-merged-readback-scale
+```
+
+Task167 passes 74 qualification gates: 15 fresh normal and 15 leak-enabled sanitizer native suites, 77 suites/1,243 methods in each generator variant, affected sanitizer CLI, corpus, 12 changed-range C++ quality checks, source packaging and four allocation probes. Exact hashes cover 4,049 inputs and 38 executables.
+
+All 378 matched measurements have correct observations/replay, and four guide processes pass. The matrix includes 16/64/128-call PIO/raw histories, parent/current serial and current observed/unobserved merges, three source/flat/generated repeats, 512/1024-bit high-bit words and 16-call sanitizer observations. Maxima are 2.6263s and 438028KiB, with 342 cases within the existing regular 10s/512MiB and wide 10s/256MiB bounds. All 36 1,024-bit PIO parent/current serial and observed/unobserved source/flat/generated cases exceed the 256MiB wide memory bound (301332–337624KiB); no time bound is missed. The benchmark retains all misses and exits nonzero. 1,024-bit PIO memory closure remains open under inventory 10, alongside Task165’s 256-call latency misses. Source/flat queries and generated literal notes are reported separately; actual captures, full observation lists, exact serial controls and Apply counts are checked. No parallel observed-merge speedup or larger-scale guarantee is claimed.
+
+Independent review found 0 Critical, 3 Important and 3 Minor findings. One test-first pass fixes both standalone benchmark false-green paths and adds a real callback reset-release/order regression. Missing flat models now fail without skipping generated replay; unobserved frames must match the parent serial output after only observation notes are removed. The reset test fails on a temporary executable missing only the second render latch argument and passes on the qualified executable. The new three-method reporting suite passes on normal/static/sanitizer variants, and both full77-suite/1,243-method generator variants plus affected sanitizer history and packaging checks are refreshed. All 4,046 shared inputs and 38 executables are identical across this Python-only fix pass; the 30 native passes are fresh executions from this task, before the test/reporting fixes.
+
+Three new Minors remain deferred: wide raw cases capture reset0 rather than a high-bit word (independent two-scan512/1024-bit probes pass); failed-row query/note counters derive from fixture expectations; and an older raw-merge guide paragraph still lists the previous modeled-history guard. Total deferred Minors:22, including19 inherited. The 36 wide-PIO memory misses remain performance acceptance work under inventory10; no resource bound is raised.

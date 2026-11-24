@@ -60,6 +60,110 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
 }
+void TestMergeMarkersAreEventFree() {
+  pattern::Design design;
+  design.AddIcl("merge_events.icl", R"(
+Module Top {
+ DataInPort p;
+ DataRegister d {WriteDataSource p; WriteEnSource 1'b1; ResetValue 1;}
+ DataOutPort q {Source d;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iState", {"p", "1"}, "test", {}},
+      {"iState", {"d", "0"}, "test", {}},
+      {"iMerge", {"-begin"}, "test", {}},
+      {"iRead", {"q", "0"}, "test", {"reader"}},
+      {"iApply", {}, "test", {"reader"}}};
+  const auto* update = readback(operations, false);
+  Require(update && update->bits.size() == 1 &&
+              update->bits.front().read == '0' && update->failures == 0,
+          "open merge prefix preserves event-free assumptions");
+  operations.push_back({"iMerge", {"-end"}, "test", {}});
+  operations.push_back({"iRead", {"q", "0"}, "test", {}});
+  operations.push_back({"iApply", {}, "test", {}});
+  update = readback(operations, false);
+  Require(update && update->bits.size() == 1 &&
+              update->bits.front().read == '0' && update->failures == 0,
+          "merge end creates no input, reset or data-load event");
+  update = readback(operations, false);
+  Require(update && update->bits.empty() && update->failures == 0,
+          "repeated merged query produces no stale delta");
+}
+
+void TestMergedRawReadbackPlanes() {
+  pattern::Design design;
+  design.AddIcl("merge_raw.icl", R"(
+Module Top {
+ ScanInPort si; ScanOutPort so {Source value[0];}
+ ScanRegister value[3:0] {ScanInSource si; CaptureSource value; ResetValue 0;}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue;
+ TCKPort tck; ResetPort reset;
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue;
+  Port tck; Port reset; DefaultLoadValue 4'b0;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iWrite", {"value", "10"}, "test", {}},
+      {"iApply", {}, "test", {}},
+      {"iRead", {"value", "0"}, "test", {}},
+      {"iApply", {}, "test", {}},
+      {"iMerge", {"-begin"}, "test", {}},
+      {"iScan", {"client", "4", "-si", "3", "-so", "0"}, "test", {"raw"}},
+      {"iApply", {}, "test", {"raw"}}};
+  const auto* update = readback(operations, false);
+  Require(update && update->bits.size() == 4 && update->scans.size() == 1 &&
+              update->scans.front().read == "1010" && update->failures == 4,
+          "merged raw and logical planes use actual asymmetric captured words");
+  std::string logical(4, '?');
+  for (const auto& bit : update->bits) logical.at(3 - bit.index) = bit.read;
+  Require(logical == "1010",
+          "logical history remains independent of raw writes");
+  update = readback(operations, true);
+  Require(update && update->bits.empty() && update->scans.empty() &&
+              update->failures == 4,
+          "merged clear returns old count without repeating observations");
+  operations.push_back({"iMerge", {"-end"}, "test", {}});
+  operations.push_back({"iRead", {"value", "0"}, "test", {}});
+  operations.push_back({"iApply", {}, "test", {}});
+  update = readback(operations, false);
+  Require(update && update->bits.size() == 4 && update->scans.empty() &&
+              update->failures == 2,
+          "post-merge logical read counts only new cared failures");
+  logical.assign(4, '?');
+  for (const auto& bit : update->bits) logical.at(3 - bit.index) = bit.read;
+  Require(logical == "0011", "logical plane observes the new raw update value");
+}
+
+void TestMergedReadbackGuardPreflight() {
+  for (bool physical : {false, true}) {
+    pattern::Design design;
+    design.AddIcl("guard.icl", physical ? R"(
+Module Top {DataInPort p; DataOutPort q {Source p;}}
+)"
+                                        : R"(
+Module Top {
+ ScanInPort si; ScanOutPort so; SelectPort sel; CaptureEnPort ce;
+ ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue;
+  Port tck; Port reset; DefaultLoadValue 4'b0;}
+})");
+    const auto netlist = pattern::Elaborate(design, "Top");
+    const auto readback = pattern::MakeModeledReadback(netlist, physical);
+    bool rejected = false;
+    try {
+      readback({{"iMerge", {"-begin"}, "test", {}}}, false);
+    } catch (const std::runtime_error& error) {
+      rejected = std::string(error.what()).find("iMerge histories") !=
+                 std::string::npos;
+    }
+    Require(rejected, "physical and opaque merge histories remain guarded");
+  }
+}
+
 void TestWriteCallbackEndpointReadback() {
   pattern::Design design;
   design.AddIcl("write_callback_readback.icl", R"(
@@ -742,6 +846,9 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestMergeMarkersAreEventFree();
+    TestMergedRawReadbackPlanes();
+    TestMergedReadbackGuardPreflight();
     TestWriteCallbackEndpointReadback();
     TestCallbackAssumptionsCannotBecomeActualData();
     TestUnexpandedLogicalReadbackRejects();

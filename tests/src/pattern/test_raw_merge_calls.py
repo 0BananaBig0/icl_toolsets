@@ -201,8 +201,8 @@ iNote outside; iMerge -end
         body = ('iProc access {} {iScan client 4 -si 9; iApply}\n'
                 'iReset; iMerge -begin; iCall access; iMerge -end\n')
         self.check(ROOT, body, modeled=True)
-        self.rejected(ROOT, body+'iNote [iGetReadData client]\n',
-                      'iMerge histories', extra=('--model_readback',))
+        output = self.check(ROOT, body+'iNote [iGetReadData client]\n', modeled=True)
+        self.assertIn(b'iNote 0b0000\n', output)
         self.rejected(ROOT, body, 'physical', extra=('--physical_pdl',))
         opaque_body = ('iProc access {} {iScan client 8 -si 9; iApply}\n'
                        'iReset; iMerge -begin; iCall access; iMerge -end\n')

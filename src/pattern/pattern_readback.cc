@@ -127,7 +127,11 @@ class ModelReadback {
                 ": modeled readback excludes unexpanded callback access");
           }
         }
-        if (op.command != "iWrite" && op.command != "iRead" &&
+        const bool merge_marker =
+            op.command == "iMerge" && op.arguments.size() == 1 &&
+            (op.arguments[0] == "-begin" || op.arguments[0] == "-end") &&
+            !physical_ && !opaque_ && !scheduler_->HasOpaqueChild();
+        if (!merge_marker && op.command != "iWrite" && op.command != "iRead" &&
             op.command != "iApply" && op.command != "iState" &&
             op.command != "iScan" && op.command != "iReset" &&
             op.command != "iTake" && op.command != "iRelease" &&
@@ -224,6 +228,7 @@ class ModelReadback {
 
   void Process(const Operation& op) {
     reservations_.Enter(op.call_stack);
+    if (op.command == "iMerge") return;
     const auto& args = op.arguments;
     if (opaque_) {
       if (op.command == "iScan") {

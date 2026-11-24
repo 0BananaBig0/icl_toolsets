@@ -269,9 +269,10 @@ if {$::calls != 3 || $::args != 3} {error repeated_count}
                                "ReadCallBack Chains store <D> <R>;")
         self.rejected(self.merged("iRead value 9; iApply"),
                       "callback histories", source, modeled=True)
-        self.rejected(self.merged("iWrite value 9; iApply") +
-                      "; iRead endpoint 0; iApply; iGetReadData endpoint -bin",
-                      "iMerge histories", modeled=True)
+        body = downstream.PROCS+self.merged("iWrite value 9; iApply") + \
+            "; iRead endpoint 0; iApply; iNote [iGetReadData endpoint -bin]"
+        output = downstream.observations.ModeledReadback.replay(self, MODEL, body)
+        self.assertEqual(self.notes(output), [b"value=0b1001", b"0b1001"])
 
     def test_scale_receipts(self):
         script = Path(__file__).with_name("benchmark_merged_callbacks.py")
