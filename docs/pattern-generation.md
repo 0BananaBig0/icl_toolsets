@@ -9129,8 +9129,8 @@ build/callback-endpoint-readback-20261123/merged/receipt.json.
 
 ## One fixed-width opaque child on a scalar scan route
 
-One opaque leaf can sit between ordinary ScanRegisters on a complete static
-scalar root route. Its scalar ScanInterface must declare a numeric, explicitly
+Fixed-width opaque leaves can sit between ordinary ScanRegisters on a complete
+static scalar root route. Each scalar ScanInterface must declare a numeric, explicitly
 sized DefaultLoadValue, and each request must use that declared width. Pure
 scalar wrappers are supported. The root controls must describe a supported
 native capture/shift/update route; child selection must follow the root
@@ -9206,7 +9206,7 @@ unknown failed-bit counts, reservations, reset cancellation and atomic output
 publication retain their meanings. Getters still require --model_readback or
 a real supplied transport.
 
-This support excludes multiple/dynamic-width/parallel opaque children, gated or
+This support excludes dynamic-width/parallel opaque children, gated or
 muxed child selection, TAP routes, clock commands/overrides/idle or time waits,
 raw merge, iApplyEndState constraints and physical PDL. Existing complete-route,
 control, reset, ownership and aggregate 1MiBit limits still apply. It does not
@@ -10055,3 +10055,69 @@ underscores after comment/space normalization.
 All 27 Task171 merged-result checks pass on identical 4,058 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+## Multiple fixed opaque children (Task172)
+
+Extend the preceding one-leaf example by inserting this second instance before
+tail, binding tail's ScanInSource to child2.so, and changing the root client's
+DefaultLoadValue to24'b0:
+
+~~~icl
+Instance child2 Of ChildLeaf {
+ InputPort si = child.so; InputPort sel = sel; InputPort ce = ce;
+ InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;
+}
+~~~
+
+Then both local requests share one complete24-bit raw CSU:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Top
+iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child.local 8 -si 0xa5 -stable
+iScan child2.local 8 -si 0x3c -stable
+iApply
+iNote [iGetReadData child.local -bin]
+iNote [iGetReadData child2.local -bin]
+iRead head 5; iRead tail 19; iApply
+iNote [iGetReadData head -dec]; iNote [iGetReadData tail -dec]
+iNote [iGetStatus -clear]; iNote [iGetStatus]
+~~~
+
+With --model_readback the notes are0bxxxxxxxx,0bxxxxxxxx,5,19,0,0.
+The opaque payloads control shift input; they supply no known return data.
+Defaults and stable payloads remain independent even for repeated instances of
+the same module. An unstable child must be supplied again before another scan
+traverses it. Supplying that child does not invalidate another child's stable
+knowledge.
+
+Keep generated standard iNote -comment annotations whose quoted text begins
+with "modeled opaque child stable scan". A root scan has only one -stable flag;
+these annotations preserve independent controlling knowledge when some child
+lengths remain unknown. A matching committed scan/client/payload is required
+for restoration. Matching repeats are idempotent; unmatched or malformed
+note text stays informational and cannot make an unknown length known. Both
+standard note tags are accepted. Notes add no hardware operation or actual
+observation. Native scheduling failures roll back every child; errors from an observation
+subscriber occur after native state and all child queues have committed.
+
+Reproduce the measured matrix with the current generator, immutable parent and
+sanitizer generator:
+
+~~~sh
+python3 tests/src/pattern/benchmark_multiple_opaque_children.py \
+  --binary build/icl-pattern-generation --parent /path/to/parent-generator \
+  --sanitized /path/to/sanitized-generator --output /tmp/multiple-opaque-scale
+~~~
+
+The parent controls use one child. Current multi-child performance is measured
+directly; there is no claim of parent support for those cases.
+See [Task172 evidence](remaining-work.md#task172-qualified-increment) for the
+qualified dimensions, exact replay checks and remaining topology limits.
+
+
+Task172's final review fixes standard tagged/quoted note replay, harmless
+informational notes, duplicate matching annotations and whole-root string
+copies. See its evidence for17focused methods,86fresh gates,183timing/RSS
+measurements,2fixed-width allocation probes and4guide processes.

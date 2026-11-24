@@ -258,7 +258,9 @@ class ModelReadback {
       }
       return;
     }
-    if (op.command == "iScan") {
+    if (op.command == "iNote") {
+      scheduler_->RestoreOpaqueScanNote(op);
+    } else if (op.command == "iScan") {
       auto scan = scheduler_->NormalizeScan(op, true);
       const auto fields = ReadScanFields(scan);
       const auto key = std::make_tuple(

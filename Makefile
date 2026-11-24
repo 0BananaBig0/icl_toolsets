@@ -918,7 +918,7 @@ dist: dynamic
 	cp $(GEN_DIR)/location.hh $(DIST_DIR)/gen/ 2>/dev/null || true
 	# Recursive: the corpus is sorted into per-source subdirectories, and a
 	# flat copy would ship an empty set while appearing to succeed.
-	cp -r tests/cases tests/golden tests/src tests/tests tests/vim-icl-pdl-modern $(DIST_DIR)/tests/
+	cp -r tests/cases tests/golden tests/data tests/src tests/tests tests/vim-icl-pdl-modern $(DIST_DIR)/tests/
 	# unit_tests.cc is part of `make check` (the `unitcheck` target builds it),
 	# so a tarball without it cannot run its own test suite. The copy list was
 	# once only .py/.vim/.sh/.lua, and `make dist` still reported success.
@@ -1094,6 +1094,7 @@ check check-dynamic check-static: pattern-readback-check
 .PHONY: pattern-opaque-check
 pattern-opaque-check: $(BUILD_DIR)/pattern_opaque_test
 	@$(BUILD_DIR)/pattern_opaque_test
+	@python3 tests/tests/src/pattern/test_benchmark_multiple_opaque_children.py
 $(BUILD_DIR)/pattern_opaque_test: tests/src/pattern/pattern_opaque_test.cc $(SOLVER_OBJECTS) $(TAP_TEST_OBJECTS) $(BUILD_DIR)/pdl/pdl_document.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 $(COV_DIR)/pattern_opaque_test: tests/src/pattern/pattern_opaque_test.cc $(COV_SOLVER) $(filter-out $(COV_DIR)/pattern/pattern_runtime.o,$(COV_PATTERN)) $(COV_SHARED) $(COV_DIR)/utility/json.o $(COV_DIR)/pdl/pdl_document.o | check-z3
@@ -1148,6 +1149,7 @@ python3 tests/src/pattern/test_segmented_ports.py $1
 python3 tests/src/pattern/test_opaque_root_scan.py $1
 python3 tests/src/pattern/test_opaque_parallel_scan.py $1
 python3 tests/src/pattern/test_opaque_child_raw.py $1
+python3 tests/src/pattern/test_multiple_opaque_children.py $1
 python3 tests/src/pattern/test_modeled_root_scan.py $1
 python3 tests/src/pattern/test_simultaneous_scan_chains.py $1
 python3 tests/src/pattern/test_multiple_client_interfaces.py $1

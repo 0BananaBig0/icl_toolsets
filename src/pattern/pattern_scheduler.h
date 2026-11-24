@@ -85,6 +85,9 @@ class ScanScheduler {
                        std::set<size_t>* assigned,
                        std::vector<ScanStep>* preparations,
                        const RawObservation& observe);
+  // Preserve per-child stable knowledge after a heterogeneous root CSU.
+  std::vector<Operation> OpaqueScanNotes() const;
+  void RestoreOpaqueScanNote(const Operation& note);
   // Canonical fields of one raw CSU; the caller emits one following Apply.
   // Parallel fields retain distinct chain names and share concrete hardware
   // state.
