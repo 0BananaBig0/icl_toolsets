@@ -50,3 +50,22 @@ One fresh final review, one test-first blocker fix wave, then merge into master,
 verify the merged result, push and delete the owned branch. Preserve117 stashes,
 ignored products and25 inherited deferred Minors. Item1 remains excluded and
 broader original inventory remains open.
+
+## Measured scalar path
+An initial SAN mixed-group gate misses its combined10s/512MiB bound. The
+retained reproduction passes at521872KiB; three matched generated runs use
+521588–521652KiB current versus518012–518528KiB parent. Scalar0 allocation
+counts are4 in both, falsifying the added-count hypothesis. A uint64/from_chars
+shortcut lowers allocation count to2 but raises matched SAN median RSS to
+523704KiB versus518376KiB parent; discard it.
+
+Preserve the original scalar path for tokens of at most18 characters (decimal
+values fit signed64); longer tokens use bounded limb conversion. This restores
+scalar allocation counts to4 and pilot median RSS to518344KiB current versus
+518192KiB parent. Keep signed Binary and all integer APIs unchanged. Empty and
+malformed numbers still reject, including short partial numeric prefixes.
+
+Require six final matched leak-enabled SAN runs with exact output and strict
+10s/512MiB bounds. The additional relative diagnostic allows1MiB over parent
+median, covering observed overlapping RSS ranges; it does not relax either
+original bound. Rerun all87 gates and846 measured processes on the final source.

@@ -94,8 +94,8 @@ five skipped in Task137's full run, execute successfully in the Task138
 pinned-reference follow-up. Dated records below retain their original results.
 
 The current integer evaluator reports an explicit resource error beyond signed
-64-bit intermediate arithmetic; it does not wrap values. Based binary/hex values
-can exceed machine-word size. Numeric values and individual object widths are
+64-bit intermediate arithmetic; it does not wrap values. Binary, hexadecimal
+and decimal bit patterns can exceed machine-word size. Numeric values and individual object widths are
 bounded at 1,048,576 bits. Elaboration bounds instance depth at 128 and object and
 scope counts at 1,000,000 each. These are implementation limits, not IEEE limits.
 Logic expression depth is bounded at 128. The total compiled operand storage
@@ -4890,3 +4890,15 @@ findings are fixed test-first; one documentation Minor is deferred(total25).
 All 23 Task170 merged-result checks pass on identical 4,054 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+## Wide decimal ICL bit patterns (Task171)
+
+Decimal constants use the existing bounded bit-vector representation. Integer
+arithmetic and indices remain checked64-bit operations; numeric bit patterns
+remain bounded at1,048,576 bits. Eight former decimal default failures now
+round-trip canonically and are required by the source registry. The current
+audit has1,032 canonical models,44 explicit AccessLink serialization limits and
+687 elaboration failures; its input set is unchanged. New CLI/native tests cover
+actual data, enums, resets/capture, overrides, lexical forms and retained limits.
+See [Task171 evidence](remaining-work.md#task171-qualified-increment) for87 gates,
+846 measured processes, native hex controls and the large-decimal cost limit.

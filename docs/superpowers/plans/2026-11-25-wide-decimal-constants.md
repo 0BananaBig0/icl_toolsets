@@ -31,19 +31,19 @@ Literal uses bounded limb conversion for plain and based decimal data only.
 Native test-only benchmark modes --wide-decimal/--wide-hex verify the same fixed
 fixture and print their checked case count. Defaults still run the full suite.
 
-- [ ] Step1: Add native decimal boundary/scale cases and eight CLI methods for
+- [x] Step1: Add native decimal boundary/scale cases and eight CLI methods for
   the spec's contexts; retain10 all-ones width fixtures64/65/96/127/128/256/
   1024/4096/16384/65536. Expected: immutable parent fails decimal positives
   through its64-bit literal limit; hex controls and existing negatives pass.
-- [ ] Step2: Add the bounded decoder at Literal using nine-digit chunks and
+- [x] Step2: Add the bounded decoder at Literal using nine-digit chunks and
  32-bit limbs. Expected: exact binary payloads, sizing/flags, resets/captures,
   sparse/inverted values and source/flat/generated replay pass; integer/resource
   limits and atomic rejection remain.
-- [ ] Step3: Add the small native performance recorder and compile a parent
+- [x] Step3: Add the small native performance recorder and compile a parent
   test harness against the immutable parent expression object. Expected:
   twelve measured processes verify all10 fixture values within10s/512MiB;
   parent decimal failure remains RED; no unsupported parent mode is accepted.
-- [ ] Step4: Run full normal/static generator and30 fresh native suites,
+- [x] Step4: Run full normal/static generator and30 fresh native suites,
   affected CLI/corpus, quality, package, existing work/allocation/reporting
   probes. Expected: eight repaired corpus defaults become canonical and the
   other original failures remain explicit; exact input/product hashes retained.
@@ -59,3 +59,11 @@ Completion: python3 /tmp/wide-decimal-constants-completion.py
 
 Self-review: one shared literal conversion task; no separate builder. No RTL,
 new dependency, public configuration, arithmetic widening or AccessLink change.
+
+Performance correction: preserve both failed candidate records. Keep the
+parent scalar Literal/Binary path for tokens up to18 characters and bound only
+the longer decimal conversion. Empty/partial inputs remain rejected. Check six
+matched SAN headroom processes before long suites, with original10s/512MiB
+limits and1MiB variance allowance for the extra relative median diagnostic.
+Run the existing SAN mixed-group gate early. All87 gates,846 measured processes
+and4 guide processes must pass on the final source; no original bound changes.

@@ -1166,6 +1166,7 @@ python3 tests/src/pattern/test_mixed_callback_aliases.py $1
 python3 tests/src/pattern/test_downstream_write_callbacks.py $1
 python3 tests/src/pattern/test_merged_callbacks.py $1
 python3 tests/src/pattern/test_word_model_decoding.py $1
+python3 tests/src/pattern/test_wide_decimal_constants.py $1
 python3 tests/src/pattern/test_raw_merge_calls.py $1
 python3 tests/src/pattern/test_merged_readback.py $1
 python3 tests/src/pattern/test_primary_pin_literals.py $1

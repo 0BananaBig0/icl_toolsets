@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "pattern/pattern_expression.h"
 
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -236,10 +237,78 @@ void TestConstants() {
                                std::string(expression));
   }
 }
+void TestWideDecimalConstants() {
+  const std::string maximum = "18446744073709551615";
+  for (const auto& expression :
+       {maximum, "'d" + maximum, "64'd" + maximum,
+        std::string("064'D000_18_446_744_073_709_551_615")}) {
+    const auto value = Constant(expression);
+    if (value.is_string || value.data != std::string(64, '1') ||
+        value.sized != (expression.find("64'") != std::string::npos)) {
+      throw std::runtime_error("wide decimal payload or sized flag differs");
+    }
+  }
+  if (Constant("96'd79228162514264337593543950335").data !=
+          std::string(96, '1') ||
+      Constant("~64'd18446744073709551615").data != std::string(64, '0') ||
+      Constant("32'hffffffff, 64'd18446744073709551615").data !=
+          std::string(96, '1') ||
+      Constant("00000000000000000000000000000000000000000000000").data != "0" ||
+      Constant("64'd00000000000000000000000000000000000000000000000").data !=
+          std::string(64, '0')) {
+    throw std::runtime_error(
+        "wide decimal normalization/concat/inversion differs");
+  }
+  Rejects([] { Constant("18446744073709551615").AsInteger(); }, "64-bit limit");
+  Rejects([] { Constant("64'd18446744073709551616"); }, "significant");
+  Rejects([] { Constant("1048577'd1"); }, "width exceeds");
+  const auto literal = [](const std::string& text) {
+    return pattern::EvaluateConstant({{text}}, 0, 1, {});
+  };
+  Rejects([&] { literal("'d12345678901234567890x"); }, "digit");
+  Rejects([&] { literal("'d12x"); }, "decimal integer");
+  Rejects([&] { literal("'d"); }, "empty");
+}
+
+void TestWideDecimalScale(bool hex = false) {
+  std::ifstream data("tests/data/pattern/wide_decimal_constants.txt");
+  size_t width = 0, count = 0;
+  const std::vector<size_t> widths{64,  65,   96,   127,   128,
+                                   256, 1024, 4096, 16384, 65536};
+  std::string digits;
+  while (data >> width) {
+    if (count >= widths.size() || width != widths[count] || !(data >> digits)) {
+      throw std::runtime_error("wide constant scale fixture differs");
+    }
+    std::string expression = std::to_string(width);
+    if (hex) {
+      expression += "'h";
+      if (width % 4) expression += "0123456789abcdef"[(1 << (width % 4)) - 1];
+      expression += std::string(width / 4, 'f');
+    } else {
+      expression += "'d" + digits;
+    }
+    if (Constant(expression).data != std::string(width, '1')) {
+      throw std::runtime_error("wide constant scale payload differs");
+    }
+    ++count;
+  }
+  if (!data.eof() || count != 10) {
+    throw std::runtime_error("wide constant scale fixture incomplete");
+  }
+  std::cout << "wide constants: " << (hex ? "hex" : "decimal")
+            << " cases=" << count << '\n';
+}
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
   try {
+    if (argc == 2 && (std::string(argv[1]) == "--wide-hex" ||
+                      std::string(argv[1]) == "--wide-decimal")) {
+      TestWideDecimalScale(std::string(argv[1]) == "--wide-hex");
+      return 0;
+    }
+    if (argc != 1) throw std::runtime_error("unknown expression test mode");
     // IEEE 1687-2014 6.3.12: both arithmetic precedence levels are right
     // recursive.
     Expect("20 - 5 - 3", 18);
@@ -267,6 +336,8 @@ int main() {
     TestConstants();
     TestConstantBoundaries();
     TestEvaluatorApiBoundaries();
+    TestWideDecimalConstants();
+    TestWideDecimalScale();
     std::cout << "PASS: ICL integer expressions from shared parser tokens\n";
   } catch (const std::exception& error) {
     std::cerr << "FAIL: " << error.what() << '\n';
