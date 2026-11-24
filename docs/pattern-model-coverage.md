@@ -4832,3 +4832,15 @@ Independent review found 0 Critical, 3 Important and 3 Minor findings. One test-
 Three new Minors remain deferred: wide raw cases capture reset0 rather than a high-bit word (independent two-scan512/1024-bit probes pass); failed-row query/note counters derive from fixture expectations; and an older raw-merge guide paragraph still lists the previous modeled-history guard. Total deferred Minors:22, including19 inherited. The 36 wide-PIO memory misses remain performance acceptance work under inventory10; no resource bound is raised.
 
 All 15 merged-result checks pass on identical 4,049 inputs and 20 copied qualified executables. The merge is pushed to master, the owned task branch is deleted, and all 117 stashes remain. Broader inventory items and the retained performance acceptance failures remain open.
+
+## Constant primary-pin objectives (Task168)
+
+The measured1,024-bit PIO memory case now meets256MiB without changing
+accepted models or emitted events. Only full-binary goals at a one-frame
+horizon omit an already-constant deviation objective. Multi-frame symbolic
+choices, masks, read enables, reservations and failure atomicity remain covered.
+All378 matched observations/replays agree; nine parent controls retain their
+memory misses and all current measurements meet their bounds. This does not
+close inventory10's retained256-target latency work or the broader inventory.
+See [Task168 evidence](remaining-work.md#task168-qualified-increment) for
+qualification counts, exact hash reuse and the explicitly unrun large-ASAN case.

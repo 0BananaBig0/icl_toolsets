@@ -5,9 +5,9 @@
 **Goal:** Meet the existing1,024-bit PIO256MiB target without changing native
 events, solver acceptance or actual observed values.
 
-**Architecture:** Specialize only already-forced full binary primary-pin words
-at horizon1 inside SolvePrimaryWrites. Keep every existing constraint and
-concrete replay; reuse the existing complete merge-readback benchmark.
+**Architecture:** Skip only already-constant full binary primary-pin deviation
+objectives at horizon1 inside SolvePrimaryWrites. Keep the original symbolic
+words, all constraints and concrete replay; reuse the existing benchmark.
 
 **Tech Stack:** Existing C++17/Tcl/Z3 4.13.3 and Python unittest; no dependency.
 
@@ -40,19 +40,22 @@ coverage and remaining-work evidence docs. Reuse
 tests/src/pattern/benchmark_merged_readback.py without changing its fixtures,
 counter fields, inherited Minors or bounds.
 
-**Interfaces:** Preserve every signature. Let goal=goals.find(id). Substitute
-SymbolicValue::Literal(context_, goal->second).bits only when horizon==1,
+**Interfaces:** Preserve every signature and the existing bv_const word. Let
+goal=goals.find(id). Omit only deviations.push_back for this pin when horizon==1,
 goal!=goals.end() and goal->second.find_first_not_of("01")==std::string::npos.
-Retain the drive Boolean, known mask, Choose, all constraints/objectives and
-replay/commit. Otherwise construct the original bv_const.
+Keep drive, known, Choose, constraints, count and data deviations unchanged.
 
-- [ ] Step1: Add8 CLI methods using existing modeled-readback replay helpers:
+- [x] Step1: Add8 CLI methods using existing modeled-readback replay helpers:
   wide memory (actual1,024-bit alternating word,512 failing comparisons,
   peak RSS<=262144KiB and<=10s); zero/matching known goals; ascending/sliced
   pins and inverted observations (write upper2bits2 => q8/inverse7); unknown
   read then masked X fill; unforced output-enable control; protected other
-  pin and iApplyEndState restoration; DataRegister9 with final source pin6
-  requiring intermediate source9; and impossible tied-register/source goals
+  pin and iApplyEndState restoration; shared addressed registers9/6 with an
+  explicit marker goal, requiring distinct bus9/6 values in later frames
+  (history must equal the final emitted bus word, without fixing write order);
+  also reset-initialize a scalar register, preserve intermediate pin11 from
+  old fill10 before final pin8, and require actual register1/pin8 histories;
+  and impossible tied-register/source goals
   preserving prior artifacts. All non-memory cases check original/flat/generated
   agreement and actual values/events. The large normal/static memory acceptance
   check is explicitly unrun under ASAN; existing16-call sanitizer measurements
@@ -62,21 +65,21 @@ replay/commit. Otherwise construct the original bv_const.
   test_unforced_read_enable, test_reservations_and_end_state,
   test_intermediate_pin_value_in_later_horizon, and
   test_impossible_goals_preserve_artifacts.
-- [ ] Step2: Run new tests on immutable parent. Expected: the wide memory case
+- [x] Step2: Run new tests on immutable parent. Expected: the wide memory case
   fails specifically on peak RSS>262144KiB while compatible functional controls
   pass. Retain raw timing/output; correct fixture errors before product edits.
-- [ ] Step3: Implement the single guarded literal substitution. Expected: only
-  the private pin-word construction changes; no repeated scan or new cache.
-- [ ] Step4: Build and run the focused suite. Expected:8/8 normal/static and
+- [x] Step3: Implement the single guarded deviation exclusion. Expected: only
+  the private primary deviations collection changes; no repeated scan or new cache.
+- [x] Step4: Build and run the focused suite. Expected:8/8 normal/static and
   small sanitizer functional cases pass with unchanged event/observation bytes.
   If memory does not improve below256MiB, stop and return to diagnosis.
-- [ ] Step5: Run the existing complete378-process benchmark with immutable
+- [x] Step5: Run the existing complete378-process benchmark with immutable
   parent, current and sanitizer binaries, three forms/repeats and512/1024-bit
   high-bit data. Expected: all actual observations/replays match controls;
   all current cases meet the existing bounds. Retain the parent's9 wide-PIO
   memory misses and the benchmark's resulting nonzero status; do not erase or
   raise those bounds. Record environment, hashes, runtime and RSS.
-- [ ] Step6: Run fresh15 normal/15 leak-enabled sanitizer native suites, full
+- [x] Step6: Run fresh15 normal/15 leak-enabled sanitizer native suites, full
   normal/static generator checks, affected sanitizer CLI, corpus, C++ quality,
   source packaging and allocation/reporting controls. Expected: all required
   functional gates pass with exact qualified input/product hashes.
@@ -90,7 +93,7 @@ replay/commit. Otherwise construct the original bv_const.
 Focused command: python3 tests/src/pattern/test_primary_pin_literals.py build/icl-pattern-generation
 Whole-task completion: python3 /tmp/primary-pin-literals-completion.py
 
-Self-review: one private optimization task carries both memory and event/replay
+Self-review: one private optimization task (first word-substitution hypothesis rejected) carries both memory and event/replay
 proof. Existing solver guards and both Runtime/generation callers stay intact.
 No separate builder check is required for this small design. User delegation
 and the already selected native execution method remain in force.

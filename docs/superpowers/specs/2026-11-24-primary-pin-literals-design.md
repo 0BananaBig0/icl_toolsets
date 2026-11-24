@@ -23,34 +23,41 @@ touched, forcing that pin's sole drive true, and its full binary word must equal
 the goal. Its remaining symbolic word is therefore not a genuine choice.
 MinimizeBits still receives its fill-deviation expression in32-bit objectives.
 
-Hypothesis: constructing that already-forced word as a literal at horizon1
-removes avoidable optimizer work and memory. This remains a hypothesis until
-the failing memory case passes and matched measurements confirm the effect.
+The first literal-word substitution did not close memory (338028KiB) and was
+reverted. A retained Massif trace of the immutable parent reaches its existing
+solver timeout under instrumentation; its tracked peak includes44.5MB in Z3
+model conversion below execute_lex/execute_maxsat/SolvePrimaryWrites. This is
+diagnostic allocation evidence, not a native acceptance timing/memory result.
+
+Hypothesis2: skip constant primary fill-deviation objectives for full binary
+pin goals at horizon1. Hard constraints already force the sole drive and word,
+so that objective has the same value in every feasible solution. Removing a
+constant lexicographic component preserves the ordering of every other
+objective. Confirm the memory effect before keeping the change.
 
 ## Approaches and call
 
-1. Substitute the existing full binary goal only for its primary pin at
-   horizon1, retaining the same drive Boolean, constraints, objectives, event
-   model, concrete replay and commit. Choose this smallest local change.
-2. Remove objectives for fully constrained pins. This leaves the avoidable word
-   variables and requires separately proving when a frame fixes the objective.
+1. Substitute an existing full binary goal as a literal at horizon1. Rejected
+   experimentally because memory remained338028KiB; implementation reverted.
+2. Skip only the constant fill-deviation objective for such a pin at horizon1.
+   Choose this profile-directed hypothesis; keep the existing symbolic word.
 3. Add a direct PIO execution backend. Reject this scope: it duplicates read
    routes, reservations, implicit data/reset events and rollback.
 
 ## Contract and scope
 
-Change only the word-expression construction inside SolvePrimaryWrites.
-Use SymbolicValue::Literal; no dependency, public API, option or new solver.
-Require horizon1, an existing goal for this pin and every goal bit binary.
-Unknown/partial-X goals, unforced pins and all horizons beyond1 retain the
-existing symbolic construction. A later frame may require an intermediate
+Change only primary deviations collection inside SolvePrimaryWrites.
+No dependency, public API, option or new solver. Skip a deviation only at
+horizon1 with an existing goal for this pin and every goal bit binary.
+Unknown/partial-X internal goals, unforced pins and all horizons beyond1 retain
+the same deviations. Keep count, data deviations and all other objectives. A later frame may require an intermediate
 value different from the final goal, so do not extend the substitution there.
 
 Keep read-before-write, implicit loads/resets, preserved and end-state goals,
 unknown masks, controls/aliases, ascending widths, source/flat/generated/reset
 replay, failure atomicity and existing resource guards. Do not optimize raw,
 TAP, callback provenance, clock semantics or the inherited22 deferred Minors.
-If the single substitution fails the measured hypothesis, return to diagnosis;
+If the single objective exclusion fails the measured hypothesis, return to diagnosis;
 do not stack speculative fixes.
 
 ## Verification and performance

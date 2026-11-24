@@ -3974,8 +3974,13 @@ class ScanScheduler::Impl {
           any_drive = any_drive || drive;
           count =
               count + z3::ite(drive, context_.int_val(1), context_.int_val(0));
-          deviations.push_back(
-              bits ^ SymbolicValue::Literal(context_, fill_.at(id)).bits);
+          const auto goal = goals.find(id);
+          // A full one-frame pin goal already fixes its deviation from fill.
+          if (horizon != 1 || goal == goals.end() ||
+              goal->second.find_first_not_of("01") != std::string::npos) {
+            deviations.push_back(
+                bits ^ SymbolicValue::Literal(context_, fill_.at(id)).bits);
+          }
           if (touched.count(id)) touched.at(id) = touched.at(id) || drive;
         }
         Values before_data;
