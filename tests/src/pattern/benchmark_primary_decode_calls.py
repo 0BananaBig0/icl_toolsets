@@ -2,6 +2,7 @@
 # Copyright 2026 The ICL Toolsets Authors.
 # SPDX-License-Identifier: MIT
 """Count real model evaluations for the connected 256-target callback case."""
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -51,16 +52,24 @@ __attribute__((destructor)) static void Report() {
         result = subprocess.run([str(binary), '--icl', 'source.icl', '--pdl',
             'source.pdl', '--top_module', 'Chains', '--output', 'result.pdl'],
             cwd=root, capture_output=True, text=True, timeout=60)
-        assert result.returncode == 0, result.stdout+result.stderr
-        dimensions, _ = checked_frames((root/'result.pdl').read_text(), 256, 4, True)
+        if result.returncode:
+            raise RuntimeError('generator failed: '+result.stdout+result.stderr)
+        data = (root/'result.pdl').read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        # Qualified immutable-parent bytes pin postconditions to their frames.
+        if digest != '0a9493dded9213c717c1b728dc612a77a149e8b2584b23ce8d576567aa80e95e':
+            raise RuntimeError('complete output differs from qualified parent')
+        dimensions, _ = checked_frames(data.decode(), 256, 4, True)
         match = re.search(r'model_eval_calls=(\d+)', result.stderr)
-        assert match, result.stderr
+        if not match:
+            raise RuntimeError('missing model-evaluation counter record: '+result.stderr)
         count = int(match[1])
         row = dict(model_eval_calls=count, bound=600000,
                    instrumented_wall_seconds=time.monotonic()-started,
-                   targets=256, width=4, **dimensions)
+                   targets=256, width=4, output_sha256=digest, **dimensions)
         print(json.dumps(row), flush=True)
-        assert count <= 600000, 'repeated primary decoding exceeds model-evaluation work budget'
+        if not 0 < count <= 600000:
+            raise RuntimeError('repeated primary decoding exceeds model-evaluation work budget')
         return row
 
 

@@ -55,7 +55,7 @@ replace only three primary Decode(model,value) calls with decode(value).
   normal/static generator runs, affected CLI/corpus, three C++ quality checks,
   source packaging and allocation/reporting checks. Expected: exact qualified
   source/product hashes and all functional gates pass.
-- [ ] Step6: Document measurements and commit; request one fresh final review,
+- [x] Step6: Document measurements and commit; request one fresh final review,
   re-grade findings, fix Critical/Important once test-first and defer Minors.
   Expected: no unresolved blocker; all declined judgments ruled with costs.
 - [ ] Step7: Merge master, check identical inputs/products and affected behavior,

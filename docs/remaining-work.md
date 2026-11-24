@@ -336,10 +336,10 @@ deleted, and all 117 stashes remain. Broader inventory work stays open.
 
 ## Task169 qualified increment
 
-Task169 passes 79 qualification gates: 15 fresh normal and 15 leak-enabled
+Task169 passes 80 final qualification gates: 15 fresh normal and 15 leak-enabled
 sanitizer native suites, 78 suites/1,253 methods per full generator variant,
 affected CLI/corpus, three C++ quality checks, source packaging, reporting and
-four allocation probes. Exact final hashes cover 4,051 inputs/38 executables.
+four allocation probes. Exact final hashes cover 4,052 inputs/38 executables.
 
 A real linker-wrapped Z3 API counter is RED on parent with 997,408 model
 evaluations and GREEN at 471,064, below its 600,000-call
@@ -377,3 +377,17 @@ not a native performance result. The deterministic real-call work reduction
 does not depend on that timing variation. This closes the measured 256-target
 case in the final matrix; broader inventory10 work and larger workloads remain
 open. Item1 remains excluded; 23 inherited deferred Minors stay deferred.
+
+Independent review found zero Critical, two Important and one Minor finding.
+One test-first pass replaces assertion-based process/counter checks with
+explicit errors (including zero/missing counts) and pins the complete work-case
+output to the qualified parent SHA-256. Optimized-Python failures, moved
+postconditions and an added empty Apply all fail before the fix and pass the
+new rejection tests afterward. The three-method reporting suite, real linked
+API counter and source package are refreshed. The 79 broader gates ran before
+these Python-only fixes; exact proof preserves 4,050 shared inputs and all 38
+executables, including both full generator variants and 30 fresh native passes.
+
+The new deferred Minor concerns the description of unobserved merge controls
+and labels for aggregate sanitizer RSS peaks. Detailed matrix rows retain the
+actual owners and comparisons. Total deferred Minors: 24, including23 inherited.

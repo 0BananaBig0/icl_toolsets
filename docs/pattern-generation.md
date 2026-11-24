@@ -9933,3 +9933,10 @@ that counts and calls the real Z3 API. It checks 256 targets, 1,028 frames,
 1,024 callback postconditions and at most 600,000 model evaluations. The
 standalone word and merge benchmarks measure uninstrumented time/RSS and
 complete original/flat/generated replay separately.
+
+The work check also pins the complete pattern to its qualified parent SHA-256,
+including every Apply boundary and callback postcondition. Explicit errors
+remain active under optimized Python and reject zero/missing counters or a
+failed generator. Its three-method reporting regression covers these failures.
+See the Task169 evidence for the final80 gates, unchanged executable proof and
+the remaining deferred documentation Minor.
