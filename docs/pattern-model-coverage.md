@@ -4792,3 +4792,15 @@ Functional regressions check actual frame boundaries. The total deferred Minor
 count is 16. All 28 merged-result checks pass on identical 4,041 inputs and 20 copied
 qualified executables, with 117 stashes preserved. Broader inventory and
 excluded coverage item1 stay open.
+
+
+## Whole-word model decoding (Task165)
+
+Shared scheduler decoding preserves complete known masks and word widths
+without changing model acceptance or omitting referenced storage.
+Normal/static 75x1211 generation tests, 15 normal/15 sanitizer native
+suites pass; 72 matched outputs agree. Four 256-target timing misses
+remain acceptance limits. Current corpus
+results remain 1024 canonical/44 explicit unsupported/695 original default
+elaboration failures. See [Task165 evidence](remaining-work.md#task165-qualified-increment)
+for measured costs, review findings and the remaining inventory.
