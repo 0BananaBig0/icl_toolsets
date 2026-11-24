@@ -20,7 +20,7 @@ list. Completing one supported case does not complete a broad item below.
 | 7 | Remaining resource ownership and lifecycle | Pending. Task141 fixes compatible modeled-child port ownership with protected intermediate serial states, scope tests and a bounded invariance fast path. Add remaining clock/scan assignment/frequency, pattern-set lifecycle and TAP ownership. |
 | 8 | Remaining raw-scan configurations | Task167 supports actual native logical merge histories with source-consistent serialized generation; see its qualified increment below. Task166 supports complete serialized raw calls in valid iMerge bodies on existing modeled scalar/child/named-chain/single-TAP routes; see its qualified increment below. Task160 supports one declared-width scalar opaque leaf on a static complete root route with modeled parent preservation and unknown actual opaque returns; all58 post-fix gates pass (15native/15SAN,70x1136 each generator,21quality,4031input/38product hashes); merged and pushed;20 integration checks pass on identical source/product hashes. Broader multiple/dynamic/gated/parallel opaque children remain open. Task155 adds fixed disjoint modeled root named-chain replay and actual explicit-only chain histories with common controls;16 CLI methods, native per-clock references and93 scale/control processes pass, all47 qualification gates pass after four test-first Important fixes, with two Minors deferred; integration is pending. Pending broader topology. Task152 adds strict root opaque parallel chains with per-chain default/stable completion and actual modeled raw observations; broader hierarchical/dynamic/shared parallel and multiple-TAP raw, opaque children and broader raw merge configurations remain open.  Add remaining opaque-child, parallel/multi-TAP and raw-merge configurations and qualify remaining vendor-export forms.|
 | 9 | Additional repairable caller-only reset transformations | Completed in Task143 for the inventory's state-dependent/identical-argument caller cases. Recorded invocations cover empty/caught calls and once-only arguments with unchanged procedure bytes. Five review findings are fixed; full post-fix qualification passes. Impossible queues/ownership/internal reassertions and uncertifiable file-return/cleanup boundaries reject atomically. |
-| 10 | Broader merge/scheduling optimization and scale qualification | Task168 closes the measured 1,024-bit PIO memory case; all current matched measurements meet unchanged bounds. The 256-target callback latency target and broader optimization remain pending. Task165 reduces shared model-decoding cost; its complete72-process measurements and retained budget misses are recorded below. General referenced/resettable and larger workloads remain pending. Task154 conservatively indexes irrelevant callback storage in primary solves; matched1024-target/four-group source median improves26.2120s to2.6123s with identical output,60 scale/replay processes,20 alternating controls,9 compatibility methods and native state/copy checks. All46 qualification gates pass (14 native/14 sanitizer suites,64x1058 per generator, six quality checks and packaging); the single Important benchmark finding is fixed in a test-first pass and one Minor is deferred. Referenced/resettable storage and larger workloads remain separate acceptance work. Task146 fixes the trailing iWrite -ignore_when_value_already_present payload loss for auto/off/on at the shared Runtime boundary; original trace arguments and existing explicit-load policy remain. Six focused methods, all13 native/all13 native sanitizer suites,55x906 tests per generator variant, six quality gates and source packaging pass; four fresh vendor cases and16 native replay forms agree on changed-value PIO payloads. Cover resource/timing barriers and representative larger networks, preserving valid schedules and reporting measured costs rather than global optimality. Task142 retains explicit512-function generic-primary and parent4096-bit solver-limit reproductions; no limit was raised. Task147 counts actual enabled primary events and retains explicit data-goal intent absent from emitted controller writes, in primary and mixed paths. One related Important replay family is resolved in a verified fix pass; seven focused methods,13 native/13 native sanitizer suites,56x913 tests per variant, six quality gates and packaging pass;108 scale processes retain matched controls. This uses existing native event semantics and does not certify physical timing or wider source acceptance. |
+| 10 | Broader merge/scheduling optimization and scale qualification | Task168 closes the measured 1,024-bit PIO memory case; all current matched measurements meet unchanged bounds. Task169 closes the measured 256-target callback latency case in its final matrix, with deterministic model-evaluation work reduction. Broader optimization remains pending. Task165 reduces shared model-decoding cost; its complete72-process measurements and retained budget misses are recorded below. General referenced/resettable and larger workloads remain pending. Task154 conservatively indexes irrelevant callback storage in primary solves; matched1024-target/four-group source median improves26.2120s to2.6123s with identical output,60 scale/replay processes,20 alternating controls,9 compatibility methods and native state/copy checks. All46 qualification gates pass (14 native/14 sanitizer suites,64x1058 per generator, six quality checks and packaging); the single Important benchmark finding is fixed in a test-first pass and one Minor is deferred. Referenced/resettable storage and larger workloads remain separate acceptance work. Task146 fixes the trailing iWrite -ignore_when_value_already_present payload loss for auto/off/on at the shared Runtime boundary; original trace arguments and existing explicit-load policy remain. Six focused methods, all13 native/all13 native sanitizer suites,55x906 tests per generator variant, six quality gates and source packaging pass; four fresh vendor cases and16 native replay forms agree on changed-value PIO payloads. Cover resource/timing barriers and representative larger networks, preserving valid schedules and reporting measured costs rather than global optimality. Task142 retains explicit512-function generic-primary and parent4096-bit solver-limit reproductions; no limit was raised. Task147 counts actual enabled primary events and retains explicit data-goal intent absent from emitted controller writes, in primary and mixed paths. One related Important replay family is resolved in a verified fix pass; seven focused methods,13 native/13 native sanitizer suites,56x913 tests per variant, six quality gates and packaging pass;108 scale processes retain matched controls. This uses existing native event semantics and does not certify physical timing or wider source acceptance. |
 | 11 | Remaining model/default/source/reference audit | Task156 adds reproducible default-model/source audit:1016 actual canonical roundtrips,56 explicit unsupported serializations and691 original default elaboration failures across1334 accepted files/1763 effective modules; twelve valid empty-control serializations and fourteen missing-enum diagnostics repaired. Six post-fix normal/configured-SAN batch measurements pass10s/512MiB; all52 qualification gates pass after five Important review fixes, one Minor deferred; integration pending. Pending corpus/specialization and broader source acceptance. Task140 verifies the eight BSDL/default groups with19 replay methods and eight review fixes. Task142's typed vector-port implementation passes17 focused methods per variant, native caller checks and nine vendor models. Two Important review findings were fixed and full post-fix qualification passes; no Critical/Minor or unresolved blocker remains. All11 former duplicate-port corpus failures reach the existing interface-event boundary (item3), not end-to-end generation success.|
 | 12 | Broader vendor and model round-trip qualification | Task156 adds reproducible default-model/source audit:1016 actual canonical roundtrips,56 explicit unsupported serializations and691 original default elaboration failures across1334 accepted files/1763 effective modules; twelve valid empty-control serializations and fourteen missing-enum diagnostics repaired. Six post-fix normal/configured-SAN batch measurements pass10s/512MiB; all52 qualification gates pass after five Important review fixes, one Minor deferred; integration pending. Pending wider qualification. Task140 adds six bounded BSDL cases with48 nonempty original/flat/generated replays and12 matching directional apply-group comparisons; Task142 adds nine bounded port cases with72 nonempty replays and18 exact directional canonical comparisons; these are not new maintained golden certificates. Task143 adds a fresh post-fix invocation/reference vendor pair with equal full exports and eight matching physical replay forms. Extend the remaining model/corpus evidence. Physical import currently covers a single bound TAP with scan-only storage, not general physical/vendor equivalence.|
 | 13 | Concrete physical replay diagnostics | Completed in Task139 after independent review and one verified fix pass. Serial bit/expected/observed, named closed routes, unknown loads and original reservation causes are covered; ordinary fallback and failed-output protection are preserved. |
@@ -333,3 +333,61 @@ not certified by these measurements.
 All 14 merged-result checks pass on identical 4,050 qualified inputs and 20
 copied executables. The merge is pushed to master, the owned task branch is
 deleted, and all 117 stashes remain. Broader inventory work stays open.
+
+## Task169 qualified increment
+
+Task169 passes 80 final qualification gates: 15 fresh normal and 15 leak-enabled
+sanitizer native suites, 78 suites/1,253 methods per full generator variant,
+affected CLI/corpus, three C++ quality checks, source packaging, reporting and
+four allocation probes. Exact final hashes cover 4,052 inputs/38 executables.
+
+A real linker-wrapped Z3 API counter is RED on parent with 997,408 model
+evaluations and GREEN at 471,064, below its 600,000-call
+work bound. Both runs verify all 1,028 physical frames and 1,024 callback
+postconditions. Existing word/mask/serial and pin-choice controls pass on
+normal/static and leak-enabled sanitizer builds. The large sanitizer pin-memory
+gate remains explicitly unrun; smaller functional cases pass.
+
+The local cache stores complete decoded word/mask pairs only for one successful
+primary model. It changes three decode call sites and retains every concrete
+state/fill check, objective and constraint. Retained frame expressions keep
+the AST-ID keys alive; cache entries never cross a model. Memory is proportional
+to unique decoded pairs and their word lengths, with logarithmic map lookup.
+No public interface or new dependency is added.
+
+All 450 final matched processes agree with complete parent outputs and actual
+observations: 72 word-decoding cases and 378 merge-history cases. All current
+cases meet unchanged 10s/512MiB regular and 10s/256MiB wide bounds. The word
+matrix covers 64/128/256 connected targets/four groups, 512/1024-bit words,
+16-target sanitizer cases and three source/flat/generated repeats. Matched
+256-target source medians are 9.3949s parent and
+7.9338s current (15.6%
+reduction in these runs). Current word cases peak at
+7.9704s/304852KiB;
+merge cases peak at 0.7677s/438260KiB.
+Four guide-example processes pass. The parent already contains Task168's
+wide-PIO memory fix; all 378 merge measurements meet their bounds.
+
+Timing varies: the earlier 72-process follow-up retained three 256-target
+misses, while this task's fresh 12-process native baseline passed near
+9.3–9.4s before the cache. Both records are retained. The native decoder probe
+measures 524,292 repeated pairs among 793,612 calls; a partial Callgrind run
+hits the existing solver timeout under instrumentation and is diagnostic,
+not a native performance result. The deterministic real-call work reduction
+does not depend on that timing variation. This closes the measured 256-target
+case in the final matrix; broader inventory10 work and larger workloads remain
+open. Item1 remains excluded; 23 inherited deferred Minors stay deferred.
+
+Independent review found zero Critical, two Important and one Minor finding.
+One test-first pass replaces assertion-based process/counter checks with
+explicit errors (including zero/missing counts) and pins the complete work-case
+output to the qualified parent SHA-256. Optimized-Python failures, moved
+postconditions and an added empty Apply all fail before the fix and pass the
+new rejection tests afterward. The three-method reporting suite, real linked
+API counter and source package are refreshed. The 79 broader gates ran before
+these Python-only fixes; exact proof preserves 4,050 shared inputs and all 38
+executables, including both full generator variants and 30 fresh native passes.
+
+The new deferred Minor concerns the description of unobserved merge controls
+and labels for aggregate sanitizer RSS peaks. Detailed matrix rows retain the
+actual owners and comparisons. Total deferred Minors: 24, including23 inherited.

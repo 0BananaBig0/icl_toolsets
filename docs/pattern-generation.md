@@ -9911,3 +9911,32 @@ not certified by these measurements.
 All 14 merged-result checks pass on identical 4,050 qualified inputs and 20
 copied executables. The merge is pushed to master, the owned task branch is
 deleted, and all 117 stashes remain. Broader inventory work stays open.
+
+## Repeated primary model decoding (Task169)
+
+Primary replay reuses decoded words only within a single solver model. No
+new option is needed; concrete replay and unknown-mask semantics are retained.
+The final matched 256-target callback case meets the existing 10s/512MiB bound.
+See [Task169 evidence](remaining-work.md#task169-qualified-increment) for native
+timing variation, full replay dimensions and per-model memory cost.
+
+After building the normal generator with the pinned Z3 prefix, reproduce the
+deterministic work check in that same build environment:
+
+```sh
+python3 tests/src/pattern/benchmark_primary_decode_calls.py
+```
+
+Keep Z3_PREFIX and the build's Tcl configuration in the environment. The
+check links a temporary generator from the normal build objects with a wrapper
+that counts and calls the real Z3 API. It checks 256 targets, 1,028 frames,
+1,024 callback postconditions and at most 600,000 model evaluations. The
+standalone word and merge benchmarks measure uninstrumented time/RSS and
+complete original/flat/generated replay separately.
+
+The work check also pins the complete pattern to its qualified parent SHA-256,
+including every Apply boundary and callback postcondition. Explicit errors
+remain active under optimized Python and reject zero/missing counters or a
+failed generator. Its three-method reporting regression covers these failures.
+See the Task169 evidence for the final80 gates, unchanged executable proof and
+the remaining deferred documentation Minor.
