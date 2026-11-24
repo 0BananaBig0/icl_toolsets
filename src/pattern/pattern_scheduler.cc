@@ -4232,6 +4232,16 @@ class ScanScheduler::Impl {
         throw std::runtime_error("primary-input solver resource limit reached");
       }
       const auto model = solver.get_model();
+      std::map<std::pair<unsigned, unsigned>, std::string> decoded;
+      const auto decode =
+          [&](const SymbolicValue& value) -> const std::string& {
+        const auto key = std::make_pair(value.bits.id(), value.known.id());
+        auto found = decoded.find(key);
+        if (found == decoded.end()) {
+          found = decoded.emplace(key, Decode(model, value)).first;
+        }
+        return found->second;
+      };
       NetworkState replay(state_);
       auto replayed_preserved = preserved;
       auto fill = fill_;
@@ -4243,7 +4253,7 @@ class ScanScheduler::Impl {
         std::map<size_t, std::string> driven;
         for (const auto& [id, drive] : frame.drives) {
           if (!model.eval(drive, true).is_true()) continue;
-          const auto bits = Decode(model, frame.state.at(id));
+          const auto bits = decode(frame.state.at(id));
           driven.emplace(id, bits);
           fill.at(id) = bits;
           step.writes.emplace(netlist_.nodes[id].name, bits);
@@ -4284,7 +4294,7 @@ class ScanScheduler::Impl {
           }
         }
         for (const auto& [id, value] : frame.state) {
-          if (replay.Value(id) != Decode(model, value)) {
+          if (replay.Value(id) != decode(value)) {
             throw std::runtime_error(
                 "symbolic/concrete primary replay mismatch at " +
                 netlist_.nodes[id].name);
@@ -4304,7 +4314,7 @@ class ScanScheduler::Impl {
           if (event != control_events.end()) {
             fill.at(id) = event->second ? *event->second : initial_fill_.at(id);
           }
-          if (fill.at(id) != Decode(model, frame.fill.at(id))) {
+          if (fill.at(id) != decode(frame.fill.at(id))) {
             throw std::runtime_error(
                 "symbolic/concrete primary data fill mismatch");
           }

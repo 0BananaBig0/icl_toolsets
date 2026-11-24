@@ -4850,3 +4850,13 @@ large-ASAN memory case.
 All 14 merged-result checks pass on identical 4,050 qualified inputs and 20
 copied executables. The merge is pushed to master, the owned task branch is
 deleted, and all 117 stashes remain. Broader inventory work stays open.
+
+## Model-local primary decoding reuse (Task169)
+
+Decoded words are reused only for identical word/mask expressions in the same
+primary model. No source acceptance, event, constraint or model changes.
+All 450 matched outputs/observations and four guide processes agree; both full
+78×1,253 generator variants and fresh native/sanitizer qualification pass.
+The bounded 256-target callback latency case passes the final unchanged bounds.
+Broader inventory10 and other pending topology/history work remain open.
+See [Task169 evidence](remaining-work.md#task169-qualified-increment).

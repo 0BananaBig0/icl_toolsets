@@ -39,19 +39,19 @@ Update docs/pattern-generation.md, docs/pattern-model-coverage.md and docs/remai
 map<pair<unsigned,unsigned>,string> and lambda after primary solver.get_model;
 replace only three primary Decode(model,value) calls with decode(value).
 
-- [ ] Step1: Add a real Z3_model_eval counter benchmark using linker wrapping,
+- [x] Step1: Add a real Z3_model_eval counter benchmark using linker wrapping,
   fixture(256,'automatic'), complete checked_frames output and <=600000 calls.
   Expected: parent fails only the work bound; native baseline timings remain
   archived even if all current12 controls happen to pass10s today.
-- [ ] Step2: Add the per-model map/lambda at the three primary replay sites.
+- [x] Step2: Add the per-model map/lambda at the three primary replay sites.
   Expected: counter passes without changing any output, solver or validation.
-- [ ] Step3: Run word-model and primary-pin modules on normal/static/SAN, with
+- [x] Step3: Run word-model and primary-pin modules on normal/static/SAN, with
   the existing explicit wide-SAN skip; run the counter and inspect real count.
   Expected:3+10 functional methods per normal/static,3+9SAN and one wide skip.
-- [ ] Step4: Run complete matched72-word and378-merge process matrices using
+- [x] Step4: Run complete matched72-word and378-merge process matrices using
   immutable parent/current/SAN products. Expected: all actual values, full
   outputs, Apply order and observations agree and all current bounds pass.
-- [ ] Step5: Run fresh15 normal/15 leak-enabled SAN native suites, full78-suite
+- [x] Step5: Run fresh15 normal/15 leak-enabled SAN native suites, full78-suite
   normal/static generator runs, affected CLI/corpus, three C++ quality checks,
   source packaging and allocation/reporting checks. Expected: exact qualified
   source/product hashes and all functional gates pass.
