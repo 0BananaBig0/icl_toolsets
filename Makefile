@@ -873,6 +873,10 @@ $(BUILD_DIR)/pattern_logic_test: tests/src/pattern_logic_test.cc $(BUILD_DIR)/pa
 pattern-runtime-check: $(BUILD_DIR)/pattern_runtime_test
 	@$(BUILD_DIR)/pattern_runtime_test
 
+.PHONY: pattern-runtime-dependency-budget-check
+pattern-runtime-dependency-budget-check: $(BUILD_DIR)/pattern_runtime_test
+	python3 tests/src/pattern/test_runtime_dependency_budget.py $(BUILD_DIR)/pattern_runtime_test
+
 $(BUILD_DIR)/pattern_runtime_test: tests/src/pattern_runtime_test.cc $(BUILD_DIR)/utility/json.o $(PATTERN_OBJECTS) $(SHARED_OBJECTS) $(PDL_OBJECT) $(BUILD_DIR)/pattern/pattern_values.o $(BUILD_DIR)/pattern/pattern_opaque.o | check-z3
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $(Z3_CFLAGS) $^ $(TCL_LIBS) $(Z3_LIBS) -o $@
 
@@ -1159,6 +1163,7 @@ python3 tests/src/pattern/test_data_register_callback_model.py $1
 python3 tests/src/pattern/test_callback_execution.py $1
 python3 tests/src/pattern/test_mixed_callback_groups.py $1
 python3 tests/src/pattern/test_mixed_callback_aliases.py $1
+python3 tests/src/pattern/test_downstream_write_callbacks.py $1
 python3 tests/src/pattern/test_callback_endpoint_readback.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1

@@ -84,13 +84,27 @@ class ModelReadback {
       auto callback_pending = callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
+        if (op.callback_prerequisite) {
+          throw std::runtime_error(
+              op.origin +
+              ": modeled readback excludes automatic callback histories");
+        }
         if (op.callback_read_execution ||
             (physical_ && op.callback_execution)) {
           throw std::runtime_error(
               op.origin + ": modeled readback excludes callback histories");
         }
         if (op.callback) {
-          callback_pending.insert(op.call_stack);
+          const auto target = ResolvePdlTarget(netlist_, op.arguments.at(0));
+          if (std::any_of(target.bits.begin(), target.bits.end(),
+                          [&](const auto& bit) {
+                            const auto& node = netlist_.nodes.at(bit.node);
+                            return (op.command == "iRead" ? node.read_callback
+                                                          : node.write_callback)
+                                .has_value();
+                          })) {
+            callback_pending.insert(op.call_stack);
+          }
           continue;
         }
         if (op.command == "iReset") callback_pending.clear();

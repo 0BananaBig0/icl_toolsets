@@ -37,6 +37,8 @@ struct Operation {
   bool callback_read_execution = false;
   // Desired caller masks at native boundaries, never observed device values.
   std::map<size_t, std::string> callback_preserved{};
+  // Actual automatic write-callback invocation, distinct from queued intent.
+  bool callback_prerequisite = false;
 };
 
 struct ReadbackUpdate {
