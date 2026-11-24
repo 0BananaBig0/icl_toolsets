@@ -844,6 +844,7 @@ $(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/
 .PHONY: pattern-expression-check
 pattern-expression-check: $(BUILD_DIR)/pattern_expression_test
 	@$(BUILD_DIR)/pattern_expression_test
+	@python3 tests/tests/src/pattern/test_benchmark_wide_decimal_constants.py $(BUILD_DIR)/pattern_expression_test
 
 $(BUILD_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@
@@ -1166,6 +1167,7 @@ python3 tests/src/pattern/test_mixed_callback_aliases.py $1
 python3 tests/src/pattern/test_downstream_write_callbacks.py $1
 python3 tests/src/pattern/test_merged_callbacks.py $1
 python3 tests/src/pattern/test_word_model_decoding.py $1
+python3 tests/src/pattern/test_wide_decimal_constants.py $1
 python3 tests/src/pattern/test_raw_merge_calls.py $1
 python3 tests/src/pattern/test_merged_readback.py $1
 python3 tests/src/pattern/test_primary_pin_literals.py $1

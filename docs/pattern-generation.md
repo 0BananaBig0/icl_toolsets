@@ -10005,3 +10005,49 @@ gates,828 repeated measurements, parent controls and retained limits.
 All 23 Task170 merged-result checks pass on identical 4,054 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+## Wide decimal ICL values (Task171)
+
+ICL decimal values can describe bit patterns wider than a machine integer,
+including parameters, enum values, attributes and reset/capture constants.
+For example, this128-bit constant has three set bits:
+
+~~~icl
+Module Chains {
+    Parameter V = 128'd170141183460469231731687303715884105737;
+    DataOutPort q[127:0] { Source $V; }
+}
+~~~
+
+With --model_readback, iRead q 0 followed by iApply observes the actual constant.
+The hexadecimal value is0x80000000000000000000000000000009 and mismatch
+status is3; clearing status leaves0. Normal, static, sanitizer and equivalent
+parent hexadecimal guide runs emit identical patterns. This is modeled
+readback. Expected comparison data does not supply observations.
+
+Sized decimal data, plain and based unsized forms, leading zeros, underscores
+and comments retain the ICL rules. Unknown bits remain legal in binary/hex.
+Integer expressions and indices keep checked signed64-bit limits, and numeric
+values/object widths remain bounded at1,048,576 bits. A wide bit pattern does
+not widen arithmetic. Significant1 bits may not be silently truncated.
+
+After building the native expression test, measure checked parsing/decoding:
+
+~~~sh
+python3 tests/src/pattern/benchmark_wide_decimal_constants.py \
+  --binary build/pattern_expression_test --parent /path/to/parent-test-harness \
+  --sanitized /path/to/sanitized-pattern-expression-test --output /tmp/decimal-scale
+~~~
+
+The parent control needs the current test-only harness with the parent
+expression object; stock older test executables lack these scale modes and
+are rejected. Recorded build commands and object/binary hashes accompany
+the Task171 evidence. Every process checks ten exact values through65,536 bits.
+Limb conversion has quadratic large-decimal work; routine near-limit decimals
+need separate performance qualification.
+See [Task171 evidence](remaining-work.md#task171-qualified-increment) for scope,
+unchanged limits, corpus changes and remaining work.
+
+All four benchmark modes are required; omitting --sanitized fails before
+measurement. Decimal data in the native token API must contain only digits and
+underscores after comment/space normalization.

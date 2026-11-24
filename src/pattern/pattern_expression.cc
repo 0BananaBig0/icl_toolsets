@@ -59,6 +59,55 @@ std::string CompactNumber(const std::string& token) {
   return result;
 }
 
+std::string DecimalBits(const std::string& digits) {
+  std::vector<uint32_t> words(1, 0);
+  const auto append = [&](uint32_t chunk, uint32_t factor) {
+    uint64_t carry = chunk;
+    for (auto& word : words) {
+      carry += static_cast<uint64_t>(word) * factor;
+      word = static_cast<uint32_t>(carry);
+      carry >>= 32;
+    }
+    if (carry) {
+      if (words.size() == kMaxValueBits / 32) {
+        throw std::runtime_error("ICL literal exceeds bit limit");
+      }
+      words.push_back(static_cast<uint32_t>(carry));
+    }
+  };
+  // shortcut: quadratic limb conversion; revisit for routine near-limit
+  // decimals.
+  uint32_t chunk = 0, factor = 1;
+  bool digit = false;
+  for (const auto ch : digits) {
+    if (ch == '_') continue;
+    if (ch < '0' || ch > '9') {
+      throw std::runtime_error("invalid ICL numeric digit");
+    }
+    digit = true;
+    chunk = chunk * 10 + static_cast<unsigned>(ch - '0');
+    factor *= 10;
+    if (factor == 1000000000) {
+      append(chunk, factor);
+      chunk = 0;
+      factor = 1;
+    }
+  }
+  if (!digit) throw std::runtime_error("empty ICL number");
+  if (factor != 1) append(chunk, factor);
+  std::string bits;
+  bits.reserve(words.size() * 32);
+  for (auto word = words.rbegin(); word != words.rend(); ++word) {
+    for (int shift = 31; shift >= 0; --shift) {
+      bits += (*word >> shift) & 1 ? '1' : '0';
+    }
+  }
+  const auto first = bits.find('1');
+  if (first == std::string::npos) return "0";
+  bits.erase(0, first);
+  return bits;
+}
+
 Constant Literal(const std::string& token,
                  const std::function<Constant(const std::string&)>& parameter) {
   if (token.size() >= 2 && token.front() == '"' && token.back() == '"') {
@@ -73,6 +122,8 @@ Constant Literal(const std::string& token,
   const auto quote = text.find('\'');
   if (quote == std::string::npos) {
     if (!text.empty() && text[0] == '$') return parameter(text.substr(1));
+    // Preserve scalar allocation behavior; 18 decimal digits fit signed64.
+    if (text.size() > 18) return {false, false, DecimalBits(text)};
     return {false, false,
             Binary(EvaluateInteger({{text, 0, text.size()}}, 0, 1,
                                    [&](const std::string& name) {
@@ -91,8 +142,12 @@ Constant Literal(const std::string& token,
   const auto base = static_cast<char>(
       std::tolower(static_cast<unsigned char>(text.at(quote + 1))));
   const auto digits = text.substr(quote + 2);
+  if (digits.empty()) throw std::runtime_error("empty ICL number");
   std::string bits;
   if (base == 'd') {
+    if (digits.find_first_not_of("0123456789_") != std::string::npos) {
+      throw std::runtime_error("invalid ICL decimal integer digit");
+    }
     bits = Literal(digits, parameter).data;
   } else {
     for (char c : digits) {
