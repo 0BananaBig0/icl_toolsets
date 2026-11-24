@@ -9666,9 +9666,19 @@ Modeled iMerge histories remain unsupported when a getter requests observation
 deltas; read-callback/automatic history and physical callback-output guards also
 remain. These restrictions do not prevent ordinary expanded replay.
 
-Task164 core209480c passes all native Runtime cases in both variants, the full
-native scheduler,378 CLI compatibility methods and12 C++quality checks. Expanded
-19-method replay passes normal/static/leak-enabled sanitizer builds after one
-review fix pass. Full repeated measurements, regression qualification and
-integration are in progress. Broader symbolic/control/serial dependencies and
-the remaining inventory are still pending; coverage item1 stays excluded.
+Task164 passes 64 final qualification gates: 15 normal and 15 leak-enabled
+sanitizer native suites, 74 suites and 1,208 methods in each generator
+variant, 12 C++ quality checks, source packaging, and exact hashes for 4,041
+inputs and 38 executables. The 72 regular merged-callback runs peak at
+4.5367s/394712KiB; six 512/1024-bit runs peak at 1.1075s/121104KiB. All 405
+new and preserved matrix/example processes and four dynamic allocation probes
+pass.
+
+Independent review found zero Critical, three Important and one Minor finding.
+One test-first pass fixes pending-queue transfer between calls, inherited
+callback-context barriers, and filtered prerequisite anchors. The benchmark
+checks ordered register/value postconditions and endpoint frames separately;
+checking their relative Apply-group placement remains a deferred Minor.
+Functional regressions check actual frame boundaries. The total deferred Minor
+count is 16. Integration remains pending; broader inventory and excluded
+coverage item1 stay open.

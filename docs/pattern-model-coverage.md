@@ -4767,13 +4767,27 @@ item10 work. General symbolic/mux/control/serial automatic dependencies and othe
 pending inventory remain open. Coverage1 is excluded.
 
 
-## Callback merge qualification in progress
+## Qualified callback merge execution
 
-Task164 core209480c permits explicit and transparent downstream callbacks within
-valid iMerge calls, retaining complete serial streams through logical/actual
-callback batching barriers. Independent ordinary calls remain eligible for
-batching. All Runtime cases both native variants, full native scheduler,
-378 CLI compatibility methods and12 C++quality checks pass. Expanded replay,
-measurements and full final qualification are pending. Modeled merge histories,
-read/automatic histories, physical callback output and broader raw/opaque merges
-retain their guards. Coverage item1 remains excluded.
+Explicit and transparent downstream callbacks execute within valid iMerge calls
+using complete serial fallback. Existing ordinary calls inside a callback-owned
+merge retain batching. A filtered prerequisite adds no callback barrier, and an
+incomplete call cannot pass its queue to a sibling. Model/history, reset, raw and
+physical-output restrictions remain as described in the generator guide.
+
+Task164 passes 64 final qualification gates: 15 normal and 15 leak-enabled
+sanitizer native suites, 74 suites and 1,208 methods in each generator
+variant, 12 C++ quality checks, source packaging, and exact hashes for 4,041
+inputs and 38 executables. The 72 regular merged-callback runs peak at
+4.5367s/394712KiB; six 512/1024-bit runs peak at 1.1075s/121104KiB. All 405
+new and preserved matrix/example processes and four dynamic allocation probes
+pass.
+
+Independent review found zero Critical, three Important and one Minor finding.
+One test-first pass fixes pending-queue transfer between calls, inherited
+callback-context barriers, and filtered prerequisite anchors. The benchmark
+checks ordered register/value postconditions and endpoint frames separately;
+checking their relative Apply-group placement remains a deferred Minor.
+Functional regressions check actual frame boundaries. The total deferred Minor
+count is 16. Integration remains pending; broader inventory and excluded
+coverage item1 stay open.

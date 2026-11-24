@@ -139,10 +139,10 @@ No new public runtime interface or independent scheduling engine.
       actual versus logical histories and remaining boundaries. Author-run all
       three guide commands; no independent-reader claim without that work.
       Self-review plan/spec reach, then commit reviewable implementation.
-- [ ] Dispatch one fresh whole-parent review on6a311dd..HEAD with ReviewFocus,
+- [x] Dispatch one fresh whole-parent review on6a311dd..HEAD with ReviewFocus,
       code-reviewer template and ledger rulings. Regrade declined behaviors;
       one test-first Important/Critical fix pass, ledger Minors, no rereview.
-- [ ] Build current normal/static/SAN products; run64expected gates including
+- [x] Build current normal/static/SAN products; run64expected gates including
       all native suites, both74x1208generator variants, existing SANselection
       plus new19CLI, corpus, production budget test, allocations, quality and
       source packaging. Verify actual input/product hashes and405matrix/example
@@ -182,3 +182,21 @@ The new benchmark's postcondition-versus-Apply-group association oracle is defer
 (totalMinors16); no generated ordering defect found. No rereview. Full qualification
 and integration are pending. Expected74x1208 each generator/64gates/4041inputs/
 38products/405matrix+4allocation/28merged checks.
+
+
+Task164 passes 64 final qualification gates: 15 normal and 15 leak-enabled
+sanitizer native suites, 74 suites and 1,208 methods in each generator
+variant, 12 C++ quality checks, source packaging, and exact hashes for 4,041
+inputs and 38 executables. The 72 regular merged-callback runs peak at
+4.5367s/394712KiB; six 512/1024-bit runs peak at 1.1075s/121104KiB. All 405
+new and preserved matrix/example processes and four dynamic allocation probes
+pass.
+
+Independent review found zero Critical, three Important and one Minor finding.
+One test-first pass fixes pending-queue transfer between calls, inherited
+callback-context barriers, and filtered prerequisite anchors. The benchmark
+checks ordered register/value postconditions and endpoint frames separately;
+checking their relative Apply-group placement remains a deferred Minor.
+Functional regressions check actual frame boundaries. The total deferred Minor
+count is 16. Integration remains pending; broader inventory and excluded
+coverage item1 stay open.
