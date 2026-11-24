@@ -9,6 +9,7 @@ namespace pattern {
 inline constexpr char kModeledReadbackNote[] =
     "modeled register/PIO readback; no live device";
 // The netlist must outlive this append-only, single-runtime session.
+// Replay follows supplied operation order; observed merges must retain it.
 Runtime::Readback MakeModeledReadback(const Netlist& netlist);
 Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical);
 }  // namespace pattern

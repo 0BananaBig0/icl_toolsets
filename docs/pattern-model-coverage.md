@@ -4816,3 +4816,13 @@ results are retained by exact source/product/log proof. All 84 measured
 outputs and 4 guide processes agree with serial controls.
 See [Task166 evidence](remaining-work.md#task166-qualified-increment)
 for bounds, review findings and remaining configurations.
+
+## Native logical merge histories (Task167)
+
+Actual modeled observations now cross valid merge markers on existing native logical PIO/register/serial/TAP/raw routes. Markers only transition reservation scope. A provider-history request latches serial merge generation in both initial and callback reset-rewrite paths. No-provider controls preserve batching. Physical/opaque, invoked-read/automatic callback and timed histories remain guarded. This advances inventory 4/6/8 without completing them.
+
+Task167 passes 70 qualification gates: 15 fresh normal and 15 leak-enabled sanitizer native suites, 77 suites/1,243 methods in each generator variant, affected sanitizer CLI, corpus, 12 changed-range C++ quality checks, source packaging and four allocation probes. Exact hashes cover 4,048 inputs and 38 executables.
+
+All 378 matched measurements have correct observations/replay, and four guide processes pass. The matrix includes 16/64/128-call PIO/raw histories, parent/current serial and current observed/unobserved merges, three source/flat/generated repeats, 512/1024-bit high-bit words and 16-call sanitizer observations. Maxima are 2.7788s and 437988KiB, with 342 cases within the existing regular 10s/512MiB and wide 10s/256MiB bounds. All 36 1,024-bit PIO parent/current serial and observed/unobserved source/flat/generated cases exceed the 256MiB wide memory bound (301352–337700KiB); no time bound is missed. The benchmark retains all misses and exits nonzero. 1,024-bit PIO memory closure remains open under inventory 10, alongside Task165’s 256-call latency misses. Source/flat queries and generated literal notes are reported separately; actual captures, full observation lists, exact serial controls and Apply counts are checked. No parallel observed-merge speedup or larger-scale guarantee is claimed.
+
+See [Task167 evidence](remaining-work.md#task167-qualified-increment).

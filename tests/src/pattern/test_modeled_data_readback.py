@@ -273,8 +273,6 @@ iNote [iGetStatus]
                  "cannot justify"),
                 (BASE, "iReset; iRunLoop 1 -tck; " + read, True,
                  "does not support iRunLoop"),
-                (BASE, "iMerge -begin; iMerge -end; " + read, True,
-                 "does not support iMerge"),
                 (callbacks.MODEL, "iRead first.observed 0; iApply", True,
                  "undefined iProc for callback"),
                 (callbacks.MODEL, "iWrite first.value 1; iApply", True,
@@ -286,6 +284,10 @@ iNote [iGetStatus]
                 self.assertIn(message, self.run_tool(
                     icl, pdl, ok=False, modeled=modeled))
                 self.assertEqual(target.read_bytes(), b"preserve")
+        result = self.replay(BASE, "iPDLLevel 1; iMerge -begin; iMerge -end; "
+                             "iState enable 0; iState value 9; iRead value 0; "
+                             "iApply; iNote [iGetReadData value -dec]")
+        self.assertIn(b"iNote 9\n", result)
 
 
 if __name__ == "__main__":

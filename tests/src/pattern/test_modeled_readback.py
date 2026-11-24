@@ -170,8 +170,7 @@ iNote [iGetReadData q -bin]
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         output = self.root / "result.pdl"
         for source, history in (
-                (BASE, "iRunLoop 1 -tck; "),
-                (BASE, "iMerge -begin; iMerge -end; ")):
+                (BASE, "iRunLoop 1 -tck; "),):
             with self.subTest(history=history):
                 icl.write_text(source)
                 pdl.write_text("iPDLLevel 1; " + history +
@@ -180,6 +179,10 @@ iNote [iGetReadData q -bin]
                 self.assertIn("modeled readback",
                               self.run_tool(icl, pdl, ok=False))
                 self.assertEqual(output.read_bytes(), b"preserve")
+        result = self.replay(BASE, "iPDLLevel 1; iMerge -begin; iMerge -end; "
+                             "iState p 15; iRead q 0; iApply; "
+                             "iNote [iGetReadData q -dec]")
+        self.assertIn(b"iNote 15\n", result)
 
     def test_raw_history_and_known_manual_history_are_independent(self):
         source = """Module Chains {

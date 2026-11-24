@@ -39,7 +39,8 @@ thread a private serial decision through both GenerateMerged call sites.
 **Files:** Modify src/pattern/pattern_readback.cc and its header contract comment;
 src/pattern/icl_pattern_generation_main.cc; tests/src/pattern_readback_test.cc;
 Makefile; maintained expectations in tests/src/pattern/test_merged_callbacks.py
-and tests/src/pattern/test_raw_merge_calls.py. Create
+and tests/src/pattern/test_raw_merge_calls.py, plus the necessary empty-merge
+expectations in test_modeled_readback.py and test_modeled_data_readback.py. Create
 tests/src/pattern/test_merged_readback.py and
 tests/src/pattern/benchmark_merged_readback.py; update current evidence docs.
 
@@ -49,7 +50,7 @@ Both callers pass the inverse of the main-local merge-history-request latch.
 Retain existing malformed native iMerge-without-arguments and iClock negatives;
 valid markers need only recognized begin/end arguments, not a second parser.
 
-- [ ] Step1: Add native tests for valid open/closed marker prefixes without
+- [x] Step1: Add native tests for valid open/closed marker prefixes without
   data events, incremental raw/register planes and clear, and retained guards.
   Add20 CLI methods covering PIO/query timing, the ordering counterexample,
   no-request/cached/manual/pre-merge batching, unknown/sparse/inverted data,
@@ -57,25 +58,25 @@ valid markers need only recognized begin/end arguments, not a second parser.
   nested/repeated/returned calls, namespaces/prefix/split/once-only arguments,
   local-reset procedure preservation, reservations, explicit write callbacks,
   remaining callback/clock/opaque/physical guards and failed publication.
-- [ ] Step2: Run native readback and new CLI cases on parent. Expect valid
+- [x] Step2: Run native readback and new CLI cases on parent. Expect valid
   merged observations to reject specifically on iMerge histories; retain logs.
-- [ ] Step3: Admit valid supported native markers in preflight and process them
+- [x] Step3: Admit valid supported native markers in preflight and process them
   after reservations.Enter with no event. Keep malformed/physical/opaque guards.
-- [ ] Step4: Run native tests and the CLI ordering counterexample before changing
+- [x] Step4: Run native tests and the CLI ordering counterexample before changing
   rendering. Expect native positives to pass and the CLI replay probe to expose
   captured9 instead of source-observed0 if batching remains enabled.
-- [ ] Step5: Wrap the main readback callback with linear appended-prefix tracking.
+- [x] Step5: Wrap the main readback callback with linear appended-prefix tracking.
   Add private combine parameter, pass the latch at initial and callback rewrite
   generation, and propagate serial errors without retrying the same trial.
-- [ ] Step6: Update only the two obsolete CLI history rejections to actual
+- [x] Step6: Update the obsolete valid/empty-merge CLI history rejections to actual
   positive observations; retain their read/automatic/opaque/physical negatives.
-- [ ] Step7: Build normal/static/leak-enabled sanitizer variants and run focused
+- [x] Step7: Build normal/static/leak-enabled sanitizer variants and run focused
   native/CLI/legacy cases. Expect exact data, frame order, guards and replay.
-- [ ] Step8: Measure16/64/128-call PIO/raw histories, matched parent/current serial
+- [x] Step8: Measure16/64/128-call PIO/raw histories, matched parent/current serial
   and batching controls, three forms/repeats, smaller sanitizer and512/1024-bit
   high-bit data. Use existing10s/512MiB regular and10s/256MiB wide limits; complete
   the matrix and retain misses. Record actual queries versus literal notes.
-- [ ] Step9: Run fresh15 normal/15 sanitizer native suites and full normal/static
+- [x] Step9: Run fresh15 normal/15 sanitizer native suites and full normal/static
   generator checks, affected sanitizer CLI, corpus, C++ quality and source package.
   Update current docs and commit; no native reuse for changed ModelReadback code.
 - [ ] Step10: Obtain one fresh whole-branch review, re-grade findings, fix blockers

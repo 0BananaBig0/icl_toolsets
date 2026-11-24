@@ -744,7 +744,7 @@ std::string Generate(
 }
 std::string GenerateMerged(const pattern::Netlist& netlist,
                            const std::vector<pattern::Operation>& operations,
-                           bool modeled_readback = false) {
+                           bool modeled_readback = false, bool combine = true) {
   if (std::any_of(operations.begin(), operations.end(),
                   [](const auto& op) { return op.command == "iMerge"; }) &&
       pattern::ExpandOpaqueChild(netlist)) {
@@ -783,8 +783,9 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
     return generate(operations);
   }
   try {
-    return generate(pattern::MergeOperations(netlist, operations, true));
+    return generate(pattern::MergeOperations(netlist, operations, combine));
   } catch (const std::runtime_error&) {
+    if (!combine) throw;
     // A joint goal may be unreachable even when separate calls are valid.
     // Generate owns a fresh scheduler, so failed trials cannot leak state.
     return generate(pattern::MergeOperations(netlist, operations, false));
@@ -900,11 +901,24 @@ int main(int argc, char** argv) {
       messages += std::string(pattern::kModeledReadbackNote) + "\n";
     }
     if (!options.local_reset.empty()) ValidateResetSources(network.netlist);
-    pattern::Runtime runtime(
-        design, network.netlist, !options.local_reset.empty(),
-        options.model_readback
-            ? pattern::MakeModeledReadback(network.netlist, options.physical)
-            : pattern::Runtime::Readback{});
+    bool merge_readback_requested = false;
+    size_t observed_cursor = 0;
+    pattern::Runtime::Readback readback;
+    if (options.model_readback) {
+      readback = [provider = pattern::MakeModeledReadback(network.netlist,
+                                                          options.physical),
+                  &merge_readback_requested,
+                  &observed_cursor](const auto& operations, bool clear_status) {
+        while (!merge_readback_requested &&
+               observed_cursor < operations.size()) {
+          merge_readback_requested =
+              operations[observed_cursor++].command == "iMerge";
+        }
+        return provider(operations, clear_status);
+      };
+    }
+    pattern::Runtime runtime(design, network.netlist,
+                             !options.local_reset.empty(), readback);
     std::vector<std::string> sources;
     std::string local_reset;
     for (const auto& path : options.pdl) {
@@ -947,12 +961,13 @@ int main(int argc, char** argv) {
           modeled_operations.end());
       output_operations = &modeled_operations;
     }
-    auto pdl = options.physical
-                   ? Generate(network.netlist, *output_operations, nullptr,
-                              nullptr, nullptr, nullptr, nullptr, true, nullptr,
-                              nullptr, true, nullptr, options.model_readback)
-                   : GenerateMerged(network.netlist, *output_operations,
-                                    options.model_readback);
+    auto pdl =
+        options.physical
+            ? Generate(network.netlist, *output_operations, nullptr, nullptr,
+                       nullptr, nullptr, nullptr, true, nullptr, nullptr, true,
+                       nullptr, options.model_readback)
+            : GenerateMerged(network.netlist, *output_operations,
+                             options.model_readback, !merge_readback_requested);
     if (!options.local_reset.empty()) {
       const auto verify_source =
           [&](const std::string& source,
@@ -1066,7 +1081,8 @@ int main(int argc, char** argv) {
                 expected.end());
           }
           pdl =
-              GenerateMerged(network.netlist, expected, options.model_readback);
+              GenerateMerged(network.netlist, expected, options.model_readback,
+                             !merge_readback_requested);
         }
         return rewritten_source;
       };
