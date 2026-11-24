@@ -717,3 +717,7 @@ All2,562 corpus identities and classifications remain1,032canonical,
 44unsupported AccessLink cases and687default elaboration failures. Broader
 inventory2–8/10–12 stays open, item1 stays excluded, and inherited27Minors
 remain deferred. No review blocker remains; integration is recorded below.
+
+All10 Task173 merged-result checks pass against identical4,062qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.

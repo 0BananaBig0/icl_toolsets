@@ -10154,3 +10154,7 @@ Runtime captures arguments once and runs call bodies at merge-end. Complete
 literal merges without valid metadata keep immediate execution, including
 ordinary or malformed literal notes. Called getters and history seeds see
 the same note ordering as generated-prefix replay, including split inputs.
+
+All10 Task173 merged-result checks pass against identical4,062qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.

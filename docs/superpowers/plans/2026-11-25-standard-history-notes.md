@@ -42,7 +42,7 @@ preserve public Runtime APIs and existing invalidation masks.
 - [x] Step4: Commit finalized changes and run one fresh whole-branch review.
   Fix Critical/Important once test-first and rerun affected verification.
   Expected no unresolved blockers; defer inherited27Minors and new Minors.
-- [ ] Step5: Merge/push master, verify merged focused tests and qualified hashes,
+- [x] Step5: Merge/push master, verify merged focused tests and qualified hashes,
   detach reused worktree, delete owned branch and archive only this task ledger.
   Expected clean pushed master,117stashes, original broad items remain accurate.
 

@@ -4955,3 +4955,7 @@ The final0C/1I/0M review finding is fixed test-first in one pass.
 All52gates, both81x1,298 generator variants,30native suites and378matched
 measurements pass. Corpus classifications remain unchanged; broader actual
 histories and transport are still tracked in the remaining inventory.
+
+All10 Task173 merged-result checks pass against identical4,062qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.
