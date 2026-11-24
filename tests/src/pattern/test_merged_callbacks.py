@@ -267,8 +267,12 @@ if {$::calls != 3 || $::args != 3} {error repeated_count}
                       extra=("--physical_pdl",))
         source = MODEL.replace("WriteCallBack Chains store <D> <R>;",
                                "ReadCallBack Chains store <D> <R>;")
-        self.rejected(self.merged("iRead value 9; iApply"),
-                      "callback histories", source, modeled=True)
+        read_body = downstream.PROCS+self.merged('iRead value 9; iApply')+'''
+; iRead endpoint 0; iApply; iNote [iGetReadData endpoint -dec]
+if {![catch {iGetReadData value}]} {error logical_callback_history}
+'''
+        read_output = downstream.observations.ModeledReadback.replay(self, source, read_body)
+        self.assertEqual(self.notes(read_output), [b'value=0b1001', b'9'])
         body = downstream.PROCS+self.merged("iWrite value 9; iApply") + \
             "; iRead endpoint 0; iApply; iNote [iGetReadData endpoint -bin]"
         output = downstream.observations.ModeledReadback.replay(self, MODEL, body)

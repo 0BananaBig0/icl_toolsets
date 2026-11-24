@@ -363,7 +363,7 @@ void TestRawTapObservationCommit() {
             "raw TAP follow-up observes committed binary/literal state");
   }
 }
-void TestCallbackResetCannotEnableModelReadback() {
+void TestCallbackResetRetainsActualModelReadback() {
   pattern::Design design;
   design.AddIcl("callback-model-reset.icl", R"(
 Module Top {
@@ -379,13 +379,21 @@ Module Top {
       {"iApply", {}, "callback", {}, false, true, true},
       {"iRead", {"q", "9"}, "callback", {}, false, true, true},
       {"iApply", {}, "callback", {}, false, true, true}};
-  bool rejected = false;
-  try {
-    readback(operations, false);
-  } catch (const std::exception& error) {
-    rejected = std::string(error.what()).find("callback") != std::string::npos;
+  const auto* delta = readback(operations, false);
+  Require(delta && delta->bits.size() == 4 && delta->failures == 2,
+          "read callback reset retains actual endpoint mismatches");
+  const auto output = netlist.node_ids.at("q");
+  for (const auto& bit : delta->bits) {
+    Require(
+        bit.node == output && bit.read == '0' &&
+            bit.miscompare == (bit.index == 3 || bit.index == 0 ? '1' : '0'),
+        "callback expected9 never becomes an observed value");
   }
-  Require(rejected, "callback inner reset must not enable modeled histories");
+  const auto* cleared = readback(operations, true);
+  Require(cleared->bits.empty() && cleared->failures == 2,
+          "callback endpoint history is incremental and clears status");
+  Require(readback(operations, false)->failures == 0,
+          "callback endpoint status remains cleared");
 }
 void TestCallbackHistoryBoundary() {
   pattern::Design design;
@@ -854,7 +862,7 @@ int main() {
     TestUnexpandedLogicalReadbackRejects();
     TestRawObservationCommit();
     TestRawTapObservationCommit();
-    TestCallbackResetCannotEnableModelReadback();
+    TestCallbackResetRetainsActualModelReadback();
     TestCallbackHistoryBoundary();
     TestReadModel();
     TestModeledReadback();

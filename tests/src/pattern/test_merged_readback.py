@@ -238,7 +238,9 @@ iMerge -begin; iCall first; iCall second; iMerge -end; iNote $::seen
         self.rejected(callbacks.MODEL, callbacks.PROCS+merged(
             'iWrite dest 9; iApply'), 'callback histories')
         source = callbacks.MODEL.replace('WriteCallBack Chains', 'ReadCallBack Chains')
-        self.rejected(source, callbacks.PROCS+merged('iRead value 9; iApply'), 'callback histories')
+        output = self.check(source, callbacks.PROCS+merged('iRead value 9; iApply',
+            'iRead endpoint 0; iApply; iNote [iGetReadData endpoint -dec]'))
+        self.assertEqual(self.notes(output), [b'value=0b1001', b'9'])
 
     def test_timed_opaque_and_physical_guards(self):
         self.rejected(PIO, merged('iState p 9; iRead q 0; iApply; iRunLoop 1; '

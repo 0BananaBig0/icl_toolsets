@@ -256,7 +256,7 @@ iNote [iGetReadData spare_out -dec]; iNote [iGetStatus -clear]
 """
         self.assertEqual(self.notes(self.replay(MODEL, body)), [b"3", b"3", b"4"])
 
-    def test_read_callback_generation_and_model_guard(self):
+    def test_read_callback_generation_and_actual_unknown_history(self):
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         icl.write_text(MODEL)
         pdl.write_text(PROCS + "iWrite spare 3; iRead observed 9; iApply")
@@ -264,7 +264,13 @@ iNote [iGetReadData spare_out -dec]; iNote [iGetStatus -clear]
         self.assertIn(b"iWrite spare 0b0011", result)
         self.assertIn(b"iRead q 0b1001", result)
         self.assertEqual(result, self.run_tool(icl, self.root / "result.pdl", "generated/result.pdl", modeled=False))
-        self.rejected("iWrite spare 3; iRead observed 9; iApply", "callback")
+        observed = self.replay(MODEL, PROCS+'''
+iWrite spare 3; iRead observed 9; iApply
+iRead spare_out 0; iApply
+iNote [iGetReadData spare_out -dec]; iNote [iGetReadData q -bin]
+if {![catch {iGetStatus}]} {error {unknown endpoint became known}}
+''')
+        self.assertEqual(self.notes(observed), [b'3', b'0bxxxx'])
 
     def test_sparse_alias_masks_status_clear(self):
         body = PROCS + """iReset; iState spare 0
@@ -322,7 +328,6 @@ if {$::calls != 2} {error canceled_tail}
         self.rejected("iMerge -begin; iWrite spare 3; iWrite value 9; iApply; iMerge -end", "Merge")
         self.rejected("iWrite spare 3; iWrite value 9; iApply", "callback", modeled=False,
                       extra=("--physical_pdl",))
-        self.rejected("iWrite spare 3; iRead observed 9; iApply", "callback")
 
 
 if __name__ == "__main__":

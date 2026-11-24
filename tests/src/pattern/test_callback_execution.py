@@ -291,22 +291,20 @@ iProc store {data reg} {
         output = self.replay(source, procs + "iWrite child.value 9; iApply")
         self.assertEqual(self.notes(output), [b"child.value=0b1001"])
 
-    def test_model_and_physical_modes_reject_callbacks_atomically(self):
+    def test_physical_mode_rejects_callbacks_atomically(self):
         import subprocess
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         icl.write_text(MODEL)
-        for option, request in (("--model_readback", "iRead observed 9; iApply"),
-                                ("--physical_pdl", "iWrite value 9; iApply")):
-            pdl.write_text(PROCS + request)
-            output = self.root / "result.pdl"
-            output.write_bytes(b"retained artifact")
-            result = subprocess.run(
-                [str(cli.BIN), "--icl", str(icl), "--pdl", str(pdl),
-                 "--top_module", "Chains", "--output", str(output), option],
-                text=True, capture_output=True, timeout=45)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("callback", result.stdout + result.stderr)
-            self.assertEqual(output.read_bytes(), b"retained artifact")
+        pdl.write_text(PROCS + 'iWrite value 9; iApply')
+        output = self.root / 'result.pdl'
+        output.write_bytes(b'retained artifact')
+        result = subprocess.run(
+            [str(cli.BIN), '--icl', str(icl), '--pdl', str(pdl),
+             '--top_module', 'Chains', '--output', str(output), '--physical_pdl'],
+            text=True, capture_output=True, timeout=45)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('callback', result.stdout+result.stderr)
+        self.assertEqual(output.read_bytes(), b'retained artifact')
 
     def test_canceled_requests_preserve_model_mode(self):
         import subprocess
@@ -553,24 +551,20 @@ iWrite r0 0; iApply
         self.assertIn(b"iWrite p 0b0", output)
         self.assertNotIn(b"iWrite p 0b1", output)
 
-    def test_callback_inner_reset_cannot_expose_modeled_endpoint_histories(self):
-        import subprocess
+    def test_callback_inner_reset_preserves_modeled_endpoint_histories(self):
+        import test_modeled_readback as observations
         icl, pdl = self.root / "source.icl", self.root / "source.pdl"
         icl.write_text(MODEL)
         pdl.write_text(PROCS + """
 iProc load {data reg} {iReset; iWrite p 0; iApply; iRead q $data; iApply}
-iRead observed 9; iApply; iGetReadData q
+iRead observed 9; iApply; iNote [iGetReadData q -dec]; iNote [iGetStatus]
 """)
-        output = self.root / "result.pdl"
-        output.write_bytes(b"retained artifact")
-        result = subprocess.run(
-            [str(cli.BIN), "--icl", str(icl), "--pdl", str(pdl),
-             "--top_module", "Chains", "--output", str(output), "--model_readback"],
-            text=True, capture_output=True, timeout=45)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("modeled readback excludes callback histories",
-                      result.stdout + result.stderr)
-        self.assertEqual(output.read_bytes(), b"retained artifact")
+        lower = observations.ModeledReadback.run_tool
+        output = lower(self, icl, pdl)
+        self.assertIn(b'iNote 0\n', output)
+        self.assertIn(b'iNote 2\n', output)
+        self.assertEqual(output, lower(self, self.root/'debug/Chains.icl', pdl, 'flat/result.pdl'))
+        self.assertEqual(output, lower(self, icl, self.root/'result.pdl', 'generated/result.pdl'))
 
     def test_failed_open_merge_reset_source_replay(self):
         output, _ = self.reset_replay("""iProc store {data reg} {
