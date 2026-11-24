@@ -9907,3 +9907,7 @@ that variable on an ordinary executable can also skip the gate. Raw final
 normal/static logs confirm the memory gate ran. Total deferred Minors: 23,
 including 22 inherited. Wide-ASAN memory closure and broader topologies are
 not certified by these measurements.
+
+All 14 merged-result checks pass on identical 4,050 qualified inputs and 20
+copied executables. The merge is pushed to master, the owned task branch is
+deleted, and all 117 stashes remain. Broader inventory work stays open.

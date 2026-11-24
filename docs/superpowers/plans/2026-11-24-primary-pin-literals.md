@@ -90,7 +90,7 @@ Keep drive, known, Choose, constraints, count and data deviations unchanged.
 - [x] Step7: Update measured docs and commit, request one fresh whole-branch
   review, re-grade findings and fix blockers in one test-first pass. Expected:
   no unresolved Critical/Important findings; ledger Minors and declined costs.
-- [ ] Step8: Merge into master, verify identical qualified sources/products and
+- [x] Step8: Merge into master, verify identical qualified sources/products and
   affected behavior, push, delete only the owned merged branch and archive only
   this plan's ledger. Expected: clean pushed master and117 stashes retained.
 

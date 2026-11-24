@@ -4846,3 +4846,7 @@ Inventory 10's 256-target latency and broader work remain open.
 See [Task168 evidence](remaining-work.md#task168-qualified-increment) for final
 metrics, both test-first review fixes, 23 deferred Minors and the unrun
 large-ASAN memory case.
+
+All 14 merged-result checks pass on identical 4,050 qualified inputs and 20
+copied executables. The merge is pushed to master, the owned task branch is
+deleted, and all 117 stashes remain. Broader inventory work stays open.
