@@ -4936,3 +4936,7 @@ no new Minor is found. Corpus classifications are unchanged.
 The final braces-only correction rebuilds38 byte-identical tested executables;
 quality and archive-native checks rerun after that correction.
 See [Task172 evidence](remaining-work.md#task172-qualified-increment).
+
+All 17 Task172 merged-result checks pass on identical 4,062 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

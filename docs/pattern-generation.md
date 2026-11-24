@@ -10121,3 +10121,7 @@ Task172's final review fixes standard tagged/quoted note replay, harmless
 informational notes, duplicate matching annotations and whole-root string
 copies. See its evidence for17focused methods,86fresh gates,183timing/RSS
 measurements,2fixed-width allocation probes and4guide processes.
+
+All 17 Task172 merged-result checks pass on identical 4,062 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

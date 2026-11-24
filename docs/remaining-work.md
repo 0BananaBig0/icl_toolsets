@@ -654,3 +654,7 @@ All2,562 corpus source identities and classifications remain unchanged:
 failures. Inventory6/8 advances without closing broader dynamic/gated/parallel,
 multi-TAP/timed/physical/merge/history/transport work. Item1 remains excluded;
 27 inherited Minors remain deferred. Integration is recorded after completion.
+
+All 17 Task172 merged-result checks pass on identical 4,062 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

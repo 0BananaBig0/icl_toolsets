@@ -68,7 +68,7 @@ heterogeneous stable knowledge after one serialized root scan; no CLI option.
 - [x] Step6: Commit and run one fresh independent final review. Re-grade,
   fix blockers once test-first and retain deferred Minors/rulings.
   Expected no unresolved Critical/Important finding; no rereview.
-- [ ] Step7: Merge/push master, verify identical qualified inputs/products on
+- [x] Step7: Merge/push master, verify identical qualified inputs/products on
   merged focused checks, delete owned branch, close docs and archive only this
   ledger. Expected clean pushed master and117stashes preserved.
 
