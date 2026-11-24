@@ -117,13 +117,16 @@ def main():
             pdl.write_text(text)
             for repeat in range(args.repeats):
                 key = (kind, calls, width, repeat)
-                reference = references.get(key) if mode != 'unobserved' else None
+                reference = references.get(key)
+                if reference is not None and mode == 'unobserved':
+                    reference = b''.join(line for line in reference.splitlines(keepends=True)
+                        if not line.startswith(b'iNote ') or b'modeled ' in line)
                 data, generated, flat = run(owner, mode, kind, calls, width, repeat, 'source', source, pdl, notes, reference)
                 if owner == 'parent':
                     references[key] = data
-                if generated.exists() and flat.exists():
-                    run(owner, mode, kind, calls, width, repeat, 'flat', flat, pdl, notes, data)
-                    run(owner, mode, kind, calls, width, repeat, 'generated', source, generated, notes, data)
+                expected_output = reference if reference is not None else data
+                run(owner, mode, kind, calls, width, repeat, 'flat', flat, pdl, notes, expected_output)
+                run(owner, mode, kind, calls, width, repeat, 'generated', source, generated, notes, expected_output)
     if 'sanitized' in binaries:
         for kind in ('pio', 'raw'):
             folder = Path(tempfile.mkdtemp(prefix='san-fixture-', dir=args.output))
@@ -133,11 +136,13 @@ def main():
             pdl.write_text(text)
             for repeat in range(args.repeats):
                 data, generated, flat = run('sanitized', 'merged', kind, 16, 4, repeat, 'source', source, pdl, notes)
-                if generated.exists() and flat.exists():
-                    run('sanitized', 'merged', kind, 16, 4, repeat, 'flat', flat, pdl, notes, data)
-                    run('sanitized', 'merged', kind, 16, 4, repeat, 'generated', source, generated, notes, data)
-    print(json.dumps({'runs': len(report['runs']), 'failed_or_out_of_bounds': len(failures)}))
-    return bool(failures)
+                run('sanitized', 'merged', kind, 16, 4, repeat, 'flat', flat, pdl, notes, data)
+                run('sanitized', 'merged', kind, 16, 4, repeat, 'generated', source, generated, notes, data)
+    expected_runs = (len(cases)*12+(6 if args.sanitized else 0))*args.repeats
+    complete = len(report['runs']) == expected_runs
+    print(json.dumps({'runs': len(report['runs']), 'expected_runs': expected_runs,
+                      'matrix_complete': complete, 'failed_or_out_of_bounds': len(failures)}))
+    return bool(failures) or not complete
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ import test_modeled_readback as history
 import test_modeled_raw_readback as raw
 import test_modeled_tap_readback as tap
 import test_downstream_write_callbacks as callbacks
+import test_callback_execution as reset
 
 PIO = history.BASE
 EVENTS = """Module Chains {
@@ -214,6 +215,24 @@ set ::args 0; iState p [expr {[incr ::args]+8}]; iPrefix leaf
             'iNote [iGetReadData endpoint -dec]'), reset=True)
         self.assertEqual(self.notes(output), [b'value=0b1001', b'9'])
         self.assertIn('iProc store {data reg}', rewritten)
+        source = reset.RESET_MODEL.replace('DataInPort p; ResetPort global;', '''
+DataInPort p; DataInPort a[3:0]; DataInPort b;
+DataRegister d[3:0] {WriteDataSource a; WriteEnSource 1'b1;}
+DataOutPort observed[3:0] {Source d;} ResetPort global;''')
+        request = 'iProc request {data} {iWrite child.value $data; iApply}\n'
+        output, rewritten = self.check(source, reset.STORE_DEF+request+'''
+iReset; iMerge -begin; iCall request 9; iMerge -end
+iState a 0; iState b 0; iState d 0
+iProc first {} {iWrite b 1; iApply; iRead d 0; iApply; set ::seen [iGetReadData d -dec]}
+iProc second {} {iWrite a 9; iApply}
+iMerge -begin; iCall first; iCall second; iMerge -end; iNote $::seen
+''', reset=True)
+        self.assertIn('iWrite rst 0b0', rewritten)
+        self.assertNotEqual(rewritten, (self.root/'source.pdl').read_text())
+        self.assertIn(reset.STORE_DEF, rewritten)
+        self.assertIn(request, rewritten)
+        self.assertEqual(self.notes(output), [b'0'])
+        self.assertEqual(self.capture_probe(output), b'0')
 
     def test_callback_guards(self):
         self.rejected(callbacks.MODEL, callbacks.PROCS+merged(
