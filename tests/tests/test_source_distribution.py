@@ -29,6 +29,8 @@ class SourceDistribution(unittest.TestCase):
             extracted = temporary / f'icl-format-{version}'
             self.run_command(['make', 'dynamic', '-j4', 'BISON=false', 'FLEX=false',
                               'TCL_STATIC_LIB=/does/not/exist', f'Z3_PREFIX={z3_prefix}'], extracted)
+            self.run_command(['make', 'pattern-expression-check', 'BISON=false', 'FLEX=false',
+                              'TCL_STATIC_LIB=/does/not/exist', f'Z3_PREFIX={z3_prefix}'], extracted)
             prefix = temporary / 'installed'
             self.run_command(['make', 'install-dynamic', f'prefix={prefix}',
                               'BISON=false', 'FLEX=false', f'Z3_PREFIX={z3_prefix}'], extracted)

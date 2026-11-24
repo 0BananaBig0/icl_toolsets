@@ -186,6 +186,98 @@ void CheckPublicSteps(const pattern::Netlist& original,
     }
   }
 }
+std::string MultipleOpaqueSource() {
+  auto source = kOpaqueChild;
+  const auto tail = source.find(" ScanRegister tail");
+  source.insert(tail, R"(
+ Instance second Of Leaf {InputPort si = child.so; InputPort sel = sel;
+  InputPort ce = ce; InputPort se = se; InputPort ue = ue; InputPort tck = tck;
+  InputPort reset = reset;}
+)");
+  const auto input = source.find("ScanInSource child.so");
+  source.replace(input, std::string("ScanInSource child.so").size(),
+                 "ScanInSource second.so");
+  const auto width = source.find("DefaultLoadValue 16'b0");
+  source.replace(width, std::string("DefaultLoadValue 16'b0").size(),
+                 "DefaultLoadValue 24'b0");
+  return source;
+}
+void TestMultipleOpaqueChildDefaults() {
+  pattern::Design design;
+  design.AddIcl("multiple.icl", MultipleOpaqueSource());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  Require(pattern::ExpandOpaqueChild(netlist) != nullptr,
+          "multiple repeated opaque leaves have one native route");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  CheckPublicSteps(netlist, scheduler.Apply(ParentWrite("5")));
+  auto second = ChildScan("60");
+  second.arguments[0] = "second.local";
+  std::vector<pattern::ScanStep> prefix;
+  const auto result =
+      scheduler.ApplyScans({ChildScan(), second}, {}, nullptr, &prefix);
+  Require(result.arguments[1] == "24" &&
+              result.arguments[3] == "0b101101001010011110010011" &&
+              scheduler.Value("head") == "101" &&
+              scheduler.Value("tail") == "10011" && prefix.empty(),
+          "disjoint opaque requests preserve exact parent and child payloads");
+}
+void TestMultipleOpaqueAggregateLimit() {
+  auto source = MultipleOpaqueSource();
+  const auto width = source.find("DefaultLoadValue 8'b0");
+  source.replace(width, std::string("DefaultLoadValue 8'b0").size(),
+                 "DefaultLoadValue 524288'b0");
+  pattern::Design design;
+  design.AddIcl("aggregate.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  Require(!pattern::ExpandOpaqueChild(netlist),
+          "aggregate opaque and parent width rejects before private expansion");
+}
+void TestMultipleOpaqueCopiesRollbackAndSubscriber() {
+  pattern::Design design;
+  design.AddIcl("multiple.icl", MultipleOpaqueSource());
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Apply(ParentWrite("5"));
+  auto second = ChildScan("60");
+  second.arguments[0] = "second.local";
+  scheduler.ApplyScans({ChildScan("165", false), second});
+  auto unknown = scheduler;
+  scheduler.ApplyScan(ChildScan("240"));
+  Rejects([&] { unknown.Apply(ParentWrite("3")); }, "length");
+  auto invalid = second;
+  invalid.arguments[1] = "9";
+  Rejects([&] { scheduler.ApplyScans({ChildScan("1"), invalid}); }, "length");
+  auto steps = scheduler.Apply(ParentWrite("3"));
+  Require(std::string(steps.back().serial.rbegin(),
+                      steps.back().serial.rend()) == "011111100000011110010011",
+          "failed later child and copied unknown length preserve every queue");
+  second.arguments[3] = "170";
+  bool subscriber = false;
+  try {
+    scheduler.ApplyScans({ChildScan("85"), second}, {}, nullptr, nullptr,
+                         [&](const auto&, const auto&) {
+                           throw std::runtime_error("subscriber");
+                         });
+  } catch (const std::runtime_error& error) {
+    subscriber = std::string(error.what()) == "subscriber";
+  }
+  Require(subscriber, "multiple-child observer throws after commit");
+  steps = scheduler.Apply(ParentWrite("2"));
+  Require(std::string(steps.back().serial.rbegin(),
+                      steps.back().serial.rend()) == "010010101011010101010011",
+          "subscriber error retains both newly committed stable payloads");
+  CheckPublicSteps(netlist, steps);
+  const auto expanded = pattern::ExpandOpaqueChild(netlist);
+  Require(expanded->intervals.size() == 2,
+          "repeated module instances have separate private descriptors");
+  for (const auto& interval : expanded->intervals) {
+    const auto& name = expanded->netlist.nodes[interval.storage].name;
+    Rejects([&] { scheduler.Value(name); }, "unknown");
+    Rejects([&] { scheduler.Assume(name, "00000000"); }, "unknown");
+  }
+}
 void TestUnusedOpaqueChildDoesNotChangePrimaryPaths() {
   const auto leaf = kOpaqueChild.substr(0, kOpaqueChild.find("Module Top"));
   pattern::Design design;
@@ -276,7 +368,8 @@ void TestOpaqueChildNativeStateAndPrivacy() {
   const auto expanded = pattern::ExpandOpaqueChild(netlist);
   Require(expanded && expanded->source_nodes == netlist.nodes.size(),
           "private expansion preserves original node IDs");
-  const auto private_name = expanded->netlist.nodes.at(expanded->storage).name;
+  const auto private_name =
+      expanded->netlist.nodes.at(expanded->intervals.front().storage).name;
   Require(!netlist.node_ids.count(private_name) &&
               netlist.nodes.at(netlist.node_ids.at("child.so")).inputs.empty(),
           "expansion leaves the source network untouched");
@@ -311,10 +404,17 @@ void TestOpaqueChildNativeStateAndPrivacy() {
       {"iWrite", {private_name, "1"}, "private reset target", {}}};
   Rejects([&] { scheduler.ResetPrerequisites(private_reset); }, "unknown");
   Rejects([&] { scheduler.CheckLocalResets(private_reset); }, "unknown");
-  Rejects([&] { scheduler.ResetPrerequisites({}, {{expanded->storage, "0"}}); },
-          "reserved resource");
   Rejects(
-      [&] { scheduler.ResetPrerequisites({}, {}, {{expanded->storage, "0"}}); },
+      [&] {
+        scheduler.ResetPrerequisites(
+            {}, {{expanded->intervals.front().storage, "0"}});
+      },
+      "reserved resource");
+  Rejects(
+      [&] {
+        scheduler.ResetPrerequisites(
+            {}, {}, {{expanded->intervals.front().storage, "0"}});
+      },
       "reserved resource");
   const auto head = netlist.node_ids.at("head");
   Rejects([&] { scheduler.Assume("head", "000", {{head, "101"}}); },
@@ -323,7 +423,8 @@ void TestOpaqueChildNativeStateAndPrivacy() {
           "guarded state assumption failure preserves native state");
   Rejects(
       [&] {
-        scheduler.Assume("head", "101", {{expanded->storage, "00000000"}});
+        scheduler.Assume("head", "101",
+                         {{expanded->intervals.front().storage, "00000000"}});
       },
       "reserved resource");
   Rejects([&] { scheduler.Value(private_name); }, "unknown");
@@ -537,6 +638,8 @@ int main() {
   for (const auto test :
        {TestScalarCompletionDefaultStableUnknown,
         TestCompletionFailureAndCopies, TestNamedRequiredCompletionAndBudget,
+        TestMultipleOpaqueChildDefaults, TestMultipleOpaqueAggregateLimit,
+        TestMultipleOpaqueCopiesRollbackAndSubscriber,
         TestUnusedOpaqueChildDoesNotChangePrimaryPaths,
         TestOpaqueExpansionRequiresActiveStaticRoute,
         TestCallbackCallerFrameProof, TestOpaqueChildNativeStateAndPrivacy,

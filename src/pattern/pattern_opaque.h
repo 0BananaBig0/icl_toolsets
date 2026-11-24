@@ -36,11 +36,16 @@ OpaqueScanModel DescribeOpaqueScans(const Netlist& netlist);
 Operation NormalizeOpaqueScan(z3::context& context,
                               const OpaqueScanModel& model,
                               const Operation& operation);
-// Private shift interval; original node IDs and the exported model stay intact.
+struct OpaqueChildInterval {
+  size_t client = 0, storage = 0;
+  std::string default_load;
+};
+// Private shift intervals; original node IDs and the exported model stay
+// intact.
 struct OpaqueChildModel {
   Netlist netlist;
-  size_t source_nodes = 0, client = 0, root = 0, storage = 0;
-  std::string default_load;
+  size_t source_nodes = 0, root = 0;
+  std::vector<OpaqueChildInterval> intervals;
 };
 std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
     const Netlist& netlist);

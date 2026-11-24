@@ -586,6 +586,9 @@ std::string Generate(
           append_steps(preparations);
           for (const auto& scan : applied) result += OperationText(scan);
           result += together ? "iApply -together\n" : "iApply\n";
+          for (const auto& note : scheduler.OpaqueScanNotes()) {
+            result += OperationText(note);
+          }
           clocks.Invalidate();
           pending_scans.clear();
           pending_scan_bits = 0;
@@ -694,6 +697,7 @@ std::string Generate(
         // Reset-only rewriting retains the original operation indices/text.
         // Normal output uses MergeOperations to order notes and batch calls.
       } else if (operation.command == "iNote") {
+        scheduler.RestoreOpaqueScanNote(operation);
         std::vector<std::string> words{operation.command};
         words.insert(words.end(), operation.arguments.begin(),
                      operation.arguments.end());

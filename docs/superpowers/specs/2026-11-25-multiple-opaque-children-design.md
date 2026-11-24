@@ -31,8 +31,18 @@ whole group succeeds. Ordinary parent accesses include all required default/
 stable loads and hide every private register from public frames/observations.
 Raw requests project into intersecting child intervals, with exact root and
 local inversion handling. Index intervals by root offsets; avoid per-request
-full scans of all children. Copy/reset and failed subscriber semantics retain
-the existing transactional contract.
+full scans of all children. Scheduling failures roll back every queue; a
+post-commit subscriber error retains all committed payloads, as in the existing
+single-child API. Copy/reset preserve independent queue state.
+
+Generated-prefix continuation must preserve heterogeneous length knowledge.
+One root -stable flag cannot represent one unknown child and another stable
+child. After such a real root CSU, emit standard iNote annotations for the
+stable child intervals. Validate client identity, width, payload and a matching
+preceding committed scan before restoring queue knowledge; add no hardware
+operation or actual observation. Replay the annotations in generation and the
+modeled readback scheduler. Single-child/all-stable/all-unknown output needs
+no annotation. This closes the retained prefix regression, not a new CLI mode.
 
 Alternatives: calling the single-child expansion repeatedly repeats whole
 network validation and cannot certify disconnected intervening opaque nodes;

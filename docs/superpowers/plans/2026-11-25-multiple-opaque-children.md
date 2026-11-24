@@ -19,7 +19,7 @@ No dependencies, RTL, public options, timing or hardware-transport invention.
 ## Review focus
 - Repeated instances of one leaf module keep independent default/stable/length state.
 - Root and local inversion/offset projections do not swap child payloads or histories.
-- Failure in any child or subscriber commits no partial native/queue state.
+- Scheduling failures roll back all children; post-commit subscriber errors retain all committed payloads.
 - Every private interval stays unknown and absent from public targets, frames and exports.
 - Missing, disconnected, overlapping or side-channel opaque routes never gain fabricated behavior.
 - Measured child/request scaling avoids repeated whole-network scans and meets unchanged bounds.
@@ -28,6 +28,8 @@ No dependencies, RTL, public options, timing or hardware-transport invention.
 
 **Files:** Modify src/pattern/pattern_opaque.h/.cc,
 src/pattern/pattern_scheduler.cc, tests/src/pattern/pattern_opaque_test.cc.
+Modify src/pattern/pattern_scheduler.h, src/pattern/pattern_readback.cc and
+src/pattern/icl_pattern_generation_main.cc for validated generated-prefix notes.
 Create tests/src/pattern/test_multiple_opaque_children.py and
 tests/src/pattern/benchmark_multiple_opaque_children.py. Modify Makefile and
 current guide/model/tracker docs. Add another affected existing test only
@@ -39,23 +41,27 @@ default_load}; OpaqueChildModel retains netlist/source_nodes/root and owns
 intervals. Scheduler queue state is keyed by client node ID. OpaqueRawState
 returns candidate per-client queues and fills a vector of completions;
 ApplyScans applies all completions. Existing public scheduler signatures stay.
+Add OpaqueScanNotes() and RestoreOpaqueScanNote(const Operation&) to preserve
+heterogeneous stable knowledge after one serialized root scan; no CLI option.
 
-- [ ] Step1: Add native and CLI regressions for repeated two-child default/
+- [x] Step1: Add native and CLI regressions for repeated two-child default/
   stable completion, simultaneous disjoint requests, actual unknown histories,
   resets/cancellation, parent state and private exports. Run with immutable
   parent; expected disconnected-route failure. Retain single-child controls.
-- [ ] Step2: Generalize expansion with shared route/privacy validation and
+- [x] Step2: Generalize expansion with shared route/privacy validation and
   per-instance descriptors, then scheduler queue candidates and ordered raw
   interval projections. Expected focused native and source/flat/generated
   cases pass with unchanged public contracts.
-- [ ] Step3: Add negative/rollback/copy/subscriber, sparse/inverted, modeled
+- [x] Step3: Add negative/rollback/copy/subscriber, sparse/inverted, modeled
   sibling, namespace/split/local-reset and invalid route/length cases.
+  Include generated-prefix continuation with one unknown child and another
+  stable child; reject unanchored, malformed and mismatched knowledge notes.
   Expected no partial state/publication or private leakage, exact actual data.
-- [ ] Step4: Add the measured2/8/32-child,8/64/256/1024-bit replay matrix and
+- [x] Step4: Add the measured2/8/32-child,8/64/256/1024-bit replay matrix and
   supported immutable-parent single-child controls. Check complete outputs,
   dimensions, actual histories/status, time/RSS and binary/input hashes.
   Expected unchanged10s/512MiB and existing wide-control limits.
-- [ ] Step5: Run full normal/static generator,30freshnative, affected SAN CLI/
+- [x] Step5: Run full normal/static generator,30freshnative, affected SAN CLI/
   corpus, C++ quality and packaging. Expected no regression; record exact
   source/product hashes and actual corpus classifications.
 - [ ] Step6: Commit and run one fresh independent final review. Re-grade,
