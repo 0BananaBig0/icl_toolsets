@@ -34,21 +34,27 @@ docs; create tests/src/pattern/test_word_model_decoding.py and
 tests/src/pattern/benchmark_word_model_decoding.py. Maintain existing native tests
 only if public scheduling checks need additional coverage.
 
+Measured reporting gap: also create tests/src/pattern/test_benchmark_word_model_decoding.py
+to run a real small generator matrix with a controlled elapsed clock. The test
+must retain all eight rows and still report failure after a timing-bound miss.
+It passes separately on normal/static/sanitizer products; it is not added to the
+unchanged default generator-suite count.
+
 **Interfaces:** Consume private Decode(model, SymbolicValue), returning string;
 preserve that signature and every caller. Reuse benchmark_downstream_write_callbacks
 fixture and benchmark_merged_callbacks.checked_frames for exact workload checks.
 
-- [ ] Step1: Add width/mask/serial replay correctness cases and benchmark with
+- [x] Step1: Add width/mask/serial replay correctness cases and benchmark with
   three parent/current64/128/256 runs, smaller sanitizer and wide512/1024 runs.
-- [ ] Step2: Run parent performance assertion; expect256 to exceed10s. Run
+- [x] Step2: Run parent performance assertion; expect256 to exceed10s. Run
   correctness cases on parent to establish unchanged behavior before editing.
-- [ ] Step3: Decode whole known/value expressions once; skip literal model
+- [x] Step3: Decode whole known/value expressions once; skip literal model
   evaluation and value evaluation for wholly unknown words, pad and overlay x.
-- [ ] Step4: Run focused normal/static/sanitizer tests and measured benchmark;
+- [x] Step4: Run focused normal/static/sanitizer tests and measured benchmark;
   expect exact outputs, physical events and bounds specified by the design.
-- [ ] Step5: Run full required regression/corpus/quality/package checks, record
+- [x] Step5: Run full required regression/corpus/quality/package checks, record
   reproducible evidence and current documentation, then commit selected changes.
-- [ ] Step6: Obtain one fresh whole-branch review; ledger/defer Minors and fix
+- [x] Step6: Obtain one fresh whole-branch review; ledger/defer Minors and fix
   blockers in one test-first pass, rerunning affected required checks.
 - [ ] Step7: Merge into master, verify merged inputs/products and checks, push,
   safely delete task branch, archive its ledger and continue pending inventory.
@@ -59,3 +65,10 @@ merged/pushed clean master, only owned branch removed and117 stashes retained.
 
 Self-review: one shared interface and one task; no cross-task dependencies.
 Prior full qualification remains valid only for unchanged sources/products.
+
+Final measurement ruling: all 72 outputs match, but four 256-target source/flat
+runs exceed the unchanged 10-second bound. Record the 36.8% median improvement
+and retained failures; do not claim 256-target latency closure. The smaller
+sanitizer matrix uses 16 targets after 64 exceeded 512MiB. Final 68 gates include
+three standalone reporting regressions and fresh packaging, with exact unchanged
+4,042 shared inputs/38 products and executed benchmark/new-test hashes.

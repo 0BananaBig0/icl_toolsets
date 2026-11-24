@@ -54,3 +54,23 @@ C++ quality and source packaging. Use one fresh whole-branch review, one
 test-first blocker fix pass, and ledger Minors. Merge into master, verify merged
 inputs/products and checks, push, delete only this branch, archive its ledger.
 This does not close the broader inventory10 or the other pending inventory.
+
+## Measured outcome
+
+The shared decoder change passes all required behavioral checks. Three-run
+256-target source medians fall from 15.9208s to 10.0586s (36.8%). All 72 complete
+parent/current source/flat/generated outputs match, including 1,028 physical
+frames and 1,024 callback postconditions. Four 256-target current runs miss the
+unchanged 10-second bound, so 256-target latency closure remains open as allowed
+above. The 64-target sanitizer case exceeded 512MiB; the smaller matched sanitizer
+matrix uses 16 targets, preserving prior callback qualification practice.
+
+An actual budget miss made the review's early-exit reporting finding Important:
+one test-first fix collects the complete matrix and returns failure at the end.
+The real-generator regression fails at 2 rows instead of 8 before the fix, then
+passes on normal/static/sanitizer products. Timeout child cleanup is still a
+deferred Minor; 17 total Minors include 16 inherited. All 68 final gates pass with
+75x1211 tests per generator, 4,044 input hashes and 38 executable hashes. Unchanged
+build/test inputs and products justify retaining 64 actual gates after the
+benchmark-only fixes; packaging is freshly rerun and 3 reporting gates are added.
+No state is pruned and no resource threshold or solver constraint is weakened.

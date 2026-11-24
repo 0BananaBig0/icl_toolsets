@@ -33,6 +33,7 @@ def main():
     report = {'environment': platform.platform(), 'binaries': {
         owner: {'path': str(path), 'sha256': base.digest(path)}
         for owner, path in binaries.items()}, 'runs': []}
+    bound_failures = []
 
     def run(owner, targets, width, repeat, form, icl, pdl, reference=None):
         folder = Path(tempfile.mkdtemp(prefix='%s-%d-%d-%s-' %
@@ -74,11 +75,14 @@ def main():
         print('%s %d/%d %s %.4fs %dKiB' %
               (owner, targets, width, form, elapsed, int(rss)), flush=True)
         if owner != 'parent' and not within_bound:
-            raise RuntimeError('current run exceeds10s/%dKiB: %s' % (cap, folder))
+            bound_failures.append(str(folder))
         return data, output
 
-    cases = [(size, 4) for size in args.sizes]+[(1, width) for width in args.wide_widths]
-    for targets, width in cases:
+    cases = ([(size, 4, False) for size in args.sizes] +
+             [(1, width, False) for width in args.wide_widths])
+    if args.sanitized:
+        cases.append((min(16, min(args.sizes)), 4, True))
+    for targets, width, sanitized in cases:
         fixture_dir = Path(tempfile.mkdtemp(prefix='fixture-', dir=args.output))
         icl, pdl = fixture_dir/'source.icl', fixture_dir/'source.pdl'
         model, commands = base.fixture(targets, 'automatic', width)
@@ -86,18 +90,16 @@ def main():
         pdl.write_text(commands)
         for repeat in range(args.repeats):
             reference, _ = run('parent', targets, width, repeat, 'source', icl, pdl)
-            _, generated = run('current', targets, width, repeat, 'source', icl, pdl, reference)
+            owner = 'sanitized' if sanitized else 'current'
+            _, generated = run(owner, targets, width, repeat, 'source', icl, pdl, reference)
             if not args.source_only:
-                run('current', targets, width, repeat, 'flat',
+                run(owner, targets, width, repeat, 'flat',
                     generated.parent/'debug/Chains.icl', pdl, reference)
-                run('current', targets, width, repeat, 'generated', icl, generated, reference)
-            if args.sanitized and targets == min(args.sizes) and width == 4:
-                _, generated = run('sanitized', targets, width, repeat, 'source', icl, pdl, reference)
-                if not args.source_only:
-                    run('sanitized', targets, width, repeat, 'flat',
-                        generated.parent/'debug/Chains.icl', pdl, reference)
-                    run('sanitized', targets, width, repeat, 'generated', icl, generated, reference)
-    print(json.dumps({'runs': len(report['runs']), 'matched_outputs': True}))
+                run(owner, targets, width, repeat, 'generated', icl, generated, reference)
+    print(json.dumps({'runs': len(report['runs']), 'matched_outputs': True,
+                      'bound_failures': bound_failures}))
+    if bound_failures:
+        raise RuntimeError('timing/memory bounds failed: '+', '.join(bound_failures))
 
 
 if __name__ == '__main__':

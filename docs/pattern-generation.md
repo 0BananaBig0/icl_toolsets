@@ -10,6 +10,10 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
+Latest: Task165 qualifies whole-word model decoding with 68 gates,
+75 suites/1,211 tests per generator and 72 matched measured runs.
+See [Task165 evidence](remaining-work.md#task165-qualified-increment).
+
 Task143 completes the inventory's state-dependent/identical-argument caller
 reset repair:40 caller methods,35 reservation methods and compound12 pass.
 All52 generator suites/879 cases per dynamic/static variant, fresh sanitizer
@@ -9683,3 +9687,36 @@ Functional regressions check actual frame boundaries. The total deferred Minor
 count is 16. All 28 merged-result checks pass on identical 4,041 inputs and 20 copied
 qualified executables, with 117 stashes preserved. Broader inventory and
 excluded coverage item1 stay open.
+
+
+## Whole-word model decoding (Task165)
+
+Scheduler replay evaluates each complete Z3 word and known mask once,
+then converts them locally. Declared widths, leading zeros and unknown
+bits are preserved, including values wider than machine integers. Solver
+constraints, objectives, modeled storage and event checks are unchanged.
+
+The matched 256-target source median falls from 15.9208s to 10.0586s (36.8%).
+This reduces decoding cost per word; it does not establish linear total
+scaling or qualify unmeasured larger/resettable networks. Full output
+comparisons retain all 1,028 physical frames and 1,024 callback postconditions.
+The complete evidence is in build/connected-callback-scale-20261124/.
+
+Reproduce the matched normal matrix with a retained parent executable:
+
+```sh
+python3 tests/src/pattern/benchmark_word_model_decoding.py \
+  --binary build/icl-pattern-generation \
+  --parent build/connected-callback-scale-20261124/parent/icl-pattern-generation \
+  --output /tmp/icl-word-decoding-measurements
+```
+
+The benchmark checks complete parent/current output and exact physical
+frames, with three repeats at 64/128/256 targets and 512/1024-bit payloads.
+Use --sanitized with a leak-enabled build to add a matched 16-target
+sanitizer matrix. Timing/memory misses are recorded without suppressing
+later measurements, and the completed benchmark returns failure if any
+current bound is missed. Earlier retained 256 normal and 64 sanitizer runs
+missed time/memory bounds; the measured speedup is not a general latency
+guarantee. A 60-second wrapper timeout can leave its child running; that
+benchmark limitation remains deferred. See the [qualification record](remaining-work.md#task165-qualified-increment) for checks and scope.
