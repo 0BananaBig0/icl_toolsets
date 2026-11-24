@@ -97,15 +97,22 @@ SymbolicValue ResetValue(const SymbolicValue& control,
                 {previous.bits & known, known});
 }
 std::string Decode(const z3::model& model, const SymbolicValue& value) {
-  std::string bits;
-  for (unsigned i = value.bits.get_sort().bv_size(); i > 0; --i) {
-    bits +=
-        model.eval(value.known.extract(i - 1, i - 1), true)
-                    .get_numeral_uint() == 0
-            ? 'x'
-        : model.eval(value.bits.extract(i - 1, i - 1), true).get_numeral_uint()
-            ? '1'
-            : '0';
+  const unsigned width = value.bits.get_sort().bv_size();
+  const auto binary = [&](const z3::expr& expression) {
+    const auto number =
+        expression.is_numeral() ? expression : model.eval(expression, true);
+    std::string bits;
+    if (!number.as_binary(bits)) {
+      throw std::runtime_error("non-numeral symbolic model value");
+    }
+    bits.insert(0, width - bits.size(), '0');
+    return bits;
+  };
+  const auto known = binary(value.known);
+  if (known.find('1') == std::string::npos) return std::string(width, 'x');
+  auto bits = binary(value.bits);
+  for (unsigned i = 0; i < width; ++i) {
+    if (known[i] == '0') bits[i] = 'x';
   }
   return bits;
 }

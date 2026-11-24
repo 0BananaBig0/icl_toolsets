@@ -27,7 +27,7 @@ whole values and known masks using installed Z3, pad to width and overlay x.
 - Serial/TAP/parallel replay shares Decode and must retain full native checks.
 - Performance comparisons must use equivalent inputs, outputs and build modes.
 
-### Task1: Optimize and qualify shared model decoding
+### Task 1: Optimize and qualify shared model decoding
 
 **Files:** Modify src/pattern/pattern_scheduler.cc, Makefile and current evidence
 docs; create tests/src/pattern/test_word_model_decoding.py and
