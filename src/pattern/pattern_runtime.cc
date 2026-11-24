@@ -473,7 +473,12 @@ class Runtime::Impl {
     }
   }
 
-  void RestoreCallbackReadInvalidation(const std::string& note) {
+  void RestoreCallbackReadInvalidation(const Operation& operation) {
+    const auto& arguments = operation.arguments;
+    const bool tagged = arguments.size() == 2 && (arguments[0] == "-comment" ||
+                                                  arguments[0] == "-status");
+    if (!tagged && arguments.size() != 1) return;
+    const auto& note = arguments[tagged ? 1 : 0];
     const std::string prefix = "modeled callback read history unavailable ";
     if (note.rfind(prefix, 0) != 0) return;
     const auto separator = note.find(' ', prefix.size());
@@ -486,7 +491,7 @@ class Runtime::Impl {
         !netlist_->nodes[node->second].read_callback ||
         requested.size() != netlist_->nodes[node->second].Width() ||
         requested.find_first_not_of("01") != std::string::npos) {
-      throw std::runtime_error("invalid callback read history annotation");
+      return;
     }
     InvalidateCallbackRead(node->second, requested);
   }
@@ -1021,8 +1026,8 @@ class Runtime::Impl {
           if (readback_) {
             operations_.push_back(
                 {"iNote",
-                 {"modeled callback read history unavailable " +
-                  request.requested + " " + node.name},
+                 {"-comment", "modeled callback read history unavailable " +
+                                  request.requested + " " + node.name},
                  source.origin,
                  source.call_stack,
                  false,
@@ -1778,7 +1783,7 @@ class Runtime::Impl {
     }
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
     if (name == "iNote" && netlist_) {
-      RestoreCallbackReadInvalidation(operation.arguments.at(0));
+      RestoreCallbackReadInvalidation(operation);
     }
     operation.callback_execution = !callback_stack_.empty();
     operation.callback_read_execution = read_callback_depth_ != 0;

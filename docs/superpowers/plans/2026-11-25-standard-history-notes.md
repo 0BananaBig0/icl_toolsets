@@ -28,14 +28,14 @@ tests/src/pattern/benchmark_read_callback_histories.py and task documentation.
 **Interfaces:** Consume Operation.arguments and existing typed Command rendering;
 preserve public Runtime APIs and existing invalidation masks.
 
-- [ ] Step1: Add tests for empty/malformed/extra notes preserving seeded histories
+- [x] Step1: Add tests for empty/malformed/extra notes preserving seeded histories
   and status, typed/status/legacy generated prefixes preserving sparse unavailable
   callback bits and actual q=9, duplicate metadata and quoted generated comments.
   Run the focused module on parent binary. Expected intended failures only.
-- [ ] Step2: Select valid legacy or typed note text before restoration, ignore
+- [x] Step2: Select valid legacy or typed note text before restoration, ignore
   malformed metadata, emit tagged comments and align direct benchmark controls.
   Run focused normal/static/SAN modules. Expected all pass and no invented data.
-- [ ] Step3: Run full normal/static generator,30native normal/SAN, affected SAN
+- [x] Step3: Run full normal/static generator,30native normal/SAN, affected SAN
   histories/callbacks, C++ quality and source packaging. Record hashes and results.
   Run callback benchmark source/flat/generated controls with unchanged bounds.
   Expected every required check passes; report actual classifications unchanged.

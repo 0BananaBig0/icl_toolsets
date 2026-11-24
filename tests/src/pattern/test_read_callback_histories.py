@@ -218,16 +218,70 @@ iNote [iGetMiscompares observed[3:2] -bin]
                 self.assertIn(b'iWrite p 0b0000\n', generated)
                 self.assertEqual(self.notes(generated)[-3:], [b'unavailable', b'0b01' if seed else b'0bxx', b'0b10' if seed else b'0bxx'])
 
-    def test_invalid_history_annotations_preserve_output(self):
-        model, pdl, output = (self.root/name for name in ('source.icl', 'source.pdl', 'result.pdl'))
-        model.write_text(MODEL)
+    def test_malformed_history_notes_preserve_seeded_histories(self):
         for payload in ('1111', '111 observed', '1x11 observed', '1111 p', '1111 missing'):
-            with self.subTest(payload=payload):
-                pdl.write_text(PROCS+'iNote {modeled callback read history unavailable '+payload+'}\n')
-                output.write_bytes(b'retained')
-                diagnostic = self.run_tool(model, pdl, ok=False)
-                self.assertIn('invalid callback read history annotation', diagnostic)
-                self.assertEqual(output.read_bytes(), b'retained')
+            for tag in ('', '-comment ', '-status '):
+                with self.subTest(payload=payload, tag=tag):
+                    output = self.check('''iState observed 5 -LastReadValue
+iState observed 10 -LastMiscompareValue
+iState p 9; iRead q 0; iApply
+'''+ 'iNote '+tag+'{modeled callback read history unavailable '+payload+'}\n'+'''
+iNote [iGetReadData observed -dec]; iNote [iGetMiscompares observed -dec]
+iNote [iGetReadData q -dec]; iNote [iGetStatus]
+''')
+                    self.assertEqual(self.notes(output), [b'5', b'10', b'9', b'2'])
+
+    def test_empty_and_extra_argument_notes_remain_informational(self):
+        model, pdl = self.root/'source.icl', self.root/'source.pdl'
+        model.write_text(MODEL)
+        for command in ('iNote', 'iNote -comment', 'iNote -status',
+                        'iNote {modeled callback read history unavailable 1111 observed} extra',
+                        'iNote -unknown {modeled callback read history unavailable 1111 observed}',
+                        'iNote -comment {modeled callback read history unavailable 1111 observed} extra'):
+            with self.subTest(command=command):
+                body = '''iState observed 5 -LastReadValue
+iState observed 10 -LastMiscompareValue
+'''+command+'\n'
+                output = self.check(body+'''iState p 9; iRead q 0; iApply
+iNote [iGetReadData observed -dec]; iNote [iGetMiscompares observed -dec]
+iNote [iGetReadData q -dec]; iNote [iGetStatus]
+''')
+                self.assertEqual(self.notes(output)[-4:], [b'5', b'10', b'9', b'2'])
+                pdl.write_text(PROCS+body+'iWrite p 9; iApply\n')
+                self.assertIn(b'iWrite p 0b1001\n', self.run_tool(model, pdl, modeled=False))
+
+    def test_standard_and_legacy_prefix_notes_restore_sparse_unavailable_bits(self):
+        model, prefix, suffix = (self.root/name for name in ('source.icl', 'prefix.pdl', 'suffix.pdl'))
+        model.write_text(MODEL)
+        prefix.write_text(PROCS+'''iState observed 5 -LastReadValue
+iState observed 10 -LastMiscompareValue
+iState p 9; iRead observed[1:0] 0; iApply
+''')
+        generated = self.run_tool(model, prefix, 'prefix-out.pdl')
+        marker = b'modeled callback read history unavailable 0011 observed'
+        annotations = [line for line in generated.splitlines() if marker in line]
+        self.assertEqual(len(annotations), 1)
+        suffix.write_text('''iPDLLevel 1
+if {![catch {iGetReadData observed[1:0]}]} {error invented_read}
+if {![catch {iGetMiscompares observed[1:0]}]} {error invented_miscompare}
+iNote [iGetReadData observed[3:2] -bin]
+iNote [iGetMiscompares observed[3:2] -bin]
+iNote [iGetReadData q -dec]; iNote [iGetStatus]
+''')
+        reference = self.run_tool(model, prefix, 'reference.pdl', extra=('--pdl', str(suffix)))
+        for tag in ('-comment', '-status', 'legacy'):
+            with self.subTest(tag=tag):
+                annotation = (b'iNote {'+marker+b'}' if tag=='legacy' else
+                              b'iNote '+tag.encode()+b' "'+marker+b'"')
+                replay = self.root/'replay.pdl'
+                replay.write_bytes(generated.replace(annotations[0], annotation+b'\n'+annotation))
+                for index, source in enumerate((model, self.root/'debug/Chains.icl')):
+                    output = self.run_tool(source, replay, tag+'/'+str(index)+'/result.pdl',
+                                           extra=('--pdl', str(suffix)))
+                    self.assertEqual(self.notes(output), [b'0b01', b'0b10', b'9', b'1'])
+                    self.assertEqual([line for line in output.splitlines() if line.startswith(b'iRead ')],
+                                     [line for line in reference.splitlines() if line.startswith(b'iRead ')])
+        self.assertEqual(annotations, [b'iNote -comment "'+marker+b'"'])
 
 
 if __name__ == '__main__':

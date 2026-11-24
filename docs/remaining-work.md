@@ -658,3 +658,48 @@ multi-TAP/timed/physical/merge/history/transport work. Item1 remains excluded;
 All 17 Task172 merged-result checks pass on identical 4,062 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+
+## Task173 standard callback history notes
+
+Empty iNote commands and malformed callback-history text now remain
+informational. Runtime selects a note's text only for a one-argument legacy
+note or a two-argument standard comment/status note. Unknown tags and extra
+arguments cannot invalidate seeded history. Invalid masks, widths, targets
+and non-callback names are ignored under IEEE1687-2014 section7.9.21,
+printed180; no note text raises the former history-annotation error.
+
+New callback-history metadata uses quoted iNote -comment text. Both standard
+tags and existing legacy generated prefixes restore exactly the requested
+unavailable bits. Matching repeats are idempotent. Ordinary endpoint actual
+data, miscompares/status and unaffected callback bits remain intact. Notes
+cannot provide actual callback data. Existing local-reset and merge replay
+continue through the same Runtime and renderer.
+
+The actual parent reproducer aborts an empty note with a vector range error.
+Test-first regressions also expose malformed-note aborts, extra-argument
+history invalidation, standard tagged prefixes inventing seeded read data,
+and untagged generated metadata. All17 focused methods now pass in normal,
+static and leak-enabled sanitizer builds. Their literal partial-read example
+has actual q=9, one compared low-bit mismatch, unaffected upper read bits01
+and miscompare bits10, with requested lower callback histories unavailable.
+
+All52 qualification gates pass on4,062input/38product hashes:81suites/
+1,295methods in each full normal/static generator regression,15normal and
+15SAN native suites, affected SAN callback/history/opaque checks, three C++
+quality checks, corpus checks, four reporting methods per variant and the
+complete source distribution/install/uninstall/archive-native check.
+
+The maintained callback benchmark passes378 timing/RSS processes:16/64/128
+calls at4bits and two calls at512/1024bits for PIO/raw routes, with three
+source/flat/generated repeats of parent serial, current serial/merged/
+unobserved modes. SAN checks16calls/4bits in both route kinds and all forms.
+Direct parent controls carry the same standard comment text. Every full
+output, actual observation list and two-applies-per-call count is checked
+under the existing10s and512MiB/256MiB bounds. Peak across all owners is
+0.8180s/437940KiB. No speedup is claimed.
+
+All2,562 corpus identities and classifications remain1,032canonical,
+44unsupported AccessLink cases and687default elaboration failures. Broader
+inventory2–8/10–12 stays open, item1 stays excluded, and inherited27Minors
+remain deferred. Final review and integration are recorded below.
