@@ -8397,8 +8397,9 @@ merge boundaries in the internal operation stream, preserving completed work
 while reset discards the unfinished queue.
 
 Caller Apply groups must contain only callback requests. Mixed callback/ordinary
-or raw groups, aliases spanning both kinds, AccessTogether callback aliases, -together, and a callback Apply
-inside an active iMerge reject before invocation. Logical callback storage
+or raw groups, aliases spanning both kinds, AccessTogether callback aliases and
+-together reject before invocation. For callbacks in valid merge calls, see
+[serial callback merge execution](#callbacks-within-merge-calls). Logical callback storage
 cannot be taken or released, including by a whole-instance reservation; ordinary
 endpoint resource checks still apply. Automatic callbacks needed while solving
 downstream access goals remain open.
@@ -9319,7 +9320,7 @@ existing fail-closed observation rules.
 The ordinary request can use an ordinary-only alias, and callbacks can use
 callback-only aliases, masks, namespace/prefix and split inputs. One alias
 combining ordinary and callback bits remains unsupported, as do automatic
-downstream invocation, invoking callbacks within an active iMerge,
+downstream invocation,
 iApply -together, mixed raw caller requests, physical callback output and actual
 invoked ReadCallBack histories. ReadCallBack generation keeps its previous
 non-model behavior. Existing ordinary endpoint merges within a callback body
@@ -9453,7 +9454,7 @@ Conflicting known caller/procedure values reject: a caller request for `p=3`
 cannot silently become the procedure's `p=9`. Caller-only local-reset rewriting
 retains the original iProc bytes, including mixed-alias callers.
 
-AccessTogether, `iApply -together`, callback dispatch inside an active iMerge,
+AccessTogether, `iApply -together`,
 mixed raw requests, automatic downstream invocation and physical callback output
 retain their guards. Ordinary endpoint merges inside a procedure keep their
 existing behavior. Broader items4/6 and excluded coverage1 stay as tracked in
@@ -9464,9 +9465,10 @@ are recorded after verification.
 Task162 qualifies mixed ordinary/callback alias bits while preserving the
 original request and compact ordinary runs. Full, partial, sparse, inverted,
 nested, duplicate and ascending segmented selections retain actual ordinary
-history and once-only callback dispatch. Invoked read-callback modeled histories,
-active callback iMerge, automatic downstream invocation and physical callbacks
-retain their existing limits.
+history and once-only callback dispatch. At that checkpoint, invoked read-callback
+modeled histories, active callback iMerge, automatic downstream invocation and
+physical callbacks retained their existing limits. Current transparent downstream
+and callback-merge support is described in the later sections.
 
 All61 final gates pass:15 normal/15 leak-enabled sanitizer native suites,
 72 suites/1169 methods per normal/static generator,16 mixed-alias CLI methods
@@ -9586,11 +9588,97 @@ and general cyclic staged scheduling remain open. Native proof still rejects
 shared-enable collateral unknowns when the matched explicit sequence also
 cannot execute. Plain expected reads do not request controlling callback writes.
 Actually invoked automatic callback histories reject `--model_readback`;
-physical callback output and actual dispatch inside active caller `iMerge`
-retain their guards. If filtering leaves no invocation, native raw/together/
+physical callback output retains its guard. Callback-containing calls inside
+`iMerge` use the [serial fallback described below](#callbacks-within-merge-calls). If filtering leaves no invocation, native raw/together/
 AccessTogether/iMerge semantics apply. Complete cared destination masks matching
 immediate controlling `iState` declarations need no load; these ordinary hints
 clear at Apply, iRunLoop and reset, and native proof remains authoritative.
 Mixed callback order follows effective operation and selected operand position.
 
 Task163 passes63 final qualification gates:15 native and15 leak-enabled sanitizer suites,73 suites/1189 methods in each generator variant,15 C++ quality checks, source packaging and4039 input/38 product hashes. The72 regular downstream processes peak at4.2884s/373760KiB; six512/1024-bit runs peak at1.1308s/121236KiB. All324 new/preserved matrix and guide processes plus4 dynamic allocation probes pass. Independent review found0Critical/5Important/1Minor; one test-first pass fixes all five Important findings. The benchmark checks postcondition counts, widths and allowed names; exact ordered register/value pairs remain a deferred Minor. Functional regressions check identities and payloads. All26 merged-result checks pass on identical4039 inputs and20 copied qualified executables, with117 stashes preserved. Broader inventory and excluded coverage item1 remain open.
+
+
+## Callbacks within merge calls
+
+An iCall inside iMerge can invoke explicit read/write callbacks or the supported
+transparent downstream write prerequisites. The generator runs each
+callback-containing call as a complete serial stream, preserving its Apply order.
+Independent neighboring ordinary calls can still use existing batching. IEEE1687
+7.9.18 permits serial execution; iMerge does not promise concurrent callbacks.
+Ordinary calls inside an already-running callback retain their existing batching;
+genuine nested callback dispatch remains serial. If an established prerequisite
+needs no invocation, its call retains ordinary batching.
+
+Save the model as `merged.icl`:
+
+```icl
+Module Chains {
+ DataInPort en;
+ DataInPort p[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en;}
+}
+```
+
+Save the program as `merged.pdl`:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Chains
+set ::calls 0
+iProc store {data reg} {
+ incr ::calls
+ iNote "$reg=$data"
+ iWrite en 0
+ iWrite p $data
+}
+iProc access {data} {iWrite dest $data; iApply}
+iReset
+iMerge -begin
+iCall access 9
+iCall access 6
+iMerge -end
+if {$::calls != 2} {error callback_count}
+```
+
+Generate from source, flattened model and expanded program:
+
+```sh
+build/icl-pattern-generation --icl merged.icl --pdl merged.pdl --top_module Chains --output source.pdl --debug
+build/icl-pattern-generation --icl debug/Chains.icl --pdl merged.pdl --top_module Chains --output flat.pdl
+build/icl-pattern-generation --icl merged.icl --pdl source.pdl --top_module Chains --output generated.pdl
+```
+
+The source and flat programs invoke store twice, with value9 then value6. For
+each call, generated endpoint writes set en0 and p to the requested four-bit
+value, record a logical callback postcondition, then set en1 for dest. Expanded
+replay retains the literal notes and endpoint operations and invokes no callback.
+Neither the notes nor logical postconditions are observed device data.
+
+Reset is still forbidden inside merge calls, including callback bodies; keep it
+outside the block as shown. Merge entry and called-procedure return require an
+empty Apply queue. Direct merged calls also require an empty queue at entry: a
+caught incomplete return cannot transfer queued work to a sibling call. Preflight
+retry within the same call remains supported. A failed callback still poisons its queue, and reset cannot be
+used to recover while the merge remains active. Caller resource reservations,
+callback preflight and -together/AccessTogether/raw-group restrictions remain.
+Modeled iMerge histories remain unsupported when a getter requests observation
+deltas; read-callback/automatic history and physical callback-output guards also
+remain. These restrictions do not prevent ordinary expanded replay.
+
+Task164 passes 64 final qualification gates: 15 normal and 15 leak-enabled
+sanitizer native suites, 74 suites and 1,208 methods in each generator
+variant, 12 C++ quality checks, source packaging, and exact hashes for 4,041
+inputs and 38 executables. The 72 regular merged-callback runs peak at
+4.5367s/394712KiB; six 512/1024-bit runs peak at 1.1075s/121104KiB. All 405
+new and preserved matrix/example processes and four dynamic allocation probes
+pass.
+
+Independent review found zero Critical, three Important and one Minor finding.
+One test-first pass fixes pending-queue transfer between calls, inherited
+callback-context barriers, and filtered prerequisite anchors. The benchmark
+checks ordered register/value postconditions and endpoint frames separately;
+checking their relative Apply-group placement remains a deferred Minor.
+Functional regressions check actual frame boundaries. The total deferred Minor
+count is 16. Integration remains pending; broader inventory and excluded
+coverage item1 stay open.

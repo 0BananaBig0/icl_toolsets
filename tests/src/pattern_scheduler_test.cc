@@ -4388,6 +4388,42 @@ Module OneHotBudget {
   Require(ordinary.Resolve(source).size() == 1,
           "ordinary callers retain the per-source budget");
 }
+void TestCallbackMergeBarriers() {
+  pattern::Design design;
+  design.AddIcl("merge_barriers.icl", R"(
+Module Top {
+ DataInPort a; DataInPort b;
+ DataRegister value {WriteCallBack Top store <D>;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const bool callback_owner : {false, true}) {
+    for (const int marker : {0, 1, 2}) {
+      std::vector<pattern::Operation> operations = {
+          {"iMerge", {"-begin"}, "begin", {}},
+          {"iWrite", {marker == 1 ? "value" : "a", "1"}, "first", {"first"}},
+          {"iApply", {}, "first", {"first"}},
+          {"iWrite", {"b", "0"}, "second", {"second"}},
+          {"iApply", {}, "second", {"second"}},
+          {"iMerge", {"-end"}, "end", {}}};
+      operations[1].callback = marker == 1;
+      for (auto& operation : operations) {
+        operation.callback_execution = callback_owner;
+      }
+      operations[1].callback_execution = callback_owner || marker == 2;
+      const auto ordered = pattern::MergeOperations(netlist, operations, true);
+      Require(std::count_if(
+                  ordered.begin(), ordered.end(),
+                  [](const auto& op) { return op.command == "iApply"; }) ==
+                  (marker == 1 || (marker == 2 && !callback_owner) ? 2 : 1),
+              "callback provenance keeps complete merge calls serial");
+      Require(ordered.front().arguments == operations[1].arguments &&
+                  ordered.front().callback == operations[1].callback &&
+                  ordered.front().callback_execution ==
+                      operations[1].callback_execution,
+              "merge barriers preserve original payload and provenance");
+    }
+  }
+}
 void TestMergeAnalysisBudget() {
   pattern::Design design;
   design.AddIcl("merge-budget.icl", R"(
@@ -7342,6 +7378,10 @@ void TestGroupedScanEndpoints() {
 }  // namespace
 int main(int argc, char* argv[]) {
   try {
+    if (argc == 2 && std::string(argv[1]) == "--merged-callbacks") {
+      TestCallbackMergeBarriers();
+      return 0;
+    }
     if (argc != 1) {
       if (argc == 2 && std::string(argv[1]) == "--parallel-raw-review") {
         size_t failures = 0;
@@ -7483,6 +7523,7 @@ int main(int argc, char* argv[]) {
     TestDataResetReleaseReplay();
     TestMultipleTapScheduling();
     TestOneHotSharedAnalysisBudget();
+    TestCallbackMergeBarriers();
     TestMergeAnalysisBudget();
     TestSharedScanOutputs();
     TestEnabledScanOutputs();

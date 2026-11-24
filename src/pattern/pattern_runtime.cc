@@ -869,10 +869,6 @@ class Runtime::Impl {
       throw std::runtime_error(
           "callback groups do not support iApply -together");
     }
-    if (!merges_.empty()) {
-      throw std::runtime_error(
-          "callback execution inside iMerge is unsupported");
-    }
     if (access_together) {
       throw std::runtime_error(
           "callback AccessTogether aliases are unsupported");
@@ -1685,6 +1681,11 @@ class Runtime::Impl {
       return;
     }
     if (name == "iCall") {
+      if (!merges_.empty() && merges_.back().depth == frames_.size() &&
+          pending_) {
+        throw std::runtime_error(
+            "merged iCall has unapplied operations at entry");
+      }
       const auto dot = words[1].rfind('.');
       std::string instance = prefix();
       std::string procedure = words[1];

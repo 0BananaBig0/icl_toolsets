@@ -145,8 +145,11 @@ iReset
         self.rejected("iWrite badbind 0x399; iApply", "undefined iProc", source=source)
         self.rejected("iWrite mixed 0x139; iApply", "truncates")
         self.rejected("iWrite mixed 0x39; iApply -together", "together")
-        self.rejected("iProc request {} {iWrite mixed 0x39; iApply}; "
-                      "iMerge -begin; iCall request; iMerge -end", "iMerge")
+        output = self.generation_replay(
+            MODEL, PROCS + "iProc request {} {iWrite mixed 0x39; iApply}; "
+            "iMerge -begin; iCall request; iMerge -end")
+        self.assertIn(b"iWrite p 0b1001", output)
+        self.assertIn(b"iWrite spare 0b0011", output)
 
     def test_caller_goal_conflicts_and_compatible_controls(self):
         self.rejected("iWrite match 0x39; iApply", "caller")
