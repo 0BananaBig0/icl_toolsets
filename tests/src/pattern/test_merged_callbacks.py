@@ -144,6 +144,80 @@ set ::args 0
             "iMerge -end; if {$::calls != 1 || $::args != 1} {error split_count}")
         self.assertEqual(self.notes(output), [b"api:value=0b1001"])
 
+    def test_incomplete_call_cannot_leak_to_sibling(self):
+        definitions = """iProc incomplete {} {iWrite value 9}
+iProc unrelated {} {iApply}
+"""
+        self.rejected(definitions + "iMerge -begin; catch {iCall incomplete}; "
+                      "iCall unrelated; iMerge -end", "unapplied")
+        self.rejected(definitions + """
+iMerge -begin
+catch {iCall incomplete}
+catch {iCall unrelated}
+if {$::calls != 0} {error callback_leaked}
+error stopped_with_queued_merge
+""", "stopped_with_queued_merge")
+        source = MODEL.replace("Chains store <D> <R>", "Chains missing <D> <R>")
+        output = self.generation_replay("""
+iProc request {} {
+ iWrite value 9
+ if {![catch {iApply}]} {error missing_preflight_error}
+ iProc missing {data reg} {incr ::calls; iNote "$reg=$data"; iWrite en 0; iWrite p $data}
+ iApply
+}
+iMerge -begin; iCall request; iMerge -end
+if {$::calls != 1} {error retry_count}
+""", source)
+        self.assertEqual(self.notes(output), [b"value=0b1001"])
+
+    def test_callback_owned_merge_keeps_ordinary_batching(self):
+        source = """Module Chains {
+ DataInPort p[3:0]; DataInPort spare[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+}"""
+        definitions = """iProc pin {name data} {iWrite $name $data; iApply}
+iProc store {data reg} {
+ iMerge -begin; iCall pin p $data; iCall pin spare 3; iMerge -end
+}
+"""
+        for body in ["iWrite value 9; iApply", self.merged("iWrite value 9; iApply")]:
+            with self.subTest(body=body):
+                output = self.generation_replay(definitions + body, source)
+                self.assertEqual(self.frames(output),
+                                 [{b"p": b"0b1001", b"spare": b"0b0011"}, {}])
+        source = source.replace("\n}", """
+ DataRegister peer[3:0] {WriteCallBack Chains leaf <D> <R>;}
+}""")
+        nested = """iProc pin {name data} {iWrite $name $data; iApply}
+iProc leaf {data reg} {incr ::calls; iWrite p $data}
+iProc request {} {iWrite peer 6; iApply}
+iProc store {data reg} {
+ incr ::calls; iApply
+ iMerge -begin; iCall pin p $data; iCall request; iCall pin spare 3; iMerge -end
+}
+"""
+        output = self.generation_replay(nested + "iWrite value 9; iApply; "
+                                        "if {$::calls != 2} {error nested_count}", source)
+        self.assertEqual([frame for frame in self.frames(output) if frame],
+                         [{b"p": b"0b1001"}, {b"p": b"0b0110"}, {b"spare": b"0b0011"}])
+        self.rejected(nested + "iWrite p 9; iWrite value 9; iApply", "caller goal", source)
+
+    def test_filtered_prerequisite_keeps_ordinary_batching(self):
+        source = """Module Chains {
+ DataInPort en; DataInPort p[3:0]; DataInPort spare[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains store <D> <R>;}
+ DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en;}
+}"""
+        output = self.generation_replay("""
+iProc store {data reg} {error unexpected_callback}
+iProc access {} {iWrite dest 9; iApply}
+iProc pin {} {iWrite spare 3; iApply}
+iState value 9
+iMerge -begin; iCall access; iCall pin; iMerge -end
+if {$::calls != 0} {error callback_count}
+""", source)
+        self.assertEqual(self.frames(output), [{b"en": b"0b1", b"spare": b"0b0011"}])
+
     def test_once_only_arguments(self):
         output = self.generation_replay("""
 set ::args 0

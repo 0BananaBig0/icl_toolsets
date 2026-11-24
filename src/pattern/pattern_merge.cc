@@ -86,7 +86,7 @@ class Merger {
   }
 
   bool Batchable(const std::vector<Operation>& stream,
-                 std::set<size_t>& targets) {
+                 std::set<size_t>& targets, bool callback_owner) {
     if (!combine_ || stream.size() < 2 || stream.back().command != "iApply" ||
         !stream.back().arguments.empty()) {
       return false;
@@ -95,7 +95,8 @@ class Merger {
     try {
       bool pending = false;
       for (const auto& op : stream) {
-        if (op.callback || op.callback_execution) return false;
+        // Inherited context does not introduce a callback into this block.
+        if (op.callback_execution && !callback_owner) return false;
         if (op.command == "iApply") {
           if (!pending || !op.arguments.empty()) return false;
           pending = false;
@@ -107,6 +108,18 @@ class Merger {
           return false;
         }
         const auto target = ResolvePdlTarget(netlist_, op.arguments[0]);
+        if (op.callback) {
+          if (std::any_of(
+                  target.bits.begin(), target.bits.end(), [&](const auto& bit) {
+                    const auto& node = netlist_.nodes.at(bit.node);
+                    return (read ? node.read_callback : node.write_callback)
+                        .has_value();
+                  })) {
+            return false;
+          }
+          // Filtered automatic candidates retain their original source anchors.
+          continue;
+        }
         if (!target.access_together.empty()) {
           return false;
         }
@@ -191,7 +204,7 @@ class Merger {
     };
     for (auto& stream : streams) {
       std::set<size_t> targets;
-      if (!Batchable(stream, targets)) {
+      if (!Batchable(stream, targets, begin.callback_execution)) {
         flush();
         result.insert(result.end(), std::make_move_iterator(stream.begin()),
                       std::make_move_iterator(stream.end()));

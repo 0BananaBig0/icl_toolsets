@@ -42,7 +42,7 @@ batching and existing source, queue, reset, reservation and history consumers.
   actual PIO frames, logical/actual/generated distinctions and full provenance.
 - Preserve Task163324matrix/example processes and4 dynamic allocation probes;
   new72regular+6wide+3guide ->405matrix/example processes, subject to measured
-  refinement. Expected74suites/1205methods each generator after16newCLI,
+  refinement. Expected74suites/1208methods each generator after19newCLI,
   4041inputs/38products,15normal/15leakSAN native,64gates and28mergedchecks.
   Quality count follows actual changed C++ files; no invented pass counts.
 - One fresh whole-branch final review; one test-first blocker fix pass; defer
@@ -143,8 +143,8 @@ No new public runtime interface or independent scheduling engine.
       code-reviewer template and ledger rulings. Regrade declined behaviors;
       one test-first Important/Critical fix pass, ledger Minors, no rereview.
 - [ ] Build current normal/static/SAN products; run64expected gates including
-      all native suites, both74x1205generator variants, existing SANselection
-      plus new16CLI, corpus, production budget test, allocations, quality and
+      all native suites, both74x1208generator variants, existing SANselection
+      plus new19CLI, corpus, production budget test, allocations, quality and
       source packaging. Verify actual input/product hashes and405matrix/example
       processes. Source-bound checker must assert actual counts and provenance.
 - [ ] Merge direct parentmaster; run28merged checks on identical4041inputs and
@@ -170,3 +170,15 @@ Task2 pre-review:16CLI pass normal3.027s/static3.696s/leakSAN8.141s; current
 identical frames/postconditions; source/flat invoke2callbacks, generated0 and
 its notes are literal. Author checked, not an independent reader. No consumer
 code refinement was needed. Full review/64gates/405matrix/integration remain.
+
+
+Final review0C/3I/1M: one TDD fix pass. Added3CLI regressions (19total),
+native Runtime entry and merger-owner cases. Reject pending direct-call entry;
+compare inherited callback context with merge owner; classify original logical
+anchors by genuine own-direction callbacks so filtered candidates remain batchable.
+No new public API or field. Exact parent physical Apply boundaries and nested
+dispatch/caller goals are asserted. Preflight retry stays within its original call.
+The new benchmark's postcondition-versus-Apply-group association oracle is deferred
+(totalMinors16); no generated ordering defect found. No rereview. Full qualification
+and integration are pending. Expected74x1208 each generator/64gates/4041inputs/
+38products/405matrix+4allocation/28merged checks.

@@ -252,6 +252,19 @@ void TestCallbacksInMerge() {
                            "if {$::calls != 1} {error callback_count}");
   read_runtime.Finish();
   Require(read_runtime.ReadCallbacksExecuted(), "merged read body executed");
+  pattern::Runtime incomplete(design, netlist);
+  Fails(
+      [&] {
+        incomplete.Execute("incomplete_merge.pdl",
+                           kDownstreamCallbackProcs +
+                               "iProc incomplete {} {iWrite value 9}; "
+                               "iProc unrelated {} {iApply}; "
+                               "iMerge -begin; catch {iCall incomplete}; iCall "
+                               "unrelated; iMerge -end");
+      },
+      "unapplied");
+  Require(!incomplete.CallbacksExecuted(),
+          "a sibling cannot invoke a caught incomplete call's callback");
   pattern::Runtime forbidden(design, netlist);
   Fails(
       [&] {

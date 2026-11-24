@@ -9605,6 +9605,9 @@ transparent downstream write prerequisites. The generator runs each
 callback-containing call as a complete serial stream, preserving its Apply order.
 Independent neighboring ordinary calls can still use existing batching. IEEE1687
 7.9.18 permits serial execution; iMerge does not promise concurrent callbacks.
+Ordinary calls inside an already-running callback retain their existing batching;
+genuine nested callback dispatch remains serial. If an established prerequisite
+needs no invocation, its call retains ordinary batching.
 
 Save the model as `merged.icl`:
 
@@ -9654,7 +9657,9 @@ Neither the notes nor logical postconditions are observed device data.
 
 Reset is still forbidden inside merge calls, including callback bodies; keep it
 outside the block as shown. Merge entry and called-procedure return require an
-empty Apply queue. A failed callback still poisons its queue, and reset cannot be
+empty Apply queue. Direct merged calls also require an empty queue at entry: a
+caught incomplete return cannot transfer queued work to a sibling call. Preflight
+retry within the same call remains supported. A failed callback still poisons its queue, and reset cannot be
 used to recover while the merge remains active. Caller resource reservations,
 callback preflight and -together/AccessTogether/raw-group restrictions remain.
 Modeled iMerge histories remain unsupported when a getter requests observation
@@ -9663,6 +9668,7 @@ remain. These restrictions do not prevent ordinary expanded replay.
 
 Task164 core209480c passes all native Runtime cases in both variants, the full
 native scheduler,378 CLI compatibility methods and12 C++quality checks. Expanded
-16-method replay, connected-storage measurement, final review and full regression
-qualification are in progress. Broader symbolic/control/serial dependencies and
+19-method replay passes normal/static/leak-enabled sanitizer builds after one
+review fix pass. Full repeated measurements, regression qualification and
+integration are in progress. Broader symbolic/control/serial dependencies and
 the remaining inventory are still pending; coverage item1 stays excluded.

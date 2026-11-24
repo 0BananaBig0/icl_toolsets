@@ -4396,27 +4396,32 @@ Module Top {
  DataRegister value {WriteCallBack Top store <D>;}
 })");
   const auto netlist = pattern::Elaborate(design, "Top");
-  for (const int marker : {0, 1, 2}) {
-    std::vector<pattern::Operation> operations = {
-        {"iMerge", {"-begin"}, "begin", {}},
-        {"iWrite", {marker == 1 ? "value" : "a", "1"}, "first", {"first"}},
-        {"iApply", {}, "first", {"first"}},
-        {"iWrite", {"b", "0"}, "second", {"second"}},
-        {"iApply", {}, "second", {"second"}},
-        {"iMerge", {"-end"}, "end", {}}};
-    operations[1].callback = marker == 1;
-    operations[1].callback_execution = marker == 2;
-    const auto ordered = pattern::MergeOperations(netlist, operations, true);
-    Require(std::count_if(ordered.begin(), ordered.end(),
-                          [](const auto& op) {
-                            return op.command == "iApply";
-                          }) == (marker == 0 ? 1 : 2),
-            "callback provenance keeps complete merge calls serial");
-    Require(ordered.front().arguments == operations[1].arguments &&
-                ordered.front().callback == operations[1].callback &&
-                ordered.front().callback_execution ==
-                    operations[1].callback_execution,
-            "merge barriers preserve original payload and provenance");
+  for (const bool callback_owner : {false, true}) {
+    for (const int marker : {0, 1, 2}) {
+      std::vector<pattern::Operation> operations = {
+          {"iMerge", {"-begin"}, "begin", {}},
+          {"iWrite", {marker == 1 ? "value" : "a", "1"}, "first", {"first"}},
+          {"iApply", {}, "first", {"first"}},
+          {"iWrite", {"b", "0"}, "second", {"second"}},
+          {"iApply", {}, "second", {"second"}},
+          {"iMerge", {"-end"}, "end", {}}};
+      operations[1].callback = marker == 1;
+      for (auto& operation : operations) {
+        operation.callback_execution = callback_owner;
+      }
+      operations[1].callback_execution = callback_owner || marker == 2;
+      const auto ordered = pattern::MergeOperations(netlist, operations, true);
+      Require(std::count_if(
+                  ordered.begin(), ordered.end(),
+                  [](const auto& op) { return op.command == "iApply"; }) ==
+                  (marker == 1 || (marker == 2 && !callback_owner) ? 2 : 1),
+              "callback provenance keeps complete merge calls serial");
+      Require(ordered.front().arguments == operations[1].arguments &&
+                  ordered.front().callback == operations[1].callback &&
+                  ordered.front().callback_execution ==
+                      operations[1].callback_execution,
+              "merge barriers preserve original payload and provenance");
+    }
   }
 }
 void TestMergeAnalysisBudget() {

@@ -1681,6 +1681,11 @@ class Runtime::Impl {
       return;
     }
     if (name == "iCall") {
+      if (!merges_.empty() && merges_.back().depth == frames_.size() &&
+          pending_) {
+        throw std::runtime_error(
+            "merged iCall has unapplied operations at entry");
+      }
       const auto dot = words[1].rfind('.');
       std::string instance = prefix();
       std::string procedure = words[1];

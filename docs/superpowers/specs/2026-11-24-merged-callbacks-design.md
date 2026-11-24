@@ -87,3 +87,21 @@ One fresh whole-branch independent review, one test-first blocker fix pass;
 ledger Minors and declined-behavior costs, no rereview. Merge into direct parent
 master, check merged identical inputs/products, push and delete only this task
 branch, archive only its ledger, and continue the original inventory.
+
+## Final review refinements
+
+One whole-branch review found0Critical/3Important/1Minor. The single test-first
+fix pass rejects entry into a direct merged iCall with pending work after a
+caught incomplete return; retry after preflight failure within the same call
+remains valid. Actual callback execution markers are compared with the merge
+owner's context so existing ordinary sibling calls inside a callback-owned merge
+retain their batching. Genuine nested dispatch remains a barrier with caller
+goals protected. Logical requests are classified by their own-direction callback
+descriptor: filtered downstream candidates retain immutable source anchors but
+do not disable ordinary batching. No new public field or scheduler is introduced.
+
+The new benchmark checks exact register/value postconditions and endpoint frames
+separately; associating those postconditions with their Apply groups is a deferred
+Minor, with no corresponding generated ordering defect found. Total deferred
+Minors16. Three added CLI regressions raise the suite to19 methods, making the
+expected final generator count74x1208 per variant; other counts stay unchanged.
