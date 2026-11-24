@@ -4911,3 +4911,7 @@ All 88 qualification gates and 846 matrix measurements rerun on repaired
 source. Two nonblocking test gaps remain deferred: an independent assertion
 on a parameter-sized decimal payload, and a maintained limb-growth negative.
 There are 27 deferred Minors including the 25 inherited findings.
+
+All 27 Task171 merged-result checks pass on identical 4,058 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

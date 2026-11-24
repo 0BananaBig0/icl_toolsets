@@ -50,7 +50,7 @@ fixture and print their checked case count. Defaults still run the full suite.
 - [x] Step5: Record actual results, commit and run one fresh final review;
   re-grade/fix blockers once test-first and record deferred Minors/rulings.
   Expected: no unresolved Critical/Important finding.
-- [ ] Step6: Merge to master, run merged checks with identical qualified
+- [x] Step6: Merge to master, run merged checks with identical qualified
   inputs/products, push, delete owned branch and archive only this ledger.
   Expected: clean pushed master,117 stashes preserved.
 

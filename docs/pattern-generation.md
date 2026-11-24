@@ -10051,3 +10051,7 @@ unchanged limits, corpus changes and remaining work.
 All four benchmark modes are required; omitting --sanitized fails before
 measurement. Decimal data in the native token API must contain only digits and
 underscores after comment/space normalization.
+
+All 27 Task171 merged-result checks pass on identical 4,058 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.
