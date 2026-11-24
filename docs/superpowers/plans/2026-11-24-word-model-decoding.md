@@ -56,7 +56,7 @@ fixture and benchmark_merged_callbacks.checked_frames for exact workload checks.
   reproducible evidence and current documentation, then commit selected changes.
 - [x] Step6: Obtain one fresh whole-branch review; ledger/defer Minors and fix
   blockers in one test-first pass, rerunning affected required checks.
-- [ ] Step7: Merge into master, verify merged inputs/products and checks, push,
+- [x] Step7: Merge into master, verify merged inputs/products and checks, push,
   safely delete task branch, archive its ledger and continue pending inventory.
 
 Whole-task completion command: python3 /tmp/word-model-decoding-completion.py

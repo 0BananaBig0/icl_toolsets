@@ -233,6 +233,6 @@ decoder combinations also passed, but that temporary harness was removed;
 it is not an archived reproducible qualification artifact. Earlier retained
 runs missed the bounds at 256 normal targets (10.8165s) and 64 sanitizer
 targets (586672KiB). Runtime varies; larger workloads and the 64-target sanitizer
-case are not generally certified. Integration remains pending merged-result
-checks. Broader inventory10 and the other
+case are not generally certified. All 13 merged-result checks pass on identical
+4,044 inputs and 20 copied qualified executables, with 117 stashes preserved. Broader inventory10 and the other
 pending items remain open; item1 remains excluded.
