@@ -52,10 +52,14 @@ Update obsolete read-callback rejection tests only with actual-value/replay
 assertions; automatic/physical/timed negatives stay.
 
 Reuse benchmark_merged_readback's runner through a fixture-factory argument
-and a private wide-call-count argument, with unchanged defaults. The base
+and private wide-call/apply-count arguments, with unchanged defaults. The base
 fixture accepts an optional owner for factory compatibility. A small new read
-callback fixture returns direct ordinary endpoint accesses for parent controls
-and equivalent expanded read callbacks for current/SAN cases. Wide cases use
+callback fixture returns direct ordinary endpoint accesses for parent PIO controls
+and equivalent expanded read callbacks for current/SAN PIO cases. All controls
+retain the callback's empty outer Apply, with two Apply records per call.
+Raw scan-only cases remain direct controls: adding callback storage violates
+their existing strict root topology, which this increment does not change.
+Ordinary serial read-callback endpoints are covered by the focused suite. Wide cases use
 two calls so raw histories actually capture a high-bit payload on the second
 scan. Keep all forms, exact parent controls, unobserved-note filtering, repeats,
 reported failures and10s/512MiB regular or10s/256MiB wide bounds.

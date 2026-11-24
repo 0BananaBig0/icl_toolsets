@@ -4864,3 +4864,18 @@ See [Task169 evidence](remaining-work.md#task169-qualified-increment).
 All 17 Task169 merged-result checks pass on identical 4,052 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+## Invoked read-callback endpoint histories (Task170)
+
+Native endpoints expanded from explicitly invoked read callbacks now use the
+ordinary observer in model-readback mode. Actual endpoint data and mismatch
+status are available inside/after callback execution, including supported
+reset, serial/selectable and merged paths. Expected callback arguments never
+populate actual observations; abstract callback storage remains masked and
+logical callback history unavailable. Automatic/physical/timed and raw-root
+callback-storage boundaries remain. This advances inventory4/6 without closing
+their broader histories/transport work.
+
+See [Task170 evidence](remaining-work.md#task170-qualified-increment) for12
+focused methods,79×1,265 generator variants,30 native suites and828 measured
+processes, including the exact reused-input/test-only qualification proofs.

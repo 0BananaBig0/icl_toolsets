@@ -33,15 +33,17 @@ observer; remove only read-callback-specific guards. Reuse the benchmark runner.
 src/pattern/pattern_readback.cc; create tests/src/pattern/test_read_callback_histories.py
 and tests/src/pattern/benchmark_read_callback_histories.py. Modify Makefile,
 tests/src/pattern/benchmark_merged_readback.py and affected obsolete negatives.
+Update the native read-callback reset expectation in tests/src/pattern_readback_test.cc
+to require four actual zero endpoint bits, mismatch mask1001 and clearable status2.
 Update docs/pattern-generation.md, docs/pattern-model-coverage.md and docs/remaining-work.md.
 
 **Interfaces:** Preserve public APIs. Keep main's automatic prerequisite check
 and physical rejection; ModelReadback rejects physical callback_execution but
 no longer rejects callback_read_execution alone. Existing runtime flags remain.
-Benchmark main(make_fixture=fixture,wide_calls=1) preserves default behavior;
+Benchmark main(make_fixture=fixture,wide_calls=1,applies_per_call=1) preserves default behavior;
 fixture(...,owner=None) permits equivalent parent/current fixture construction.
 
-- [ ] Step1: Add12 methods named test_actual_endpoint_and_status,
+- [x] Step1: Add12 methods named test_actual_endpoint_and_status,
   test_body_getter, test_no_query, test_unknown_endpoint,
   test_sparse_inverted_request, test_nested_write_callback,
   test_namespaced_callback, test_selectable_and_serial_endpoints,
@@ -51,16 +53,18 @@ fixture(...,owner=None) permits equivalent parent/current fixture construction.
   Logical callback getters must remain unavailable; failed output/debug/reset
   artifacts stay unchanged. Expected: immutable parent rejects the new positives
   through the two reproduced guards; do not accept wrong failures.
-- [ ] Step2: Remove only the two read-specific guard terms. Expected: focused
+- [x] Step2: Remove only the two read-specific guard terms. Expected: focused
   suite passes with actual endpoints; automatic/physical/timed negatives remain.
   Replace obsolete read-only rejection expectations with exact actual replay.
-- [ ] Step3: Add the reusable factory/width arguments with unchanged defaults;
+- [x] Step3: Add the reusable factory/width arguments with unchanged defaults;
   add the small callback factory and retain all reporting tests. Expected:
-  direct parent/native callback outputs match and second wide raw capture is high-bit data.
-- [ ] Step4: Run complete378-process callback matrix and existing378-process
+  direct parent/native callback PIO outputs match with two Apply records per
+  call; raw routes remain direct scan-only controls, with real high-bit data
+  captured on the second wide scan. Focused tests cover serial read callbacks.
+- [x] Step4: Run complete378-process callback matrix and existing378-process
   merge matrix, plus72 word controls and four guide processes. Expected: full
   actual lists/frames/source-flat-generated replay match, all current bounds pass.
-- [ ] Step5: Run fresh15 normal/15 leak-enabled SAN native suites, full generator
+- [x] Step5: Run fresh15 normal/15 leak-enabled SAN native suites, full generator
   normal/static, affected CLI/corpus, C++ quality, package and existing work/
   allocation/reporting probes. Expected: all functional gates and exact hashes pass.
 - [ ] Step6: Document measured behavior and commit; one fresh final review,

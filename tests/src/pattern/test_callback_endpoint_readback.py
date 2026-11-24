@@ -82,16 +82,11 @@ iNote [iGetReadData q -dec]
 """)
         self.assertEqual(self.notes(output), [b"9"])
 
-    def test_invoked_read_callback_cannot_hide_behind_reset(self):
-        icl, pdl = self.root / "source.icl", self.root / "source.pdl"
-        icl.write_text(MODEL)
-        pdl.write_text(PROCS.replace(' iRead q $data',
-                                    ' iReset; iRead q $data') +
-                       "iRead observed 9; iApply")
-        output = self.root / "result.pdl"
-        output.write_bytes(b"retained")
-        self.assertIn("callback", self.run_tool(icl, pdl, ok=False))
-        self.assertEqual(output.read_bytes(), b"retained")
+    def test_invoked_read_callback_retains_actual_history_across_reset(self):
+        output = self.replay(MODEL, PROCS.replace(' iRead q $data',
+            ' iReset; iState p 6; iRead q $data; iApply; iNote [iGetReadData q -dec]') +
+            'iRead observed 9; iApply; iNote [iGetStatus]')
+        self.assertEqual(self.notes(output), [b'6', b'4'])
 
     def test_sparse_inverted_requests_preserve_actual_histories(self):
         source = MODEL.replace(" Alias low", " Alias outinv[3:0] = ~q;\n Alias low")

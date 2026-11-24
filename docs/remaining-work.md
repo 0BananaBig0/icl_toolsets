@@ -395,3 +395,61 @@ actual owners and comparisons. Total deferred Minors: 24, including23 inherited.
 All 17 Task169 merged-result checks pass on identical 4,052 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+## Task170 qualified increment
+
+Task170 allows actual native endpoint histories inside and after explicitly
+invoked read callbacks. Expected callback data remains comparison data: asking
+for0 while endpoint q is9 observes9, records two mismatches, and clears status
+back to0. Logical callback-register getters remain unavailable. The existing
+observer, reset handling and merge provider are reused; only two callback-read
+guard terms are removed. Automatic prerequisites, physical/timed histories,
+unexpanded callback targets and raw roots containing callback storage remain
+unsupported.
+
+The 12-method regression covers body getters, no-query generation, unknown and
+sparse/inverted values, nested callbacks, namespaces, selectable/serial routes,
+reset/caught retry, split/local-reset rewriting and merged calls. Corrected
+immutable-parent fixtures fail11 positives through the intended guards and
+pass the unsupported-boundary test. Ordinary parent endpoint controls prove
+that the routes themselves predate this change.
+
+All 83 qualification gates pass. Both generator variants cover
+79 suites/1,265 methods. The normal result composes52 earlier passing suites
+(852 methods) with27 later suites after a Python-only obsolete expectation
+update; the full static variant runs after that update. Fifteen normal and15
+leak-enabled sanitizer native suites pass. Thirteen normal native passes
+precede a native-test-only assertion update; that one changed test and the
+remaining native suites run afterward. Hash proofs record precisely one
+native test input/two test executables changing, followed by one Python test
+input with no executable changes. Final manifests cover4,054 inputs and38
+executables. Affected CLI/corpus, nine C++ quality checks, source packaging,
+allocation and reporting/work probes pass. The real work counter remains
+471,064 calls below its600,000 limit. The existing wide
+sanitizer pin-memory check remains unrun; its nine functional controls pass.
+
+All828 matched processes satisfy the unchanged time/RSS bounds:378 callback
+matrix processes,378 existing merge controls and72 word-decoding controls.
+The callback PIO rows compare direct parent endpoint accesses with current
+read-callback expansion, preserving its extra empty Apply. Raw rows are direct
+scan-only controls; they do not claim raw callback-storage support. Wide raw
+controls use two scans and verify the second actual high-bit capture. Observed
+rows compare complete parent bytes; unobserved rows compare parent bytes with
+observation notes removed. Source, flat and generated forms agree. Four guide
+processes agree on actual9/6, status4/clear0 and four Apply records.
+
+Measured callback aggregate peaks are0.7677s/
+438672KiB and include sanitizer rows. Merge aggregate
+peaks are0.7686s/438412KiB; word
+current aggregate peaks are8.1062s/
+304024KiB, also including sanitizer rows. Regular
+cases retain10s/512MiB bounds and wide cases10s/256MiB. No larger-workload or
+other-topology guarantee follows from these measurements. Inventory4/6
+advances; the broader inventory remains open and item1 stays excluded.
+Twenty-four inherited deferred Minors remain deferred. Independent review
+and integration are recorded below after they finish.
+
+A final test-file formatting correction removes one trailing newline only.
+The12 focused methods rerun on normal/static/sanitizer builds and source
+packaging passes again; byte proof and unchanged executables retain the
+completed broader regression and matrix evidence.

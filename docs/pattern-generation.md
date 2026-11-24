@@ -9944,3 +9944,49 @@ the remaining deferred documentation Minor.
 All 17 Task169 merged-result checks pass on identical 4,052 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+## Actual endpoints of invoked read callbacks (Task170)
+
+With --model_readback, explicitly invoked read callbacks can use ordinary
+native endpoint operations and query those endpoints inside or after the
+callback. Expected <D> is a comparison argument; it never supplies observed
+data. For a module with a four-bit p input and q output sourced from p, plus
+an observed DataRegister with ReadDataSource p and
+ReadCallBack Chains load <D>, this PDL observes9 then6:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc load {data} {iRead q $data}
+iProc sample {word} {
+    iWrite p $word; iRead observed 0; iApply
+    iNote [iGetReadData q -dec]
+}
+iMerge -begin
+iCall sample 9
+iCall sample 6
+iMerge -end
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+```
+
+The notes are9,6,4,0. The callback's empty outer Apply remains in each call,
+giving four Apply records. Reading the logical observed register's history
+still fails; expected0 cannot turn it into a known observed register. An
+unknown endpoint likewise stays unknown even when the callback expects9.
+Existing resets, nested calls, split files and local-reset generation use
+their ordinary endpoint semantics. Physical and automatic callback histories,
+timed callbacks and raw scan-only roots containing callback storage retain
+their guards.
+
+Reproduce the callback PIO matrix and direct raw controls with the normal,
+immutable parent and sanitizer binaries:
+
+```sh
+python3 tests/src/pattern/benchmark_read_callback_histories.py \
+  --binary build/icl-pattern-generation --parent /path/to/parent-generator \
+  --sanitized /path/to/sanitized-generator --output /tmp/callback-matrix
+```
+
+See [Task170 evidence](remaining-work.md#task170-qualified-increment) for exact
+matrix scope, composed regression evidence and retained limits.

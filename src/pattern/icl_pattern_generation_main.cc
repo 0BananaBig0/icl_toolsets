@@ -929,11 +929,10 @@ int main(int argc, char** argv) {
     runtime.Finish();
     if (runtime.CallbacksExecuted()) {
       if (options.model_readback &&
-          (runtime.ReadCallbacksExecuted() ||
-           std::any_of(runtime.operations().begin(), runtime.operations().end(),
-                       [](const auto& operation) {
-                         return operation.callback_prerequisite;
-                       }))) {
+          std::any_of(runtime.operations().begin(), runtime.operations().end(),
+                      [](const auto& operation) {
+                        return operation.callback_prerequisite;
+                      })) {
         throw std::runtime_error(
             "modeled readback excludes callback histories");
       }

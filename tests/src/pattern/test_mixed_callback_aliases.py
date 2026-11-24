@@ -167,13 +167,15 @@ Module Chains {WriteEnPort we; Instance child Of Child {InputPort we=we;}
         self.rejected("iProc write_enable {d} {iWrite child.we $d}; "
                       "iWrite both 0b01; iApply", "caller", source=source)
 
-    def test_read_callback_generation_and_model_guard(self):
+    def test_read_callback_generation_and_actual_mixed_histories(self):
         body = PROCS + "iState spare 3; iState p 9; iRead reading 0x39; iApply"
         output = self.generation_replay(MODEL, body)
         self.assertIn(b"iRead spare_out 0b0011", output)
         self.assertIn(b"iRead q 0b1001", output)
-        self.rejected("iState spare 3; iState p 9; iRead reading 0x39; iApply",
-                      "callback histories")
+        observed = self.replay(MODEL, body+'''
+iNote [iGetReadData spare_out -dec]; iNote [iGetReadData q -dec]; iNote [iGetStatus]
+''')
+        self.assertEqual(self.notes(observed), [b'3', b'9', b'0'])
 
 
     def test_actual_getters_inside_write_procedures(self):

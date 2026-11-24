@@ -13,7 +13,7 @@ import time
 ROOT = Path(__file__).resolve().parents[3]
 
 
-def fixture(kind, calls, width, merge, observed=True):
+def fixture(kind, calls, width, merge, observed=True, owner=None):
     if kind == 'raw':
         model = (ROOT/'tests/cases/ours/pattern_generation/modeled_root_scan/model.icl').read_text()
         model = model.replace('Module Modeled', 'Module Chains').replace('[7:0]', f'[{width-1}:0]')
@@ -41,7 +41,7 @@ def fixture(kind, calls, width, merge, observed=True):
     return model, text, expected if observed else []
 
 
-def main():
+def main(make_fixture=fixture, wide_calls=1, applies_per_call=1):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ('binary', 'parent', 'output'):
         parser.add_argument('--'+name, type=Path, required=True)
@@ -84,7 +84,8 @@ def main():
         actual_notes = [line[6:].decode() for line in data.splitlines()
             if line.startswith(b'iNote ') and b'modeled ' not in line]
         raw_count = sum(line.startswith(b'iScan ') for line in data.splitlines())
-        if (code != 0 or actual_notes != notes or data.count(b'iApply\n') != calls or
+        if (code != 0 or actual_notes != notes or
+                data.count(b'iApply\n') != calls*applies_per_call or
                 (kind == 'raw' and raw_count != calls) or
                 (reference is not None and data != reference)):
             error = error or 'process, complete observation list or exact replay differs'
@@ -105,14 +106,15 @@ def main():
         return data, output, folder/'debug/Chains.icl'
 
     cases = [(kind, size, 4) for kind in ('pio', 'raw') for size in args.sizes]
-    cases += [(kind, 1, width) for kind in ('pio', 'raw') for width in args.wide_widths]
+    cases += [(kind, wide_calls, width) for kind in ('pio', 'raw') for width in args.wide_widths]
     references = {}
     for kind, calls, width in cases:
         for owner, mode in [('parent', 'serial'), ('current', 'serial'),
                             ('current', 'merged'), ('current', 'unobserved')]:
             folder = Path(tempfile.mkdtemp(prefix='fixture-', dir=args.output))
             source, pdl = folder/'source.icl', folder/'source.pdl'
-            model, text, notes = fixture(kind, calls, width, mode != 'serial', mode != 'unobserved')
+            model, text, notes = make_fixture(kind, calls, width, mode != 'serial',
+                                              mode != 'unobserved', owner=owner)
             source.write_text(model)
             pdl.write_text(text)
             for repeat in range(args.repeats):
@@ -131,7 +133,7 @@ def main():
         for kind in ('pio', 'raw'):
             folder = Path(tempfile.mkdtemp(prefix='san-fixture-', dir=args.output))
             source, pdl = folder/'source.icl', folder/'source.pdl'
-            model, text, notes = fixture(kind, 16, 4, True)
+            model, text, notes = make_fixture(kind, 16, 4, True, owner='sanitized')
             source.write_text(model)
             pdl.write_text(text)
             for repeat in range(args.repeats):

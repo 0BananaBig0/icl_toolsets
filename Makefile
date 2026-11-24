@@ -1170,6 +1170,7 @@ python3 tests/src/pattern/test_raw_merge_calls.py $1
 python3 tests/src/pattern/test_merged_readback.py $1
 python3 tests/src/pattern/test_primary_pin_literals.py $1
 python3 tests/src/pattern/test_callback_endpoint_readback.py $1
+python3 tests/src/pattern/test_read_callback_histories.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1
 python3 tests/src/pattern/test_primary_data_events.py $1

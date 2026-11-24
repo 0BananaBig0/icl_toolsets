@@ -89,8 +89,7 @@ class ModelReadback {
               op.origin +
               ": modeled readback excludes automatic callback histories");
         }
-        if (op.callback_read_execution ||
-            (physical_ && op.callback_execution)) {
+        if (physical_ && op.callback_execution) {
           throw std::runtime_error(
               op.origin + ": modeled readback excludes callback histories");
         }
