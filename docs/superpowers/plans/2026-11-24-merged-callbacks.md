@@ -147,7 +147,7 @@ No new public runtime interface or independent scheduling engine.
       plus new19CLI, corpus, production budget test, allocations, quality and
       source packaging. Verify actual input/product hashes and405matrix/example
       processes. Source-bound checker must assert actual counts and provenance.
-- [ ] Merge direct parentmaster; run28merged checks on identical4041inputs and
+- [x] Merge direct parentmaster; run28merged checks on identical4041inputs and
       20copiedproducts, verify117stashes, commit integration evidence, push,
       detach/delete own branch and archive only own completed ledger.
       Task-done uses a source-bound completion checker verifying the complete
@@ -198,5 +198,8 @@ callback-context barriers, and filtered prerequisite anchors. The benchmark
 checks ordered register/value postconditions and endpoint frames separately;
 checking their relative Apply-group placement remains a deferred Minor.
 Functional regressions check actual frame boundaries. The total deferred Minor
-count is 16. Integration remains pending; broader inventory and excluded
-coverage item1 stay open.
+count is 16. All 28 merged-result checks pass on identical 4,041 inputs and 20 copied
+qualified executables, with 117 stashes preserved. Broader inventory and
+excluded coverage item1 stay open.
+
+Integration verified at direct-parent merge 8e8fe140e49d98ffcbf85e199fcd06920e4590fa:28 checks/4041inputs/20products/117stashes.

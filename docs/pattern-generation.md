@@ -9680,5 +9680,6 @@ callback-context barriers, and filtered prerequisite anchors. The benchmark
 checks ordered register/value postconditions and endpoint frames separately;
 checking their relative Apply-group placement remains a deferred Minor.
 Functional regressions check actual frame boundaries. The total deferred Minor
-count is 16. Integration remains pending; broader inventory and excluded
-coverage item1 stay open.
+count is 16. All 28 merged-result checks pass on identical 4,041 inputs and 20 copied
+qualified executables, with 117 stashes preserved. Broader inventory and
+excluded coverage item1 stay open.
