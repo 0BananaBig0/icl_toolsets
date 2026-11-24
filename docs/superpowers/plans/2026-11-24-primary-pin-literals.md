@@ -41,11 +41,13 @@ tests/src/pattern/benchmark_merged_readback.py without changing its fixtures,
 counter fields, inherited Minors or bounds.
 
 **Interfaces:** Preserve every signature and the existing bv_const word. Let
-goal=goals.find(id). Omit only deviations.push_back for this pin when horizon==1,
-goal!=goals.end() and goal->second.find_first_not_of("01")==std::string::npos.
+goal=goals.find(id). Omit primary deviations only when horizon==1, every primary candidate has
+a fully binary goal, and every requested read bit has exactly one route.
+Compute those global guards in the existing route/pin walks. Retain the entire
+original objective list whenever an implicit pin or read-route choice remains.
 Keep drive, known, Choose, constraints, count and data deviations unchanged.
 
-- [x] Step1: Add8 CLI methods using existing modeled-readback replay helpers:
+- [x] Step1: Add10 CLI methods using existing modeled-readback replay helpers:
   wide memory (actual1,024-bit alternating word,512 failing comparisons,
   peak RSS<=262144KiB and<=10s); zero/matching known goals; ascending/sliced
   pins and inverted observations (write upper2bits2 => q8/inverse7); unknown
@@ -55,7 +57,8 @@ Keep drive, known, Choose, constraints, count and data deviations unchanged.
   (history must equal the final emitted bus word, without fixing write order);
   also reset-initialize a scalar register, preserve intermediate pin11 from
   old fill10 before final pin8, and require actual register1/pin8 histories;
-  and impossible tied-register/source goals
+  two parent-backed tie controls for implicit read enables and ambiguous
+  physical register read routes; and impossible tied-register/source goals
   preserving prior artifacts. All non-memory cases check original/flat/generated
   agreement and actual values/events. The large normal/static memory acceptance
   check is explicitly unrun under ASAN; existing16-call sanitizer measurements
@@ -64,13 +67,14 @@ Keep drive, known, Choose, constraints, count and data deviations unchanged.
   test_ascending_slices_and_inversion, test_unknown_and_partial_x_history,
   test_unforced_read_enable, test_reservations_and_end_state,
   test_intermediate_pin_value_in_later_horizon, and
-  test_impossible_goals_preserve_artifacts.
+  test_impossible_goals_preserve_artifacts, test_equally_preferred_read_enables,
+  and test_equally_preferred_physical_read_routes.
 - [x] Step2: Run new tests on immutable parent. Expected: the wide memory case
   fails specifically on peak RSS>262144KiB while compatible functional controls
   pass. Retain raw timing/output; correct fixture errors before product edits.
 - [x] Step3: Implement the single guarded deviation exclusion. Expected: only
   the private primary deviations collection changes; no repeated scan or new cache.
-- [x] Step4: Build and run the focused suite. Expected:8/8 normal/static and
+- [x] Step4: Build and run the focused suite. Expected:10/10 normal/static and
   small sanitizer functional cases pass with unchanged event/observation bytes.
   If memory does not improve below256MiB, stop and return to diagnosis.
 - [x] Step5: Run the existing complete378-process benchmark with immutable
@@ -83,7 +87,7 @@ Keep drive, known, Choose, constraints, count and data deviations unchanged.
   normal/static generator checks, affected sanitizer CLI, corpus, C++ quality,
   source packaging and allocation/reporting controls. Expected: all required
   functional gates pass with exact qualified input/product hashes.
-- [ ] Step7: Update measured docs and commit, request one fresh whole-branch
+- [x] Step7: Update measured docs and commit, request one fresh whole-branch
   review, re-grade findings and fix blockers in one test-first pass. Expected:
   no unresolved Critical/Important findings; ledger Minors and declined costs.
 - [ ] Step8: Merge into master, verify identical qualified sources/products and

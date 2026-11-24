@@ -79,6 +79,41 @@ iNote [iGetReadData gated -dec]; iNote [iGetReadData q -dec]
         self.assertEqual(self.notes(output), [b'9', b'9'])
         self.assertIn(b'iWrite enable 0b1', output)
 
+    def test_equally_preferred_read_enables(self):
+        model = '''Module Chains {
+ DataInPort p;
+ DataInPort e0 {DefaultLoadValue 1'b1;}
+ DataOutPort z0 {Source e0;}
+ DataInPort e1 {DefaultLoadValue 1'b1;}
+ DataOutPort z1 {Source e1;}
+ LogicSignal choice {e0 | e1;}
+ DataOutPort q {Source p; Enable choice;}
+}'''
+        output = self.check(model, '''iWrite p 1; iRead q 0; iApply
+iRead z0 0; iRead z1 0; iApply
+iNote [iGetReadData z0 -bin]; iNote [iGetReadData z1 -bin]
+if {[iGetReadData z1 -bin] ne "0b1"} {error "read-enable history changed"}
+''')
+        self.assertEqual(self.notes(output), [b'0bx', b'0b1'])
+        self.assertIn(b'iWrite e1 0b1\n', output)
+        self.assertNotIn(b'iWrite e0 ', output)
+
+    def test_equally_preferred_physical_read_routes(self):
+        model = '''Module Chains {
+ DataInPort p;
+ DataRegister value[2:0] {
+  WriteDataSource 3'b0; WriteEnSource 1'b0; ResetValue 3'b0;
+ }
+ DataOutPort q0[2:0] {Source value;}
+ DataOutPort q1[2:0] {Source value;}
+}'''
+        output = self.check(model, '''iReset; iWrite p 1; iRead value 0; iApply
+iNote [iGetReadData value -bin]
+''')
+        self.assertEqual(self.notes(output), [b'0b000'])
+        reads = [line for line in output.splitlines() if line.startswith(b'iRead ')]
+        self.assertEqual(reads, [b'iRead q0 0b0x0', b'iRead q1 0bx0x'])
+
     def test_reservations_and_end_state(self):
         model = history.BASE.replace(' Alias inverted', '''
  DataInPort other[3:0]; DataOutPort held[3:0] {Source other;}

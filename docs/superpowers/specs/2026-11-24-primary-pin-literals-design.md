@@ -49,8 +49,12 @@ objective. Confirm the memory effect before keeping the change.
 Change only primary deviations collection inside SolvePrimaryWrites.
 No dependency, public API, option or new solver. Skip a deviation only at
 horizon1 with an existing goal for this pin and every goal bit binary.
-Unknown/partial-X internal goals, unforced pins and all horizons beyond1 retain
-the same deviations. Keep count, data deviations and all other objectives. A later frame may require an intermediate
+Require every primary candidate to have a full binary goal and every requested
+read bit to have exactly one candidate route. Removing constant objectives can
+change Z3 tie choices despite preserving preference ordering. If any primary
+candidate is unforced or any read route is ambiguous, keep the entire original
+objective list. Unknown/partial-X internal goals and horizons beyond1 also
+retain the same deviations. Keep count, data deviations and all other objectives. A later frame may require an intermediate
 value different from the final goal, so do not extend the substitution there.
 
 Keep read-before-write, implicit loads/resets, preserved and end-state goals,

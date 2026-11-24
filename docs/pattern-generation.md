@@ -9851,21 +9851,59 @@ All 15 merged-result checks pass on identical 4,049 inputs and 20 copied qualifi
 
 ## Wide primary-pin memory (Task168)
 
-Full binary primary-pin goals now avoid redundant constant deviation objectives
-when a single frame already fixes the sole drive/value. The original symbolic
-words and all constraints remain; partial/unknown goals, unforced controls and
-multi-frame preferences retain the existing optimization.
+A full binary one-frame primary solve can omit already-constant deviation
+objectives when every candidate pin is forced and every requested read bit has
+one route. Other solves retain the original objective list so equal-cost pin
+and read-route choices remain unchanged. No new option is required.
 
-Reproduce the matched matrix with the preceding benchmark command, changing
-the parent to build/primary-pin-literals-20261124/parent/icl-pattern-generation
-and the output to an owned temporary directory. A nonzero result is expected
-for the retained parent memory misses. The current measured wide-PIO cases
-meet the unchanged256MiB limit. This optimization requires no new option.
+Reproduce the preceding matched benchmark command with parent
+build/primary-pin-literals-20261124/parent/icl-pattern-generation and an owned
+temporary output directory. Expect exit 1 for the retained parent memory misses.
 
-Task168 passes76 qualification gates, including15 fresh normal and15 leak-enabled sanitizer native suites, full78-suite/1,251-method normal/static generator runs, affected sanitizer CLI, corpus,3 C++ quality checks, source packaging and4 allocation probes. The later multi-frame test strengthening passes the whole8-method module on normal/static and7 functional methods on sanitizer, with the large memory method explicitly skipped there. Exact proof preserves4,049 shared inputs and38 executables across that Python-only strengthening; the other77 suites per variant and30 native runs are retained. Final hashes cover4,050 inputs/38 executables.
+Task168 passes 76 fresh post-review qualification gates: 15 normal and 15
+leak-enabled sanitizer native suites, 78 suites/1,253 methods in each full
+generator variant, affected sanitizer CLI, corpus, three C++ quality checks,
+source packaging and four allocation probes. All ten focused methods pass
+normal/static; sanitizer passes nine functional methods and explicitly skips
+the large memory gate. Final hashes cover 4,050 inputs and 38 executables.
+The earlier Python-only evidence reuse and pre-review matrix remain archived;
+the final full qualification uses the narrowed implementation.
 
-All378 matched processes preserve actual observations and exact serial/source/flat/generated replay; four guide processes pass. All current cases meet the existing10s/512MiB regular and10s/256MiB wide bounds. The27 current1,024-bit PIO serial/observed/unobserved cases use75332–110344KiB and at most0.1657s, versus301348–336372KiB for the nine parent controls. All369 non-parent-miss cases meet their bounds; the benchmark retains nine parent memory failures and exits1. Overall maxima, including sanitizer cases, are2.4242s/437964KiB. This closes the measured wide-PIO case under inventory10; Task165's256-target latency misses and broader optimization remain open.
+All 378 final matched processes preserve actual observations and exact
+serial/source/flat/generated replay; four guide processes pass. All current
+cases meet the existing 10s/512MiB regular and 10s/256MiB wide bounds. The 27
+current 1,024-bit PIO serial/observed/unobserved cases use
+76148–111072KiB and at most 0.1155s,
+versus 301396–336164KiB for nine parent controls.
+All 369 cases other than those parent misses meet their bounds. The benchmark
+retains nine parent memory failures and exits 1. Overall maxima, including
+sanitizer cases, are 2.2729s/438160KiB.
+This closes the measured wide-PIO case under inventory 10. The earlier
+72-process callback follow-up still has three 256-target time misses; that
+latency target and broader optimization remain open.
 
-The first literal-word substitution failed memory and was reverted. A retained partial Massif trace identified expensive optimizer model conversion; the accepted change omits only constant full-binary one-frame pin deviation objectives. Symbolic words, constraints, drive count, data deviations and later-frame preferences remain. A temporary executable missing only the horizon guard changes intermediate pin11 to9 and fails the maintained control; the qualified build captures register1 and ends at pin8. The earlier reset-less fixture rejection was a fixture error, not proof of an unsupported schedule. Source/flat/generated histories, partial-X fill, inversion, ascending slices, unforced read enables, reservations, end-state restoration and failed-output preservation pass. No wider topology or timing guarantee is added.
+Independent review found zero Critical, two Important and one Minor finding.
+Removing a constant objective preserves preference ordering but can change
+Z3's choice among equally optimal models. One parent-backed test detects a
+different implicit read-enable history that makes a Tcl condition fail;
+another detects different physical read targets/comparison masks. Both fail
+on the reviewed implementation and pass on the parent and final build. One
+test-first fix retains the entire original objective list unless every primary
+candidate has a full binary goal and every requested read bit has exactly one
+candidate route, as well as requiring a one-frame horizon. These guards reuse
+the existing route/pin walks. Symbolic words, constraints, drive count, data
+deviations, reset behavior and later-frame preferences remain intact.
 
-See [Task168 evidence](remaining-work.md#task168-qualified-increment).
+The first literal-word substitution failed memory and was reverted. The
+partial Massif trace remains diagnostic evidence. An earlier temporary
+horizon-guard mutation changed intermediate pin 11 to 9 and failed the
+maintained control; the final stricter implementation also passes that control.
+The reset-less fixture rejection was a fixture error, not an unsupported
+schedule. Partial-X fill, inversion, ascending slices, unforced enables,
+reservations, end-state restoration and failed-output preservation pass.
+
+The new deferred Minor is the wide test's ASAN_OPTIONS-based skip: exporting
+that variable on an ordinary executable can also skip the gate. Raw final
+normal/static logs confirm the memory gate ran. Total deferred Minors: 23,
+including 22 inherited. Wide-ASAN memory closure and broader topologies are
+not certified by these measurements.
