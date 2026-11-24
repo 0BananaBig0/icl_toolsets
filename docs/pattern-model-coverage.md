@@ -4886,3 +4886,7 @@ queue/apply frames; standard modeled iNote annotations preserve requested-bit
 logical history unavailability across generated-prefix continuation. All
 sanitizer matrix forms now use actual parent references. The three Important
 findings are fixed test-first; one documentation Minor is deferred(total25).
+
+All 23 Task170 merged-result checks pass on identical 4,054 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

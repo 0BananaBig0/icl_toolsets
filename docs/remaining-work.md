@@ -470,3 +470,7 @@ rebuilding; all15 sanitizer native suites and affected sanitizer CLI checks run
 again, along with focused normal/static/SAN tests, all15 quality checks and
 source packaging. Exact proof retains4,052 unchanged inputs and31 unchanged
 raw executables; final hashes cover all4,054 inputs/38 executables.
+
+All 23 Task170 merged-result checks pass on identical 4,054 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

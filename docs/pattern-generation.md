@@ -10001,3 +10001,7 @@ and helper-frame/coalesced callback Applies retain their ordinary semantics.
 The final focused suite has15 methods and both full generator variants have
 79 suites/1,268 methods. See the Task170 evidence for all83 fresh post-fix
 gates,828 repeated measurements, parent controls and retained limits.
+
+All 23 Task170 merged-result checks pass on identical 4,054 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.
