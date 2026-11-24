@@ -73,34 +73,37 @@ batching and existing source, queue, reset, reservation and history consumers.
 
 **Files:** Modify src/pattern/pattern_runtime.cc, src/pattern/pattern_merge.cc,
 tests/src/pattern_runtime_test.cc, tests/src/pattern_scheduler_test.cc,
-tests/src/pattern/test_downstream_write_callbacks.py and Makefile.
+tests/src/pattern/test_downstream_write_callbacks.py,
+tests/src/pattern/test_callback_execution.py,
+tests/src/pattern/test_mixed_callback_aliases.py and Makefile.
 Create tests/src/pattern/test_merged_callbacks.py.
 
 **Interfaces:** Existing Runtime::Execute/Finish/operations/SourceActions and
 MergeOperations(const Netlist&,const vector<Operation>&,bool). No new API.
 Produces callback-expanded ordered merge streams for Task2 replay/measurement.
 
-- [ ] Add native TestCallbacksInMerge: explicit/read/inferred callbacks run within
+- [x] Add native TestCallbacksInMerge: explicit/read/inferred callbacks run within
       valid called procedures, markers retain context, reset remains forbidden.
       Add TestCallbackMergeBarriers before old scheduler tests: two independent
       ordinary call streams combine to one Apply; logical callback or actual
       callback-execution markers retain two Applies, flags and original payloads.
-- [ ] Add first8 CLI methods before product edits: test_explicit_writes,
+- [x] Add first8 CLI methods before product edits: test_explicit_writes,
       test_inferred_writes, test_read_and_empty_callbacks, test_mixed_aliases,
       test_call_order_and_notes, test_nested_calls_and_merges,
       test_goals_and_reservations, test_protocol_rejections. Assert exact callback
       argument/order and endpoint frames; source/flat/generated agree. Negative
       reset/unapplied/cycle/failure cases preserve retained output artifacts.
       Register new suite beside downstream suite in Makefile. Convert the old
-      called-downstream active-merge negative to a positive; retain direct-body
+      called-downstream, explicit-callback and mixed-alias active-merge negatives
+      to positives; retain direct-body
       writes and -together rejection assertions in its existing method.
-- [ ] Run first8 CLI and new native cases against unchanged implementation.
+- [x] Run first8 CLI and new native cases against unchanged implementation.
       Expected dispatcher rejection and two-Apply barrier assertion failures;
       fix test fixture errors before implementing.
-- [ ] Remove only the active-iMerge callback dispatcher rejection; make
+- [x] Remove only the active-iMerge callback dispatcher rejection; make
       Merger::Batchable reject streams with logical or actual callback markers.
       Keep protocol, reset, ownership, failure and history rules unchanged.
-- [ ] Build normal/static generator and Runtime plus normal scheduler native.
+- [x] Build normal/static generator and Runtime plus normal scheduler native.
       Run all Runtime cases both variants, scheduler native and first8 CLI both
       variants, existing merge and callback/downstream suites. Execute actual
       changed-line format/tidy/C++17 checks. Expected all current cases pass.
@@ -150,3 +153,11 @@ No new public runtime interface or independent scheduling engine.
       Task-done uses a source-bound completion checker verifying the complete
       qualification, clean pushedmaster, deleted task branch and receipts.
       Continue the broader inventory; no broad item4 completion claim.
+
+
+Task1 verified: all Runtime cases normal/static, full native scheduler,378 CLI
+compatibility methods,12 actual C++quality checks; exact9source/5product/28log
+hashes in build/merged-callbacks-20261124/task1/receipt.json. Legacy explicit,
+downstream and mixed-alias caller-merge rejection assertions are now positive
+replay checks. Native passes reused only with exact source/dependency/product/log
+proof after maintaining Python expectations; original failed attempts retained.

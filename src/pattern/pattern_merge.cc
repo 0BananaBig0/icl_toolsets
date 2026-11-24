@@ -95,6 +95,7 @@ class Merger {
     try {
       bool pending = false;
       for (const auto& op : stream) {
+        if (op.callback || op.callback_execution) return false;
         if (op.command == "iApply") {
           if (!pending || !op.arguments.empty()) return false;
           pending = false;

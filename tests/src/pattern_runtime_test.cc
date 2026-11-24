@@ -214,6 +214,55 @@ Module Top {
 const std::string kDownstreamCallbackProcs =
     "iPDLLevel 1; iProcsForModule Top; set ::calls 0; "
     "iProc store {data reg} {incr ::calls; iWrite en 0; iWrite p $data}; ";
+void TestCallbacksInMerge() {
+  pattern::Design design;
+  design.AddIcl("merged_callbacks.icl", kDownstreamCallbackModel);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (const std::string target : {"value", "dest"}) {
+    pattern::Runtime runtime(design, netlist, true);
+    runtime.Execute("merge.pdl",
+                    kDownstreamCallbackProcs + "iProc access {} {iWrite " +
+                        target +
+                        " 9; iApply}; "
+                        "iMerge -begin; iCall access; iMerge -end; "
+                        "if {$::calls != 1} {error callback_count}");
+    runtime.Finish();
+    Require(runtime.CallbacksExecuted(), "merged callback really executed");
+    Require(
+        std::any_of(runtime.operations().begin(), runtime.operations().end(),
+                    [](const auto& op) {
+                      return op.command == "iWrite" && !op.callback &&
+                             op.callback_execution && op.arguments[0] == "p" &&
+                             op.arguments[1] == "0b1001" &&
+                             op.call_stack.size() == 2;
+                    }),
+        "merged endpoint retains callback and call context");
+  }
+  auto read_model = kDownstreamCallbackModel;
+  read_model.replace(read_model.find("WriteCallBack"),
+                     std::string("WriteCallBack").size(), "ReadCallBack");
+  pattern::Design read_design;
+  read_design.AddIcl("merged_read.icl", read_model);
+  const auto read_netlist = pattern::Elaborate(read_design, "Top");
+  pattern::Runtime read_runtime(read_design, read_netlist);
+  read_runtime.Execute("read_merge.pdl",
+                       kDownstreamCallbackProcs +
+                           "iProc access {} {iRead value 9; iApply}; "
+                           "iMerge -begin; iCall access; iMerge -end; "
+                           "if {$::calls != 1} {error callback_count}");
+  read_runtime.Finish();
+  Require(read_runtime.ReadCallbacksExecuted(), "merged read body executed");
+  pattern::Runtime forbidden(design, netlist);
+  Fails(
+      [&] {
+        forbidden.Execute("reset_merge.pdl",
+                          kDownstreamCallbackProcs +
+                              "iProc store {data reg} {iReset}; "
+                              "iProc access {} {iWrite value 9; iApply}; "
+                              "iMerge -begin; iCall access; iMerge -end");
+      },
+      "forbidden");
+}
 void TestDownstreamCallbackDispatch() {
   pattern::Design design;
   design.AddIcl("downstream.icl", kDownstreamCallbackModel);
@@ -1972,7 +2021,8 @@ void TestCompoundSourceActions() {
 }  // namespace
 int main() {
   int failures = 0;
-  for (const auto test : {TestDownstreamCallbackDispatch,
+  for (const auto test : {TestCallbacksInMerge,
+                          TestDownstreamCallbackDispatch,
                           TestDownstreamCallbackMasks,
                           TestDownstreamCallbackReset,
                           TestDownstreamCallbackPreflight,

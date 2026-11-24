@@ -259,8 +259,10 @@ iWrite dest 9; iApply; if {$::calls != 1} {error count}
         self.rejected("iTake value; iWrite dest 9; iApply", "callback storage")
         self.rejected("iWrite dest 9; iApply -together", "callback")
         self.rejected("iMerge -begin; iWrite dest 9; iApply; iMerge -end", "iMerge")
-        self.rejected("iProc access {} {iWrite dest 9; iApply}; "
-                      "iMerge -begin; iCall access; iMerge -end", "callback")
+        output = self.generation_replay(
+            "iProc access {} {iWrite dest 9; iApply}; "
+            "iMerge -begin; iCall access; iMerge -end")
+        self.assertEqual(self.notes(output), [b"value=0b1001"])
 
     def test_preflight_and_failure_recovery(self):
         source = MODEL.replace(" Alias inverse", """

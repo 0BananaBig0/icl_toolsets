@@ -358,10 +358,12 @@ iWrite tap.INSTRUCTION 3; iApply; iWrite core.r 9; iApply
         output = self.replay(MODEL, PROCS + "iRead observed; iApply")
         self.assertEqual(self.notes(output), [b"observed=0bxxxx"])
 
-    def test_callback_inside_caller_merge_is_rejected(self):
-        self.rejected("""iProc request {} {iWrite value 9; iApply}
+    def test_callback_inside_caller_merge_replays(self):
+        output = self.replay(MODEL, PROCS + """iProc request {} {iWrite value 9; iApply}
 iMerge -begin; iCall request; iMerge -end
-""", "inside iMerge")
+""")
+        self.assertEqual(self.notes(output), [b"value=0b1001"])
+        self.assertIn(b"iWrite p 0b1001", output)
 
     def test_callback_body_can_merge_ordinary_endpoint_calls(self):
         procs = PROCS + """

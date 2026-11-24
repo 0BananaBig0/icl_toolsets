@@ -1164,6 +1164,7 @@ python3 tests/src/pattern/test_callback_execution.py $1
 python3 tests/src/pattern/test_mixed_callback_groups.py $1
 python3 tests/src/pattern/test_mixed_callback_aliases.py $1
 python3 tests/src/pattern/test_downstream_write_callbacks.py $1
+python3 tests/src/pattern/test_merged_callbacks.py $1
 python3 tests/src/pattern/test_callback_endpoint_readback.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1

@@ -869,10 +869,6 @@ class Runtime::Impl {
       throw std::runtime_error(
           "callback groups do not support iApply -together");
     }
-    if (!merges_.empty()) {
-      throw std::runtime_error(
-          "callback execution inside iMerge is unsupported");
-    }
     if (access_together) {
       throw std::runtime_error(
           "callback AccessTogether aliases are unsupported");
