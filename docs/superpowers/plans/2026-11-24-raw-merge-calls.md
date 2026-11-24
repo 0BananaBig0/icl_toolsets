@@ -53,7 +53,7 @@ and native behavior; raw streams remain serial through existing fallback.
   dependency/product/log evidence, update current docs and commit.
 - [x] Step7: Obtain one fresh whole-branch review; re-grade and fix blockers
   in one test-first pass; ledger Minors and declined behavior costs.
-- [ ] Step8: Merge into master, check merged exact inputs/products and focused
+- [x] Step8: Merge into master, check merged exact inputs/products and focused
   behavior, push, delete owned branch and archive only this plan's ledger.
 
 Whole-task completion command: python3 /tmp/raw-merge-calls-completion.py

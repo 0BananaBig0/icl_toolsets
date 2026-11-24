@@ -262,5 +262,6 @@ committed wide benchmarks; independent alternating-byte probes match both
 wide widths. Total deferred Minors: 19, including 17 inherited.
 One guide run hit LeakSanitizer's sandbox ptrace restriction; the same check
 passes outside the sandbox with leak detection enabled. Both logs are retained.
-Integration remains pending merged-result checks. Broader inventory8 and
+All 13 merged-result checks pass on identical
+4,046 inputs and 20 copied qualified executables, with 117 stashes preserved. Broader inventory8 and
 other pending items remain open; item1 stays excluded.
