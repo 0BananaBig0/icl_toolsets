@@ -4940,3 +4940,18 @@ See [Task172 evidence](remaining-work.md#task172-qualified-increment).
 All 17 Task172 merged-result checks pass on identical 4,062 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+
+
+## Standard callback history notes (Task173)
+
+Runtime handles empty informational notes without an out-of-range exception.
+Generated callback-history metadata uses quoted standard comments; comment,
+status and legacy text restore sparse unavailable bits. Malformed/extra note
+arguments leave histories intact. Twenty focused methods cover actual
+endpoint data/status, seeded unaffected bits and source/flat/prefix replay.
+Direct merge notes precede call bodies in Runtime and generated output.
+The final0C/1I/0M review finding is fixed test-first in one pass.
+All52gates, both81x1,298 generator variants,30native suites and378matched
+measurements pass. Corpus classifications remain unchanged; broader actual
+histories and transport are still tracked in the remaining inventory.

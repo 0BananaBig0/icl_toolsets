@@ -10125,3 +10125,32 @@ measurements,2fixed-width allocation probes and4guide processes.
 All 17 Task172 merged-result checks pass on identical 4,062 qualified inputs
 and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
+
+
+
+## Standard callback history notes (Task173)
+
+Generated callback-history annotations now use standard quoted comments:
+
+```tcl
+iNote -comment "modeled callback read history unavailable 0011 observed"
+```
+
+This example marks only the lower two requested bits of a four-bit callback
+register unavailable. It supplies no actual callback data. Keep these notes
+when continuing generated prefixes; both -comment and -status replay, along
+with existing untagged metadata from earlier output. Duplicate notes have
+the same effect as one note. Other bits and ordinary endpoint observations
+retain their histories and status semantics.
+
+Empty notes, malformed masks/targets, unsupported tags and extra arguments
+remain informational and cannot invalidate a seeded history. Tcl syntax and
+substitution errors retain Tcl behavior. See the
+[qualification record](remaining-work.md#task173-standard-callback-history-notes).
+
+Direct notes in an iMerge block execute before its calls, as required by
+IEEE7.9.18(b). For merges whose history-note ordering cannot be excluded,
+Runtime captures arguments once and runs call bodies at merge-end. Complete
+literal merges without valid metadata keep immediate execution, including
+ordinary or malformed literal notes. Called getters and history seeds see
+the same note ordering as generated-prefix replay, including split inputs.

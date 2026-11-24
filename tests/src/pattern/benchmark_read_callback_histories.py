@@ -12,7 +12,7 @@ def fixture(kind, calls, width, merge, observed=True, owner=None):
         model = model[:end]+declaration+model[end:]
     if owner == 'parent' or kind == 'raw':
         # Retain the callback's empty outer Apply in the native controls too.
-        annotation = ('; iNote {modeled callback read history unavailable '+('1'*width)+' observed}') if kind == 'pio' else ''
+        annotation = ('; iNote -comment "modeled callback read history unavailable '+('1'*width)+' observed"') if kind == 'pio' else ''
         return model, text.replace('; iApply;', '; iApply'+annotation+'; iApply;', 1), notes
     endpoint = 'iRead q $data'
     text = text.replace('iRead q 0', 'iRead observed 0')
