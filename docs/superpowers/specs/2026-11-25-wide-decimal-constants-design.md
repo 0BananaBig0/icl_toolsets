@@ -68,4 +68,4 @@ malformed numbers still reject, including short partial numeric prefixes.
 Require six final matched leak-enabled SAN runs with exact output and strict
 10s/512MiB bounds. The additional relative diagnostic allows1MiB over parent
 median, covering observed overlapping RSS ranges; it does not relax either
-original bound. Rerun all87 gates and846 measured processes on the final source.
+original bound. Rerun all88 gates and846 measured processes on the final source.

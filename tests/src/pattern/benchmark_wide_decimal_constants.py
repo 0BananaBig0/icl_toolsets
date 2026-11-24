@@ -15,13 +15,11 @@ ROOT = Path(__file__).resolve().parents[3]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('binary', 'parent', 'output'):
+    for name in ('binary', 'parent', 'sanitized', 'output'):
         parser.add_argument('--'+name, type=Path, required=True)
-    parser.add_argument('--sanitized', type=Path)
     args = parser.parse_args()
-    binaries = {'parent': args.parent.resolve(), 'current': args.binary.resolve()}
-    if args.sanitized:
-        binaries['sanitized'] = args.sanitized.resolve()
+    binaries = {'parent': args.parent.resolve(), 'current': args.binary.resolve(),
+                'sanitized': args.sanitized.resolve()}
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
@@ -30,9 +28,8 @@ def main():
     report = dict(environment=platform.platform(), fixture=str(fixture),
                   fixture_sha256=fixture_sha, widths=[64,65,96,127,128,256,1024,4096,16384,65536],
                   binaries={k:dict(path=str(v),sha256=digest(v)) for k,v in binaries.items()}, runs=[])
-    modes = [('parent','hex'), ('current','hex'), ('current','decimal')]
-    if args.sanitized:
-        modes.append(('sanitized','decimal'))
+    modes = [('parent','hex'), ('current','hex'), ('current','decimal'),
+             ('sanitized','decimal')]
     failed = False
     for owner, mode in modes:
         for repeat in range(3):

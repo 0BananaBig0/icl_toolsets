@@ -4900,5 +4900,14 @@ round-trip canonically and are required by the source registry. The current
 audit has1,032 canonical models,44 explicit AccessLink serialization limits and
 687 elaboration failures; its input set is unchanged. New CLI/native tests cover
 actual data, enums, resets/capture, overrides, lexical forms and retained limits.
-See [Task171 evidence](remaining-work.md#task171-qualified-increment) for87 gates,
+See [Task171 evidence](remaining-work.md#task171-qualified-increment) for88 gates,
 846 measured processes, native hex controls and the large-decimal cost limit.
+
+Final independent review found zero Critical, two Important and two Minor
+findings. One test-first fix rejects nested literal syntax in decimal data
+at the native token API and requires the sanitizer mode in the benchmark.
+Two real-harness reporting methods are maintained under expression-check.
+All 88 qualification gates and 846 matrix measurements rerun on repaired
+source. Two nonblocking test gaps remain deferred: an independent assertion
+on a parameter-sized decimal payload, and a maintained limb-growth negative.
+There are 27 deferred Minors including the 25 inherited findings.

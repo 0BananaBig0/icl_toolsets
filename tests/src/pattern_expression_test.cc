@@ -267,6 +267,10 @@ void TestWideDecimalConstants() {
   };
   Rejects([&] { literal("'d12345678901234567890x"); }, "digit");
   Rejects([&] { literal("'d12x"); }, "decimal integer");
+  for (const auto* text : {"'d64'd18446744073709551615", "'d2'b11",
+                           "64'd64'hffffffffffffffff", "'d\"10\""}) {
+    Rejects([&] { literal(text); }, "digit");
+  }
   Rejects([&] { literal("'d"); }, "empty");
 }
 

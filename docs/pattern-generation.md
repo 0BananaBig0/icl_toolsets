@@ -10047,3 +10047,7 @@ Limb conversion has quadratic large-decimal work; routine near-limit decimals
 need separate performance qualification.
 See [Task171 evidence](remaining-work.md#task171-qualified-increment) for scope,
 unchanged limits, corpus changes and remaining work.
+
+All four benchmark modes are required; omitting --sanitized fails before
+measurement. Decimal data in the native token API must contain only digits and
+underscores after comment/space normalization.

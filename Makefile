@@ -844,6 +844,7 @@ $(BUILD_DIR)/pattern_design_test: tests/src/pattern_design_test.cc $(BUILD_DIR)/
 .PHONY: pattern-expression-check
 pattern-expression-check: $(BUILD_DIR)/pattern_expression_test
 	@$(BUILD_DIR)/pattern_expression_test
+	@python3 tests/tests/src/pattern/test_benchmark_wide_decimal_constants.py $(BUILD_DIR)/pattern_expression_test
 
 $(BUILD_DIR)/pattern_expression_test: tests/src/pattern_expression_test.cc $(BUILD_DIR)/pattern/pattern_expression.o $(SHARED_OBJECTS)
 	$(CXX) $(CXXSTD) $(CXXFLAGS) $(WARNINGS) $(CPPFLAGS) $^ -o $@

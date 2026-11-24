@@ -47,7 +47,7 @@ fixture and print their checked case count. Defaults still run the full suite.
   affected CLI/corpus, quality, package, existing work/allocation/reporting
   probes. Expected: eight repaired corpus defaults become canonical and the
   other original failures remain explicit; exact input/product hashes retained.
-- [ ] Step5: Record actual results, commit and run one fresh final review;
+- [x] Step5: Record actual results, commit and run one fresh final review;
   re-grade/fix blockers once test-first and record deferred Minors/rulings.
   Expected: no unresolved Critical/Important finding.
 - [ ] Step6: Merge to master, run merged checks with identical qualified
@@ -65,5 +65,5 @@ parent scalar Literal/Binary path for tokens up to18 characters and bound only
 the longer decimal conversion. Empty/partial inputs remain rejected. Check six
 matched SAN headroom processes before long suites, with original10s/512MiB
 limits and1MiB variance allowance for the extra relative median diagnostic.
-Run the existing SAN mixed-group gate early. All87 gates,846 measured processes
+Run the existing SAN mixed-group gate early. All88 gates,846 measured processes
 and4 guide processes must pass on the final source; no original bound changes.

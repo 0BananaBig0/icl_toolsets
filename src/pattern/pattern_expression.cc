@@ -145,6 +145,9 @@ Constant Literal(const std::string& token,
   if (digits.empty()) throw std::runtime_error("empty ICL number");
   std::string bits;
   if (base == 'd') {
+    if (digits.find_first_not_of("0123456789_") != std::string::npos) {
+      throw std::runtime_error("invalid ICL decimal integer digit");
+    }
     bits = Literal(digits, parameter).data;
   } else {
     for (char c : digits) {

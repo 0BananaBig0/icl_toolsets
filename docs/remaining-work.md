@@ -495,10 +495,10 @@ AccessLink serialization limits and687 original elaboration failures across
 the only changes in success/stage classification. Four oversized width
 cases remain explicit resource/integer failures.
 
-All87 qualification gates pass:80 suites/1,276 methods per full normal/static
+All88 qualification gates pass:80 suites/1,276 methods per full normal/static
 generator,15 normal and15 leak-enabled sanitizer native suites, affected
 CLI/corpus, six C++ quality checks, source packaging and existing work/
-allocation/reporting probes. Exact hashes cover4,057 inputs/38 executables.
+allocation/reporting probes. Exact hashes cover4,058 inputs/38 executables.
 The real work counter remains471,064 below600,000.
 The existing wide sanitizer pin-memory case remains explicitly unrun; its
 nine smaller functional controls pass.
@@ -511,7 +511,7 @@ process checks all ten exact all-ones values at64/65/96/127/128/256/1024/4096/
 current-hex/current-decimal/SAN-decimal modes. A current test-only harness linked
 against the immutable parent expression object provides the parent hex control;
 parent decimal remains unsupported, with no performance claim. An old
-executable that ignores benchmark flags and exits0 is rejected in all six
+executable that ignores benchmark flags and exits0 is rejected in all nine
 candidate rows. Process status, exact completion, fixture/binary hashes and
 time/RSS are checked.
 
@@ -526,19 +526,19 @@ longer tokens use bounded limbs. Scalar allocation counts are4 in both.
 A pilot restores median RSS to518344KiB current versus518192KiB parent.
 
 The six final headroom runs match complete outputs, meet the original bounds,
-and have median RSS518032KiB current versus
-518168KiB parent. The extra relative comparison
+and have median RSS518272KiB current versus
+518276KiB parent. The extra relative comparison
 allows1MiB for observed RSS variance; every original10s/512MiB bound remains
 strict. Full qualification reruns on the final source; earlier candidates are
 historical diagnostic evidence.
 
-Native current decimal median is0.015733s
-with peak5032KiB; current hex median is
-0.005093s/5048KiB
-and parent hex median is0.006475s/
-4880KiB. Sanitizer decimal median is
-0.039131s/
-14732KiB. These include fixture IO and
+Native current decimal median is0.016867s
+with peak4904KiB; current hex median is
+0.005561s/5048KiB
+and parent hex median is0.005531s/
+4912KiB. Sanitizer decimal median is
+0.038125s/
+14904KiB. These include fixture IO and
 native parsing, rather than isolated conversion-kernel timings. All meet
 10s/512MiB. The32-bit limb decoder processes nine digits per multiply/add.
 Work is quadratic for very large decimals and storage is linear in significant
@@ -549,9 +549,9 @@ All existing replay controls match actual parent outputs: complete bytes for
 observed rows, parent bytes with observation notes removed for unobserved rows.
 Raw callback-matrix rows remain direct scan-only controls. Aggregate callback,
 merge and current word peaks include sanitizer rows:
-0.7670s/438468KiB,
-0.7679s/437968KiB and
-7.9724s/302888KiB.
+0.7679s/438480KiB,
+0.8175s/437968KiB and
+7.9508s/302876KiB.
 Regular bounds stay10s/512MiB and wide bounds10s/256MiB.
 Four guide processes match exact128-bit data/miscompare masks and status3/clear0.
 
@@ -559,3 +559,12 @@ Inventory11/12 advances; AccessLink serialization, broader source/model
 acceptance and original topology/clock/history/transport/scale work remain open.
 Item1 remains excluded and25 inherited Minors remain deferred. Review and
 integration are recorded after they finish.
+
+Final independent review found zero Critical, two Important and two Minor
+findings. One test-first fix rejects nested literal syntax in decimal data
+at the native token API and requires the sanitizer mode in the benchmark.
+Two real-harness reporting methods are maintained under expression-check.
+All 88 qualification gates and 846 matrix measurements rerun on repaired
+source. Two nonblocking test gaps remain deferred: an independent assertion
+on a parameter-sized decimal payload, and a maintained limb-growth negative.
+There are 27 deferred Minors including the 25 inherited findings.
