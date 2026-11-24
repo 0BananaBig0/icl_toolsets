@@ -38,20 +38,20 @@ Maintain existing tests only for behavior deliberately changed by the spec.
 Merger::Batchable and existing ScanScheduler::ApplyRawScans. Preserve signatures
 and native behavior; raw streams remain serial through existing fallback.
 
-- [ ] Step1: Add12 CLI cases: scalar/nested/prefix/mixed/parallel/TAP,
+- [x] Step1: Add12 CLI cases: scalar/nested/prefix/mixed/parallel/TAP,
   defaults/notes/local-reset/reservations/protocol failures/remaining guards.
   Add exact matched serial frame and canonical-output assertions.
-- [ ] Step2: Run new suite on parent; expect valid merged raw calls to fail
+- [x] Step2: Run new suite on parent; expect valid merged raw calls to fail
   specifically on modeled-raw iMerge preflight, while serial controls pass.
-- [ ] Step3: Admit iMerge to the raw preflight whitelist; change necessary
+- [x] Step3: Admit iMerge to the raw preflight whitelist; change necessary
   callers only if a concrete failing case proves the need.
-- [ ] Step4: Build normal/static/sanitizer generator; run focused new cases
+- [x] Step4: Build normal/static/sanitizer generator; run focused new cases
   and relevant existing raw/merge/reset suites; expect exact replay and guards.
-- [ ] Step5: Measure specified normal/wide/sanitizer matrices, all forms and
+- [x] Step5: Measure specified normal/wide/sanitizer matrices, all forms and
   matched controls; record complete outcomes and retain bound failures.
-- [ ] Step6: Run full required regression, prove any native reuse by exact
+- [x] Step6: Run full required regression, prove any native reuse by exact
   dependency/product/log evidence, update current docs and commit.
-- [ ] Step7: Obtain one fresh whole-branch review; re-grade and fix blockers
+- [x] Step7: Obtain one fresh whole-branch review; re-grade and fix blockers
   in one test-first pass; ledger Minors and declined behavior costs.
 - [ ] Step8: Merge into master, check merged exact inputs/products and focused
   behavior, push, delete owned branch and archive only this plan's ledger.
@@ -62,3 +62,10 @@ and pushed clean master, owned branch removed and117 stashes retained.
 
 Self-review: one task and no cross-task interfaces; all changes follow the
 same raw-merge responsibility. Native reuse is conditional, not a pass claim.
+
+
+Final review adds a maintained legacy expectation update: empty merges now
+compare complete serial replay, while three topology negatives remain.
+This Python-only edit narrows the native shared proof from4,042 to4,041
+inputs without changing native dependencies or executables. One Important
+finding is fixed; two Minors remain deferred.

@@ -67,3 +67,23 @@ only with exact native dependency/build-rule, binary and raw-log provenance;
 otherwise run them fresh. One independent final review and one test-first blocker
 fix pass; ledger Minors. Merge into master, verify merged inputs/products, push,
 delete only this branch, archive only its ledger and continue pending inventory.
+
+## Final qualification
+
+The product change remains one allowed command in modeled-raw preflight.
+All 12 new methods pass on normal/static/leak-enabled sanitizer products.
+Full normal/static generation passes 76 suites/1,223 methods per variant.
+All 70 gates pass with 4,046 input hashes and 38 executable hashes. Native
+15 normal/15 sanitizer results are retained from Task165 under exact proof for
+4,041 shared inputs, unchanged native build rules and 30 binary/raw-log pairs;
+the generator main and changed Python expectation do not affect native builds.
+
+All 84 matched measurements and four guide processes agree with parent serial
+output. Measured peaks are 2.599s and 403624KiB within unchanged bounds.
+Independent review found 0 Critical, 1 Important and 2 Minor findings. The one
+test-first fix changes a legacy empty-merge negative into exact positive replay,
+retaining its three unsupported-topology negatives. Source/flat reset-artifact
+separation and high-bit-set wide benchmark data remain deferred Minors; separate
+independent probes match at both wide widths. Total deferred Minors: 19.
+No new raw interleaving, modeled merge history, opaque topology, physical-PDL,
+device/vendor equivalence or timing support is claimed.
