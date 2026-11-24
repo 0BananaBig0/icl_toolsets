@@ -10127,6 +10127,7 @@ and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
 
 
+
 ## Standard callback history notes (Task173)
 
 Generated callback-history annotations now use standard quoted comments:
@@ -10146,3 +10147,10 @@ Empty notes, malformed masks/targets, unsupported tags and extra arguments
 remain informational and cannot invalidate a seeded history. Tcl syntax and
 substitution errors retain Tcl behavior. See the
 [qualification record](remaining-work.md#task173-standard-callback-history-notes).
+
+Direct notes in an iMerge block execute before its calls, as required by
+IEEE7.9.18(b). For merges whose history-note ordering cannot be excluded,
+Runtime captures arguments once and runs call bodies at merge-end. Complete
+literal merges without valid metadata keep immediate execution, including
+ordinary or malformed literal notes. Called getters and history seeds see
+the same note ordering as generated-prefix replay, including split inputs.

@@ -283,6 +283,59 @@ iNote [iGetReadData q -dec]; iNote [iGetStatus]
                                      [line for line in reference.splitlines() if line.startswith(b'iRead ')])
         self.assertEqual(annotations, [b'iNote -comment "'+marker+b'"'])
 
+    def test_direct_merge_notes_precede_history_getters_in_calls(self):
+        for tag in ('', '-comment ', '-status '):
+            with self.subTest(tag=tag):
+                output = self.check('''iState observed 5 -LastReadValue
+iProc probe {} {
+ if {[catch {iGetReadData observed[1:0] -bin}]} {iNote unavailable} else {iNote stale}
+}
+iMerge -begin; iCall probe
+'''+ 'iNote '+tag+'{modeled callback read history unavailable 0011 observed}\n'+'''
+iMerge -end
+''')
+                self.assertEqual(self.notes(output), [b'unavailable'])
+
+    def test_plain_merge_preserves_call_produced_argument_values(self):
+        for note in ('', 'iNote -comment {ordinary comment}\n',
+                     'iNote -comment {modeled callback read history unavailable invalid}\n'):
+            with self.subTest(note=note):
+                output = self.check('''iProc seed {} {set ::word 9}
+iProc load {data} {iWrite p $data; iApply}
+iMerge -begin; iCall seed
+'''+note+'''iCall load $::word; iMerge -end
+iRead q 9; iApply; iNote [iGetReadData q -dec]; iNote [iGetStatus]
+''')
+                self.assertEqual(self.notes(output)[-2:], [b'9', b'0'])
+
+    def test_direct_merge_notes_precede_seeds_across_split_prefixes(self):
+        model, first, second, suffix = (self.root/name for name in
+                                       ('source.icl', 'first.pdl', 'second.pdl', 'suffix.pdl'))
+        model.write_text(MODEL)
+        first.write_text(PROCS+'''iProc seed {} {
+ iState observed 5 -LastReadValue; iState observed 10 -LastMiscompareValue
+}
+iMerge -begin; iCall seed
+''')
+        suffix.write_text('''iPDLLevel 1
+iNote [iGetReadData observed[1:0] -bin]
+iNote [iGetMiscompares observed[1:0] -bin]
+''')
+        for tag in ('', '-comment ', '-status '):
+            for modeled in (False, True):
+                with self.subTest(tag=tag, modeled=modeled):
+                    second.write_text('iNote '+tag+
+                                      '{modeled callback read history unavailable 0011 observed}\n'
+                                      'iMerge -end\n')
+                    self.run_tool(model, first, 'prefix-out.pdl', modeled=modeled,
+                                  extra=('--pdl', str(second)))
+                    source = self.run_tool(model, first, 'source-tail.pdl', modeled=modeled,
+                                           extra=('--pdl', str(second), '--pdl', str(suffix)))
+                    replay = self.run_tool(model, self.root/'prefix-out.pdl', 'replay-tail.pdl',
+                                           modeled=modeled, extra=('--pdl', str(suffix)))
+                    self.assertEqual(source, replay)
+                    self.assertEqual(self.notes(source), [b'0b01', b'0b10'])
+
 
 if __name__ == '__main__':
     unittest.main()

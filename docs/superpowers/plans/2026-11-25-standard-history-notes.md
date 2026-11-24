@@ -39,7 +39,7 @@ preserve public Runtime APIs and existing invalidation masks.
   histories/callbacks, C++ quality and source packaging. Record hashes and results.
   Run callback benchmark source/flat/generated controls with unchanged bounds.
   Expected every required check passes; report actual classifications unchanged.
-- [ ] Step4: Commit finalized changes and run one fresh whole-branch review.
+- [x] Step4: Commit finalized changes and run one fresh whole-branch review.
   Fix Critical/Important once test-first and rerun affected verification.
   Expected no unresolved blockers; defer inherited27Minors and new Minors.
 - [ ] Step5: Merge/push master, verify merged focused tests and qualified hashes,
@@ -50,3 +50,12 @@ Completion: python3 /tmp/standard-history-notes-completion.py
 
 Self-review: one existing implementation boundary, no inter-task interfaces;
 all five review classes map to Step1. Small correction needs no builder review.
+
+
+Step4 review fix: add two RED merge-note tests covering in-call getters and
+seeded histories across split prefixes, then queue resolved Runtime calls
+until merge-end with argument values evaluated once. Preserve completed calls
+during callback unwind. Preserve immediate calls in complete literal merges
+without valid metadata, including ordinary/malformed notes and call-produced
+Tcl argument values. Expected20focused methods, both81x1298 full variants,
+52fresh gates,378matched measurements and unchanged original scheduling.

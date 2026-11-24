@@ -4942,13 +4942,16 @@ and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
 
 
+
 ## Standard callback history notes (Task173)
 
 Runtime handles empty informational notes without an out-of-range exception.
 Generated callback-history metadata uses quoted standard comments; comment,
 status and legacy text restore sparse unavailable bits. Malformed/extra note
-arguments leave histories intact. Seventeen focused methods cover actual
+arguments leave histories intact. Twenty focused methods cover actual
 endpoint data/status, seeded unaffected bits and source/flat/prefix replay.
-All52gates, both81x1,295 generator variants,30native suites and378matched
+Direct merge notes precede call bodies in Runtime and generated output.
+The final0C/1I/0M review finding is fixed test-first in one pass.
+All52gates, both81x1,298 generator variants,30native suites and378matched
 measurements pass. Corpus classifications remain unchanged; broader actual
 histories and transport are still tracked in the remaining inventory.

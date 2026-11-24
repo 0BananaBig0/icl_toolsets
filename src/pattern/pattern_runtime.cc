@@ -203,6 +203,7 @@ class Runtime::Impl {
     pdl::ByteRange range;
     const pdl::Command* command;
     size_t source;
+    bool immediate_merge = false;
     std::string Location() const {
       const auto& lines = document->line_starts();
       const auto line =
@@ -224,6 +225,12 @@ class Runtime::Impl {
     size_t minimum_arguments = 0, maximum_arguments = 0;
   };
   using ProcedureKey = std::tuple<std::string, std::string, std::string>;
+  struct MergeCall {
+    Procedure definition;
+    std::string instance;
+    std::vector<std::string> arguments;
+    std::string invocation, origin;
+  };
 
   std::string Instrument(const std::string& path,
                          const std::shared_ptr<const pdl::Document>& document,
@@ -235,17 +242,45 @@ class Runtime::Impl {
     std::map<size_t, Edit> edits;
     std::function<void(const std::vector<pdl::Command>&, bool, bool)> visit;
     visit = [&](const auto& commands, bool procedure, bool top) {
+      std::optional<size_t> plain_merge;
       for (const auto& command : commands) {
         if (command.words.empty()) continue;
         const auto& first = command.words.front();
         const auto name = CommandName(first.value);
         const bool is_pdl =
             first.literal && !first.expanded && pdl::FindCommandSpec(name);
+        if (plain_merge &&
+            (!is_pdl ||
+             (name != "iCall" && name != "iNote" && name != "iMerge") ||
+             std::any_of(command.words.begin(), command.words.end(),
+                         [&](const auto& word) {
+                           return !word.substitutions.empty() ||
+                                  (name == "iNote" &&
+                                   (!word.literal || word.expanded));
+                         }))) {
+          plain_merge.reset();
+        }
+        if (plain_merge && name == "iNote") {
+          std::vector<std::string> arguments;
+          for (size_t i = 1; i < command.words.size(); ++i) {
+            arguments.push_back(command.words[i].value);
+          }
+          if (CallbackHistoryNote(arguments)) plain_merge.reset();
+        }
         if (is_pdl) {
           const size_t id = sites_.size();
           sites_.push_back(
               {path, document, command.range, &command,
                procedure ? std::numeric_limits<size_t>::max() : source});
+          if (name == "iMerge" && command.words.size() == 2 &&
+              command.words[1].literal) {
+            if (command.words[1].value == "-begin") {
+              plain_merge = id;
+            } else if (command.words[1].value == "-end" && plain_merge) {
+              sites_[*plain_merge].immediate_merge = true;
+              plain_merge.reset();
+            }
+          }
           edits.insert_or_assign(
               first.range.begin,
               Edit{first.range.end, "::icl_pattern_dispatch " +
@@ -473,14 +508,15 @@ class Runtime::Impl {
     }
   }
 
-  void RestoreCallbackReadInvalidation(const Operation& operation) {
-    const auto& arguments = operation.arguments;
+  std::optional<std::pair<size_t, std::string>> CallbackHistoryNote(
+      const std::vector<std::string>& arguments) const {
+    if (!netlist_) return std::nullopt;
     const bool tagged = arguments.size() == 2 && (arguments[0] == "-comment" ||
                                                   arguments[0] == "-status");
-    if (!tagged && arguments.size() != 1) return;
+    if (!tagged && arguments.size() != 1) return std::nullopt;
     const auto& note = arguments[tagged ? 1 : 0];
     const std::string prefix = "modeled callback read history unavailable ";
-    if (note.rfind(prefix, 0) != 0) return;
+    if (note.rfind(prefix, 0) != 0) return std::nullopt;
     const auto separator = note.find(' ', prefix.size());
     const auto requested =
         note.substr(prefix.size(), separator - prefix.size());
@@ -491,9 +527,14 @@ class Runtime::Impl {
         !netlist_->nodes[node->second].read_callback ||
         requested.size() != netlist_->nodes[node->second].Width() ||
         requested.find_first_not_of("01") != std::string::npos) {
-      return;
+      return std::nullopt;
     }
-    InvalidateCallbackRead(node->second, requested);
+    return std::make_pair(node->second, requested);
+  }
+  void RestoreCallbackReadInvalidation(const Operation& operation) {
+    if (const auto note = CallbackHistoryNote(operation.arguments)) {
+      InvalidateCallbackRead(note->first, note->second);
+    }
   }
 
   struct CallbackBinding {
@@ -1490,6 +1531,14 @@ class Runtime::Impl {
     if (!validated.ok()) throw std::runtime_error(validated.error_message());
   }
 
+  void ExecuteMergeCalls(size_t index) {
+    const auto calls = std::move(merges_.at(index).calls);
+    for (const auto& call : calls) {
+      InvokeProcedure(call.definition, call.instance, call.arguments,
+                      call.invocation, call.origin);
+    }
+  }
+
   void InvokeProcedure(const Procedure& definition, const std::string& instance,
                        const std::vector<std::string>& arguments,
                        const std::string& invocation, const std::string& origin,
@@ -1533,6 +1582,11 @@ class Runtime::Impl {
     } catch (const std::exception& error) {
       if (!callback_stack_.empty()) {
         for (size_t i = merges_.size(); i > merge_count; --i) {
+          try {
+            ExecuteMergeCalls(i - 1);
+          } catch (const std::exception&) {
+            // Retain completed calls while propagating the original failure.
+          }
           std::vector<std::string> stack;
           for (size_t frame = 0; frame < merges_[i - 1].depth; ++frame) {
             if (!frames_[frame].invocation.empty()) {
@@ -1756,8 +1810,17 @@ class Runtime::Impl {
       const auto invocation = "iCall " + words[1] + " at " + origin +
                               " (command " +
                               std::to_string(frames_.back().command) + ")";
-      InvokeProcedure(definition, instance, {words.begin() + 2, words.end()},
-                      invocation, origin);
+      if (!merges_.empty() && merges_.back().depth == frames_.size() &&
+          merges_.back().defer_calls) {
+        merges_.back().calls.push_back({definition,
+                                        instance,
+                                        {words.begin() + 2, words.end()},
+                                        invocation,
+                                        origin});
+      } else {
+        InvokeProcedure(definition, instance, {words.begin() + 2, words.end()},
+                        invocation, origin);
+      }
       return;
     }
     if (name == "iGetReadData" || name == "iGetMiscompares" ||
@@ -1933,9 +1996,12 @@ class Runtime::Impl {
         if (!merges_.empty() && merges_.back().depth == frames_.size()) {
           throw std::runtime_error("nested iMerge must occur through iCall");
         }
-        merges_.push_back({frames_.size(), origin});
+        merges_.push_back(
+            {frames_.size(), origin, {}, !site || !site->immediate_merge});
       } else if (words[1] == "-end" && !merges_.empty() &&
                  merges_.back().depth == frames_.size()) {
+        // IEEE7.9.18(b): direct notes execute before any merged call body.
+        ExecuteMergeCalls(merges_.size() - 1);
         merges_.pop_back();
       } else {
         throw std::runtime_error("unmatched iMerge");
@@ -1988,6 +2054,8 @@ class Runtime::Impl {
   struct Merge {
     size_t depth;
     std::string origin;
+    std::vector<MergeCall> calls;
+    bool defer_calls = true;
   };
   std::vector<Merge> merges_;
   std::map<ProcedureKey, Procedure> procedures_;

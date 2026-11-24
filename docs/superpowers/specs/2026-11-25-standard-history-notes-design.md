@@ -30,3 +30,21 @@ histories/status and local resets. Work remains linear in note length with
 existing node lookup; no per-note subprocess or full-netlist scan. Reuse the
 callback benchmark at its representative dimensions and unchanged bounds;
 do not claim a performance improvement for this syntax correction.
+
+
+Final-review correction: IEEE7.9.18(b), printed177, requires direct merge notes
+before calls. Runtime retains resolved calls and their evaluated arguments
+until the matching merge-end, then executes bodies in encounter order. This
+also works across source files and nested call frames. Callback failure unwind
+retains completed calls while reporting the original failure. Existing
+generator notes-first ordering and scheduling remain unchanged. The expanded
+tests include in-call getters and seeds, both tags/legacy, split prefixes and
+modeled/unobserved variants; existing once-only and recovery tests still pass.
+
+Compatibility correction within the same fixwave: complete literal merges
+without valid history metadata retain immediate calls, including ordinary and
+malformed literal notes. This preserves call-produced Tcl argument values.
+Reuse the same CallbackHistoryNote validator for instrumentation and
+restoration; uncertain or split merge contexts use notes-first deferral.
+The walk is linear in source commands and literal note lengths. No scheduler
+or public API change.

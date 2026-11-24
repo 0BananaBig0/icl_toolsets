@@ -660,6 +660,7 @@ and 20 copied executables. The merge is pushed to master, the owned task branch
 is deleted, and all 117 stashes remain. Broader inventory work remains open.
 
 
+
 ## Task173 standard callback history notes
 
 Empty iNote commands and malformed callback-history text now remain
@@ -679,13 +680,26 @@ continue through the same Runtime and renderer.
 The actual parent reproducer aborts an empty note with a vector range error.
 Test-first regressions also expose malformed-note aborts, extra-argument
 history invalidation, standard tagged prefixes inventing seeded read data,
-and untagged generated metadata. All17 focused methods now pass in normal,
+and untagged generated metadata. All20 focused methods now pass in normal,
 static and leak-enabled sanitizer builds. Their literal partial-read example
 has actual q=9, one compared low-bit mismatch, unaffected upper read bits01
 and miscompare bits10, with requested lower callback histories unavailable.
 
+The final independent review finds0Critical/1Important/0Minor. Its merge-order
+finding is fixed test-first: IEEE7.9.18(b), printed177, requires direct merge
+notes before call bodies. When history-note ordering may affect a merge,
+Runtime saves resolved calls and evaluated arguments until merge-end, then
+runs bodies in encounter order. Complete literal merges with no valid history
+metadata retain immediate calls; ordinary/malformed literal notes preserve
+that behavior. The same validator serves restoration and this analysis.
+In-call getters and history seeds now agree with generated prefixes for legacy and
+both standard tags, split sources and modeled/unobserved modes. Existing
+once-only arguments and callback partial-commit/error recovery tests pass.
+The generator's existing notes-first ordering and scheduling are preserved.
+One fix wave is used, with no rereview; all52gates rerun after that change.
+
 All52 qualification gates pass on4,062input/38product hashes:81suites/
-1,295methods in each full normal/static generator regression,15normal and
+1,298methods in each full normal/static generator regression,15normal and
 15SAN native suites, affected SAN callback/history/opaque checks, three C++
 quality checks, corpus checks, four reporting methods per variant and the
 complete source distribution/install/uninstall/archive-native check.
@@ -697,9 +711,9 @@ unobserved modes. SAN checks16calls/4bits in both route kinds and all forms.
 Direct parent controls carry the same standard comment text. Every full
 output, actual observation list and two-applies-per-call count is checked
 under the existing10s and512MiB/256MiB bounds. Peak across all owners is
-0.8180s/437940KiB. No speedup is claimed.
+0.8170s/438724KiB. No speedup is claimed.
 
 All2,562 corpus identities and classifications remain1,032canonical,
 44unsupported AccessLink cases and687default elaboration failures. Broader
 inventory2–8/10–12 stays open, item1 stays excluded, and inherited27Minors
-remain deferred. Final review and integration are recorded below.
+remain deferred. No review blocker remains; integration is recorded below.
