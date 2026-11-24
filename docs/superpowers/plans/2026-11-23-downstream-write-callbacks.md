@@ -175,7 +175,7 @@ hardware dimensions and actual PIO writes; no request notes as observations.
       execute full63gates/73x1189each/15normal15SAN/sourcepackage/actualquality,
       source/product hashes and all measurement receipts. Expected exact4039input/
       38products and no in-scope blocker; retain unavailable tools as unrun.
-- [ ] Merge into master, run26integrationchecks on identicalinputs/20copiedproducts,
+- [x] Merge into master, run26integrationchecks on identicalinputs/20copiedproducts,
       push/detach/delete ownbranch/archive ownledger with117stashes preserved.
       task-done: python3 /tmp/downstream-write-callbacks-completion-check.py.
       Expected clean pushedmaster/onlymaster; continue broader inventory.
@@ -209,4 +209,6 @@ Expected final counts:73suites/1189methods per generator,4039inputs/38products,
 63gates,20 downstream CLI methods,15quality and26 merged-result checks.
 
 
-Task163 passes63 final qualification gates:15 native and15 leak-enabled sanitizer suites,73 suites/1189 methods in each generator variant,15 C++ quality checks, source packaging and4039 input/38 product hashes. The72 regular downstream processes peak at4.2884s/373760KiB; six512/1024-bit runs peak at1.1308s/121236KiB. All324 new/preserved matrix and guide processes plus4 dynamic allocation probes pass. Independent review found0Critical/5Important/1Minor; one test-first pass fixes all five Important findings. The benchmark checks postcondition counts, widths and allowed names; exact ordered register/value pairs remain a deferred Minor. Functional regressions check identities and payloads. Integration is pending; broader inventory and excluded coverage item1 remain open.
+Task163 passes63 final qualification gates:15 native and15 leak-enabled sanitizer suites,73 suites/1189 methods in each generator variant,15 C++ quality checks, source packaging and4039 input/38 product hashes. The72 regular downstream processes peak at4.2884s/373760KiB; six512/1024-bit runs peak at1.1308s/121236KiB. All324 new/preserved matrix and guide processes plus4 dynamic allocation probes pass. Independent review found0Critical/5Important/1Minor; one test-first pass fixes all five Important findings. The benchmark checks postcondition counts, widths and allowed names; exact ordered register/value pairs remain a deferred Minor. Functional regressions check identities and payloads. All26 merged-result checks pass on identical4039 inputs and20 copied qualified executables, with117 stashes preserved. Broader inventory and excluded coverage item1 remain open.
+
+Integration:26 checks passed on identical4039 inputs/20 products; direct-parent merge d8874747ea84cef45fd5f66c70308f52df78c92c.
