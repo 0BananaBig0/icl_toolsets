@@ -70,3 +70,21 @@ existing allocation/reporting/work probes. One fresh final review and one
 test-first blocker fix pass, then merge/push/delete the owned branch. Preserve
 117 stashes, ignored artifacts and24 inherited deferred Minors. Broad topology,
 clock/event and model inventory remains open; coverage item1 stays excluded.
+
+## Final-review corrections
+Three reproduced blockers require a small extension to the initial guard-only
+design. Runtime expansions carry the exact consumed logical request indexes;
+readback removes those pending markers across caller-frame changes and
+coalescing, retaining the native unexpanded-access rejection. Modeled callback
+completion emits a standard iNote containing the reserved payload
+"modeled callback read history unavailable <mask> <canonical-register>".
+Runtime validates the callback target, full width and binary mask, then marks
+only those read/miscompare bits unavailable. Preserve these notes when reusing
+generated PDL; they do not execute hardware or repeat the callback. Numeric
+iState unknown cannot encode unavailable history. This keeps untouched manual
+history and source/flat/generated continuation behavior. Direct parent PIO
+controls include the same note and unused callback declaration. The SAN matrix
+uses actual matching parent bytes for all forms, making missing16-target
+parent source controls only when custom sizes require them. Fifteen focused
+methods and four reporting methods cover the corrections. Full post-fix
+qualification replaces, rather than reuses, the pre-review final passes.

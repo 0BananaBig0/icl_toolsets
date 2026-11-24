@@ -39,6 +39,8 @@ struct Operation {
   std::map<size_t, std::string> callback_preserved{};
   // Actual automatic write-callback invocation, distinct from queued intent.
   bool callback_prerequisite = false;
+  // Logical request indexes consumed by this callback expansion.
+  std::vector<size_t> callback_consumed{};
 };
 
 struct ReadbackUpdate {

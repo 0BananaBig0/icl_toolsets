@@ -4876,6 +4876,13 @@ logical callback history unavailable. Automatic/physical/timed and raw-root
 callback-storage boundaries remain. This advances inventory4/6 without closing
 their broader histories/transport work.
 
-See [Task170 evidence](remaining-work.md#task170-qualified-increment) for12
-focused methods,79×1,265 generator variants,30 native suites and828 measured
+See [Task170 evidence](remaining-work.md#task170-qualified-increment) for15
+focused methods,79×1,268 generator variants,30 native suites and828 measured
 processes, including the exact reused-input/test-only qualification proofs.
+
+Post-review qualification reruns all83 gates and828 measurements on exact
+4,054 input/38 executable hashes. Request-index metadata handles differing
+queue/apply frames; standard modeled iNote annotations preserve requested-bit
+logical history unavailability across generated-prefix continuation. All
+sanitizer matrix forms now use actual parent references. The three Important
+findings are fixed test-first; one documentation Minor is deferred(total25).

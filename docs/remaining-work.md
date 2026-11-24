@@ -398,58 +398,75 @@ is deleted, and all 117 stashes remain. Broader inventory work remains open.
 
 ## Task170 qualified increment
 
-Task170 allows actual native endpoint histories inside and after explicitly
-invoked read callbacks. Expected callback data remains comparison data: asking
-for0 while endpoint q is9 observes9, records two mismatches, and clears status
-back to0. Logical callback-register getters remain unavailable. The existing
-observer, reset handling and merge provider are reused; only two callback-read
-guard terms are removed. Automatic prerequisites, physical/timed histories,
-unexpanded callback targets and raw roots containing callback storage remain
-unsupported.
+Task170 supports actual native endpoint histories inside/after invoked read
+callbacks. Expected arguments remain comparison data: requesting0 while q is9
+observes9 and two mismatches. Logical callback register history remains
+unavailable after completion, including generated-prefix reuse; untouched
+manual read/miscompare bits remain intact. Source, flat and generated
+continuations agree on endpoint writes.
 
-The 12-method regression covers body getters, no-query generation, unknown and
-sparse/inverted values, nested callbacks, namespaces, selectable/serial routes,
-reset/caught retry, split/local-reset rewriting and merged calls. Corrected
-immutable-parent fixtures fail11 positives through the intended guards and
-pass the unsupported-boundary test. Ordinary parent endpoint controls prove
-that the routes themselves predate this change.
+Final independent review found0 Critical,3 Important and1 Minor finding.
+One test-first pass fixes stale pending markers across helper frames and
+coalesced requests, loss of logical-history invalidation in generated prefixes,
+and sanitizer benchmark comparisons against their own potentially incorrect
+source. The new tests reproduce six frame variants, two seeded/unseeded prefix
+variants, five invalid annotation payloads and four sanitizer corruption cases
+before the fixes;15 focused methods and four reporting methods pass afterward.
+The review's documentation inconsistency is deferred, bringing the total to25
+Minors including24 inherited. Older usage paragraphs still state the previous
+read-callback restriction; the current endpoint-history section describes the
+supported behavior.
 
-All 83 qualification gates pass. Both generator variants cover
-79 suites/1,265 methods. The normal result composes52 earlier passing suites
-(852 methods) with27 later suites after a Python-only obsolete expectation
-update; the full static variant runs after that update. Fifteen normal and15
-leak-enabled sanitizer native suites pass. Thirteen normal native passes
-precede a native-test-only assertion update; that one changed test and the
-remaining native suites run afterward. Hash proofs record precisely one
-native test input/two test executables changing, followed by one Python test
-input with no executable changes. Final manifests cover4,054 inputs and38
-executables. Affected CLI/corpus, nine C++ quality checks, source packaging,
-allocation and reporting/work probes pass. The real work counter remains
-471,064 calls below its600,000 limit. The existing wide
-sanitizer pin-memory check remains unrun; its nine functional controls pass.
+Exact expansion metadata records consumed request indexes per callback node.
+Frame-indexed sets remove the corresponding pending requests across queue/apply
+frame changes without relaxing native unexpanded-access guards. Work and
+storage scale with actual node/request memberships; requests are not copied
+wholesale into every callback. Completion emits standard PDL iNote metadata
+with payload "modeled callback read history unavailable <mask> <register>".
+Runtime validates the canonical read-callback register, binary full-width mask,
+and restores only those read/miscompare bits as unavailable. Retain these
+modeled notes when reusing generated prefixes. They neither execute hardware
+nor repeat callbacks. External tools see ordinary notes.
 
-All828 matched processes satisfy the unchanged time/RSS bounds:378 callback
-matrix processes,378 existing merge controls and72 word-decoding controls.
-The callback PIO rows compare direct parent endpoint accesses with current
-read-callback expansion, preserving its extra empty Apply. Raw rows are direct
-scan-only controls; they do not claim raw callback-storage support. Wide raw
-controls use two scans and verify the second actual high-bit capture. Observed
-rows compare complete parent bytes; unobserved rows compare parent bytes with
-observation notes removed. Source, flat and generated forms agree. Four guide
-processes agree on actual9/6, status4/clear0 and four Apply records.
+All83 final qualification gates pass afresh on the post-review implementation:
+79 suites/1,268 methods per normal/static generator,15 normal and15 leak-enabled
+sanitizer native suites, affected CLI/corpus,15 C++ quality checks, packaging,
+allocation and reporting probes. Exact hashes cover4,054 inputs/38 executables.
+The earlier composed83-gate evidence and828 measurements remain archived as
+pre-review evidence; final results are full reruns. The deterministic real
+work counter remains471,064 below600,000. The existing wide
+sanitizer pin-memory check remains explicitly unrun; its nine functional
+controls pass.
 
-Measured callback aggregate peaks are0.7677s/
-438672KiB and include sanitizer rows. Merge aggregate
-peaks are0.7686s/438412KiB; word
-current aggregate peaks are8.1062s/
-304024KiB, also including sanitizer rows. Regular
-cases retain10s/512MiB bounds and wide cases10s/256MiB. No larger-workload or
-other-topology guarantee follows from these measurements. Inventory4/6
-advances; the broader inventory remains open and item1 stays excluded.
-Twenty-four inherited deferred Minors remain deferred. Independent review
-and integration are recorded below after they finish.
+All828 final matched processes satisfy unchanged bounds:378 callback cases,
+378 merge controls and72 word controls. Callback PIO rows compare direct
+parent accesses with expanded current/SAN read callbacks, including equivalent
+empty Apply records, logical declarations and unavailable-history notes.
+Raw rows remain direct scan-only controls; ordinary serial read-callback
+endpoints are covered separately. Two-scan wide raw controls verify the second
+high-bit capture. Observed rows compare complete parent bytes; unobserved rows
+compare parent bytes with observation notes removed. Every sanitizer replay
+form uses the matching parent output; custom sizes that omit16 generate the
+missing parent controls. Four guide processes agree on actual9/6,
+status4/clear0 and four Apply records.
 
-A final test-file formatting correction removes one trailing newline only.
-The12 focused methods rerun on normal/static/sanitizer builds and source
-packaging passes again; byte proof and unchanged executables retain the
-completed broader regression and matrix evidence.
+The final callback matrix peaks at0.7681s/
+438308KiB; merge controls peak at
+0.7685s/438164KiB; current word
+controls peak at8.0754s/
+302700KiB. These aggregates include sanitizer
+rows. Regular bounds remain10s/512MiB and wide bounds10s/256MiB.
+
+Automatic prerequisite, physical/timed, unexpanded callback and raw-root
+callback-storage guards remain. Broader topology, clock/event, history,
+transport and scale inventory stays open; item1 remains excluded. The reviewer
+checked retained evidence and focused reproductions, without rerunning the
+large suites or matrices; the implementer ran all final post-fix checks.
+
+Two final style corrections brace single-statement if bodies without changing
+other tokens. All20 normal/static executables remain byte-identical, preserving
+their full regression evidence. Seven sanitizer executables differ after
+rebuilding; all15 sanitizer native suites and affected sanitizer CLI checks run
+again, along with focused normal/static/SAN tests, all15 quality checks and
+source packaging. Exact proof retains4,052 unchanged inputs and31 unchanged
+raw executables; final hashes cover all4,054 inputs/38 executables.

@@ -84,6 +84,14 @@ class ModelReadback {
       auto callback_pending = callback_pending_;
       for (size_t i = cursor_; i < operations.size(); ++i) {
         const auto& op = operations[i];
+        for (const auto consumed : op.callback_consumed) {
+          const auto pending =
+              callback_pending.find(operations.at(consumed).call_stack);
+          if (pending != callback_pending.end()) {
+            pending->second.erase(consumed);
+            if (pending->second.empty()) callback_pending.erase(pending);
+          }
+        }
         if (op.callback_prerequisite) {
           throw std::runtime_error(
               op.origin +
@@ -102,7 +110,9 @@ class ModelReadback {
                                                           : node.write_callback)
                                 .has_value();
                           })) {
-            callback_pending.insert(op.call_stack);
+            if (op.callback_consumed.empty()) {
+              callback_pending[op.call_stack].insert(i);
+            }
           }
           continue;
         }
@@ -373,7 +383,7 @@ class ModelReadback {
   std::optional<Netlist> observation_netlist_;
   const Netlist& netlist_;
   bool physical_;
-  std::set<std::vector<std::string>> callback_pending_;
+  std::map<std::vector<std::string>, std::set<size_t>> callback_pending_;
   std::vector<bool> callback_storage_;
   std::vector<std::pair<std::string, std::string>> callback_unknown_;
   z3::context context_;

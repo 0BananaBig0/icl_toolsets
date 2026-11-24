@@ -180,6 +180,55 @@ iNote [iGetStatus -clear]; iNote [iGetStatus]
                 for path in artifacts:
                     self.assertEqual(path.read_bytes(), b'retained\n')
 
+    def test_apply_in_another_frame_consumes_all_callback_requests(self):
+        for getter in (False, True):
+            for queue in ('iRead observed 0',
+                          'iRead observed[1:0] 0; iCall high',
+                          'iCall high; iRead observed[1:0] 0'):
+                with self.subTest(getter=getter, queue=queue):
+                    procs = PROCS+'''iProc high {} {iRead observed[3:2] 0}
+iProc runapply {} {iApply}
+'''
+                    if getter:
+                        procs = procs.replace(' iRead q $data', ' iRead q $data; iApply; iGetReadData q')
+                    output = self.check('iState p 9; '+queue+'''; iCall runapply
+iWrite p 6; iRead q 0; iApply; iNote [iGetReadData q -dec]
+''', procs=procs)
+                    self.assertEqual(self.notes(output), [b'6'])
+
+    def test_generated_prefix_retains_partial_logical_history_invalidation(self):
+        model, prefix, continuation = (self.root/name for name in ('prefix.icl', 'prefix.pdl', 'continuation.pdl'))
+        model.write_text(MODEL)
+        for seed in ('', 'iState observed 5 -LastReadValue; iState observed 10 -LastMiscompareValue;'):
+            with self.subTest(seed=bool(seed)):
+                prefix.write_text(PROCS+'iState p 9; '+seed+'''
+iRead observed[1:0] 0; iApply; iNote [iGetReadData q -dec]
+''')
+                self.run_tool(model, prefix, 'prefix-result.pdl')
+                continuation.write_text('''iPDLLevel 1
+if {[catch {iGetReadData observed[1:0] -dec}]} {iWrite p 0} else {iWrite p 5}
+iApply
+if {[catch {iGetMiscompares observed[1:0] -dec}]} {iNote unavailable} else {iNote invented}
+iNote [iGetReadData observed[3:2] -bin]
+iNote [iGetMiscompares observed[3:2] -bin]
+''')
+                source = self.run_tool(model, prefix, 'source-continuation.pdl', extra=('--pdl', str(continuation)))
+                generated = self.run_tool(model, self.root/'prefix-result.pdl', 'generated-continuation.pdl', extra=('--pdl', str(continuation)))
+                self.assertEqual(source, generated)
+                self.assertIn(b'iWrite p 0b0000\n', generated)
+                self.assertEqual(self.notes(generated)[-3:], [b'unavailable', b'0b01' if seed else b'0bxx', b'0b10' if seed else b'0bxx'])
+
+    def test_invalid_history_annotations_preserve_output(self):
+        model, pdl, output = (self.root/name for name in ('source.icl', 'source.pdl', 'result.pdl'))
+        model.write_text(MODEL)
+        for payload in ('1111', '111 observed', '1x11 observed', '1111 p', '1111 missing'):
+            with self.subTest(payload=payload):
+                pdl.write_text(PROCS+'iNote {modeled callback read history unavailable '+payload+'}\n')
+                output.write_bytes(b'retained')
+                diagnostic = self.run_tool(model, pdl, ok=False)
+                self.assertIn('invalid callback read history annotation', diagnostic)
+                self.assertEqual(output.read_bytes(), b'retained')
+
 
 if __name__ == '__main__':
     unittest.main()

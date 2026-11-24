@@ -463,6 +463,34 @@ class Runtime::Impl {
     }
   }
 
+  void InvalidateCallbackRead(size_t id, const std::string& requested) {
+    const auto& node = netlist_->nodes.at(id);
+    for (auto* history : {&read_history_, &miscompare_history_}) {
+      auto& value = history->try_emplace(id, node.Width(), 'x').first->second;
+      for (size_t i = 0; i < requested.size(); ++i) {
+        if (requested[i] == '1') value.at(i) = '?';
+      }
+    }
+  }
+
+  void RestoreCallbackReadInvalidation(const std::string& note) {
+    const std::string prefix = "modeled callback read history unavailable ";
+    if (note.rfind(prefix, 0) != 0) return;
+    const auto separator = note.find(' ', prefix.size());
+    const auto requested =
+        note.substr(prefix.size(), separator - prefix.size());
+    const auto name =
+        separator == std::string::npos ? "" : note.substr(separator + 1);
+    const auto node = netlist_->node_ids.find(name);
+    if (node == netlist_->node_ids.end() ||
+        !netlist_->nodes[node->second].read_callback ||
+        requested.size() != netlist_->nodes[node->second].Width() ||
+        requested.find_first_not_of("01") != std::string::npos) {
+      throw std::runtime_error("invalid callback read history annotation");
+    }
+    InvalidateCallbackRead(node->second, requested);
+  }
+
   struct CallbackBinding {
     std::string instance;
     ProcedureKey procedure;
@@ -661,6 +689,7 @@ class Runtime::Impl {
     std::map<Key, size_t> positions;
     std::vector<Request> requests;
     std::vector<bool> mixed_reads(pending.size(), false);
+    std::map<size_t, std::vector<size_t>> read_anchors;
     std::map<std::pair<size_t, int64_t>, Order> write_sources;
     std::vector<size_t> anchors;
     bool ordinary_pending = false;
@@ -697,6 +726,12 @@ class Runtime::Impl {
             continue;
           }
           const Key key{bit.node, read};
+          if (read) {
+            auto& sources = read_anchors[bit.node];
+            if (sources.empty() || sources.back() != begin + i) {
+              sources.push_back(begin + i);
+            }
+          }
           if (positions.emplace(key, requests.size()).second) {
             requests.push_back({key,
                                 {i, 0},
@@ -964,6 +999,7 @@ class Runtime::Impl {
                                   : source;
             invocation.callback_execution = true;
             invocation.callback_read_execution = true;
+            invocation.callback_consumed = read_anchors.at(id);
             consumed_callback_operations_.insert(operations_.size());
             operations_.push_back(std::move(invocation));
           }
@@ -980,12 +1016,18 @@ class Runtime::Impl {
         if (read) --read_callback_depth_;
         callback_stack_.pop_back();
         if (read) {
-          for (auto* history : {&read_history_, &miscompare_history_}) {
-            auto& value =
-                history->try_emplace(id, node.Width(), 'x').first->second;
-            for (size_t i = 0; i < request.requested.size(); ++i) {
-              if (request.requested[i] == '1') value.at(i) = '?';
-            }
+          InvalidateCallbackRead(id, request.requested);
+          // Standard PDL notes preserve unavailable bits without repeating IO.
+          if (readback_) {
+            operations_.push_back(
+                {"iNote",
+                 {"modeled callback read history unavailable " +
+                  request.requested + " " + node.name},
+                 source.origin,
+                 source.call_stack,
+                 false,
+                 true,
+                 true});
           }
           if (request.data.find_first_not_of('x') != std::string::npos) {
             zero_status_known_ = false;
@@ -1735,6 +1777,9 @@ class Runtime::Impl {
       return;
     }
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
+    if (name == "iNote" && netlist_) {
+      RestoreCallbackReadInvalidation(operation.arguments.at(0));
+    }
     operation.callback_execution = !callback_stack_.empty();
     operation.callback_read_execution = read_callback_depth_ != 0;
     if (name == "iWrite" && operation.arguments.size() > 2) {

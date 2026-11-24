@@ -67,7 +67,7 @@ fixture(...,owner=None) permits equivalent parent/current fixture construction.
 - [x] Step5: Run fresh15 normal/15 leak-enabled SAN native suites, full generator
   normal/static, affected CLI/corpus, C++ quality, package and existing work/
   allocation/reporting probes. Expected: all functional gates and exact hashes pass.
-- [ ] Step6: Document measured behavior and commit; one fresh final review,
+- [x] Step6: Document measured behavior and commit; one fresh final review,
   re-grade/fix blockers once test-first and ledger Minors/declined judgments.
   Expected: no unresolved Critical/Important finding.
 - [ ] Step7: Merge into master, verify identical qualified inputs/products and
@@ -80,3 +80,10 @@ Completion: python3 /tmp/read-callback-histories-completion.py
 Self-review: one small guard-lowering task using shared observer/runtime. No
 separate builder check; the supplied standard and native probes define the
 data/observation boundary. Existing execution choice and question opt-out apply.
+
+Final-review fix wave: three Important findings reproduced RED→GREEN in two
+new behavioral methods and one reporting method, plus malformed-annotation
+coverage. Extend Runtime/Operation metadata and shared readback bookkeeping;
+preserve unavailable logical masks in modeled PDL notes. Full15-method focused
+suite,79×1,268 generator variants,30 fresh native suites,15 C++ quality checks
+and828 measurements must pass on the final source. No second reviewer.

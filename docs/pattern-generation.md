@@ -9970,7 +9970,7 @@ iNote [iGetStatus -clear]
 iNote [iGetStatus]
 ```
 
-The notes are9,6,4,0. The callback's empty outer Apply remains in each call,
+The user notes are9,6,4,0. The callback's empty outer Apply remains in each call,
 giving four Apply records. Reading the logical observed register's history
 still fails; expected0 cannot turn it into a known observed register. An
 unknown endpoint likewise stays unknown even when the callback expects9.
@@ -9990,3 +9990,14 @@ python3 tests/src/pattern/benchmark_read_callback_histories.py \
 
 See [Task170 evidence](remaining-work.md#task170-qualified-increment) for exact
 matrix scope, composed regression evidence and retained limits.
+
+Task170's post-review fix preserves unavailable logical read/miscompare bits
+when generated output is reused as a prefix. Keep the standard iNote records
+whose payload starts with "modeled callback read history unavailable": they
+carry the requested-bit mask and canonical register name. They restore model
+history and issue no hardware operation. Removing them can resurrect stale
+manual history. Unrequested manual bits remain unchanged. Endpoint queries
+and helper-frame/coalesced callback Applies retain their ordinary semantics.
+The final focused suite has15 methods and both full generator variants have
+79 suites/1,268 methods. See the Task170 evidence for all83 fresh post-fix
+gates,828 repeated measurements, parent controls and retained limits.

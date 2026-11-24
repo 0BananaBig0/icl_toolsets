@@ -137,10 +137,19 @@ def main(make_fixture=fixture, wide_calls=1, applies_per_call=1):
             source.write_text(model)
             pdl.write_text(text)
             for repeat in range(args.repeats):
-                data, generated, flat = run('sanitized', 'merged', kind, 16, 4, repeat, 'source', source, pdl, notes)
-                run('sanitized', 'merged', kind, 16, 4, repeat, 'flat', flat, pdl, notes, data)
-                run('sanitized', 'merged', kind, 16, 4, repeat, 'generated', source, generated, notes, data)
-    expected_runs = (len(cases)*12+(6 if args.sanitized else 0))*args.repeats
+                key = (kind, 16, 4, repeat)
+                if key not in references:
+                    control = Path(tempfile.mkdtemp(prefix='san-parent-', dir=args.output))
+                    parent_model, parent_text, parent_notes = make_fixture(kind, 16, 4, False, owner='parent')
+                    parent_source, parent_pdl = control/'source.icl', control/'source.pdl'
+                    parent_source.write_text(parent_model); parent_pdl.write_text(parent_text)
+                    references[key], _, _ = run('parent', 'serial', kind, 16, 4, repeat, 'source', parent_source, parent_pdl, parent_notes)
+                reference = references[key]
+                data, generated, flat = run('sanitized', 'merged', kind, 16, 4, repeat, 'source', source, pdl, notes, reference)
+                run('sanitized', 'merged', kind, 16, 4, repeat, 'flat', flat, pdl, notes, reference)
+                run('sanitized', 'merged', kind, 16, 4, repeat, 'generated', source, generated, notes, reference)
+    extra_controls = 2 if args.sanitized and 16 not in args.sizes else 0
+    expected_runs = (len(cases)*12+(6 if args.sanitized else 0)+extra_controls)*args.repeats
     complete = len(report['runs']) == expected_runs
     print(json.dumps({'runs': len(report['runs']), 'expected_runs': expected_runs,
                       'matrix_complete': complete, 'failed_or_out_of_bounds': len(failures)}))
