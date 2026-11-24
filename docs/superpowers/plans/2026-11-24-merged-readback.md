@@ -81,7 +81,7 @@ valid markers need only recognized begin/end arguments, not a second parser.
   Update current docs and commit; no native reuse for changed ModelReadback code.
 - [x] Step10: Obtain one fresh whole-branch review, re-grade findings, fix blockers
   in one test-first pass and ledger Minors and declined-behavior costs.
-- [ ] Step11: Merge into master, verify merged exact sources/products and relevant
+- [x] Step11: Merge into master, verify merged exact sources/products and relevant
   behavior, push, safely delete owned branch and archive only this plan's ledger.
 
 Commands use the existing pinned Z3/Tcl paths. Focused CLI entry:
