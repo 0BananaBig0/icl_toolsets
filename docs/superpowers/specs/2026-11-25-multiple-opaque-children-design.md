@@ -38,10 +38,13 @@ single-child API. Copy/reset preserve independent queue state.
 Generated-prefix continuation must preserve heterogeneous length knowledge.
 One root -stable flag cannot represent one unknown child and another stable
 child. After such a real root CSU, emit standard iNote annotations for the
-stable child intervals. Validate client identity, width, payload and a matching
+stable child intervals as iNote -comment with quoted text. Both comment/status
+tags are recognized; unmatched note text is informational per section7.9.21.
+Validate client identity, width, payload and a matching
 preceding committed scan before restoring queue knowledge; add no hardware
 operation or actual observation. Replay the annotations in generation and the
-modeled readback scheduler. Single-child/all-stable/all-unknown output needs
+modeled readback scheduler. Matching repeats are idempotent until the next
+hardware commit/reset. Single-child/all-stable/all-unknown output needs
 no annotation. This closes the retained prefix regression, not a new CLI mode.
 
 Alternatives: calling the single-child expansion repeatedly repeats whole

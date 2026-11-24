@@ -55,7 +55,8 @@ heterogeneous stable knowledge after one serialized root scan; no CLI option.
 - [x] Step3: Add negative/rollback/copy/subscriber, sparse/inverted, modeled
   sibling, namespace/split/local-reset and invalid route/length cases.
   Include generated-prefix continuation with one unknown child and another
-  stable child; reject unanchored, malformed and mismatched knowledge notes.
+  stable child; ignore unmatched/malformed notes and reject a downstream scan
+  whose length remains unknown. Verify both standard tags and matching repeats.
   Expected no partial state/publication or private leakage, exact actual data.
 - [x] Step4: Add the measured2/8/32-child,8/64/256/1024-bit replay matrix and
   supported immutable-parent single-child controls. Check complete outputs,
@@ -64,7 +65,7 @@ heterogeneous stable knowledge after one serialized root scan; no CLI option.
 - [x] Step5: Run full normal/static generator,30freshnative, affected SAN CLI/
   corpus, C++ quality and packaging. Expected no regression; record exact
   source/product hashes and actual corpus classifications.
-- [ ] Step6: Commit and run one fresh independent final review. Re-grade,
+- [x] Step6: Commit and run one fresh independent final review. Re-grade,
   fix blockers once test-first and retain deferred Minors/rulings.
   Expected no unresolved Critical/Important finding; no rereview.
 - [ ] Step7: Merge/push master, verify identical qualified inputs/products on
@@ -76,3 +77,13 @@ Completion: python3 /tmp/multiple-opaque-children-completion.py
 
 Self-review: one shared backend extension; no independent task interfaces.
 Every Review Focus maps to Step1/3/4. Small design needs no builder review.
+
+
+Post-review verification: all86 gates pass on4,062inputs/38executables,
+both81x1,293 generator variants,17focused methods,30native suites and21quality
+checks. The additional root allocation probe compares8x1024 and32x256children
+at8,200rootbits; allocation growth72→120 is RED,56/56 GREEN before final runs.
+Retain183matrix timing/RSS processes,2allocation probes and4guide processes.
+One final reviewer finds0C/3I/0M; all Important fixes are test-first, no rereview.
+The final braces-only correction rebuilds38 byte-identical tested executables;
+quality and archive-native checks rerun after that correction.

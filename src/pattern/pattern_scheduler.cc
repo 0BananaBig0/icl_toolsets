@@ -556,7 +556,7 @@ class ScanScheduler::Impl {
           throw std::runtime_error(
               "opaque child requires a complete scan interval");
         }
-        auto projected = scan;
+        Operation projected{scan.command, {}, scan.origin, scan.call_stack};
         projected.arguments = {
             netlist_.nodes[client].name,
             std::to_string(opaque.width),
@@ -595,7 +595,10 @@ class ScanScheduler::Impl {
       opaque_applied_.emplace(netlist_.node_ids.at(name), bits);
       if (mixed && scan.arguments.back() == "-stable") {
         opaque_notes_.push_back(
-            {"iNote", {kOpaqueScanNote + name + " " + bits}, scan.origin, {}});
+            {"iNote",
+             {"-comment", kOpaqueScanNote + name + " " + bits},
+             scan.origin,
+             {}});
       }
     }
     MaskOpaqueState();
@@ -604,16 +607,14 @@ class ScanScheduler::Impl {
     return opaque_notes_;
   }
   void RestoreOpaqueScanNote(const Operation& note) {
-    if (note.arguments.empty() ||
-        note.arguments[0].compare(0, kOpaqueScanNote.size(), kOpaqueScanNote)) {
+    if (note.command != "iNote" || note.arguments.size() != 2 ||
+        (note.arguments[0] != "-comment" && note.arguments[0] != "-status") ||
+        note.arguments[1].compare(0, kOpaqueScanNote.size(), kOpaqueScanNote)) {
       return;
     }
-    const auto invalid = [] {
-      throw std::runtime_error("invalid opaque child stable scan annotation");
-    };
-    const auto& text = note.arguments[0];
+    const auto& text = note.arguments[1];
     const auto space = text.find(' ', kOpaqueScanNote.size());
-    if (note.arguments.size() != 1 || space == std::string::npos) invalid();
+    if (space == std::string::npos) return;
     const auto name =
         text.substr(kOpaqueScanNote.size(), space - kOpaqueScanNote.size());
     const auto bits = text.substr(space + 1);
@@ -623,7 +624,7 @@ class ScanScheduler::Impl {
         opaque_applied_.at(node->second) != bits || bits.size() <= 2 ||
         bits.compare(0, 2, "0b") ||
         bits.find_first_not_of("01x", 2) != std::string::npos) {
-      invalid();
+      return;
     }
     auto queue = opaque_queues_.at(node->second);
     queue.Add(context_,
@@ -633,7 +634,6 @@ class ScanScheduler::Impl {
                note.call_stack});
     queue.Complete({"iApply", {}, note.origin, note.call_stack});
     opaque_queues_.at(node->second) = std::move(queue);
-    opaque_applied_.erase(node->second);
   }
   std::optional<std::vector<ScanStep>> TryRegularReads(
       const std::vector<Operation>& operations, bool together,

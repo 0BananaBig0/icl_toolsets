@@ -130,7 +130,7 @@ iNote [iGetReadData child2.local -bin]
             with self.subTest(commands=commands):
                 self.rejected('iReset; '+commands+'\n', diagnostic, MODEL)
 
-    def test_stable_annotations_require_matching_committed_payloads(self):
+    def test_unmatched_annotations_remain_informational_without_inventing_length(self):
         prefix = 'modeled opaque child stable scan '
         for setup, payload in [
             ('iReset;', 'child1.local 0b00000000'),
@@ -140,7 +140,58 @@ iNote [iGetReadData child2.local -bin]
             ('iReset; iScan client 24 -si 0 -stable; iApply; iReset;', 'child1.local 0b00000000'),
             ('iReset;', 'child1.local')]:
             with self.subTest(payload=payload, setup=setup):
-                self.rejected(setup+'iNote {'+prefix+payload+'}\n', 'annotation', MODEL)
+                self.replay(setup+'iNote -comment {'+prefix+payload+'}\n', MODEL)
+        for tag in ('', '-comment ', '-status '):
+            source = 'Module Top {DataInPort p; DataOutPort q {Source p;}}'
+            output = self.replay('iNote '+tag+'{'+prefix+'test description}; '
+                                 'iWrite p 1; iApply; iRead q 1; iApply; iNote [iGetReadData q -dec]\n',
+                                 source)
+            self.assertEqual(self.notes(output), ['1'])
+        self.replay('iNote -comment {literal "$missing" [missing] \\path}; '
+                    'iWrite p 1; iApply; iRead q 1; iApply\n', source)
+        for payload in ('child1.local 0b00000001','missing 0b00000000',
+                        'child1.local 0b0000000'):
+            self.rejected('iReset; iScan client 24 -si 0; iApply; '
+                          'iNote -comment {'+prefix+payload+'}; '
+                          'iScan child0.local 8 -si 1 -stable; iApply\n', 'length', MODEL)
+
+    def test_tagged_quoted_annotations_restore_generated_prefix(self):
+        prefix = """iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child1.local 8 -si 0x3c -stable; iApply
+iScan child0.local 8 -si 0xa5; iApply
+"""
+        suffix = 'iScan child0.local 8 -si 240 -stable; iApply\n'
+        icl, pdl = self.files(prefix, MODEL)
+        generated = self.run_tool(icl, pdl, 'prefix.pdl')
+        lines = []
+        for line in generated.splitlines():
+            if line.startswith('iNote {modeled opaque child stable scan '):
+                line = 'iNote -comment "'+line[len('iNote {'):-1]+'"'
+            lines.append(line)
+        icl, source = self.files(prefix+suffix, MODEL)
+        expected = self.run_tool(icl, source, 'source-tail.pdl')
+        for tag in ('-comment', '-status'):
+            pdl = self.root/'tagged.pdl'
+            pdl.write_text('\n'.join(lines).replace('iNote -comment ', 'iNote '+tag+' ')+'\n'+suffix)
+            actual = self.run_tool(icl, pdl, 'tagged-tail.pdl')
+            canonical = actual.replace('iNote -status ', 'iNote -comment ')
+            self.assertEqual(expected, canonical)
+        notes = [line for line in generated.splitlines()
+                 if 'modeled opaque child stable scan ' in line]
+        self.assertTrue(notes)
+        self.assertTrue(all(line.startswith('iNote -comment "') and line.endswith('"')
+                            for line in notes))
+
+    def test_duplicate_matching_annotations_roundtrip_idempotently(self):
+        for tag in ('', '-comment '):
+            commands = """iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child1.local 8 -si 0x3c -stable; iApply
+iScan child0.local 8 -si 0xa5; iApply
+"""
+            commands += ('iNote '+tag+'{modeled opaque child stable scan child1.local 0b00111100}\n')*2
+            commands += 'iScan child0.local 8 -si 17 -stable; iApply\n'
+            with self.subTest(tag=tag):
+                self.replay(commands, MODEL)
 
     def test_route_inversions_and_bit_specific_aliases(self):
         for invert_input, invert_output in ((False, False), (True, False),

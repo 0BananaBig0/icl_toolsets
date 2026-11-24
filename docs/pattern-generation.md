@@ -10092,12 +10092,14 @@ the same module. An unstable child must be supplied again before another scan
 traverses it. Supplying that child does not invalidate another child's stable
 knowledge.
 
-Keep generated standard iNote annotations beginning with
-"modeled opaque child stable scan". A root scan has only one -stable flag;
+Keep generated standard iNote -comment annotations whose quoted text begins
+with "modeled opaque child stable scan". A root scan has only one -stable flag;
 these annotations preserve independent controlling knowledge when some child
 lengths remain unknown. A matching committed scan/client/payload is required
-for restoration. They add no hardware operation or actual observation.
-Native scheduling failures roll back every child; errors from an observation
+for restoration. Matching repeats are idempotent; unmatched or malformed
+note text stays informational and cannot make an unknown length known. Both
+standard note tags are accepted. Notes add no hardware operation or actual
+observation. Native scheduling failures roll back every child; errors from an observation
 subscriber occur after native state and all child queues have committed.
 
 Reproduce the measured matrix with the current generator, immutable parent and
@@ -10113,3 +10115,9 @@ The parent controls use one child. Current multi-child performance is measured
 directly; there is no claim of parent support for those cases.
 See [Task172 evidence](remaining-work.md#task172-qualified-increment) for the
 qualified dimensions, exact replay checks and remaining topology limits.
+
+
+Task172's final review fixes standard tagged/quoted note replay, harmless
+informational notes, duplicate matching annotations and whole-root string
+copies. See its evidence for17focused methods,86fresh gates,183timing/RSS
+measurements,2fixed-width allocation probes and4guide processes.

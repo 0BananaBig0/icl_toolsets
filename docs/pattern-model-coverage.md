@@ -4918,15 +4918,21 @@ is deleted, and all 117 stashes remain. Broader inventory work remains open.
 
 ## Independent fixed opaque intervals (Task172)
 
-Multiple declared-width scalar opaque leaves share one exact native route and
-keep independent default/stable payloads and length knowledge. Private capture
-stays unknown; source/flat exports and public observations contain no private
-register. Root/local histories retain their explicit-request scope. Validated
-standard notes preserve heterogeneous controlling knowledge across generated
-prefixes, without supplying actual opaque data.
+Multiple fixed scalar opaque leaves share one exact native route with
+independent default/stable payloads and lengths. Private capture stays unknown;
+public targets, frames and exports contain no private registers. Root/local
+histories retain their explicit-request scope.
 
-The15-method suite, both81x1,291 full generator variants,30freshnative suites
-and21C++quality checks pass. All183 measurements and4guide processes pass
-unchanged bounds. Corpus identity/classification results are unchanged.
+Quoted iNote -comment annotations preserve heterogeneous controlling knowledge.
+Both standard note tags replay; matching duplicates are idempotent, while
+unmatched note text is informational and cannot supply unknown lengths or
+actual data. Full-root projection avoids per-child whole-payload copies.
+
+All86 post-review gates pass, including both81x1,293 generator variants,
+30freshnative suites,21C++quality checks,17focused methods and archive-native
+fixture verification. All183 matrix measurements,2allocation probes and4guide
+processes pass. The three Important review findings are fixed test-first;
+no new Minor is found. Corpus classifications are unchanged.
+The final braces-only correction rebuilds38 byte-identical tested executables;
+quality and archive-native checks rerun after that correction.
 See [Task172 evidence](remaining-work.md#task172-qualified-increment).
-Broader opaque topology, timing, histories and transport work remains open.

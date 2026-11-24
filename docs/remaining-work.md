@@ -575,76 +575,82 @@ is deleted, and all 117 stashes remain. Broader inventory work remains open.
 
 ## Task172 qualified increment
 
-Task172 supports multiple fixed declared-width opaque leaves on one complete
-static scalar root route. Each real client/instance owns independent reset
-defaults, stable controlling payloads and length knowledge. Private registers
-stay unknown and absent from public targets, frames and source/flat exports.
-Raw root and local observations remain independent; expected payloads never
-become actual opaque data.
+Multiple fixed declared-width opaque leaves now share one complete static
+scalar route with independent default/stable payloads and length knowledge.
+Each actual instance/client owns its private interval and queue. Capture
+stays unknown; public targets, frames and source/flat exports contain no private
+register. Root and local histories retain their explicit-request scope.
 
-The two-child native/CLI tests first fail on immutable parent800a41f with a
-disconnected route; one-child fixture controls already pass. The shared
-expansion validates the whole route and privacy once, indexes opaque intervals
-by physical offset and retains existing per-client completion queues. Repeated
-module types keep distinct instance state. Aggregate route width rejects before
-allocating private storage; its native RED/GREEN is retained.
+Native and CLI tests first fail at the immutable parent800a41f's disconnected
+route; the same fixture already passes with one child. The shared expansion
+checks route membership, control bindings, side channels and aggregate width
+before allocating private storage. Raw projections use ordered root offsets
+and copy only child payloads. Scheduling failures roll back all queues;
+subscriber errors retain already committed native state and every child queue.
 
-A source/generated-prefix regression proves that one root -stable flag cannot
-represent one unknown child and another stable child. Standard iNote annotations
-preserve only the latter's controlling knowledge, tied to a matching committed
-scan/client/payload. They add no hardware action or readback observation. Reset,
-bad/missing/mismatched payloads and unanchored annotations reject. The metadata
-must survive prefix reuse; original single-child, all-stable and all-unknown
-output needs none.
+One root -stable flag cannot describe a stable child alongside an unknown
+child. Generated iNote -comment with quoted text preserves only the matching
+committed child's controlling knowledge. Comment/status tags both replay,
+matching repeats are idempotent until the next hardware commit/reset, and
+unmatched or malformed note text stays informational under IEEE1687-2014
+section7.9.21 (printed180). Such text cannot invent length knowledge: a later
+scan still rejects if an active child's length is unknown. No note adds a
+hardware operation or actual observation. Legacy user notes remain informational.
 
-All86 gates pass:81 suites/1,291 methods per full normal/static generator,
-15normal/15leak-enabled SAN native suites, affected SAN CLI/corpus,21 C++
-quality checks, source packaging and existing reporting/allocation/work probes.
-A final SAN focus covers flattened prefix continuation in both modeled and
-unobserved modes. Exact hashes cover4,061inputs/38executables. The final
-15-method focused module covers mixed widths, sparse masks, root/local unknown
-histories, independent defaults/stability/length, repeated instances, reset and
-cancellation, aliases/inversion, native rollback/copies/subscriber commit,
-parent reservations, private targets/side channels, modeled siblings and
-namespace/split-file/local-reset replay.
+The independent final review finds0Critical/3Important/0newMinor. One test-first
+fix pass repairs standard tagged/quoted note handling, informational-note
+compatibility, duplicate-note replay and whole-root payload copies. All17CLI
+methods pass, including source/flat/generated/local-reset replay, repeated
+instances, mixed widths, sparse masks, inversion, independent defaults/length,
+unknown histories/status, copy/rollback/subscriber semantics, reservations,
+privacy, modeled siblings and namespace/split-file/generated-prefix cases.
 
-All183 measured processes pass. Twelve immutable-parent source controls cover
-one child at8/64/256/1024bits. Current runs cover1/2/8children at8/64/256/1024bits
-and32children at8/64/256bits; SAN runs cover2/8children at8bits and2children at
-256/1024bits. Each current/SAN case has three repeats of source/flat/generated
-replay. Every full input and compare word, actual observation/status note,
-eight raw scans/nine CSUs, width, source/product hash and original bound is
-checked. All current one-child forms match complete parent output bytes.
-Parent multi-child failure stays RED; there is no unsupported parent speedup
-claim. Peak across all owners is0.3728s/443788KiB.
-Bounds stay10s/512MiB, with256MiB for the one-child1,024-bit controls.
+All86 post-review gates pass:81 suites/1,293 methods per full
+normal/static generator,15normal/15leak-enabled SAN native suites, affected SAN
+CLI/corpus,21C++quality checks, source packaging and work/allocation/reporting
+checks. Final hashes cover4,062inputs/38executables. Earlier composed evidence
+is archived; the C++ executions rerun after the three semantic review fixes.
+A final braces-only quality correction produces38 byte-identical executables
+after rebuilding, with4,061 shared inputs unchanged and only the rendering
+source's braces changed. Their completed behavioral results remain valid;
+all21quality checks and the archive-native check rerun and pass.
+
+All183 timing/RSS measurements pass:12 immutable-parent one-child source
+controls and three source/flat/generated repeats per current/SAN configuration.
+Current cases cover1/2/8children at8/64/256/1024bits and32children at8/64/256bits;
+SAN covers2/8children at8bits and2children at256/1024bits. Complete input/compare
+words, actual data/status notes,8rawscans/9CSUs, widths, hashes and original
+bounds are checked. Current one-child forms match complete parent output.
+The parent multiple-child RED stays unsupported; no speedup claim is made.
+Peak across matrix owners is0.3672s/443820KiB.
+Limits stay10s/512MiB for opaque cases; one-child wide controls retain256MiB.
 Four guide processes agree on two unknown8-bit returns, parent5/19 and
 status0/clear0.
 
-The source archive omitted Task171's native decimal fixture under tests/data.
-A new archive-consumer regression first fails when pattern-expression-check
-runs from the extracted distribution. Copying tests/data repairs the archive;
-the entire distribution/install/uninstall/native-consumer check then passes.
-After this packaging-only fix,84 executions are reused with proof of4,060
-identical shared inputs,38 byte-identical executables and a Makefile difference
-confined to that dist copy rule. The repaired package gate and final SAN prefix
-focus complete86 gates; prior package failure/logs remain archived. These are
-composed qualification results, not repeated full C++ executions after a copy
-rule change.
+Two additional native allocation probes keep the same8,200-bit root and8,192
+opaque bits with8x1024 or32x256children. Before the fix, full-root-sized
+allocations grow72→120; after the fix they are56 and
+56, with increase0 against
+the test's maximum4. Both probes check identical complete root output.
+This measures whole-process allocation work, not an isolated decoder or a
+historical wall-time improvement.
 
-The initial recorder mistakenly applied256MiB to new multi-child cases too.
-All183 functional comparisons pass; six SANsource/flat2x1,024-bit runs use
-442796–443812KiB and fail that extra bound. The established opaque recorder
-uses10s/512MiB. A measured300MiB boundary test first fails, then verifies that
-new multiple-child opaque cases use512MiB while one-child wide controls retain
-256MiB. All183 measurements rerun with that corrected classification. The
-failed records remain under budget-red; the actual SANmemory cost is retained.
-Only two verification scripts change; their three reporting tests rerun with
-proof of4,059 other identical inputs and38 identical C++ executables.
+Qualification also repairs an inherited distribution defect: Task171's
+tests/data decimal fixture was omitted. The extracted archive's new native
+pattern-expression-check first fails for that missing fixture, then passes
+after the dist copy rule includes tests/data. Full distribution/install/
+uninstall/native-consumer verification passes.
 
-The unchanged2,562 corpus source identities retain exactly the preceding
-success/stage classifications:1,032canonical models,44 explicit AccessLink
-serialization limits and687 default elaboration failures. Inventory6/8 advances;
-dynamic/gated/parallel opaque children, multiple-TAP/timed/physical/merge and
-broader histories/transport/topology remain open. Coverage item1 is excluded.
-The inherited27 deferred Minors remain; review/integration are recorded below.
+Retained earlier evidence includes six successful functional SANsource/flat
+2x1024 rows at442796–443812KiB that fail an incorrectly assigned extra256MiB
+bound. The established opaque recorder requires10s/512MiB; a measured300MiB
+boundary regression fixes classification for multiple-child cases and retains
+the one-child wide-control bound. All183 runs rerun after that correction and
+again on final reviewed C++ source. Prior package-only/recorder reuse proofs
+remain historical; no old C++ execution substitutes for final qualification.
+
+All2,562 corpus source identities and classifications remain unchanged:
+1,032canonical models,44AccessLink serialization limits,687default elaboration
+failures. Inventory6/8 advances without closing broader dynamic/gated/parallel,
+multi-TAP/timed/physical/merge/history/transport work. Item1 remains excluded;
+27 inherited Minors remain deferred. Integration is recorded after completion.
