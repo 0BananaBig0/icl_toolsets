@@ -9848,3 +9848,62 @@ Independent review found 0 Critical, 3 Important and 3 Minor findings. One test-
 Three new Minors remain deferred: wide raw cases capture reset0 rather than a high-bit word (independent two-scan512/1024-bit probes pass); failed-row query/note counters derive from fixture expectations; and an older raw-merge guide paragraph still lists the previous modeled-history guard. Total deferred Minors:22, including19 inherited. The 36 wide-PIO memory misses remain performance acceptance work under inventory10; no resource bound is raised.
 
 All 15 merged-result checks pass on identical 4,049 inputs and 20 copied qualified executables. The merge is pushed to master, the owned task branch is deleted, and all 117 stashes remain. Broader inventory items and the retained performance acceptance failures remain open.
+
+## Wide primary-pin memory (Task168)
+
+A full binary one-frame primary solve can omit already-constant deviation
+objectives when every candidate pin is forced and every requested read bit has
+one route. Other solves retain the original objective list so equal-cost pin
+and read-route choices remain unchanged. No new option is required.
+
+Reproduce the preceding matched benchmark command with parent
+build/primary-pin-literals-20261124/parent/icl-pattern-generation and an owned
+temporary output directory. Expect exit 1 for the retained parent memory misses.
+
+Task168 passes 76 fresh post-review qualification gates: 15 normal and 15
+leak-enabled sanitizer native suites, 78 suites/1,253 methods in each full
+generator variant, affected sanitizer CLI, corpus, three C++ quality checks,
+source packaging and four allocation probes. All ten focused methods pass
+normal/static; sanitizer passes nine functional methods and explicitly skips
+the large memory gate. Final hashes cover 4,050 inputs and 38 executables.
+The earlier Python-only evidence reuse and pre-review matrix remain archived;
+the final full qualification uses the narrowed implementation.
+
+All 378 final matched processes preserve actual observations and exact
+serial/source/flat/generated replay; four guide processes pass. All current
+cases meet the existing 10s/512MiB regular and 10s/256MiB wide bounds. The 27
+current 1,024-bit PIO serial/observed/unobserved cases use
+76148–111072KiB and at most 0.1155s,
+versus 301396–336164KiB for nine parent controls.
+All 369 cases other than those parent misses meet their bounds. The benchmark
+retains nine parent memory failures and exits 1. Overall maxima, including
+sanitizer cases, are 2.2729s/438160KiB.
+This closes the measured wide-PIO case under inventory 10. The earlier
+72-process callback follow-up still has three 256-target time misses; that
+latency target and broader optimization remain open.
+
+Independent review found zero Critical, two Important and one Minor finding.
+Removing a constant objective preserves preference ordering but can change
+Z3's choice among equally optimal models. One parent-backed test detects a
+different implicit read-enable history that makes a Tcl condition fail;
+another detects different physical read targets/comparison masks. Both fail
+on the reviewed implementation and pass on the parent and final build. One
+test-first fix retains the entire original objective list unless every primary
+candidate has a full binary goal and every requested read bit has exactly one
+candidate route, as well as requiring a one-frame horizon. These guards reuse
+the existing route/pin walks. Symbolic words, constraints, drive count, data
+deviations, reset behavior and later-frame preferences remain intact.
+
+The first literal-word substitution failed memory and was reverted. The
+partial Massif trace remains diagnostic evidence. An earlier temporary
+horizon-guard mutation changed intermediate pin 11 to 9 and failed the
+maintained control; the final stricter implementation also passes that control.
+The reset-less fixture rejection was a fixture error, not an unsupported
+schedule. Partial-X fill, inversion, ascending slices, unforced enables,
+reservations, end-state restoration and failed-output preservation pass.
+
+The new deferred Minor is the wide test's ASAN_OPTIONS-based skip: exporting
+that variable on an ordinary executable can also skip the gate. Raw final
+normal/static logs confirm the memory gate ran. Total deferred Minors: 23,
+including 22 inherited. Wide-ASAN memory closure and broader topologies are
+not certified by these measurements.

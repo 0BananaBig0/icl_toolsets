@@ -3840,6 +3840,7 @@ class ScanScheduler::Impl {
       }
     }
     const DataReadRoutes* routes = nullptr;
+    bool fixed_primary_choices = true;
     std::map<size_t, std::set<size_t>> pending_reads;
     if (!reads.empty()) {
       if (!data_read_routes_) {
@@ -3852,6 +3853,8 @@ class ScanScheduler::Impl {
             throw std::runtime_error("unobservable data read target " +
                                      netlist_.nodes[id].name);
           }
+          fixed_primary_choices = fixed_primary_choices &&
+                                  routes->routes.at({id, index}).size() == 1;
           if (netlist_.nodes[id].kind == "DataRegister") {
             pending_reads[id].insert(id);
           } else {
@@ -3882,6 +3885,10 @@ class ScanScheduler::Impl {
       if (!PrimaryInput(netlist_.nodes[id])) continue;
       pins.push_back(id);
       total_bits += netlist_.nodes[id].Width();
+      const auto goal = goals.find(id);
+      fixed_primary_choices =
+          fixed_primary_choices && goal != goals.end() &&
+          goal->second.find_first_not_of("01") == std::string::npos;
     }
     if (pins.size() > 256 || total_bits > 4096) {
       throw std::runtime_error(
@@ -3974,8 +3981,11 @@ class ScanScheduler::Impl {
           any_drive = any_drive || drive;
           count =
               count + z3::ite(drive, context_.int_val(1), context_.int_val(0));
-          deviations.push_back(
-              bits ^ SymbolicValue::Literal(context_, fill_.at(id)).bits);
+          // Keep solver tie choices unless every pin and read route is fixed.
+          if (horizon != 1 || !fixed_primary_choices) {
+            deviations.push_back(
+                bits ^ SymbolicValue::Literal(context_, fill_.at(id)).bits);
+          }
           if (touched.count(id)) touched.at(id) = touched.at(id) || drive;
         }
         Values before_data;
