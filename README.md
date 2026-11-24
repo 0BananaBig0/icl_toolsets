@@ -617,3 +617,8 @@ Transparent downstream WriteCallBack prerequisites are supported for
 Source/Alias/selectable WriteDataSource paths. See the complete
 [model and replay commands](docs/pattern-generation.md#transparent-downstream-write-callbacks)
 and [remaining inventory](docs/remaining-work.md) for current boundaries.
+
+
+Callback-containing iCall procedures can execute within iMerge using complete
+serial fallback. See [the complete model and replay example](docs/pattern-generation.md#callbacks-within-merge-calls).
+Task164 expanded qualification is in progress; broader inventory remains open.

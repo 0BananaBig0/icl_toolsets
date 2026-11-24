@@ -120,13 +120,13 @@ and this plan. Other consumer edits only for test-first failures with refinement
 benchmark fixture, physical_counts, digest, counts and operand_bits helpers.
 No new public runtime interface or independent scheduling engine.
 
-- [ ] Add last8 CLI methods first: test_prefix_namespace_split_inputs,
+- [x] Add last8 CLI methods first: test_prefix_namespace_split_inputs,
       test_once_only_arguments, test_reset_rewrite_preserves_procedures,
       test_repeated_and_returned_sites, test_failures_and_cycles,
       test_observation_and_physical_guards, test_scale_receipts,
       test_wide_receipts. Expected16total; all supported replay forms match,
       source procedure bytes remain unchanged, and known guards preserve files.
-- [ ] Implement matched benchmark using existing downstream fixture: place its
+- [x] Implement matched benchmark using existing downstream fixture: place its
       four groups in one iProc called inside iMerge for merged mode; serial
       controls use the same body without iMerge. Retain unused controls. Current
       merged source/flat/generated16/64/128x3=27, current serial/unused18,
@@ -135,7 +135,7 @@ No new public runtime interface or independent scheduling engine.
       exact reused physical frames; generated callbacks execute zero times.
       Record all dimensions, empty Applies, hashes, commands and environment.
       Run small receipt grid first; then full grids after review fixes.
-- [ ] Document complete model/program/commands with explicit serial fallback,
+- [x] Document complete model/program/commands with explicit serial fallback,
       actual versus logical histories and remaining boundaries. Author-run all
       three guide commands; no independent-reader claim without that work.
       Self-review plan/spec reach, then commit reviewable implementation.
@@ -161,3 +161,12 @@ hashes in build/merged-callbacks-20261124/task1/receipt.json. Legacy explicit,
 downstream and mixed-alias caller-merge rejection assertions are now positive
 replay checks. Native passes reused only with exact source/dependency/product/log
 proof after maintaining Python expectations; original failed attempts retained.
+
+
+Task2 pre-review:16CLI pass normal3.027s/static3.696s/leakSAN8.141s; current
+4C++sources retain12 actual quality checks. All products freshly built;
+17 representative regular processes plus512/1024-bit runs pass(max4.76824s/
+394780KiB), not the full repeated matrix. Three guide commands produce exact
+identical frames/postconditions; source/flat invoke2callbacks, generated0 and
+its notes are literal. Author checked, not an independent reader. No consumer
+code refinement was needed. Full review/64gates/405matrix/integration remain.

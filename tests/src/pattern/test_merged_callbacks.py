@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 """Callback-containing merge calls retain complete serial execution."""
+import json
+from pathlib import Path
+import subprocess
 import unittest
 
 import test_downstream_write_callbacks as downstream
@@ -121,6 +124,111 @@ if {$::calls != 1} {error callback_count}
         self.rejected(self.merged("iWrite spare 3"), "unapplied")
         self.rejected("iMerge -begin; iWrite value 9; iMerge -end", "only iCall")
         self.rejected(self.merged("iWrite value 9; iApply -together"), "callback")
+
+    def test_prefix_namespace_split_inputs(self):
+        source = """Module Leaf {
+ DataInPort data[3:0]; DataInPort enable;
+ DataRegister dest[3:0] {WriteDataSource data; WriteEnSource enable;}
+}
+Module Chains {
+ DataInPort en; DataInPort p[3:0];
+ DataRegister value[3:0] {WriteCallBack Chains::api store <D> <R>;}
+ Instance child Of Leaf {InputPort data=value; InputPort enable=en;}
+}"""
+        output = self.generation_replay("""
+iProcsForModule Chains -iProcNameSpace api
+iProc store {data reg} {incr ::calls; iNote "api:$reg=$data"; iWrite en 0; iWrite p $data}
+iProc access {data} {iPrefix child; iWrite dest $data; iApply}
+set ::args 0
+""", source, "iMerge -begin; iCall api::access [expr {[incr ::args]+8}]; "
+            "iMerge -end; if {$::calls != 1 || $::args != 1} {error split_count}")
+        self.assertEqual(self.notes(output), [b"api:value=0b1001"])
+
+    def test_once_only_arguments(self):
+        output = self.generation_replay("""
+set ::args 0
+iProc access {data} {iWrite dest $data; iApply}
+iMerge -begin; iCall access [expr {[incr ::args]+8}]; iMerge -end
+if {$::calls != 1 || $::args != 1} {error once_only}
+""")
+        self.assertEqual(self.notes(output), [b"value=0b1001"])
+
+    def test_reset_rewrite_preserves_procedures(self):
+        callbacks = downstream.callbacks
+        request = "iProc request {data} {iWrite child.value $data; iApply}\n"
+        output, rewritten = self.reset_replay(
+            callbacks.RESET_MODEL,
+            callbacks.RESET_PROCS + request + "iReset; iMerge -begin; iCall request 9\n",
+            (callbacks.STORE_DEF, callbacks.REQUEST_DEF, request), "iMerge -end\n")
+        self.assertIn(b"iWrite child.wire 0b1001", output)
+        self.assertEqual(rewritten.count(request), 1)
+
+    def test_repeated_and_returned_sites(self):
+        request = "iProc request {data} {iWrite dest $data; return [iApply]}\n"
+        output, rewritten = self.reset_replay(
+            MODEL, downstream.PROCS + request + """
+set ::args 0
+iMerge -begin
+foreach value {1 2 5} {iCall request [expr {$value+[incr ::args]-$::args}]}
+iMerge -end
+if {$::calls != 3 || $::args != 3} {error repeated_count}
+""", (request,))
+        self.assertEqual(self.notes(output),
+                         [b"value=0b0001", b"value=0b0010", b"value=0b0101"])
+        self.assertEqual(rewritten.count(request), 1)
+
+    def test_failures_and_cycles(self):
+        for body in ["error failed_body", "iWrite p $data; error failed_body"]:
+            self.rejected("iProc store {data reg} {" + body + "}; " +
+                          self.merged("iWrite value 9; iApply"), "failed_body")
+        self.rejected("iProc store {data reg} {iWrite value $data; iApply}; " +
+                      self.merged("iWrite value 9; iApply"), "callback cycle")
+        self.rejected("iProc store {data reg} {error failed_body}; " + self.merged(
+            "iWrite value 9; catch {iApply}; iApply"), "requires iReset")
+
+    def test_observation_and_physical_guards(self):
+        self.rejected(self.merged("iWrite dest 9; iApply"),
+                      "callback histories", modeled=True)
+        self.rejected(self.merged("iWrite value 9; iApply"), "callbacks",
+                      extra=("--physical_pdl",))
+        source = MODEL.replace("WriteCallBack Chains store <D> <R>;",
+                               "ReadCallBack Chains store <D> <R>;")
+        self.rejected(self.merged("iRead value 9; iApply"),
+                      "callback histories", source, modeled=True)
+        self.rejected(self.merged("iWrite value 9; iApply") +
+                      "; iRead endpoint 0; iApply; iGetReadData endpoint -bin",
+                      "iMerge histories", modeled=True)
+
+    def test_scale_receipts(self):
+        script = Path(__file__).with_name("benchmark_merged_callbacks.py")
+        output = self.root / "scale"
+        result = subprocess.run(
+            ["python3", str(script), "--binary", str(downstream.cli.BIN),
+             "--parent", str(downstream.cli.BIN), "--sanitized", str(downstream.cli.BIN),
+             "--output", str(output), "--sizes", "2", "--wide-widths", "--repeats", "1"],
+            capture_output=True, text=True, timeout=90)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        report = json.loads((output / "results.json").read_text())
+        self.assertEqual(len(report["runs"]), 10)
+        for row in report["runs"]:
+            self.assertEqual(row["connected_callback_bits"], 8)
+            self.assertEqual(row["callback_invocations"], 0 if row["mode"] == "unused" or
+                             row["form"] == "generated" else 8)
+            self.assertTrue(row["ordered_postconditions_verified"])
+
+    def test_wide_receipts(self):
+        script = Path(__file__).with_name("benchmark_merged_callbacks.py")
+        output = self.root / "wide"
+        result = subprocess.run(
+            ["python3", str(script), "--binary", str(downstream.cli.BIN),
+             "--parent", str(downstream.cli.BIN), "--sanitized", str(downstream.cli.BIN),
+             "--output", str(output), "--sizes", "--wide-widths", "16", "--repeats", "1"],
+            capture_output=True, text=True, timeout=90)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        report = json.loads((output / "results.json").read_text())
+        self.assertEqual(report["runs"], [])
+        self.assertEqual(len(report["wide_runs"]), 1)
+        self.assertEqual(report["wide_runs"][0]["connected_callback_bits"], 16)
 
 
 if __name__ == "__main__":
