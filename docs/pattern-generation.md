@@ -10,7 +10,12 @@ It also schedules supported primary-pin and mixed primary/scan DataRegister oper
 
 ## Current verification
 
-Latest: Task165 qualifies whole-word model decoding with 68 gates,
+Latest: Task166 supports modeled raw scans inside valid merge calls.
+Full normal/static 76x1223 tests, affected sanitizer checks and 84 matched
+measurements pass; unchanged native results are retained with exact proof.
+See [Task166 evidence](remaining-work.md#task166-qualified-increment).
+
+Task165 qualifies whole-word model decoding with 68 gates,
 75 suites/1,211 tests per generator and 72 matched measured runs.
 See [Task165 evidence](remaining-work.md#task165-qualified-increment).
 
@@ -9720,3 +9725,57 @@ current bound is missed. Earlier retained 256 normal and 64 sanitizer runs
 missed time/memory bounds; the measured speedup is not a general latency
 guarantee. A 60-second wrapper timeout can leave its child running; that
 benchmark limitation remains deferred. See the [qualification record](remaining-work.md#task165-qualified-increment) for checks and scope.
+
+
+## Raw scans in merge calls (Task166)
+
+Existing modeled scalar roots and child routes, disjoint named chains and
+one bound TAP IR/DR route can execute raw scans in valid merged iCall
+bodies. Each raw-containing call runs as a complete serial stream.
+Compatible ordinary siblings can still batch. Per-call Apply order,
+native reservations and existing waits are preserved.
+
+For the repository's [modeled root example](../tests/cases/ours/pattern_generation/modeled_root_scan/model.icl),
+this procedure shifts two words through the same eight-bit register:
+
+```tcl
+iPDLLevel 1
+iProcsForModule Modeled
+iProc shift_word {before word} {
+ iScan client 8 -si $word -so $before
+ iApply
+}
+iReset
+iMerge -begin
+iCall shift_word 0 0x96
+iCall shift_word 0x96 0x3c
+iMerge -end
+```
+
+Keep reset outside the merged procedures. Only iCall and iNote belong in
+the direct merge body, and every call must return with an empty Apply
+queue. Native route, width, stable/default and reservation checks still
+apply. The example matches the parent serial control on normal, static
+and leak-enabled sanitizer builds.
+
+Opaque root/child merges, broader multi-TAP/shared raw topologies, actual
+modeled merge histories and raw physical-PDL output retain their guards.
+Enabling --model_readback without requesting a merge history does not
+change these boundaries. This support does not establish device/vendor
+equivalence or physical timing closure.
+
+Reproduce the matched measurements with a retained parent binary:
+
+```sh
+python3 tests/src/pattern/benchmark_raw_merge_calls.py \
+  --binary build/icl-pattern-generation \
+  --parent build/raw-merge-calls-20261124/parent/icl-pattern-generation \
+  --output /tmp/icl-raw-merge-measurements
+```
+
+Add --sanitized with a leak-enabled generator for the smaller sanitizer
+case. The benchmark checks complete serial output, every scan input and
+compare word, and each Apply boundary. It records all timing/memory misses
+before returning failure; timeout runs have a native child deadline.
+Committed wide cases currently use low-valued data; high-bit coverage is
+a deferred fixture Minor, with separate independent probes retained.

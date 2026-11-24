@@ -322,9 +322,9 @@ class ModeledRootScan(unittest.TestCase):
                                     "Alias idle[7:0] = value { iApplyEndState 8'b0; } ScanOutPort so")]:
             with self.subTest(model=model):
                 self.rejected('iReset; iScan client 8; iApply\n', 'scan', model)
-        for command in ['iMerge -begin; iMerge -end']:
-            with self.subTest(command=command):
-                self.rejected('iReset; ' + command + '; iScan client 8; iApply\n', 'scan')
+        merged = 'iReset; iMerge -begin; iMerge -end; iScan client 8; iApply\n'
+        serial = 'iReset; iScan client 8; iApply\n'
+        self.assertEqual(self.replay(merged), self.replay(serial))
 
     def test_raw_reserved_explicit_update_refreshes_partial_history(self):
         result = self.replay('iReset; iTake value[3]; iWrite value 8; iApply\n'
