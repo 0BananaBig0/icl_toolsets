@@ -58,7 +58,7 @@ replace only three primary Decode(model,value) calls with decode(value).
 - [x] Step6: Document measurements and commit; request one fresh final review,
   re-grade findings, fix Critical/Important once test-first and defer Minors.
   Expected: no unresolved blocker; all declined judgments ruled with costs.
-- [ ] Step7: Merge master, check identical inputs/products and affected behavior,
+- [x] Step7: Merge master, check identical inputs/products and affected behavior,
   push, delete owned branch and archive only this ledger. Expected: clean
   pushed master with117 stashes and no owned completed branch remaining.
 

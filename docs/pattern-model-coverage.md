@@ -4860,3 +4860,7 @@ All 450 matched outputs/observations and four guide processes agree; both full
 The bounded 256-target callback latency case passes the final unchanged bounds.
 Broader inventory10 and other pending topology/history work remain open.
 See [Task169 evidence](remaining-work.md#task169-qualified-increment).
+
+All 17 Task169 merged-result checks pass on identical 4,052 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

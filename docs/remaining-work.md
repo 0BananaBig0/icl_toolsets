@@ -391,3 +391,7 @@ executables, including both full generator variants and 30 fresh native passes.
 The new deferred Minor concerns the description of unobserved merge controls
 and labels for aggregate sanitizer RSS peaks. Detailed matrix rows retain the
 actual owners and comparisons. Total deferred Minors: 24, including23 inherited.
+
+All 17 Task169 merged-result checks pass on identical 4,052 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.

@@ -9940,3 +9940,7 @@ remain active under optimized Python and reject zero/missing counters or a
 failed generator. Its three-method reporting regression covers these failures.
 See the Task169 evidence for the final80 gates, unchanged executable proof and
 the remaining deferred documentation Minor.
+
+All 17 Task169 merged-result checks pass on identical 4,052 qualified inputs
+and 20 copied executables. The merge is pushed to master, the owned task branch
+is deleted, and all 117 stashes remain. Broader inventory work remains open.
