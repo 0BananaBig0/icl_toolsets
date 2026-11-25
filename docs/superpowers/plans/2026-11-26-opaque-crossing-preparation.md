@@ -59,7 +59,7 @@ trial transfers queues with state/fill. Nonprepare solver behavior stays native.
 - [x] Step5: Read finalized staged patch, commit and request one fresh review.
   Fix blockers once test-first, qualify and ledger all rulings/Minors. Expected:
   0unresolved Critical/Important without rereview.
-- [ ] Step6: Merge/push, verify merged results, detach reused worktree, delete
+- [x] Step6: Merge/push, verify merged results, detach reused worktree, delete
   owned branch and archive own ledger. Expected: clean pushed master, accurate
   remaining inventory and117preserved stashes.
 
