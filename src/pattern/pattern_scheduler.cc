@@ -480,11 +480,15 @@ class ScanScheduler::Impl {
     primary_state_indexed_ = other.primary_state_indexed_;
     primary_state_candidates_ = other.primary_state_candidates_;
     parallel_raw_profile_ = other.parallel_raw_profile_;
+    raw_history_profile_ = other.raw_history_profile_;
+    raw_history_segments_ = other.raw_history_segments_;
+    raw_history_work_ = other.raw_history_work_;
     if (other.execution_) {
       execution_ = std::make_unique<TapExecution>(*other.execution_);
     }
   }
   bool HasOpaqueChild() const { return opaque_model_ != nullptr; }
+  bool DynamicRawHistory() const { return raw_history_profile_ != nullptr; }
   void MaskOpaqueState() {
     if (!opaque_model_) return;
     for (const auto& interval : opaque_model_->intervals) {
@@ -1256,8 +1260,13 @@ class ScanScheduler::Impl {
       return std::nullopt;
     }
     try {
-      const auto& root = RawTemplate();
-      if (root.dynamic || parsed->root != root.client ||
+      const auto& shape = RawTemplate();
+      if (parsed->dynamic != shape.dynamic ||
+          (parsed->dynamic && !raw_history_profile_)) {
+        return std::nullopt;
+      }
+      const auto& root = parsed->dynamic ? *raw_history_profile_ : shape;
+      if (parsed->root != root.client ||
           root_scan.arguments[1] != std::to_string(root.width) ||
           root_scan.arguments[2] != "-si" || root_scan.arguments[4] != "-so" ||
           root_scan.arguments[3].size() != root.width + 2 ||
@@ -1266,7 +1275,21 @@ class ScanScheduler::Impl {
         return std::nullopt;
       }
       const auto& name = source_.nodes[parsed->client].name;
-      const auto slice = RawSubchain(name);
+      RawSlice slice;
+      if (parsed->dynamic) {
+        auto found = raw_history_segments_.find(parsed->client);
+        if (found == raw_history_segments_.end()) {
+          found =
+              raw_history_segments_
+                  .emplace(parsed->client, RawSegmentFor(parsed->client, root,
+                                                         &raw_history_work_)
+                                               .slice)
+                  .first;
+        }
+        slice = found->second;
+      } else {
+        slice = RawSubchain(name);
+      }
       if (parsed->expected.size() != slice.width + 2 ||
           parsed->expected.substr(2) !=
               InvertBits(
@@ -2307,10 +2330,17 @@ class ScanScheduler::Impl {
       }
     }
     const size_t width = root.width;
+    std::shared_ptr<const RawProfile> history;
+    if (root.dynamic && !opaque_model_) {
+      history = std::make_shared<RawProfile>(root);
+    }
     auto result =
         ReplayScan(physical, stable_clients, preserved, explicit_registers,
                    latest.count(netlist_.nodes[root.client].name) != 0, nullptr,
                    observe ? &captured : nullptr);
+    raw_history_profile_ = std::move(history);
+    raw_history_segments_.clear();
+    raw_history_work_ = 0;
     if (observe) {
       std::string actual(width, 'x');
       for (size_t i = 0; i < returned.size(); ++i) {
@@ -7857,6 +7887,9 @@ class ScanScheduler::Impl {
   bool client_controls_ = false;
   std::optional<ScanInterface> implicit_tap_client_;
   std::optional<RawProfile> raw_profile_, raw_current_;
+  std::shared_ptr<const RawProfile> raw_history_profile_;
+  std::map<size_t, RawSlice> raw_history_segments_;
+  size_t raw_history_work_ = 0;
   std::map<size_t, BitReference> raw_selectors_;
   std::map<Key, BitReference> raw_control_terminals_;
   bool raw_gated_ = false;
@@ -7899,6 +7932,9 @@ ScanScheduler::ScanScheduler(const ScanScheduler& other)
     : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
 bool ScanScheduler::HasOpaqueChild() const { return impl_->HasOpaqueChild(); }
+bool ScanScheduler::DynamicRawHistory() const {
+  return impl_->DynamicRawHistory();
+}
 std::optional<RawHistoryProjection> ScanScheduler::ModeledRawHistory(
     const Operation& note, const Operation& root_scan) {
   return impl_->ModeledRawHistory(note, root_scan);

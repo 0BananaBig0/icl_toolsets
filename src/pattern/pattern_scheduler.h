@@ -51,6 +51,8 @@ class ScanScheduler {
   ScanScheduler(const ScanScheduler& other);
   ~ScanScheduler();
   bool HasOpaqueChild() const;
+  // The most recent scalar raw CSU captured a dynamic route.
+  bool DynamicRawHistory() const;
   // root_scan is the canonical result of a successful raw CSU.
   std::optional<RawHistoryProjection> ModeledRawHistory(
       const Operation& note, const Operation& root_scan);

@@ -62,6 +62,77 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
 }
+void TestDynamicChildCommittedGeometry() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/active_child_raw/model.icl";
+  std::ifstream source(path);
+  Require(source.good(), "dynamic child fixture is available");
+  pattern::Design design;
+  design.AddIcl(path, std::string(std::istreambuf_iterator<char>(source),
+                                  std::istreambuf_iterator<char>()));
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("open", "1");
+  scheduler.Assume("child.value", "10100101");
+  pattern::Operation root{
+      "iScan",
+      {"client", "9", "-si", "0b001111000", "-so", "0b00000000x"},
+      "test",
+      {}};
+  const auto committed = scheduler.ApplyScan(root);
+  const pattern::Operation note{
+      "iNote",
+      {"-comment",
+       "modeled dynamic child raw history client child.local 0b00000000"},
+      "test",
+      {}};
+  const auto projection = scheduler.ModeledRawHistory(note, committed);
+  Require(projection && projection->target == "child.local" &&
+              projection->offset == 0 && projection->expected == "00000000" &&
+              !projection->inverted && scheduler.Value("open") == "0",
+          "dynamic history retains the completed nine-bit route after closure");
+  pattern::ScanScheduler copy(scheduler);
+  bool failed = false;
+  try {
+    scheduler.ApplyScan(root);
+  } catch (const std::runtime_error&) {
+    failed = true;
+  }
+  Require(failed && scheduler.ModeledRawHistory(note, committed).has_value(),
+          "failed raw execution preserves the last committed geometry");
+  scheduler.ApplyScan(
+      {"iScan", {"client", "1", "-si", "0b1", "-so", "0bx"}, "test", {}});
+  Require(
+      !scheduler.ModeledRawHistory(note, committed) &&
+          copy.ModeledRawHistory(note, committed).has_value(),
+      "successful replacement is local while copies retain immutable history");
+  pattern::Runtime::HistoryReadback validate;
+  const auto readback =
+      pattern::MakeModeledReadback(netlist, false, nullptr, &validate);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iState", {"open", "1"}, "test", {}},
+      {"iState", {"child.value", "165"}, "test", {}},
+      root,
+      {"iApply", {}, "test", {}}};
+  operations[3].raw_history_omitted = true;
+  Require(validate(operations, note),
+          "preview projects actual completed dynamic geometry");
+  auto accepted = note;
+  accepted.modeled_raw_history = true;
+  operations.push_back(accepted);
+  const auto* update = readback(operations, false);
+  Require(
+      update->failures == 4 && update->scans.size() == 1 &&
+          update->scans[0].target == "child.local" &&
+          update->scans[0].read == "10100101" &&
+          update->scans[0].miscompare == "10100101",
+      "dynamic preview retains actual child deltas without root or recount");
+  update = readback(operations, false);
+  Require(update->scans.empty() && update->failures == 4,
+          "dynamic child deltas publish exactly once");
+}
 void TestModeledChildHistoryProjection() {
   pattern::Design design;
   design.AddIcl("child_history.icl", R"(
@@ -988,6 +1059,7 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestDynamicChildCommittedGeometry();
     TestModeledChildHistoryProjection();
     TestStatusPreviewRetainsUnpublishedHistory();
     TestOrderedStatusClearEvents();

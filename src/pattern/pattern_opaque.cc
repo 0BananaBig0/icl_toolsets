@@ -136,14 +136,19 @@ Operation NormalizeScan(z3::context& context, const Operation& operation) {
 bool IsModeledChildHistoryNote(const Operation& note) {
   return note.command == "iNote" && note.arguments.size() == 2 &&
          (note.arguments[0] == "-comment" || note.arguments[0] == "-status") &&
-         !note.arguments[1].compare(0, sizeof(kModeledChildHistoryNote) - 1,
-                                    kModeledChildHistoryNote);
+         (!note.arguments[1].compare(0, sizeof(kModeledChildHistoryNote) - 1,
+                                     kModeledChildHistoryNote) ||
+          !note.arguments[1].compare(0, sizeof(kDynamicChildHistoryNote) - 1,
+                                     kDynamicChildHistoryNote));
 }
 std::optional<ModeledChildHistoryNote> ReadModeledChildHistoryNote(
     const Netlist& netlist, const Operation& note) {
   if (!IsModeledChildHistoryNote(note)) return std::nullopt;
+  const bool dynamic = !note.arguments[1].compare(
+      0, sizeof(kDynamicChildHistoryNote) - 1, kDynamicChildHistoryNote);
   const auto text = std::string_view(note.arguments[1])
-                        .substr(sizeof(kModeledChildHistoryNote) - 1);
+                        .substr(dynamic ? sizeof(kDynamicChildHistoryNote) - 1
+                                        : sizeof(kModeledChildHistoryNote) - 1);
   const auto first = text.find(' ');
   if (first == std::string_view::npos || first == 0) return std::nullopt;
   const auto second = text.find(' ', first + 1);
@@ -175,7 +180,7 @@ std::optional<ModeledChildHistoryNote> ReadModeledChildHistoryNote(
     return std::nullopt;
   }
   return ModeledChildHistoryNote{root->second, child->second,
-                                 std::string(expected)};
+                                 std::string(expected), dynamic};
 }
 std::optional<OpaqueChildHistoryNote> ReadOpaqueChildHistoryNote(
     const Netlist& netlist, const Operation& operation) {

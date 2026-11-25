@@ -43,17 +43,17 @@ ModeledRawHistory(note,root_scan) returns the projection of that committed CSU.
 Private raw_history_profile_ is shared const RawProfile; child slice cache and
 work budget belong to each scheduler copy.
 
-- [ ] Step1: Add genuine immutable-parent source versus original/flat/generated
+- [x] Step1: Add genuine immutable-parent source versus original/flat/generated
   prefix failures:old9bit0b101001011/mask0b101001011/status6 after a child closes,
   plus a fixed8bit child whose root offset changes. Expected missing history RED.
-- [ ] Step2: Capture pre-CSU geometry and commit only on success; parse/emit
+- [x] Step2: Capture pre-CSU geometry and commit only on success; parse/emit
   dynamic intent and project actual root returns through old geometry.
   Expected initial focused/native GREEN with identical hardware/counts.
-- [ ] Step3: Pin nested widths, route/parity changes, unknown/canceled histories,
+- [x] Step3: Pin nested widths, route/parity changes, unknown/canceled histories,
   stable claims, copy/rollback, invalid/duplicate/default-chain notes, merges
   and default/local-reset continuation. Add reporter/workload checks test-first.
   Expected exact results, unchanged prior behavior and measured bounds.
-- [ ] Step4: Run complete normal/static generators,30native normal/SAN, affected
+- [x] Step4: Run complete normal/static generators,30native normal/SAN, affected
   sanitizer CLI, corpus, changed-C++quality and source packaging. Check exact
   source/product hashes and all existing/new matched rows. Expected all pass
   with unchanged corpus classifications.

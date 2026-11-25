@@ -5106,3 +5106,44 @@ Broader topology, timing and real-device work remains in the original inventory.
 All13 Task177 merged-result checks pass against identical4,066qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Dynamic modeled-child prefix histories (Task178)
+
+Supported dynamic scalar child requests retain actual old-route data and
+miscompares through original, flat and generated-prefix continuation. Distinct
+dynamic intent comments reuse canonical root provenance and the modeled
+provider. One immutable pre-CSU profile preserves width, offset and parity
+after route changes; successful raw execution commits it and failed execution
+preserves the previous one. Projection does not repeat failure accounting.
+
+Focused coverage includes nested variable widths, disjoint repeated instances,
+route/parity changes, unknown and canceled observations, copy/rollback,
+default-chain and cross-family rejection, duplicate notes, ownership elision,
+merges and default/local-reset continuation. Final qualification follows below.
+Broader clock/TAP/parallel/timed execution and real transport remain open;
+coverage item1 stays excluded and30 inherited Minors remain deferred.
+
+All78qualification gates pass on4,069input/38product hashes. Each normal/static
+generator passes84suites/1,357methods. All30native normal/SAN suites,
+18changed-C++quality checks,14dynamic-focused methods per build, existing
+16static-child/13status-clear/32opaque/20callback-focused methods, affected
+sanitizer CLI, unchanged corpus and source packaging pass. All gates are fresh.
+
+All1,128matched measurements pass existing10s/512MiB bounds, with single-wide
+controls256MiB:378callback,102single-opaque,216multiple-opaque,216static-child
+and216dynamic-child processes. The dynamic matrix covers1/2/8/32children at
+8/64/256bits and1/2/8children at1024bits, each closing and reopening routes.
+It checks actual old words/masks, changed root widths, ordered comparisons,
+failure counts and complete parent/current outputs. There are171live generated
+history processes across the three child-prefix matrices. Two allocation probes
+and four guide processes pass. Measured maximum across all1,128processes is
+0.8676s/445380KiB; no speedup or unmeasured-scale claim.
+
+Parent static controls now use their native notes. Only the new dynamic intent
+comments are injected in dynamic parent controls; no hardware operation,
+observed value or failure count is injected. Independent artifact checks
+validate complete matrices, identities, values, shapes and hashes.
+
+Corpus classifications remain1,032canonical/44explicit unsupported/687default
+elaboration failures across2,562source identities. This increment restores
+supported dynamic scalar histories, not general topology/timing or transport.

@@ -41,9 +41,6 @@ def commands(children, width, parent=False):
         for i,bits in enumerate(new):
             text += 'iScan child%d.local %d -si 0b%s -so 0 -stable\n' % (i,width,bits)
         text += 'iApply\n'
-        if parent:
-            text += ''.join('iNote -comment "modeled child raw history client child%d.local 0b%s"\n' %
-                            (i,'0'*width) for i in sorted(range(children),key=lambda i:'child%d.local'%i))
         for i,bits in enumerate(old):
             text += 'iNote [iGetReadData child%d.local -bin]\niNote [iGetMiscompares child%d.local -bin]\n' % (i,i)
             expected += ['0b'+bits]*2
@@ -82,7 +79,8 @@ def replay_observations(data, children, expected):
     return ('\n'.join(lines)+'\n').replace('iPDLLevel 0','iPDLLevel 1',1)
 
 
-def main():
+def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
+            setup_csus, stable):
     import argparse
     import hashlib
     import json
@@ -115,8 +113,8 @@ def main():
             for form in (('source',) if owner=='parent' else ('source','flat','generated')):
                 folder = Path(tempfile.mkdtemp(prefix='%s-%d-%d-%s-'%(owner,count,width,form),dir=output))
                 icl,pdl,result,metric = (folder/n for n in ('source.icl','source.pdl','result.pdl','time.txt'))
-                text,notes,words,compares = commands(count,width,parent=owner=='parent')
-                icl.write_text(model(count,width));pdl.write_text(text)
+                text,notes,words,compares = command_factory(count,width,parent=owner=='parent')
+                icl.write_text(model_factory(count,width));pdl.write_text(text)
                 if form=='flat' and source:
                     icl = Path(source['directory'])/'debug/Chains.icl'
                 replay_error = ''
@@ -146,14 +144,17 @@ def main():
                 lines = data.splitlines()
                 actual = [line[6:] for line in lines if line.startswith('iNote ') and 'modeled ' not in line]
                 scans = [line.split() for line in lines if line.startswith('iScan ')]
-                size = count*width+8
-                shape = (len(scans)==8 and lines.count('iApply')==9 and
-                         all(len(s)==8 and s[1:4]==['client',str(size),'-si'] and
-                             s[5]=='-so' and s[-1]=='-stable' for s in scans) and
+                sizes = [len(word)-2 for word in words]
+                size = max(sizes)
+                shape = (len(scans)==8 and lines.count('iApply')==setup_csus+8 and
+                         all(len(s)==7+int(stable) and s[1:4]==['client',str(n),'-si'] and
+                             s[5]=='-so' and s[7:]==(['-stable'] if stable else [])
+                             for s,n in zip(scans,sizes)) and
                          [s[4] for s in scans]==words and [s[6] for s in scans]==compares)
-                markers = [line for line in lines if 'modeled child raw history ' in line]
-                expected_markers = ['iNote -comment "modeled child raw history client child%d.local 0b%s"'%
-                                    (i,'0'*width) for i in sorted(range(count),key=lambda i:'child%d.local'%i)]*4
+                markers = [line for line in lines if note_prefix in line]
+                expected_markers = ['iNote -comment "'+note_prefix+'client child%d.local 0b%s"'%
+                                    (i,'0'*(width+history_width_extra))
+                                    for i in sorted(range(count),key=lambda i:'child%d.local'%i)]*4
                 verified = (process.returncode==0 and not replay_error and actual==notes and shape and
                             markers==expected_markers and (folder/'debug/Chains.icl').exists())
                 if form!='source' and source:
@@ -166,7 +167,8 @@ def main():
                 within = seconds<=10 and rss is not None and rss<=bound
                 row = dict(owner=owner,children=count,width=width,repeat=repeat,form=form,
                     root_width=size,modeled_storage_bits=size,raw_scan_count=len(scans),
-                    csu_count=lines.count('iApply'),raw_shifted_bits=len(scans)*size,
+                    csu_count=lines.count('iApply'),raw_shifted_bits=sum(len(s[4])-2 for s in scans if len(s)>4),
+                    root_scan_widths=[int(s[2]) for s in scans if len(s)>2 and s[2].isdigit()],
                     history_annotation_count=len(markers),
                     root_scope_annotation_count=data.count('modeled raw history omitted '),
                     status_clear_annotation_count=data.count('modeled readback status clear '),
@@ -190,6 +192,11 @@ def main():
     print(json.dumps(dict(runs=len(report['runs']),expected_runs=expected_rows,
                          matrix_complete=complete,all_verified=not failed)))
     return int(failed or not complete)
+
+
+def main():
+    return measure(model,commands,note_prefix='modeled child raw history ',
+                   history_width_extra=0,setup_csus=1,stable=True)
 
 
 if __name__=='__main__':
