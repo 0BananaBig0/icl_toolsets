@@ -947,7 +947,7 @@ or repeated full-root normalization. Custom providers need the optional history
 validator to restore these child intents; no provider invents observations.
 
 Three initial parent methods produce four genuine missing-child-history
-failures. All13focused methods pass in normal/static/SAN, including overwritten
+failures. All16focused methods pass in normal/static/SAN, including overwritten
 requests, partial care, unknown bits/status, reset/cancel, old root/child history,
 typed duplicates, absent provider, merge calls and namespaced local-reset source.
 Four new reporter methods reject fake zero-exit generators, missing sanitizer
@@ -955,7 +955,7 @@ and corrupted observation lists. The existing seven opaque reporter methods
 retain exact controls after removing clear-note injection already native in
 Task176. Parent fixtures inject only the new modeled-child identity comments.
 
-All73qualification gates pass on4,066input/38product hashes:83suites/1,340methods
+All73qualification gates pass on4,066input/38product hashes:83suites/1,343methods
 in each generator,30native normal/SAN suites,30changed-C++quality checks,
 affected sanitizer CLI, unchanged corpus and source packaging. All912matched
 measurement processes pass existing bounds:the prior696plus216modeled-child
@@ -967,6 +967,23 @@ controls. Existing57opaque generated processes remain qualified too.
 Static scalar modeled child restoration is complete for these measured cases.
 Dynamic/gated/parallel/TAP/timed routes and real transport remain in original
 items2–8/10–12. Other PDL consumers see informational comments. Coverage1stays
-excluded, and29inherited Minors remain deferred. Final review/integration follow.
+excluded, and29inherited Minors remain deferred. Final review and integration are recorded below.
 
-Measured peak across912processes:0.9183s/444856KiB; no speedup claim.
+Measured peak across912processes:1.0183s/444704KiB; no speedup claim.
+
+
+One fresh independent final review found0Critical,3Important and1Minor.
+All three Important findings are fixed in one test-first pass:the local-reset
+verification Runtime receives its own normal/status/history callbacks; scalar
+metadata cannot bind a noncanonical -chain default source spelling; an off-route
+child annotation follows the existing route diagnostic and remains informational.
+The16focused methods pass in all three builds, and all73final gates are fresh:
+83x1,343methods per generator,30native/30quality checks and912measurements.
+No gate or generator suite is reused from a prior attempt, and no second review
+is substituted for the verified fixes.
+
+One new Minor remains deferred:typed C++ function pointers to the earlier
+three-argument MakeModeledReadback overload require adaptation because its new
+declaration has four parameters. Ordinary three-argument calls still compile.
+The29inherited Minors retain their prior dispositions; total30deferred Minors.
+Broader topology, timing and real-device work remains in the original inventory.

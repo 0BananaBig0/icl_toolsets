@@ -54,7 +54,7 @@ MakeModeledReadback shares that callback and StatusReadback with one model.
   SAN CLI, corpus, changed C++quality and source packaging. Record exact source
   and product hashes plus full matched measurement rows. Expected all pass
   with unchanged corpus classifications and existing workloads.
-- [ ] Step5: Commit finalized diff, obtain one fresh whole-branch review,
+- [x] Step5: Commit finalized diff, obtain one fresh whole-branch review,
   fix blockers once test-first and qualify final state. Expected no unresolved
   Critical/Important findings; retain Minors, no rereview.
 - [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach

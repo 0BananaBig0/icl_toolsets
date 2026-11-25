@@ -208,6 +208,62 @@ iNote [iGetMiscompares child0.local -dec]; iNote [iGetStatus]
             self.assertEqual(self.notes(replay)[-2:],[b'9',b'2'])
         self.assertEqual(results[0],results[1])
 
+    def test_generated_prefix_local_reset_verifier_restores_child_history(self):
+        icl,script,tail = (self.root/n for n in ('source.icl','source.pdl','tail.pdl'))
+        icl.write_text(model())
+        script.write_text('''iPDLLevel 1
+iReset; iWrite child0.value 165; iApply
+iScan child0.local 8 -si 60 -so 0 -stable; iApply
+''')
+        self.run_tool(icl,script,'prefix.pdl')
+        definition = 'iProc result {} {iNote [iGetReadData child0.local -dec]; iNote [iGetMiscompares child0.local -dec]; iNote [iGetStatus -clear]}'
+        tail.write_text('iPDLLevel 1\niProcsForModule Chains -iProcNameSpace ops\n'+
+                        definition+'\niCall ops::result; iNote [iGetStatus]\n')
+        reference = self.run_tool(icl,self.root/'prefix.pdl','reference.pdl',
+                                  extra=('--pdl',str(tail)))
+        self.assertEqual(self.notes(reference),[b'165',b'165',b'4',b'0'])
+        reset = self.root/'rewritten.pdl'
+        for source_icl in (icl,self.root/'debug/Chains.icl'):
+            rewritten = self.run_tool(source_icl,self.root/'prefix.pdl','reset/result.pdl',
+                extra=('--pdl',str(tail),'--local_reset',str(reset)))
+            self.assertEqual(rewritten,reference)
+            self.assertIn(definition,reset.read_text())
+            self.assertEqual(self.run_tool(source_icl,reset,'reset/replayed.pdl'),reference)
+
+    def test_default_chain_spelling_cannot_activate_child_metadata(self):
+        prefix = '''iReset; iWrite child0.value 165; iApply
+iScan child0.local 8 -si 60 -so 0; iApply
+iScan client -chain default 16 -si 0b0000000000000000 -so 0b0000000000000000; iApply
+iNote -comment {modeled child raw history client child0.local 0b00000000}
+'''
+        self.continued(model(),prefix,'''iNote [iGetReadData child0.local -dec]
+iNote [iGetMiscompares child0.local -dec]; iNote [iGetStatus]
+''',[b'165',b'165',b'8'])
+        first = self.run_tool(self.root/'source.icl',self.root/'first.pdl',
+                               'default-prefix.pdl',modeled=False)
+        self.assertIn(b'informational modeled child raw history ',first)
+        self.assertEqual(self.run_tool(self.root/'source.icl',self.root/'default-prefix.pdl',
+            'default-again.pdl',modeled=False),first)
+
+    def test_off_route_child_note_stays_informational(self):
+        source = model().replace(' ScanInterface local {',''' ScanInPort alt;
+ ScanInterface other {Port alt; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;}
+ ScanInterface local {''')
+        source = source.replace('InputPort si = head[0];','InputPort si = head[0]; InputPort alt = head[0];')
+        prefix = '''iReset
+iScan client 16 -si 0b0000000000000000 -so 0b0000000000000000; iApply
+iNote -comment {modeled child raw history client child0.other 0b00000000}
+'''
+        generated,_ = self.continued(source,prefix,'''iNote [iGetReadData client -dec]; iNote [iGetStatus]
+if {![catch {iGetReadData child0.other}]} {error {off-route history invented}}
+''',[b'0',b'0'])
+        self.assertIn(b'informational modeled child raw history ',generated)
+        first = self.run_tool(self.root/'source.icl',self.root/'first.pdl',
+                               'default-prefix.pdl',modeled=False)
+        self.assertIn(b'informational modeled child raw history ',first)
+        self.assertEqual(self.run_tool(self.root/'source.icl',self.root/'default-prefix.pdl',
+            'default-again.pdl',modeled=False),first)
+
 
 if __name__ == '__main__':
     unittest.main(argv=[__file__])

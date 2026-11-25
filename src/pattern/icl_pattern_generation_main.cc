@@ -1049,11 +1049,17 @@ int main(int argc, char** argv) {
           [&](const std::string& source,
               const std::vector<pattern::Operation>& expected,
               const std::string& completion) {
-            pattern::Runtime verified(
-                design, network.netlist, false,
-                options.model_readback ? pattern::MakeModeledReadback(
-                                             network.netlist, options.physical)
-                                       : pattern::Runtime::Readback{});
+            pattern::Runtime::StatusReadback verified_status;
+            pattern::Runtime::HistoryReadback verified_history;
+            const auto verified_readback =
+                options.model_readback
+                    ? pattern::MakeModeledReadback(
+                          network.netlist, options.physical, &verified_status,
+                          &verified_history)
+                    : pattern::Runtime::Readback{};
+            pattern::Runtime verified(design, network.netlist, false,
+                                      verified_readback, verified_status,
+                                      verified_history);
             verified.Execute(options.local_reset, source);
             if (verified.Level() != runtime.Level()) {
               throw std::runtime_error(

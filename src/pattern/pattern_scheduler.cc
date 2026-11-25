@@ -1337,6 +1337,7 @@ class ScanScheduler::Impl {
       if (node.model == ModelKind::kAlias ||
           (node.model == ModelKind::kPort &&
            (node.kind == "ScanInPort" || node.kind == "ScanOutPort"))) {
+        if (!node.inputs.count("Source")) fail();
         bit = node.inputs.at("Source").at(Offset(node, bit.index));
         continue;
       }

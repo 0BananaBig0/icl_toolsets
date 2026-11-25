@@ -1219,9 +1219,10 @@ class Runtime::Impl {
               netlist_->nodes[root->second].scan_interface &&
               netlist_->nodes[root->second].scan_interface->kind ==
                   ScanInterfaceKind::kClient) {
-            root_source = scan.arguments == operation.arguments
-                              ? std::optional<size_t>(it - operations_.begin())
-                              : std::nullopt;
+            root_source =
+                fields.length == 1 && scan.arguments == operation.arguments
+                    ? std::optional<size_t>(it - operations_.begin())
+                    : std::nullopt;
           }
         }
         if (fields.instruction && netlist_ &&
