@@ -246,7 +246,7 @@ iMerge -begin; iCall first; iCall second; iMerge -end; iNote $::seen
         self.rejected(PIO, merged('iState p 9; iRead q 0; iApply; iRunLoop 1; '
             'iGetReadData q'), 'iRunLoop histories')
         self.rejected(raw.OPAQUE, merged('iScan client -chain first 4 -si 9; iApply; '
-            'iGetReadData client -chain first'), 'iMerge histories')
+        'iGetReadData client -chain first'), 'length')
         self.rejected(PIO, merged('iWrite p 9; iRead q 0; iApply; iGetReadData q'),
             'iMerge histories', ('--physical_pdl',))
 

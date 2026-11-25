@@ -170,11 +170,9 @@ iNote [iGetStatus -clear]; iNote [iGetStatus]
             self.assertIn('iMerge -begin',reset.read_text())
             self.assertEqual(self.run_tool(source_icl,reset,'reset/replayed.pdl'),reference)
 
-    def test_standalone_root_physical_and_event_boundaries_remain_rejected(self):
+    def test_physical_and_event_boundaries_remain_rejected(self):
         icl,pdl,out = (self.root/n for n in ('source.icl','source.pdl','protected.pdl'))
-        leaf = model(2,8).split('Module Chains {',1)[0].replace('Module Leaf','Module Chains')
         cases = [
-            (leaf,'iProc first {} {iScan local 8 -si 150 -so 0bx -stable; iApply}',(), 'opaque'),
             (model(2,8),DEFINITIONS,('--physical_pdl',),'physical'),
             (model(2,8),'iProc first {} {iRunLoop 1 -tck}',(),'opaque'),
         ]

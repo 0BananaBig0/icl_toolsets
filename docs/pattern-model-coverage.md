@@ -5396,3 +5396,40 @@ publication behavior retain their prior scope.
 All28 Task182 merged-result checks pass against identical4,081qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Standalone opaque-root serial merges (Task183)
+
+Standalone scalar and disjoint named opaque roots now accept serial iMerge
+calls through the existing queue and merge traversal. Implicit default or stable
+fills still execute as real scans, but do not invent or overwrite explicit
+chain histories when generated PDL is replayed. Existing canonical omission
+notes carry that scope; no physical scan or comparison is removed.
+
+Only actual opaque captures are reported, so returned data stays unknown.
+A chain retains its prior cared mask through implicit fills and reset while
+another chain changes its explicit width. Unknown accumulated status also
+stays unknown across reset. Physical/event and
+unsupported topology boundaries retain their existing checks. Qualification
+and review follow; the broader inventory, excluded item1 and34Minors stay open.
+
+Task183 passes all 108 qualification gates on 4,084 input and 42 product hashes.
+Normal and static generators each pass 89 suites and 1,433 methods. All thirty
+native suites, two additional static native suites, fifteen C++ quality checks,
+normal/sanitizer seventeen-method trace suites, affected sanitizer CLI, corpus
+and packaging pass. Corpus inputs and classes retain 1,032 canonical, 44 explicit
+unsupported and 687 default elaboration failures across 2,562 source identities.
+
+All 2,226 measurements meet their 10-second/512-MiB bounds, retaining 256-MiB
+single-wide controls. The new 282-run matrix covers scalar widths 8/64/256/1024
+and named 1/2/8/32-chain widths 8/64/256, plus 1/2/8 chains at 1,024 bits,
+three repetitions and sanitizer samples. The frozen parent's real sequential
+calls and current merges request all lanes explicitly. Every word, frame, flag,
+actual unknown return, mask, status clear and output byte agrees without data
+normalization. Separate native/functional cases pin implicit history scope and
+old cared masks; the measured all-explicit control does not stand in for them.
+
+All eight child/root matrices include 462 live generated-history runs. Two
+allocation probes and 24 guide processes pass. The measured maximum is
+1.5400 seconds and 470480 KiB. No batching, speedup or
+unmeasured-scale claim is made. Independent review follows. The broader original
+inventory, excluded item1 and 34 inherited deferred Minors retain their scope.

@@ -116,6 +116,8 @@ void TestNamedRequiredCompletionAndBudget() {
   Require(initial.size() == 3, "all required named defaults complete together");
   CheckScan(initial, "0000", "xxxx", true);
   CheckScan(initial, "00", "xx", true, 1);
+  Require(initial[0].raw_history_omitted && initial[1].raw_history_omitted,
+          "implicit defaults carry no explicit chain history");
   queue.Add(context, {"iScan",
                       {"client", "-chain", "first", "4", "-si", "9", "-so", "3",
                        "-stable"},
@@ -124,9 +126,14 @@ void TestNamedRequiredCompletionAndBudget() {
   const auto explicit_scan = queue.Apply(kApply);
   CheckScan(explicit_scan, "1001", "0011", true);
   CheckScan(explicit_scan, "00", "xx", true, 1);
+  Require(!explicit_scan[0].raw_history_omitted &&
+              explicit_scan[1].raw_history_omitted,
+          "only explicitly requested lanes own their history");
   const auto implicit = queue.Complete(kApply);
   CheckScan(implicit, "1001", "xxxx", true);
   CheckScan(implicit, "00", "xx", true, 1);
+  Require(implicit[0].raw_history_omitted && implicit[1].raw_history_omitted,
+          "stable completion cannot replace the last explicit observation");
   pattern::OpaqueScanQueue large(
       {"client", {{"first", std::string(1048576, '0')}, {"second", "0"}}});
   large.Reset(kReset);

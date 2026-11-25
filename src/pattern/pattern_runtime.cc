@@ -519,19 +519,8 @@ class Runtime::Impl {
     }
   }
 
-  bool RawOmissionNote(const Operation& note) {
-    if (!netlist_ || !IsRawHistoryOmissionNote(note)) return false;
-    constexpr std::string_view kPrefix = "modeled raw history omitted ";
-    bool valid = false;
-    const auto words =
-        pdl::SplitList(note.arguments[1].substr(kPrefix.size()), &valid);
-    if (!valid || words.empty() || words[0] != "iScan") return false;
-    Operation scan{"iScan", {words.begin() + 1, words.end()}, "", {}};
-    if ((scan.arguments.size() != 6 &&
-         (scan.arguments.size() != 7 || scan.arguments.back() != "-stable")) ||
-        scan.arguments[2] != "-si" || scan.arguments[4] != "-so") {
-      return false;
-    }
+  bool CanonicalRootScan(const Operation& scan) {
+    if (!netlist_ || scan.arguments.empty()) return false;
     const auto found = netlist_->node_ids.find(scan.arguments[0]);
     if (found == netlist_->node_ids.end()) return false;
     const auto& root = netlist_->nodes[found->second];
@@ -541,12 +530,25 @@ class Runtime::Impl {
     }
     if (!history_context_) history_context_ = std::make_unique<z3::context>();
     try {
-      return NormalizeScan(*history_context_, scan).arguments ==
-                 scan.arguments &&
-             RawHistoryOmissionText(scan) == note.arguments[1];
+      const auto normalized = NormalizeScan(*history_context_, scan);
+      const auto fields = ReadScanFields(normalized);
+      return normalized.arguments == scan.arguments && !fields.instruction &&
+             ScanChainName(scan.arguments[0], fields.chain) == fields.chain;
     } catch (const std::runtime_error&) {
       return false;
     }
+  }
+
+  bool RawOmissionNote(const Operation& note) {
+    if (!netlist_ || !IsRawHistoryOmissionNote(note)) return false;
+    constexpr std::string_view kPrefix = "modeled raw history omitted ";
+    bool valid = false;
+    const auto words =
+        pdl::SplitList(note.arguments[1].substr(kPrefix.size()), &valid);
+    if (!valid || words.empty() || words[0] != "iScan") return false;
+    const Operation scan{"iScan", {words.begin() + 1, words.end()}, "", {}};
+    return CanonicalRootScan(scan) &&
+           RawHistoryOmissionText(scan) == note.arguments[1];
   }
 
   bool OpaqueStableNote(const Operation& note) const {
@@ -2051,40 +2053,20 @@ class Runtime::Impl {
       operation.arguments[target] =
           JoinPath(prefix(), operation.arguments[target]);
     }
-    if (name == "iScan" && netlist_ && !operations_.empty() &&
+    if (name == "iScan" && !operations_.empty() &&
         IsRawHistoryOmissionNote(operations_.back()) &&
-        (operation.arguments.size() == 6 ||
-         (operation.arguments.size() == 7 &&
-          operation.arguments.back() == "-stable")) &&
-        operation.arguments[2] == "-si" && operation.arguments[4] == "-so") {
-      const auto root = netlist_->node_ids.find(operation.arguments[0]);
-      if (root != netlist_->node_ids.end() &&
-          !netlist_->nodes[root->second].scope &&
-          netlist_->nodes[root->second].scan_interface &&
-          netlist_->nodes[root->second].scan_interface->kind ==
-              ScanInterfaceKind::kClient) {
-        if (!history_context_) {
-          history_context_ = std::make_unique<z3::context>();
+        CanonicalRootScan(operation)) {
+      const auto text = RawHistoryOmissionText(operation);
+      for (auto note = operations_.rbegin(); note != operations_.rend();
+           ++note) {
+        if (note->command != "iNote" || note->arguments.size() != 2 ||
+            (note->arguments[0] != "-comment" &&
+             note->arguments[0] != "-status") ||
+            note->arguments[1] != text) {
+          break;
         }
-        bool canonical = false;
-        try {
-          canonical = NormalizeScan(*history_context_, operation).arguments ==
-                      operation.arguments;
-        } catch (const std::runtime_error&) {
-          // Malformed queued scans retain Apply/reset validation timing.
-        }
-        const auto text = RawHistoryOmissionText(operation);
-        for (auto note = operations_.rbegin();
-             canonical && note != operations_.rend(); ++note) {
-          if (note->command != "iNote" || note->arguments.size() != 2 ||
-              (note->arguments[0] != "-comment" &&
-               note->arguments[0] != "-status") ||
-              note->arguments[1] != text) {
-            break;
-          }
-          note->raw_history_omitted = true;
-          operation.raw_history_omitted = true;
-        }
+        note->raw_history_omitted = true;
+        operation.raw_history_omitted = true;
       }
     }
     if (name == "iOverrideScanInterface") {

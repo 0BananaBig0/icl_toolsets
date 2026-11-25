@@ -136,8 +136,7 @@ iScan client 12 -so 0xXXX -si { 0xA
             with self.subTest(command=command):
                 self.rejected(command + '; iApply\n', 'scan')
         for command in ['iTake client', 'iState sel 1', 'iClock tck',
-                        'iOverrideScanInterface client -capture off', 'iRunLoop 2',
-                        'iMerge -begin; iMerge -end']:
+                        'iOverrideScanInterface client -capture off', 'iRunLoop 2']:
             with self.subTest(command=command):
                 self.rejected(command + '; iScan client 8; iApply\n', 'opaque')
 

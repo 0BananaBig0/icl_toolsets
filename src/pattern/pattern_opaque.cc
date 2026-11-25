@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 
+#include "pattern/pattern_merge.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
 
@@ -844,6 +845,7 @@ std::vector<Operation> OpaqueScanQueue::Complete(const Operation& operation) {
       scan.arguments[fields.expected] =
           "0b" + std::string(scan.arguments[fields.input].size() - 2, 'x');
     }
+    scan.raw_history_omitted = true;
     executed.emplace(name, std::move(scan));
   }
   std::vector<Operation> result;
@@ -878,7 +880,12 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
   OpaqueScanQueue queue(DescribeOpaqueScans(netlist));
   z3::context context;
   std::vector<Operation> result;
-  for (const auto& operation : operations) {
+  const bool merging =
+      std::any_of(operations.begin(), operations.end(),
+                  [](const auto& op) { return op.command == "iMerge"; });
+  std::vector<Operation> ordered;
+  if (merging) ordered = MergeOperations(netlist, operations, false);
+  for (const auto& operation : merging ? ordered : operations) {
     try {
       if (operation.command == "iScan") {
         // Validate before replacement: even a discarded assignment must be
