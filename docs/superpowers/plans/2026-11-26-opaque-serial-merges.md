@@ -57,7 +57,7 @@ nonphysical provider and continues using actual ApplyScans observations.
 - [x] Step5: Read finalized staged patch, commit and obtain one fresh review.
   Repair blockers once test-first, qualify and ledger all rulings/Minors.
   Expected:0unresolved Critical/Important without rereview.
-- [ ] Step6: Merge/push, verify merged results, detach reused tree, delete owned
+- [x] Step6: Merge/push, verify merged results, detach reused tree, delete owned
   branch and archive own ledger. Expected: clean pushed master and117stashes.
 
 Completion command: python3 /tmp/opaque-serial-merges-completion.py

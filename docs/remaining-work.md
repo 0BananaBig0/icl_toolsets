@@ -1282,3 +1282,7 @@ the final source and products. No second review ran. There are no unresolved
 Critical or Important findings and no new deferred Minor; the inherited total
 remains 34. Software-model evidence, measured-scale limits and existing per-file
 publication behavior retain their prior scope.
+
+All28 Task182 merged-result checks pass against identical4,081qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.
