@@ -10536,3 +10536,74 @@ these correctly; that wording correction and31inherited Minors remain deferred.
 All19 Task179 merged-result checks pass against identical4,072qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Automatic parent-only opaque child preparation (Task180)
+
+Using the Top model from the Task179 scalar bypass example, a child scan can
+open its modeled parent bypass automatically. Save this as opaque-prepare.pdl:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Top
+iReset
+iScan child.local 8 -si 165 -so 0bx; iApply
+iScan client 9 -si 0 -so 0bx; iApply
+iScan child.local 8 -si 60 -so 0bx; iApply
+iNote [iGetReadData child.local -bin]
+iNote [iGetMiscompares child.local -bin]
+iNote [iGetReadData client -bin]
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+~~~
+
+Run the existing generator with that ICL model, this PDL and --model_readback.
+The result contains two real parent-opening CSUs and three raw CSUs. Child data
+is0bxxxxxxxx and its miscompare mask is0b00000000. The last requested root return
+is0bxxxxxxxx1 from the explicit closing scan; later automatic opening does not
+replace it. Both status queries return0. Defaults and shifted SI are never used
+as observed opaque data.
+
+Preparation uses the existing native planner and must traverse only public
+modeled storage. A preparation CSU crossing any opaque interval is rejected;
+additional opaque length/completion handling is still required for that case.
+Failed requests leave state, histories and existing output files unchanged.
+The same source/flat/generated/default-provider/local-reset contracts apply.
+
+Task180 qualification passes all88fresh gates on4,075input/38product hashes.
+Normal and static generators each pass86suites/1,391methods. All30native suites,
+6changed-C++quality checks,12new focused methods per build, existing focused
+suites, affected sanitizer CLI and source packaging pass. The corpus retains
+1,032canonical/44explicit unsupported/687default elaboration failures across
+2,562source identities, with unchanged input identities and result classes.
+
+All1,560measurements pass10s/512MiB bounds, with256MiB single-wide controls.
+The new216run matrix covers1/2/8/32leaves at8/64/256bits and1/2/8leaves at1024bits,
+three repetitions and sanitizer samples. It verifies four actual parent-only
+openings, eight raw scans,13CSUs, all physical words, unknown child returns,
+zero miscompare masks and status clears. Every preparation control is checked
+independently. All five child matrices include285live generated-history runs.
+Two allocation probes and12guide processes pass. The measured maximum across
+1,560runs is0.8188s/469692KiB; no unmeasured-scale or
+speedup claim is made.
+
+The frozen parent control for automatic opaque preparation is an actual modeled
+unknown-capture twin. Opaque automatic preparation fails in that parent. Exact
+physical operations and observations agree after normalizing only validated
+child-intent families; no returned data, counts or hardware operation is injected.
+The new guide confirms two real openings and three raw CSUs while preserving
+the last explicitly requested root history. Independent review follows.
+
+Final independent review found0Critical/1Important/1Minor. The Important public
+C++ reservation-validation regression is fixed in one test-first wave: validate
+reserved IDs against the public netlist before trial planning, while projecting
+opaque requests only after preparation. Native tests pin private and out-of-
+range IDs, the established runtime_error boundary, unchanged state/caller
+outputs and no delivered observation. All88qualification gates pass freshly
+after this repair. No rereview ran;0Critical/Important findings remain unresolved.
+
+The new Minor is a test gap: the inverted-route case uses all-X expected SO and
+does not independently detect lost polarity. The reviewer verified cared
+comparison mapping directly and found the implementation correct. Defer this
+test improvement with32inherited Minors, for33total. Active bound-reset execution,
+opaque-containing preparation and broader hardware/clock/transport/vendor work
+retain their original requirements; this increment does not close those items.

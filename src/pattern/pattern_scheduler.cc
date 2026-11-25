@@ -2240,6 +2240,16 @@ class ScanScheduler::Impl {
           "raw child preparation requires reachable unreserved parent "
           "controls");
     }
+    if (opaque_model_) {
+      for (const auto& step : *prefix) {
+        for (const auto& [name, bits] : step.loads) {
+          if (!source_.node_ids.count(name)) {
+            throw std::runtime_error(
+                "opaque child raw preparation crosses an opaque interval");
+          }
+        }
+      }
+    }
     InvalidateRawRoute();
     return std::move(*prefix);
   }
@@ -8035,8 +8045,9 @@ Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
     std::vector<ScanStep>* preparations, const RawObservation& observe) {
+  impl_->ValidateOpaquePreserved(preserved);
   std::vector<Operation> completions;
-  auto opaque = impl_->OpaqueRawState(operations, preserved, completions);
+  Impl::OpaqueQueues opaque;
   if (std::any_of(operations.begin(), operations.end(),
                   [&](const auto& operation) {
                     return impl_->ParallelRawTarget(operation);
@@ -8054,21 +8065,18 @@ Operation ScanScheduler::ApplyScans(
     const auto tap = impl_->TapScans(operations);
     if (!tap) {
       if (!preparations) {
+        opaque = impl_->OpaqueRawState(operations, preserved, completions);
         return impl_->ApplyScans(operations, preserved, assigned, sample,
                                  completions);
       }
       ScanScheduler trial(*this);
       const auto requests = trial.impl_->RawRequests(operations, true);
       auto prefix = trial.impl_->PrepareScans(requests, preserved);
-      if (trial.impl_->HasOpaqueChild() && !prefix.empty()) {
-        throw std::runtime_error(
-            "opaque child raw preparation requires a prior stable native "
-            "frame");
-      }
       std::vector<Operation> latest;
       for (const auto& [name, operation] : requests) {
         latest.push_back(operation);
       }
+      opaque = trial.impl_->OpaqueRawState(latest, preserved, completions);
       std::set<size_t> written;
       auto result = trial.impl_->ApplyScans(latest, preserved,
                                             assigned ? &written : nullptr,

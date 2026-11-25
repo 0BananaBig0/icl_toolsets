@@ -441,6 +441,61 @@ void TestDynamicOpaqueQueueCopies() {
     Require(!pattern::ExpandOpaqueChild(unsafe),
             "opaque mux payload cannot become capture or selection control");
   }
+  pattern::ScanScheduler automatic(netlist);
+  automatic.Reset();
+  std::set<size_t> assigned{netlist.node_ids.at("head")};
+  std::vector<pattern::ScanStep> preparation(1);
+  preparation.front().input = "unchanged";
+  size_t observations = 0;
+  for (size_t id : {netlist.nodes.size(), netlist.nodes.size() + 1}) {
+    Rejects(
+        [&] {
+          automatic.ApplyScan(
+              ChildScan(), {{id, "00000000"}}, &assigned, &preparation,
+              [&](const auto&, const auto&) { ++observations; });
+        },
+        "unknown opaque child reserved resource");
+  }
+  Require(
+      automatic.Value("enable") == "0" && observations == 0 &&
+          assigned == std::set<size_t>{netlist.node_ids.at("head")} &&
+          preparation.size() == 1 && preparation.front().input == "unchanged",
+      "invalid public reservation leaves state and caller outputs untouched");
+  Rejects(
+      [&] {
+        auto invalid = ChildScan();
+        invalid.arguments[1] = "9";
+        automatic.ApplyScan(invalid, {}, &assigned, &preparation,
+                            [&](const auto&, const auto&) { ++observations; });
+      },
+      "length");
+  Require(automatic.Value("enable") == "0" && observations == 0 &&
+              assigned == std::set<size_t>{netlist.node_ids.at("head")} &&
+              preparation.size() == 1 &&
+              preparation.front().input == "unchanged",
+          "failed raw length rolls back preparation and publishes no results");
+  pattern::ScanScheduler closed_copy(automatic);
+  std::string prepared_actual;
+  const auto prepared = automatic.ApplyScan(
+      ChildScan(), {}, &assigned, &preparation,
+      [&](const auto&, const auto& bits) { prepared_actual = bits; });
+  Require(
+      preparation.size() == 1 && prepared.arguments[1] == "17" &&
+          prepared_actual == "xxxxxxxx" && assigned.empty() &&
+          automatic.Value("enable") == "1" &&
+          closed_copy.Value("enable") == "0",
+      "automatic opaque request commits one parent-only opening and raw CSU");
+  CheckPublicSteps(netlist, preparation);
+  Require(preparation.front().writes.count("enable") &&
+              preparation.front().writes.at("enable") == "1",
+          "preparation serializes the real modeled opening control");
+  const auto prepared_completion = automatic.Apply(ParentWrite("3"));
+  Require(
+      prepared_completion.size() == 1 &&
+          std::string(prepared_completion.front().serial.rbegin(),
+                      prepared_completion.front().serial.rend())
+                  .substr(3, 8) == "10100101",
+      "preparation retains the requested stable payload for later completion");
   scheduler.Reset();
   scheduler.ApplyScan({"iScan",
                        {"client", "9", "-si", "0b101110011", "-so", "0bx"},
