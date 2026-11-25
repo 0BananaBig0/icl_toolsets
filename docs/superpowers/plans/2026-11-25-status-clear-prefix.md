@@ -40,17 +40,17 @@ pattern_readback.h/.cc. Runtime records successful events with invocation
 context; provider clears known counts at their stream positions. Renderer
 emits standard notes and keeps unconsumed reserved text inert.
 
-- [ ] Step1: Add real source-versus-prefix status/clear regressions for PIO,
+- [x] Step1: Add real source-versus-prefix status/clear regressions for PIO,
   scalar raw and opaque child cases; run immutable parent. Expected missing
   clear-event failures and retained pre-clear actual histories.
-- [ ] Step2: Implement recording, bounded intent parsing, provider handling,
+- [x] Step2: Implement recording, bounded intent parsing, provider handling,
   rendering and necessary lowering/merge barriers. Expected focused normal
   tests pass with identical hardware requests and correct later counts.
-- [ ] Step3: Cover zero/repeated/unknown/unobserved, malformed/stale notes,
+- [x] Step3: Cover zero/repeated/unknown/unobserved, malformed/stale notes,
   pending queues/resets, bound TAP, namespaces/local resets and called merges.
   Maintain parent controls/live-clear benchmark rewriting test-first.
   Expected native and normal/static/SAN focused/reporting checks pass.
-- [ ] Step4: Run full normal/static generator,30native normal/SAN, affected
+- [x] Step4: Run full normal/static generator,30native normal/SAN, affected
   SAN CLI, corpus, changed C++quality and source packaging. Record exact
   input/product hashes and complete matched benchmark/allocation/guide rows.
   Expected required checks pass under unchanged classifications and bounds.

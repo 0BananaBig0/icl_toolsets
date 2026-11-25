@@ -1189,8 +1189,11 @@ if {[iGetStatus] != 0} {error {count was not cleared}}
 if {$calls != 1} {error {readback reevaluated Tcl}}
 )");
   runtime.Finish();
-  Require(cleared && runtime.operations().size() == 3,
-          "prefixed clear reaches adapter without changing source operations");
+  Require(cleared && runtime.operations().size() == 4 &&
+              runtime.operations().back().command == "iGetStatus" &&
+              runtime.operations().back().arguments ==
+                  std::vector<std::string>{"-clear", "4"},
+          "prefixed clear reaches adapter and records one global replay event");
 }
 void TestMalformedReadbackUpdates() {
   pattern::Design design;

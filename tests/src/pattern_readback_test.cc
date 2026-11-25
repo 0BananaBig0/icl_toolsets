@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <stdexcept>
 
@@ -59,6 +60,47 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
   Require(
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
+}
+void TestOrderedStatusClearEvents() {
+  const auto note = [](const std::string& count) {
+    return pattern::Operation{
+        "iNote", {"-comment", pattern::StatusClearNoteText(count)}, "test", {}};
+  };
+  Require(pattern::ReadStatusClearNote(note("0")) == 0 &&
+              pattern::ReadStatusClearNote(note("18446744073709551615")) ==
+                  std::numeric_limits<uint64_t>::max(),
+          "status-clear parser accepts canonical uint64 boundaries");
+  for (const auto& text : {"", "-1", "04", "4 extra", "18446744073709551616"}) {
+    Require(!pattern::ReadStatusClearNote(note(text)),
+            "malformed or overflowing status counts stay informational");
+  }
+  pattern::Design design;
+  design.AddIcl("clear.icl", R"(
+Module Top {
+ DataInPort p[3:0]; DataOutPort q[3:0] {Source p;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iWrite", {"p", "15"}, "test", {}},
+      {"iApply", {}, "test", {}},
+      {"iRead", {"q", "0"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  Require(readback(operations, false)->failures == 4,
+          "four actual failures precede the ordered clear");
+  operations.push_back({"iGetStatus", {"-clear", "4"}, "test", {}});
+  operations.push_back({"iRead", {"q", "14"}, "test", {}});
+  operations.push_back({"iApply", {}, "test", {}});
+  Require(readback(operations, false)->failures == 1,
+          "clear retires earlier failures before later comparisons");
+  Require(readback(operations, false)->failures == 1,
+          "an already consumed clear never clears a later failure");
+  const auto unknown = pattern::MakeModeledReadback(netlist);
+  operations = {{"iRead", {"q", "0"}, "test", {}},
+                {"iApply", {}, "test", {}},
+                {"iGetStatus", {"-clear", "0"}, "test", {}}};
+  Require(!unknown(operations, false)->failures,
+          "internal clear cannot invent a known count from unknown data");
 }
 void TestMergeMarkersAreEventFree() {
   pattern::Design design;
@@ -854,6 +896,7 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestOrderedStatusClearEvents();
     TestMergeMarkersAreEventFree();
     TestMergedRawReadbackPlanes();
     TestMergedReadbackGuardPreflight();

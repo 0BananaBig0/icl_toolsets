@@ -19,6 +19,7 @@
 #include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_netlist.h"
 #include "pattern/pattern_opaque.h"
+#include "pattern/pattern_readback.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -1670,6 +1671,19 @@ class Runtime::Impl {
     return *module;
   }
 
+  void RememberStatusClear(const std::string& origin,
+                           const std::string& count) {
+    Operation operation{"iGetStatus", {"-clear", count}, origin, {}};
+    operation.callback_execution = !callback_stack_.empty();
+    operation.callback_read_execution = read_callback_depth_ != 0;
+    for (const auto& frame : frames_) {
+      if (!frame.invocation.empty()) {
+        operation.call_stack.push_back(frame.invocation);
+      }
+    }
+    operations_.push_back(std::move(operation));
+  }
+
   void Command(const std::vector<std::string>& words, const std::string& origin,
                const Site* site) {
     if (++executed_ > 1000000) {
@@ -1861,6 +1875,9 @@ class Runtime::Impl {
               ? (name == "iGetStatus" ? words[1] : JoinPath(prefix(), words[1]))
               : "",
           format, chain);
+      if (name == "iGetStatus" && words.size() == 2 && words[1] == "-clear") {
+        RememberStatusClear(origin, value);
+      }
       Tcl_SetObjResult(
           interpreter_.get(),
           Tcl_NewStringObj(value.data(), static_cast<int>(value.size())));
@@ -1885,6 +1902,19 @@ class Runtime::Impl {
     for (const auto& frame : frames_) {
       if (!frame.invocation.empty()) {
         operation.call_stack.push_back(frame.invocation);
+      }
+    }
+    if (const auto expected = ReadStatusClearNote(operation);
+        expected &&
+        (merges_.empty() || merges_.back().depth != frames_.size())) {
+      try {
+        if (HistoryValue("iGetStatus", "", "") == std::to_string(*expected)) {
+          const auto value = HistoryValue("iGetStatus", "-clear", "");
+          RememberStatusClear(origin, value);
+          return;
+        }
+      } catch (const std::runtime_error&) {
+        // Informational notes cannot supply an unavailable or unknown count.
       }
     }
     if (name == "iTake") {

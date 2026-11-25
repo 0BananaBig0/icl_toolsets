@@ -144,7 +144,7 @@ class ModelReadback {
             op.command != "iApply" && op.command != "iState" &&
             op.command != "iScan" && op.command != "iReset" &&
             op.command != "iTake" && op.command != "iRelease" &&
-            op.command != "iNote") {
+            op.command != "iNote" && op.command != "iGetStatus") {
           throw std::runtime_error(op.origin +
                                    ": modeled readback does not support " +
                                    op.command + " histories");
@@ -241,6 +241,15 @@ class ModelReadback {
     reservations_.Enter(op.call_stack);
     if (op.command == "iMerge") return;
     const auto& args = op.arguments;
+    if (op.command == "iGetStatus") {
+      if (args.size() != 2 || args[0] != "-clear" ||
+          !ReadStatusClearNote(
+              {"iNote", {"-comment", StatusClearNoteText(args[1])}, "", {}})) {
+        throw std::runtime_error("invalid internal status-clear event");
+      }
+      if (failures_) failures_ = 0;
+      return;
+    }
     if (opaque_) {
       if (op.command == "iScan") {
         opaque_->Add(context_, op);

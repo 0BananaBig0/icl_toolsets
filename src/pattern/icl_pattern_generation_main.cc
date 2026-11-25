@@ -140,11 +140,16 @@ std::string Command(const std::vector<std::string>& words) {
   return result;
 }
 std::string OperationText(const pattern::Operation& operation) {
+  if (operation.command == "iGetStatus") {
+    return Command({"iNote", "-comment",
+                    pattern::StatusClearNoteText(operation.arguments.at(1))});
+  }
   if (operation.command == "iNote" && operation.raw_history_omitted) return "";
   std::vector<std::string> words{operation.command};
   words.insert(words.end(), operation.arguments.begin(),
                operation.arguments.end());
-  if (pattern::IsRawHistoryOmissionNote(operation)) {
+  if (pattern::IsRawHistoryOmissionNote(operation) ||
+      pattern::IsStatusClearNote(operation)) {
     // Normalization or elision must not activate an unconsumed source note.
     words[2] = "informational " + words[2];
   }
@@ -345,8 +350,9 @@ std::string Generate(
   pattern::ScanScheduler::Observation observe;
   if (modeled_readback) observe = [](const auto&, const auto&) {};
   if (physical) {
-    const std::set<std::string> allowed = {
-        "iWrite", "iRead", "iApply", "iReset", "iNote", "iTake", "iRelease"};
+    const std::set<std::string> allowed = {"iWrite",   "iRead",     "iApply",
+                                           "iReset",   "iNote",     "iTake",
+                                           "iRelease", "iGetStatus"};
     for (const auto& op : operations) {
       if (op.callback) continue;
       if (!allowed.count(op.command)) {
@@ -722,8 +728,11 @@ std::string Generate(
       } else if (operation.command == "iMerge" && edits) {
         // Reset-only rewriting retains the original operation indices/text.
         // Normal output uses MergeOperations to order notes and batch calls.
-      } else if (operation.command == "iNote") {
-        scheduler.RestoreOpaqueScanNote(operation);
+      } else if (operation.command == "iNote" ||
+                 operation.command == "iGetStatus") {
+        if (operation.command == "iNote") {
+          scheduler.RestoreOpaqueScanNote(operation);
+        }
         result += OperationText(operation);
       } else {
         throw std::runtime_error(
@@ -785,8 +794,8 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
                   [](const auto& node) { return node.kind == "ScanRegister"; });
   if (raw && modeled) {
     const std::set<std::string> allowed = {
-        "iScan",  "iApply", "iReset",   "iRunLoop", "iNote", "iRead",
-        "iWrite", "iTake",  "iRelease", "iState",   "iMerge"};
+        "iScan",  "iApply", "iReset",   "iRunLoop", "iNote",  "iRead",
+        "iWrite", "iTake",  "iRelease", "iState",   "iMerge", "iGetStatus"};
     for (const auto& op : operations) {
       if (!allowed.count(op.command)) {
         throw std::runtime_error(

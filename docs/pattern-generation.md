@@ -10260,3 +10260,30 @@ processes. No rereview runs; the29inherited Minors remain deferred.
 All10 Task175 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Status-clear prefix persistence (Task176)
+
+Retain generated clear comments when continuing a prefix in this tool:
+
+```tcl
+iNote -comment "modeled readback status clear 5"
+```
+
+This records a successful earlier iGetStatus -clear that returned5. Replay
+checks the available actual count before clearing it. Later getters see zero,
+and later failures accumulate from that point. The comment changes no read
+data, miscompare history or hardware transaction. Generated output remains
+PDL level0. Both standard comment/status tags are accepted; consumed events
+regenerate once at their original position, including inside called merge
+streams and local-reset continuations.
+
+Malformed, mismatched, unknown and unavailable counts cannot clear status.
+Unconsumed reserved annotations retain their tag and visible text with an
+inert informational prefix. Only provably zero status can clear statically
+without an observation provider. Other PDL consumers see ordinary comments;
+this metadata restores continuation state in icl-pattern-generation.
+
+The inherited in-prefix clear limitation described under Tasks174/175 is now
+fixed for the qualified routes. See the
+[qualification record](remaining-work.md#task176-evaluated-status-clears-across-generated-prefixes).

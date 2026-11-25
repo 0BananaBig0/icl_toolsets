@@ -87,20 +87,37 @@ class MultipleOpaqueBenchmark(unittest.TestCase):
         benchmark = load_benchmark()
         text, _, _, _ = benchmark.commands([8,16], parent=True)
         self.assertNotIn('modeled opaque child raw history ',text)
-        self.assertEqual(text.count('modeled raw history omitted '),4)
+        self.assertNotIn('modeled raw history omitted ',text)
         self.assertEqual(sum(line.startswith('iScan ') for line in text.splitlines()), 12)
         self.assertEqual(text.splitlines().count('iApply'), 4)
 
-    def test_parent_scope_comments_match_the_physical_child_scans(self):
+    def test_parent_clear_comments_precede_the_actual_clear_queries(self):
         benchmark = load_benchmark()
-        text, _, words, compares = benchmark.commands([8,16], parent=True)
-        expected = ['iNote -comment "modeled raw history omitted iScan client 32 -si %s -so %s -stable"' %
-                    (words[i],compares[i]) for i in range(0,8,2)]
-        self.assertEqual([line for line in text.splitlines() if 'modeled raw history omitted ' in line],expected)
-        for line in expected:
-            self.assertIn(line+'\niScan child0.local ',text)
+        text, _, _, _ = benchmark.commands([8,16], parent=True)
+        marker = 'iNote -comment "modeled readback status clear 0"'
+        self.assertEqual(text.count(marker+'\niNote [iGetStatus -clear]'),4)
         current, _, _, _ = benchmark.commands([8,16])
-        self.assertNotIn('modeled raw history omitted ',current)
+        self.assertNotIn('modeled readback status clear ',current)
+
+    def test_live_clear_getter_replaces_its_recorded_event_once(self):
+        benchmark = load_benchmark()
+        values = ['0bxxxxxxxx','0b101xxxxxxxx10011','0b'+'0'*16,'0','0']*4
+        values[3] = '5'
+        marker = 'iNote -comment "modeled readback status clear 0"'
+        data = 'iPDLLevel 0\n'
+        for position,value in enumerate(values):
+            if position%5==3:
+                data += 'iNote -comment "modeled readback status clear '+value+'"\n'
+            data += 'iNote '+value+'\n'
+        rewritten = benchmark.replay_observations(data,1,values)
+        self.assertNotIn('modeled readback status clear ',rewritten)
+        self.assertEqual(rewritten.count('iGetStatus -clear'),4)
+        with self.assertRaises(ValueError):
+            benchmark.replay_observations(data.replace('status clear 5','status clear 6',1),1,values)
+        parent,_,_,_ = benchmark.commands([8],parent=True)
+        self.assertEqual(parent.count(marker),4)
+        current,_,_,_ = benchmark.commands([8])
+        self.assertNotIn('modeled readback status clear ',current)
 
 
 if __name__ == '__main__':

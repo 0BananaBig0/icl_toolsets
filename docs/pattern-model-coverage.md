@@ -5037,3 +5037,19 @@ processes. No rereview runs; the29inherited Minors remain deferred.
 All10 Task175 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Evaluated status-clear persistence (Task176)
+
+Successful clears are ordered internal events, preserved in generated level0
+prefixes as validated comments. Provider-backed known counts and provably
+zero counts clear without changing actual read/miscompare history or adding
+hardware. Unknown/unavailable/mismatched metadata stays informational. Called
+merge boundaries, callbacks, reset/canceled queues, namespaces, local resets
+and bound TAP IR histories are qualified.
+
+All68gates pass:both82x1,325generator regressions,30native suites,21quality
+checks and696matched measurements. All11focused methods pass per variant;
+seven reporter methods retain exact controls and once-only live clears. Corpus
+identities/classifications remain unchanged. Broader history, topology, timing
+and real transport remain in the original inventory;29Minors stay deferred.
