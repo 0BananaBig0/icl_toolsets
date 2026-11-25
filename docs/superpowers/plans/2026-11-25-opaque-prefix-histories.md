@@ -35,19 +35,19 @@ native opaque/readback tests as needed, plus corresponding benchmarks/docs.
 OpaqueRawHistory(note) returns a validated ScanReadbackUpdate without hardware
 execution. Existing Runtime/scan APIs and private storage boundaries persist.
 
-- [ ] Step1: Add source-versus-generated-prefix continuation tests for one/two
+- [x] Step1: Add source-versus-generated-prefix continuation tests for one/two
   children, actual x data, sparse miscompares/status, persistent old histories,
   both tags/duplicates, invalid/stale/unanchored metadata and no-provider mode.
   Run on immutable parent. Expected genuine missing-local-history failures.
-- [ ] Step2: Implement shared bounded metadata parsing, native committed
+- [x] Step2: Implement shared bounded metadata parsing, native committed
   compare snapshots/identity emission and readback delta publication. Register
-  Runtime pending intent only after a root apply, preserving existing history
+  Runtime pending intent only after a data-scan apply, preserving existing history
   until validated provider updates. Expected focused normal/static/SAN pass.
-- [ ] Step3: Cover native copy/reset/rollback/subscriber behavior, inversion,
+- [x] Step3: Cover native copy/reset/rollback/subscriber behavior, inversion,
   namespaces/split files and local resets; adjust parent benchmark comments
   without changing hardware requests or weakening full-output checks.
   Expected exact histories/status/scan counts and retained privacy.
-- [ ] Step4: Run full normal/static generator,30native normal/SAN, affected SAN
+- [x] Step4: Run full normal/static generator,30native normal/SAN, affected SAN
   CLI/corpus, C++quality and complete source packaging; record exact hashes.
   Rerun multiple-child and one-child measured replay matrices with unchanged
   bounds. Expected all required checks and actual corpus classifications pass.

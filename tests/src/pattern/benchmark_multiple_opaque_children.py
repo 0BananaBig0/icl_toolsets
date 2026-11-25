@@ -34,7 +34,7 @@ Module Top {
     return source
 
 
-def commands(widths):
+def commands(widths, parent=False):
     body = 'iPDLLevel 1\niProcsForModule Top\niReset\niWrite head 5; iWrite tail 19; iApply\n'
     expected = []
     raw_words, compares = [], []
@@ -46,6 +46,10 @@ def commands(widths):
             payloads.append(bits)
             body += 'iScan child%d.local %d -si 0b%s -stable\n' % (index, width, bits)
         body += 'iApply\n'
+        if parent:
+            for index in sorted(range(len(widths)), key=lambda n: 'child%d.local' % n):
+                body += ('iNote -comment "modeled opaque child raw history client child%d.local 0b%s"\n'
+                         % (index, 'x'*widths[index]))
         for index, width in enumerate(widths):
             body += 'iNote [iGetReadData child%d.local -bin]\n' % index
             expected.append('0b'+'x'*width)
@@ -58,6 +62,25 @@ def commands(widths):
                  'iNote [iGetStatus -clear]\niNote [iGetStatus]\n')
         expected += ['0b101'+'x'*sum(widths)+'10011', '0b'+'0'*size, '0', '0']
     return body, expected, raw_words, compares
+
+def replay_observations(data, children, expected):
+    result, position = [], 0
+    for line in data.splitlines():
+        if line.startswith('iNote ') and 'modeled ' not in line:
+            if position >= len(expected) or line[6:] != expected[position]:
+                raise ValueError('generated observation does not match the hand-derived fixture')
+            field = position % (children+4)
+            if field < children:
+                query = 'iGetReadData child%d.local -bin' % field
+            else:
+                query = ('iGetReadData client -bin', 'iGetMiscompares client -bin',
+                         'iGetStatus -clear', 'iGetStatus')[field-children]
+            line = 'iNote ['+query+']'
+            position += 1
+        result.append(line)
+    if position != len(expected):
+        raise ValueError('generated observation list is incomplete')
+    return ('\n'.join(result)+'\n').replace('iPDLLevel 0', 'iPDLLevel 1', 1)
 
 
 def main():
@@ -84,9 +107,9 @@ def main():
     report = dict(environment=platform.platform(),
                   binaries={key:dict(path=str(path), sha256=digest(path))
                             for key,path in binaries.items()}, runs=[])
-    cases = [('parent',1,width) for width in (8,64,256,1024)]
-    cases += [('current',n,width) for n in (1,2,8,32) for width in (8,64,256)]
-    cases += [('current',n,1024) for n in (1,2,8)]
+    grid = [(n,width) for n in (1,2,8,32) for width in (8,64,256)]
+    grid += [(n,1024) for n in (1,2,8)]
+    cases = [(owner,n,width) for owner in ('parent','current') for n,width in grid]
     cases += [('sanitized',n,width) for n,width in ((2,8),(8,8),(2,256),(2,1024))]
     parents = {}
     failed = False
@@ -97,15 +120,26 @@ def main():
             for form in (('source',) if owner=='parent' else ('source','flat','generated')):
                 folder = Path(tempfile.mkdtemp(prefix='%s-%d-%d-%s-' % (
                     owner,count,width,form), dir=output))
-                text, notes, raw_words, compares = commands([width]*count)
+                text, notes, raw_words, compares = commands([width]*count, parent=owner=='parent')
                 icl, pdl, result, metric = [folder/name for name in
                     ('source.icl','source.pdl','result.pdl','time.txt')]
                 icl.write_text(model([width]*count))
                 pdl.write_text(text)
                 if form=='flat' and source:
                     icl = Path(source['directory'])/'debug/Top.icl'
+                replay_error = ''
                 if form=='generated' and source:
-                    pdl = Path(source['directory'])/'result.pdl'
+                    previous = Path(source['directory'])/'result.pdl'
+                    if previous.exists():
+                        pdl = folder/'generated-observations.pdl'
+                        try:
+                            rewritten = replay_observations(previous.read_text(), count, notes)
+                        except ValueError as error:
+                            replay_error = str(error)
+                            rewritten = previous.read_text()
+                        pdl.write_text(rewritten)
+                    else:
+                        pdl = previous
                 command = [str(binaries[owner]), '--icl',str(icl),'--pdl',str(pdl),
                            '--top_module','Top','--output',str(result),'--debug','--model_readback']
                 env = dict(os.environ, ASAN_OPTIONS='detect_leaks=1',
@@ -130,11 +164,16 @@ def main():
                              for fields in scans) and
                          [fields[4] for fields in scans]==raw_words and
                          [fields[6] for fields in scans]==compares)
-                verified = (process.returncode==0 and actual==notes and shape and
+                history_notes = [line for line in data.splitlines()
+                                 if 'modeled opaque child raw history ' in line]
+                expected_history = ['iNote -comment "modeled opaque child raw history client child%d.local 0b%s"' %
+                                    (n,'x'*width) for n in sorted(range(count), key=lambda n:'child%d.local'%n)]*4
+                verified = (process.returncode==0 and not replay_error and actual==notes and shape and
+                            history_notes==expected_history and
                             '__opaque_scan_state' not in data and
                             (folder/'debug/Top.icl').exists() and
                             '__opaque_scan_state' not in (folder/'debug/Top.icl').read_text())
-                reference = parents.get((width,repeat)) if count==1 else None
+                reference = parents.get((count,width,repeat))
                 if form!='source' and source:
                     reference_path = Path(source['directory'])/'result.pdl'
                     verified &= reference_path.exists() and data==reference_path.read_text()
@@ -146,7 +185,11 @@ def main():
                 row = dict(owner=owner,children=count,width=width,repeat=repeat,form=form,
                            root_width=root_width,opaque_bits=count*width,modeled_storage_bits=8,
                            csu_count=9,raw_scan_count=len(scans),raw_shifted_bits=len(scans)*root_width,
-                           native_child_queries=0 if form=='generated' else count*4,
+                           native_child_queries=sum(text.count('iGetReadData child%d.local -bin'%n)
+                                                    for n in range(count)) if form!='generated' else
+                                                    (pdl.read_text().count('iGetReadData child') if pdl.exists() else 0),
+                           history_annotation_count=len(history_notes),
+                           generated_live_histories=form=='generated',replay_error=replay_error,
                            command=command,directory=str(folder),exit=process.returncode,
                            seconds=seconds,peak_rss_kib=rss,bound_kib=bound_kib,
                            actual_histories_verified=bool(verified and unchanged),
@@ -159,7 +202,7 @@ def main():
                 if form=='source':
                     source = row
                     if owner=='parent' and verified:
-                        parents[width,repeat] = data
+                        parents[count,width,repeat] = data
     complete = len(report['runs'])==expected_rows
     print(json.dumps(dict(runs=len(report['runs']),expected_runs=expected_rows,
                          matrix_complete=complete,all_verified=not failed)))

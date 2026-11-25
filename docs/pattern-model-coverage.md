@@ -4959,3 +4959,20 @@ histories and transport are still tracked in the remaining inventory.
 All10 Task173 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Opaque child prefix histories (Task174)
+
+Explicit fixed opaque-child histories now survive physical-root lowering.
+Shared bounded note parsing records intent; committed native comparison
+snapshots and the observation provider restore unknown data and exact cared/
+don't-care miscompare masks. Invalid notes cannot replace old observations;
+there is no added CSU or global failure recount. Native copy/reset/rollback/
+subscriber and provider-unavailable behavior retain their existing contracts.
+
+All65gates pass:25focused methods per variant, both81x1,306generator variants,
+30native suites,21quality checks and696matched timing/RSS processes. All57
+multiple-child generated-form processes execute live local/root/status getters.
+Corpus identities/classifications remain unchanged. The pre-existing logical
+root-history scope discrepancy remains a separate item6 follow-up; broader
+topology, timing and actual transport remain in the original inventory.

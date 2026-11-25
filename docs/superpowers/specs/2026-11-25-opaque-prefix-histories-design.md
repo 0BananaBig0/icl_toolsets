@@ -19,7 +19,7 @@ has unknown miscompare; a don't-care bit has zero miscompare. Restoration adds
 no hardware action and never recounts global failures. Reset invalidates the
 snapshot; copy/rollback/subscriber semantics remain native scheduler contracts.
 
-Runtime records only pending metadata intent after a preceding applied root
+Runtime records only pending metadata intent after a preceding applied data
 scan. Existing readback delta validation admits the matching new child key;
 the actual provider supplies the data. Invalid/unmatched comments cannot
 overwrite old history. No provider means no fabricated actual data. Preserve
@@ -46,3 +46,7 @@ bounds. Parent controls may carry matching informational comments solely to
 retain exact whole-output comparisons; no old-parent prefix support or
 performance improvement is claimed. Broader topology, timing, callback and
 transport work stays in the original inventory; coverage1 remains excluded.
+
+Physical-root anchor clarification: a logical child request also executes the complete native root CSU. Runtime records pending intent after an applied data scan; the native snapshot proves the exact root/client/comparison. Ordinary frames invalidate that snapshot. Already pending observations survive a later reset, while new unanchored notes after reset are ignored. A supplied valid identity comment declares its requested interval; root scans without such comments still create no child histories.
+
+Existing follow-up outside this increment: a child-only source does not expose root-interface history, while its lowered physical-root prefix does. The immutable parent and current candidate both show this difference. This increment restores opaque-child histories; logical root-scope parity remains in original inventory6 and is the next separate task. Evidence: root-scope-followup.json in this task evidence directory.

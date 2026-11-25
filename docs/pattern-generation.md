@@ -10158,3 +10158,33 @@ the same note ordering as generated-prefix replay, including split inputs.
 All10 Task173 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Opaque child histories across generated prefixes (Task174)
+
+Keep generated opaque-child history comments when continuing a generated
+prefix with local interface getters:
+
+```tcl
+iNote -comment "modeled opaque child raw history client child0.local 0b10xx0011"
+iNote [iGetReadData child0.local -bin]
+iNote [iGetMiscompares child0.local -bin]
+```
+
+The comment follows an applied raw CSU and identifies the exact root, child
+and comparison mask. With modeled readback, this example yields read data
+0bxxxxxxxx and miscompares0bxx00xxxx. Cared opaque bits keep status unknown;
+don't-care bits have zero miscompares. Restoring history adds no CSU or failure
+count. Both -comment and -status work; matching repeats are idempotent.
+
+These comments carry request identity only. The native observation provider
+must validate the committed comparison and supply actual observations.
+Without a provider, getters still report unavailable hardware data. Malformed
+or unmatched comments leave existing histories intact. Automatically emitted
+comments identify only explicitly scanned children; an ordinary root scan
+does not create child histories. Retain existing stable-knowledge notes too.
+
+One/two-child source/flat/prefix continuations, split namespaces and local
+resets are qualified. Logical root-history scope after lowering remains a
+separate tracked follow-up; see the
+[qualification record](remaining-work.md#task174-opaque-child-histories-across-generated-prefixes).

@@ -7,6 +7,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -85,9 +86,12 @@ class ScanScheduler {
                        std::set<size_t>* assigned,
                        std::vector<ScanStep>* preparations,
                        const RawObservation& observe);
-  // Preserve per-child stable knowledge after a heterogeneous root CSU.
+  // Preserve stable knowledge and explicit opaque-child request identity.
   std::vector<Operation> OpaqueScanNotes() const;
   void RestoreOpaqueScanNote(const Operation& note);
+  // Validated unknown observation; no hardware transaction or failure recount.
+  std::optional<ScanReadbackUpdate> OpaqueRawHistory(
+      const Operation& note) const;
   // Canonical fields of one raw CSU; the caller emits one following Apply.
   // Parallel fields retain distinct chain names and share concrete hardware
   // state.

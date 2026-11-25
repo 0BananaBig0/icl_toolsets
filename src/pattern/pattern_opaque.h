@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -16,6 +17,15 @@
 #include "pattern/pattern_runtime.h"
 
 namespace pattern {
+inline constexpr char kOpaqueChildHistoryNote[] =
+    "modeled opaque child raw history ";
+struct OpaqueChildHistoryNote {
+  size_t root = 0, client = 0;
+  std::string expected;
+};
+// Parse intent only; the native scheduler validates the committed comparison.
+std::optional<OpaqueChildHistoryNote> ReadOpaqueChildHistoryNote(
+    const Netlist& netlist, const Operation& operation);
 // Shared single-chain request validation, padding and canonical binary data.
 // Caller proves a single unnamed client; accepts Tessent -chain default.
 Operation NormalizeScan(z3::context& context, const std::string& target,
