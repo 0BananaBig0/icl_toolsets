@@ -10353,3 +10353,70 @@ Broader topology, timing and real-device work remains in the original inventory.
 All13 Task177 merged-result checks pass against identical4,066qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Dynamic modeled-child prefix histories (Task178)
+
+Generated prefixes also retain actual child read data and miscompares when a
+supported dynamic scalar scan changes its route. Keep the generated intent:
+
+```tcl
+iNote -comment "modeled dynamic child raw history client child.local 0b000000000"
+```
+
+With --model_readback, the tool projects the actual completed root return through
+the route that executed that scan. A child that closes from nine bits to one
+therefore keeps its earlier nine-bit history. Width, offset and output parity
+come from the committed route, rather than the new selector state. The comment
+contains comparison intent only; it adds no scan or failure count.
+
+The same adjacent canonical-root provenance rules apply as for static child
+notes. Static and dynamic note families cannot activate each other. Default
+regeneration preserves validated intent; actual getters require a modeled
+provider. Unknown bits and status remain unknown. Scheduler copies share one
+immutable committed route and keep local projection caches. Failed transactions
+retain the previous route; successful transactions replace it.
+
+This extends already supported dynamic scalar execution. Independent clocks,
+parallel/TAP/timed child histories and real-device transport remain open. See
+the [current qualification record](remaining-work.md#task178-dynamic-modeled-child-raw-histories-across-prefixes).
+
+All78qualification gates pass on4,069input/38product hashes. Each normal/static
+generator passes84suites/1,357methods. All30native normal/SAN suites,
+21changed-C++quality checks,14dynamic-focused methods per build, existing
+16static-child/13status-clear/32opaque/20callback-focused methods, affected
+sanitizer CLI, unchanged corpus and source packaging pass. All gates are fresh.
+
+All1,128matched measurements pass existing10s/512MiB bounds, with single-wide
+controls256MiB:378callback,102single-opaque,216multiple-opaque,216static-child
+and216dynamic-child processes. The dynamic matrix covers1/2/8/32children at
+8/64/256bits and1/2/8children at1024bits, each closing and reopening routes.
+It checks actual old words/masks, changed root widths, ordered comparisons,
+failure counts and complete parent/current outputs. There are171live generated
+history processes across the three child-prefix matrices. Two allocation probes
+and four guide processes pass. Measured maximum across all1,128processes is
+2.3113s/445204KiB; no speedup or unmeasured-scale claim.
+
+Parent static controls now use their native notes. Only the new dynamic intent
+comments are injected in dynamic parent controls; no hardware operation,
+observed value or failure count is injected. Independent artifact checks
+validate complete matrices, identities, values, shapes and hashes.
+
+Corpus classifications remain1,032canonical/44explicit unsupported/687default
+elaboration failures across2,562source identities. This increment restores
+supported dynamic scalar histories, not general topology/timing or transport.
+
+One fresh independent final review found0Critical,1Important and1Minor.
+One test-first repair fixes the Important native API finding:two identical
+successive root scans can execute with different output polarity. Returned
+and actual-observed dynamic scan operations now carry a non-owning execution
+identity. The scheduler rejects stale results, while copies retain their own
+committed route. No old full-route snapshot is retained by a saved operation.
+The native regression fails on the pre-repair executable and passes after the
+fix. All78gates are fresh after repair, including84x1,357methods per generator,
+30native suites,21C++quality checks and all1,128measurements. No rereview.
+
+One new Minor is deferred:dynamic benchmark --help inherits the static runner
+description. It does not change the measured workload or checks. The30inherited
+Minors keep their dispositions; total31deferred Minors, including the previously
+recorded typed-factory-pointer compatibility limitation. Broader topology,
+timing, physical transport and excluded coverage1 retain their existing scope.

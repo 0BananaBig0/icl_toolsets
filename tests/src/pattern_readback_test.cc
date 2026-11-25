@@ -62,6 +62,135 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
 }
+void TestDynamicChildCommittedGeometry() {
+  const std::string path =
+      "tests/cases/ours/pattern_generation/active_child_raw/model.icl";
+  std::ifstream source(path);
+  Require(source.good(), "dynamic child fixture is available");
+  pattern::Design design;
+  design.AddIcl(path, std::string(std::istreambuf_iterator<char>(source),
+                                  std::istreambuf_iterator<char>()));
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  scheduler.Assume("open", "1");
+  scheduler.Assume("child.value", "10100101");
+  pattern::Operation root{
+      "iScan",
+      {"client", "9", "-si", "0b001111000", "-so", "0b00000000x"},
+      "test",
+      {}};
+  const auto committed = scheduler.ApplyScan(root);
+  const pattern::Operation note{
+      "iNote",
+      {"-comment",
+       "modeled dynamic child raw history client child.local 0b00000000"},
+      "test",
+      {}};
+  const auto projection = scheduler.ModeledRawHistory(note, committed);
+  Require(projection && projection->target == "child.local" &&
+              projection->offset == 0 && projection->expected == "00000000" &&
+              !projection->inverted && scheduler.Value("open") == "0",
+          "dynamic history retains the completed nine-bit route after closure");
+  pattern::ScanScheduler copy(scheduler);
+  bool failed = false;
+  try {
+    scheduler.ApplyScan(root);
+  } catch (const std::runtime_error&) {
+    failed = true;
+  }
+  Require(failed && scheduler.ModeledRawHistory(note, committed).has_value(),
+          "failed raw execution preserves the last committed geometry");
+  scheduler.ApplyScan(
+      {"iScan", {"client", "1", "-si", "0b1", "-so", "0bx"}, "test", {}});
+  Require(
+      !scheduler.ModeledRawHistory(note, committed) &&
+          copy.ModeledRawHistory(note, committed).has_value(),
+      "successful replacement is local while copies retain immutable history");
+  pattern::Runtime::HistoryReadback validate;
+  const auto readback =
+      pattern::MakeModeledReadback(netlist, false, nullptr, &validate);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iState", {"open", "1"}, "test", {}},
+      {"iState", {"child.value", "165"}, "test", {}},
+      root,
+      {"iApply", {}, "test", {}}};
+  operations[3].raw_history_omitted = true;
+  Require(validate(operations, note),
+          "preview projects actual completed dynamic geometry");
+  auto accepted = note;
+  accepted.modeled_raw_history = true;
+  operations.push_back(accepted);
+  const auto* update = readback(operations, false);
+  Require(
+      update->failures == 4 && update->scans.size() == 1 &&
+          update->scans[0].target == "child.local" &&
+          update->scans[0].read == "10100101" &&
+          update->scans[0].miscompare == "10100101",
+      "dynamic preview retains actual child deltas without root or recount");
+  update = readback(operations, false);
+  Require(update->scans.empty() && update->failures == 4,
+          "dynamic child deltas publish exactly once");
+}
+void TestDynamicChildResultIdentity() {
+  pattern::Design design;
+  design.AddIcl("dynamic_identity.icl", R"(
+Module Leaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[7:0] {ScanInSource si; CaptureSource value; ResetValue 0;}
+ DataOutPort gate {Source value[0];}
+ ScanOutPort so {Source value[0];}
+ ScanInterface local {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;}
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister head[2:0] {ScanInSource si; CaptureSource head; ResetValue 0;}
+ Instance child0 Of Leaf {InputPort si = head[0]; InputPort sel = sel;
+  InputPort ce = ce; InputPort se = se; InputPort ue = ue;
+  InputPort tck = tck; InputPort reset = reset;}
+ ScanRegister tail[4:0] {ScanInSource child0.so; CaptureSource tail; ResetValue 0;}
+ ScanMux output_route SelectedBy child0.gate {1'b0: tail[0]; 1'b1: ~tail[0];}
+ ScanOutPort so {Source output_route;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; DefaultLoadValue 16'b0;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const pattern::Operation scan{"iScan",
+                                {"client", "16", "-si", "0b0001010010100000",
+                                 "-so", "0bxxxxxxxxxxxxxxxx"},
+                                "test",
+                                {}};
+  const pattern::Operation note{
+      "iNote",
+      {"-comment",
+       "modeled dynamic child raw history client child0.local 0bxxxxxxxx"},
+      "test",
+      {}};
+  const auto first = scheduler.ApplyScan(scan);
+  const auto before = scheduler.ModeledRawHistory(note, first);
+  Require(before && !before->inverted,
+          "first result retains its actual polarity");
+  pattern::ScanScheduler copy(scheduler);
+  std::optional<pattern::Operation> observed;
+  const auto second = scheduler.ApplyScan(
+      scan, {}, nullptr, nullptr,
+      [&](const auto& operation, const auto&) { observed = operation; });
+  Require(first.arguments == second.arguments,
+          "successive route changes can have identical canonical scan fields");
+  Require(!scheduler.ModeledRawHistory(note, first),
+          "stale same-width result cannot acquire a later route polarity");
+  const auto current = scheduler.ModeledRawHistory(note, second);
+  Require(current && current->inverted && observed &&
+              scheduler.ModeledRawHistory(note, *observed).has_value(),
+          "returned and observed operations share the committed execution");
+  Require(copy.ModeledRawHistory(note, first).has_value() &&
+              !copy.ModeledRawHistory(note, second),
+          "copied scheduler preserves only its own committed execution");
+}
 void TestModeledChildHistoryProjection() {
   pattern::Design design;
   design.AddIcl("child_history.icl", R"(
@@ -988,6 +1117,8 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestDynamicChildCommittedGeometry();
+    TestDynamicChildResultIdentity();
     TestModeledChildHistoryProjection();
     TestStatusPreviewRetainsUnpublishedHistory();
     TestOrderedStatusClearEvents();

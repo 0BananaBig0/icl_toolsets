@@ -991,3 +991,64 @@ Broader topology, timing and real-device work remains in the original inventory.
 All13 Task177 merged-result checks pass against identical4,066qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Task178 dynamic modeled-child raw histories across prefixes
+
+This increment restores already supported dynamic scalar child histories across
+generated prefixes. The old route supplies width, offset and inversion even
+after a child closes or changes its selection. In the nested example, the
+child keeps data/mask0b101001011 and status6 after its current width falls from
+nine bits to one. Dynamic intent comments carry expected masks and identities,
+with no observed values, extra CSU or repeated comparison accounting.
+
+One immutable pre-CSU route is committed after successful execution and shared
+across scheduler copies. Child projection caches remain local. Existing
+canonical root provenance, neutral preview and actual-root observations supply
+the histories. Static and dynamic note families stay distinct; malformed,
+off-route and noncanonical notes retain their informational behavior.
+
+Initial parent failures and current focused results are retained under
+build/dynamic-child-prefix-20261125. Final qualification and review follow below.
+The30 inherited deferred Minors retain their existing dispositions. Original
+items2–8/10–12 remain broader than this increment; coverage1 remains excluded.
+
+All78qualification gates pass on4,069input/38product hashes. Each normal/static
+generator passes84suites/1,357methods. All30native normal/SAN suites,
+21changed-C++quality checks,14dynamic-focused methods per build, existing
+16static-child/13status-clear/32opaque/20callback-focused methods, affected
+sanitizer CLI, unchanged corpus and source packaging pass. All gates are fresh.
+
+All1,128matched measurements pass existing10s/512MiB bounds, with single-wide
+controls256MiB:378callback,102single-opaque,216multiple-opaque,216static-child
+and216dynamic-child processes. The dynamic matrix covers1/2/8/32children at
+8/64/256bits and1/2/8children at1024bits, each closing and reopening routes.
+It checks actual old words/masks, changed root widths, ordered comparisons,
+failure counts and complete parent/current outputs. There are171live generated
+history processes across the three child-prefix matrices. Two allocation probes
+and four guide processes pass. Measured maximum across all1,128processes is
+2.3113s/445204KiB; no speedup or unmeasured-scale claim.
+
+Parent static controls now use their native notes. Only the new dynamic intent
+comments are injected in dynamic parent controls; no hardware operation,
+observed value or failure count is injected. Independent artifact checks
+validate complete matrices, identities, values, shapes and hashes.
+
+Corpus classifications remain1,032canonical/44explicit unsupported/687default
+elaboration failures across2,562source identities. This increment restores
+supported dynamic scalar histories, not general topology/timing or transport.
+
+One fresh independent final review found0Critical,1Important and1Minor.
+One test-first repair fixes the Important native API finding:two identical
+successive root scans can execute with different output polarity. Returned
+and actual-observed dynamic scan operations now carry a non-owning execution
+identity. The scheduler rejects stale results, while copies retain their own
+committed route. No old full-route snapshot is retained by a saved operation.
+The native regression fails on the pre-repair executable and passes after the
+fix. All78gates are fresh after repair, including84x1,357methods per generator,
+30native suites,21C++quality checks and all1,128measurements. No rereview.
+
+One new Minor is deferred:dynamic benchmark --help inherits the static runner
+description. It does not change the measured workload or checks. The30inherited
+Minors keep their dispositions; total31deferred Minors, including the previously
+recorded typed-factory-pointer compatibility limitation. Broader topology,
+timing, physical transport and excluded coverage1 retain their existing scope.

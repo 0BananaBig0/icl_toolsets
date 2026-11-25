@@ -20,12 +20,12 @@ def load():
 
 
 class ModeledChildBenchmark(unittest.TestCase):
-    def test_parent_injects_only_new_child_request_identity_notes(self):
+    def test_parent_uses_native_child_request_identity_notes(self):
         benchmark = load()
         parent,expected,words,compares = benchmark.commands(2,8,parent=True)
         current,actual,current_words,current_compares = benchmark.commands(2,8)
         self.assertEqual((expected,words,compares),(actual,current_words,current_compares))
-        self.assertEqual(parent.count('modeled child raw history '),8)
+        self.assertEqual(parent,current)
         self.assertNotIn('modeled child raw history ',current)
         self.assertNotIn('modeled readback status clear ',parent)
         self.assertNotIn('modeled raw history omitted ',parent)

@@ -635,9 +635,12 @@ std::string Generate(
               }
               pattern::Operation note{
                   "iNote",
-                  {"-comment", std::string(pattern::kModeledChildHistoryNote) +
-                                   applied[0].arguments[0] + " " +
-                                   scan.arguments[0] + " " + scan.arguments[5]},
+                  {"-comment",
+                   std::string(scheduler.DynamicRawHistory()
+                                   ? pattern::kDynamicChildHistoryNote
+                                   : pattern::kModeledChildHistoryNote) +
+                       applied[0].arguments[0] + " " + scan.arguments[0] + " " +
+                       scan.arguments[5]},
                   scan.origin,
                   scan.call_stack};
               if (scheduler.ModeledRawHistory(note, applied[0])) {
