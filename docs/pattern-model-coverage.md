@@ -4976,3 +4976,28 @@ multiple-child generated-form processes execute live local/root/status getters.
 Corpus identities/classifications remain unchanged. The pre-existing logical
 root-history scope discrepancy remains a separate item6 follow-up; broader
 topology, timing and actual transport remain in the original inventory.
+
+Task174 independent review:0Critical/1Important/2Minor. The Important finding
+requires documenting an inherited status-clear limitation before integration:
+when a prefix successfully evaluates iGetStatus -clear, generated PDL retains
+the returned value but omits the clear. A five-failure root comparison followed
+by a clear and a don't-care child scan therefore leaves appended status0 in
+source execution but5 after generated-prefix replay. Clearing for the first
+time in the appended suffix correctly returns5 then0 on both forms. Parent
+and candidate reproduce the prefix discrepancy; it remains a separate item6
+behavioral fix. Evidence is retained in the Task174 independent-review/
+nonzero-clear-prefix directory. This documentation requirement is resolved;
+no product code changed after the65-gate qualification and no rereview ran.
+
+The root-scope follow-up also covers preservation of an earlier root history:
+a child-only scan retains old logical-root miscompares in source execution,
+while physical-root replay replaces them with zeros. Parent and candidate
+both reproduce it (independent-review/older-root). Neither root-history case
+is closed by Task174.
+
+Two Minor findings remain deferred: a stale note after an ordinary frame can
+change the unobserved getter's rejecting diagnostic, and oversized rejected
+annotations make transient parser copies proportional to their input. Actual
+modeled data validation and the accepted1Mbit limit hold. Together with the
+inherited27, there are29deferred Minors. Real-device transport, broader modes
+and scales beyond the recorded matrices remain unqualified.

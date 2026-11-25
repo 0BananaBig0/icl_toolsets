@@ -51,7 +51,7 @@ execution. Existing Runtime/scan APIs and private storage boundaries persist.
   CLI/corpus, C++quality and complete source packaging; record exact hashes.
   Rerun multiple-child and one-child measured replay matrices with unchanged
   bounds. Expected all required checks and actual corpus classifications pass.
-- [ ] Step5: Commit and obtain one fresh independent whole-branch review.
+- [x] Step5: Commit and obtain one fresh independent whole-branch review.
   Fix blockers once test-first, rerun affected qualification and record Minors.
   Expected no unresolved Critical/Important findings; no rereview.
 - [ ] Step6: Merge/push master, verify merged qualified hashes/focused checks,
