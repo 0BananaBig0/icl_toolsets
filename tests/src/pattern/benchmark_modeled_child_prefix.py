@@ -80,7 +80,8 @@ def replay_observations(data, children, expected):
 
 
 def measure(model_factory, command_factory, *, note_prefix, history_expected,
-            setup_csus, stable, parent_model_factory=None, parent_note_prefix=None):
+            setup_csus, stable, parent_model_factory=None, parent_note_prefix=None,
+            grid=None):
     import argparse
     import hashlib
     import json
@@ -102,9 +103,10 @@ def measure(model_factory, command_factory, *, note_prefix, history_expected,
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(environment=platform.platform(),
                   parent_control=('unknown-capture modeled twin; normalize validated child-intent family only'
-                                  if parent_model_factory else 'matching native source and informational comments'),
+                                  if parent_model_factory else 'same model; exact native generated output'),
                   binaries={k:dict(path=str(p),sha256=digest(p)) for k,p in binaries.items()},runs=[])
-    grid = [(n,w) for n in (1,2,8,32) for w in (8,64,256)]+[(n,1024) for n in (1,2,8)]
+    if grid is None:
+        grid = [(n,w) for n in (1,2,8,32) for w in (8,64,256)]+[(n,1024) for n in (1,2,8)]
     cases = [(owner,n,w) for owner in ('parent','current') for n,w in grid]
     cases += [('sanitized',n,w) for n,w in ((2,8),(8,8),(2,256),(2,1024))]
     expected_rows = sum(3*(1 if owner=='parent' else 3) for owner,_,_ in cases)
@@ -148,11 +150,12 @@ def measure(model_factory, command_factory, *, note_prefix, history_expected,
                 actual = [line[6:] for line in lines if line.startswith('iNote ') and 'modeled ' not in line]
                 scans = [line.split() for line in lines if line.startswith('iScan ')]
                 sizes = [len(word)-2 for word in words]
+                flags = [stable(i) if callable(stable) else stable for i in range(len(words))]
                 size = max(sizes)
                 shape = (len(scans)==len(words) and lines.count('iApply')==setup_csus+len(words) and
-                         all(len(s)==7+int(stable) and s[1:4]==['client',str(n),'-si'] and
-                             s[5]=='-so' and s[7:]==(['-stable'] if stable else [])
-                             for s,n in zip(scans,sizes)) and
+                         all(len(s)==7+int(kept) and s[1:4]==['client',str(n),'-si'] and
+                             s[5]=='-so' and s[7:]==(['-stable'] if kept else [])
+                             for s,n,kept in zip(scans,sizes,flags)) and
                          [s[4] for s in scans]==words and [s[6] for s in scans]==compares)
                 prefix = parent_note_prefix if owner=='parent' and parent_note_prefix else note_prefix
                 markers = [line for line in lines if prefix in line]

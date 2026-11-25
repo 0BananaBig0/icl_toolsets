@@ -104,17 +104,16 @@ iNote [iGetStatus]
         self.assertIn(b'modeled dynamic child raw history client child1.local 0b00000000',generated)
         self.assertIn(b'modeled opaque child raw history client child0.local 0bxxxxxxxx',generated)
 
-    def test_preparation_through_active_opaque_sibling_is_rejected(self):
-        icl,pdl,out = (self.root/n for n in ('source.icl','source.pdl','protected.pdl'))
-        icl.write_text(model(2,8))
-        pdl.write_text('''iPDLLevel 1\niProcsForModule Chains\niReset
+    def test_preparation_through_active_opaque_sibling_uses_native_completion(self):
+        generated,_ = self.continued(model(2,8),'''iReset
 iScan client 10 -si 0b1011010011 -so 0bx; iApply
 iScan child1.local 8 -si 165 -so 0bx; iApply
-''')
-        out.write_bytes(b'keep existing output\n')
-        self.assertIn('preparation crosses an opaque interval',
-                      self.run_tool(icl,pdl,'protected.pdl',ok=False))
-        self.assertEqual(out.read_bytes(),b'keep existing output\n')
+''','''iNote [iGetReadData child1.local -bin]; iNote [iGetMiscompares child1.local -bin]
+if {![catch {iGetReadData child0.local}]} {error {implicit child history invented}}
+iNote [iGetStatus]
+''',[b'0bxxxxxxxx',b'0b00000000',b'0'])
+        self.assertEqual(generated.count(b'\niApply\n'),3)
+        self.assertNotIn(b'__opaque_scan_state',generated)
 
     def test_locked_parent_and_reset_state_keep_existing_rejections(self):
         for setup,diagnostic in (('iTake open; iState open 0;','unreserved parent'),

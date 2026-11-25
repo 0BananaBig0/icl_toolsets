@@ -10611,3 +10611,116 @@ retain their original requirements; this increment does not close those items.
 All22 Task180 merged-result checks pass against identical4,075qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Preparation through an active opaque leaf (Task181)
+
+Task181 extends the earlier Task180 parent-only boundary. Native preparation
+can now cross an already active fixed opaque leaf, completing its queue before
+each real opening CSU. Reset defaults and prior stable load knowledge supply
+that implicit load. A nonstable prior scan leaves its length unknown and still
+prevents implicit completion; a new request to another leaf cannot repair that
+earlier CSU. Public reservations are validated before planning, and failed
+preparation/request execution leaves state and caller outputs unchanged.
+
+For this two-leaf example, save the following as opaque-crossing.icl:
+
+~~~icl
+Module Leaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanOutPort so;
+ ScanInterface local {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; DefaultLoadValue 8'b0;}
+}
+Module Chains {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister head[2:0] {ScanInSource si; CaptureSource head; ResetValue 0;}
+ Instance child0 Of Leaf {InputPort si = head[0]; InputPort sel = enable0; InputPort ce = ce; InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;}
+ ScanMux route0 SelectedBy enable0 {1'b0: head[0]; 1'b1: child0.so;}
+ ScanRegister enable0 {ScanInSource route0; CaptureSource enable0; ResetValue 0;}
+
+ Instance child1 Of Leaf {InputPort si = enable0; InputPort sel = enable1; InputPort ce = ce; InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;}
+ ScanMux route1 SelectedBy enable1 {1'b0: enable0; 1'b1: child1.so;}
+ ScanRegister enable1 {ScanInSource route1; CaptureSource enable1; ResetValue 0;}
+
+ ScanRegister tail[4:0] {ScanInSource enable1; CaptureSource tail; ResetValue 0;}
+ ScanOutPort so {Source tail[0];}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; DefaultLoadValue 10'b0;}
+}
+~~~
+
+Save the following as opaque-crossing.pdl:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Chains
+iReset
+iScan client 10 -si 0b1011010011 -so 0bx; iApply
+iScan child0.local 8 -si 165 -so 0bx -stable; iApply
+iScan child1.local 8 -si 60 -so 0bx; iApply
+iNote [iGetReadData child0.local -bin]
+iNote [iGetReadData child1.local -bin]
+iNote [iGetMiscompares child0.local -bin]
+iNote [iGetMiscompares child1.local -bin]
+iNote [iGetReadData client -bin]
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+~~~
+
+Run the generator with --top_module Chains and --model_readback. It emits three
+raw scans and one real parent-opening CSU, four CSUs total. Both child returns
+are0bxxxxxxxx and their miscompare masks are0b00000000. The last requested root
+return remains0b0000000000 from the initial ten-bit scan; automatic preparation
+does not overwrite it. Both status queries return0. The implicit opening uses
+child0's prior stable165payload, while opaque captured data remains unknown.
+Native tests separately check its actual serial input and the reset-default0
+case, along with copies and rollback. Generated ordinary prefixes do not expose
+private storage names. Nested preparation completes queues for each real CSU.
+
+The frozen Task180 parent can perform the equivalent explicit ordinary opening
+with iWrite enable1 1; iApply before child1's request. It provides a real manual
+control using the same opaque model and native completion rules. No fake data,
+counts, extra hardware events or removed real operations are used to match it.
+Full qualification and independent-review evidence follow. Broader original
+inventory, excluded coverage1 and33deferred Minors retain their requirements.
+
+Task181 qualification passes all93fresh gates on4,078input/38product hashes.
+Normal and static generators each pass87suites/1,403methods. All30native suites,
+6changed-C++quality checks,12new focused methods per build, existing focused
+suites, affected sanitizer CLI and source packaging pass. The corpus retains
+1,032canonical/44explicit unsupported/687default elaboration failures across
+2,562source identities, with unchanged inputs and result classes.
+
+All1,728measurements pass10s/512MiB bounds, retaining256MiB single-wide controls.
+The new168run crossing matrix covers2/8/32leaves at8/64/256bits and2/8leaves at
+1024bits, three repetitions and sanitizer samples. Each run checks13raw scans,
+17CSUs including four real openings, every stable flag, complete SI/SO words,
+public preparation writes, actual unknown histories, masks and status clears.
+The same opaque model and frozen parent's explicit ordinary openings give
+byte-identical native output; no operation or observation is injected or
+normalized away. Native tests separately inspect actual implicit serial input
+for reset-default and prior stable loads, copies, rollback and later completion.
+
+All six child matrices include330live generated-history runs. Two allocation
+probes and16guide processes pass. The measured maximum across1,728runs is
+0.8180s/469868KiB. No speedup or unmeasured-scale claim
+is made. A nonstable prior opaque scan still leaves length unknown and rejects
+implicit completion; default declarations do not waive that contract.
+Independent review follows; broader original inventory remains open.
+
+The fresh independent review recommends merge with0Critical/0Important/1Minor.
+It rechecked all4,078input/38product hashes and93gate exits, and independently
+verified all168crossing outputs, actual opening writes, stable flags, complete
+SI/SO words, histories, masks, status clears and45live continuations. Separate
+asymmetric native probes at13/64/256/1024bits pass private-prefix/final-word,
+rollback/copy and later-completion checks. A nested newly active opaque leaf
+also matches the frozen manual parent; invalidating that leaf's length rejects
+later completion without changing the existing output.
+
+One Minor remains deferred: the committed native payloads are palindromic and
+cannot detect reversal within each opaque word. The independent asymmetric
+probes found no production error. Retain this test gap with33inherited Minors,
+34total. There are0unresolved Critical/Important findings; no blocker repair or
+rereview is required. Hardware equivalence, unmeasured performance, arbitrary
+opaque merges/black boxes, independent clocks/TAPs, parallel/timed/transport,
+wider source/vendor acceptance and excluded coverage1 retain prior boundaries.

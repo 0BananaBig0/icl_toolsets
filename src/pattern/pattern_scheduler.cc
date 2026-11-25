@@ -2240,16 +2240,6 @@ class ScanScheduler::Impl {
           "raw child preparation requires reachable unreserved parent "
           "controls");
     }
-    if (opaque_model_) {
-      for (const auto& step : *prefix) {
-        for (const auto& [name, bits] : step.loads) {
-          if (!source_.node_ids.count(name)) {
-            throw std::runtime_error(
-                "opaque child raw preparation crosses an opaque interval");
-          }
-        }
-      }
-    }
     InvalidateRawRoute();
     return std::move(*prefix);
   }
@@ -2928,14 +2918,15 @@ class ScanScheduler::Impl {
       const std::vector<Operation>& operations, bool together,
       const std::map<size_t, std::string>& preserved, bool explicit_writes,
       std::optional<size_t> permitted_tap_data = std::nullopt,
-      bool physical = false, const PioObservation& observe = {}) {
+      bool physical = false, const PioObservation& observe = {},
+      bool preparation = false) {
     if (!opaque_model_) {
       return ApplyNative(operations, together, preserved, explicit_writes,
                          permitted_tap_data, physical, observe);
     }
     ValidateOpaquePreserved(preserved);
     if (operations.empty() && !physical && !permitted_tap_data) return {};
-    if (physical || !explicit_writes || permitted_tap_data) {
+    if (physical || (!explicit_writes && !preparation) || permitted_tap_data) {
       throw std::runtime_error("unsupported opaque child execution mode");
     }
     for (const auto& operation : operations) {
@@ -5460,9 +5451,11 @@ class ScanScheduler::Impl {
     }
 
     // Speculative scans never change live hardware or controlling fill state.
-    Impl trial(netlist_);
+    Impl trial(prepare_only ? source_ : netlist_,
+               prepare_only ? opaque_model_ : nullptr);
     trial.state_.Restore(state_);
     trial.fill_ = fill_;
+    if (prepare_only) trial.opaque_queues_ = opaque_queues_;
     trial.global_resets_ = global_resets_;
     trial.tap_ready_ = tap_ready_;
     if (execution_) {
@@ -5496,6 +5489,7 @@ class ScanScheduler::Impl {
       if (ready && prepare_only) {
         state_.Restore(trial.state_);
         fill_ = std::move(trial.fill_);
+        opaque_queues_ = std::move(trial.opaque_queues_);
         execution_ = std::move(trial.execution_);
         return steps;
       }
@@ -5546,7 +5540,8 @@ class ScanScheduler::Impl {
       }
       try {
         if (prepare_only) trial.InvalidateRawRoute();
-        auto scans = prepare_only ? trial.Apply(next, false, held, false)
+        auto scans = prepare_only ? trial.Apply(next, false, held, false,
+                                                std::nullopt, false, {}, true)
                                   : trial.Solve(next, ready && together,
                                                 tap_ ? 2 : 1, fixed, false,
                                                 held, explicit_writes, events);
