@@ -54,7 +54,7 @@ execution. Existing Runtime/scan APIs and private storage boundaries persist.
 - [x] Step5: Commit and obtain one fresh independent whole-branch review.
   Fix blockers once test-first, rerun affected qualification and record Minors.
   Expected no unresolved Critical/Important findings; no rereview.
-- [ ] Step6: Merge/push master, verify merged qualified hashes/focused checks,
+- [x] Step6: Merge/push master, verify merged qualified hashes/focused checks,
   detach reused worktree, delete owned branch and archive only this ledger.
   Expected clean pushed master and117preserved stashes; broader work accurate.
 

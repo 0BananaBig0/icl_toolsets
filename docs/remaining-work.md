@@ -798,3 +798,7 @@ annotations make transient parser copies proportional to their input. Actual
 modeled data validation and the accepted1Mbit limit hold. Together with the
 inherited27, there are29deferred Minors. Real-device transport, broader modes
 and scales beyond the recorded matrices remain unqualified.
+
+All10 Task174 merged-result checks pass against identical4,062qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.
