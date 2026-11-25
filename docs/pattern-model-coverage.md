@@ -5230,3 +5230,37 @@ these correctly; that wording correction and31inherited Minors remain deferred.
 All19 Task179 merged-result checks pass against identical4,072qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Task180 parent-only opaque preparation
+
+Fixed scalar opaque children can request automatic preparation through public
+modeled parent controls. The native trial planner opens the route before opaque
+queue projection, and commits only after the requested raw CSU succeeds. Any
+preparation containing private opaque storage stays unsupported. Opaque returns
+remain unknown; mixed modeled histories retain actual captures. Full
+qualification and independent-review evidence follow after execution. Broader
+original inventory work, excluded coverage1 and32deferred Minors remain open.
+
+Task180 qualification passes all88fresh gates on4,075input/38product hashes.
+Normal and static generators each pass86suites/1,391methods. All30native suites,
+6changed-C++quality checks,12new focused methods per build, existing focused
+suites, affected sanitizer CLI and source packaging pass. The corpus retains
+1,032canonical/44explicit unsupported/687default elaboration failures across
+2,562source identities, with unchanged input identities and result classes.
+
+All1,560measurements pass10s/512MiB bounds, with256MiB single-wide controls.
+The new216run matrix covers1/2/8/32leaves at8/64/256bits and1/2/8leaves at1024bits,
+three repetitions and sanitizer samples. It verifies four actual parent-only
+openings, eight raw scans,13CSUs, all physical words, unknown child returns,
+zero miscompare masks and status clears. Every preparation control is checked
+independently. All five child matrices include285live generated-history runs.
+Two allocation probes and12guide processes pass. The measured maximum across
+1,560runs is0.8676s/469612KiB; no unmeasured-scale or
+speedup claim is made.
+
+The frozen parent control for automatic opaque preparation is an actual modeled
+unknown-capture twin. Opaque automatic preparation fails in that parent. Exact
+physical operations and observations agree after normalizing only validated
+child-intent families; no returned data, counts or hardware operation is injected.
+The new guide confirms two real openings and three raw CSUs while preserving
+the last explicitly requested root history. Independent review follows.
