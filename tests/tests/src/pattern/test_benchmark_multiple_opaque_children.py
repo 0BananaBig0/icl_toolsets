@@ -91,11 +91,11 @@ class MultipleOpaqueBenchmark(unittest.TestCase):
         self.assertEqual(sum(line.startswith('iScan ') for line in text.splitlines()), 12)
         self.assertEqual(text.splitlines().count('iApply'), 4)
 
-    def test_parent_clear_comments_precede_the_actual_clear_queries(self):
+    def test_parent_clear_comments_do_not_duplicate_native_events(self):
         benchmark = load_benchmark()
         text, _, _, _ = benchmark.commands([8,16], parent=True)
         marker = 'iNote -comment "modeled readback status clear 0"'
-        self.assertEqual(text.count(marker+'\niNote [iGetStatus -clear]'),4)
+        self.assertNotIn(marker,text)
         current, _, _, _ = benchmark.commands([8,16])
         self.assertNotIn('modeled readback status clear ',current)
 
@@ -115,7 +115,7 @@ class MultipleOpaqueBenchmark(unittest.TestCase):
         with self.assertRaises(ValueError):
             benchmark.replay_observations(data.replace('status clear 5','status clear 6',1),1,values)
         parent,_,_,_ = benchmark.commands([8],parent=True)
-        self.assertEqual(parent.count(marker),4)
+        self.assertEqual(parent.count(marker),0)
         current,_,_,_ = benchmark.commands([8])
         self.assertNotIn('modeled readback status clear ',current)
 

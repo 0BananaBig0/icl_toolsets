@@ -5069,3 +5069,36 @@ behavior is unchanged. The29inherited Minor findings remain deferred.
 All10 Task176 merged-result checks pass against identical4,063qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Static modeled-child prefix persistence (Task177)
+
+Static fully modeled scalar child request identities survive root lowering.
+The actual root return supplies child data and masks through cached interval
+and parity geometry, without an extra CSU, observed-value annotation or failure
+recount. Neutral metadata validation keeps rejected annotations from marking
+merges observed or consuming history deltas. Root omission and previous histories
+retain their qualified behavior. Broader route and timing modes remain open.
+
+All73gates pass:83x1,343generator methods per variant,30native suites,
+30C++quality checks and912matched measurements, including216new modeled-child
+processes and57new live-generated getter processes. All16focused methods and
+four new reporter methods pass. The corpus retains2,562identities with
+1,032canonical,44unsupported AccessLink and687default elaboration failures.
+
+
+One fresh independent final review found0Critical,3Important and1Minor.
+All three Important findings are fixed in one test-first pass:the local-reset
+verification Runtime receives its own normal/status/history callbacks; scalar
+metadata cannot bind a noncanonical -chain default source spelling; an off-route
+child annotation follows the existing route diagnostic and remains informational.
+The16focused methods pass in all three builds, and all73final gates are fresh:
+83x1,343methods per generator,30native/30quality checks and912measurements.
+No gate or generator suite is reused from a prior attempt, and no second review
+is substituted for the verified fixes.
+
+One new Minor remains deferred:typed C++ function pointers to the earlier
+three-argument MakeModeledReadback overload require adaptation because its new
+declaration has four parameters. Ordinary three-argument calls still compile.
+The29inherited Minors retain their prior dispositions; total30deferred Minors.
+Broader topology, timing and real-device work remains in the original inventory.

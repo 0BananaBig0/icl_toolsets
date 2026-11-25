@@ -19,6 +19,14 @@
 namespace pattern {
 bool IsRawHistoryOmissionNote(const Operation& note);
 std::string RawHistoryOmissionText(const Operation& scan);
+inline constexpr char kModeledChildHistoryNote[] = "modeled child raw history ";
+struct ModeledChildHistoryNote {
+  size_t root = 0, client = 0;
+  std::string expected;
+};
+bool IsModeledChildHistoryNote(const Operation& note);
+std::optional<ModeledChildHistoryNote> ReadModeledChildHistoryNote(
+    const Netlist& netlist, const Operation& note);
 inline constexpr char kOpaqueChildHistoryNote[] =
     "modeled opaque child raw history ";
 struct OpaqueChildHistoryNote {

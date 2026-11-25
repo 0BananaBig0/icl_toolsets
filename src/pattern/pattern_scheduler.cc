@@ -1246,6 +1246,40 @@ class ScanScheduler::Impl {
         .emplace(id, RawSegmentFor(id, root, &raw_profile_work_))
         .first->second.slice;
   }
+  std::optional<RawHistoryProjection> ModeledRawHistory(
+      const Operation& note, const Operation& root_scan) {
+    const auto parsed = ReadModeledChildHistoryNote(source_, note);
+    if (!parsed || opaque_model_ || tap_ || root_scan.command != "iScan" ||
+        (root_scan.arguments.size() != 6 &&
+         !(root_scan.arguments.size() == 7 &&
+           root_scan.arguments.back() == "-stable"))) {
+      return std::nullopt;
+    }
+    try {
+      const auto& root = RawTemplate();
+      if (root.dynamic || parsed->root != root.client ||
+          root_scan.arguments[1] != std::to_string(root.width) ||
+          root_scan.arguments[2] != "-si" || root_scan.arguments[4] != "-so" ||
+          root_scan.arguments[3].size() != root.width + 2 ||
+          root_scan.arguments[5].size() != root.width + 2 ||
+          root_scan.arguments[0] != source_.nodes[root.client].name) {
+        return std::nullopt;
+      }
+      const auto& name = source_.nodes[parsed->client].name;
+      const auto slice = RawSubchain(name);
+      if (parsed->expected.size() != slice.width + 2 ||
+          parsed->expected.substr(2) !=
+              InvertBits(
+                  root_scan.arguments[5].substr(2 + slice.offset, slice.width),
+                  slice.output_inverted)) {
+        return std::nullopt;
+      }
+      return RawHistoryProjection{name, parsed->expected.substr(2),
+                                  slice.offset, slice.output_inverted};
+    } catch (const std::runtime_error&) {
+      return std::nullopt;
+    }
+  }
   std::pair<size_t, size_t> RawClientPorts(size_t id) const {
     const auto fail = [&] {
       throw std::runtime_error(
@@ -1303,6 +1337,7 @@ class ScanScheduler::Impl {
       if (node.model == ModelKind::kAlias ||
           (node.model == ModelKind::kPort &&
            (node.kind == "ScanInPort" || node.kind == "ScanOutPort"))) {
+        if (!node.inputs.count("Source")) fail();
         bit = node.inputs.at("Source").at(Offset(node, bit.index));
         continue;
       }
@@ -7864,6 +7899,10 @@ ScanScheduler::ScanScheduler(const ScanScheduler& other)
     : impl_(std::make_unique<Impl>(*other.impl_)) {}
 ScanScheduler::~ScanScheduler() = default;
 bool ScanScheduler::HasOpaqueChild() const { return impl_->HasOpaqueChild(); }
+std::optional<RawHistoryProjection> ScanScheduler::ModeledRawHistory(
+    const Operation& note, const Operation& root_scan) {
+  return impl_->ModeledRawHistory(note, root_scan);
+}
 void ScanScheduler::Reset(bool synchronous, bool physical) {
   impl_->InvalidateRawRoute();
   impl_->Reset(synchronous, physical);
