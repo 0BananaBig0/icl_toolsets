@@ -57,7 +57,7 @@ serialization continue consuming existing opaque metadata and actual callbacks.
 - [x] Step5: Commit finalized selected diff and obtain one fresh whole-branch
   review. Re-grade, fix blockers once test-first, qualify final state and record
   all rulings/Minors. Expected0unresolved Critical/Important without rereview.
-- [ ] Step6: Merge/push master, verify merged hashes/checks, detach reused tree,
+- [x] Step6: Merge/push master, verify merged hashes/checks, detach reused tree,
   delete only owned branch and archive own ledger. Expected clean pushed master,
   preserved117stashes and accurate broad remaining inventory.
 

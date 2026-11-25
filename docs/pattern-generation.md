@@ -10532,3 +10532,7 @@ There are0unresolved Critical/Important findings and32deferred Minors. The new
 Minor concerns narrative wording: expected SO care words contain uncared X,
 whereas returned miscompare masks are zero. Tests and worked examples distinguish
 these correctly; that wording correction and31inherited Minors remain deferred.
+
+All19 Task179 merged-result checks pass against identical4,072qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.
