@@ -144,6 +144,10 @@ std::string OperationText(const pattern::Operation& operation) {
   std::vector<std::string> words{operation.command};
   words.insert(words.end(), operation.arguments.begin(),
                operation.arguments.end());
+  if (pattern::IsRawHistoryOmissionNote(operation)) {
+    // Normalization or elision must not activate an unconsumed source note.
+    words[2] = "informational " + words[2];
+  }
   return (operation.command == "iScan" && operation.raw_history_omitted
               ? Command({"iNote", "-comment",
                          pattern::RawHistoryOmissionText(operation)})

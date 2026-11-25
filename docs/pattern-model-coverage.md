@@ -5015,8 +5015,21 @@ logical omission scope through Operation metadata. Native comparisons still
 execute and affect status; only publication of the physical root's logical
 history is omitted. Modeled and fixed opaque child routes are qualified.
 
-All65gates pass:both81x1,312generator regressions,30native suites,24quality
+All65gates pass:both81x1,314generator regressions,30native suites,24quality
 checks and696matched measurements, including57live generated getter runs.
 All2,562corpus identities retain the existing classifications. In-prefix
 status-clear persistence remains the next separate item6 fix; broader history,
 topology, timing and transport work remains in the original inventory.
+
+The independent review finds0Critical/3Important/0Minor. All three Important
+findings are fixed in one test-first pass. Truncated or noncanonical scope
+annotations cannot hide source histories. Unconsumed reserved comment/status
+notes receive one informational prefix in output, preserving their original
+tag and visible text while preventing normalization, ownership elision or
+queue replacement from activating them on replay. Repeated generation stays
+byte-stable. Native returned scope now comes from the winning root request,
+matching the committed subscriber. CLI tests reproduce nine failures before
+the fixes and pass all32methods afterward; the native overwrite test changes
+from one failure to zero. All65gates pass fresh after the code changes, with
+both81x1,314generator variants,30native suites,24quality checks and696measured
+processes. No rereview runs; the29inherited Minors remain deferred.

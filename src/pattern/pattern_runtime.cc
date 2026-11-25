@@ -1909,16 +1909,31 @@ class Runtime::Impl {
       operation.arguments[target] =
           JoinPath(prefix(), operation.arguments[target]);
     }
-    if (name == "iScan" && netlist_) {
+    if (name == "iScan" && netlist_ && !operations_.empty() &&
+        IsRawHistoryOmissionNote(operations_.back()) &&
+        (operation.arguments.size() == 6 ||
+         (operation.arguments.size() == 7 &&
+          operation.arguments.back() == "-stable")) &&
+        operation.arguments[2] == "-si" && operation.arguments[4] == "-so") {
       const auto root = netlist_->node_ids.find(operation.arguments[0]);
       if (root != netlist_->node_ids.end() &&
           !netlist_->nodes[root->second].scope &&
           netlist_->nodes[root->second].scan_interface &&
           netlist_->nodes[root->second].scan_interface->kind ==
               ScanInterfaceKind::kClient) {
+        if (!history_context_) {
+          history_context_ = std::make_unique<z3::context>();
+        }
+        bool canonical = false;
+        try {
+          canonical = NormalizeScan(*history_context_, operation).arguments ==
+                      operation.arguments;
+        } catch (const std::runtime_error&) {
+          // Malformed queued scans retain Apply/reset validation timing.
+        }
         const auto text = RawHistoryOmissionText(operation);
-        for (auto note = operations_.rbegin(); note != operations_.rend();
-             ++note) {
+        for (auto note = operations_.rbegin();
+             canonical && note != operations_.rend(); ++note) {
           if (note->command != "iNote" || note->arguments.size() != 2 ||
               (note->arguments[0] != "-comment" &&
                note->arguments[0] != "-status") ||

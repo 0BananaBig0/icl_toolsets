@@ -822,27 +822,22 @@ recount is introduced. Existing opaque-child identity comments still restore
 their explicitly requested unknown histories.
 
 Immutable-parent regressions reproduce three opaque and two modeled failures
-for absent and earlier root histories. All30opaque focused methods and19modeled
+for absent and earlier root histories. All32opaque focused methods and19modeled
 raw methods pass, covering suffix status/clear, reset persistence, exact typed
 metadata, stale notes and provider-unavailable behavior. Six reporter methods
 retain strict hardware counts and matching hand-derived parent comments.
 
 All65qualification gates pass on4,062input/38product hashes:81suites/
-1,312methods per full normal/static generator,30native suites,24C++quality
+1,314methods per full normal/static generator,30native suites,24C++quality
 checks, affected SAN CLI, corpus and source packaging. All696matched timing/
 RSS processes pass unchanged bounds, including57multiple-child generated
-processes with live getters. Peak across owners is1.0680s/
-445468KiB. The two8,200bit-root allocation probes retain counts
+processes with live getters. Peak across owners is1.1189s/
+444584KiB. The two8,200bit-root allocation probes retain counts
 [56, 56]; four guide processes agree. No speedup is claimed.
-The run retains24unchanged build/focused/quality/normal-native gates and59
-unchanged passing normal generator suites after correcting comment-sensitive
-assertions. All remaining103generator suites execute, including every static
-suite; per-suite script/output hashes and reuse markers are retained. Failed
-attempts remain separate evidence. Product code is unchanged through those
-assertion corrections. The immediate parent already emits child-identity notes;
-the obsolete manual duplicates are removed test-first, and the six reporter
-methods rerun on that final fixture. The parent/candidate small probe and full
-matrix retain exact whole-output checks. Corpus identities/classifications remain1,032canonical,44unsupported
+All65gates rerun fresh after the independent review fixes; both81-suite
+generator variants execute in full with no suite reuse. Earlier passing runs,
+assertion failures and parent-fixture correction evidence remain separate.
+Corpus identities/classifications remain1,032canonical,44unsupported
 AccessLink and687default elaboration failures across2,562identities.
 
 The inherited loss of an evaluated in-prefix iGetStatus -clear remains the
@@ -850,3 +845,16 @@ next separate inventory6 fix. This increment closes logical root-history
 absence/preservation on these routes, not general callback/local/transport
 history parity or broader topology/timing acceptance. Original2–8/10–12remain
 open,1excluded and29Minors deferred. Final review/integration follow below.
+
+The independent review finds0Critical/3Important/0Minor. All three Important
+findings are fixed in one test-first pass. Truncated or noncanonical scope
+annotations cannot hide source histories. Unconsumed reserved comment/status
+notes receive one informational prefix in output, preserving their original
+tag and visible text while preventing normalization, ownership elision or
+queue replacement from activating them on replay. Repeated generation stays
+byte-stable. Native returned scope now comes from the winning root request,
+matching the committed subscriber. CLI tests reproduce nine failures before
+the fixes and pass all32methods afterward; the native overwrite test changes
+from one failure to zero. All65gates pass fresh after the code changes, with
+both81x1,314generator variants,30native suites,24quality checks and696measured
+processes. No rereview runs; the29inherited Minors remain deferred.

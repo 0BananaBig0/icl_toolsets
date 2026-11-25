@@ -21,8 +21,10 @@ parsing or copying arbitrary annotation fields. No extra dependencies.
 Runtime accepts only a matching comment/status annotation immediately before
 the next recorded root-client data iScan. Mark that scan and the consumed note;
 the renderer skips the consumed original note and regenerates one canonical
-comment, keeping replay idempotent. Unknown/malformed/mismatched/stale notes
-stay informational. No actual data is carried. Cancellation by reset and
+comment, keeping replay idempotent. Only complete canonical scan shape and spelling can be consumed.
+Unknown/malformed/mismatched/stale notes stay informational. Unconsumed typed
+reserved notes render with one inert informational prefix, preserving their
+tag and visible text so normalization/elision cannot activate them later. No actual data is carried. Cancellation by reset and
 ordinary intervening operations cannot transfer the omission to another scan.
 
 Runtime validates all queued raw operands and comparison care as before, but

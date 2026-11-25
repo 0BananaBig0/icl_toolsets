@@ -52,7 +52,7 @@ notes to root data scans; provider counts comparisons but omits raw publication.
   SAN CLI/corpus, changed C++quality and source packaging. Record input/product
   hashes and complete matched replay/allocation/guide matrices.
   Expected every required check and unchanged corpus classifications pass.
-- [ ] Step5: Commit finalized diff; obtain one independent whole-branch review.
+- [x] Step5: Commit finalized diff; obtain one independent whole-branch review.
   Fix blockers once test-first, record Minors and rerun affected qualification.
   Expected no unresolved Critical/Important findings; no rereview.
 - [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach
