@@ -57,7 +57,7 @@ emits standard notes and keeps unconsumed reserved text inert.
 - [x] Step5: Commit finalized diff and obtain one fresh whole-branch review;
   fix blockers once test-first and rerun affected qualification. Record Minors.
   Expected no unresolved Critical/Important findings; no rereview.
-- [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach
+- [x] Step6: Merge/push master, verify merged hashes/focused checks, detach
   reused worktree, delete owned branch and archive only this ledger.
   Expected clean pushed master,117stashes and accurate remaining inventory.
 
