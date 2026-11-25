@@ -59,7 +59,7 @@ named-modeled scans from opaque output. No second queue or observation source.
 - [x] Step5: Read selected patch, commit and obtain one fresh final review.
   Grade findings and every declined area; repair blockers once RED→GREEN/full
   suite, defer Minors. Expected: no unresolved Critical/Important and no rereview.
-- [ ] Step6: Merge/push to master, run integrated checks, detach reused tree,
+- [x] Step6: Merge/push to master, run integrated checks, detach reused tree,
   delete only the owned branch and archive own ledger. Expected: clean pushed
   master,117preserved stashes and bounded inventory claim.
 
