@@ -77,7 +77,7 @@ class ModelReadback {
   }
 
   const ReadbackUpdates* Read(const std::vector<Operation>& operations,
-                              bool clear_status) {
+                              bool clear_status, bool publish) {
     if (error_) std::rethrow_exception(error_);
     try {
       // Reject unsupported histories before exposing any observation delta.
@@ -144,17 +144,20 @@ class ModelReadback {
             op.command != "iApply" && op.command != "iState" &&
             op.command != "iScan" && op.command != "iReset" &&
             op.command != "iTake" && op.command != "iRelease" &&
-            op.command != "iNote") {
+            op.command != "iNote" && op.command != "iGetStatus") {
           throw std::runtime_error(op.origin +
                                    ": modeled readback does not support " +
                                    op.command + " histories");
         }
       }
       callback_pending_ = std::move(callback_pending);
-      updates_.bits.clear();
-      updates_.scans.clear();
-      positions_.clear();
-      raw_positions_.clear();
+      if (published_) {
+        updates_.bits.clear();
+        updates_.scans.clear();
+        positions_.clear();
+        raw_positions_.clear();
+      }
+      published_ = publish;
       for (; cursor_ < operations.size(); ++cursor_) {
         const auto& op = operations[cursor_];
         if (op.callback) continue;
@@ -241,6 +244,15 @@ class ModelReadback {
     reservations_.Enter(op.call_stack);
     if (op.command == "iMerge") return;
     const auto& args = op.arguments;
+    if (op.command == "iGetStatus") {
+      if (args.size() != 2 || args[0] != "-clear" ||
+          !ReadStatusClearNote(
+              {"iNote", {"-comment", StatusClearNoteText(args[1])}, "", {}})) {
+        throw std::runtime_error("invalid internal status-clear event");
+      }
+      if (failures_) failures_ = 0;
+      return;
+    }
     if (opaque_) {
       if (op.command == "iScan") {
         opaque_->Add(context_, op);
@@ -403,6 +415,7 @@ class ModelReadback {
   size_t cursor_ = 0;
   std::optional<uint64_t> failures_{0};
   ReadbackUpdates updates_;
+  bool published_ = true;
   std::map<std::pair<size_t, int64_t>, size_t> positions_;
   std::map<std::pair<std::string, std::string>, size_t> raw_positions_;
   std::exception_ptr error_;
@@ -413,11 +426,25 @@ Runtime::Readback MakeModeledReadback(const Netlist& netlist) {
   return MakeModeledReadback(netlist, false);
 }
 Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical) {
-  return [&netlist, physical, model = std::shared_ptr<ModelReadback>{}](
-             const std::vector<Operation>& operations,
-             bool clear_status) mutable -> const ReadbackUpdates* {
-    if (!model) model = std::make_shared<ModelReadback>(netlist, physical);
-    return model->Read(operations, clear_status);
+  return MakeModeledReadback(netlist, physical, nullptr);
+}
+Runtime::Readback MakeModeledReadback(
+    const Netlist& netlist, bool physical,
+    Runtime::StatusReadback* status_readback) {
+  auto model = std::make_shared<std::unique_ptr<ModelReadback>>();
+  const auto read = [&netlist, physical, model](const auto& operations,
+                                                bool clear_status,
+                                                bool publish) {
+    if (!*model) *model = std::make_unique<ModelReadback>(netlist, physical);
+    return (*model)->Read(operations, clear_status, publish);
+  };
+  if (status_readback) {
+    *status_readback = [read](const auto& operations) {
+      return read(operations, false, false)->failures;
+    };
+  }
+  return [read](const auto& operations, bool clear_status) {
+    return read(operations, clear_status, true);
   };
 }
 }  // namespace pattern

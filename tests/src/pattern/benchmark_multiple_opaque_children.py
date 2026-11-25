@@ -39,16 +39,12 @@ def commands(widths, parent=False):
     expected = []
     raw_words, compares = [], []
     for group in range(4):
-        payloads, requests = [], []
+        payloads = []
         for index, width in enumerate(widths):
             unit = '10100101' if (group + index) % 2 == 0 else '00111100'
             bits = (unit * ((width + 7)//8))[:width]
             payloads.append(bits)
-            requests.append('iScan child%d.local %d -si 0b%s -stable\n' % (index, width, bits))
-        if parent:
-            body += ('iNote -comment "modeled raw history omitted iScan client %d -si 0b101%s10011 -so 0b%s -stable"\n' %
-                     (sum(widths)+8, ''.join(payloads), 'x'*(sum(widths)+8)))
-        body += ''.join(requests)
+            body += 'iScan child%d.local %d -si 0b%s -stable\n' % (index, width, bits)
         body += 'iApply\n'
         for index, width in enumerate(widths):
             body += 'iNote [iGetReadData child%d.local -bin]\n' % index
@@ -58,8 +54,10 @@ def commands(widths, parent=False):
         compares += ['0b'+'x'*size, '0b101'+'x'*sum(widths)+'10011']
         body += 'iScan client %d -si 0b101%s10011 -so 0b101%s10011 -stable; iApply\n' % (
             size, ''.join(payloads), 'x'*sum(widths))
-        body += ('iNote [iGetReadData client -bin]\niNote [iGetMiscompares client -bin]\n'
-                 'iNote [iGetStatus -clear]\niNote [iGetStatus]\n')
+        body += 'iNote [iGetReadData client -bin]\niNote [iGetMiscompares client -bin]\n'
+        if parent:
+            body += 'iNote -comment "modeled readback status clear 0"\n'
+        body += 'iNote [iGetStatus -clear]\niNote [iGetStatus]\n'
         expected += ['0b101'+'x'*sum(widths)+'10011', '0b'+'0'*size, '0', '0']
     return body, expected, raw_words, compares
 
@@ -75,6 +73,11 @@ def replay_observations(data, children, expected):
             else:
                 query = ('iGetReadData client -bin', 'iGetMiscompares client -bin',
                          'iGetStatus -clear', 'iGetStatus')[field-children]
+            if query == 'iGetStatus -clear' and result and result[-1].startswith(
+                    'iNote -comment "modeled readback status clear '):
+                marker = 'iNote -comment "modeled readback status clear '+expected[position]+'"'
+                if result.pop() != marker:
+                    raise ValueError('recorded clear count differs from the actual observation fixture')
             line = 'iNote ['+query+']'
             position += 1
         result.append(line)
@@ -190,6 +193,7 @@ def main():
                                                     (pdl.read_text().count('iGetReadData child') if pdl.exists() else 0),
                            history_annotation_count=len(history_notes),
                            root_scope_annotation_count=data.count('modeled raw history omitted '),
+                           status_clear_annotation_count=data.count('modeled readback status clear '),
                            generated_live_histories=form=='generated',replay_error=replay_error,
                            command=command,directory=str(folder),exit=process.returncode,
                            seconds=seconds,peak_rss_kib=rss,bound_kib=bound_kib,

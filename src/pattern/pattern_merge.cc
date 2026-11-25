@@ -177,6 +177,26 @@ class Merger {
     }
     ++position_;
 
+    // Clears outside all call hardware do not obstruct same-side batching.
+    std::vector<Operation> trailing;
+    for (auto& first : streams) {
+      const auto edge = std::find_if(
+          first.begin(), first.end(),
+          [](const auto& op) { return op.command != "iGetStatus"; });
+      result.insert(result.end(), std::make_move_iterator(first.begin()),
+                    std::make_move_iterator(edge));
+      first.erase(first.begin(), edge);
+      if (!first.empty()) break;
+    }
+    for (auto last = streams.rbegin(); last != streams.rend(); ++last) {
+      while (!last->empty() && last->back().command == "iGetStatus") {
+        trailing.push_back(std::move(last->back()));
+        last->pop_back();
+      }
+      if (!last->empty()) break;
+    }
+    std::reverse(trailing.begin(), trailing.end());
+
     std::set<size_t> occupied;
     std::vector<std::vector<Operation>> batch;
     const auto flush = [&] {
@@ -218,6 +238,8 @@ class Merger {
       batch.push_back(std::move(stream));
     }
     flush();
+    result.insert(result.end(), std::make_move_iterator(trailing.begin()),
+                  std::make_move_iterator(trailing.end()));
     return result;
   }
 

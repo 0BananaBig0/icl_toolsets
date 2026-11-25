@@ -691,7 +691,10 @@ std::optional<std::vector<Operation>> LowerOpaqueScans(
       } else if (operation.command == "iReset") {
         queue.Reset(operation);
         result.push_back(operation);
-      } else if (operation.command == "iNote") {
+      } else if (operation.command == "iNote" ||
+                 (operation.command == "iGetStatus" &&
+                  operation.arguments.size() == 2 &&
+                  operation.arguments[0] == "-clear")) {
         result.push_back(operation);
       } else {
         throw std::runtime_error("unsupported operation with opaque scans: " +

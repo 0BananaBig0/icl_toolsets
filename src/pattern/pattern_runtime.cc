@@ -19,6 +19,7 @@
 #include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_netlist.h"
 #include "pattern/pattern_opaque.h"
+#include "pattern/pattern_readback.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -40,9 +41,10 @@ class Runtime::Impl {
  public:
   Impl(const Design& design, const std::string& top,
        const Netlist* netlist = nullptr, bool trace_source = false,
-       Readback readback = {})
+       Readback readback = {}, StatusReadback status_readback = {})
       : trace_source_(trace_source),
         readback_(std::move(readback)),
+        status_readback_(std::move(status_readback)),
         design_(design),
         netlist_(netlist),
         top_(top),
@@ -1670,6 +1672,19 @@ class Runtime::Impl {
     return *module;
   }
 
+  void RememberStatusClear(const std::string& origin,
+                           const std::string& count) {
+    Operation operation{"iGetStatus", {"-clear", count}, origin, {}};
+    operation.callback_execution = !callback_stack_.empty();
+    operation.callback_read_execution = read_callback_depth_ != 0;
+    for (const auto& frame : frames_) {
+      if (!frame.invocation.empty()) {
+        operation.call_stack.push_back(frame.invocation);
+      }
+    }
+    operations_.push_back(std::move(operation));
+  }
+
   void Command(const std::vector<std::string>& words, const std::string& origin,
                const Site* site) {
     if (++executed_ > 1000000) {
@@ -1861,6 +1876,9 @@ class Runtime::Impl {
               ? (name == "iGetStatus" ? words[1] : JoinPath(prefix(), words[1]))
               : "",
           format, chain);
+      if (name == "iGetStatus" && words.size() == 2 && words[1] == "-clear") {
+        RememberStatusClear(origin, value);
+      }
       Tcl_SetObjResult(
           interpreter_.get(),
           Tcl_NewStringObj(value.data(), static_cast<int>(value.size())));
@@ -1885,6 +1903,24 @@ class Runtime::Impl {
     for (const auto& frame : frames_) {
       if (!frame.invocation.empty()) {
         operation.call_stack.push_back(frame.invocation);
+      }
+    }
+    if (const auto expected = ReadStatusClearNote(operation);
+        expected &&
+        (merges_.empty() || merges_.back().depth != frames_.size())) {
+      try {
+        const auto actual =
+            zero_status_known_
+                ? std::optional<uint64_t>{0}
+                : (status_readback_ ? status_readback_(operations_)
+                                    : std::nullopt);
+        if (actual == expected) {
+          const auto value = HistoryValue("iGetStatus", "-clear", "");
+          RememberStatusClear(origin, value);
+          return;
+        }
+      } catch (const std::runtime_error&) {
+        // Informational notes cannot supply an unavailable or unknown count.
       }
     }
     if (name == "iTake") {
@@ -2095,6 +2131,7 @@ class Runtime::Impl {
   std::map<size_t, size_t> callback_action_ends_;
   bool trace_source_ = false;
   Readback readback_;
+  StatusReadback status_readback_;
   size_t source_count_ = 0;
   std::vector<SourceAction> actions_;
   std::vector<SourceAction> compounds_;
@@ -2139,9 +2176,11 @@ class Runtime::Impl {
 Runtime::Runtime(const Design& design, const std::string& top)
     : impl_(std::make_unique<Impl>(design, top)) {}
 Runtime::Runtime(const Design& design, const Netlist& netlist,
-                 bool trace_source, Readback readback)
+                 bool trace_source, Readback readback,
+                 StatusReadback status_readback)
     : impl_(std::make_unique<Impl>(design, netlist.top_module, &netlist,
-                                   trace_source, std::move(readback))) {}
+                                   trace_source, std::move(readback),
+                                   std::move(status_readback))) {}
 Runtime::~Runtime() = default;
 void Runtime::Execute(const std::string& path, const std::string& text) {
   impl_->Execute(path, text);

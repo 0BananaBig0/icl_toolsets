@@ -5037,3 +5037,31 @@ processes. No rereview runs; the29inherited Minors remain deferred.
 All10 Task175 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Evaluated status-clear persistence (Task176)
+
+Successful clears are ordered internal events, preserved in generated level0
+prefixes as validated comments. Provider-backed known counts and provably
+zero counts clear without changing actual read/miscompare history or adding
+hardware. Unknown/unavailable/mismatched metadata stays informational. Called
+merge boundaries, callbacks, reset/canceled queues, namespaces, local resets
+and bound TAP IR histories are qualified.
+
+All68gates pass:both82x1,327generator regressions,30native suites,27quality
+checks and696matched measurements. All13focused methods pass per variant;
+seven reporter methods retain exact controls and once-only live clears. Corpus
+identities/classifications remain unchanged. Broader history, topology, timing
+and real transport remain in the original inventory;29Minors stay deferred.
+
+One independent final review found two Important issues. Both are fixed in
+one test-first pass: rejected clear annotations no longer mark a merge as
+observed or consume its history deltas; zero clears at the outer merge edges,
+including adjacent clear-only calls, preserve same-side batching and captures.
+Interior clears retain their ordering barriers. The13-method focused suite
+passes in all three builds, with27changed-C++quality checks and all68fresh
+gates. No qualification gate or generator suite is reused from an earlier run.
+Status preview shares the existing lazy model and retains unpublished deltas
+until an ordinary observation. Custom provider integrations without the optional
+preview callback accept only already provable zero annotations; ordinary getter
+behavior is unchanged. The29inherited Minor findings remain deferred.

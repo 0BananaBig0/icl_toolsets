@@ -862,3 +862,62 @@ processes. No rereview runs; the29inherited Minors remain deferred.
 All10 Task175 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Task176 evaluated status clears across generated prefixes
+
+Successful iGetStatus -clear calls now retain their position in generated
+prefixes. The original query still returns its pre-clear count; appended
+queries see zero and later comparisons accumulate from that boundary. Read
+data and miscompare histories stay intact. This closes the inherited five-
+failure clear discrepancy recorded by Task174 and retained under Task175.
+
+Runtime records an ordered internal clear event with invocation/callback
+context. Generated level0 PDL represents it as a quoted standard comment with
+the observed canonical decimal count. Replay validates that count against
+available actual status before accepting the clear. Unknown, unavailable,
+mismatched or malformed annotations stay informational and render inert, so
+they cannot invent a clear or become active after regeneration. Provably zero
+clears work without a provider. No hardware operation, extra CSU or failure
+recount is added. Called merge streams retain clear barriers; direct level1
+merge operations keep their existing rejection. The small shared parser is
+inline in its header, preserving Runtime's independence from the model backend.
+
+Three genuine immutable-parent CLI failures precede implementation: PIO,
+scalar raw and opaque-child prefixes retain old counts and add later failures
+to them. The native provider initially rejects the missing event. All13focused
+methods now pass in normal/static/SAN, covering old histories, repeated zero
+clears, actual callbacks, merged calls, queued/canceled reads, reset persistence,
+both tags, malformed counts, unavailable providers, namespaces, local resets
+and bound TAP IR observations. Seven reporter methods cover recorded/live
+clear replacement, including nonzero counts, and exact native parent controls.
+
+All68qualification gates pass on4,063input/38product hashes:82suites/
+1,327methods per full normal/static generator,30native suites,27C++quality
+checks, affected SAN CLI, corpus and complete source packaging. All696matched
+timing/RSS processes pass unchanged bounds, including57multiple-child generated
+processes with live getters. Their recorded clear comments are replaced by
+live clear queries once, preserving full outputs, actual counts, raw words
+and CSU counts. Parent fixtures inject only the new clear comments, because
+the immediate parent already emits root-scope and child-identity annotations.
+Peak across owners is0.8193s/445152KiB. The two
+8,200bit-root allocation probes retain counts[56, 56]; four
+guide processes agree. No speedup is claimed. All2,562corpus identities retain
+1,032canonical,44unsupported AccessLink and687default elaboration failures.
+
+These annotations restore this tool's continuation state; other PDL consumers
+see standard informational comments. Real-device transport, modeled child-
+local history restoration and broader topology/timing work remain open in
+original2–8/10–12. Coverage1stays excluded and29Minors remain deferred. Final review and integration are recorded below.
+
+One independent final review found two Important issues. Both are fixed in
+one test-first pass: rejected clear annotations no longer mark a merge as
+observed or consume its history deltas; zero clears at the outer merge edges,
+including adjacent clear-only calls, preserve same-side batching and captures.
+Interior clears retain their ordering barriers. The13-method focused suite
+passes in all three builds, with27changed-C++quality checks and all68fresh
+gates. No qualification gate or generator suite is reused from an earlier run.
+Status preview shares the existing lazy model and retains unpublished deltas
+until an ordinary observation. Custom provider integrations without the optional
+preview callback accept only already provable zero annotations; ordinary getter
+behavior is unchanged. The29inherited Minor findings remain deferred.

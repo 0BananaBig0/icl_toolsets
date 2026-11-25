@@ -10260,3 +10260,42 @@ processes. No rereview runs; the29inherited Minors remain deferred.
 All10 Task175 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Status-clear prefix persistence (Task176)
+
+Retain generated clear comments when continuing a prefix in this tool:
+
+```tcl
+iNote -comment "modeled readback status clear 5"
+```
+
+This records a successful earlier iGetStatus -clear that returned5. Replay
+checks the available actual count before clearing it. Later getters see zero,
+and later failures accumulate from that point. The comment changes no read
+data, miscompare history or hardware transaction. Generated output remains
+PDL level0. Both standard comment/status tags are accepted; consumed events
+regenerate once at their original position, including inside called merge
+streams and local-reset continuations.
+
+Malformed, mismatched, unknown and unavailable counts cannot clear status.
+Unconsumed reserved annotations retain their tag and visible text with an
+inert informational prefix. Only provably zero status can clear statically
+without an observation provider. Other PDL consumers see ordinary comments;
+this metadata restores continuation state in icl-pattern-generation.
+
+The inherited in-prefix clear limitation described under Tasks174/175 is now
+fixed for the qualified routes. See the
+[qualification record](remaining-work.md#task176-evaluated-status-clears-across-generated-prefixes).
+
+One independent final review found two Important issues. Both are fixed in
+one test-first pass: rejected clear annotations no longer mark a merge as
+observed or consume its history deltas; zero clears at the outer merge edges,
+including adjacent clear-only calls, preserve same-side batching and captures.
+Interior clears retain their ordering barriers. The13-method focused suite
+passes in all three builds, with27changed-C++quality checks and all68fresh
+gates. No qualification gate or generator suite is reused from an earlier run.
+Status preview shares the existing lazy model and retains unpublished deltas
+until an ordinary observation. Custom provider integrations without the optional
+preview callback accept only already provable zero annotations; ordinary getter
+behavior is unchanged. The29inherited Minor findings remain deferred.
