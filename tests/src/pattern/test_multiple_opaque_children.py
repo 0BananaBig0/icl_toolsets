@@ -540,8 +540,7 @@ iNote [iGetReadData local -bin]; iPrefix -
         leaking = MODEL.replace('CaptureSource tail;', 'CaptureSource child0.so, tail[3:0];')
         self.rejected('iReset; iScan child1.local 8; iApply\n', 'CaptureSource', leaking)
         for command in ('iRunLoop 1', 'iClock tck', 'iClockOverride tck -freqDivider 2',
-                        'iOverrideScanInterface client -capture off',
-                        'iMerge -begin; iMerge -end'):
+                        'iOverrideScanInterface client -capture off'):
             with self.subTest(command=command):
                 self.rejected('iReset; '+command+'; iScan child0.local 8; iApply\n', 'opaque', MODEL)
 

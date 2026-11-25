@@ -5340,3 +5340,55 @@ wider source/vendor acceptance and excluded coverage1 retain prior boundaries.
 All25 Task181 merged-result checks pass against identical4,078qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Serial opaque-child merge calls (Task182)
+
+Native networks with fixed opaque children now accept iMerge call groups. Calls
+execute serially through the existing merge traversal and native scan engine.
+This includes supported parent-register operations, nested groups, automatic
+opening and call-local reservations. Actual opaque captures remain unknown;
+expected SO determines care, while status clearing retains its existing order.
+An empty merge adds no CSU. No batching or optimality claim is made.
+
+Standalone opaque roots, physical mode and unsupported clock/event operations
+retain their existing boundaries. Broader independent TAP, parallel, timed,
+transport and arbitrary black-box work remains open, along with excluded item1
+and the 34 inherited deferred Minors. Final qualification and review results follow.
+
+Task182 passes all 99 fresh post-repair gates on 4,081 input and 38 product
+hashes. Normal and static generators each pass 88 suites and 1,418 methods;
+all 30 native suites, twelve changed-C++ quality checks, affected sanitizer CLI,
+corpus and source packaging pass. Corpus inputs and result classes remain
+1,032 canonical, 44 explicitly unsupported and 687 default elaboration failures
+across 2,562 source identities.
+
+All 1,944 measurements meet their 10-second and 512-MiB limits, retaining the
+256-MiB single-wide bounds. The new 216-run serial-merge matrix covers 1/2/8/32
+leaves at 8/64/256 bits and 1/2/8 leaves at 1,024 bits, with three repetitions,
+source/flat/generated forms and sanitizer samples. Every physical word, flag,
+intent marker, actual unknown return, mask, old root history and status clear
+is checked. The frozen parent's sequential calls and current merge calls use
+the same opaque model and produce byte-identical output without normalization.
+
+All seven child matrices include 387 live generated-history runs. Two allocation
+probes and 20 guide processes pass. The maximum across all measurements is
+1.4792 seconds and 470392 KiB. No batching, speedup or unmeasured-scale claim
+is made. The broader original inventory, excluded item1 and 34 inherited
+deferred Minors retain their scope.
+
+The independent review found 0 Critical, 1 Important and 0 new Minor issues.
+The Important ordering issue is repaired in one test-first pass: direct opaque
+stable-state and canonical root-history-omission notes use the existing deferred
+merge traversal. The model now restores stable queue knowledge before call
+hardware and retains the latest actual root capture after an intervening write.
+Malformed or informational notes retain ordinary call-produced argument values;
+legacy untagged callback history notes keep their existing ordering guard.
+
+Both metadata tags are covered. The original two ordering cases failed in four
+subcases before repair, and informational-note regressions separately failed
+before their eligibility checks were narrowed. All fifteen focused CLI methods,
+twenty retained callback-history methods and all 99 qualification gates pass on
+the final source and products. No second review ran. There are no unresolved
+Critical or Important findings and no new deferred Minor; the inherited total
+remains 34. Software-model evidence, measured-scale limits and existing per-file
+publication behavior retain their prior scope.

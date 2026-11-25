@@ -146,7 +146,7 @@ class ModelReadback {
         const bool merge_marker =
             op.command == "iMerge" && op.arguments.size() == 1 &&
             (op.arguments[0] == "-begin" || op.arguments[0] == "-end") &&
-            !physical_ && !opaque_ && !scheduler_->HasOpaqueChild();
+            !physical_ && !opaque_;
         if (!merge_marker && op.command != "iWrite" && op.command != "iRead" &&
             op.command != "iApply" && op.command != "iState" &&
             op.command != "iScan" && op.command != "iReset" &&

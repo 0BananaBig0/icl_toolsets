@@ -377,7 +377,7 @@ std::string Generate(
       if (physical || operation.command == "iClock" ||
           operation.command == "iClockOverride" ||
           operation.command == "iOverrideScanInterface" ||
-          operation.command == "iRunLoop" || operation.command == "iMerge") {
+          operation.command == "iRunLoop") {
         throw std::runtime_error(operation.origin +
                                  ": unsupported opaque child execution mode");
       }
@@ -824,7 +824,7 @@ std::string GenerateMerged(const pattern::Netlist& netlist,
   if (std::any_of(operations.begin(), operations.end(),
                   [](const auto& op) { return op.command == "iMerge"; }) &&
       pattern::ExpandOpaqueChild(netlist)) {
-    throw std::runtime_error("unsupported opaque child merge");
+    combine = false;
   }
   const bool raw =
       std::any_of(operations.begin(), operations.end(),

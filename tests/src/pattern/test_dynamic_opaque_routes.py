@@ -192,14 +192,14 @@ iNote [iGetStatus]
 ''',[b'0bxxxxxxxx',b'0b00000000',b'0'])
         self.assertEqual(sum(line.startswith(b'iScan ') for line in generated.splitlines()),2)
 
-    def test_general_opaque_merge_still_requires_its_existing_contract(self):
-        icl,pdl = self.root/'source.icl',self.root/'source.pdl'
-        icl.write_text(single())
-        pdl.write_text('''iPDLLevel 1
+    def test_empty_opaque_merge_preserves_root_history_without_extra_csu(self):
+        generated,_ = self.continued(single(),'''
 iReset; iScan client 1 -si 1 -so 0bx; iApply
 iMerge -begin; iMerge -end
-''')
-        self.assertIn('opaque',self.run_tool(icl,pdl,'bad.pdl',ok=False))
+''','''iNote [iGetReadData client -bin]; iNote [iGetStatus]
+if {![catch {iGetReadData child.local}]} {error {implicit child history invented}}
+''',[b'0b0',b'0'])
+        self.assertEqual(generated.count(b'\niApply\n'),1)
 
     def test_ordinary_parent_access_does_not_activate_an_inactive_opaque_leaf(self):
         for reclosed in (False,True):
