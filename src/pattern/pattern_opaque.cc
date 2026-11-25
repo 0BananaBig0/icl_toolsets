@@ -3,6 +3,7 @@
 #include "pattern/pattern_opaque.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -449,9 +450,10 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
   const auto input = root_pins.at("ScanInPort");
   std::set<size_t> active;
   std::map<Key, char> route;
+  std::map<Key, std::vector<Key>> successors;
+  std::vector<Key> postorder;
   std::set<size_t> registers;
   size_t width = 0;
-  bool has_mux = false;
   std::vector<std::pair<BitReference, bool>> pending_route{
       {root_pins.at("ScanOutPort"), false}};
   while (!pending_route.empty()) {
@@ -459,15 +461,21 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
     pending_route.pop_back();
     if (serial.node == input.node && serial.index == input.index) continue;
     if (serial.node >= netlist.nodes.size()) return {};
-    auto& color = route[{serial.node, serial.index}];
+    const Key key{serial.node, serial.index};
+    auto& color = route[key];
     if (complete) {
       color = 2;
+      postorder.push_back(key);
       continue;
     }
     if (color == 1) return {};
     if (color == 2) continue;
     color = 1;
     pending_route.emplace_back(serial, true);
+    const auto queue = [&](const BitReference& next) {
+      successors[key].emplace_back(next.node, next.index);
+      pending_route.emplace_back(next, false);
+    };
     const auto child = outputs.find(serial.node);
     if (child != outputs.end()) {
       if (active.insert(child->second).second) {
@@ -476,14 +484,13 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
         width += size;
       }
       const auto input = children[child->second].pins.at("ScanInPort");
-      pending_route.push_back({{input, netlist.nodes[input].left}, false});
+      queue({input, netlist.nodes[input].left});
       continue;
     }
     const auto& current = netlist.nodes[serial.node];
     if (current.kind == "ScanMux") {
-      has_mux = true;
       for (const auto& choice : current.choices) {
-        pending_route.emplace_back(choice.source[0], false);
+        queue(choice.source[0]);
       }
     } else if (current.kind == "ScanRegister") {
       if (serial.index != current.right ||
@@ -495,11 +502,11 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
         if (current.Width() > kMaxScanBits - width) return {};
         width += current.Width();
       }
-      pending_route.emplace_back(current.inputs.at("ScanInSource")[0], false);
+      queue(current.inputs.at("ScanInSource")[0]);
     } else {
       const auto next = source(serial);
       if (!next) return {};
-      pending_route.emplace_back(*next, false);
+      queue(*next);
     }
   }
   const auto register_count = std::count_if(
@@ -548,6 +555,12 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
     }
     return result;
   };
+  struct Requirement {
+    size_t child, gate;
+    bool active;
+  };
+  std::map<Key, size_t> gates;
+  std::vector<Requirement> requirements;
   for (const auto& current : netlist.nodes) {
     if (current.scope == 0 || current.kind != "SelectPort") continue;
     const auto end =
@@ -557,10 +570,97 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
     const bool direct = select != root_pins.end() &&
                         end->node == select->second.node &&
                         end->index == select->second.index && !end->inverted;
-    const bool held = has_mux && end->node < netlist.nodes.size() &&
+    const bool held = end->node < netlist.nodes.size() &&
                       netlist.nodes[end->node].kind == "ScanRegister" &&
                       !child_scopes.count(netlist.nodes[end->node].scope);
     if (!direct && !held) return {};
+    const auto opaque = child_scopes.find(current.scope);
+    if (!direct && opaque != child_scopes.end()) {
+      const auto gate =
+          gates.emplace(Key{end->node, end->index}, gates.size()).first;
+      requirements.push_back({opaque->second, gate->second, !end->inverted});
+    }
+  }
+  if (!gates.empty()) {
+    struct Edge {
+      size_t node, gate;
+      bool value;
+    };
+    struct Conditions {
+      uint64_t zero = 0, one = 0;
+      bool reached = false;
+    };
+    std::map<Key, size_t> indices;
+    for (size_t i = 0; i < postorder.size(); ++i) {
+      indices.emplace(postorder[i], i);
+    }
+    std::vector<std::vector<Edge>> graph(postorder.size());
+    const Key sink{input.node, input.index};
+    for (size_t i = 0; i < postorder.size(); ++i) {
+      const auto& node = netlist.nodes[postorder[i].first];
+      std::optional<BitReference> selected;
+      if (node.kind == "ScanMux") {
+        selected = terminal(node.inputs.at("SelectedBy")[0]);
+        if (!selected) return {};
+      }
+      const auto& next = successors.at(postorder[i]);
+      for (size_t arm = 0; arm < next.size(); ++arm) {
+        if (next[arm] == sink) continue;
+        size_t gate = gates.size();
+        bool value = false;
+        if (selected) {
+          const bool code = node.choices[arm].codes[0].data[0] == '1';
+          if (selected->node >= netlist.nodes.size() &&
+              selected->virtual_signal == VirtualSignal::kNone &&
+              (selected->constant == '0' || selected->constant == '1') &&
+              code != ((selected->constant == '1') != selected->inverted)) {
+            continue;
+          }
+          const auto found = gates.find({selected->node, selected->index});
+          if (found != gates.end()) {
+            gate = found->second;
+            value = code != selected->inverted;
+          }
+        }
+        graph[i].push_back({indices.at(next[arm]), gate, value});
+      }
+    }
+    const auto output = root_pins.at("ScanOutPort");
+    // Prove 64 held selectors together; joins retain only necessary conditions.
+    for (size_t first = 0; first < gates.size(); first += 64) {
+      std::vector<Conditions> conditions(postorder.size());
+      conditions[indices.at({output.node, output.index})].reached = true;
+      for (size_t i = postorder.size(); i-- > 0;) {
+        if (!conditions[i].reached) continue;
+        for (const auto& edge : graph[i]) {
+          auto path = conditions[i];
+          if (edge.gate < gates.size() && edge.gate >= first &&
+              edge.gate - first < 64) {
+            const uint64_t mask = uint64_t{1} << (edge.gate - first);
+            if ((edge.value ? path.zero : path.one) & mask) continue;
+            (edge.value ? path.one : path.zero) |= mask;
+          }
+          auto& target = conditions[edge.node];
+          if (!target.reached) {
+            target = path;
+          } else {
+            target.zero &= path.zero;
+            target.one &= path.one;
+          }
+        }
+      }
+      for (const auto& required : requirements) {
+        if (required.gate < first || required.gate - first >= 64) continue;
+        const auto pin = children[required.child].pins.at("ScanOutPort");
+        const auto& result =
+            conditions[indices.at({pin, netlist.nodes[pin].left})];
+        const uint64_t mask = uint64_t{1} << (required.gate - first);
+        if (!result.reached ||
+            !((required.active ? result.one : result.zero) & mask)) {
+          return {};
+        }
+      }
+    }
   }
   struct Use {
     Key bit;

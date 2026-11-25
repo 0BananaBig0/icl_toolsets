@@ -15,6 +15,11 @@ def single():
     return source.replace("Port reset; }","Port reset; DefaultLoadValue 8'b0; }",1).replace('Module Top','Module Chains')
 
 
+def mixed():
+    visible = helpers.model().split('Module Chains {',1)[0].replace('Module Leaf','Module Visible')
+    return visible+model(2,8).replace('Instance child1 Of Leaf','Instance child1 Of Visible')
+
+
 class DynamicOpaqueRoutes(unittest.TestCase):
     setUp = helpers.ModeledChildPrefix.setUp
     run_tool = helpers.ModeledChildPrefix.run_tool
@@ -195,6 +200,113 @@ iReset; iScan client 1 -si 1 -so 0bx; iApply
 iMerge -begin; iMerge -end
 ''')
         self.assertIn('opaque',self.run_tool(icl,pdl,'bad.pdl',ok=False))
+
+    def test_ordinary_parent_access_does_not_activate_an_inactive_opaque_leaf(self):
+        for reclosed in (False,True):
+            for command in ('iWrite head 5','iRead head 0'):
+                with self.subTest(reclosed=reclosed,command=command):
+                    prefix = 'iReset; iScan client 9 -si '+('0b000100000' if reclosed else '0')+' -so 0bx; iApply\n'
+                    if reclosed:
+                        prefix += '''iScan child0.local 8 -si 165 -so 0bx; iApply
+iScan client 17 -si 0 -so 0bx; iApply
+'''
+                    prefix += command+'; iApply\n'
+                    old_root = b'0b000xxxxxxxx100000' if reclosed else b'0b000000000'
+                    generated,reference = self.continued(model(),prefix,
+                        'iNote [iGetReadData client -bin]; iNote [iGetStatus]\n',[old_root,b'0'])
+                    self.assertEqual(generated.count(b'\niApply\n'),4 if reclosed else 2)
+                    twin = self.root/'twin.icl';twin.write_text(model(visible=True))
+                    control = self.run_tool(twin,self.root/'full.pdl','twin.pdl')
+                    self.assertEqual(reference.replace(b'modeled opaque child raw history ',
+                                                       b'modeled dynamic child raw history '),control)
+
+    def test_modeled_child_history_survives_an_inactive_opaque_sibling(self):
+        generated,_ = self.continued(mixed(),'''iReset
+iScan client 10 -si 0b0000100000 -so 0bx; iApply
+iScan child1.local 8 -si 165 -so 0; iApply
+''','''iNote [iGetReadData child1.local -bin]; iNote [iGetMiscompares child1.local -bin]
+iNote [iGetReadData client -bin]; iNote [iGetStatus]
+if {![catch {iGetReadData child0.local}]} {error {inactive opaque history invented}}
+''',[b'0b00000000',b'0b00000000',b'0b0000000000',b'0'])
+        self.assertIn(b'modeled dynamic child raw history client child1.local 0b00000000',generated)
+
+    def test_mixed_requests_keep_both_history_families_and_default_regeneration(self):
+        generated,_ = self.continued(mixed(),'''iReset
+iScan client 10 -si 0b0001100000 -so 0bx; iApply
+iScan child0.local 8 -si 60 -so 0bx
+iScan child1.local 8 -si 165 -so 0; iApply
+''','''iNote [iGetReadData child1.local -bin]; iNote [iGetMiscompares child1.local -bin]
+iNote [iGetReadData child0.local -bin]; iNote [iGetMiscompares child0.local -bin]
+iNote [iGetStatus]
+''',[b'0b00000000',b'0b00000000',b'0bxxxxxxxx',b'0b00000000',b'0'])
+        self.assertIn(b'modeled dynamic child raw history client child1.local 0b00000000',generated)
+        self.assertIn(b'modeled opaque child raw history client child0.local 0bxxxxxxxx',generated)
+        self.assertEqual(self.run_tool(self.root/'source.icl',self.root/'prefix.pdl',
+                                      'default.pdl',modeled=False),generated)
+
+    def test_identical_mux_arms_do_not_qualify_as_an_opaque_bypass(self):
+        for upstream in (False,True):
+            with self.subTest(upstream=upstream):
+                source = model().replace("CaptureSource enable0; ResetValue 0;",
+                                         "CaptureSource enable0; ResetValue 1;")
+                source = source.replace("DefaultLoadValue 9'b0;","DefaultLoadValue 17'b0;")
+                if upstream:
+                    source = source.replace('InputPort si = head[0];','InputPort si = route0;')
+                    source = source.replace("1'b1: child0.so;","1'b1: head[0];")
+                    source = source.replace('ScanInSource route0;','ScanInSource child0.so;')
+                else:
+                    source = source.replace("1'b0: head[0];","1'b0: child0.so;")
+                icl,pdl = self.root/'source.icl',self.root/'source.pdl'
+                icl.write_text(source)
+                pdl.write_text('iPDLLevel 1\niReset; iScan child0.local 8 -si 1 -so 0bx; iApply\n')
+                self.assertIn('raw scan',self.run_tool(icl,pdl,'bad.pdl',ok=False))
+
+    def test_real_bypass_is_independent_of_mux_choice_order(self):
+        source = single().replace("1'b0: si; 1'b1: child.so;",
+                                  "1'b1: child.so; 1'b0: si;")
+        self.continued(source,'''iReset
+iScan client 1 -si 1 -so 0bx; iApply
+iScan child.local 8 -si 165 -so 0bx; iApply
+''','iNote [iGetReadData child.local -bin]; iNote [iGetStatus]\n',
+            [b'0bxxxxxxxx',b'0'])
+
+    def test_static_modeled_child_with_opaque_sibling_keeps_history(self):
+        visible = helpers.model().split('Module Chains {',1)[0].replace('Module Leaf','Module Visible')
+        opaque = model().split('Module Chains {',1)[0]
+        root = helpers.model(2,8).split('Module Chains {',1)[1]
+        source = opaque+visible+'Module Chains {'+root.replace('Instance child1 Of Leaf','Instance child1 Of Visible')
+        generated,_ = self.continued(source,'''iReset
+iScan child1.local 8 -si 165 -so 0; iApply
+''','''iNote [iGetReadData child1.local -bin]; iNote [iGetMiscompares child1.local -bin]
+iNote [iGetStatus]
+if {![catch {iGetReadData child0.local}]} {error {implicit opaque history invented}}
+''',[b'0b00000000',b'0b00000000',b'0'])
+        self.assertIn(b'modeled child raw history client child1.local 0b00000000',generated)
+
+    def test_selector_correlations_cannot_create_a_fictitious_bypass(self):
+        source = model().replace("CaptureSource enable0; ResetValue 0;",
+                                 "CaptureSource enable0; ResetValue 1;")
+        source = source.replace("DefaultLoadValue 9'b0;","DefaultLoadValue 17'b0;")
+        source = source.replace(
+            "ScanMux route0 SelectedBy enable0 {1'b0: head[0]; 1'b1: child0.so;}",
+            "ScanMux route0 SelectedBy enable0 {1'b0: child0.so; 1'b1: alternate;}\n"
+            " ScanMux alternate SelectedBy enable0 {1'b0: head[0]; 1'b1: child0.so;}")
+        icl,pdl = self.root/'source.icl',self.root/'source.pdl'
+        icl.write_text(source)
+        pdl.write_text('iPDLLevel 1\niReset; iScan child0.local 8 -si 1 -so 0bx; iApply\n')
+        self.assertIn('raw scan',self.run_tool(icl,pdl,'bad.pdl',ok=False))
+
+    def test_bypass_proof_batches_more_than_sixty_four_held_selectors(self):
+        opened = '0b101'+'1'*65+'10011'
+        generated,_ = self.continued(model(65,1),
+            'iReset; iScan client 73 -si '+opened+''' -so 0bx; iApply
+iScan child0.local 1 -si 1 -so 0bx
+iScan child64.local 1 -si 0 -so 0bx; iApply
+''','''iNote [iGetReadData child0.local -bin]; iNote [iGetReadData child64.local -bin]
+iNote [iGetMiscompares child0.local -bin]; iNote [iGetMiscompares child64.local -bin]
+iNote [iGetStatus]
+''',[b'0bx',b'0bx',b'0b0',b'0b0',b'0'])
+        self.assertEqual(sum(line.startswith(b'iScan ') for line in generated.splitlines()),2)
 
 
 if __name__=='__main__':

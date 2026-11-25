@@ -10491,8 +10491,8 @@ timed topologies and hardware transport retain their existing requirements.
 See the [qualification record](remaining-work.md#task179-dynamic-scalar-routes-with-fixed-opaque-leaves).
 
 All83qualification gates pass on4,072input/38product hashes. Both normal/static
-generators pass85suites/1,371methods. All30native normal/SAN suites,
-9changed-C++quality checks,14dynamic-opaque methods per build, existing
+generators pass85suites/1,379methods. All30native normal/SAN suites,
+15changed-C++quality checks,22dynamic-opaque methods per build, existing
 focused history suites, affected sanitizer CLI and source packaging pass.
 The corpus retains1,032canonical/44explicit unsupported/687default elaboration
 failures across2,562source identities. Final input and product hashes agree.
@@ -10504,7 +10504,7 @@ with three repetitions and sanitizer samples. Every run checks13physical scans,
 alternating route widths, complete unknown child words, masks, known root words
 and status. There are228live generated-history processes across four child
 matrices. Two allocation probes and eight guide processes pass. The measured
-maximum across1,344processes is0.8191s/446532KiB.
+maximum across1,344processes is0.8180s/446892KiB.
 No speedup or unmeasured-scale claim is made.
 
 The new parent control is a fully modeled unknown-capture twin. Opaque dynamic
@@ -10519,3 +10519,16 @@ validator expected zero comparison masks. The workload's real masks are uncared
 X. The runner now consumes the fixture's expected history word; no output or
 bound was relaxed. The failed rows remain recorded, and final gates were run
 fresh after the correction.
+
+Final independent review found0Critical/3Important/1Minor. All three Important
+findings are fixed in one test-first repair wave: ordinary parent access leaves
+inactive opaque queues untouched; modeled siblings retain actual histories in
+mixed networks; eligibility proves a genuine bypass using canonical selectors.
+The last proof tracks necessary selector conditions in64-bit batches, rejecting
+contradictory choices at shared gates. Its65-selector boundary is tested; more
+complex valid correlations may be conservatively rejected. No rereview ran.
+The final83fresh gates include22focused methods per build and15C++quality checks.
+There are0unresolved Critical/Important findings and32deferred Minors. The new
+Minor concerns narrative wording: expected SO care words contain uncared X,
+whereas returned miscompare masks are zero. Tests and worked examples distinguish
+these correctly; that wording correction and31inherited Minors remain deferred.

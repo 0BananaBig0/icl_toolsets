@@ -54,7 +54,7 @@ serialization continue consuming existing opaque metadata and actual callbacks.
   affected sanitizer CLI, corpus, changed-C++quality and packaging. Validate
   all prior/new matrices and exact qualified input/product hashes. Expected all
   pass with no changed corpus class unless a valid new case is explicitly ruled.
-- [ ] Step5: Commit finalized selected diff and obtain one fresh whole-branch
+- [x] Step5: Commit finalized selected diff and obtain one fresh whole-branch
   review. Re-grade, fix blockers once test-first, qualify final state and record
   all rulings/Minors. Expected0unresolved Critical/Important without rereview.
 - [ ] Step6: Merge/push master, verify merged hashes/checks, detach reused tree,

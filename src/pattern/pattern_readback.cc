@@ -68,7 +68,7 @@ class ModelReadback {
     }
     callback_storage_.resize(netlist.nodes.size(), false);
     modeled_children_ =
-        !opaque_ && !scheduler_->HasOpaqueChild() &&
+        !opaque_ &&
         std::any_of(
             netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
               return node.scope && node.scan_interface &&

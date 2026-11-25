@@ -622,9 +622,6 @@ std::string Generate(
           append_steps(preparations);
           for (const auto& scan : applied) result += OperationText(scan);
           result += together ? "iApply -together\n" : "iApply\n";
-          for (const auto& note : scheduler.OpaqueScanNotes()) {
-            result += OperationText(note);
-          }
           if (applied.size() == 1) {
             for (const auto& scan : scans) {
               if (scan.arguments.size() < 6) continue;
@@ -649,6 +646,9 @@ std::string Generate(
               }
             }
             last_root_scan = std::move(applied.front());
+          }
+          for (const auto& note : scheduler.OpaqueScanNotes()) {
+            result += OperationText(note);
           }
           clocks.Invalidate();
           pending_scans.clear();

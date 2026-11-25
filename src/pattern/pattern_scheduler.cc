@@ -1258,7 +1258,8 @@ class ScanScheduler::Impl {
   std::optional<RawHistoryProjection> ModeledRawHistory(
       const Operation& note, const Operation& root_scan) {
     const auto parsed = ReadModeledChildHistoryNote(source_, note);
-    if (!parsed || opaque_model_ || tap_ || root_scan.command != "iScan" ||
+    if (!parsed || (opaque_model_ && opaque_queues_.count(parsed->client)) ||
+        tap_ || root_scan.command != "iScan" ||
         (root_scan.arguments.size() != 6 &&
          !(root_scan.arguments.size() == 7 &&
            root_scan.arguments.back() == "-stable"))) {
@@ -2338,7 +2339,7 @@ class ScanScheduler::Impl {
     }
     const size_t width = root.width;
     std::shared_ptr<const RawProfile> history;
-    if (root.dynamic && !opaque_model_) {
+    if (root.dynamic) {
       history = std::make_shared<RawProfile>(root);
     }
     auto result =
@@ -2944,7 +2945,9 @@ class ScanScheduler::Impl {
     auto queues = opaque_queues_;
     std::vector<Operation> completions;
     auto expanded = operations;
+    const auto& route = RawChain();
     for (const auto& interval : opaque_model_->intervals) {
+      if (!route.indices.count(interval.storage)) continue;
       auto complete =
           queues.at(interval.client)
               .Complete({"iApply", {}, "opaque child parent completion", {}});

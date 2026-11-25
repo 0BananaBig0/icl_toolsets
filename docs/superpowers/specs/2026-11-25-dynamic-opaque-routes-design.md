@@ -31,6 +31,14 @@ stays within1048576bits. Charge each distinct register/opaque leaf once; avoid
 recursive depth or repeated complete scans. Native RawTemplate/RawRoute still
 validate actual scalar controls and the selected pre-CSU route.
 
+For a conditionally selected opaque leaf, reaching its output must require its
+held selection to be active. Preserve canonical selector identity and inversion
+across muxes; contradictory assignments cannot establish a bypass. A batched
+necessary-condition proof processes64held selector bits together with memory
+linear in the graph. Failure to establish this condition rejects the expansion;
+it does not enable an uncertain route. Larger unmeasured networks retain the
+original item10 performance work.
+
 Extend private-output consumer validation through mux data arms. Opaque output
 must remain serial payload: using it as a selector, reset, capture value or
 user-visible modeled output remains rejected. Preserve current aliases,
