@@ -10217,3 +10217,42 @@ and scales beyond the recorded matrices remain unqualified.
 All10 Task174 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Logical root history scope (Task175)
+
+Keep generated pre-scan scope comments when continuing child-only prefixes:
+
+```tcl
+iNote -comment "modeled raw history omitted iScan client 16 -si 0b1011010010110011 -so 0bxxxxxxxxxxxxxxxx -stable"
+iScan client 16 -si 0b1011010010110011 -so 0bxxxxxxxxxxxxxxxx -stable
+iApply
+```
+
+The root scan performs the physical child access. The exact adjacent comment
+keeps that physical operation outside logical root history: a previously
+absent root history stays absent, and an earlier root read/miscompare history
+stays unchanged. Comparisons and global status still execute normally.
+Explicit root requests retain their histories. No observations are supplied
+by the comment; existing opaque-child history annotations remain necessary.
+
+Both standard comment/status tags and matching duplicates work. Changed
+commands or intervening operations prevent a note from hiding another scan's
+history. Source, flattened and generated continuation checks cover modeled
+and fixed opaque scalar children, including unavailable-provider behavior.
+The separate evaluated in-prefix status-clear limitation recorded under
+Task174 remains open. See the
+[qualification record](remaining-work.md#task175-logical-root-histories-after-child-lowering).
+
+The independent review finds0Critical/3Important/0Minor. All three Important
+findings are fixed in one test-first pass. Truncated or noncanonical scope
+annotations cannot hide source histories. Unconsumed reserved comment/status
+notes receive one informational prefix in output, preserving their original
+tag and visible text while preventing normalization, ownership elision or
+queue replacement from activating them on replay. Repeated generation stays
+byte-stable. Native returned scope now comes from the winning root request,
+matching the committed subscriber. CLI tests reproduce nine failures before
+the fixes and pass all32methods afterward; the native overwrite test changes
+from one failure to zero. All65gates pass fresh after the code changes, with
+both81x1,314generator variants,30native suites,24quality checks and696measured
+processes. No rereview runs; the29inherited Minors remain deferred.

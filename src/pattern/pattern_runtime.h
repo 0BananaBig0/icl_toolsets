@@ -41,6 +41,8 @@ struct Operation {
   bool callback_prerequisite = false;
   // Logical request indexes consumed by this callback expansion.
   std::vector<size_t> callback_consumed{};
+  // Physical-only raw scan, or its consumed scope note; comparisons still run.
+  bool raw_history_omitted = false;
 };
 
 struct ReadbackUpdate {

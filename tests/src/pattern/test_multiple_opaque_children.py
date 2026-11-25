@@ -57,6 +57,147 @@ iNote [iGetMiscompares child1.local -bin]
                 self.assertEqual(reference, replay)
                 self.assertEqual(self.notes(replay), expected)
 
+    def test_child_only_prefix_does_not_invent_root_history(self):
+        for count in (1, 2):
+            with self.subTest(children=count):
+                prefix = 'iReset; iWrite head 5; iWrite tail 19; iApply\n'
+                for child in range(count):
+                    prefix += 'iScan child%d.local 8 -si 165 -stable\n' % child
+                prefix += 'iApply\n'
+                suffix = '''foreach getter {iGetReadData iGetMiscompares} {
+ if {![catch {$getter client}]} {error {physical root history invented}}
+}
+iNote absent; iNote [iGetStatus]
+'''
+                icl, first = self.files(prefix, model([8]*count))
+                self.run_tool(icl, first, 'prefix.pdl')
+                _, full = self.files(prefix+suffix, model([8]*count))
+                reference = self.run_tool(icl, full, 'source-tail.pdl')
+                tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+                replay = self.run_tool(icl, self.root/'prefix.pdl', 'prefix-tail.pdl',
+                                       extra=('--pdl', str(tail)))
+                self.assertEqual(reference, replay)
+                self.assertEqual(self.notes(replay), ['absent','0'])
+
+    def test_child_prefix_preserves_previous_root_masks_and_count(self):
+        prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan client 24 -si 0b101000000000000000010011 -so 0b000xxxxxxxxxxxxxxxx00000 -stable; iApply
+iScan child0.local 8 -si 165 -stable; iApply
+iScan child1.local 8 -si 60 -stable; iApply; iReset
+'''
+        suffix = '''iNote [iGetReadData client -bin]
+iNote [iGetMiscompares client -bin]
+iNote [iGetReadData child0.local -bin]; iNote [iGetReadData child1.local -bin]
+iNote [iGetStatus -clear]; iNote [iGetStatus]
+'''
+        icl, first = self.files(prefix, MODEL)
+        self.run_tool(icl, first, 'prefix.pdl')
+        _, full = self.files(prefix+suffix, MODEL)
+        reference = self.run_tool(icl, full, 'source-tail.pdl')
+        tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+        replay = self.run_tool(icl, self.root/'prefix.pdl', 'prefix-tail.pdl',
+                               extra=('--pdl', str(tail)))
+        self.assertEqual(reference, replay)
+        self.assertEqual(self.notes(replay), ['0b101'+'x'*16+'10011',
+                         '0b101'+'0'*16+'10011','0bxxxxxxxx','0bxxxxxxxx','5','0'])
+
+    def test_scope_comments_are_exact_typed_and_idempotent(self):
+        prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 165 -stable; iApply
+'''
+        suffix = '''if {![catch {iGetReadData client}]} {error {root history invented}}
+iNote [iGetReadData child0.local -bin]; iNote [iGetStatus]
+'''
+        icl, first = self.files(prefix, MODEL)
+        generated = self.run_tool(icl, first, 'prefix.pdl')
+        marker = next(line for line in generated.splitlines()
+                      if line.startswith('iNote -comment "modeled raw history omitted '))
+        self.assertIn(marker+'\niScan client ', generated)
+        _, full = self.files(prefix+suffix, MODEL)
+        reference = self.run_tool(icl, full, 'reference.pdl')
+        tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+        for tag in ('-comment','-status'):
+            with self.subTest(tag=tag):
+                note = marker.replace('-comment',tag,1)
+                annotated = self.root/'annotated.pdl'
+                annotated.write_text(generated.replace(marker,note+'\n'+note))
+                replay = self.run_tool(icl, annotated, 'replayed.pdl', extra=('--pdl',str(tail)))
+                self.assertEqual(reference,replay)
+                self.assertEqual(replay.count('modeled raw history omitted '),1)
+                self.assertEqual(self.notes(replay),['0bxxxxxxxx','0'])
+
+    def test_bad_or_stale_scope_notes_cannot_hide_an_explicit_root_scan(self):
+        scan = 'iScan client 24 -si 0 -so 0b000xxxxxxxxxxxxxxxx00000 -stable'
+        marker = 'iNote -comment {modeled raw history omitted '+scan+'}'
+        cases = [marker.replace('client 24','missing 24'),
+                 marker.replace('-si 0','-si 1'),marker.replace(' -stable}',' -stable extra}'),
+                 marker.replace('-comment','-bad'),marker+'; iReset',
+                 marker+'; iNote intervening',marker+'; iWrite head 5; iApply']
+        for note in cases:
+            with self.subTest(note=note):
+                result = self.replay('iReset; iWrite head 5; iWrite tail 19; iApply\n'+
+                    note+'\n'+scan+'''; iApply
+iNote [iGetReadData client -bin]; iNote [iGetMiscompares client -bin]
+''',MODEL)
+                self.assertEqual(self.notes(result)[-2:],
+                    ['0b101'+'x'*16+'10011','0b101'+'0'*16+'10011']
+                    if '; iReset' not in note else ['0b000'+'x'*16+'00000','0b'+'0'*24])
+
+    def test_omitted_root_history_stays_absent_without_a_provider(self):
+        prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 165 -stable; iApply
+'''
+        icl, first = self.files(prefix,MODEL)
+        self.run_tool(icl,first,'prefix.pdl',modeled=False)
+        tail = self.root/'tail.pdl'
+        tail.write_text('''iPDLLevel 1
+if {![catch {iGetReadData client} message] || [string first {preceding applied iScan} $message] < 0} {
+ error {physical root acquired unobserved history}
+}
+iNote absent
+''')
+        result = self.run_tool(icl,self.root/'prefix.pdl','unobserved.pdl',
+                               modeled=False,extra=('--pdl',str(tail)))
+        self.assertEqual(self.notes(result),['absent'])
+
+    def test_unconsumed_scope_notes_cannot_activate_after_generation(self):
+        source = (base.cli.ROOT/'tests/cases/ours/pattern_generation/gated_sib_raw/model.icl').read_text()
+        canonical = 'iScan client 1 -si 0b0 -so 0b1'
+        for tag in ('-comment','-status'):
+            for intervening,scan in (('', 'iScan client 1 -si 0 -so 1'),
+                                     ('iTake open; iRelease open; ',canonical),
+                                     ('iScan client 1 -si 0b1 -so 0b0; ',canonical)):
+                with self.subTest(tag=tag,intervening=intervening,scan=scan):
+                    marker = 'iNote '+tag+' {modeled raw history omitted '+canonical+'}\n'
+                    prefix = 'iReset\n'+marker+intervening+scan+'; iApply\n'
+                    suffix = '''iNote [iGetReadData client -bin]
+iNote [iGetMiscompares client -bin]; iNote [iGetStatus]
+'''
+                    icl,first = self.files(prefix,source)
+                    generated = self.run_tool(icl,first,'prefix.pdl')
+                    _,full = self.files(prefix+suffix,source)
+                    reference = self.run_tool(icl,full,'reference.pdl')
+                    tail = self.root/'tail.pdl';tail.write_text('iPDLLevel 1\n'+suffix)
+                    replay = self.run_tool(icl,self.root/'prefix.pdl','replay.pdl',
+                                           extra=('--pdl',str(tail)))
+                    self.assertEqual(reference,replay)
+                    self.assertEqual(self.notes(replay),['0b0','0b1','1'])
+                    self.assertIn('iNote '+tag+' "informational modeled raw history omitted '+canonical+'"',generated)
+                    again = self.run_tool(icl,self.root/'prefix.pdl','again.pdl')
+                    self.assertEqual(generated,again)
+
+    def test_short_or_noncanonical_scope_note_cannot_hide_source_root_history(self):
+        source = (base.cli.ROOT/'tests/cases/ours/pattern_generation/gated_sib_raw/model.icl').read_text()
+        for scan,expected in (('iScan client 1',['0b0','0b0','0']),
+                              ('iScan client 1 -si 0 -so 1',['0b0','0b1','1']),
+                              ('iScan client 1 -si 0b0',['0b0','0b0','0'])):
+            with self.subTest(scan=scan):
+                result = self.replay('iReset\niNote -comment {modeled raw history omitted '+scan+'}\n'+
+                    scan+'''; iApply
+iNote [iGetReadData client -bin]; iNote [iGetMiscompares client -bin]; iNote [iGetStatus]
+''',source)
+                self.assertEqual(self.notes(result),expected)
+
     def test_prefix_history_persists_without_inventing_sibling_scope(self):
         prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
 iScan child0.local 8 -si 0xa5 -stable; iApply

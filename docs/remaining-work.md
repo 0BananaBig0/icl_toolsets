@@ -802,3 +802,59 @@ and scales beyond the recorded matrices remain unqualified.
 All10 Task174 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Task175 logical root histories after child lowering
+
+Child-only scalar raw scans no longer create a logical root-interface history
+through generated-prefix replay. Earlier root read data and miscompare masks
+also remain unchanged, matching source execution. This covers modeled and
+fixed opaque children. Explicit root scans retain their ordinary histories.
+
+Native lowering marks the physical-only root operation. A quoted pre-scan
+comment contains the exact canonical command, including input, comparison and
+stable option. Runtime binds adjacent matching comment/status notes to the
+root scan; malformed, mismatched or stale notes remain informational. Replay
+regenerates one canonical comment even for matching duplicates. The provider
+still samples and counts every physical comparison, omitting only publication
+of the physical root's logical history. No data snapshot, extra CSU or failure
+recount is introduced. Existing opaque-child identity comments still restore
+their explicitly requested unknown histories.
+
+Immutable-parent regressions reproduce three opaque and two modeled failures
+for absent and earlier root histories. All32opaque focused methods and19modeled
+raw methods pass, covering suffix status/clear, reset persistence, exact typed
+metadata, stale notes and provider-unavailable behavior. Six reporter methods
+retain strict hardware counts and matching hand-derived parent comments.
+
+All65qualification gates pass on4,062input/38product hashes:81suites/
+1,314methods per full normal/static generator,30native suites,24C++quality
+checks, affected SAN CLI, corpus and source packaging. All696matched timing/
+RSS processes pass unchanged bounds, including57multiple-child generated
+processes with live getters. Peak across owners is1.1189s/
+444584KiB. The two8,200bit-root allocation probes retain counts
+[56, 56]; four guide processes agree. No speedup is claimed.
+All65gates rerun fresh after the independent review fixes; both81-suite
+generator variants execute in full with no suite reuse. Earlier passing runs,
+assertion failures and parent-fixture correction evidence remain separate.
+Corpus identities/classifications remain1,032canonical,44unsupported
+AccessLink and687default elaboration failures across2,562identities.
+
+The inherited loss of an evaluated in-prefix iGetStatus -clear remains the
+next separate inventory6 fix. This increment closes logical root-history
+absence/preservation on these routes, not general callback/local/transport
+history parity or broader topology/timing acceptance. Original2–8/10–12remain
+open,1excluded and29Minors deferred. Final review/integration follow below.
+
+The independent review finds0Critical/3Important/0Minor. All three Important
+findings are fixed in one test-first pass. Truncated or noncanonical scope
+annotations cannot hide source histories. Unconsumed reserved comment/status
+notes receive one informational prefix in output, preserving their original
+tag and visible text while preventing normalization, ownership elision or
+queue replacement from activating them on replay. Repeated generation stays
+byte-stable. Native returned scope now comes from the winning root request,
+matching the committed subscriber. CLI tests reproduce nine failures before
+the fixes and pass all32methods afterward; the native overwrite test changes
+from one failure to zero. All65gates pass fresh after the code changes, with
+both81x1,314generator variants,30native suites,24quality checks and696measured
+processes. No rereview runs; the29inherited Minors remain deferred.

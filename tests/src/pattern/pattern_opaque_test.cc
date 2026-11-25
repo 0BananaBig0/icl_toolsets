@@ -299,7 +299,13 @@ void TestOpaqueHistorySnapshotCopiesResetAndSubscriber() {
           "ordinary frame does not authorize a raw history annotation");
   auto request = ChildScan("165");
   request.arguments[5] = "0b10xx0011";
-  scheduler.ApplyScan(request);
+  const auto physical = scheduler.ApplyScan(request);
+  Require(physical.raw_history_omitted,
+          "child lowering keeps physical root outside logical history scope");
+  pattern::Operation explicit_root{"iScan", physical.arguments, "root", {}};
+  auto root_copy = scheduler;
+  Require(!root_copy.ApplyScan(explicit_root).raw_history_omitted,
+          "explicit root request retains its logical history");
   const auto actual = scheduler.OpaqueRawHistory(note);
   Require(actual && actual->target == "child.local" && actual->chain.empty() &&
               actual->read == "xxxxxxxx" && actual->miscompare == "xx00xxxx",
@@ -330,6 +336,31 @@ void TestOpaqueHistorySnapshotCopiesResetAndSubscriber() {
       !copied.OpaqueRawHistory(note) && committed &&
           committed->miscompare == "00000000",
       "subscriber failure retains newly committed snapshot without recounting");
+}
+void TestRawHistoryScopeUsesWinningRequest() {
+  pattern::Design design;
+  design.AddIcl("scope.icl", kOpaqueChild);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (bool omitted : {false, true}) {
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    pattern::Operation first{
+        "iScan", {"client", "16", "-si", "0", "-so", "0"}, "scope", {}};
+    first.raw_history_omitted = omitted;
+    auto last = first;
+    last.raw_history_omitted = !omitted;
+    size_t observed = 0;
+    const auto physical = scheduler.ApplyScans(
+        {first, last}, {}, nullptr, nullptr,
+        [&](const auto& operation, const auto&) {
+          ++observed;
+          Require(operation.raw_history_omitted == last.raw_history_omitted,
+                  "subscriber receives winning root scope");
+        });
+    Require(observed == 1 &&
+                physical.raw_history_omitted == last.raw_history_omitted,
+            "returned physical root scope matches the winning request");
+  }
 }
 void TestUnusedOpaqueChildDoesNotChangePrimaryPaths() {
   const auto leaf = kOpaqueChild.substr(0, kOpaqueChild.find("Module Top"));
@@ -694,6 +725,7 @@ int main() {
         TestMultipleOpaqueChildDefaults, TestMultipleOpaqueAggregateLimit,
         TestMultipleOpaqueCopiesRollbackAndSubscriber,
         TestOpaqueHistorySnapshotCopiesResetAndSubscriber,
+        TestRawHistoryScopeUsesWinningRequest,
         TestUnusedOpaqueChildDoesNotChangePrimaryPaths,
         TestOpaqueExpansionRequiresActiveStaticRoute,
         TestCallbackCallerFrameProof, TestOpaqueChildNativeStateAndPrivacy,

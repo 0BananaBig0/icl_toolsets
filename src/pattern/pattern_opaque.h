@@ -17,6 +17,8 @@
 #include "pattern/pattern_runtime.h"
 
 namespace pattern {
+bool IsRawHistoryOmissionNote(const Operation& note);
+std::string RawHistoryOmissionText(const Operation& scan);
 inline constexpr char kOpaqueChildHistoryNote[] =
     "modeled opaque child raw history ";
 struct OpaqueChildHistoryNote {

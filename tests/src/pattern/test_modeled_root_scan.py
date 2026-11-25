@@ -47,7 +47,7 @@ class ModeledRootScan(unittest.TestCase):
         result = self.replay('iReset; iScan client 8 -si 0xa5; iApply\n'
                              'iRead value 0xa5; iApply; iWrite value 0x3c; iApply\n'
                              'iScan client 8 -si 0xa5 -so 0x3c -stable; iApply\n')
-        self.assertEqual(result.count('iScan '), 2)
+        self.assertEqual(sum(line.startswith('iScan ') for line in result.splitlines()), 2)
         self.assertIn('iRead value 0b10100101', result)
         self.assertIn('iWrite value 0b00111100', result)
         self.assertIn('-so 0b00111100 -stable', result)
@@ -66,14 +66,14 @@ class ModeledRootScan(unittest.TestCase):
     def test_reset_and_discard_only_replay(self):
         result = self.replay('iReset; iScan client 8 -si 0xa5; iReset; iApply\n'
                              'iScan client 8 -si 0x5a; iApply\n')
-        self.assertEqual(result.count('iScan '), 1)
+        self.assertEqual(sum(line.startswith('iScan ') for line in result.splitlines()), 1)
         self.assertIn('-si 0b01011010', result)
         self.replay('iReset; iScan client 8 -si 0xa5; iReset; iApply\n')
 
     def test_overwrite_and_explicit_capture(self):
         result = self.replay('iReset; iScan client 8 -si 1; iScan client 8 -si 2; iApply\n'
                              'iRead value 2; iApply\n')
-        self.assertEqual(result.count('iScan '), 1)
+        self.assertEqual(sum(line.startswith('iScan ') for line in result.splitlines()), 1)
         self.assertIn('iRead value 0b00000010', result)
 
     def test_invalid_length_and_initial_state(self):
@@ -391,7 +391,7 @@ class ModeledRootScan(unittest.TestCase):
             with self.subTest(prefix=prefix, data=data):
                 result = self.replay('iReset; ' + prefix +
                                      ' iScan client 8 -si ' + data + '; iApply\n', PORTS)
-                self.assertEqual(result.count('iScan '), 1)
+                self.assertEqual(sum(line.startswith('iScan ') for line in result.splitlines()), 1)
                 self.assertNotIn('iTake', result)
 
     def test_root_raw_retains_port_locks_for_later_retargeting(self):
@@ -639,7 +639,7 @@ class ModeledRootScan(unittest.TestCase):
                              'iScan first.local 8 -si 0x3c -so 0x56 -stable; iApply\n'
                              'iRead first.value 0x3c; iRead second.value 0x5a; iApply\n', model)
         self.assertIn('iScan client 16 -si 0b0011110001011010 -so 0b0101011000110100 -stable', result)
-        self.assertEqual(result.count('iScan '), 1)
+        self.assertEqual(sum(line.startswith('iScan ') for line in result.splitlines()), 1)
 
     def test_child_local_load_and_root_comparison_polarity(self):
         model = CHILD.replace('InputPort si = head[0];', 'InputPort si = ~head[0];')
@@ -702,7 +702,7 @@ class ModeledRootScan(unittest.TestCase):
         result = self.replay('iReset; iScan client -chain default 8 -si 0xa5; iApply\n'
                              'iScan child.local -chain default 8 -si 0x5a -so 0xa5; iApply\n'
                              'iRead child.value 0x5a; iApply\n', HIER)
-        self.assertEqual(result.count('iScan client 8'), 2)
+        self.assertEqual(sum(line.startswith('iScan client 8') for line in result.splitlines()), 2)
         self.assertNotIn('-chain', result)
         self.assertIn('iRead child.value 0b01011010', result)
 
@@ -722,7 +722,7 @@ class ModeledRootScan(unittest.TestCase):
                              'iScan client 9 -si 0b001111000; iApply\n'
                              'iScan client 1 -si 1; iApply\n'
                              'iRead child.value 0x3c; iApply\n', SIB)
-        self.assertEqual(result.count('iScan '), 4)
+        self.assertEqual(sum(line.startswith('iScan ') for line in result.splitlines()), 4)
         self.assertIn('iScan client 9 -si 0b101001011', result)
         self.assertIn('iRead child.value 0b00111100', result)
 

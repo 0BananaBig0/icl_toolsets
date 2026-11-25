@@ -49,6 +49,19 @@ std::string ScanData(z3::context& context, const std::string& text,
 }
 }  // namespace
 
+static constexpr char kRawHistoryOmission[] = "modeled raw history omitted ";
+bool IsRawHistoryOmissionNote(const Operation& note) {
+  return note.command == "iNote" && note.arguments.size() == 2 &&
+         (note.arguments[0] == "-comment" || note.arguments[0] == "-status") &&
+         !note.arguments[1].compare(0, sizeof(kRawHistoryOmission) - 1,
+                                    kRawHistoryOmission);
+}
+std::string RawHistoryOmissionText(const Operation& scan) {
+  std::string result = std::string(kRawHistoryOmission) + scan.command;
+  for (const auto& argument : scan.arguments) result += " " + argument;
+  return result;
+}
+
 static Operation NormalizeRequest(z3::context& context,
                                   const std::string& target,
                                   const Operation& operation, bool named) {
