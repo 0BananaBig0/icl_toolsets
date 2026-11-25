@@ -46,3 +46,11 @@ Use the existing delegated inline workflow: test-first implementation, required
 normal/static/native/SAN/corpus/quality/package qualification with hashes, one
 fresh final reviewer and one verified blocker-fix wave. Merge/push master,
 delete only the owned branch, preserve117stashes and29deferred Minors.
+
+Compatibility clarification: default generation/regeneration must retain valid
+child intent comments without exposing observations. Runtime binds adjacent
+notes to the winning original canonical root operation using an identity that
+survives lowering; generation validates that identity and static geometry.
+Noncanonical, overwritten or elided scans cannot activate inert metadata later.
+The optional history validator remains necessary only to restore actual child
+readback in Runtime. Root identities carry no per-child scan-word copies.

@@ -41,10 +41,12 @@ class Runtime::Impl {
  public:
   Impl(const Design& design, const std::string& top,
        const Netlist* netlist = nullptr, bool trace_source = false,
-       Readback readback = {}, StatusReadback status_readback = {})
+       Readback readback = {}, StatusReadback status_readback = {},
+       HistoryReadback history_readback = {})
       : trace_source_(trace_source),
         readback_(std::move(readback)),
         status_readback_(std::move(status_readback)),
+        history_readback_(std::move(history_readback)),
         design_(design),
         netlist_(netlist),
         top_(top),
@@ -1177,6 +1179,7 @@ class Runtime::Impl {
   }
 
   void InvalidateReadHistory(const Operation& apply) {
+    modeled_history_root_.reset();
     const bool together = ValidatePdlApplyOptions(apply.arguments);
     if (!pending_) return;
     const auto first = operations_.begin() + pending_operation_;
@@ -1196,6 +1199,7 @@ class Runtime::Impl {
     std::map<std::pair<bool, std::pair<std::string, std::string>>, RawCare>
         raw_care;
     size_t raw_bits = 0;
+    std::optional<size_t> root_source;
     std::optional<bool> raw_mode;
     bool raw_scan_applied = false;
     // Validate discarded operands too; commit history only after the whole
@@ -1208,6 +1212,18 @@ class Runtime::Impl {
         const auto fields = ReadScanFields(scan);
         const auto& name = scan.arguments[fields.target];
         const auto chain = ScanChainName(name, fields.chain);
+        if (netlist_ && !fields.instruction && chain.empty()) {
+          const auto root = netlist_->node_ids.find(name);
+          if (root != netlist_->node_ids.end() &&
+              !netlist_->nodes[root->second].scope &&
+              netlist_->nodes[root->second].scan_interface &&
+              netlist_->nodes[root->second].scan_interface->kind ==
+                  ScanInterfaceKind::kClient) {
+            root_source = scan.arguments == operation.arguments
+                              ? std::optional<size_t>(it - operations_.begin())
+                              : std::nullopt;
+          }
+        }
         if (fields.instruction && netlist_ &&
             (netlist_->taps.empty() || !tap_clients_.count(name))) {
           throw std::runtime_error(
@@ -1284,6 +1300,10 @@ class Runtime::Impl {
     if (together && accesses && !raw_care.empty()) {
       throw std::runtime_error(
           "mixed raw preparation cannot use iApply -together");
+    }
+    if (root_source && raw_care.size() == 1) {
+      modeled_history_root_ = root_source;
+      operations_[*root_source].modeled_history_source = root_source;
     }
     for (const auto& [key, scan] : raw_care) {
       if (scan.compared) zero_status_known = false;
@@ -1887,6 +1907,24 @@ class Runtime::Impl {
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
     if (name == "iNote" && netlist_) {
       RestoreCallbackReadInvalidation(operation);
+      if (const auto note = ReadModeledChildHistoryNote(*netlist_, operation);
+          note && modeled_history_root_ && !operations_.empty() &&
+          netlist_->nodes[note->root].name ==
+              operations_[*modeled_history_root_].arguments[0] &&
+          (operations_.back().command == "iApply" ||
+           operations_.back().modeled_history_source ==
+               modeled_history_root_)) {
+        operation.modeled_history_source = modeled_history_root_;
+        try {
+          if (history_readback_ && history_readback_(operations_, operation)) {
+            operation.modeled_raw_history = true;
+            opaque_history_pending_[{netlist_->nodes[note->client].name, ""}] =
+                note->expected.size() - 2;
+          }
+        } catch (const std::runtime_error&) {
+          // Informational metadata cannot supply an unavailable observation.
+        }
+      }
       if (const auto note = ReadOpaqueChildHistoryNote(*netlist_, operation);
           note && opaque_history_scan_) {
         const size_t width = note->expected.size() - 2;
@@ -2132,6 +2170,8 @@ class Runtime::Impl {
   bool trace_source_ = false;
   Readback readback_;
   StatusReadback status_readback_;
+  HistoryReadback history_readback_;
+  std::optional<size_t> modeled_history_root_;
   size_t source_count_ = 0;
   std::vector<SourceAction> actions_;
   std::vector<SourceAction> compounds_;
@@ -2177,10 +2217,12 @@ Runtime::Runtime(const Design& design, const std::string& top)
     : impl_(std::make_unique<Impl>(design, top)) {}
 Runtime::Runtime(const Design& design, const Netlist& netlist,
                  bool trace_source, Readback readback,
-                 StatusReadback status_readback)
+                 StatusReadback status_readback,
+                 HistoryReadback history_readback)
     : impl_(std::make_unique<Impl>(design, netlist.top_module, &netlist,
                                    trace_source, std::move(readback),
-                                   std::move(status_readback))) {}
+                                   std::move(status_readback),
+                                   std::move(history_readback))) {}
 Runtime::~Runtime() = default;
 void Runtime::Execute(const std::string& path, const std::string& text) {
   impl_->Execute(path, text);

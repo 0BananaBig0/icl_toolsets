@@ -5069,3 +5069,19 @@ behavior is unchanged. The29inherited Minor findings remain deferred.
 All10 Task176 merged-result checks pass against identical4,063qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Static modeled-child prefix persistence (Task177)
+
+Static fully modeled scalar child request identities survive root lowering.
+The actual root return supplies child data and masks through cached interval
+and parity geometry, without an extra CSU, observed-value annotation or failure
+recount. Neutral metadata validation keeps rejected annotations from marking
+merges observed or consuming history deltas. Root omission and previous histories
+retain their qualified behavior. Broader route and timing modes remain open.
+
+All73gates pass:83x1,340generator methods per variant,30native suites,
+30C++quality checks and912matched measurements, including216new modeled-child
+processes and57new live-generated getter processes. All13focused methods and
+four new reporter methods pass. The corpus retains2,562identities with
+1,032canonical,44unsupported AccessLink and687default elaboration failures.

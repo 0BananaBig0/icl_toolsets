@@ -55,8 +55,6 @@ def commands(widths, parent=False):
         body += 'iScan client %d -si 0b101%s10011 -so 0b101%s10011 -stable; iApply\n' % (
             size, ''.join(payloads), 'x'*sum(widths))
         body += 'iNote [iGetReadData client -bin]\niNote [iGetMiscompares client -bin]\n'
-        if parent:
-            body += 'iNote -comment "modeled readback status clear 0"\n'
         body += 'iNote [iGetStatus -clear]\niNote [iGetStatus]\n'
         expected += ['0b101'+'x'*sum(widths)+'10011', '0b'+'0'*size, '0', '0']
     return body, expected, raw_words, compares

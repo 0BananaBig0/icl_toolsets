@@ -11,6 +11,7 @@
 
 #include "pattern/pattern_access_queue.h"
 #include "pattern/pattern_design.h"
+#include "pattern/pattern_opaque.h"
 #include "pattern/pattern_scheduler.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_tap_execution.h"
@@ -60,6 +61,57 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
   Require(
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
+}
+void TestModeledChildHistoryProjection() {
+  pattern::Design design;
+  design.AddIcl("child_history.icl", R"(
+Module Leaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[3:0] {ScanInSource si; CaptureSource value; ResetValue 0;}
+ ScanOutPort so {Source value[0];}
+ ScanInterface local {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;}
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of Leaf {InputPort si = si; InputPort sel = sel; InputPort ce = ce;
+  InputPort se = se; InputPort ue = ue; InputPort tck = tck; InputPort reset = reset;}
+ ScanOutPort so {Source child.so;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime::HistoryReadback validate;
+  const auto readback =
+      pattern::MakeModeledReadback(netlist, false, nullptr, &validate);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iState", {"child.value", "9"}, "test", {}},
+      {"iScan", {"client", "4", "-si", "0b0000", "-so", "0b0000"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  operations[2].raw_history_omitted = true;
+  pattern::Operation note{
+      "iNote",
+      {"-comment", "modeled child raw history client child.local 0b0000"},
+      "test",
+      {}};
+  auto rejected = note;
+  rejected.arguments[1].replace(rejected.arguments[1].size() - 4, 4, "1111");
+  Require(!validate(operations, rejected) && validate(operations, note),
+          "metadata preview validates the actual committed root comparison");
+  note.modeled_raw_history = true;
+  operations.push_back(note);
+  const auto* update = readback(operations, false);
+  Require(
+      update->failures == 2 && update->scans.size() == 1,
+      "child projection preserves once-only failures and absent root history");
+  Require(
+      update->scans[0].target == "child.local" &&
+          update->scans[0].read == "1001" &&
+          update->scans[0].miscompare == "1001",
+      "child history comes from actual root return, not input or expectation");
+  Require(readback(operations, false)->scans.empty(),
+          "child history deltas publish exactly once");
 }
 void TestStatusPreviewRetainsUnpublishedHistory() {
   pattern::Design design;
@@ -936,6 +988,7 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestModeledChildHistoryProjection();
     TestStatusPreviewRetainsUnpublishedHistory();
     TestOrderedStatusClearEvents();
     TestMergeMarkersAreEventFree();

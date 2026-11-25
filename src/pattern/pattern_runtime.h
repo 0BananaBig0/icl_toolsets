@@ -43,6 +43,10 @@ struct Operation {
   std::vector<size_t> callback_consumed{};
   // Physical-only raw scan, or its consumed scope note; comparisons still run.
   bool raw_history_omitted = false;
+  // Validated post-CSU intent for a static modeled child.
+  bool modeled_raw_history = false;
+  // Original canonical root scan identity; survives stream lowering.
+  std::optional<size_t> modeled_history_source{};
 };
 
 struct ReadbackUpdate {
@@ -68,10 +72,13 @@ class Runtime {
   // Preview status without publishing history or recording an observation.
   using StatusReadback =
       std::function<std::optional<uint64_t>(const std::vector<Operation>&)>;
+  using HistoryReadback =
+      std::function<bool(const std::vector<Operation>&, const Operation&)>;
   Runtime(const Design& design, const std::string& top);
   Runtime(const Design& design, const Netlist& netlist,
           bool trace_source = false, Readback readback = {},
-          StatusReadback status_readback = {});
+          StatusReadback status_readback = {},
+          HistoryReadback history_readback = {});
   ~Runtime();
   Runtime(const Runtime&) = delete;
   Runtime& operator=(const Runtime&) = delete;

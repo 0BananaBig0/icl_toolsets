@@ -41,16 +41,16 @@ ScanScheduler::ModeledRawHistory(note,root_scan) returns optional projection.
 Runtime::HistoryReadback validates (operations,note) without publishing;
 MakeModeledReadback shares that callback and StatusReadback with one model.
 
-- [ ] Step1: Add immutable-parent source versus generated/flat-prefix
+- [x] Step1: Add immutable-parent source versus generated/flat-prefix
   regressions. Source child8read165/miscompare165/status4; generated getter
   currently fails. Expected genuine missing-history RED, root histories intact.
-- [ ] Step2: Implement bounded intent notes, static geometry validation,
+- [x] Step2: Implement bounded intent notes, static geometry validation,
   retained actual root word and neutral Runtime callback. Expected initial
   focus/native GREEN with identical hardware and once-only failure counts.
-- [ ] Step3: Add disjoint/inverted/latest/unknown/partial-mask, malformed/stale
+- [x] Step3: Add disjoint/inverted/latest/unknown/partial-mask, malformed/stale
   note, no-provider, reset/cancel, merge and local-reset tests; add repeatable
   matched workload/reporting checks. Expected exact actual results and bounds.
-- [ ] Step4: Run full normal/static generators,30native normal/SAN, affected
+- [x] Step4: Run full normal/static generators,30native normal/SAN, affected
   SAN CLI, corpus, changed C++quality and source packaging. Record exact source
   and product hashes plus full matched measurement rows. Expected all pass
   with unchanged corpus classifications and existing workloads.

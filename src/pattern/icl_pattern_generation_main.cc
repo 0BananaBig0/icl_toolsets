@@ -149,7 +149,9 @@ std::string OperationText(const pattern::Operation& operation) {
   words.insert(words.end(), operation.arguments.begin(),
                operation.arguments.end());
   if (pattern::IsRawHistoryOmissionNote(operation) ||
-      pattern::IsStatusClearNote(operation)) {
+      pattern::IsStatusClearNote(operation) ||
+      (pattern::IsModeledChildHistoryNote(operation) &&
+       !operation.modeled_raw_history)) {
     // Normalization or elision must not activate an unconsumed source note.
     words[2] = "informational " + words[2];
   }
@@ -391,6 +393,7 @@ std::string Generate(
   std::map<std::tuple<bool, std::string, std::string>, pattern::Operation>
       pending_scans;
   size_t pending_scan_bits = 0;
+  std::optional<pattern::Operation> last_root_scan;
   std::string result =
       "iPDLLevel 0\n" + Command({"iProcsForModule", netlist.top_module});
   const auto append_steps = [&](const std::vector<pattern::ScanStep>& steps) {
@@ -422,6 +425,7 @@ std::string Generate(
   size_t covered = 0;
   for (size_t index = 0; index < operations.size(); ++index) {
     const auto& operation = operations[index];
+    if (operation.command != "iNote") last_root_scan.reset();
     try {
       reservations.Enter(operation.call_stack);
       const auto entry = starts.find(index);
@@ -607,7 +611,7 @@ std::string Generate(
           for (const auto& [name, scan] : pending_scans) scans.push_back(scan);
           std::set<size_t> assigned;
           std::vector<pattern::ScanStep> preparations;
-          const auto applied = scheduler.ApplyRawScans(
+          auto applied = scheduler.ApplyRawScans(
               scans, preserved, preserved.empty() ? nullptr : &assigned,
               &preparations,
               modeled_readback
@@ -620,6 +624,28 @@ std::string Generate(
           result += together ? "iApply -together\n" : "iApply\n";
           for (const auto& note : scheduler.OpaqueScanNotes()) {
             result += OperationText(note);
+          }
+          if (applied.size() == 1) {
+            for (const auto& scan : scans) {
+              if (scan.arguments.size() < 6) continue;
+              const auto client = netlist.node_ids.find(scan.arguments[0]);
+              if (client == netlist.node_ids.end() ||
+                  !netlist.nodes[client->second].scope) {
+                continue;
+              }
+              pattern::Operation note{
+                  "iNote",
+                  {"-comment", std::string(pattern::kModeledChildHistoryNote) +
+                                   applied[0].arguments[0] + " " +
+                                   scan.arguments[0] + " " + scan.arguments[5]},
+                  scan.origin,
+                  scan.call_stack};
+              if (scheduler.ModeledRawHistory(note, applied[0])) {
+                note.modeled_raw_history = true;
+                result += OperationText(note);
+              }
+            }
+            last_root_scan = std::move(applied.front());
           }
           clocks.Invalidate();
           pending_scans.clear();
@@ -733,7 +759,18 @@ std::string Generate(
         if (operation.command == "iNote") {
           scheduler.RestoreOpaqueScanNote(operation);
         }
-        result += OperationText(operation);
+        auto note = operation;
+        if (pattern::IsModeledChildHistoryNote(note)) {
+          note.modeled_raw_history =
+              last_root_scan && note.modeled_history_source &&
+              note.modeled_history_source ==
+                  last_root_scan->modeled_history_source &&
+              scheduler.ModeledRawHistory(note, *last_root_scan);
+          if (!note.modeled_raw_history) last_root_scan.reset();
+        } else {
+          last_root_scan.reset();
+        }
+        result += OperationText(note);
       } else {
         throw std::runtime_error(
             "transaction scheduling is not implemented for " +
@@ -941,9 +978,11 @@ int main(int argc, char** argv) {
     size_t observed_cursor = 0;
     pattern::Runtime::Readback readback;
     pattern::Runtime::StatusReadback status_readback;
+    pattern::Runtime::HistoryReadback history_readback;
     if (options.model_readback) {
       readback = [provider = pattern::MakeModeledReadback(
-                      network.netlist, options.physical, &status_readback),
+                      network.netlist, options.physical, &status_readback,
+                      &history_readback),
                   &merge_readback_requested,
                   &observed_cursor](const auto& operations, bool clear_status) {
         while (!merge_readback_requested &&
@@ -956,7 +995,7 @@ int main(int argc, char** argv) {
     }
     pattern::Runtime runtime(design, network.netlist,
                              !options.local_reset.empty(), readback,
-                             status_readback);
+                             status_readback, history_readback);
     std::vector<std::string> sources;
     std::string local_reset;
     for (const auto& path : options.pdl) {

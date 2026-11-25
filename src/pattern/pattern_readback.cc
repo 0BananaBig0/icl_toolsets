@@ -67,6 +67,13 @@ class ModelReadback {
       throw std::runtime_error("modeled readback excludes unsupported storage");
     }
     callback_storage_.resize(netlist.nodes.size(), false);
+    modeled_children_ =
+        !opaque_ && !scheduler_->HasOpaqueChild() &&
+        std::any_of(
+            netlist.nodes.begin(), netlist.nodes.end(), [](const auto& node) {
+              return node.scope && node.scan_interface &&
+                     node.scan_interface->kind == ScanInterfaceKind::kClient;
+            });
     for (size_t id = 0; id < netlist.nodes.size(); ++id) {
       const auto& node = netlist.nodes[id];
       if (!node.read_callback && !node.write_callback) continue;
@@ -183,6 +190,11 @@ class ModelReadback {
     }
   }
 
+  bool CanRestoreChildHistory(const Operation& note) {
+    return last_root_ &&
+           scheduler_->ModeledRawHistory(note, last_root_->first).has_value();
+  }
+
  private:
   void MaskCallbackStorage() {
     for (const auto& [name, bits] : callback_unknown_) {
@@ -209,6 +221,12 @@ class ModelReadback {
     mismatches.reserve(actual.size());
     for (size_t i = 0; i < actual.size(); ++i) {
       mismatches += Mismatch(expected[i], actual[i]);
+    }
+    const auto node = netlist_.node_ids.find(scan.arguments[fields.target]);
+    if (modeled_children_ && !fields.instruction &&
+        node != netlist_.node_ids.end() &&
+        !netlist_.nodes[node->second].scope) {
+      last_root_ = std::make_pair(scan, actual);
     }
     if (scan.raw_history_omitted) return;
     StoreRaw({scan.arguments[fields.target], fields.chain, actual,
@@ -241,6 +259,7 @@ class ModelReadback {
   }
 
   void Process(const Operation& op) {
+    if (op.command != "iNote") last_root_.reset();
     reservations_.Enter(op.call_stack);
     if (op.command == "iMerge") return;
     const auto& args = op.arguments;
@@ -273,6 +292,30 @@ class ModelReadback {
       return;
     }
     if (op.command == "iNote") {
+      if (op.modeled_raw_history && last_root_) {
+        const auto projection =
+            scheduler_->ModeledRawHistory(op, last_root_->first);
+        if (projection) {
+          auto read = last_root_->second.substr(projection->offset,
+                                                projection->expected.size());
+          std::string mismatches;
+          mismatches.reserve(read.size());
+          for (size_t i = 0; i < read.size(); ++i) {
+            if (projection->inverted && read[i] != 'x') {
+              read[i] = read[i] == '1' ? '0' : '1';
+            }
+            const char expected = projection->expected[i];
+            mismatches += expected == 'x'       ? '0'
+                          : read[i] == 'x'      ? 'x'
+                          : read[i] == expected ? '0'
+                                                : '1';
+          }
+          StoreRaw(
+              {projection->target, "", std::move(read), std::move(mismatches)});
+          return;
+        }
+      }
+      last_root_.reset();
       scheduler_->RestoreOpaqueScanNote(op);
       if (auto actual = scheduler_->OpaqueRawHistory(op)) {
         StoreRaw(std::move(*actual));
@@ -415,6 +458,8 @@ class ModelReadback {
   size_t cursor_ = 0;
   std::optional<uint64_t> failures_{0};
   ReadbackUpdates updates_;
+  bool modeled_children_ = false;
+  std::optional<std::pair<Operation, std::string>> last_root_;
   bool published_ = true;
   std::map<std::pair<size_t, int64_t>, size_t> positions_;
   std::map<std::pair<std::string, std::string>, size_t> raw_positions_;
@@ -430,7 +475,8 @@ Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical) {
 }
 Runtime::Readback MakeModeledReadback(
     const Netlist& netlist, bool physical,
-    Runtime::StatusReadback* status_readback) {
+    Runtime::StatusReadback* status_readback,
+    Runtime::HistoryReadback* history_readback) {
   auto model = std::make_shared<std::unique_ptr<ModelReadback>>();
   const auto read = [&netlist, physical, model](const auto& operations,
                                                 bool clear_status,
@@ -441,6 +487,13 @@ Runtime::Readback MakeModeledReadback(
   if (status_readback) {
     *status_readback = [read](const auto& operations) {
       return read(operations, false, false)->failures;
+    };
+  }
+  if (history_readback) {
+    *history_readback = [read, model](const auto& operations,
+                                      const auto& note) {
+      read(operations, false, false);
+      return (*model)->CanRestoreChildHistory(note);
     };
   }
   return [read](const auto& operations, bool clear_status) {

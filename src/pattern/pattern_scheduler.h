@@ -27,6 +27,11 @@ struct ScanStep {
   std::map<std::string, std::string> loads;
   std::map<std::string, std::string> writes, expected;
 };
+struct RawHistoryProjection {
+  std::string target, expected;
+  size_t offset = 0;
+  bool inverted = false;
+};
 // Plans serial transactions on SI/SO boundaries or common-phase TAPs, and
 // writes through primary DataInPort networks or scan-driven DataRegisters.
 // State assumptions are explicit PDL declarations, never inferred from
@@ -46,6 +51,9 @@ class ScanScheduler {
   ScanScheduler(const ScanScheduler& other);
   ~ScanScheduler();
   bool HasOpaqueChild() const;
+  // root_scan is the canonical result of a successful raw CSU.
+  std::optional<RawHistoryProjection> ModeledRawHistory(
+      const Operation& note, const Operation& root_scan);
   void Reset(bool synchronous = false, bool physical = false);
   // Preserved values use 'x' for unprotected bits, '0'/'1' for held bits.
   void Idle(uint64_t cycles,

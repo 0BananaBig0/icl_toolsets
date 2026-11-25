@@ -1176,6 +1176,7 @@ python3 tests/src/pattern/test_primary_pin_literals.py $1
 python3 tests/src/pattern/test_callback_endpoint_readback.py $1
 python3 tests/src/pattern/test_read_callback_histories.py $1
 python3 tests/src/pattern/test_status_clear_prefix.py $1
+python3 tests/src/pattern/test_modeled_child_prefix.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1
 python3 tests/src/pattern/test_primary_data_events.py $1

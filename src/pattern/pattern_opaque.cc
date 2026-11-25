@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -131,6 +132,50 @@ Operation NormalizeScan(z3::context& context, const Operation& operation) {
   auto result = NormalizeRequest(context, data.arguments[0], data, true);
   if (instruction) result.arguments.insert(result.arguments.begin(), "-ir");
   return result;
+}
+bool IsModeledChildHistoryNote(const Operation& note) {
+  return note.command == "iNote" && note.arguments.size() == 2 &&
+         (note.arguments[0] == "-comment" || note.arguments[0] == "-status") &&
+         !note.arguments[1].compare(0, sizeof(kModeledChildHistoryNote) - 1,
+                                    kModeledChildHistoryNote);
+}
+std::optional<ModeledChildHistoryNote> ReadModeledChildHistoryNote(
+    const Netlist& netlist, const Operation& note) {
+  if (!IsModeledChildHistoryNote(note)) return std::nullopt;
+  const auto text = std::string_view(note.arguments[1])
+                        .substr(sizeof(kModeledChildHistoryNote) - 1);
+  const auto first = text.find(' ');
+  if (first == std::string_view::npos || first == 0) return std::nullopt;
+  const auto second = text.find(' ', first + 1);
+  if (second == std::string_view::npos || second == first + 1) {
+    return std::nullopt;
+  }
+  const auto expected = text.substr(second + 1);
+  if (expected.size() <= 2 || expected.size() > kMaxScanBits + 2 ||
+      expected.substr(0, 2) != "0b" ||
+      expected.find_first_not_of("01x", 2) != std::string_view::npos) {
+    return std::nullopt;
+  }
+  const auto root = netlist.node_ids.find(std::string(text.substr(0, first)));
+  const auto child = netlist.node_ids.find(
+      std::string(text.substr(first + 1, second - first - 1)));
+  if (root == netlist.node_ids.end() || child == netlist.node_ids.end()) {
+    return std::nullopt;
+  }
+  for (const auto id : {root->second, child->second}) {
+    const auto& node = netlist.nodes[id];
+    if (!node.scan_interface ||
+        node.scan_interface->kind != ScanInterfaceKind::kClient ||
+        !node.scan_interface->chains.empty()) {
+      return std::nullopt;
+    }
+  }
+  if (netlist.nodes[root->second].scope ||
+      !netlist.nodes[child->second].scope) {
+    return std::nullopt;
+  }
+  return ModeledChildHistoryNote{root->second, child->second,
+                                 std::string(expected)};
 }
 std::optional<OpaqueChildHistoryNote> ReadOpaqueChildHistoryNote(
     const Netlist& netlist, const Operation& operation) {

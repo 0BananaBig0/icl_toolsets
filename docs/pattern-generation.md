@@ -10303,3 +10303,32 @@ behavior is unchanged. The29inherited Minor findings remain deferred.
 All10 Task176 merged-result checks pass against identical4,063qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Static modeled-child prefix histories (Task177)
+
+Keep the generated child intent comment when continuing a prefix with
+--model_readback:
+
+```tcl
+iNote -comment "modeled child raw history client child0.local 0b00000000"
+```
+
+It identifies the explicitly requested child comparison at the preceding root
+CSU. The tool validates the static route and comparison, then projects actual
+child return bits with local output parity. It does not store observed values
+in the comment, add a scan or repeat failure accounting. Existing root omission
+comments still keep unrequested root history absent and older root history
+unchanged. Standard comment/status tags work; rejected metadata renders inert.
+
+This applies to adjacent post-Apply annotations on static fully modeled scalar
+routes. Unknown actual bits stay unknown, uncared mask bits stay zero, and
+unknown global status cannot be cleared into a known count. Resets/canceled
+queues retain already completed child history. Without a modeled observation
+provider, child data cannot be invented. Custom integrations must supply the
+optional neutral history validator; ordinary getter callbacks retain their
+existing behavior. Default regeneration preserves validated intent without enabling observations.
+Original canonical root identities prevent normalization or elision from
+activating an unconsumed note. Other PDL tools see ordinary comments.
+
+See the [qualified scope and measurements](remaining-work.md#task177-static-modeled-child-raw-histories-across-prefixes).
