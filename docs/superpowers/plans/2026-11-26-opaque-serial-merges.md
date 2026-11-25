@@ -54,7 +54,7 @@ nonphysical provider and continues using actual ApplyScans observations.
   affected sanitizer CLI, changed-C++quality, corpus, packaging, old/new matrices
   and guides. Expected: passing exact input/product hashes and measured bounds,
   unchanged corpus identities/classes.
-- [ ] Step5: Read finalized staged patch, commit and obtain one fresh review.
+- [x] Step5: Read finalized staged patch, commit and obtain one fresh review.
   Repair blockers once test-first, qualify and ledger all rulings/Minors.
   Expected:0unresolved Critical/Important without rereview.
 - [ ] Step6: Merge/push, verify merged results, detach reused tree, delete owned
@@ -62,3 +62,10 @@ nonphysical provider and continues using actual ApplyScans observations.
 
 Completion command: python3 /tmp/opaque-serial-merges-completion.py
 Self-review: one shared serial traversal/native history flow; no task interfaces.
+
+Review repair: the single Important direct-metadata ordering bug is resolved by
+validated private runtime eligibility checks and existing deferred traversal.
+Both real failures and informational-note argument evaluation are covered in
+15 focused CLI methods. All99 post-repair gates pass freshly,88x1418 per
+generator,30native,12quality,1944measurements/387live and20guides. No rereview;
+0unresolved Critical/Important and34 inherited deferred Minors.

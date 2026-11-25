@@ -10741,7 +10741,7 @@ An empty merge adds no CSU. No batching or optimality claim is made.
 Standalone opaque roots, physical mode and unsupported clock/event operations
 retain their existing boundaries. Broader independent TAP, parallel, timed,
 transport and arbitrary black-box work remains open, along with excluded item1
-and the 34 inherited deferred Minors. Qualification and review are in progress.
+and the 34 inherited deferred Minors. Final qualification and review results follow.
 
 Use the two-leaf Chains ICL model in the Task181 example above. Save this script
 as opaque-serial.pdl and run with --top_module Chains and --model_readback:
@@ -10777,9 +10777,9 @@ The frozen Task181 parent executes the same opaque model with ordinary
 sequential iCalls in place of the merge wrappers. Exact output comparison
 requires no normalization, fabricated captures or removed hardware operations.
 
-Task182 passes all 98 qualification gates on 4,081 input and 38 product
-hashes. Normal and static generators each pass 88 suites and 1,415 methods;
-all 30 native suites, nine changed-C++ quality checks, affected sanitizer CLI,
+Task182 passes all 99 fresh post-repair gates on 4,081 input and 38 product
+hashes. Normal and static generators each pass 88 suites and 1,418 methods;
+all 30 native suites, twelve changed-C++ quality checks, affected sanitizer CLI,
 corpus and source packaging pass. Corpus inputs and result classes remain
 1,032 canonical, 44 explicitly unsupported and 687 default elaboration failures
 across 2,562 source identities.
@@ -10794,6 +10794,23 @@ the same opaque model and produce byte-identical output without normalization.
 
 All seven child matrices include 387 live generated-history runs. Two allocation
 probes and 20 guide processes pass. The maximum across all measurements is
-1.2498 seconds and 472296 KiB. No batching, speedup or
-unmeasured-scale claim is made. Independent review follows; the broader original
-inventory, excluded item1 and 34 inherited deferred Minors retain their scope.
+1.4792 seconds and 470392 KiB. No batching, speedup or unmeasured-scale claim
+is made. The broader original inventory, excluded item1 and 34 inherited
+deferred Minors retain their scope.
+
+The independent review found 0 Critical, 1 Important and 0 new Minor issues.
+The Important ordering issue is repaired in one test-first pass: direct opaque
+stable-state and canonical root-history-omission notes use the existing deferred
+merge traversal. The model now restores stable queue knowledge before call
+hardware and retains the latest actual root capture after an intervening write.
+Malformed or informational notes retain ordinary call-produced argument values;
+legacy untagged callback history notes keep their existing ordering guard.
+
+Both metadata tags are covered. The original two ordering cases failed in four
+subcases before repair, and informational-note regressions separately failed
+before their eligibility checks were narrowed. All fifteen focused CLI methods,
+twenty retained callback-history methods and all 99 qualification gates pass on
+the final source and products. No second review ran. There are no unresolved
+Critical or Important findings and no new deferred Minor; the inherited total
+remains 34. Software-model evidence, measured-scale limits and existing per-file
+publication behavior retain their prior scope.

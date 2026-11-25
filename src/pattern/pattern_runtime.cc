@@ -12,6 +12,7 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -269,10 +270,11 @@ class Runtime::Impl {
           for (size_t i = 1; i < command.words.size(); ++i) {
             arguments.push_back(command.words[i].value);
           }
-          if (CallbackHistoryNote(arguments) ||
-              (netlist_ &&
-               ReadOpaqueChildHistoryNote(
-                   *netlist_, {"iNote", std::move(arguments), "", {}}))) {
+          const Operation note{"iNote", arguments, "", {}};
+          if (CallbackHistoryNote(arguments) || RawOmissionNote(note) ||
+              OpaqueStableNote(note) ||
+              (netlist_ && ReadOpaqueChildHistoryNote(*netlist_, note))) {
+            // Model notes can restore state or bind to the following scan.
             plain_merge.reset();
           }
         }
@@ -515,6 +517,71 @@ class Runtime::Impl {
         if (requested[i] == '1') value.at(i) = '?';
       }
     }
+  }
+
+  bool RawOmissionNote(const Operation& note) {
+    if (!netlist_ || !IsRawHistoryOmissionNote(note)) return false;
+    constexpr std::string_view kPrefix = "modeled raw history omitted ";
+    bool valid = false;
+    const auto words =
+        pdl::SplitList(note.arguments[1].substr(kPrefix.size()), &valid);
+    if (!valid || words.empty() || words[0] != "iScan") return false;
+    Operation scan{"iScan", {words.begin() + 1, words.end()}, "", {}};
+    if ((scan.arguments.size() != 6 &&
+         (scan.arguments.size() != 7 || scan.arguments.back() != "-stable")) ||
+        scan.arguments[2] != "-si" || scan.arguments[4] != "-so") {
+      return false;
+    }
+    const auto found = netlist_->node_ids.find(scan.arguments[0]);
+    if (found == netlist_->node_ids.end()) return false;
+    const auto& root = netlist_->nodes[found->second];
+    if (root.scope || !root.scan_interface ||
+        root.scan_interface->kind != ScanInterfaceKind::kClient) {
+      return false;
+    }
+    if (!history_context_) history_context_ = std::make_unique<z3::context>();
+    try {
+      return NormalizeScan(*history_context_, scan).arguments ==
+                 scan.arguments &&
+             RawHistoryOmissionText(scan) == note.arguments[1];
+    } catch (const std::runtime_error&) {
+      return false;
+    }
+  }
+
+  bool OpaqueStableNote(const Operation& note) const {
+    constexpr std::string_view kPrefix = "modeled opaque child stable scan ";
+    if (!netlist_ || note.arguments.size() != 2 ||
+        (note.arguments[0] != "-comment" && note.arguments[0] != "-status") ||
+        note.arguments[1].compare(0, kPrefix.size(), kPrefix)) {
+      return false;
+    }
+    const auto text =
+        std::string_view(note.arguments[1]).substr(kPrefix.size());
+    const auto separator = text.find(' ');
+    if (separator == std::string_view::npos) return false;
+    const auto found =
+        netlist_->node_ids.find(std::string(text.substr(0, separator)));
+    if (found == netlist_->node_ids.end()) return false;
+    const auto& child = netlist_->nodes[found->second];
+    if (!child.scope || !child.scan_interface ||
+        child.scan_interface->kind != ScanInterfaceKind::kClient) {
+      return false;
+    }
+    const auto& load = child.scan_interface->default_load;
+    const auto bits = text.substr(separator + 1);
+    if (!load || load->is_string || !load->sized ||
+        bits.size() != load->data.size() + 2 || bits.substr(0, 2) != "0b" ||
+        bits.find_first_not_of("01x", 2) != std::string_view::npos) {
+      return false;
+    }
+    return std::any_of(
+        child.scan_interface->ports.begin(), child.scan_interface->ports.end(),
+        [&](const auto& bit) {
+          return bit.node < netlist_->nodes.size() &&
+                 netlist_->nodes[bit.node].kind == "ScanOutPort" &&
+                 !netlist_->nodes[bit.node].inputs.count("Source");
+        });
   }
 
   std::optional<std::pair<size_t, std::string>> CallbackHistoryNote(

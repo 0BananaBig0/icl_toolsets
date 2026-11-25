@@ -199,6 +199,60 @@ iMerge -begin; iCall first; iCall second; iMerge -end
         self.assertIn('length',self.run_tool(icl,pdl,'protected.pdl',ok=False))
         self.assertEqual(out.read_bytes(),b'keep existing output\n')
 
+    def test_direct_stable_note_restores_opaque_queue_before_call_hardware(self):
+        for flag in ('-comment','-status'):
+            with self.subTest(flag=flag):
+                generated,_ = self.continued(model(2,8),'''iProc read {} {
+ iScan child1.local 8 -si 105 -so 0bx -stable; iApply
+}
+iReset; iScan client 10 -si 0b1011110011 -so 0bx; iApply
+iScan child0.local 8 -si 150 -so 0bx; iApply
+iMerge -begin
+iCall read
+iNote %s {modeled opaque child stable scan child0.local 0b10010110}
+iMerge -end
+'''%flag,'''iNote [iGetReadData child1.local -bin]
+iNote [iGetMiscompares child1.local -bin]; iNote [iGetStatus]
+''',[b'0bxxxxxxxx',b'0b00000000',b'0'])
+                note = b'modeled opaque child stable scan child0.local 0b10010110'
+                self.assertLess(generated.index(note),generated.rindex(b'iScan client 26'))
+
+    def test_direct_omission_note_before_intervening_write_keeps_latest_root_capture(self):
+        for flag in ('-comment','-status'):
+            with self.subTest(flag=flag):
+                self.continued(model(2,8),'''iProc change {} {iWrite tail 4; iApply}
+iProc rescan {} {iScan client 10 -si 0b1010010011 -so 0bxxxxxxxxxx; iApply}
+iReset; iScan client 10 -si 0b1010010011 -so 0bx; iApply
+iMerge -begin
+iCall change
+iNote %s {modeled raw history omitted iScan client 10 -si 0b1010010011 -so 0bxxxxxxxxxx}
+iCall rescan
+iMerge -end
+'''%flag,'''iNote [iGetReadData client -bin]
+iNote [iGetMiscompares client -bin]; iNote [iGetStatus]
+''',[b'0b1010000100',b'0b0000000000',b'0'])
+
+    def test_informational_notes_preserve_call_produced_arguments(self):
+        notes = ['modeled opaque child stable scan '+text for text in
+                 ('invalid','missing.local 0b10010110','child0.local 0b1001','child0.local 0b1001011z')]
+        notes += ['modeled raw history omitted '+text for text in
+                  ('invalid','iScan missing 10 -si 0b0000000000 -so 0bxxxxxxxxxx',
+                   'iScan client 10 -si 0b1 -so 0bxxxxxxxxxx')]
+        for text in notes:
+            with self.subTest(text=text):
+                icl,pdl = self.root/'source.icl',self.root/'source.pdl'
+                icl.write_text(model(2,8))
+                pdl.write_text('''iPDLLevel 1
+iProcsForModule Chains
+iProc seed {} {set ::word 5}
+iProc load {data} {iWrite head $data; iApply}
+iReset; iMerge -begin; iCall seed
+iNote -comment {%s}
+iCall load $::word; iMerge -end
+iRead head 5; iApply; iNote [iGetReadData head -dec]; iNote [iGetStatus]
+'''%text)
+                self.assertEqual(self.notes(self.run_tool(icl,pdl,'informational.pdl')),[b'5',b'0'])
+
 
 if __name__=='__main__':
     unittest.main(argv=[__file__])
