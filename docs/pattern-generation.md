@@ -10287,3 +10287,15 @@ this metadata restores continuation state in icl-pattern-generation.
 The inherited in-prefix clear limitation described under Tasks174/175 is now
 fixed for the qualified routes. See the
 [qualification record](remaining-work.md#task176-evaluated-status-clears-across-generated-prefixes).
+
+One independent final review found two Important issues. Both are fixed in
+one test-first pass: rejected clear annotations no longer mark a merge as
+observed or consume its history deltas; zero clears at the outer merge edges,
+including adjacent clear-only calls, preserve same-side batching and captures.
+Interior clears retain their ordering barriers. The13-method focused suite
+passes in all three builds, with27changed-C++quality checks and all68fresh
+gates. No qualification gate or generator suite is reused from an earlier run.
+Status preview shares the existing lazy model and retains unpublished deltas
+until an ordinary observation. Custom provider integrations without the optional
+preview callback accept only already provable zero annotations; ordinary getter
+behavior is unchanged. The29inherited Minor findings remain deferred.

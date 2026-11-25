@@ -54,7 +54,7 @@ emits standard notes and keeps unconsumed reserved text inert.
   SAN CLI, corpus, changed C++quality and source packaging. Record exact
   input/product hashes and complete matched benchmark/allocation/guide rows.
   Expected required checks pass under unchanged classifications and bounds.
-- [ ] Step5: Commit finalized diff and obtain one fresh whole-branch review;
+- [x] Step5: Commit finalized diff and obtain one fresh whole-branch review;
   fix blockers once test-first and rerun affected qualification. Record Minors.
   Expected no unresolved Critical/Important findings; no rereview.
 - [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach

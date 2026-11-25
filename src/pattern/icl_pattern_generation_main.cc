@@ -940,9 +940,10 @@ int main(int argc, char** argv) {
     bool merge_readback_requested = false;
     size_t observed_cursor = 0;
     pattern::Runtime::Readback readback;
+    pattern::Runtime::StatusReadback status_readback;
     if (options.model_readback) {
-      readback = [provider = pattern::MakeModeledReadback(network.netlist,
-                                                          options.physical),
+      readback = [provider = pattern::MakeModeledReadback(
+                      network.netlist, options.physical, &status_readback),
                   &merge_readback_requested,
                   &observed_cursor](const auto& operations, bool clear_status) {
         while (!merge_readback_requested &&
@@ -954,7 +955,8 @@ int main(int argc, char** argv) {
       };
     }
     pattern::Runtime runtime(design, network.netlist,
-                             !options.local_reset.empty(), readback);
+                             !options.local_reset.empty(), readback,
+                             status_readback);
     std::vector<std::string> sources;
     std::string local_reset;
     for (const auto& path : options.pdl) {

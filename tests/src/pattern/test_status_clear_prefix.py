@@ -5,6 +5,7 @@ import unittest
 import test_modeled_readback as helpers
 import test_modeled_raw_readback as raw
 import test_modeled_tap_readback as tap
+import test_merged_readback as merged
 from benchmark_multiple_opaque_children import model
 
 
@@ -12,6 +13,53 @@ class StatusClearPrefix(unittest.TestCase):
     setUp = helpers.ModeledReadback.setUp
     run_tool = helpers.ModeledReadback.run_tool
     notes = raw.ModeledRawReadback.notes
+
+    def merge_continuation(self, body, label):
+        icl,script,tail = (self.root/n for n in ('merge.icl',label+'.pdl',label+'-tail.pdl'))
+        icl.write_text(merged.EVENTS)
+        script.write_text('iPDLLevel 1\niProcsForModule Chains\n'+body)
+        generated = self.run_tool(icl,script,label+'-prefix.pdl')
+        tail.write_text('''iPDLLevel 1
+iNote [iGetReadData observed -dec]; iNote [iGetStatus]
+''')
+        replay = self.run_tool(icl,self.root/(label+'-prefix.pdl'),label+'-replay.pdl',
+                               extra=('--pdl',str(tail)))
+        hardware = [line for line in generated.splitlines() if not line.startswith(b'iNote ')]
+        return generated,hardware,self.notes(replay)[-2:]
+
+    def test_rejected_status_note_keeps_unobserved_merge_trajectory(self):
+        program = merged.MergedReadback.event_program(self)
+        ordinary,hardware,observed = self.merge_continuation(program+'iNote ordinary\n','ordinary')
+        annotated,changed,actual = self.merge_continuation(program+
+            'iNote -comment {modeled readback status clear 8}\n','rejected')
+        self.assertEqual(actual,observed)
+        self.assertEqual(actual,[b'9',b'2'])
+        self.assertEqual(changed,hardware)
+        self.assertEqual(ordinary.count(b'iApply\n'),2)
+        self.assertIn(b'informational modeled readback status clear 8',annotated)
+
+    def test_edge_zero_clears_keep_same_side_merge_batching(self):
+        program = merged.MergedReadback.event_program(self)
+        for edge in ('leading','trailing'):
+            for extra_clear in (False,True):
+                with self.subTest(edge=edge,extra_clear=extra_clear):
+                    body = program if edge=='leading' else program.replace('iRead d 0;','iRead d 0bxxxx;')
+                    baseline,hardware,observed = self.merge_continuation(body,edge+'-plain')
+                    if edge=='leading':
+                        changed = body.replace('iProc first {} {','iProc first {} {iGetStatus -clear; ')
+                    else:
+                        changed = body.replace('iWrite p 9; iApply}', 'iWrite p 9; iApply; iGetStatus -clear}')
+                    if extra_clear:
+                        changed = 'iProc clearonly {} {iGetStatus -clear}\n'+changed
+                        old = 'iMerge -begin;' if edge=='leading' else 'iMerge -end'
+                        new = 'iMerge -begin; iCall clearonly;' if edge=='leading' else 'iCall clearonly; iMerge -end'
+                        changed = changed.replace(old,new)
+                    generated,actual_hardware,actual = self.merge_continuation(changed,edge+'-clear')
+                    self.assertEqual(actual,observed)
+                    self.assertEqual(actual,[b'9',b'2' if edge=='leading' else b'0'])
+                    self.assertEqual(actual_hardware,hardware)
+                    self.assertEqual(generated.count(b'iApply\n'),2)
+                    self.assertEqual(generated.count(b'modeled readback status clear 0'),1+extra_clear)
 
     def continued(self, source, prefix, suffix, expected):
         icl, first, full, tail = (self.root/n for n in

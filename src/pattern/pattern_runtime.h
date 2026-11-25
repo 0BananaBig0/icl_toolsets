@@ -65,9 +65,13 @@ class Runtime {
   // Updates are deltas for this append-only stream, valid until the next call.
   using Readback = std::function<const ReadbackUpdates*(
       const std::vector<Operation>&, bool clear_status)>;
+  // Preview status without publishing history or recording an observation.
+  using StatusReadback =
+      std::function<std::optional<uint64_t>(const std::vector<Operation>&)>;
   Runtime(const Design& design, const std::string& top);
   Runtime(const Design& design, const Netlist& netlist,
-          bool trace_source = false, Readback readback = {});
+          bool trace_source = false, Readback readback = {},
+          StatusReadback status_readback = {});
   ~Runtime();
   Runtime(const Runtime&) = delete;
   Runtime& operator=(const Runtime&) = delete;

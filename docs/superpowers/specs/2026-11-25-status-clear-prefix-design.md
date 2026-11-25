@@ -58,3 +58,16 @@ Full normal/static/native/SAN/corpus/quality/package verification and exact
 hashes precede one fresh review, one test-first blocker-fix pass and authorized
 merge/push/branch cleanup. Retain29deferred Minors and excluded coverage1.
 Broader modes, modeled child-local histories and real transport stay open.
+
+Review clarification: validating a rejected annotation must not publish readback
+history, cache a known count in Runtime, or mark a merge as explicitly observed.
+A separate optional status-preview callback shares the same lazy model and
+retains unpublished deltas until an ordinary readback call. Repeated previews
+advance only new operations; later history assignments suppress the appropriate
+unpublished plane. Existing ordinary provider callers keep their signatures.
+Without a preview callback, only already provable zero annotations can activate.
+Accepted nonzero annotations still perform the ordinary clear observation.
+Clears before the first call hardware or after the last call hardware may be
+peeled outside the batch, preserving their boundary and same-side batching.
+Interior events remain barriers. Buffering is bounded by the existing latest
+per-bit/per-chain delta maps; it adds no model copy or root-state snapshot.

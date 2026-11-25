@@ -61,6 +61,46 @@ void CheckCommittedObserverFailure(pattern::ScanScheduler* scheduler,
       actual == next_read && scheduler->Value(target) == committed,
       "following read observes committed data without restoring stale fill");
 }
+void TestStatusPreviewRetainsUnpublishedHistory() {
+  pattern::Design design;
+  design.AddIcl("preview.icl", R"(
+Module Top {
+ ScanInPort si;
+ ScanRegister r[3:0] {ScanInSource si; CaptureSource r; ResetValue 0;}
+ ScanOutPort so {Source r[0];}
+}
+)");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::Runtime::StatusReadback preview;
+  const auto readback = pattern::MakeModeledReadback(netlist, false, &preview);
+  std::vector<pattern::Operation> operations{
+      {"iState", {"r", "15"}, "test", {}},
+      {"iRead", {"r", "0"}, "test", {}},
+      {"iApply", {}, "test", {}}};
+  Require(preview(operations) == 4 && preview(operations) == 4,
+          "status previews do not recount failures");
+  const auto* update = readback(operations, false);
+  Require(update->bits.size() == 4 && update->failures == 4,
+          "ordinary publication retains all previewed observations");
+  for (const auto& bit : update->bits) {
+    Require(bit.read == '1' && bit.miscompare == '1',
+            "preview does not consume actual read or miscompare values");
+  }
+  operations.push_back({"iState", {"r", "15"}, "test", {}});
+  operations.push_back({"iRead", {"r", "14"}, "test", {}});
+  operations.push_back({"iApply", {}, "test", {}});
+  Require(preview(operations) == 5, "preview advances only new comparisons");
+  operations.push_back({"iState", {"r", "0", "-LastReadValue"}, "test", {}});
+  update = readback(operations, false);
+  Require(update->bits.size() == 4 && update->failures == 5,
+          "unpublished deltas survive a later status preview");
+  for (const auto& bit : update->bits) {
+    Require(bit.read == '?' && bit.miscompare == (bit.index == 0 ? '1' : '0'),
+            "later history assignments suppress only their unpublished plane");
+  }
+  Require(readback(operations, false)->bits.empty(),
+          "published deltas are consumed exactly once");
+}
 void TestOrderedStatusClearEvents() {
   const auto note = [](const std::string& count) {
     return pattern::Operation{
@@ -896,6 +936,7 @@ Module Top {
 }  // namespace
 int main() {
   try {
+    TestStatusPreviewRetainsUnpublishedHistory();
     TestOrderedStatusClearEvents();
     TestMergeMarkersAreEventFree();
     TestMergedRawReadbackPlanes();

@@ -5048,8 +5048,20 @@ hardware. Unknown/unavailable/mismatched metadata stays informational. Called
 merge boundaries, callbacks, reset/canceled queues, namespaces, local resets
 and bound TAP IR histories are qualified.
 
-All68gates pass:both82x1,325generator regressions,30native suites,21quality
-checks and696matched measurements. All11focused methods pass per variant;
+All68gates pass:both82x1,327generator regressions,30native suites,27quality
+checks and696matched measurements. All13focused methods pass per variant;
 seven reporter methods retain exact controls and once-only live clears. Corpus
 identities/classifications remain unchanged. Broader history, topology, timing
 and real transport remain in the original inventory;29Minors stay deferred.
+
+One independent final review found two Important issues. Both are fixed in
+one test-first pass: rejected clear annotations no longer mark a merge as
+observed or consume its history deltas; zero clears at the outer merge edges,
+including adjacent clear-only calls, preserve same-side batching and captures.
+Interior clears retain their ordering barriers. The13-method focused suite
+passes in all three builds, with27changed-C++quality checks and all68fresh
+gates. No qualification gate or generator suite is reused from an earlier run.
+Status preview shares the existing lazy model and retains unpublished deltas
+until an ordinary observation. Custom provider integrations without the optional
+preview callback accept only already provable zero annotations; ordinary getter
+behavior is unchanged. The29inherited Minor findings remain deferred.

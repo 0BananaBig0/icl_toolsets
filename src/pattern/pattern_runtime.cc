@@ -41,9 +41,10 @@ class Runtime::Impl {
  public:
   Impl(const Design& design, const std::string& top,
        const Netlist* netlist = nullptr, bool trace_source = false,
-       Readback readback = {})
+       Readback readback = {}, StatusReadback status_readback = {})
       : trace_source_(trace_source),
         readback_(std::move(readback)),
+        status_readback_(std::move(status_readback)),
         design_(design),
         netlist_(netlist),
         top_(top),
@@ -1908,7 +1909,12 @@ class Runtime::Impl {
         expected &&
         (merges_.empty() || merges_.back().depth != frames_.size())) {
       try {
-        if (HistoryValue("iGetStatus", "", "") == std::to_string(*expected)) {
+        const auto actual =
+            zero_status_known_
+                ? std::optional<uint64_t>{0}
+                : (status_readback_ ? status_readback_(operations_)
+                                    : std::nullopt);
+        if (actual == expected) {
           const auto value = HistoryValue("iGetStatus", "-clear", "");
           RememberStatusClear(origin, value);
           return;
@@ -2125,6 +2131,7 @@ class Runtime::Impl {
   std::map<size_t, size_t> callback_action_ends_;
   bool trace_source_ = false;
   Readback readback_;
+  StatusReadback status_readback_;
   size_t source_count_ = 0;
   std::vector<SourceAction> actions_;
   std::vector<SourceAction> compounds_;
@@ -2169,9 +2176,11 @@ class Runtime::Impl {
 Runtime::Runtime(const Design& design, const std::string& top)
     : impl_(std::make_unique<Impl>(design, top)) {}
 Runtime::Runtime(const Design& design, const Netlist& netlist,
-                 bool trace_source, Readback readback)
+                 bool trace_source, Readback readback,
+                 StatusReadback status_readback)
     : impl_(std::make_unique<Impl>(design, netlist.top_module, &netlist,
-                                   trace_source, std::move(readback))) {}
+                                   trace_source, std::move(readback),
+                                   std::move(status_readback))) {}
 Runtime::~Runtime() = default;
 void Runtime::Execute(const std::string& path, const std::string& text) {
   impl_->Execute(path, text);
