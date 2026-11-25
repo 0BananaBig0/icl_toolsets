@@ -10349,3 +10349,7 @@ three-argument MakeModeledReadback overload require adaptation because its new
 declaration has four parameters. Ordinary three-argument calls still compile.
 The29inherited Minors retain their prior dispositions; total30deferred Minors.
 Broader topology, timing and real-device work remains in the original inventory.
+
+All13 Task177 merged-result checks pass against identical4,066qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.

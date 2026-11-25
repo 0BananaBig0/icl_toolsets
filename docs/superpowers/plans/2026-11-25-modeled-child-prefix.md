@@ -57,7 +57,7 @@ MakeModeledReadback shares that callback and StatusReadback with one model.
 - [x] Step5: Commit finalized diff, obtain one fresh whole-branch review,
   fix blockers once test-first and qualify final state. Expected no unresolved
   Critical/Important findings; retain Minors, no rereview.
-- [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach
+- [x] Step6: Merge/push master, verify merged hashes/focused checks, detach
   reused worktree, delete owned branch and archive only this task ledger.
   Expected clean pushed master,117stashes and accurate remaining inventory.
 
