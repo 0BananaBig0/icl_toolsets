@@ -10933,8 +10933,8 @@ is consumed only beside an exactly matching canonical scan on a qualified fixed
 root route, including its actual chain width. Route normalization is cached.
 
 Existing reset, queue replacement/cancellation, reservations, topology, mode,
-payload and publication validation still apply. Qualification and independent
-review follow. The broader inventory, excluded item1 and36Minors stay open.
+payload and publication validation still apply. Post-repair qualification and the independent
+review result are recorded below. The broader inventory, excluded item1 and36Minors stay open.
 
 Save this as modeled-named-prefix.icl:
 
@@ -11000,7 +11000,20 @@ forms are byte-identical. Reporter RED→GREEN checks reject empty zero-exit
 products, forged scope/masks/clear counts and notes moved between frames.
 
 All nine child/root matrices include519live generated runs. Two allocation
-probes and28guide processes pass. Measured maximum 1.5242s and
-472960KiB. Extra native metadata normalization is cached and measured;
-no batching optimum, speedup or unmeasured-scale claim is made. Independent
-review follows; excluded1,36inherited deferred Minors and broader work stay open.
+probes and28guide processes pass. Measured maximum 1.5284s and
+470272KiB. Extra native metadata normalization is cached and measured;
+no batching optimum, speedup or unmeasured-scale claim is made. Review found0Critical/1Important/0newMinor; the Important benchmark comparison
+finding is repaired in one test-first pass. No rereview is requested; excluded1,36inherited deferred Minors and broader work stay open.
+
+The benchmark now validates each omission annotation against its immediately
+following physical scan line before removing only that original annotation's
+bytes. Parent/candidate and candidate replay forms are compared as raw bytes;
+final-LF and line-ending differences remain visible. Two reproductions fail
+first, then all7reporter methods pass. All113final qualification checks ran
+fresh after this repair; production C++ and42built products are unchanged.
+
+The reviewer also verified all216pre-repair measured outputs as raw bytes and
+all4,860actual annotations adjacent. No production replay failure was found.
+The review leaves36inherited deferred Minors, excluded1 and broader inventory
+open. The previously advertised read-only artifact checker now validates its
+existing gate receipt by equality rather than rewriting it.

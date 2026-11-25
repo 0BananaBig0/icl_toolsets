@@ -80,9 +80,16 @@ def replay_observations(generated,count,width):
 
 def normalized_output(data,count,width,scope):
     _,notes,queries,frames = commands(count,width)
-    lines = data.splitlines()
+    raw_lines = data.splitlines(keepends=True)
+    text = data.decode('utf-8')
+    lines = text.splitlines()
+    for index,line in enumerate(lines):
+        if PREFIX in line:
+            marker = 'iNote -comment "'+PREFIX
+            if not line.startswith(marker) or not line.endswith('"') or index+1>=len(lines) or lines[index+1]!=line[len(marker):-1]:
+                raise ValueError('omission is not adjacent to its physical scan')
     actual = [line[6:] for line in lines if line.startswith('iNote ') and 'modeled ' not in line]
-    chunks = data.split('\niApply\n')
+    chunks = text.split('\niApply\n')
     if actual!=notes or len(chunks)!=5:raise ValueError('actual histories or CSU count differ')
     groups=[];group=[]
     for note,query in zip(notes,queries):
@@ -108,7 +115,7 @@ def normalized_output(data,count,width,scope):
             raise ValueError('status clear annotations differ')
     if any(line.split()[0] not in ('iPDLLevel','iProcsForModule','iReset','iScan','iApply','iNote') for line in lines if line.strip()):
         raise ValueError('unexpected emitted operation')
-    return '\n'.join(line for line in lines if PREFIX not in line)+'\n'
+    return b''.join(line for line in raw_lines if PREFIX.encode() not in line)
 
 
 def main():
@@ -133,7 +140,7 @@ def main():
                 icl.write_text(model(count,width));pdl.write_text(commands(count,width)[0]);error=''
                 if form=='flat':icl=Path(source['directory'])/'debug/Chains.icl'
                 if form=='generated':
-                    try:pdl.write_text(replay_observations((Path(source['directory'])/'result.pdl').read_text(),count,width))
+                    try:pdl.write_text(replay_observations((Path(source['directory'])/'result.pdl').read_bytes().decode('utf-8'),count,width))
                     except (OSError,ValueError) as issue:error=str(issue);pdl.write_text('')
                 cmd=[str(binaries[owner]),'--icl',str(icl),'--pdl',str(pdl),'--top_module','Chains','--output',str(result),'--debug','--model_readback']
                 started=time.monotonic()
@@ -143,13 +150,14 @@ def main():
                 elapsed=time.monotonic()-started
                 values=metric.read_text().splitlines()[-1].split() if metric.exists() else []
                 rss=int(values[1]) if len(values)==2 and values[1].isdigit() else None
-                data=result.read_text() if result.exists() else ''
-                try:normalized=normalized_output(data,count,width,scope=owner!='parent')
+                raw=result.read_bytes() if result.exists() else b''
+                data=raw.decode('utf-8',errors='replace')
+                try:normalized=normalized_output(raw,count,width,scope=owner!='parent')
                 except ValueError as issue:normalized=None;error=error or str(issue)
                 key=count,width,repeat
                 verified=p.returncode==0 and not error and normalized is not None and (folder/'debug/Chains.icl').exists()
                 if owner!='parent':verified &= key in parents and normalized==parents.get(key)
-                if form!='source':verified &= (Path(source['directory'])/'result.pdl').exists() and data==(Path(source['directory'])/'result.pdl').read_text()
+                if form!='source':verified &= (Path(source['directory'])/'result.pdl').exists() and raw==(Path(source['directory'])/'result.pdl').read_bytes()
                 if owner=='parent' and verified:parents[key]=normalized
                 scans=[line.split() for line in data.splitlines() if line.startswith('iScan ')]
                 bound=(256 if count==1 and width>=512 else 512)*1024
@@ -161,7 +169,7 @@ def main():
                     fresh_queries=pdl.read_text().count('iGetReadData client'),fresh_miscompare_queries=pdl.read_text().count('iGetMiscompares client'),
                     omission_count=data.count(PREFIX),status_clear_annotation_count=data.count('modeled readback status clear '),
                     icl_sha256=digest(icl) if icl.exists() else None,pdl_sha256=digest(pdl),output_sha256=digest(result) if result.exists() else None,
-                    normalized_output_sha256=hashlib.sha256(normalized.encode()).hexdigest() if normalized is not None else None)
+                    normalized_output_sha256=hashlib.sha256(normalized).hexdigest() if normalized is not None else None)
                 report['runs'].append(row);failed |= not (verified and within)
                 (output/'results.json').write_text(json.dumps(report,indent=2)+'\n')
                 if form=='source':source=row

@@ -57,7 +57,7 @@ class ModeledNamedBenchmark(unittest.TestCase):
             self.assertIn('--sanitized',p.stderr)
             self.assertFalse(output.exists())
 
-    def test_only_exact_implicit_metadata_can_be_removed_from_comparison(self):
+    def fixture(self):
         benchmark=load()
         _,notes,queries,frames=benchmark.commands(2,8)
         groups=[];group=[]
@@ -73,8 +73,12 @@ class ModeledNamedBenchmark(unittest.TestCase):
                 source+=scan+'\n';parent+=scan+'\n'
             suffix='iApply\n'+'\n'.join(observations)+'\n'
             source+=suffix;parent+=suffix
-        self.assertEqual(benchmark.normalized_output(source,2,8,True),parent)
-        self.assertEqual(benchmark.normalized_output(parent,2,8,False),parent)
+        return benchmark,source,parent
+
+    def test_only_exact_implicit_metadata_can_be_removed_from_comparison(self):
+        benchmark,source,parent=self.fixture()
+        self.assertEqual(benchmark.normalized_output(source.encode(),2,8,True),parent.encode())
+        self.assertEqual(benchmark.normalized_output(parent.encode(),2,8,False),parent.encode())
         bad_note=source.replace(benchmark.PREFIX+'iScan client -chain c1 8 -si 0b00000000',
                                 benchmark.PREFIX+'iScan client -chain c1 8 -si 0b00000001',1)
         observed=[line for line in source.splitlines() if line.startswith('iNote ') and benchmark.PREFIX not in line]
@@ -82,7 +86,22 @@ class ModeledNamedBenchmark(unittest.TestCase):
         moved='\n'.join(physical+observed)+'\n'
         for bad in (bad_note,moved,source.replace('iScan client -chain c0 8 -si 0b00100101 -so',
                                                'iScan client -chain c0 8 -si 0b00100100 -so',1)):
-            with self.assertRaises(ValueError):benchmark.normalized_output(bad,2,8,True)
+            with self.assertRaises(ValueError):benchmark.normalized_output(bad.encode(),2,8,True)
+
+    def test_omission_cannot_cross_an_intervening_observation(self):
+        benchmark,source,_=self.fixture()
+        note='iNote -comment "'+benchmark.PREFIX+'iScan client -chain c0 8 -si 0b00100101 -so 0bxxxxxxxx -stable"\n'
+        self.assertIn('iNote 0\n'+note,source)
+        displaced=source.replace('iNote 0\n'+note,note+'iNote 0\n',1)
+        with self.assertRaises(ValueError):benchmark.normalized_output(displaced.encode(),2,8,True)
+
+    def test_comparison_keeps_final_lf_and_other_original_bytes(self):
+        benchmark,source,_=self.fixture()
+        normalized=benchmark.normalized_output(source.encode(),2,8,True)
+        self.assertNotEqual(normalized,benchmark.normalized_output(source[:-1].encode(),2,8,True))
+        changed=source.replace('iPDLLevel 0\n','iPDLLevel 0\r\n',1)
+        self.assertNotEqual(normalized,benchmark.normalized_output(changed.encode(),2,8,True))
+        with self.assertRaises(ValueError):benchmark.normalized_output(source.replace('\n','\r\n').encode(),2,8,True)
 
     def test_zero_exit_without_output_fails_every_actual_measurement(self):
         with tempfile.TemporaryDirectory() as folder:
