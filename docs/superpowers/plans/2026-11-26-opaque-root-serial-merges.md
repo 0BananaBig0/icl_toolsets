@@ -54,7 +54,7 @@ raw_history_omitted intent for implicit completion and normalized named-root rep
 - [x] Step5: Read final staged patch, commit and obtain one fresh final review.
   Repair blockers once test-first; ledger every ruling and Minor. Expected:
   0unresolved Critical/Important with no rereview.
-- [ ] Step6: Merge/push, verify merged checks, detach reused tree, delete only
+- [x] Step6: Merge/push, verify merged checks, detach reused tree, delete only
   owned branch and archive own ledger. Expected: clean pushed master,117stashes.
 
 Completion command: python3 /tmp/opaque-root-serial-merges-completion.py
