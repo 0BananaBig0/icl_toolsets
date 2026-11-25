@@ -532,6 +532,14 @@ class Runtime::Impl {
     try {
       const auto normalized = NormalizeScan(*history_context_, scan);
       const auto fields = ReadScanFields(normalized);
+      if (!fields.chain.empty()) {
+        if (!named_opaque_root_) {
+          named_opaque_root_ = false;
+          named_opaque_root_ =
+              DescribeOpaqueScans(*netlist_).client == scan.arguments[0];
+        }
+        if (!*named_opaque_root_) return false;
+      }
       return normalized.arguments == scan.arguments && !fields.instruction &&
              ScanChainName(scan.arguments[0], fields.chain) == fields.chain;
     } catch (const std::runtime_error&) {
@@ -2230,6 +2238,7 @@ class Runtime::Impl {
   const Design& design_;
   const Netlist* netlist_;
   bool scan_clients_loaded_ = false;
+  std::optional<bool> named_opaque_root_;
   std::set<std::string> tap_clients_;
   std::map<std::string, std::set<std::string>> scan_clients_;
   History read_history_, miscompare_history_, callback_values_, callback_held_;

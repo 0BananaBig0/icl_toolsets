@@ -20,7 +20,10 @@ Generation and replay retain this intent for named root chains as well as scalar
 root scans, using existing canonical metadata and normalization. Explicit chain
 requests replace only their own histories; unknown captures remain unknown and
 prior cared masks remain intact when another chain is implicitly filled.
-Malformed/informational metadata stays informational, while valid direct metadata
+Named omission recognition is limited to eligible standalone opaque roots;
+legacy named notes on register-backed roots stay informational. Scalar metadata
+retains its existing behavior. Malformed/informational metadata stays
+informational, while valid direct metadata
 retains normative before-call ordering. Preserve the legacy callback guard.
 
 ## Scope and constraints

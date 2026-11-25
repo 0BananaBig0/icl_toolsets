@@ -51,7 +51,7 @@ raw_history_omitted intent for implicit completion and normalized named-root rep
 - [x] Step4: Run full normal/static generators,30native, affected SAN CLI,
   C++quality, corpus, packaging, old/new matrices and guides. Expected: verified
   exact input/product hashes, unchanged corpus classes and passing measured bounds.
-- [ ] Step5: Read final staged patch, commit and obtain one fresh final review.
+- [x] Step5: Read final staged patch, commit and obtain one fresh final review.
   Repair blockers once test-first; ledger every ruling and Minor. Expected:
   0unresolved Critical/Important with no rereview.
 - [ ] Step6: Merge/push, verify merged checks, detach reused tree, delete only

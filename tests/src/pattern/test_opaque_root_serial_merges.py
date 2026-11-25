@@ -5,6 +5,7 @@ import unittest
 import test_modeled_child_prefix as helpers
 import test_opaque_root_scan as scalar
 import test_opaque_parallel_scan as parallel
+import test_simultaneous_scan_chains as modeled_parallel
 
 SCALAR = scalar.MODEL.replace('Module Top','Module Chains')
 PARALLEL = parallel.MODEL.replace('Module Top','Module Chains')
@@ -136,6 +137,24 @@ iCall load $::word; iMerge -end
 if {![catch {iGetReadData client -chain second}]} {error {implicit history invented}}
 iNote absent; iNote [iGetStatus]
 ''',[b'0bxxxx',b'absent',b'0'])
+
+    def test_modeled_named_omission_note_preserves_call_produced_arguments(self):
+        for flag in ('-comment','-status'):
+            with self.subTest(flag=flag):
+                self.continued(modeled_parallel.NETWORK,'''iProc seed {} {set ::word 9}
+iProc load {data} {iScan client -chain first 4 -si $data -so 0bx -stable; iApply}
+iReset; iMerge -begin; iCall seed
+iNote %s {modeled raw history omitted iScan client -chain first 5 -si 0b01001 -so 0bxxxxx -stable}
+iCall load $::word; iMerge -end
+'''%flag,'iNote [iGetReadData client -chain first -bin]\n',[b'0b0000'])
+
+    def test_modeled_named_omission_note_keeps_explicit_scan_history(self):
+        for flag in ('-comment','-status'):
+            with self.subTest(flag=flag):
+                self.continued(modeled_parallel.NETWORK,'''iReset
+iNote %s {modeled raw history omitted iScan client -chain first 4 -si 0b1001 -so 0bxxxx -stable}
+iScan client -chain first 4 -si 0b1001 -so 0bxxxx -stable; iApply
+'''%flag,'iNote [iGetReadData client -chain first -bin]\n',[b'0b0000'])
 
     def test_call_local_query_sees_only_completed_explicit_chain_requests(self):
         self.continued(PARALLEL,'''iProc first {} {
