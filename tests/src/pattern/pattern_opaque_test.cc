@@ -447,6 +447,20 @@ void TestDynamicOpaqueQueueCopies() {
   std::vector<pattern::ScanStep> preparation(1);
   preparation.front().input = "unchanged";
   size_t observations = 0;
+  for (size_t id : {netlist.nodes.size(), netlist.nodes.size() + 1}) {
+    Rejects(
+        [&] {
+          automatic.ApplyScan(
+              ChildScan(), {{id, "00000000"}}, &assigned, &preparation,
+              [&](const auto&, const auto&) { ++observations; });
+        },
+        "unknown opaque child reserved resource");
+  }
+  Require(
+      automatic.Value("enable") == "0" && observations == 0 &&
+          assigned == std::set<size_t>{netlist.node_ids.at("head")} &&
+          preparation.size() == 1 && preparation.front().input == "unchanged",
+      "invalid public reservation leaves state and caller outputs untouched");
   Rejects(
       [&] {
         auto invalid = ChildScan();

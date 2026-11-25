@@ -8045,6 +8045,7 @@ Operation ScanScheduler::ApplyScans(
     const std::vector<Operation>& operations,
     const std::map<size_t, std::string>& preserved, std::set<size_t>* assigned,
     std::vector<ScanStep>* preparations, const RawObservation& observe) {
+  impl_->ValidateOpaquePreserved(preserved);
   std::vector<Operation> completions;
   Impl::OpaqueQueues opaque;
   if (std::any_of(operations.begin(), operations.end(),

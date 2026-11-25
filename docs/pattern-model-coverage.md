@@ -5255,7 +5255,7 @@ openings, eight raw scans,13CSUs, all physical words, unknown child returns,
 zero miscompare masks and status clears. Every preparation control is checked
 independently. All five child matrices include285live generated-history runs.
 Two allocation probes and12guide processes pass. The measured maximum across
-1,560runs is0.8676s/469612KiB; no unmeasured-scale or
+1,560runs is0.8188s/469692KiB; no unmeasured-scale or
 speedup claim is made.
 
 The frozen parent control for automatic opaque preparation is an actual modeled
@@ -5264,3 +5264,18 @@ physical operations and observations agree after normalizing only validated
 child-intent families; no returned data, counts or hardware operation is injected.
 The new guide confirms two real openings and three raw CSUs while preserving
 the last explicitly requested root history. Independent review follows.
+
+Final independent review found0Critical/1Important/1Minor. The Important public
+C++ reservation-validation regression is fixed in one test-first wave: validate
+reserved IDs against the public netlist before trial planning, while projecting
+opaque requests only after preparation. Native tests pin private and out-of-
+range IDs, the established runtime_error boundary, unchanged state/caller
+outputs and no delivered observation. All88qualification gates pass freshly
+after this repair. No rereview ran;0Critical/Important findings remain unresolved.
+
+The new Minor is a test gap: the inverted-route case uses all-X expected SO and
+does not independently detect lost polarity. The reviewer verified cared
+comparison mapping directly and found the implementation correct. Defer this
+test improvement with32inherited Minors, for33total. Active bound-reset execution,
+opaque-containing preparation and broader hardware/clock/transport/vendor work
+retain their original requirements; this increment does not close those items.

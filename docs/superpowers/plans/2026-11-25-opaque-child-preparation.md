@@ -52,7 +52,7 @@ trial swap, queue completion and RawObservation commit behavior.
   affected sanitizer CLI, changed-C++quality, corpus, packaging, all existing
   matrices and the new representative preparation workload. Expected: passing
   exact source/product hashes and measured bounds, unchanged corpus classes.
-- [ ] Step5: Read finalized staged patch, commit and obtain one fresh final
+- [x] Step5: Read finalized staged patch, commit and obtain one fresh final
   review. Re-grade, fix blockers once test-first, qualify and record rulings.
   Expected:0unresolved Critical/Important and accurate deferred-Minor inventory.
 - [ ] Step6: Merge/push, verify merged hashes/checks, detach reused worktree,
