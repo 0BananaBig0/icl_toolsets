@@ -47,6 +47,8 @@ struct Operation {
   bool modeled_raw_history = false;
   // Original canonical root scan identity; survives stream lowering.
   std::optional<size_t> modeled_history_source{};
+  // Non-owning identity of a completed dynamic raw route; never serialized.
+  std::weak_ptr<const void> modeled_history_route{};
 };
 
 struct ReadbackUpdate {

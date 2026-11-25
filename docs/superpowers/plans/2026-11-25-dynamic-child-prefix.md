@@ -57,7 +57,7 @@ work budget belong to each scheduler copy.
   sanitizer CLI, corpus, changed-C++quality and source packaging. Check exact
   source/product hashes and all existing/new matched rows. Expected all pass
   with unchanged corpus classifications.
-- [ ] Step5: Commit finalized diff and obtain one fresh whole-branch review;
+- [x] Step5: Commit finalized diff and obtain one fresh whole-branch review;
   fix blockers once test-first and qualify the final state. Record all rulings
   and deferred Minors. Expected no unresolved Critical/Important, no rereview.
 - [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach the

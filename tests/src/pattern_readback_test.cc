@@ -133,6 +133,64 @@ void TestDynamicChildCommittedGeometry() {
   Require(update->scans.empty() && update->failures == 4,
           "dynamic child deltas publish exactly once");
 }
+void TestDynamicChildResultIdentity() {
+  pattern::Design design;
+  design.AddIcl("dynamic_identity.icl", R"(
+Module Leaf {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister value[7:0] {ScanInSource si; CaptureSource value; ResetValue 0;}
+ DataOutPort gate {Source value[0];}
+ ScanOutPort so {Source value[0];}
+ ScanInterface local {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset;}
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanRegister head[2:0] {ScanInSource si; CaptureSource head; ResetValue 0;}
+ Instance child0 Of Leaf {InputPort si = head[0]; InputPort sel = sel;
+  InputPort ce = ce; InputPort se = se; InputPort ue = ue;
+  InputPort tck = tck; InputPort reset = reset;}
+ ScanRegister tail[4:0] {ScanInSource child0.so; CaptureSource tail; ResetValue 0;}
+ ScanMux output_route SelectedBy child0.gate {1'b0: tail[0]; 1'b1: ~tail[0];}
+ ScanOutPort so {Source output_route;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue; Port tck; Port reset; DefaultLoadValue 16'b0;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  scheduler.Reset();
+  const pattern::Operation scan{"iScan",
+                                {"client", "16", "-si", "0b0001010010100000",
+                                 "-so", "0bxxxxxxxxxxxxxxxx"},
+                                "test",
+                                {}};
+  const pattern::Operation note{
+      "iNote",
+      {"-comment",
+       "modeled dynamic child raw history client child0.local 0bxxxxxxxx"},
+      "test",
+      {}};
+  const auto first = scheduler.ApplyScan(scan);
+  const auto before = scheduler.ModeledRawHistory(note, first);
+  Require(before && !before->inverted,
+          "first result retains its actual polarity");
+  pattern::ScanScheduler copy(scheduler);
+  std::optional<pattern::Operation> observed;
+  const auto second = scheduler.ApplyScan(
+      scan, {}, nullptr, nullptr,
+      [&](const auto& operation, const auto&) { observed = operation; });
+  Require(first.arguments == second.arguments,
+          "successive route changes can have identical canonical scan fields");
+  Require(!scheduler.ModeledRawHistory(note, first),
+          "stale same-width result cannot acquire a later route polarity");
+  const auto current = scheduler.ModeledRawHistory(note, second);
+  Require(current && current->inverted && observed &&
+              scheduler.ModeledRawHistory(note, *observed).has_value(),
+          "returned and observed operations share the committed execution");
+  Require(copy.ModeledRawHistory(note, first).has_value() &&
+              !copy.ModeledRawHistory(note, second),
+          "copied scheduler preserves only its own committed execution");
+}
 void TestModeledChildHistoryProjection() {
   pattern::Design design;
   design.AddIcl("child_history.icl", R"(
@@ -1060,6 +1118,7 @@ Module Top {
 int main() {
   try {
     TestDynamicChildCommittedGeometry();
+    TestDynamicChildResultIdentity();
     TestModeledChildHistoryProjection();
     TestStatusPreviewRetainsUnpublishedHistory();
     TestOrderedStatusClearEvents();

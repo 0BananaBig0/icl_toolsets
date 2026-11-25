@@ -10382,7 +10382,7 @@ the [current qualification record](remaining-work.md#task178-dynamic-modeled-chi
 
 All78qualification gates pass on4,069input/38product hashes. Each normal/static
 generator passes84suites/1,357methods. All30native normal/SAN suites,
-18changed-C++quality checks,14dynamic-focused methods per build, existing
+21changed-C++quality checks,14dynamic-focused methods per build, existing
 16static-child/13status-clear/32opaque/20callback-focused methods, affected
 sanitizer CLI, unchanged corpus and source packaging pass. All gates are fresh.
 
@@ -10394,7 +10394,7 @@ It checks actual old words/masks, changed root widths, ordered comparisons,
 failure counts and complete parent/current outputs. There are171live generated
 history processes across the three child-prefix matrices. Two allocation probes
 and four guide processes pass. Measured maximum across all1,128processes is
-0.8676s/445380KiB; no speedup or unmeasured-scale claim.
+2.3113s/445204KiB; no speedup or unmeasured-scale claim.
 
 Parent static controls now use their native notes. Only the new dynamic intent
 comments are injected in dynamic parent controls; no hardware operation,
@@ -10404,3 +10404,19 @@ validate complete matrices, identities, values, shapes and hashes.
 Corpus classifications remain1,032canonical/44explicit unsupported/687default
 elaboration failures across2,562source identities. This increment restores
 supported dynamic scalar histories, not general topology/timing or transport.
+
+One fresh independent final review found0Critical,1Important and1Minor.
+One test-first repair fixes the Important native API finding:two identical
+successive root scans can execute with different output polarity. Returned
+and actual-observed dynamic scan operations now carry a non-owning execution
+identity. The scheduler rejects stale results, while copies retain their own
+committed route. No old full-route snapshot is retained by a saved operation.
+The native regression fails on the pre-repair executable and passes after the
+fix. All78gates are fresh after repair, including84x1,357methods per generator,
+30native suites,21C++quality checks and all1,128measurements. No rereview.
+
+One new Minor is deferred:dynamic benchmark --help inherits the static runner
+description. It does not change the measured workload or checks. The30inherited
+Minors keep their dispositions; total31deferred Minors, including the previously
+recorded typed-factory-pointer compatibility limitation. Broader topology,
+timing, physical transport and excluded coverage1 retain their existing scope.

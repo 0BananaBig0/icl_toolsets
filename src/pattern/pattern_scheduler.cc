@@ -1262,7 +1262,9 @@ class ScanScheduler::Impl {
     try {
       const auto& shape = RawTemplate();
       if (parsed->dynamic != shape.dynamic ||
-          (parsed->dynamic && !raw_history_profile_)) {
+          (parsed->dynamic && (!raw_history_profile_ ||
+                               root_scan.modeled_history_route.lock().get() !=
+                                   raw_history_profile_.get()))) {
         return std::nullopt;
       }
       const auto& root = parsed->dynamic ? *raw_history_profile_ : shape;
@@ -2339,6 +2341,7 @@ class ScanScheduler::Impl {
                    latest.count(netlist_.nodes[root.client].name) != 0, nullptr,
                    observe ? &captured : nullptr);
     raw_history_profile_ = std::move(history);
+    result.modeled_history_route = raw_history_profile_;
     raw_history_segments_.clear();
     raw_history_work_ = 0;
     if (observe) {
@@ -2350,8 +2353,10 @@ class ScanScheduler::Impl {
       }
       for (const auto& [name, operation] : latest) {
         const auto& slice = slices.at(name);
-        observe(operation, InvertBits(actual.substr(slice.offset, slice.width),
-                                      slice.output_inverted));
+        auto observed = operation;
+        observed.modeled_history_route = raw_history_profile_;
+        observe(observed, InvertBits(actual.substr(slice.offset, slice.width),
+                                     slice.output_inverted));
       }
     }
     if (assigned) *assigned = std::move(explicit_registers);
