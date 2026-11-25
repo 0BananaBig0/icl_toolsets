@@ -55,7 +55,7 @@ notes to root data scans; provider counts comparisons but omits raw publication.
 - [x] Step5: Commit finalized diff; obtain one independent whole-branch review.
   Fix blockers once test-first, record Minors and rerun affected qualification.
   Expected no unresolved Critical/Important findings; no rereview.
-- [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach
+- [x] Step6: Merge/push master, verify merged hashes/focused checks, detach
   reused worktree, delete owned branch and archive only this ledger.
   Expected clean pushed master,117stashes and accurate broader inventory.
 

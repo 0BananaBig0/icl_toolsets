@@ -5033,3 +5033,7 @@ the fixes and pass all32methods afterward; the native overwrite test changes
 from one failure to zero. All65gates pass fresh after the code changes, with
 both81x1,314generator variants,30native suites,24quality checks and696measured
 processes. No rereview runs; the29inherited Minors remain deferred.
+
+All10 Task175 merged-result checks pass against identical4,062qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.
