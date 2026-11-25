@@ -60,7 +60,7 @@ work budget belong to each scheduler copy.
 - [x] Step5: Commit finalized diff and obtain one fresh whole-branch review;
   fix blockers once test-first and qualify the final state. Record all rulings
   and deferred Minors. Expected no unresolved Critical/Important, no rereview.
-- [ ] Step6: Merge/push master, verify merged hashes/focused checks, detach the
+- [x] Step6: Merge/push master, verify merged hashes/focused checks, detach the
   reused worktree, delete the owned branch and archive only this ledger.
   Expected clean pushed master,117stashes and accurate remaining inventory.
 

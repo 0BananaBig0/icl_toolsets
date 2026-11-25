@@ -5163,3 +5163,7 @@ description. It does not change the measured workload or checks. The30inherited
 Minors keep their dispositions; total31deferred Minors, including the previously
 recorded typed-factory-pointer compatibility limitation. Broader topology,
 timing, physical transport and excluded coverage1 retain their existing scope.
+
+All16 Task178 merged-result checks pass against identical4,069qualified inputs
+and20copied executables. Master is pushed, the owned task branch is deleted,
+and117stashes remain. Broader inventory work remains open.
