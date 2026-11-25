@@ -427,6 +427,67 @@ Module Top {
   }
 }
 
+void TestOpaqueChildMergedReadback() {
+  pattern::Design design;
+  design.AddIcl("opaque_merge.icl", R"(
+Module Leaf {
+ ScanInPort si; ScanOutPort so; SelectPort sel; CaptureEnPort ce;
+ ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanInterface local {Port si; Port so; Port sel; Port ce; Port se; Port ue;
+  Port tck; Port reset; DefaultLoadValue 8'b0;}
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of Leaf {InputPort si = si; InputPort sel = sel;
+  InputPort ce = ce; InputPort se = se; InputPort ue = ue;
+  InputPort tck = tck; InputPort reset = reset;}
+ ScanRegister tail {ScanInSource child.so; CaptureSource tail; ResetValue 0;}
+ ScanOutPort so {Source tail;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue;
+  Port tck; Port reset; DefaultLoadValue 9'b0;}
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}}, {"iMerge", {"-begin"}, "test", {}}};
+  const auto* update = readback(operations, false);
+  Require(update && update->bits.empty() && update->scans.empty() &&
+              update->failures == 0,
+          "opaque child merge begin produces no observation or CSU");
+  operations.push_back(
+      {"iScan",
+       {"child.local", "8", "-si", "150", "-so", "0bx", "-stable"},
+       "test",
+       {"first"}});
+  operations.push_back({"iApply", {}, "test", {"first"}});
+  update = readback(operations, false);
+  Require(update && update->scans.size() == 1 &&
+              update->scans.front().target == "child.local" &&
+              update->scans.front().read == "xxxxxxxx" &&
+              update->scans.front().miscompare == "00000000" &&
+              update->failures == 0,
+          "opaque merged call observes unknown data independent of shifted SI");
+  operations.push_back({"iGetStatus", {"-clear", "0"}, "test", {}});
+  operations.push_back(
+      {"iScan",
+       {"child.local", "8", "-si", "105", "-so", "0b10xxxx01", "-stable"},
+       "test",
+       {"second"}});
+  operations.push_back({"iApply", {}, "test", {"second"}});
+  operations.push_back({"iMerge", {"-end"}, "test", {}});
+  update = readback(operations, false);
+  Require(
+      update && update->scans.size() == 1 &&
+          update->scans.front().read == "xxxxxxxx" &&
+          update->scans.front().miscompare == "xx0000xx" && !update->failures,
+      "serial opaque merge preserves cared unknown mask and unknown status");
+  update = readback(operations, true);
+  Require(
+      update && update->scans.empty() && !update->failures,
+      "merge end and repeated clear neither recount nor erase unknown status");
+}
+
 void TestWriteCallbackEndpointReadback() {
   pattern::Design design;
   design.AddIcl("write_callback_readback.icl", R"(
@@ -1125,6 +1186,7 @@ int main() {
     TestMergeMarkersAreEventFree();
     TestMergedRawReadbackPlanes();
     TestMergedReadbackGuardPreflight();
+    TestOpaqueChildMergedReadback();
     TestWriteCallbackEndpointReadback();
     TestCallbackAssumptionsCannotBecomeActualData();
     TestUnexpandedLogicalReadbackRejects();

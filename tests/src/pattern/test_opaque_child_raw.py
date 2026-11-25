@@ -129,11 +129,10 @@ if {![catch {iGetStatus -clear}]} {error {unknown opaque status accepted}}
         self.rejected("iReset; iTake sel; iState sel 0; "
                       "iScan child.local 8 -si 1; iApply\n", "reserved", MODEL)
 
-    def test_clocks_overrides_time_and_merge_rejected_atomically(self):
+    def test_clocks_overrides_and_time_rejected_atomically(self):
         for command in ("iRunLoop 1", "iRunLoop -time 1ns", "iClock tck",
                         "iClockOverride tck -freqDivider 2",
-                        "iOverrideScanInterface client -capture off",
-                        "iMerge -begin; iMerge -end"):
+                        "iOverrideScanInterface client -capture off"):
             self.rejected("iReset; " + command + "; iScan child.local 8 -si 0; iApply\n",
                           "opaque", MODEL)
 

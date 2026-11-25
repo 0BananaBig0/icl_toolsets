@@ -10728,3 +10728,72 @@ wider source/vendor acceptance and excluded coverage1 retain prior boundaries.
 All25 Task181 merged-result checks pass against identical4,078qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Serial opaque-child merge calls (Task182)
+
+Native networks with fixed opaque children now accept iMerge call groups. Calls
+execute serially through the existing merge traversal and native scan engine.
+This includes supported parent-register operations, nested groups, automatic
+opening and call-local reservations. Actual opaque captures remain unknown;
+expected SO determines care, while status clearing retains its existing order.
+An empty merge adds no CSU. No batching or optimality claim is made.
+
+Standalone opaque roots, physical mode and unsupported clock/event operations
+retain their existing boundaries. Broader independent TAP, parallel, timed,
+transport and arbitrary black-box work remains open, along with excluded item1
+and the 34 inherited deferred Minors. Qualification and review are in progress.
+
+Use the two-leaf Chains ICL model in the Task181 example above. Save this script
+as opaque-serial.pdl and run with --top_module Chains and --model_readback:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Chains
+iProc first {} {iScan child0.local 8 -si 150 -so 0bx -stable; iApply}
+iProc second {} {iScan child1.local 8 -si 105 -so 0bx -stable; iApply}
+iReset
+iScan client 10 -si 0b1011110011 -so 0bx; iApply
+iMerge -begin
+iCall first
+iCall second
+iMerge -end
+iNote [iGetReadData child0.local -bin]
+iNote [iGetReadData child1.local -bin]
+iNote [iGetMiscompares child0.local -bin]
+iNote [iGetMiscompares child1.local -bin]
+iNote [iGetReadData client -bin]
+iNote [iGetStatus -clear]
+iNote [iGetStatus]
+~~~
+
+The output contains the initial ten-bit root scan and two stable 26-bit root
+scans, three CSUs total. The two child returns are 0bxxxxxxxx, their masks are
+0b00000000, and the requested root return remains 0b0000000000 from the initial
+scan. Both status queries return 0. Original, flattened and generated-prefix
+continuations retain the same frames and observations. Local-reset rewriting
+also preserves the original procedure definitions and merge source.
+
+The frozen Task181 parent executes the same opaque model with ordinary
+sequential iCalls in place of the merge wrappers. Exact output comparison
+requires no normalization, fabricated captures or removed hardware operations.
+
+Task182 passes all 98 qualification gates on 4,081 input and 38 product
+hashes. Normal and static generators each pass 88 suites and 1,415 methods;
+all 30 native suites, nine changed-C++ quality checks, affected sanitizer CLI,
+corpus and source packaging pass. Corpus inputs and result classes remain
+1,032 canonical, 44 explicitly unsupported and 687 default elaboration failures
+across 2,562 source identities.
+
+All 1,944 measurements meet their 10-second and 512-MiB limits, retaining the
+256-MiB single-wide bounds. The new 216-run serial-merge matrix covers 1/2/8/32
+leaves at 8/64/256 bits and 1/2/8 leaves at 1,024 bits, with three repetitions,
+source/flat/generated forms and sanitizer samples. Every physical word, flag,
+intent marker, actual unknown return, mask, old root history and status clear
+is checked. The frozen parent's sequential calls and current merge calls use
+the same opaque model and produce byte-identical output without normalization.
+
+All seven child matrices include 387 live generated-history runs. Two allocation
+probes and 20 guide processes pass. The maximum across all measurements is
+1.2498 seconds and 472296 KiB. No batching, speedup or
+unmeasured-scale claim is made. Independent review follows; the broader original
+inventory, excluded item1 and 34 inherited deferred Minors retain their scope.

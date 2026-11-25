@@ -1181,6 +1181,7 @@ python3 tests/src/pattern/test_dynamic_child_prefix.py $1
 python3 tests/src/pattern/test_dynamic_opaque_routes.py $1
 python3 tests/src/pattern/test_opaque_child_preparation.py $1
 python3 tests/src/pattern/test_opaque_crossing_preparation.py $1
+python3 tests/src/pattern/test_opaque_serial_merges.py $1
 python3 tests/src/pattern/test_primary_callback_state.py $1
 python3 tests/src/pattern/test_write_value_options.py $1
 python3 tests/src/pattern/test_primary_data_events.py $1

@@ -207,7 +207,7 @@ iNote outside; iMerge -end
         opaque_body = ('iProc access {} {iScan client 8 -si 9; iApply}\n'
                        'iReset; iMerge -begin; iCall access; iMerge -end\n')
         self.rejected(opaque.helpers.MODEL, opaque_body, 'opaque', top='Top')
-        self.rejected(opaque_child_model(), opaque_body, 'opaque child merge', top='Top')
+        self.rejected(opaque_child_model(), opaque_body, 'length', top='Top')
 
 
 if __name__ == '__main__':
