@@ -409,6 +409,95 @@ void TestOpaqueExpansionRequiresActiveStaticRoute() {
       !pattern::ExpandOpaqueChild(unsupported),
       "conditionally selected opaque route is outside the static expansion");
 }
+void TestDynamicOpaqueQueueCopies() {
+  auto source = kOpaqueChild;
+  const auto select = source.find("InputPort sel = sel");
+  source.replace(select, std::string("InputPort sel = sel").size(),
+                 "InputPort sel = enable");
+  const auto tail = source.find(" ScanRegister tail");
+  source.insert(tail, R"(
+ ScanMux route SelectedBy enable {1'b0: head[0]; 1'b1: child.so;}
+ ScanRegister enable {ScanInSource route; CaptureSource enable; ResetValue 0;}
+)");
+  const auto input = source.find("ScanInSource child.so");
+  source.replace(input, std::string("ScanInSource child.so").size(),
+                 "ScanInSource enable");
+  source.replace(source.find("DefaultLoadValue 16'b0"),
+                 std::string("DefaultLoadValue 16'b0").size(),
+                 "DefaultLoadValue 9'b0");
+  pattern::Design design;
+  design.AddIcl("dynamic_opaque.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  Require(scheduler.HasOpaqueChild(),
+          "binary bypass network uses the private opaque execution model");
+  for (const auto& role : {"CaptureSource", "SelectedBy"}) {
+    auto unsafe = netlist;
+    const bool capture = std::string(role) == "CaptureSource";
+    auto& target =
+        unsafe.nodes.at(unsafe.node_ids.at(capture ? "enable" : "route"));
+    const auto input = unsafe.node_ids.at(capture ? "route" : "child.so");
+    target.inputs[role] = {{input, unsafe.nodes[input].left}};
+    Require(!pattern::ExpandOpaqueChild(unsafe),
+            "opaque mux payload cannot become capture or selection control");
+  }
+  scheduler.Reset();
+  scheduler.ApplyScan({"iScan",
+                       {"client", "9", "-si", "0b101110011", "-so", "0bx"},
+                       "open",
+                       {}});
+  std::string actual;
+  const auto physical = scheduler.ApplyScan(
+      ChildScan(), {}, nullptr, nullptr,
+      [&](const auto&, const auto& bits) { actual = bits; });
+  Require(actual == "xxxxxxxx" && physical.arguments[1] == "17" &&
+              physical.arguments[3] == "0b10110100101110011",
+          "active opaque request uses actual unknown return and intended "
+          "physical input");
+  pattern::ScanScheduler copy(scheduler);
+  Rejects(
+      [&] {
+        scheduler.ApplyScan(
+            {"iScan", {"client", "18", "-si", "0", "-so", "0bx"}, "bad", {}});
+      },
+      "length");
+  scheduler.ApplyScan(
+      {"iScan",
+       {"client", "17", "-si", "0b10100000000010011", "-so", "0bx"},
+       "close",
+       {}});
+  scheduler.ApplyScan({"iScan",
+                       {"client", "9", "-si", "0b101010011", "-so", "0bx"},
+                       "closed",
+                       {}});
+  actual.clear();
+  scheduler.ApplyScan({"iScan",
+                       {"client", "9", "-si", "0b101110011", "-so", "0bx"},
+                       "reopen",
+                       {}},
+                      {}, nullptr, nullptr,
+                      [&](const auto&, const auto& bits) { actual = bits; });
+  Require(actual == "101010011",
+          "inactive opaque queues do not block known parent-only reopening");
+  scheduler.ApplyScan(ChildScan("60"));
+  const auto current_steps = scheduler.Apply(ParentWrite("3"));
+  const auto copied_steps = copy.Apply(ParentWrite("3"));
+  Require(current_steps.size() == 1 && copied_steps.size() == 1,
+          "active parent completion needs one real CSU in each scheduler copy");
+  if (!current_steps.empty() && !copied_steps.empty()) {
+    const std::string current(current_steps[0].serial.rbegin(),
+                              current_steps[0].serial.rend());
+    const std::string copied(copied_steps[0].serial.rbegin(),
+                             copied_steps[0].serial.rend());
+    Require(current.size() == 17 && copied.size() == 17 &&
+                current.substr(3, 8) == "00111100" &&
+                copied.substr(3, 8) == "10100101",
+            "rollback and inactive scans preserve independent opaque "
+            "completion intent");
+  }
+  CheckPublicSteps(netlist, current_steps);
+  CheckPublicSteps(netlist, copied_steps);
+}
 void TestCallbackCallerFrameProof() {
   pattern::Design design;
   design.AddIcl("caller-proof.icl", R"(
@@ -728,7 +817,8 @@ int main() {
         TestRawHistoryScopeUsesWinningRequest,
         TestUnusedOpaqueChildDoesNotChangePrimaryPaths,
         TestOpaqueExpansionRequiresActiveStaticRoute,
-        TestCallbackCallerFrameProof, TestOpaqueChildNativeStateAndPrivacy,
+        TestDynamicOpaqueQueueCopies, TestCallbackCallerFrameProof,
+        TestOpaqueChildNativeStateAndPrivacy,
         TestOpaqueChildLengthCopiesAndSubscriberCommit,
         TestOpaqueChildVisibleReferenceAndFlatOrigins,
         TestOpaqueChildWrappersWithoutVisibleStorage}) {
