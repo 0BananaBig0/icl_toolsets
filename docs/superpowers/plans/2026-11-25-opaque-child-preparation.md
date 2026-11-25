@@ -55,7 +55,7 @@ trial swap, queue completion and RawObservation commit behavior.
 - [x] Step5: Read finalized staged patch, commit and obtain one fresh final
   review. Re-grade, fix blockers once test-first, qualify and record rulings.
   Expected:0unresolved Critical/Important and accurate deferred-Minor inventory.
-- [ ] Step6: Merge/push, verify merged hashes/checks, detach reused worktree,
+- [x] Step6: Merge/push, verify merged hashes/checks, detach reused worktree,
   delete only owned branch and archive own ledger. Expected: clean pushed master
   and preserved117stashes; broad inventory remains accurate.
 
