@@ -416,6 +416,31 @@ Module Top {
 })");
     const auto netlist = pattern::Elaborate(design, "Top");
     const auto readback = pattern::MakeModeledReadback(netlist, physical);
+    if (!physical) {
+      std::vector<pattern::Operation> operations{
+          {"iReset", {}, "test", {}}, {"iMerge", {"-begin"}, "test", {}}};
+      const auto* update = readback(operations, false);
+      Require(update && update->scans.empty() && update->bits.empty() &&
+                  update->failures == 0,
+              "opaque root merge begin is event-free");
+      operations.push_back(
+          {"iScan",
+           {"client", "4", "-si", "9", "-so", "0bx", "-stable"},
+           "test",
+           {"first"}});
+      operations.push_back({"iApply", {}, "test", {"first"}});
+      operations.push_back({"iMerge", {"-end"}, "test", {}});
+      update = readback(operations, false);
+      Require(update && update->scans.size() == 1 &&
+                  update->scans.front().read == "xxxx" &&
+                  update->scans.front().miscompare == "0000" &&
+                  update->failures == 0,
+              "opaque root merged calls observe only unknown captured data");
+      update = readback(operations, true);
+      Require(update && update->scans.empty() && update->failures == 0,
+              "opaque root merge end adds no observation or recount");
+      continue;
+    }
     bool rejected = false;
     try {
       readback({{"iMerge", {"-begin"}, "test", {}}}, false);
@@ -423,7 +448,7 @@ Module Top {
       rejected = std::string(error.what()).find("iMerge histories") !=
                  std::string::npos;
     }
-    Require(rejected, "physical and opaque merge histories remain guarded");
+    Require(rejected, "physical merge histories remain guarded");
   }
 }
 

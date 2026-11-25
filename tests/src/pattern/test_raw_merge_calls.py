@@ -5,7 +5,6 @@ import unittest
 
 import test_simultaneous_scan_chains as cli
 import test_modeled_raw_readback as raw
-import test_opaque_parallel_scan as opaque
 import test_modeled_root_scan as modeled
 from benchmark_opaque_child_raw import model as opaque_child_model
 
@@ -206,7 +205,6 @@ iNote outside; iMerge -end
         self.rejected(ROOT, body, 'physical', extra=('--physical_pdl',))
         opaque_body = ('iProc access {} {iScan client 8 -si 9; iApply}\n'
                        'iReset; iMerge -begin; iCall access; iMerge -end\n')
-        self.rejected(opaque.helpers.MODEL, opaque_body, 'opaque', top='Top')
         self.rejected(opaque_child_model(), opaque_body, 'length', top='Top')
 
 

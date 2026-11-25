@@ -61,8 +61,9 @@ iScan client -chain first 8 -si 0x5a -stable; iApply
 iScan client -chain first 4 -si 9 -so 0 -stable; iApply
 iScan client -chain second 7 -si 5 -so 0 -stable; iApply
 """)
-        self.assertEqual(output.count("-chain first 4 -si 0b1001 -so 0b0000 -stable"), 1)
-        self.assertEqual(output.count("-chain first 4 -si 0b1001 -so 0bxxxx -stable"), 1)
+        scans = [line for line in output.splitlines() if line.startswith('iScan ')]
+        self.assertEqual(scans.count("iScan client -chain first 4 -si 0b1001 -so 0b0000 -stable"), 1)
+        self.assertEqual(scans.count("iScan client -chain first 4 -si 0b1001 -so 0bxxxx -stable"), 1)
         self.assertEqual(output.count("iApply"), 2)
 
     def test_omitted_unknown_length_rejects_atomically(self):

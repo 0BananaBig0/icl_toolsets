@@ -5396,3 +5396,53 @@ publication behavior retain their prior scope.
 All28 Task182 merged-result checks pass against identical4,081qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Standalone opaque-root serial merges (Task183)
+
+Standalone scalar and disjoint named opaque roots now accept serial iMerge
+calls through the existing queue and merge traversal. Implicit default or stable
+fills still execute as real scans, but do not invent or overwrite explicit
+chain histories when generated PDL is replayed. Existing canonical omission
+notes carry that scope; no physical scan or comparison is removed.
+
+Only actual opaque captures are reported, so returned data stays unknown.
+A chain retains its prior cared mask through implicit fills and reset while
+another chain changes its explicit width. Unknown accumulated status also
+stays unknown across reset. Physical/event and
+unsupported topology boundaries retain their existing checks. The post-repair qualification
+and review result are recorded below; the broader inventory and excluded item1
+stay open, with36deferred Minors.
+
+Task183 passes all 108 qualification gates on 4,084 input and 42 product hashes.
+Normal and static generators each pass 89 suites and 1,435 methods. All thirty
+native suites, two additional static native suites, fifteen C++ quality checks,
+normal/sanitizer seventeen-method trace suites, affected sanitizer CLI, corpus
+and packaging pass. Corpus inputs and classes retain 1,032 canonical, 44 explicit
+unsupported and 687 default elaboration failures across 2,562 source identities.
+
+All 2,226 measurements meet their 10-second/512-MiB bounds, retaining 256-MiB
+single-wide controls. The new 282-run matrix covers scalar widths 8/64/256/1024
+and named 1/2/8/32-chain widths 8/64/256, plus 1/2/8 chains at 1,024 bits,
+three repetitions and sanitizer samples. The frozen parent's real sequential
+calls and current merges request all lanes explicitly. Every word, frame, flag,
+actual unknown return, mask, status clear and output byte agrees without data
+normalization. Separate native/functional cases pin implicit history scope and
+old cared masks; the measured all-explicit control does not stand in for them.
+
+All eight child/root matrices include 462 live generated-history runs. Two
+allocation probes and 24 guide processes pass. The measured maximum is
+1.5422 seconds and 470408 KiB. No batching, speedup or
+unmeasured-scale claim is made. Independent review found0Critical/1Important/2newMinor; the Important metadata compatibility regression is repaired in one test-first pass. No rereview is requested. The broader original
+inventory, excluded item1 and 36 deferred Minors retain their scope.
+
+The Important review finding was named omission recognition activating on
+register-backed roots. Cached existing opaque-model eligibility now limits the
+new named behavior, preserving scalar handling and legacy informational notes.
+Both call-produced argument and explicit-capture reproductions fail first for
+comment/status tags, then pass all 17 root methods across original, flattened
+and generated continuations. All 108 final gates ran fresh after the repair.
+
+Two new Minors are deferred: one direct-note fixture uses decimal SI and cannot
+distinguish the wrong ordering; provider errors retain the failed Apply location
+but omit its nested call stack at later getters. The total is 36 deferred
+Minors. No second review or coverage1 execution is claimed.
