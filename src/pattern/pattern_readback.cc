@@ -207,12 +207,13 @@ class ModelReadback {
     for (size_t i = 0; i < actual.size(); ++i) {
       mismatches += Mismatch(expected[i], actual[i]);
     }
-    const auto key =
-        std::make_pair(scan.arguments[fields.target], fields.chain);
+    StoreRaw({scan.arguments[fields.target], fields.chain, actual,
+              std::move(mismatches)});
+  }
+  void StoreRaw(ScanReadbackUpdate update) {
+    const auto key = std::make_pair(update.target, update.chain);
     const auto [position, inserted] =
         raw_positions_.emplace(key, updates_.scans.size());
-    ScanReadbackUpdate update{key.first, key.second, actual,
-                              std::move(mismatches)};
     if (inserted) {
       updates_.scans.push_back(std::move(update));
     } else {
@@ -260,6 +261,9 @@ class ModelReadback {
     }
     if (op.command == "iNote") {
       scheduler_->RestoreOpaqueScanNote(op);
+      if (auto actual = scheduler_->OpaqueRawHistory(op)) {
+        StoreRaw(std::move(*actual));
+      }
     } else if (op.command == "iScan") {
       auto scan = scheduler_->NormalizeScan(op, true);
       const auto fields = ReadScanFields(scan);

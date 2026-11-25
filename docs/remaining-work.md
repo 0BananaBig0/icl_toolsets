@@ -721,3 +721,80 @@ remain deferred. No review blocker remains; integration is recorded below.
 All10 Task173 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Task174 opaque child histories across generated prefixes
+
+Explicit fixed opaque-child scans now retain their local read and miscompare
+histories when the generated root-scan prefix is continued. Generated quoted
+comments identify the root, requested child and exact comparison mask. The
+native scheduler validates that identity against its committed raw-CSU
+snapshot. A provider supplies unknown actual bits, unknown miscompares for
+cared bits and zero miscompares for don't-care bits. Comments supply no actual
+data, add no hardware transaction and never recount global failures.
+
+Runtime retains pending intent separately from actual history. Malformed,
+unmatched, unanchored and reset-invalidated notes cannot overwrite prior
+observations. A completed raw CSU can support a supplied matching interval
+identity; ordinary frames cannot. Automatically emitted comments name only
+explicitly requested children, so root scans alone create no child histories.
+Both standard tags and matching duplicates preserve hardware/status behavior.
+Histories persist through later root scans and resets. No provider still means
+actual hardware observations are unavailable.
+
+Real parent failures precede implementation: four missing-history/annotation
+failures, then two ordinary-frame anchoring failures and a third completed-CSU
+scope failure. All25 focused methods pass in normal/static/SAN, including
+one/two children, sparse masks, old-history preservation, namespaced split
+inputs and local resets. Native tests cover copy/reset, rejected-scan rollback
+and subscriber exceptions after commit. The existing20 callback-history
+methods and five multiple-child reporting methods also pass.
+
+All65 qualification gates pass on4,062input/38product hashes:81suites/
+1,306methods in each normal/static generator regression,30native suites,
+21C++quality checks, affected SAN CLI, corpus and source packaging checks.
+All2,562 corpus identities retain1,032canonical,44unsupported AccessLink and
+687default elaboration-failure classifications.
+
+All696 timing/RSS processes pass unchanged bounds:378callback,216multiple-child
+and102single-child rows. The multiple-child grid covers1/2/8/32children at
+8/64/256bits and1/2/8children at1,024bits. All57generated-form processes rerun
+live getters for every named child and root/status observations, preserving
+whole-output equality, exact raw words and CSU counts. Parent native-source
+controls carry matching informational comments; this is no claim of old-parent
+prefix support or speedup. Peak across all owners is0.8678s/
+446284KiB. Two projection-allocation probes retain counts
+[56, 56] at an8,200bit physical root; four guide processes agree.
+
+The pre-existing logical-root scope discrepancy remains the next separate
+item6 increment: child-only source has no root-interface history, while its
+lowered physical-root prefix exposes one. Both the immutable parent and this
+candidate reproduce it (root-scope-followup.json). This task restores child
+histories; it does not close root-history parity or broader inventory2–8/10–12.
+Coverage1 remains excluded and27inherited Minors remain deferred. Final review
+and integration are recorded below.
+
+Task174 independent review:0Critical/1Important/2Minor. The Important finding
+requires documenting an inherited status-clear limitation before integration:
+when a prefix successfully evaluates iGetStatus -clear, generated PDL retains
+the returned value but omits the clear. A five-failure root comparison followed
+by a clear and a don't-care child scan therefore leaves appended status0 in
+source execution but5 after generated-prefix replay. Clearing for the first
+time in the appended suffix correctly returns5 then0 on both forms. Parent
+and candidate reproduce the prefix discrepancy; it remains a separate item6
+behavioral fix. Evidence is retained in the Task174 independent-review/
+nonzero-clear-prefix directory. This documentation requirement is resolved;
+no product code changed after the65-gate qualification and no rereview ran.
+
+The root-scope follow-up also covers preservation of an earlier root history:
+a child-only scan retains old logical-root miscompares in source execution,
+while physical-root replay replaces them with zeros. Parent and candidate
+both reproduce it (independent-review/older-root). Neither root-history case
+is closed by Task174.
+
+Two Minor findings remain deferred: a stale note after an ordinary frame can
+change the unobserved getter's rejecting diagnostic, and oversized rejected
+annotations make transient parser copies proportional to their input. Actual
+modeled data validation and the accepted1Mbit limit hold. Together with the
+inherited27, there are29deferred Minors. Real-device transport, broader modes
+and scales beyond the recorded matrices remain unqualified.

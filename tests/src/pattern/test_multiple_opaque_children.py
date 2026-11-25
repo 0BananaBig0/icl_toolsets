@@ -28,6 +28,172 @@ iNote [iGetReadData head -dec]; iNote [iGetReadData tail -dec]
         self.assertNotIn('__opaque_scan_state', output)
         self.assertNotIn('__opaque_scan_state', (self.root/'debug/Top.icl').read_text())
 
+    def test_generated_prefix_retains_explicit_opaque_histories(self):
+        for count in (1, 2):
+            with self.subTest(children=count):
+                prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 0xa5 -so 0b10xx0011 -stable
+'''
+                if count==2:
+                    prefix += 'iScan child1.local 8 -si 0x3c -stable\n'
+                prefix += 'iApply\n'
+                suffix = '''iNote [iGetReadData child0.local -bin]
+iNote [iGetMiscompares child0.local -bin]
+if {![catch {iGetStatus}]} {error {opaque comparison became known}}
+'''
+                expected = ['0bxxxxxxxx', '0bxx00xxxx']
+                if count==2:
+                    suffix += '''iNote [iGetReadData child1.local -bin]
+iNote [iGetMiscompares child1.local -bin]
+'''
+                    expected += ['0bxxxxxxxx', '0b00000000']
+                icl, pdl = self.files(prefix, model([8]*count))
+                self.run_tool(icl, pdl, 'prefix.pdl')
+                source_icl, source = self.files(prefix+suffix, model([8]*count))
+                reference = self.run_tool(source_icl, source, 'source-tail.pdl')
+                tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+                replay = self.run_tool(icl, self.root/'prefix.pdl', 'prefix-tail.pdl',
+                                       extra=('--pdl', str(tail)))
+                self.assertEqual(reference, replay)
+                self.assertEqual(self.notes(replay), expected)
+
+    def test_prefix_history_persists_without_inventing_sibling_scope(self):
+        prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 0xa5 -stable; iApply
+iScan client 24 -si 0 -stable; iApply; iReset
+'''
+        suffix = '''iNote [iGetReadData child0.local -bin]
+iNote [iGetMiscompares child0.local -bin]
+if {![catch {iGetReadData child1.local}]} {error {unrequested sibling history invented}}
+iNote unread; iNote [iGetStatus -clear]; iNote [iGetStatus]
+'''
+        icl, first = self.files(prefix, MODEL)
+        self.run_tool(icl, first, 'prefix.pdl')
+        _, full = self.files(prefix+suffix, MODEL)
+        reference = self.run_tool(icl, full, 'source-tail.pdl')
+        tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+        replay = self.run_tool(icl, self.root/'prefix.pdl', 'prefix-tail.pdl',
+                               extra=('--pdl', str(tail)))
+        self.assertEqual(reference, replay)
+        self.assertEqual(self.notes(replay), ['0bxxxxxxxx','0b00000000','unread','0','0'])
+
+    def test_typed_duplicate_history_notes_add_no_hardware_or_status(self):
+        prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 0xa5 -stable; iApply
+'''
+        icl, first = self.files(prefix, MODEL)
+        generated = self.run_tool(icl, first, 'prefix.pdl')
+        marker = 'modeled opaque child raw history client child0.local 0bxxxxxxxx'
+        annotation = 'iNote -comment "'+marker+'"'
+        self.assertIn(annotation+'\n', generated)
+        suffix = '''iNote [iGetReadData child0.local -bin]
+iNote [iGetMiscompares child0.local -bin]
+iNote [iGetStatus -clear]; iNote [iGetStatus]
+'''
+        for tag in ('-comment', '-status'):
+            with self.subTest(tag=tag):
+                note = 'iNote '+tag+' "'+marker+'"'
+                text = generated.replace(annotation, note+'\n'+note)
+                replay = self.root/'typed-prefix.pdl'; replay.write_text(text)
+                tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+                output = self.run_tool(icl, replay, 'typed-tail.pdl', extra=('--pdl', str(tail)))
+                self.assertEqual(self.notes(output), ['0bxxxxxxxx','0b00000000','0','0'])
+                self.assertEqual(sum(line.startswith('iApply') for line in generated.splitlines()),
+                                 sum(line.startswith('iApply') for line in output.splitlines()))
+
+    def test_unmatched_history_notes_leave_existing_history_intact(self):
+        marker = 'modeled opaque child raw history '
+        for payload in ('client child0.local 0b00000000',
+                        'client child0.local 0bxxx', 'client missing 0bxxxxxxxx',
+                        'missing child0.local 0bxxxxxxxx', 'client child0.local'):
+            with self.subTest(payload=payload):
+                output = self.replay('''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 1 -stable; iApply
+'''+ 'iNote -comment {'+marker+payload+'}\n'+'''
+iNote [iGetReadData child0.local -bin]
+iNote [iGetMiscompares child0.local -bin]; iNote [iGetStatus]
+''', MODEL)
+                self.assertEqual(self.notes(output), ['0bxxxxxxxx','0b00000000','0'])
+
+    def test_history_annotation_requires_preceding_raw_scan(self):
+        ordinary = 'iReset; iWrite head 5; iWrite tail 19; iApply\n'
+        for prefix in (ordinary, ordinary+'iScan client 24 -si 0 -stable; iApply\n'+ordinary):
+            with self.subTest(reset_after_raw=prefix!=ordinary):
+                output = self.replay(prefix+'''
+iNote -comment {modeled opaque child raw history client child0.local 0bxxxxxxxx}
+if {![catch {iGetReadData child0.local}]} {error {unanchored history invented}}
+iRead head 5; iRead tail 19; iApply
+iNote [iGetReadData head -dec]; iNote [iGetReadData tail -dec]; iNote [iGetStatus]
+''', MODEL)
+                self.assertEqual(self.notes(output), ['5','19','0'])
+
+    def test_history_note_identifies_an_interval_of_the_completed_raw_csu(self):
+        for scan in ('iScan child0.local 8 -si 165 -stable',
+                     'iScan client 32 -si 0 -stable'):
+            with self.subTest(scan=scan):
+                prefix = 'iReset; iWrite head 5; iWrite tail 19; iApply\n'+scan+'; iApply\n'
+                suffix = '''iNote -comment {modeled opaque child raw history client child1.local 0bxxxxxxxxxxxxxxxx}
+iNote [iGetReadData child1.local -bin]; iNote [iGetMiscompares child1.local -bin]
+iNote [iGetStatus]
+'''
+                icl, first = self.files(prefix, model([8,16]))
+                self.run_tool(icl, first, 'prefix.pdl')
+                _, full = self.files(prefix+suffix, model([8,16]))
+                reference = self.run_tool(icl, full, 'source-tail.pdl')
+                tail = self.root/'tail.pdl'; tail.write_text('iPDLLevel 1\n'+suffix)
+                replay = self.run_tool(icl, self.root/'prefix.pdl', 'prefix-tail.pdl',
+                                       extra=('--pdl', str(tail)))
+                self.assertEqual(reference, replay)
+                self.assertEqual(self.notes(replay), ['0b'+'x'*16,'0b'+'0'*16,'0'])
+
+    def test_generated_history_identity_requires_an_observation_provider(self):
+        prefix = '''iReset; iWrite head 5; iWrite tail 19; iApply
+iScan child0.local 8 -si 165 -stable; iApply
+'''
+        icl, first = self.files(prefix, MODEL)
+        self.run_tool(icl, first, 'prefix.pdl', modeled=False)
+        tail = self.root/'tail.pdl'
+        tail.write_text('''iPDLLevel 1
+if {![catch {iGetReadData child0.local} message] || [string first hardware $message] < 0} {
+ error {history identity invented actual data without a provider}
+}
+iNote unavailable
+''')
+        output = self.run_tool(icl, self.root/'prefix.pdl', 'unobserved-tail.pdl',
+                               modeled=False, extra=('--pdl', str(tail)))
+        self.assertEqual(self.notes(output), ['unavailable'])
+        tail.write_text('iPDLLevel 1\niNote [iGetReadData child0.local -bin]\n')
+        output = self.run_tool(icl, self.root/'prefix.pdl', 'observed-tail.pdl',
+                               extra=('--pdl', str(tail)))
+        self.assertEqual(self.notes(output), ['0bxxxxxxxx'])
+
+    def test_namespaced_split_and_local_reset_prefix_keep_actual_histories(self):
+        definition = 'iProc shift {value} {iScan local 8 -si $value -stable; iApply}'
+        icl, first = self.files('''iProcsForModule ChildLeaf -iProcNameSpace ops
+'''+definition+'''
+iProcsForModule Top
+iReset; iWrite head 5; iWrite tail 19; iApply
+''', MODEL)
+        second = self.root/'second.pdl'
+        second.write_text('''iPrefix child0; iCall ops::shift 165; iPrefix -
+iPrefix child1; iCall ops::shift 60; iPrefix -
+''')
+        self.run_tool(icl, first, 'prefix.pdl', reset=True, extra=('--pdl', str(second)))
+        reset = self.root/'reset.pdl'
+        self.assertIn(definition, reset.read_text())
+        tail = self.root/'tail.pdl'
+        tail.write_text('''iPDLLevel 1
+iPrefix child0; iNote [iGetReadData local -bin]; iPrefix -
+iPrefix child1; iNote [iGetReadData local -bin]; iPrefix -
+iNote [iGetStatus]
+''')
+        reference = self.run_tool(icl, reset, 'reset-tail.pdl', extra=('--pdl', str(tail)))
+        for source in (icl, self.root/'debug/Top.icl'):
+            replay = self.run_tool(source, self.root/'prefix.pdl', 'namespaced/result.pdl',
+                                   extra=('--pdl', str(tail)))
+            self.assertEqual(reference, replay)
+            self.assertEqual(self.notes(replay), ['0bxxxxxxxx','0bxxxxxxxx','0'])
+
     def test_stable_children_complete_independently(self):
         output = self.replay("""iReset; iWrite head 5; iWrite tail 19; iApply
 iScan child0.local 8 -si 0xa5 -stable; iApply

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 
@@ -117,6 +118,53 @@ Operation NormalizeScan(z3::context& context, const Operation& operation) {
   auto result = NormalizeRequest(context, data.arguments[0], data, true);
   if (instruction) result.arguments.insert(result.arguments.begin(), "-ir");
   return result;
+}
+std::optional<OpaqueChildHistoryNote> ReadOpaqueChildHistoryNote(
+    const Netlist& netlist, const Operation& operation) {
+  constexpr size_t kPrefixSize = sizeof(kOpaqueChildHistoryNote) - 1;
+  if (operation.command != "iNote" || operation.arguments.size() != 2 ||
+      (operation.arguments[0] != "-comment" &&
+       operation.arguments[0] != "-status") ||
+      operation.arguments[1].compare(0, kPrefixSize, kOpaqueChildHistoryNote)) {
+    return std::nullopt;
+  }
+  std::istringstream fields(operation.arguments[1].substr(kPrefixSize));
+  std::string root, child, expected, extra;
+  if (!(fields >> root >> child >> expected) || fields >> extra ||
+      expected.size() <= 2 || expected.size() > kMaxScanBits + 2 ||
+      expected.compare(0, 2, "0b") ||
+      expected.find_first_not_of("01x", 2) != std::string::npos) {
+    return std::nullopt;
+  }
+  const auto parent = netlist.node_ids.find(root),
+             client = netlist.node_ids.find(child);
+  if (parent == netlist.node_ids.end() || client == netlist.node_ids.end()) {
+    return std::nullopt;
+  }
+  const auto& root_node = netlist.nodes[parent->second];
+  const auto& child_node = netlist.nodes[client->second];
+  if (root_node.scope || !child_node.scope || !root_node.scan_interface ||
+      !child_node.scan_interface ||
+      root_node.scan_interface->kind != ScanInterfaceKind::kClient ||
+      child_node.scan_interface->kind != ScanInterfaceKind::kClient ||
+      !root_node.scan_interface->chains.empty() ||
+      !child_node.scan_interface->chains.empty()) {
+    return std::nullopt;
+  }
+  const auto& load = child_node.scan_interface->default_load;
+  if (!load || load->is_string || !load->sized ||
+      load->data.size() != expected.size() - 2 ||
+      !std::any_of(child_node.scan_interface->ports.begin(),
+                   child_node.scan_interface->ports.end(),
+                   [&](const auto& bit) {
+                     return bit.node < netlist.nodes.size() &&
+                            netlist.nodes[bit.node].kind == "ScanOutPort" &&
+                            !netlist.nodes[bit.node].inputs.count("Source");
+                   })) {
+    return std::nullopt;
+  }
+  return OpaqueChildHistoryNote{parent->second, client->second,
+                                std::move(expected)};
 }
 OpaqueScanModel DescribeOpaqueScans(const Netlist& netlist) {
   if (netlist.scopes.size() != 1 || !netlist.taps.empty()) {

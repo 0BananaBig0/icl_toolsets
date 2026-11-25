@@ -470,6 +470,7 @@ class ScanScheduler::Impl {
     fill_ = other.fill_;
     opaque_queues_ = other.opaque_queues_;
     opaque_applied_ = other.opaque_applied_;
+    opaque_compares_ = other.opaque_compares_;
     opaque_notes_ = other.opaque_notes_;
     global_resets_ = other.global_resets_;
     tap_ready_ = other.tap_ready_;
@@ -493,6 +494,7 @@ class ScanScheduler::Impl {
   }
   void ResetOpaqueState() {
     opaque_applied_.clear();
+    opaque_compares_.clear();
     opaque_notes_.clear();
     for (auto& [client, queue] : opaque_queues_) {
       queue.Reset({"iReset", {}, "opaque child reset", {}});
@@ -582,10 +584,13 @@ class ScanScheduler::Impl {
     return candidate;
   }
   void CommitOpaqueState(OpaqueQueues queues,
-                         const std::vector<Operation>& completions) {
+                         const std::vector<Operation>& completions,
+                         const std::vector<Operation>& requested) {
     opaque_queues_ = std::move(queues);
     opaque_applied_.clear();
+    opaque_compares_.clear();
     opaque_notes_.clear();
+    if (!opaque_model_) return;
     const bool mixed = std::any_of(
         completions.begin(), completions.end(),
         [](const auto& scan) { return scan.arguments.back() != "-stable"; });
@@ -593,6 +598,9 @@ class ScanScheduler::Impl {
       const auto& name = scan.arguments[0];
       const auto& bits = scan.arguments[3];
       opaque_applied_.emplace(netlist_.node_ids.at(name), bits);
+      if (!requested.empty()) {
+        opaque_compares_.emplace(netlist_.node_ids.at(name), scan.arguments[5]);
+      }
       if (mixed && scan.arguments.back() == "-stable") {
         opaque_notes_.push_back(
             {"iNote",
@@ -601,7 +609,42 @@ class ScanScheduler::Impl {
              {}});
       }
     }
+    std::map<std::string, size_t> explicit_clients;
+    for (const auto& scan : requested) {
+      const auto fields = ReadScanFields(scan);
+      const auto client = source_.node_ids.at(scan.arguments[fields.target]);
+      if (opaque_compares_.count(client)) {
+        explicit_clients.emplace(source_.nodes[client].name, client);
+      }
+    }
+    for (const auto& [name, client] : explicit_clients) {
+      opaque_notes_.push_back(
+          {"iNote",
+           {"-comment", std::string(kOpaqueChildHistoryNote) +
+                            netlist_.nodes[opaque_model_->root].name + " " +
+                            name + " " + opaque_compares_.at(client)},
+           requested.front().origin,
+           {}});
+    }
     MaskOpaqueState();
+  }
+  std::optional<ScanReadbackUpdate> OpaqueRawHistory(
+      const Operation& note) const {
+    if (!opaque_model_) return std::nullopt;
+    const auto parsed = ReadOpaqueChildHistoryNote(source_, note);
+    if (!parsed || parsed->root != opaque_model_->root) return std::nullopt;
+    const auto found = opaque_compares_.find(parsed->client);
+    if (found == opaque_compares_.end() || found->second != parsed->expected) {
+      return std::nullopt;
+    }
+    std::string miscompare;
+    miscompare.reserve(parsed->expected.size() - 2);
+    for (size_t i = 2; i < parsed->expected.size(); ++i) {
+      miscompare += parsed->expected[i] == 'x' ? '0' : 'x';
+    }
+    return ScanReadbackUpdate{source_.nodes[parsed->client].name, "",
+                              std::string(miscompare.size(), 'x'),
+                              std::move(miscompare)};
   }
   const std::vector<Operation>& OpaqueScanNotes() const {
     return opaque_notes_;
@@ -2850,7 +2893,7 @@ class ScanScheduler::Impl {
                 : PioObservation{};
     auto steps = ApplyNative(expanded, together, preserved, explicit_writes,
                              permitted_tap_data, physical, public_observe);
-    CommitOpaqueState(std::move(queues), completions);
+    CommitOpaqueState(std::move(queues), completions, {});
     for (auto& step : steps) {
       for (const auto& interval : opaque_model_->intervals) {
         const auto& name = netlist_.nodes[interval.storage].name;
@@ -2877,6 +2920,7 @@ class ScanScheduler::Impl {
     auto previous_fill = fill_;
     auto previous_queue = opaque_queues_;
     auto previous_applied = opaque_applied_;
+    auto previous_compares = opaque_compares_;
     auto previous_notes = opaque_notes_;
     auto previous_execution =
         execution_ ? std::make_unique<TapExecution>(*execution_) : nullptr;
@@ -2890,6 +2934,7 @@ class ScanScheduler::Impl {
       fill_ = std::move(previous_fill);
       opaque_queues_ = std::move(previous_queue);
       opaque_applied_ = std::move(previous_applied);
+      opaque_compares_ = std::move(previous_compares);
       opaque_notes_ = std::move(previous_notes);
       execution_ = std::move(previous_execution);
       InvalidateRawRoute();
@@ -7763,6 +7808,7 @@ class ScanScheduler::Impl {
   const Netlist& netlist_;
   OpaqueQueues opaque_queues_;
   std::map<size_t, std::string> opaque_applied_;
+  std::map<size_t, std::string> opaque_compares_;
   std::vector<Operation> opaque_notes_;
   NetworkState state_;
   OneHotReadResolver one_hot_;
@@ -7964,7 +8010,7 @@ Operation ScanScheduler::ApplyScans(
     return result;
   };
   auto result = execute();
-  impl_->CommitOpaqueState(std::move(opaque), completions);
+  impl_->CommitOpaqueState(std::move(opaque), completions, operations);
   impl_->FilterOpaqueAssigned(assigned);
   impl_->InvalidateRawRoute();
   for (const auto& [operation, bits] : observations) observe(operation, bits);
@@ -8004,6 +8050,10 @@ std::vector<Operation> ScanScheduler::OpaqueScanNotes() const {
 }
 void ScanScheduler::RestoreOpaqueScanNote(const Operation& note) {
   impl_->RestoreOpaqueScanNote(note);
+}
+std::optional<ScanReadbackUpdate> ScanScheduler::OpaqueRawHistory(
+    const Operation& note) const {
+  return impl_->OpaqueRawHistory(note);
 }
 std::string ScanScheduler::Value(const std::string& target) const {
   return impl_->Value(target);

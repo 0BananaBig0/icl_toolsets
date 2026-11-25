@@ -278,6 +278,59 @@ void TestMultipleOpaqueCopiesRollbackAndSubscriber() {
     Rejects([&] { scheduler.Assume(name, "00000000"); }, "unknown");
   }
 }
+void TestOpaqueHistorySnapshotCopiesResetAndSubscriber() {
+  pattern::Design design;
+  design.AddIcl("history.icl", kOpaqueChild);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  pattern::ScanScheduler scheduler(netlist);
+  const pattern::Operation note{
+      "iNote",
+      {"-comment",
+       "modeled opaque child raw history client child.local 0b10xx0011"},
+      "history",
+      {}};
+  Require(!scheduler.OpaqueRawHistory(note), "unanchored history is ignored");
+  scheduler.Reset();
+  scheduler.Apply(ParentWrite("5"));
+  auto unanchored = note;
+  unanchored.arguments[1] =
+      "modeled opaque child raw history client child.local 0bxxxxxxxx";
+  Require(!scheduler.OpaqueRawHistory(unanchored),
+          "ordinary frame does not authorize a raw history annotation");
+  auto request = ChildScan("165");
+  request.arguments[5] = "0b10xx0011";
+  scheduler.ApplyScan(request);
+  const auto actual = scheduler.OpaqueRawHistory(note);
+  Require(actual && actual->target == "child.local" && actual->chain.empty() &&
+              actual->read == "xxxxxxxx" && actual->miscompare == "xx00xxxx",
+          "history uses opaque capture and exact native comparison mask");
+  auto copied = scheduler;
+  scheduler.Reset();
+  Require(!scheduler.OpaqueRawHistory(note) && copied.OpaqueRawHistory(note),
+          "copy retains committed snapshot while reset invalidates original");
+  auto invalid = request;
+  invalid.arguments[1] = "9";
+  Rejects([&] { copied.ApplyScan(invalid); }, "length");
+  Require(copied.OpaqueRawHistory(note).has_value(),
+          "failed scan retains prior comparison snapshot");
+  request.arguments[5] = "0bxxxxxxxx";
+  Rejects(
+      [&] {
+        copied.ApplyScan(request, {}, nullptr, nullptr,
+                         [](const auto&, const auto&) {
+                           throw std::runtime_error("subscriber");
+                         });
+      },
+      "subscriber");
+  auto latest = note;
+  latest.arguments[1] =
+      "modeled opaque child raw history client child.local 0bxxxxxxxx";
+  const auto committed = copied.OpaqueRawHistory(latest);
+  Require(
+      !copied.OpaqueRawHistory(note) && committed &&
+          committed->miscompare == "00000000",
+      "subscriber failure retains newly committed snapshot without recounting");
+}
 void TestUnusedOpaqueChildDoesNotChangePrimaryPaths() {
   const auto leaf = kOpaqueChild.substr(0, kOpaqueChild.find("Module Top"));
   pattern::Design design;
@@ -640,6 +693,7 @@ int main() {
         TestCompletionFailureAndCopies, TestNamedRequiredCompletionAndBudget,
         TestMultipleOpaqueChildDefaults, TestMultipleOpaqueAggregateLimit,
         TestMultipleOpaqueCopiesRollbackAndSubscriber,
+        TestOpaqueHistorySnapshotCopiesResetAndSubscriber,
         TestUnusedOpaqueChildDoesNotChangePrimaryPaths,
         TestOpaqueExpansionRequiresActiveStaticRoute,
         TestCallbackCallerFrameProof, TestOpaqueChildNativeStateAndPrivacy,

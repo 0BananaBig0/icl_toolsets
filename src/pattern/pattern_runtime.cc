@@ -265,7 +265,12 @@ class Runtime::Impl {
           for (size_t i = 1; i < command.words.size(); ++i) {
             arguments.push_back(command.words[i].value);
           }
-          if (CallbackHistoryNote(arguments)) plain_merge.reset();
+          if (CallbackHistoryNote(arguments) ||
+              (netlist_ &&
+               ReadOpaqueChildHistoryNote(
+                   *netlist_, {"iNote", std::move(arguments), "", {}}))) {
+            plain_merge.reset();
+          }
         }
         if (is_pdl) {
           const size_t id = sites_.size();
@@ -1187,6 +1192,7 @@ class Runtime::Impl {
         raw_care;
     size_t raw_bits = 0;
     std::optional<bool> raw_mode;
+    bool raw_scan_applied = false;
     // Validate discarded operands too; commit history only after the whole
     // queue.
     for (auto it = first; it != operations_.end(); ++it) {
@@ -1218,6 +1224,7 @@ class Runtime::Impl {
         }
         latest = {width,
                   expected.find_first_not_of('x', 2) != std::string::npos};
+        raw_scan_applied = raw_scan_applied || !fields.instruction;
         continue;
       }
       const bool read = operation.command == "iRead";
@@ -1279,6 +1286,7 @@ class Runtime::Impl {
       raw_read_history_[key.second] = std::string(scan.first, '?');
       raw_miscompare_history_[key.second] = std::string(scan.first, '?');
     }
+    opaque_history_scan_ = opaque_history_scan_ || raw_scan_applied;
     for (const auto& [id, care] : read_care) {
       if (care.find('1') != std::string::npos) zero_status_known = false;
       for (auto* history : {&read_history_, &miscompare_history_}) {
@@ -1316,10 +1324,14 @@ class Runtime::Impl {
       const auto key = std::make_pair(
           update.target, ScanChainName(update.target, update.chain));
       const auto applied = raw_read_history_.find(key);
-      if (!netlist_ || applied == raw_read_history_.end() ||
-          !seen.insert(key).second ||
-          update.read.size() != applied->second.size() ||
-          update.miscompare.size() != applied->second.size() ||
+      const auto pending = opaque_history_pending_.find(key);
+      const size_t width =
+          applied != raw_read_history_.end()
+              ? applied->second.size()
+              : (pending != opaque_history_pending_.end() ? pending->second
+                                                          : 0);
+      if (!netlist_ || !width || !seen.insert(key).second ||
+          update.read.size() != width || update.miscompare.size() != width ||
           update.read.find_first_not_of("01x") != std::string::npos ||
           update.miscompare.find_first_not_of("01x") != std::string::npos) {
         throw std::runtime_error("invalid modeled raw readback delta");
@@ -1346,6 +1358,7 @@ class Runtime::Impl {
       raw_read_history_[scan_keys[i]] = updates->scans[i].read;
       raw_miscompare_history_[scan_keys[i]] = updates->scans[i].miscompare;
     }
+    opaque_history_pending_.clear();
     zero_status_known_ =
         updates->failures && (clear_status || *updates->failures == 0);
     return updates;
@@ -1380,6 +1393,10 @@ class Runtime::Impl {
       const auto key = std::make_pair(target, ScanChainName(target, chain));
       const auto& history =
           name == "iGetReadData" ? raw_read_history_ : raw_miscompare_history_;
+      if (opaque_history_pending_.count(key)) {
+        if (!readback_) unavailable();
+        UpdateReadback(false);
+      }
       auto entry = history.find(key);
       if (entry == history.end()) {
         throw std::runtime_error(
@@ -1847,6 +1864,12 @@ class Runtime::Impl {
     Operation operation{name, {words.begin() + 1, words.end()}, origin, {}};
     if (name == "iNote" && netlist_) {
       RestoreCallbackReadInvalidation(operation);
+      if (const auto note = ReadOpaqueChildHistoryNote(*netlist_, operation);
+          note && opaque_history_scan_) {
+        const size_t width = note->expected.size() - 2;
+        opaque_history_pending_[{netlist_->nodes[note->client].name, ""}] =
+            width;
+      }
     }
     operation.callback_execution = !callback_stack_.empty();
     operation.callback_read_execution = read_callback_depth_ != 0;
@@ -1978,6 +2001,7 @@ class Runtime::Impl {
       callback_held_.clear();
     }
     if (name == "iReset") {
+      opaque_history_scan_ = false;
       ++callback_reset_generation_;
       callback_values_.clear();
       callback_failed_ = false;
@@ -2043,6 +2067,8 @@ class Runtime::Impl {
   History read_history_, miscompare_history_, callback_values_, callback_held_;
   using RawHistory = std::map<std::pair<std::string, std::string>, std::string>;
   RawHistory raw_read_history_, raw_miscompare_history_;
+  bool opaque_history_scan_ = false;
+  std::map<std::pair<std::string, std::string>, size_t> opaque_history_pending_;
   bool zero_status_known_ = true;
   std::unique_ptr<z3::context> history_context_;
   std::map<std::string, const InstanceScope*> instance_scopes_;
