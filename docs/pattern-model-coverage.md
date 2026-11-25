@@ -5283,3 +5283,39 @@ retain their original requirements; this increment does not close those items.
 All22 Task180 merged-result checks pass against identical4,075qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Task181 opaque-aware preparation
+
+Automatic opening may traverse active fixed opaque leaves using their existing
+reset-default or stable-load queue knowledge before each native CSU. Nonstable
+unknown lengths still reject. The native planner retains queues in preparation
+trials while ordinary solver trials retain their existing native engine. Actual
+private preparation input, unknown observations, histories, reservations and
+rollback are tested; manual native parent controls avoid invented equivalence.
+Qualification/review are in progress. General merges, independent clocks/TAPs,
+parallel/timed/transport and broader model/vendor acceptance remain original
+work; excluded coverage1 and33deferred Minors remain unchanged.
+
+Task181 qualification passes all93fresh gates on4,078input/38product hashes.
+Normal and static generators each pass87suites/1,403methods. All30native suites,
+6changed-C++quality checks,12new focused methods per build, existing focused
+suites, affected sanitizer CLI and source packaging pass. The corpus retains
+1,032canonical/44explicit unsupported/687default elaboration failures across
+2,562source identities, with unchanged inputs and result classes.
+
+All1,728measurements pass10s/512MiB bounds, retaining256MiB single-wide controls.
+The new168run crossing matrix covers2/8/32leaves at8/64/256bits and2/8leaves at
+1024bits, three repetitions and sanitizer samples. Each run checks13raw scans,
+17CSUs including four real openings, every stable flag, complete SI/SO words,
+public preparation writes, actual unknown histories, masks and status clears.
+The same opaque model and frozen parent's explicit ordinary openings give
+byte-identical native output; no operation or observation is injected or
+normalized away. Native tests separately inspect actual implicit serial input
+for reset-default and prior stable loads, copies, rollback and later completion.
+
+All six child matrices include330live generated-history runs. Two allocation
+probes and16guide processes pass. The measured maximum across1,728runs is
+0.8180s/469868KiB. No speedup or unmeasured-scale claim
+is made. A nonstable prior opaque scan still leaves length unknown and rejects
+implicit completion; default declarations do not waive that contract.
+Independent review follows; broader original inventory remains open.

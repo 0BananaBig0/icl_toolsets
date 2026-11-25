@@ -222,6 +222,93 @@ void TestMultipleOpaqueChildDefaults() {
               scheduler.Value("tail") == "10011" && prefix.empty(),
           "disjoint opaque requests preserve exact parent and child payloads");
 }
+void TestOpaqueCrossingPreparation() {
+  auto source = MultipleOpaqueSource();
+  for (const auto& name : {"enable0", "enable1"}) {
+    const std::string from = "InputPort sel = sel";
+    source.replace(source.find(from), from.size(),
+                   "InputPort sel = " + std::string(name));
+  }
+  for (const auto& [from, to] :
+       std::vector<std::pair<std::string, std::string>>{
+           {"InputPort si = child.so;", "InputPort si = enable0;"},
+           {"ScanInSource second.so", "ScanInSource enable1"},
+           {"DefaultLoadValue 24'b0", "DefaultLoadValue 10'b0"}}) {
+    source.replace(source.find(from), from.size(), to);
+  }
+  source.insert(source.find(" ScanRegister tail"), R"(
+ ScanMux route0 SelectedBy enable0 {1'b0: head[0]; 1'b1: child.so;}
+ ScanRegister enable0 {ScanInSource route0; CaptureSource enable0; ResetValue 0;}
+ ScanMux route1 SelectedBy enable1 {1'b0: enable0; 1'b1: second.so;}
+ ScanRegister enable1 {ScanInSource route1; CaptureSource enable1; ResetValue 0;}
+)");
+  pattern::Design design;
+  design.AddIcl("opaque_preparation.icl", source);
+  const auto netlist = pattern::Elaborate(design, "Top");
+  for (bool stable : {false, true}) {
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    scheduler.ApplyScan({"iScan",
+                         {"client", "10", "-si", "0b1011010011", "-so", "0bx"},
+                         "open first",
+                         {}});
+    if (stable) scheduler.ApplyScan(ChildScan());
+    pattern::ScanScheduler copy(scheduler);
+    auto requested = ChildScan("60");
+    requested.arguments[0] = "second.local";
+    std::vector<pattern::ScanStep> prefix(1);
+    prefix.front().input = "unchanged";
+    std::set<size_t> assigned{netlist.node_ids.at("head")};
+    size_t deliveries = 0;
+    auto invalid = requested;
+    invalid.arguments[1] = "9";
+    Rejects(
+        [&] {
+          scheduler.ApplyScan(invalid, {}, &assigned, &prefix,
+                              [&](const auto&, const auto&) { ++deliveries; });
+        },
+        "length");
+    Require(scheduler.Value("enable1") == "0" && deliveries == 0 &&
+                prefix.size() == 1 && prefix.front().input == "unchanged" &&
+                assigned == std::set<size_t>{netlist.node_ids.at("head")},
+            "opaque-containing failed preparation leaves state and outputs "
+            "untouched");
+    std::string actual;
+    const auto physical = scheduler.ApplyScan(
+        requested, {}, &assigned, &prefix, [&](const auto&, const auto& bits) {
+          actual = bits;
+          ++deliveries;
+        });
+    const std::string prior = stable ? "10100101" : "00000000";
+    Require(prefix.size() == 1 && physical.arguments[1] == "26" &&
+                actual == "xxxxxxxx" && deliveries == 1 && assigned.empty(),
+            "opaque-aware preparation emits one opening and one requested "
+            "observation");
+    Require(std::string(prefix.front().serial.rbegin(),
+                        prefix.front().serial.rend()) ==
+                    "101" + prior + "11" + "10011" &&
+                physical.arguments[3] ==
+                    "0b101" + prior + "1" + "00111100" + "1" + "10011",
+            "native preparation uses declared default or prior stable opaque "
+            "payload");
+    CheckPublicSteps(netlist, prefix);
+    Require(copy.Value("enable1") == "0",
+            "preparation leaves scheduler copies closed");
+    std::vector<pattern::ScanStep> copied_prefix;
+    const auto copied = copy.ApplyScan(requested, {}, nullptr, &copied_prefix);
+    Require(copied.arguments == physical.arguments &&
+                copied_prefix.size() == 1 &&
+                copied_prefix.front().serial == prefix.front().serial,
+            "copied opaque queues retain independent preparation knowledge");
+    const auto later = scheduler.Apply(ParentWrite("5"));
+    Require(
+        later.size() == 1 &&
+            std::string(later.front().serial.rbegin(),
+                        later.front().serial.rend()) ==
+                "101" + prior + "1" + "00111100" + "1" + "10011",
+        "prepared queues preserve stable completion for later ordinary frames");
+  }
+}
 void TestMultipleOpaqueAggregateLimit() {
   auto source = MultipleOpaqueSource();
   const auto width = source.find("DefaultLoadValue 8'b0");
@@ -866,7 +953,8 @@ int main() {
   for (const auto test :
        {TestScalarCompletionDefaultStableUnknown,
         TestCompletionFailureAndCopies, TestNamedRequiredCompletionAndBudget,
-        TestMultipleOpaqueChildDefaults, TestMultipleOpaqueAggregateLimit,
+        TestMultipleOpaqueChildDefaults, TestOpaqueCrossingPreparation,
+        TestMultipleOpaqueAggregateLimit,
         TestMultipleOpaqueCopiesRollbackAndSubscriber,
         TestOpaqueHistorySnapshotCopiesResetAndSubscriber,
         TestRawHistoryScopeUsesWinningRequest,
