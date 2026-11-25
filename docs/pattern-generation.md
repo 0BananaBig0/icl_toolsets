@@ -10424,3 +10424,98 @@ timing, physical transport and excluded coverage1 retain their existing scope.
 All16 Task178 merged-result checks pass against identical4,069qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Fixed opaque leaves on scalar bypass routes (Task179)
+
+Open the modeled bypass explicitly before requesting its opaque child. Save
+this example as opaque-sib.icl:
+
+~~~icl
+Module OpaqueLeaf {
+ ScanInPort si; ScanOutPort so; SelectPort sel; CaptureEnPort ce;
+ ShiftEnPort se; UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ ScanInterface local {Port si; Port so; Port sel; Port ce; Port se; Port ue;
+  Port tck; Port reset; DefaultLoadValue 8'b0;}
+}
+Module Top {
+ ScanInPort si; SelectPort sel; CaptureEnPort ce; ShiftEnPort se;
+ UpdateEnPort ue; TCKPort tck; ResetPort reset;
+ Instance child Of OpaqueLeaf {InputPort si = si; InputPort sel = open;
+  InputPort ce = ce; InputPort se = se; InputPort ue = ue;
+  InputPort tck = tck; InputPort reset = reset;}
+ ScanMux route SelectedBy open {1'b0: si; 1'b1: child.so;}
+ ScanRegister open {ScanInSource route; CaptureSource open; ResetValue 0;}
+ ScanOutPort so {Source open;}
+ ScanInterface client {Port si; Port so; Port sel; Port ce; Port se; Port ue;
+  Port tck; Port reset; DefaultLoadValue 1'b0;}
+}
+~~~
+
+Save these commands as opaque-sib.pdl:
+
+~~~tcl
+iPDLLevel 1
+iProcsForModule Top
+iReset; iScan client 1 -si 1 -so 0; iApply
+iScan child.local 8 -si 165 -so 0bx; iApply
+iNote [iGetReadData child.local -bin]
+iNote [iGetMiscompares child.local -bin]
+iScan client 9 -si 0 -so 0bx; iApply
+iNote [iGetReadData child.local -bin]
+iNote [iGetReadData client -bin]
+iNote [iGetStatus -clear]; iNote [iGetStatus]
+~~~
+
+Run the generator with modeled observations:
+
+```sh
+icl-pattern-generation --icl opaque-sib.icl --pdl opaque-sib.pdl --top_module Top --model_readback --output opaque-sib-out.pdl --debug
+```
+
+The child data is0bxxxxxxxx, its uncared mask is0b00000000, and closure retains
+that child history. The explicit closing root scan reads0bxxxxxxxx1 from the
+old nine-bit route. Status and the following cleared status are both0 because
+no unknown child bits were cared. Caring an unknown child bit produces an
+unknown mask bit and unknown status; it never turns expected SI/SO into data.
+
+Generated opaque intent comments preserve these observations on continuation.
+Inactive leaves do not complete or advance their queues during parent-only
+opening/closed scans. Implicit completion still needs the existing stable or
+reset length knowledge. Private payload cannot become a modeled selector,
+capture source or reset through mux forwarding. Structural validation checks
+both mux arms and real execution uses the selected pre-CSU route.
+
+This covers fixed leaves, scalar binary bypasses and explicit route opening.
+Automatic opaque preparation, general merges, independent clocks, TAP/parallel/
+timed topologies and hardware transport retain their existing requirements.
+See the [qualification record](remaining-work.md#task179-dynamic-scalar-routes-with-fixed-opaque-leaves).
+
+All83qualification gates pass on4,072input/38product hashes. Both normal/static
+generators pass85suites/1,371methods. All30native normal/SAN suites,
+9changed-C++quality checks,14dynamic-opaque methods per build, existing
+focused history suites, affected sanitizer CLI and source packaging pass.
+The corpus retains1,032canonical/44explicit unsupported/687default elaboration
+failures across2,562source identities. Final input and product hashes agree.
+
+All1,344matched measurements pass10s/512MiB bounds, with single-wide controls
+256MiB:the five prior matrices1,128processes plus216dynamic-opaque processes.
+The new workload covers1/2/8/32leaves at8/64/256bits and1/2/8leaves at1024bits,
+with three repetitions and sanitizer samples. Every run checks13physical scans,
+alternating route widths, complete unknown child words, masks, known root words
+and status. There are228live generated-history processes across four child
+matrices. Two allocation probes and eight guide processes pass. The measured
+maximum across1,344processes is0.8191s/446532KiB.
+No speedup or unmeasured-scale claim is made.
+
+The new parent control is a fully modeled unknown-capture twin. Opaque dynamic
+source was unsupported in that executable. Physical operations and observations
+agree after normalizing only the independently checked child-intent family;
+this is not a byte-identical unsupported-parent source claim. No observed data,
+hardware operation or failure count is injected. Existing modeled dynamic
+controls now use their native notes, with obsolete manual injection removed.
+
+An initial measurement attempt correctly failed all216rows because the shared
+validator expected zero comparison masks. The workload's real masks are uncared
+X. The runner now consumes the fixture's expected history word; no output or
+bound was relaxed. The failed rows remain recorded, and final gates were run
+fresh after the correction.

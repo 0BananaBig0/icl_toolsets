@@ -310,6 +310,24 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
         current.kind == "ScanRegister") {
       continue;
     }
+    if (current.kind == "ScanMux") {
+      if (current.Width() != 1 || current.reset || current.inputs.size() != 1 ||
+          !current.inputs.count("SelectedBy") ||
+          current.inputs.at("SelectedBy").size() != 1 ||
+          current.choices.size() != 2) {
+        return {};
+      }
+      std::set<char> codes;
+      for (const auto& choice : current.choices) {
+        if (choice.source.size() != 1 || choice.codes.size() != 1 ||
+            choice.codes[0].data.size() != 1 ||
+            (choice.codes[0].data != "0" && choice.codes[0].data != "1") ||
+            !codes.insert(choice.codes[0].data[0]).second) {
+          return {};
+        }
+      }
+      continue;
+    }
     if (current.model == ModelKind::kPort && scan_ports.count(current.kind) &&
         current.Width() == 1) {
       continue;
@@ -391,8 +409,8 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
       }
       root = id;
     }
-    if (current.kind == "ScanMux" || (current.model == ModelKind::kRegister &&
-                                      current.kind != "ScanRegister")) {
+    if (current.model == ModelKind::kRegister &&
+        current.kind != "ScanRegister") {
       return {};
     }
     if (child_scopes.count(current.scope) && current.kind != "PortGroup" &&
@@ -429,41 +447,59 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
   };
   using Key = std::pair<size_t, int64_t>;
   const auto input = root_pins.at("ScanInPort");
-  auto serial = root_pins.at("ScanOutPort");
   std::set<size_t> active;
-  std::set<Key> route;
+  std::map<Key, char> route;
   std::set<size_t> registers;
   size_t width = 0;
-  while (serial.node != input.node || serial.index != input.index) {
-    if (serial.node >= netlist.nodes.size() ||
-        !route.emplace(serial.node, serial.index).second) {
-      return {};
+  bool has_mux = false;
+  std::vector<std::pair<BitReference, bool>> pending_route{
+      {root_pins.at("ScanOutPort"), false}};
+  while (!pending_route.empty()) {
+    const auto [serial, complete] = pending_route.back();
+    pending_route.pop_back();
+    if (serial.node == input.node && serial.index == input.index) continue;
+    if (serial.node >= netlist.nodes.size()) return {};
+    auto& color = route[{serial.node, serial.index}];
+    if (complete) {
+      color = 2;
+      continue;
     }
+    if (color == 1) return {};
+    if (color == 2) continue;
+    color = 1;
+    pending_route.emplace_back(serial, true);
     const auto child = outputs.find(serial.node);
     if (child != outputs.end()) {
-      const auto size = children[child->second].load->data.size();
-      if (size > kMaxScanBits - width) return {};
-      width += size;
-      active.insert(child->second);
+      if (active.insert(child->second).second) {
+        const auto size = children[child->second].load->data.size();
+        if (size > kMaxScanBits - width) return {};
+        width += size;
+      }
       const auto input = children[child->second].pins.at("ScanInPort");
-      serial = {input, netlist.nodes[input].left};
+      pending_route.push_back({{input, netlist.nodes[input].left}, false});
       continue;
     }
     const auto& current = netlist.nodes[serial.node];
-    if (current.kind == "ScanRegister") {
+    if (current.kind == "ScanMux") {
+      has_mux = true;
+      for (const auto& choice : current.choices) {
+        pending_route.emplace_back(choice.source[0], false);
+      }
+    } else if (current.kind == "ScanRegister") {
       if (serial.index != current.right ||
-          !registers.insert(serial.node).second ||
           !current.inputs.count("ScanInSource") ||
           current.inputs.at("ScanInSource").size() != 1) {
         return {};
       }
-      if (current.Width() > kMaxScanBits - width) return {};
-      width += current.Width();
-      serial = current.inputs.at("ScanInSource")[0];
+      if (registers.insert(serial.node).second) {
+        if (current.Width() > kMaxScanBits - width) return {};
+        width += current.Width();
+      }
+      pending_route.emplace_back(current.inputs.at("ScanInSource")[0], false);
     } else {
       const auto next = source(serial);
       if (!next) return {};
-      serial = *next;
+      pending_route.emplace_back(*next, false);
     }
   }
   const auto register_count = std::count_if(
@@ -517,10 +553,14 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
     const auto end =
         terminal({netlist.node_ids.at(current.name), current.left});
     const auto select = root_pins.find("SelectPort");
-    if (!end || select == root_pins.end() || end->node != select->second.node ||
-        end->index != select->second.index || end->inverted) {
-      return {};
-    }
+    if (!end) return {};
+    const bool direct = select != root_pins.end() &&
+                        end->node == select->second.node &&
+                        end->index == select->second.index && !end->inverted;
+    const bool held = has_mux && end->node < netlist.nodes.size() &&
+                      netlist.nodes[end->node].kind == "ScanRegister" &&
+                      !child_scopes.count(netlist.nodes[end->node].scope);
+    if (!direct && !held) return {};
   }
   struct Use {
     Key bit;
@@ -542,6 +582,15 @@ std::shared_ptr<const OpaqueChildModel> ExpandOpaqueChild(
                                   current.kind == "ScanOutPort" ||
                                   current.model == ModelKind::kAlias),
              role == "ScanInSource" && current.kind == "ScanRegister"});
+      }
+    }
+    if (current.kind == "ScanMux") {
+      for (const auto& choice : current.choices) {
+        const auto& bit = choice.source[0];
+        if (bit.node < netlist.nodes.size()) {
+          uses[{bit.node, bit.index}].push_back(
+              {{id, current.left}, true, false});
+        }
       }
     }
     if (current.reset && current.reset->node < netlist.nodes.size()) {

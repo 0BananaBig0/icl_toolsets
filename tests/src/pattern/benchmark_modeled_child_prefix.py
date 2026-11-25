@@ -79,8 +79,8 @@ def replay_observations(data, children, expected):
     return ('\n'.join(lines)+'\n').replace('iPDLLevel 0','iPDLLevel 1',1)
 
 
-def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
-            setup_csus, stable):
+def measure(model_factory, command_factory, *, note_prefix, history_expected,
+            setup_csus, stable, parent_model_factory=None, parent_note_prefix=None):
     import argparse
     import hashlib
     import json
@@ -101,6 +101,8 @@ def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
     binaries = dict(current=args.binary.resolve(),parent=args.parent.resolve(),sanitized=args.sanitized.resolve())
     digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
     report = dict(environment=platform.platform(),
+                  parent_control=('unknown-capture modeled twin; normalize validated child-intent family only'
+                                  if parent_model_factory else 'matching native source and informational comments'),
                   binaries={k:dict(path=str(p),sha256=digest(p)) for k,p in binaries.items()},runs=[])
     grid = [(n,w) for n in (1,2,8,32) for w in (8,64,256)]+[(n,1024) for n in (1,2,8)]
     cases = [(owner,n,w) for owner in ('parent','current') for n,w in grid]
@@ -114,7 +116,8 @@ def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
                 folder = Path(tempfile.mkdtemp(prefix='%s-%d-%d-%s-'%(owner,count,width,form),dir=output))
                 icl,pdl,result,metric = (folder/n for n in ('source.icl','source.pdl','result.pdl','time.txt'))
                 text,notes,words,compares = command_factory(count,width,parent=owner=='parent')
-                icl.write_text(model_factory(count,width));pdl.write_text(text)
+                factory = parent_model_factory if owner=='parent' and parent_model_factory else model_factory
+                icl.write_text(factory(count,width));pdl.write_text(text)
                 if form=='flat' and source:
                     icl = Path(source['directory'])/'debug/Chains.icl'
                 replay_error = ''
@@ -146,22 +149,27 @@ def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
                 scans = [line.split() for line in lines if line.startswith('iScan ')]
                 sizes = [len(word)-2 for word in words]
                 size = max(sizes)
-                shape = (len(scans)==8 and lines.count('iApply')==setup_csus+8 and
+                shape = (len(scans)==len(words) and lines.count('iApply')==setup_csus+len(words) and
                          all(len(s)==7+int(stable) and s[1:4]==['client',str(n),'-si'] and
                              s[5]=='-so' and s[7:]==(['-stable'] if stable else [])
                              for s,n in zip(scans,sizes)) and
                          [s[4] for s in scans]==words and [s[6] for s in scans]==compares)
-                markers = [line for line in lines if note_prefix in line]
-                expected_markers = ['iNote -comment "'+note_prefix+'client child%d.local 0b%s"'%
-                                    (i,'0'*(width+history_width_extra))
+                prefix = parent_note_prefix if owner=='parent' and parent_note_prefix else note_prefix
+                markers = [line for line in lines if prefix in line]
+                expected_markers = ['iNote -comment "'+prefix+'client child%d.local 0b%s"'%
+                                    (i,history_expected(width))
                                     for i in sorted(range(count),key=lambda i:'child%d.local'%i)]*4
                 verified = (process.returncode==0 and not replay_error and actual==notes and shape and
                             markers==expected_markers and (folder/'debug/Chains.icl').exists())
                 if form!='source' and source:
                     previous = Path(source['directory'])/'result.pdl'
                     verified &= previous.exists() and data==previous.read_text()
+                comparison = data
+                if parent_note_prefix:
+                    comparison = data.replace('iNote -comment "'+parent_note_prefix,
+                                              'iNote -comment "'+note_prefix)
                 if (count,width,repeat) in parents:
-                    verified &= data==parents[count,width,repeat]
+                    verified &= comparison==parents[count,width,repeat]
                 unchanged = digest(binaries[owner])==report['binaries'][owner]['sha256']
                 bound = (256 if count==1 and width>=512 else 512)*1024
                 within = seconds<=10 and rss is not None and rss<=bound
@@ -181,13 +189,14 @@ def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
                     icl_sha256=digest(icl) if icl.exists() else None,
                     pdl_sha256=digest(pdl) if pdl.exists() else None,
                     output_sha256=digest(result) if result.exists() else None)
+                row['comparison_sha256'] = hashlib.sha256(comparison.encode()).hexdigest()
                 report['runs'].append(row)
                 failed |= not (verified and unchanged and within)
                 (output/'results.json').write_text(json.dumps(report,indent=2)+'\n')
                 if form=='source':
                     source = row
                     if owner=='parent' and verified:
-                        parents[count,width,repeat] = data
+                        parents[count,width,repeat] = comparison
     complete = len(report['runs'])==expected_rows
     print(json.dumps(dict(runs=len(report['runs']),expected_runs=expected_rows,
                          matrix_complete=complete,all_verified=not failed)))
@@ -196,7 +205,7 @@ def measure(model_factory, command_factory, *, note_prefix, history_width_extra,
 
 def main():
     return measure(model,commands,note_prefix='modeled child raw history ',
-                   history_width_extra=0,setup_csus=1,stable=True)
+                   history_expected=lambda width:'0'*width,setup_csus=1,stable=True)
 
 
 if __name__=='__main__':

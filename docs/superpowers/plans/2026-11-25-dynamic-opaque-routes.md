@@ -38,19 +38,19 @@ public signatures. Extend internal structural validation and existing
 OpaqueRawState pre-CSU interval/completion selection. Runtime readback and
 serialization continue consuming existing opaque metadata and actual callbacks.
 
-- [ ] Step1: Add parent RED cases. One-bit root SI1 opens an eight-bit opaque
+- [x] Step1: Add parent RED cases. One-bit root SI1 opens an eight-bit opaque
   leaf; leaf scan returns8unknown bits and uncared-zero mask/status0; root9SI0
   closes it while preserving its last history. Add two independently selected
   leaves. Expected parent root-opening rejection, not syntax/fixture errors.
-- [ ] Step2: Implement bounded iterative mux-route validation and private-output
+- [x] Step2: Implement bounded iterative mux-route validation and private-output
   consumer checks; filter projected/completed queues by actual pre-CSU storage.
   Expected focused GREEN with exact physical words and no extra CSU.
-- [ ] Step3: Pin unknown care/status, closure/reopening, absent/old histories,
+- [x] Step3: Pin unknown care/status, closure/reopening, absent/old histories,
   aliases/inversion, inactive queues, cycles/dangling arms, payload leaks,
   cancellation/copy/rollback, default/flat/generated/local-reset continuation
   and ordinary static compatibility. Add reporter/workload checks test-first.
   Expected correct actual observations and truthful matched-control records.
-- [ ] Step4: Run complete normal/static generators,30native normal/SAN suites,
+- [x] Step4: Run complete normal/static generators,30native normal/SAN suites,
   affected sanitizer CLI, corpus, changed-C++quality and packaging. Validate
   all prior/new matrices and exact qualified input/product hashes. Expected all
   pass with no changed corpus class unless a valid new case is explicitly ruled.

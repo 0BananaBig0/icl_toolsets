@@ -533,9 +533,13 @@ class ScanScheduler::Impl {
     ValidateOpaquePreserved(preserved);
     auto candidate = opaque_queues_;
     std::map<size_t, std::pair<size_t, RawSlice>> intervals;
+    std::set<size_t> active;
+    const auto& root = RawChain();
     for (const auto& interval : opaque_model_->intervals) {
+      if (!root.indices.count(interval.storage)) continue;
       const auto slice = RawSubchain(netlist_.nodes[interval.client].name);
       intervals.emplace(slice.offset, std::make_pair(interval.client, slice));
+      active.insert(interval.client);
     }
     for (const auto& operation : operations) {
       const size_t target =
@@ -580,9 +584,10 @@ class ScanScheduler::Impl {
         candidate.at(client).Add(context_, projected);
       }
     }
-    for (auto& [client, queue] : candidate) {
+    for (const auto client : active) {
       completions.push_back(
-          queue.Complete({"iApply", {}, "opaque child raw completion", {}})
+          candidate.at(client)
+              .Complete({"iApply", {}, "opaque child raw completion", {}})
               .front());
     }
     return candidate;

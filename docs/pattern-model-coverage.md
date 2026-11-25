@@ -5167,3 +5167,49 @@ timing, physical transport and excluded coverage1 retain their existing scope.
 All16 Task178 merged-result checks pass against identical4,069qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Fixed opaque leaves on scalar bypass routes (Task179)
+
+Explicitly opened scalar binary bypass networks use the existing private
+opaque storage and native events. Cycle-checked structural traversal covers
+all mux arms; actual pre-CSU geometry selects which opaque queues complete.
+Inactive leaves retain their queue state and completed histories. Written or
+expected words never become observed opaque data.
+
+Focused cases cover unknown care/status, distinct instance masks and physical
+payloads, closure/reopening, reset/cancel, copied/failed state, selector aliases,
+inversion, duplicate/stale intent, default/flat/generated/local-reset replay,
+unselected cycles,512shared mux levels and private consumer validation. Existing
+no-bypass conditional and general opaque-merge restrictions remain unchanged.
+Qualification and independent review follow below; coverage1 remains excluded
+and31inherited Minors remain deferred.
+
+All83qualification gates pass on4,072input/38product hashes. Both normal/static
+generators pass85suites/1,371methods. All30native normal/SAN suites,
+9changed-C++quality checks,14dynamic-opaque methods per build, existing
+focused history suites, affected sanitizer CLI and source packaging pass.
+The corpus retains1,032canonical/44explicit unsupported/687default elaboration
+failures across2,562source identities. Final input and product hashes agree.
+
+All1,344matched measurements pass10s/512MiB bounds, with single-wide controls
+256MiB:the five prior matrices1,128processes plus216dynamic-opaque processes.
+The new workload covers1/2/8/32leaves at8/64/256bits and1/2/8leaves at1024bits,
+with three repetitions and sanitizer samples. Every run checks13physical scans,
+alternating route widths, complete unknown child words, masks, known root words
+and status. There are228live generated-history processes across four child
+matrices. Two allocation probes and eight guide processes pass. The measured
+maximum across1,344processes is0.8191s/446532KiB.
+No speedup or unmeasured-scale claim is made.
+
+The new parent control is a fully modeled unknown-capture twin. Opaque dynamic
+source was unsupported in that executable. Physical operations and observations
+agree after normalizing only the independently checked child-intent family;
+this is not a byte-identical unsupported-parent source claim. No observed data,
+hardware operation or failure count is injected. Existing modeled dynamic
+controls now use their native notes, with obsolete manual injection removed.
+
+An initial measurement attempt correctly failed all216rows because the shared
+validator expected zero comparison masks. The workload's real masks are uncared
+X. The runner now consumes the fixture's expected history word; no output or
+bound was relaxed. The failed rows remain recorded, and final gates were run
+fresh after the correction.

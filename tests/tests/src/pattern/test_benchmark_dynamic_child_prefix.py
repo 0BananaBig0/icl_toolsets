@@ -24,12 +24,12 @@ def load():
 
 
 class DynamicChildBenchmark(unittest.TestCase):
-    def test_parent_injects_only_new_dynamic_intent_and_uses_variable_routes(self):
+    def test_parent_uses_native_dynamic_intent_and_variable_routes(self):
         benchmark = load()
         parent,expected,words,compares = benchmark.commands(2,8,parent=True)
         current,actual,current_words,current_compares = benchmark.commands(2,8)
         self.assertEqual((expected,words,compares),(actual,current_words,current_compares))
-        self.assertEqual(parent.count('modeled dynamic child raw history '),8)
+        self.assertEqual(parent,current)
         self.assertNotIn('modeled ',current)
         self.assertNotIn('modeled child raw history ',parent)
         self.assertNotIn('modeled readback status clear ',parent)

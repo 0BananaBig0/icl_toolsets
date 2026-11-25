@@ -39,9 +39,6 @@ def commands(children, width, parent=False):
         for i,bits in enumerate(new):
             text += 'iScan child%d.local %d -si 0b%s0 -so 0\n'%(i,width+1,bits)
         text += 'iApply\n'
-        if parent:
-            text += ''.join('iNote -comment "modeled dynamic child raw history client child%d.local 0b%s"\n'%
-                            (i,'0'*(width+1)) for i in sorted(range(children),key=lambda i:'child%d.local'%i))
         for i,bits in enumerate(old):
             text += 'iNote [iGetReadData child%d.local -bin]\niNote [iGetMiscompares child%d.local -bin]\n'%(i,i)
             expected += ['0b'+bits+'1']*2
@@ -57,7 +54,7 @@ def commands(children, width, parent=False):
 
 def main():
     return measure(model,commands,note_prefix='modeled dynamic child raw history ',
-                   history_width_extra=1,setup_csus=2,stable=False)
+                   history_expected=lambda width:'0'*(width+1),setup_csus=2,stable=False)
 
 
 if __name__=='__main__':
