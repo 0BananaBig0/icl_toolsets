@@ -56,11 +56,15 @@ static constexpr char kRawHistoryOmission[] = "modeled raw history omitted ";
 bool IsRawHistoryOmissionNote(const Operation& note) {
   return note.command == "iNote" && note.arguments.size() == 2 &&
          (note.arguments[0] == "-comment" || note.arguments[0] == "-status") &&
-         !note.arguments[1].compare(0, sizeof(kRawHistoryOmission) - 1,
-                                    kRawHistoryOmission);
+         (!note.arguments[1].compare(0, sizeof(kRawHistoryOmission) - 1,
+                                     kRawHistoryOmission) ||
+          !note.arguments[1].compare(0, sizeof(kNamedRawHistoryOmission) - 1,
+                                     kNamedRawHistoryOmission));
 }
-std::string RawHistoryOmissionText(const Operation& scan) {
-  std::string result = std::string(kRawHistoryOmission) + scan.command;
+std::string RawHistoryOmissionText(const Operation& scan, bool modeled_named) {
+  std::string result = std::string(modeled_named ? kNamedRawHistoryOmission
+                                                 : kRawHistoryOmission) +
+                       scan.command;
   for (const auto& argument : scan.arguments) result += " " + argument;
   return result;
 }

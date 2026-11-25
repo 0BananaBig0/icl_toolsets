@@ -21,6 +21,7 @@
 #include "pattern/pattern_netlist.h"
 #include "pattern/pattern_opaque.h"
 #include "pattern/pattern_readback.h"
+#include "pattern/pattern_scheduler.h"
 #include "pattern/pattern_state.h"
 #include "pattern/pattern_values.h"
 #include "pdl/pdl_document.h"
@@ -519,7 +520,7 @@ class Runtime::Impl {
     }
   }
 
-  bool CanonicalRootScan(const Operation& scan) {
+  bool CanonicalRootScan(const Operation& scan, bool modeled_named = false) {
     if (!netlist_ || scan.arguments.empty()) return false;
     const auto found = netlist_->node_ids.find(scan.arguments[0]);
     if (found == netlist_->node_ids.end()) return false;
@@ -532,6 +533,14 @@ class Runtime::Impl {
     try {
       const auto normalized = NormalizeScan(*history_context_, scan);
       const auto fields = ReadScanFields(normalized);
+      if (modeled_named) {
+        if (fields.chain.empty() || fields.instruction) return false;
+        if (!metadata_scheduler_) {
+          metadata_scheduler_ = std::make_unique<ScanScheduler>(*netlist_);
+        }
+        return metadata_scheduler_->NormalizeScan(scan).arguments ==
+               scan.arguments;
+      }
       if (!fields.chain.empty()) {
         if (!named_opaque_root_) {
           named_opaque_root_ = false;
@@ -549,14 +558,17 @@ class Runtime::Impl {
 
   bool RawOmissionNote(const Operation& note) {
     if (!netlist_ || !IsRawHistoryOmissionNote(note)) return false;
-    constexpr std::string_view kPrefix = "modeled raw history omitted ";
+    const bool named = !note.arguments[1].compare(
+        0, sizeof(kNamedRawHistoryOmission) - 1, kNamedRawHistoryOmission);
+    const std::string_view prefix =
+        named ? kNamedRawHistoryOmission : "modeled raw history omitted ";
     bool valid = false;
     const auto words =
-        pdl::SplitList(note.arguments[1].substr(kPrefix.size()), &valid);
+        pdl::SplitList(note.arguments[1].substr(prefix.size()), &valid);
     if (!valid || words.empty() || words[0] != "iScan") return false;
     const Operation scan{"iScan", {words.begin() + 1, words.end()}, "", {}};
-    return CanonicalRootScan(scan) &&
-           RawHistoryOmissionText(scan) == note.arguments[1];
+    return CanonicalRootScan(scan, named) &&
+           RawHistoryOmissionText(scan, named) == note.arguments[1];
   }
 
   bool OpaqueStableNote(const Operation& note) const {
@@ -2062,15 +2074,17 @@ class Runtime::Impl {
           JoinPath(prefix(), operation.arguments[target]);
     }
     if (name == "iScan" && !operations_.empty() &&
-        IsRawHistoryOmissionNote(operations_.back()) &&
-        CanonicalRootScan(operation)) {
-      const auto text = RawHistoryOmissionText(operation);
+        IsRawHistoryOmissionNote(operations_.back())) {
+      const bool named = !operations_.back().arguments[1].compare(
+          0, sizeof(kNamedRawHistoryOmission) - 1, kNamedRawHistoryOmission);
+      const auto text = RawHistoryOmissionText(operation, named);
       for (auto note = operations_.rbegin(); note != operations_.rend();
            ++note) {
         if (note->command != "iNote" || note->arguments.size() != 2 ||
             (note->arguments[0] != "-comment" &&
              note->arguments[0] != "-status") ||
-            note->arguments[1] != text) {
+            note->arguments[1] != text ||
+            !CanonicalRootScan(operation, named)) {
           break;
         }
         note->raw_history_omitted = true;
@@ -2239,6 +2253,7 @@ class Runtime::Impl {
   const Netlist* netlist_;
   bool scan_clients_loaded_ = false;
   std::optional<bool> named_opaque_root_;
+  std::unique_ptr<ScanScheduler> metadata_scheduler_;
   std::set<std::string> tap_clients_;
   std::map<std::string, std::set<std::string>> scan_clients_;
   History read_history_, miscompare_history_, callback_values_, callback_held_;

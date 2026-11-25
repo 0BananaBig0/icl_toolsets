@@ -139,7 +139,8 @@ std::string Command(const std::vector<std::string>& words) {
   Tcl_DStringFree(&list);
   return result;
 }
-std::string OperationText(const pattern::Operation& operation) {
+std::string OperationText(const pattern::Operation& operation,
+                          bool modeled_named = false) {
   if (operation.command == "iGetStatus") {
     return Command({"iNote", "-comment",
                     pattern::StatusClearNoteText(operation.arguments.at(1))});
@@ -156,8 +157,9 @@ std::string OperationText(const pattern::Operation& operation) {
     words[2] = "informational " + words[2];
   }
   return (operation.command == "iScan" && operation.raw_history_omitted
-              ? Command({"iNote", "-comment",
-                         pattern::RawHistoryOmissionText(operation)})
+              ? Command(
+                    {"iNote", "-comment",
+                     pattern::RawHistoryOmissionText(operation, modeled_named)})
               : "") +
          Command(words);
 }
@@ -620,7 +622,10 @@ std::string Generate(
                   : pattern::ScanScheduler::RawObservation{});
           reservations.AssignedScans(assigned, scheduler);
           append_steps(preparations);
-          for (const auto& scan : applied) result += OperationText(scan);
+          for (const auto& scan : applied) {
+            result += OperationText(
+                scan, !pattern::ReadScanFields(scan).chain.empty());
+          }
           result += together ? "iApply -together\n" : "iApply\n";
           if (applied.size() == 1) {
             for (const auto& scan : scans) {
