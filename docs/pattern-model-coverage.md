@@ -5450,3 +5450,62 @@ Minors. No second review or coverage1 execution is claimed.
 All34 Task183 merged-result checks pass against identical4,084qualified inputs
 and23copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+## Modeled named-chain generated history scope (Task184)
+
+Generated PDL now preserves explicit-only histories for already-supported
+disjoint register-backed root chains. Implicit lane scans still shift their
+complete native words and execute comparisons. They neither create a history
+for a never-requested lane nor replace a prior actual capture or cared mask.
+The source and its flattened/generated continuations retain the same results.
+
+Canonical generated notes use the distinct prefix `modeled named raw history
+omitted `. Existing named `modeled raw history omitted ` notes on modeled roots
+stay informational, preserving call-produced Tcl arguments and explicit raw
+histories. Scalar and opaque metadata retain their existing scope. New metadata
+is consumed only beside an exactly matching canonical scan on a qualified fixed
+root route, including its actual chain width. Route normalization is cached.
+
+Existing reset, queue replacement/cancellation, reservations, topology, mode,
+payload and publication validation still apply. Post-repair qualification and the independent
+review result are recorded below. The broader inventory, excluded item1 and36Minors stay open.
+
+Task184 passes113fresh qualification gates on4,087input and42product hashes.
+Normal/static generators each pass90suites/1,449methods;30native normal/SAN,
+two additional static native suites,21C++quality checks, normal/SAN17-method
+trace suites, affected SAN CLI, corpus and source packaging pass. Corpus retains
+1,032canonical/44explicit unsupported/687default elaboration failures and
+2,562source identities from the qualified frozen parent audit.
+
+All2,442measurements meet10s/512MiB and256MiB single-wide controls. The new216-run
+matrix covers1/2/8/32named chains at8/64/256bits,1/2/8at1024bits, three repeats
+and sanitizer samples. Each of four CSUs explicitly requests one lane and
+physically fills the others. Actual capture/mask history, absent lanes, nonzero
+comparisons and once-only clears are checked after each CSU, not only at the end.
+All57new live generated continuations use real getters and absent-history checks.
+
+Frozen-parent source and candidate source/flat/generated hardware and observation
+bytes agree after removing only exact validated new omission annotations.
+Every annotation is checked against the actual physical implicit scan; SI/SO,
+flags, frame positions and observation values are never normalized. Candidate
+forms are byte-identical. Reporter RED→GREEN checks reject empty zero-exit
+products, forged scope/masks/clear counts and notes moved between frames.
+
+All nine child/root matrices include519live generated runs. Two allocation
+probes and28guide processes pass. Measured maximum 1.5284s and
+470272KiB. Extra native metadata normalization is cached and measured;
+no batching optimum, speedup or unmeasured-scale claim is made. Review found0Critical/1Important/0newMinor; the Important benchmark comparison
+finding is repaired in one test-first pass. No rereview is requested; excluded1,36inherited deferred Minors and broader work stay open.
+
+The benchmark now validates each omission annotation against its immediately
+following physical scan line before removing only that original annotation's
+bytes. Parent/candidate and candidate replay forms are compared as raw bytes;
+final-LF and line-ending differences remain visible. Two reproductions fail
+first, then all7reporter methods pass. All113final qualification checks ran
+fresh after this repair; production C++ and42built products are unchanged.
+
+The reviewer also verified all216pre-repair measured outputs as raw bytes and
+all4,860actual annotations adjacent. No production replay failure was found.
+The review leaves36inherited deferred Minors, excluded1 and broader inventory
+open. The previously advertised read-only artifact checker now validates its
+existing gate receipt by equality rather than rewriting it.

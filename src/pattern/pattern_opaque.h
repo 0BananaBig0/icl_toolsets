@@ -18,7 +18,10 @@
 
 namespace pattern {
 bool IsRawHistoryOmissionNote(const Operation& note);
-std::string RawHistoryOmissionText(const Operation& scan);
+inline constexpr char kNamedRawHistoryOmission[] =
+    "modeled named raw history omitted ";
+std::string RawHistoryOmissionText(const Operation& scan,
+                                   bool modeled_named = false);
 inline constexpr char kModeledChildHistoryNote[] = "modeled child raw history ";
 inline constexpr char kDynamicChildHistoryNote[] =
     "modeled dynamic child raw history ";

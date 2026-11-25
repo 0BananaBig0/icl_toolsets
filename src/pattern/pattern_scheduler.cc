@@ -1705,6 +1705,7 @@ class ScanScheduler::Impl {
                           "-so",
                           "0b" + std::string(path.width, 'x'),
                           "-stable"};
+        scan.raw_history_omitted = true;
       }
       const auto fields = ReadScanFields(scan);
       const auto input = scan.arguments[fields.input].substr(2);

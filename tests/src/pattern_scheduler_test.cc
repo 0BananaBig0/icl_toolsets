@@ -132,6 +132,9 @@ void TestModeledParallelRawScans() {
                 });
             Require(result.size() == 2 && preparations.empty(),
                     "parallel vector has two fields and no extra preparation");
+            Require(!result[0].raw_history_omitted &&
+                        !result[1].raw_history_omitted,
+                    "explicit parallel requests retain their history intent");
             Require(
                 result[0].command == "iScan" && result[1].command == "iScan",
                 "parallel API returns scans only, caller owns one Apply");
@@ -198,7 +201,8 @@ void TestParallelRawRollbackAndImplicitFill() {
           assigned == std::set<size_t>{a},
       "implicit fixed chain has no new source observation or assignment");
   const auto fields = pattern::ReadScanFields(completed[1]);
-  Require(fields.chain == "second" &&
+  Require(fields.chain == "second" && !completed[0].raw_history_omitted &&
+              completed[1].raw_history_omitted &&
               completed[1].arguments[fields.input] == "0b10" &&
               completed[1].arguments[fields.expected] == "0bxx" &&
               completed[1].arguments.back() == "-stable",

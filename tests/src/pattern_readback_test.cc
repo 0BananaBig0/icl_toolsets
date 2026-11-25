@@ -1200,6 +1200,55 @@ Module Top {
               scheduler.Value("value") == "0011",
           "actual pin events reach final3 after observing old10");
 }
+void TestNamedRawOmissionRetainsComparisons() {
+  pattern::Design design;
+  design.AddIcl("named.icl", R"(
+Module Top {
+ ScanInPort si[1:0];
+ ScanRegister a[3:0] {ScanInSource si[1]; CaptureSource a; ResetValue 0;}
+ ScanRegister b[1:0] {ScanInSource si[0]; CaptureSource b; ResetValue 0;}
+ ScanOutPort so[1:0] {Source a[0], b[0];}
+ SelectPort sel; CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanInterface client {
+  Chain first {Port si[1]; Port so[1];}
+  Chain second {Port si[0]; Port so[0];}
+  Port sel; Port ce; Port se; Port ue; Port ck;
+ }
+})");
+  const auto netlist = pattern::Elaborate(design, "Top");
+  const auto readback = pattern::MakeModeledReadback(netlist);
+  pattern::Operation omitted{"iScan",
+                             {"client", "-chain", "first", "4", "-si", "0b0110",
+                              "-so", "0b1111", "-stable"},
+                             "test",
+                             {}};
+  omitted.raw_history_omitted = true;
+  const std::vector<pattern::Operation> operations{
+      {"iReset", {}, "test", {}},
+      {"iScan",
+       {"client", "-chain", "first", "4", "-si", "9", "-so", "15"},
+       "test",
+       {}},
+      {"iApply", {}, "test", {}},
+      omitted,
+      {"iScan",
+       {"client", "-chain", "second", "2", "-si", "1", "-so", "0bx"},
+       "test",
+       {}},
+      {"iApply", {}, "test", {}}};
+  const auto* updates = readback(operations, true);
+  Require(updates->scans.size() == 2 && updates->failures == 6,
+          "omitted native lane comparisons still count four plus two failures");
+  for (const auto& scan : updates->scans) {
+    Require(
+        scan.chain == "first" ? scan.read == "0000" && scan.miscompare == "1111"
+                              : scan.chain == "second" && scan.read == "00" &&
+                                    scan.miscompare == "00",
+        "physical omission keeps old capture and mask, explicit peer updates");
+  }
+  Require(readback(operations, false)->failures == 0,
+          "omitted physical comparisons are counted and cleared exactly once");
+}
 }  // namespace
 int main() {
   try {
@@ -1229,6 +1278,7 @@ int main() {
     TestTapReturnOracle();
     TestDataReadbackPlanes();
     TestDataFrameEventOracle();
+    TestNamedRawOmissionRetainsComparisons();
     std::cout << "readback tests passed\n";
   } catch (const std::exception& error) {
     std::cerr << error.what() << '\n';
