@@ -56,7 +56,7 @@ trial transfers queues with state/fill. Nonprepare solver behavior stays native.
   affected sanitizer CLI, changed-C++quality, corpus, packaging, existing/new
   matrices and guides. Expected: exact qualified input/product hashes, measured
   bounds and unchanged corpus identities/classes.
-- [ ] Step5: Read finalized staged patch, commit and request one fresh review.
+- [x] Step5: Read finalized staged patch, commit and request one fresh review.
   Fix blockers once test-first, qualify and ledger all rulings/Minors. Expected:
   0unresolved Critical/Important without rereview.
 - [ ] Step6: Merge/push, verify merged results, detach reused worktree, delete

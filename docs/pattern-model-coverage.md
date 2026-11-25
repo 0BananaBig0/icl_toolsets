@@ -5319,3 +5319,20 @@ probes and16guide processes pass. The measured maximum across1,728runs is
 is made. A nonstable prior opaque scan still leaves length unknown and rejects
 implicit completion; default declarations do not waive that contract.
 Independent review follows; broader original inventory remains open.
+
+The fresh independent review recommends merge with0Critical/0Important/1Minor.
+It rechecked all4,078input/38product hashes and93gate exits, and independently
+verified all168crossing outputs, actual opening writes, stable flags, complete
+SI/SO words, histories, masks, status clears and45live continuations. Separate
+asymmetric native probes at13/64/256/1024bits pass private-prefix/final-word,
+rollback/copy and later-completion checks. A nested newly active opaque leaf
+also matches the frozen manual parent; invalidating that leaf's length rejects
+later completion without changing the existing output.
+
+One Minor remains deferred: the committed native payloads are palindromic and
+cannot detect reversal within each opaque word. The independent asymmetric
+probes found no production error. Retain this test gap with33inherited Minors,
+34total. There are0unresolved Critical/Important findings; no blocker repair or
+rereview is required. Hardware equivalence, unmeasured performance, arbitrary
+opaque merges/black boxes, independent clocks/TAPs, parallel/timed/transport,
+wider source/vendor acceptance and excluded coverage1 retain prior boundaries.
