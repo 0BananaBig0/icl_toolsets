@@ -140,10 +140,15 @@ std::string Command(const std::vector<std::string>& words) {
   return result;
 }
 std::string OperationText(const pattern::Operation& operation) {
+  if (operation.command == "iNote" && operation.raw_history_omitted) return "";
   std::vector<std::string> words{operation.command};
   words.insert(words.end(), operation.arguments.begin(),
                operation.arguments.end());
-  return Command(words);
+  return (operation.command == "iScan" && operation.raw_history_omitted
+              ? Command({"iNote", "-comment",
+                         pattern::RawHistoryOmissionText(operation)})
+              : "") +
+         Command(words);
 }
 std::optional<std::string> GenerateOpaque(
     const pattern::Netlist& netlist,
@@ -715,10 +720,7 @@ std::string Generate(
         // Normal output uses MergeOperations to order notes and batch calls.
       } else if (operation.command == "iNote") {
         scheduler.RestoreOpaqueScanNote(operation);
-        std::vector<std::string> words{operation.command};
-        words.insert(words.end(), operation.arguments.begin(),
-                     operation.arguments.end());
-        result += Command(words);
+        result += OperationText(operation);
       } else {
         throw std::runtime_error(
             "transaction scheduling is not implemented for " +

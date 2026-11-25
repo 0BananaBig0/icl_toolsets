@@ -49,6 +49,12 @@ std::string ScanData(z3::context& context, const std::string& text,
 }
 }  // namespace
 
+std::string RawHistoryOmissionText(const Operation& scan) {
+  std::string result = "modeled raw history omitted " + scan.command;
+  for (const auto& argument : scan.arguments) result += " " + argument;
+  return result;
+}
+
 static Operation NormalizeRequest(z3::context& context,
                                   const std::string& target,
                                   const Operation& operation, bool named) {

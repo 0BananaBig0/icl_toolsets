@@ -1187,8 +1187,11 @@ class Runtime::Impl {
     bool zero_status_known = zero_status_known_;
     bool accesses = false, fallback_read = false;
     std::unordered_map<size_t, std::string> read_care;
-    std::map<std::pair<bool, std::pair<std::string, std::string>>,
-             std::pair<size_t, bool>>
+    struct RawCare {
+      size_t width = 0;
+      bool compared = false, omitted = false;
+    };
+    std::map<std::pair<bool, std::pair<std::string, std::string>>, RawCare>
         raw_care;
     size_t raw_bits = 0;
     std::optional<bool> raw_mode;
@@ -1218,12 +1221,13 @@ class Runtime::Impl {
         auto& latest = raw_care[key];
         const auto& expected = scan.arguments[fields.expected];
         const size_t width = expected.size() - 2;
-        raw_bits = raw_bits - latest.first + width;
+        raw_bits = raw_bits - latest.width + width;
         if (raw_bits > 1024 * 1024) {
           throw std::runtime_error("raw scan queued payload resource limit");
         }
         latest = {width,
-                  expected.find_first_not_of('x', 2) != std::string::npos};
+                  expected.find_first_not_of('x', 2) != std::string::npos,
+                  operation.raw_history_omitted};
         raw_scan_applied = raw_scan_applied || !fields.instruction;
         continue;
       }
@@ -1280,11 +1284,12 @@ class Runtime::Impl {
           "mixed raw preparation cannot use iApply -together");
     }
     for (const auto& [key, scan] : raw_care) {
-      if (scan.second) zero_status_known = false;
+      if (scan.compared) zero_status_known = false;
     }
     for (const auto& [key, scan] : raw_care) {
-      raw_read_history_[key.second] = std::string(scan.first, '?');
-      raw_miscompare_history_[key.second] = std::string(scan.first, '?');
+      if (scan.omitted) continue;
+      raw_read_history_[key.second] = std::string(scan.width, '?');
+      raw_miscompare_history_[key.second] = std::string(scan.width, '?');
     }
     opaque_history_scan_ = opaque_history_scan_ || raw_scan_applied;
     for (const auto& [id, care] : read_care) {
@@ -1903,6 +1908,27 @@ class Runtime::Impl {
       const size_t target = operation.arguments[0] == "-ir" ? 1 : 0;
       operation.arguments[target] =
           JoinPath(prefix(), operation.arguments[target]);
+    }
+    if (name == "iScan" && netlist_) {
+      const auto root = netlist_->node_ids.find(operation.arguments[0]);
+      if (root != netlist_->node_ids.end() &&
+          !netlist_->nodes[root->second].scope &&
+          netlist_->nodes[root->second].scan_interface &&
+          netlist_->nodes[root->second].scan_interface->kind ==
+              ScanInterfaceKind::kClient) {
+        const auto text = RawHistoryOmissionText(operation);
+        for (auto note = operations_.rbegin(); note != operations_.rend();
+             ++note) {
+          if (note->command != "iNote" || note->arguments.size() != 2 ||
+              (note->arguments[0] != "-comment" &&
+               note->arguments[0] != "-status") ||
+              note->arguments[1] != text) {
+            break;
+          }
+          note->raw_history_omitted = true;
+          operation.raw_history_omitted = true;
+        }
+      }
     }
     if (name == "iOverrideScanInterface") {
       for (auto& argument : operation.arguments) {

@@ -62,8 +62,9 @@ class AutomaticChildRaw(unittest.TestCase):
         manual=self.replay('iReset; iWrite open 1; iApply; '+scan+tail)
         automatic=self.replay('iReset; '+scan+tail)
         self.assertEqual(automatic,manual)
-        self.assertIn('iWrite open 0b1\niApply\niScan client 9',automatic)
-        self.assertEqual(automatic.count('iScan '),1)
+        self.assertIn('iWrite open 0b1\niApply\niScan client 9',
+                      '\n'.join(line for line in automatic.splitlines() if not line.startswith('iNote ')))
+        self.assertEqual(sum(line.startswith('iScan ') for line in automatic.splitlines()),1)
 
     def test_nested_closed_child_has_only_parent_prerequisites(self):
         model=(modeled.opaque.ROOT/'tests/cases/ours/pattern_generation/dynamic_child_raw/model.icl').read_text()
@@ -71,7 +72,7 @@ class AutomaticChildRaw(unittest.TestCase):
         manual=self.replay('iReset; iWrite open 1; iWrite child.enable 1; iApply; '+scan,model)
         automatic=self.replay('iReset; '+scan,model)
         self.assertEqual(automatic,manual)
-        self.assertEqual(automatic.count('iScan '),1)
+        self.assertEqual(sum(line.startswith('iScan ') for line in automatic.splitlines()),1)
         self.assertIn('iScan client 10',automatic)
 
     def test_compatible_closed_children_share_preparation(self):
@@ -80,7 +81,7 @@ class AutomaticChildRaw(unittest.TestCase):
         manual=self.replay('iReset; iWrite r0.enable 1; iWrite r1.enable 1; iApply; '+scans,model)
         automatic=self.replay('iReset; '+scans,model)
         self.assertEqual(automatic,manual)
-        self.assertEqual(automatic.count('iScan '),1)
+        self.assertEqual(sum(line.startswith('iScan ') for line in automatic.splitlines()),1)
 
     def test_canceled_closed_child_does_not_prepare(self):
         result=self.replay('iScan child.local 7 -si 0; iReset; iApply\n')

@@ -2249,6 +2249,9 @@ class ScanScheduler::Impl {
           [](const auto& scan) { return scan.arguments.back() == "-stable"; });
     }
     auto physical = operations.front();
+    physical.raw_history_omitted =
+        physical.raw_history_omitted ||
+        !latest.count(netlist_.nodes[root.client].name);
     physical.arguments = {netlist_.nodes[root.client].name,
                           std::to_string(root.width),
                           "-si",

@@ -83,14 +83,24 @@ class MultipleOpaqueBenchmark(unittest.TestCase):
         with self.assertRaises(ValueError):
             benchmark.replay_observations(data.replace('iNote 0\n', 'iNote 1\n', 1), 2, values)
 
-    def test_parent_comments_identify_each_requested_interval_only(self):
+    def test_parent_comments_do_not_duplicate_native_child_identities(self):
         benchmark = load_benchmark()
         text, _, _, _ = benchmark.commands([8,16], parent=True)
-        expected = ['iNote -comment "modeled opaque child raw history client child0.local 0bxxxxxxxx"',
-                    'iNote -comment "modeled opaque child raw history client child1.local 0bxxxxxxxxxxxxxxxx"']*4
-        self.assertEqual([line for line in text.splitlines() if 'modeled opaque child raw history ' in line], expected)
-        self.assertEqual(text.count('iScan '), 12)
+        self.assertNotIn('modeled opaque child raw history ',text)
+        self.assertEqual(text.count('modeled raw history omitted '),4)
+        self.assertEqual(sum(line.startswith('iScan ') for line in text.splitlines()), 12)
         self.assertEqual(text.splitlines().count('iApply'), 4)
+
+    def test_parent_scope_comments_match_the_physical_child_scans(self):
+        benchmark = load_benchmark()
+        text, _, words, compares = benchmark.commands([8,16], parent=True)
+        expected = ['iNote -comment "modeled raw history omitted iScan client 32 -si %s -so %s -stable"' %
+                    (words[i],compares[i]) for i in range(0,8,2)]
+        self.assertEqual([line for line in text.splitlines() if 'modeled raw history omitted ' in line],expected)
+        for line in expected:
+            self.assertIn(line+'\niScan child0.local ',text)
+        current, _, _, _ = benchmark.commands([8,16])
+        self.assertNotIn('modeled raw history omitted ',current)
 
 
 if __name__ == '__main__':

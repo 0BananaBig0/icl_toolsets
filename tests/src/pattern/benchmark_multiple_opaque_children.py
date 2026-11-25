@@ -39,17 +39,17 @@ def commands(widths, parent=False):
     expected = []
     raw_words, compares = [], []
     for group in range(4):
-        payloads = []
+        payloads, requests = [], []
         for index, width in enumerate(widths):
             unit = '10100101' if (group + index) % 2 == 0 else '00111100'
             bits = (unit * ((width + 7)//8))[:width]
             payloads.append(bits)
-            body += 'iScan child%d.local %d -si 0b%s -stable\n' % (index, width, bits)
-        body += 'iApply\n'
+            requests.append('iScan child%d.local %d -si 0b%s -stable\n' % (index, width, bits))
         if parent:
-            for index in sorted(range(len(widths)), key=lambda n: 'child%d.local' % n):
-                body += ('iNote -comment "modeled opaque child raw history client child%d.local 0b%s"\n'
-                         % (index, 'x'*widths[index]))
+            body += ('iNote -comment "modeled raw history omitted iScan client %d -si 0b101%s10011 -so 0b%s -stable"\n' %
+                     (sum(widths)+8, ''.join(payloads), 'x'*(sum(widths)+8)))
+        body += ''.join(requests)
+        body += 'iApply\n'
         for index, width in enumerate(widths):
             body += 'iNote [iGetReadData child%d.local -bin]\n' % index
             expected.append('0b'+'x'*width)
@@ -189,6 +189,7 @@ def main():
                                                     for n in range(count)) if form!='generated' else
                                                     (pdl.read_text().count('iGetReadData child') if pdl.exists() else 0),
                            history_annotation_count=len(history_notes),
+                           root_scope_annotation_count=data.count('modeled raw history omitted '),
                            generated_live_histories=form=='generated',replay_error=replay_error,
                            command=command,directory=str(folder),exit=process.returncode,
                            seconds=seconds,peak_rss_kib=rss,bound_kib=bound_kib,

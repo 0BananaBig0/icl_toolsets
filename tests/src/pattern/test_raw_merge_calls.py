@@ -71,7 +71,7 @@ class RawMergeCalls(unittest.TestCase):
                 body = ('iProc access {word} {iScan %s %d -si $word; iApply}\n'
                         'iReset; iMerge -begin; iCall access 9; iCall access 6; iMerge -end\n' % (target, width))
                 output = self.check(source, body)
-                self.assertEqual(output.count(b'iScan '), 2)
+                self.assertEqual(sum(line.startswith(b'iScan ') for line in output.splitlines()), 2)
                 self.assertEqual(output.count(b'iApply\n'), 2)
 
     def test_nested_and_repeated_calls(self):
@@ -81,7 +81,7 @@ iScan client 4 -si $a; iApply; iScan client 4 -si $b; iApply
 iProc outer {} {iMerge -begin; iCall leaf 9 6; iCall leaf 3 5; iMerge -end}
 iReset; iMerge -begin; iCall outer; iCall outer; iMerge -end
 ''')
-        self.assertEqual(output.count(b'iScan '), 8)
+        self.assertEqual(sum(line.startswith(b'iScan ') for line in output.splitlines()), 8)
         self.assertEqual(output.count(b'iApply\n'), 8)
 
     def test_namespaces_prefix_split_and_once_arguments(self):
@@ -120,7 +120,7 @@ iApply -together
 }
 iReset; iMerge -begin; iCall access 9 2; iCall access 6 1; iMerge -end
 ''')
-        self.assertEqual(output.count(b'iScan '), 4)
+        self.assertEqual(sum(line.startswith(b'iScan ') for line in output.splitlines()), 4)
         self.assertEqual(output.count(b'iApply -together'), 2)
 
     def test_bound_tap_ir_and_dr(self):
@@ -142,7 +142,7 @@ iScan client 4 -si 3 -stable; iApply; iScan client 4; iApply
 }
 iReset; iMerge -begin; iCall access; iMerge -end
 ''')
-        self.assertEqual(output.count(b'iScan '), 3)
+        self.assertEqual(sum(line.startswith(b'iScan ') for line in output.splitlines()), 3)
         for value in (b'0110', b'0011', b'0000'):
             self.assertIn(b'-si 0b'+value, output)
 
@@ -173,7 +173,7 @@ iNote outside; iMerge -end
         output, rewritten = self.check(ROOT, definition+
             'iReset; iMerge -begin; iCall access 9; iCall access 6; iMerge -end\n', reset=True)
         self.assertIn(definition, rewritten)
-        self.assertEqual(output.count(b'iScan '), 2)
+        self.assertEqual(sum(line.startswith(b'iScan ') for line in output.splitlines()), 2)
 
     def test_reservations_and_failed_output_protection(self):
         source = modeled.SIB.replace('Module Top', 'Module Chains')

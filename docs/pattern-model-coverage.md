@@ -5005,3 +5005,18 @@ and scales beyond the recorded matrices remain unqualified.
 All10 Task174 merged-result checks pass against identical4,062qualified inputs
 and20copied executables. Master is pushed, the owned task branch is deleted,
 and117stashes remain. Broader inventory work remains open.
+
+
+## Logical root history scope (Task175)
+
+Scalar child lowering now preserves absent and previously acquired root
+histories across generated prefixes. Exact adjacent typed comments carry
+logical omission scope through Operation metadata. Native comparisons still
+execute and affect status; only publication of the physical root's logical
+history is omitted. Modeled and fixed opaque child routes are qualified.
+
+All65gates pass:both81x1,312generator regressions,30native suites,24quality
+checks and696matched measurements, including57live generated getter runs.
+All2,562corpus identities retain the existing classifications. In-prefix
+status-clear persistence remains the next separate item6 fix; broader history,
+topology, timing and transport work remains in the original inventory.

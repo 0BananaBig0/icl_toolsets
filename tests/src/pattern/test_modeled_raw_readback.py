@@ -22,6 +22,32 @@ class ModeledRawReadback(unittest.TestCase):
     replay = helpers.ModeledReadback.replay
     notes = scan.ModeledScanReadback.notes
 
+    def test_child_prefix_preserves_absent_and_earlier_root_history(self):
+        source = (helpers.helpers.ROOT/'tests/cases/ours/pattern_generation/static_child_scans/model.icl').read_text()
+        source = source.replace('Module Top', 'Module Chains')
+        for previous in (False, True):
+            with self.subTest(previous_root=previous):
+                prefix = 'iPDLLevel 1\niReset; iWrite head 5; iWrite tail 19; iWrite child.value 165; iApply\n'
+                if previous:
+                    prefix += 'iScan client 16 -si 0 -so 0 -stable; iApply\n'
+                prefix += 'iScan child.local 8 -si 60 -stable; iApply\n'
+                suffix = ('''iNote [iGetReadData client -bin]
+iNote [iGetMiscompares client -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
+''' if previous else '''if {![catch {iGetReadData client}]} {error {root history invented}}
+iNote absent; iNote [iGetStatus]
+''')
+                icl, first, full, tail = (self.root/n for n in ('scope.icl','prefix.pdl','full.pdl','tail.pdl'))
+                icl.write_text(source); first.write_text(prefix); full.write_text(prefix+suffix)
+                tail.write_text('iPDLLevel 1\n'+suffix)
+                self.run_tool(icl, first, 'generated.pdl')
+                reference = self.run_tool(icl, full, 'reference.pdl')
+                replay = self.run_tool(icl, self.root/'generated.pdl', 'replayed.pdl',
+                                       extra=('--pdl', str(tail)))
+                self.assertEqual(reference, replay)
+                self.assertEqual(self.notes(replay),
+                    [b'0b1011010010110011',b'0b1011010010110011',b'9',b'0']
+                    if previous else [b'absent',b'0'])
+
     def test_actual_raw_word_mask_counts_and_clear(self):
         output = self.replay(ROOT, """iPDLLevel 1
 iReset; iWrite r 9; iApply

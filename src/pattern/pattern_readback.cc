@@ -207,6 +207,7 @@ class ModelReadback {
     for (size_t i = 0; i < actual.size(); ++i) {
       mismatches += Mismatch(expected[i], actual[i]);
     }
+    if (scan.raw_history_omitted) return;
     StoreRaw({scan.arguments[fields.target], fields.chain, actual,
               std::move(mismatches)});
   }

@@ -299,7 +299,13 @@ void TestOpaqueHistorySnapshotCopiesResetAndSubscriber() {
           "ordinary frame does not authorize a raw history annotation");
   auto request = ChildScan("165");
   request.arguments[5] = "0b10xx0011";
-  scheduler.ApplyScan(request);
+  const auto physical = scheduler.ApplyScan(request);
+  Require(physical.raw_history_omitted,
+          "child lowering keeps physical root outside logical history scope");
+  pattern::Operation explicit_root{"iScan", physical.arguments, "root", {}};
+  auto root_copy = scheduler;
+  Require(!root_copy.ApplyScan(explicit_root).raw_history_omitted,
+          "explicit root request retains its logical history");
   const auto actual = scheduler.OpaqueRawHistory(note);
   Require(actual && actual->target == "child.local" && actual->chain.empty() &&
               actual->read == "xxxxxxxx" && actual->miscompare == "xx00xxxx",

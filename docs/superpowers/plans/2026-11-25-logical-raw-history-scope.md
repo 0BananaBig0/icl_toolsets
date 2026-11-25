@@ -38,17 +38,17 @@ RawHistoryOmissionText(const Operation&) returns canonical annotation text.
 Native lowerer marks physical-only roots. Runtime binds exact adjacent typed
 notes to root data scans; provider counts comparisons but omits raw publication.
 
-- [ ] Step1: Add absent/previous-root source-versus-generated continuation
+- [x] Step1: Add absent/previous-root source-versus-generated continuation
   regressions to opaque and modeled suites; run immutable parent.
   Expected real root-scope/mask failures before implementation.
-- [ ] Step2: Implement metadata propagation/rendering and Runtime/provider
+- [x] Step2: Implement metadata propagation/rendering and Runtime/provider
   history omission without modifying hardware or status. Expected focused
   normal checks pass and exact generated replay is idempotent.
-- [ ] Step3: Add exact/malformed/stale/duplicate typed notes, resets/canceled
+- [x] Step3: Add exact/malformed/stale/duplicate typed notes, resets/canceled
   queues, explicit-root, suffix clear, copies/subscriber and unobserved cases.
   Maintain benchmark controls and live getters. Expected normal/static/SAN
   focused and reporter checks pass with unchanged hardware counts.
-- [ ] Step4: Run full normal/static generator,30native normal/SAN, affected
+- [x] Step4: Run full normal/static generator,30native normal/SAN, affected
   SAN CLI/corpus, changed C++quality and source packaging. Record input/product
   hashes and complete matched replay/allocation/guide matrices.
   Expected every required check and unchanged corpus classifications pass.
