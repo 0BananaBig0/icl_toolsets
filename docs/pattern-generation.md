@@ -565,18 +565,25 @@ client interfaces selected individually or combined in qualified simultaneous
 groups with disjoint lanes and shared phase/TCK pins. Each client may have one
 path or disjoint named chains. Interface-free networks can infer independent lanes when all static
 routes from each output reach one distinct input bit and no graph vertex is
-shared between lanes. Fixed ungated lanes of equal nonzero length may also
-share a ScanInPort bit when their storage is disjoint. Their loads must produce
-the same physical input stream after accounting for every serial inversion.
+shared between lanes. Fixed ungated interface-free lanes may also share a
+ScanInPort bit, including unequal lengths, shared full registers and an input
+wire observed alongside storage. Their loads must produce the same physical
+input stream after accounting for every serial inversion. A shorter lane's load
+word matches the most significant prefix of the longest word. For a four-bit bank
+and a two-bit bank directly on one input, loads 13 and 3 are compatible; 13 and 1
+are incompatible. For SI -> A4 -> B4, outputs observing A and B use one eight-tick
+stream, and shared A clocks once. New unequal/overlapping/wire geometries require
+inactive constant/global resets or selected-bit ResetPort forwarding to a root ResetPort;
+register-controlled reset dependencies require separate event scheduling.
 For two four-bit banks directly connected to one input, writing both to 9 works;
 writing one to 9 and the other to 6 cannot be scheduled. Unrequested payload bits retain
 their current loads, including bits consumed only by unrelated logic. Automatic
 setup uses controllers on the scan network and requested data/read/write paths;
 a DataRegister write can still program its scan-backed data source. Other bits
-of that controller remain preserved. Writing only one ordinary bank to a
-different value therefore fails.
-Captures and logical read histories remain separate for each bank. Unequal or
-empty shared lanes, switched/gated shared paths and shared-input named/client/TAP
+of that controller remain preserved. For the two directly connected four-bit
+banks, writing only one bank to a different value therefore fails.
+Captures and logical read histories remain separate for each bank. Switched/gated
+shared paths and shared-input named/client/TAP
 interfaces retain their existing guards. Vector one-hot returns use the
 independent-input lanes. TAPs and
 effective interfaces require their existing supported event/chain models.
@@ -591,7 +598,8 @@ capture/shift/update storage when that proof does not hold. Unbound vector contr
 their state, and parallel input frames do not pulse scan controls.
 It rejects
 general independent TAP state/clock phases beyond the qualified mixed IR/DR case,
-shared serial storage, overlapping paths within a selected chain group, intermediate serial taps,
+shared serial storage outside the fixed interface-free case, overlapping paths
+within a named/client/TAP chain group, intermediate serial taps,
 general serial- or phase-dependent reset events,
 stateful absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated

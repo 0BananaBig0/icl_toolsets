@@ -350,7 +350,6 @@ class ScanScheduler::Impl {
           const auto& input = graph_[endpoints[root]].bit;
           chain_inputs[{output.node, output.index}] = {input.node, input.index};
         }
-        CheckIndependentChains(chain_inputs, nullptr, true);
         std::map<Key, std::vector<size_t>> input_roots;
         for (size_t root : roots_) {
           const auto& output = graph_[root].bit;
@@ -361,6 +360,8 @@ class ScanScheduler::Impl {
           if (roots.size() < 2) continue;
           std::vector<ConcretePath> paths;
           size_t width = 0;
+          bool extended = false;
+          std::set<size_t> storage;
           for (size_t root : roots) {
             for (size_t id = root; !graph_[id].input;
                  id = graph_[id].edges.front().next) {
@@ -375,13 +376,37 @@ class ScanScheduler::Impl {
             }
             auto path = TraceSerialPath(state_, root, false);
             if (!path.width || (!paths.empty() && path.width != width)) {
-              throw std::runtime_error(
-                  "shared scan inputs or storage require overlapping-event "
-                  "scheduling");
+              extended = true;
+            }
+            for (const auto& [id, suffix] : path.registers) {
+              if (!storage.insert(id).second) extended = true;
             }
             width = path.width;
             paths.push_back(std::move(path));
           }
+          if (extended) {
+            for (size_t id : storage) {
+              const auto& node = netlist.nodes[id];
+              if (!node.reset) continue;
+              auto reset = *node.reset;
+              while (reset.node != kMissing) {
+                const auto& source = netlist.nodes[reset.node];
+                const auto input = source.inputs.find("Source");
+                if (source.kind != "ResetPort" ||
+                    (input == source.inputs.end() && source.scope != 0)) {
+                  throw std::runtime_error(
+                      "fixed scan fanout requires invariant inactive resets");
+                }
+                if (input == source.inputs.end()) break;
+                reset = input->second.at(Offset(source, reset.index));
+              }
+              fanout_reset_checks_.insert(id);
+            }
+          }
+          const auto longest = std::max_element(
+              paths.begin(), paths.end(),
+              [](const auto& a, const auto& b) { return a.width < b.width; });
+          std::iter_swap(paths.begin(), longest);
           shared_input_paths_.push_back(std::move(paths));
         }
         parallel_chains_ = true;
@@ -551,22 +576,9 @@ class ScanScheduler::Impl {
     }
   }
 
-  void CheckIndependentChains(const std::map<Key, Key>& inputs,
-                              std::map<size_t, size_t>* registers = nullptr,
-                              bool shared_inputs = false) const {
-    std::vector<bool> input_only(graph_.size());
-    if (shared_inputs) {
-      for (size_t id : order_) {
-        const auto& vertex = graph_[id];
-        input_only[id] =
-            vertex.input ||
-            (vertex.bit.node != kMissing &&
-             netlist_.nodes[vertex.bit.node].kind != "ScanRegister" &&
-             vertex.edges.size() == 1 &&
-             vertex.edges.front().choice == kMissing &&
-             input_only[vertex.edges.front().next]);
-      }
-    }
+  void CheckIndependentChains(
+      const std::map<Key, Key>& inputs,
+      std::map<size_t, size_t>* registers = nullptr) const {
     std::vector<size_t> owner(graph_.size(), kMissing);
     for (size_t root : roots_) owner[root] = root;
     for (auto it = order_.rbegin(); it != order_.rend(); ++it) {
@@ -582,7 +594,6 @@ class ScanScheduler::Impl {
         }
       }
       for (const auto& edge : vertex.edges) {
-        if (input_only[edge.next]) continue;
         if (owner[edge.next] != kMissing && owner[edge.next] != owner[id]) {
           throw std::runtime_error(
               "shared scan inputs or storage require overlapping-event "
@@ -7469,7 +7480,7 @@ class ScanScheduler::Impl {
                               : Known(update_values.Read(*node.reset), false)));
           }
         }
-        // Fixed equal-length lanes must agree on the one physical input stream.
+        // Short lanes receive the final ticks of the longest physical stream.
         for (const auto& paths : shared_input_paths_) {
           std::optional<z3::expr> shared;
           for (const auto& path : paths) {
@@ -7479,12 +7490,22 @@ class ScanScheduler::Impl {
               if (path.inverted != suffix) bits = ~bits;
               stream = stream ? z3::concat(bits, *stream) : bits;
             }
+            if (!stream) continue;
             if (shared) {
-              solver.add(z3::implies(scan, *stream == *shared));
+              solver.add(z3::implies(
+                  scan,
+                  *stream == shared->extract(
+                                 shared->get_sort().bv_size() - 1,
+                                 shared->get_sort().bv_size() - path.width)));
             } else {
               shared = stream;
             }
           }
+        }
+        for (size_t id : fanout_reset_checks_) {
+          solver.add(z3::implies(
+              scan,
+              Known(update_values.Read(*netlist_.nodes[id].reset), false)));
         }
         cycles = cycles + *frame.clocks;
         if (events) {
@@ -8315,9 +8336,15 @@ class ScanScheduler::Impl {
                   const std::map<size_t, std::string>& desired_preserved,
                   const ScanScheduler::Observation& observe) {
     std::function<void(const NetworkState&)> check;
-    if (!preserved.empty()) {
+    if (!preserved.empty() || !fanout_reset_checks_.empty()) {
       check = [&](const NetworkState& state) {
         CheckPreserved(state, preserved, desired_preserved);
+        for (size_t id : fanout_reset_checks_) {
+          if (state.Read(*netlist_.nodes[id].reset) != '0') {
+            throw std::runtime_error(
+                "fixed scan fanout requires invariant inactive resets");
+          }
+        }
       };
     }
     std::vector<size_t> roots;
@@ -8444,7 +8471,24 @@ class ScanScheduler::Impl {
       }
       lanes.emplace_back(input_bit, std::move(lane));
     }
+    std::map<Key, size_t> longest_lanes;
+    for (size_t i = 0; i < lanes.size(); ++i) {
+      const auto& [input, lane] = lanes[i];
+      const auto [entry, inserted] =
+          longest_lanes.emplace(Key{input.node, input.index}, i);
+      if (!inserted &&
+          lane.serial.size() > lanes[entry->second].second.serial.size()) {
+        entry->second = i;
+      }
+    }
     for (auto& [input, lane] : lanes) {
+      const auto& stream =
+          lanes[longest_lanes.at({input.node, input.index})].second.serial;
+      if (stream.compare(stream.size() - lane.serial.size(), lane.serial.size(),
+                         lane.serial) != 0) {
+        throw std::runtime_error("conflicting scan streams on shared input");
+      }
+      lane.serial = stream;
       lane.serial.insert(0, clocks - lane.serial.size(), '0');
       lane.serial_expected.append(clocks - lane.serial_expected.size(), 'x');
       if (lanes.size() == 1) {
@@ -8505,6 +8549,7 @@ class ScanScheduler::Impl {
       if (client_controls_) {
         controls = ClientControls(replay, active, "capture", selections);
       }
+      if (check) check(*replay);
       replay->Clock(controls, true, check);
       if (check) check(*replay);
       for (auto& [id, control] : controls) control = {'0', '1', '0', '1'};
@@ -8638,6 +8683,7 @@ class ScanScheduler::Impl {
   size_t raw_profile_work_ = 0;
   bool parallel_chains_ = false;
   std::vector<std::vector<ConcretePath>> shared_input_paths_;
+  std::set<size_t> fanout_reset_checks_;
   bool data_reset_dependencies_ = false, feedback_resets_ = false;
   bool primary_state_indexed_ = false;
   std::optional<std::vector<size_t>> primary_state_candidates_;

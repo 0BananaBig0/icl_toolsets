@@ -128,20 +128,17 @@ Module SharedTop {
             self.run_tool(icl, pdl, ok=False)
             self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
 
-    def test_distinct_paths_preserve_outputs(self):
-        for source in (
-                NETWORK.replace('Source ~data[0]', 'Source si'),
-                NETWORK.replace('ScanOutPort b',
-                                'ScanRegister other { ScanInSource si; } ScanOutPort b')
-                       .replace('Source ~data[0]', 'Source other')):
-            with self.subTest(source=source):
-                icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
-                icl.write_text(source)
-                pdl.write_text(PDL)
-                (self.root / 'result.pdl').write_bytes(b'previous result\n')
-                error = self.run_tool(icl, pdl, ok=False)
-                self.assertIn('shared scan inputs or storage require overlapping-event scheduling', error)
-                self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
+    def test_omitted_unequal_lane_preserves_output(self):
+        source = NETWORK.replace('ScanOutPort b', 'ScanRegister other { ScanInSource si; '
+                                 'ResetValue 0; } ScanOutPort b')
+        source = source.replace('Source ~data[0]', 'Source other')
+        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
+        icl.write_text(source)
+        pdl.write_text(PDL)
+        (self.root / 'result.pdl').write_bytes(b'previous result\n')
+        error = self.run_tool(icl, pdl, ok=False)
+        self.assertIn('no schedule within', error)
+        self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous result\n')
 
     def test_wide_shared_observation(self):
         outputs = '\n'.join(f"ScanOutPort out{i} {{ Source data[0]; Enable 1'b{int(i == 255)}; }}"
