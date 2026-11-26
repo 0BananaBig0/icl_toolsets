@@ -1150,6 +1150,85 @@ Module SharedEdge {
   }
 }
 
+void TestSimultaneousClientUpdates() {
+  pattern::Design design;
+  design.AddIcl("clients.icl", R"(
+Module Clients {
+ ScanInPort si[1:0]; SelectPort sel[1:0];
+ CaptureEnPort ce; ShiftEnPort se; UpdateEnPort ue; TCKPort ck;
+ ScanRegister a[3:0] {ScanInSource si[0]; CaptureSource a; ResetValue 0;}
+ ScanRegister b[3:0] {ScanInSource si[1]; CaptureSource b; ResetValue 0;}
+ ScanOutPort so0 {Source a[0];} ScanOutPort so1 {Source b[0];}
+ ScanInterface first {Port si[0];Port so0;Port sel[0];Port ce;Port se;Port ue;Port ck;}
+ ScanInterface second {Port si[1];Port so1;Port sel[1];Port ce;Port se;Port ue;Port ck;}
+})");
+  const auto network = pattern::Elaborate(design, "Clients");
+  pattern::Design flat;
+  flat.AddIcl("flat.icl", pattern::SerializeIcl(network));
+  const auto restored = pattern::Elaborate(flat, "Clients");
+  pattern::NetworkState original(network), copy(restored);
+  pattern::TapExecution bindings(network), flat_bindings(restored);
+  for (auto* state : {&original, &copy}) {
+    state->SetGlobalReset('1', '1');
+    state->Reset();
+    state->SetGlobalReset('0', '0');
+  }
+  const auto edge = [&](bool rising, const std::string& serial, char capture,
+                        char shift, char update) {
+    for (auto* state : {&original, &copy}) {
+      const auto& netlist = state == &original ? network : restored;
+      const auto& ports = state == &original
+                              ? bindings.RegisterInterfaces()
+                              : flat_bindings.RegisterInterfaces();
+      for (const auto& [name, bits] :
+           std::map<std::string, std::string>{{"si", serial},
+                                              {"sel", "11"},
+                                              {"ce", std::string(1, capture)},
+                                              {"se", std::string(1, shift)},
+                                              {"ue", std::string(1, update)}}) {
+        state->Drive(netlist.node_ids.at(name), bits);
+      }
+      const auto clock = netlist.node_ids.at("ck");
+      state->Drive(clock, rising ? "0" : "1");
+      const auto prior = state->Value(clock);
+      state->Drive(clock, rising ? "1" : "0");
+      const char tick = prior == (rising ? "0" : "1") &&
+                                state->Value(clock) == (rising ? "1" : "0")
+                            ? '1'
+                            : '0';
+      const std::map<std::pair<size_t, int64_t>, char> clocks{
+          {{clock, 0}, tick}};
+      std::map<size_t, pattern::ScanControl> controls;
+      for (const auto* name : {"a", "b"}) {
+        const auto id = netlist.node_ids.at(name);
+        controls.emplace(id, pattern::EffectiveScanControl(
+                                 netlist, *state, ports.at(id), {}, clocks));
+      }
+      state->Clock(controls, rising);
+    }
+    for (const auto* name : {"a", "b"}) {
+      Require(original.Value(network.node_ids.at(name)) ==
+                  copy.Value(restored.node_ids.at(name)),
+              "simultaneous original and flat held storage agree at each edge");
+    }
+  };
+  edge(true, "00", '1', '0', '0');
+  edge(false, "00", '1', '0', '0');
+  for (size_t i = 0; i < 4; ++i) {
+    const std::string serial{"0110"[i], "1011"[i]};
+    edge(true, serial, '0', '1', '0');
+    edge(false, serial, '0', '1', '0');
+  }
+  edge(true, "00", '0', '0', '1');
+  Require(original.Value(network.node_ids.at("a")) == "0000" &&
+              original.Value(network.node_ids.at("b")) == "0000",
+          "both client values remain old before the update falling edge");
+  edge(false, "00", '0', '0', '1');
+  Require(original.Value(network.node_ids.at("a")) == "1101" &&
+              original.Value(network.node_ids.at("b")) == "0110",
+          "one shared clock falling edge updates both standalone clients");
+}
+
 void TestIndependentTapPhases() {
   const std::string fixture =
       "tests/cases/ours/pattern_generation/multiple_taps/";
@@ -1428,6 +1507,7 @@ int main() {
     TestImpliedToTckValues();
     TestEquivalentClockBatch();
     TestIndependentTapPhases();
+    TestSimultaneousClientUpdates();
     for (const auto* control : {"capture", "shift", "update"}) {
       TestSharedTapEdge(true, control);
       TestSharedTapEdge(false, control);

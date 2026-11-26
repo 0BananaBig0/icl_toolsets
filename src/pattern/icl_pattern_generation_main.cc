@@ -932,6 +932,8 @@ int main(int argc, char** argv) {
            "Multiple TAPs require equivalent TCKs, disjoint lanes and explicit "
            "reset paths.\n"
            "Mixed IR/DR groups require distinct TMS pins.\n"
+           "Simultaneous clients require SelectPort, disjoint lanes and shared "
+           "phase/TCK pins.\n"
            "iApply -together requires a shared update cycle for queued "
            "writes.\n"
            "Nonzero TAP waits and TAP scans require explicit iReset.\n"

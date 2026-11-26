@@ -166,11 +166,9 @@ iRead c.value 6; iApply
                 self.run_tool(icl, pdl, ok=False)
                 self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous output\n')
 
-    def test_cross_interface_together_is_rejected(self):
-        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
-        icl.write_text(network())
-        pdl.write_text('iReset; iWrite c0.value 9; iWrite c1.value 6; iApply -together\n')
-        self.run_tool(icl, pdl, ok=False)
+    def test_cross_interface_together_updates_disjoint_clients(self):
+        self.replay(network(), 'iReset; iWrite c0.value 9; iWrite c1.value 6; '
+                    'iApply -together; iRead c0.value 9; iRead c1.value 6; iApply\n')
 
     def test_reset_pass_budget_preserves_artifacts(self):
         source = """Module Bit {

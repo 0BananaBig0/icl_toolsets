@@ -561,8 +561,9 @@ broader syntax support and never execute PDL.
 
 The backend accepts TAPs on equivalent root TCKs, including qualified mixed
 IR/DR groups across distinct TMS pins, or standalone
-client interfaces selected one at a time, each with one path or disjoint named
-chains. Interface-free networks can infer independent lanes when all static
+client interfaces selected individually or combined in qualified simultaneous
+groups with disjoint lanes and shared phase/TCK pins. Each client may have one
+path or disjoint named chains. Interface-free networks can infer independent lanes when all static
 routes from each output reach one distinct input bit and no graph vertex is
 shared between lanes. Vector one-hot returns use these same lanes. TAPs and
 effective interfaces require their existing supported event/chain models.
@@ -2681,6 +2682,10 @@ coverage and later-change Rocky8 qualification remain unverified.
 
 ## Independently selected client interfaces (2026-11-13)
 
+This section records the original one-client implementation. The later
+[simultaneous client extension](#simultaneous-standalone-client-groups-2026-11-26)
+adds a bounded case without changing ordinary one-client requests.
+
 Multiple standalone client interfaces with one SI/SO pair each and explicit
 SelectPort controls now share one scheduler state. One interface is selected per
 serial frame; all other interfaces must be disabled. The chosen path must reach
@@ -2733,6 +2738,10 @@ was stopped for the required data-fill helper extraction. They are retained
 as failure evidence, not counted as passing runs.
 
 ## Selected client chain groups (2026-11-13)
+
+This section records selection of one client group per frame. The
+[simultaneous extension](#simultaneous-standalone-client-groups-2026-11-26)
+can combine qualified disjoint groups on shared controls.
 
 A selected standalone client may now contain several named chains. All chains
 in that group capture, shift and update together, with padding for unequal
@@ -11356,3 +11365,94 @@ native state/readback and both CLI variants plus the corpus audit. The owned
 task branch is deleted;the reused worktree is detached;117stashes are preserved.
 Both Important review findings and the Minor wording issue are resolved;
 31inherited Minors, broader original requirements and excluded1 remain open.
+
+## Simultaneous standalone client groups (2026-11-26)
+
+Standalone client interfaces can participate in one simultaneous register
+update when all declared root clients have statically disjoint serial lanes, their root
+SelectPorts permit unique selection, and their capture/shift/update/TCK pins
+are the same unconnected root inputs. Each client can contain one lane or a
+named group. Shared serial inputs/storage/outputs, coupled selectors and
+different clock/control pins do not qualify.
+
+For two eligible interfaces bus0/bus1 exposing c0.value/c1.value:
+
+```tcl
+iPDLLevel 0
+iProcsForModule Chains
+iReset
+iWrite c0.value 13
+iWrite c1.value 6
+iApply -together
+```
+
+AccessTogether aliases can impose the same write or capture obligation.
+Generated reads retain the alias when a reset-held member cannot emit a write.
+Parallel preparations preserve their selected clients through common writes or
+a capture alias. Routed reads retain the original logical target and comparison.
+Sliced reads retain exactly their requested bits when the generated prefix is
+continued later;unrequested bits keep their previous read history,including X.
+Ordinary queues keep one-client selection, including shared-storage switching.
+An unrelated held client is excluded from a multiple-client frame;necessary
+single-client preparation still uses real replay.
+
+Complete-scan equivalence is proved over the eligible selection combinations.
+Hidden events, including capture enabled only when both clients are selected,
+retain the event model. Modeled histories use actual captures and once-only
+status;requested values and expected comparisons do not become observations.
+The native original/flat proof updates both held values on one falling TCK edge.
+
+IEEE1687-2014 6.4.16(m) requires each interface to be uniquely selectable;this
+does not establish vendor portability of simultaneous access. Fresh Tessent2026.2
+probes accept the ordinary two-client control but find no simultaneous solution.
+A separate AccessTogether probe rejects that keyword at parse time although its
+syntax appears in6.5.2. The new case is qualified only as local logical scheduling;
+vendor equivalence, physical output and broader original2/3 remain open.
+
+The initial forced-event matrix peaked at807128KiB reported RSS;its
+2client-by256bit point took14.317s/four forms. The reused equivalence proof avoids
+that unnecessary expansion;final paired measurements are recorded below.
+
+## Task189 simultaneous client interfaces
+
+Task189 supports bounded local simultaneous groups across statically disjoint
+standalone clients with shared root phase/TCK pins and uniquely selectable root
+SelectPorts. All declared root clients must satisfy the proof. Ordinary requests
+and shared-storage switching retain one-client behavior. Generated preparations
+retain their simultaneous selected clients. Each combined frame must be
+expressible through common writes or a capture alias covering those clients.
+Logical read targets,requested bits,cared comparisons and observation frames
+survive original/flat/generated continuation;physical capture routes do not
+become logical history requests. No physical/vendor-equivalence claim is made.
+
+One final independent review found1Critical/2Important/0Minor findings.
+Five maintained reproductions fail first (10failures across both producer modes),
+then pass in one repair pass. The Critical routed-comparison false PASS is fixed;
+parallel preparation events and other-frame/primary/write-group sparse histories
+are fixed. A selection-driven reset-held preparation subcase also passes.
+There is no rereview;31inherited Minors remain deferred.
+
+All36fresh post-repair qualification commands pass,including9C++quality checks,
+15leak-enabled sanitizer native suites,23new-client functional methods,
+12mixed-TAP methods,20existing non-scale multi-TAP methods and seven focused
+sanitizer suites. Full make check passes:217Python suites report3344tests with
+5optional real ANTLR skips (ICL_REF_DIR unset). Both25-method normal/static
+suites,source packaging and model/source audits pass. Final postreview manifests
+bind4092inputs/44selected executables;the audit retains1334files/1763modules,
+1032canonical/44unsupported serializations/687default elaboration failures.
+
+Three fresh paired7-point rounds pass63points/252CLI replays. Ordinary controls
+remain byte-identical to the frozen parent. New simultaneous matrices take5.20-5.91s,
+with118492KiB maximum reported runner/children RSS,not a native-only per-point peak.
+The slowest four-form point is3.706s. All measured points meet10s/four forms and
+512MiB reported RSS. The parent rejects new simultaneous groups;no speedup over
+that unsupported parent mode is claimed. Original qualification,prehistory
+failures and initial forced-event measurements remain historical evidence.
+
+Fresh Tessent2026.2 accepts the ordinary two-client control,finds no solution for
+the same ICL's simultaneous write,and rejects AccessTogether in a separate parse
+probe. No new certificate is added. Prior parent-matched16/32TAP sanitizer scale
+limits remain unqualified;new scale matrices run normal/static without a
+sanitizer memory guarantee. The separate parent ordinary-only sparse-prefix
+history defect remains follow-up work. Broader original requirements and
+excluded1 remain open. Integration is pending.
