@@ -224,6 +224,80 @@ void SystemClocks::Override(const Operation& operation, z3::context& context,
 std::string SystemClocks::TargetName(const std::string& target) const {
   return Name(Target(ClockTargetName(target)));
 }
+void SystemClocks::RetainClockPrograms(
+    const std::vector<Operation>& operations) {
+  lowered_programs_.clear();
+  std::vector<Bit> periods, candidates;
+  std::vector<std::pair<Bit, Bit>> changed_sources;
+  for (const auto& operation : operations) {
+    const auto& args = operation.arguments;
+    if (operation.command != "iClockOverride" || args.empty()) continue;
+    try {
+      const auto target = Target(ClockTargetName(args[0]));
+      const auto& node = netlist_.nodes[target.first];
+      if (node.kind != "ToClockPort") continue;
+      if (args.size() > 1 && args[1] == "-period") {
+        periods.push_back(target);
+        continue;
+      }
+      bool explicit_source = false;
+      for (size_t i = 1; i + 1 < args.size(); i += 2) {
+        if (args[i] != "-source") continue;
+        explicit_source = true;
+        changed_sources.emplace_back(target,
+                                     Target(ClockTargetName(args[i + 1])));
+      }
+      const auto source = node.inputs.find("Source");
+      if (!explicit_source && !node.clock_period &&
+          source != node.inputs.end()) {
+        const auto& bit = source->second.at(Offset(node, target.second));
+        if (bit.node < netlist_.nodes.size() &&
+            (bit.inverted || !ClockPort(netlist_.nodes[bit.node]))) {
+          candidates.push_back(target);
+        }
+      }
+    } catch (const std::runtime_error&) {
+      // The real operation reports invalid operands in source order.
+    }
+  }
+  if (periods.empty() || candidates.empty()) return;
+  BuildSafety();
+  std::map<Bit, std::set<Bit>> adjacent;
+  const auto connect = [&](Bit a, Bit b) {
+    adjacent[a].insert(b);
+    adjacent[b].insert(a);
+  };
+  for (const auto& [source, outputs] : fanout_) {
+    for (const auto& output : outputs) connect(source, output);
+  }
+  for (const auto& [target, source] : changed_sources) connect(target, source);
+  const auto closure = [&](const std::vector<Bit>& seeds) {
+    std::set<Bit> reached(seeds.begin(), seeds.end());
+    std::vector<Bit> pending(reached.begin(), reached.end());
+    for (size_t i = 0; i < pending.size(); ++i) {
+      const auto found = adjacent.find(pending[i]);
+      if (found == adjacent.end()) continue;
+      for (const auto& bit : found->second) {
+        if (reached.insert(bit).second) pending.push_back(bit);
+      }
+    }
+    return reached;
+  };
+  const auto sensitive = closure(periods);
+  candidates.erase(
+      std::remove_if(candidates.begin(), candidates.end(),
+                     [&](Bit bit) { return sensitive.count(bit); }),
+      candidates.end());
+  lowered_programs_ = closure(candidates);
+}
+bool SystemClocks::RetainsClockProgram(const std::string& target) const {
+  if (lowered_programs_.empty()) return true;
+  try {
+    return !lowered_programs_.count(Target(ClockTargetName(target)));
+  } catch (const std::runtime_error&) {
+    return true;
+  }
+}
 void SystemClocks::Invalidate() {
   routes_.clear();
   values_.clear();

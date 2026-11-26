@@ -286,6 +286,122 @@ iRunLoop 2 -sck cell.osc[5]
                                           restorations=updates, overrides=2 * updates + 1,
                                           seconds=elapsed)))
 
+    def test_independent_mux_alias_inverted_defaults(self):
+        for default in ('choose', 'forward', '~root'):
+            with self.subTest(default=default):
+                source = '''Module Top {ClockPort root; ClockPort other; DataInPort mode;
+ ClockMux choose SelectedBy mode {1'b0:root;1'b1:other;}
+ Alias forward = root;
+ ToClockPort out {Source ''' + default + '''; FreqMultiplier 3; FreqDivider 2;}
+ ToClockPort oscillator {Period 10ns;}}'''
+                before = 'iState mode 0; iClock out; iRunLoop 6 -sck out; '
+                after = '''iClockOverride out -source other -freqMultiplier 9 -freqDivider 4
+iClock out; iRunLoop 9 -sck out
+iClockOverride out -freqDivider 5
+iRunLoop 9 -sck out; iClock out; iRunLoop 6 -sck out
+iClock oscillator; iRunLoop 2 -sck oscillator
+'''
+                ordinary = self.replay(source, before + after)
+                expected = ['iClock root', 'iRunLoop 4 -sck root',
+                            'iClock other', 'iRunLoop 4 -sck other',
+                            'iRunLoop 4 -sck other', 'iClock root',
+                            'iRunLoop 10 -sck root', 'iClock oscillator',
+                            'iRunLoop 2 -sck oscillator']
+                self.assertEqual([line for line in ordinary.splitlines()
+                                  if line.startswith(('iClock ', 'iRunLoop '))], expected)
+                output = self.replay(source, before +
+                                     'iClockOverride oscillator -period 20ns; ' + after)
+                expected.insert(2, 'iClockOverride oscillator -period 20 ns')
+                self.assertEqual([line for line in output.splitlines()
+                                  if line.startswith(('iClockOverride ', 'iClock ', 'iRunLoop '))],
+                                 expected)
+
+    def test_independent_vector_procedures_and_reset(self):
+        source = '''Module Cell {ClockPort ref[3:2]; DataInPort mode;
+ ClockMux choose[5:4] SelectedBy mode {1'b0:ref;1'b1:ref;}
+ ToClockPort out[5:4] {Source choose; FreqMultiplier 3; FreqDivider 2;}
+ ToClockPort connected {Source ref[3];}}
+Module Top {ClockPort root[7:6]; DataInPort mode;
+ Instance cell Of Cell {InputPort ref=root; InputPort mode=mode;}}'''
+        output = self.replay(source, '''iProcsForModule Cell
+iProc configure {} {iClockOverride out[4] -freqDivider 5; iClock out[4]}
+iProcsForModule Top
+iState mode 0
+iClockOverride cell.connected -period 20ns
+iClockOverride cell.out[5] -source root[7] -freqMultiplier 3 -freqDivider 2
+iClock cell.out[5]; iRunLoop 6 -sck cell.out[5]
+iCall cell.configure; iRunLoop 6 -sck cell.out[4]
+iReset; iState mode 0; iClock cell.out[4]; iRunLoop 3 -sck cell.out[4]
+''')
+        self.assertIn('iClock cell.out(5)\niRunLoop 6 -sck cell.out(5)', output)
+        self.assertIn('iClock root(6)\niRunLoop 10 -sck root(6)', output)
+        self.assertIn('iClock root(6)\niRunLoop 5 -sck root(6)', output)
+        self.assertEqual([line for line in output.splitlines()
+                          if line.startswith('iClockOverride ')], [
+            'iClockOverride cell.connected -period 20 ns',
+            'iClockOverride cell.out(5) -source root(7) -freqMultiplier 3 -freqDivider 2'])
+
+    def test_period_connected_and_future_bridges_remain_guarded(self):
+        source = '''Module Top {ClockPort root; DataInPort mode;
+ ClockMux choose SelectedBy mode {1'b0:root;1'b1:root;}
+ ToClockPort out {Source choose; FreqMultiplier 3; FreqDivider 2;}
+ ToClockPort descendant {Source root;}
+ ToClockPort oscillator {Period 10ns;}}'''
+        for program in (
+                'iClockOverride out -period 20ns; iClockOverride out -freqDivider 5',
+                'iClockOverride descendant -period 20ns; iClockOverride out -freqDivider 5',
+                'iClockOverride oscillator -period 20ns; iClockOverride out -freqDivider 5; '
+                'iClockOverride oscillator -source out',
+                'iClockOverride out -freqDivider 5; iClockOverride oscillator -period 20ns; '
+                'iClockOverride out -source oscillator'):
+            with self.subTest(program=program):
+                self.rejected(source, 'iState mode 0; ' + program + '\n',
+                              'representable clock-port source')
+
+    def test_component_preparation_preserves_diagnostic_order_and_artifacts(self):
+        source = '''Module Top {ClockPort root; DataInPort mode;
+ ClockMux choose SelectedBy mode {1'b0:root;1'b1:root;}
+ ToClockPort out {Source choose;} ToClockPort oscillator {Period 10ns;}}'''
+        tail = '; iClockOverride out -freqDivider 5; iClockOverride missing -source absent\n'
+        for first, diagnostic in (
+                ('iClockOverride missing -bad', 'invalid or incomplete option for iClockOverride'),
+                ('iClockOverride oscillator -period 0ns', 'positive'),
+                ('iClockOverride root -period 20ns', 'ToClockPort')):
+            with self.subTest(first=first):
+                self.rejected(source, 'iClockOverride oscillator -period 20ns; ' +
+                              first + tail, diagnostic)
+
+    def test_independent_clock_components_scale(self):
+        for count in (2, 8, 32):
+            for updates in (8, 128, 1024):
+                with self.subTest(count=count, updates=updates):
+                    source = (f'Module Top {{ClockPort root[{count-1}:0]; DataInPort mode; '
+                              f'ClockMux choose[{count-1}:0] SelectedBy mode '
+                              "{1'b0:root;1'b1:root;} "
+                              f'ToClockPort out[{count-1}:0] {{Source choose; '
+                              'FreqMultiplier 3; FreqDivider 2;} '
+                              'ToClockPort oscillator {Period 10ns;}}')
+                    commands = ['iState mode 0', 'iClockOverride oscillator -period 20ns']
+                    expected = ['iClockOverride oscillator -period 20 ns']
+                    for i in range(updates):
+                        bit, divider = i % count, 1 + i % 7
+                        commands += [f'iClockOverride out[{bit}] -freqDivider {divider}',
+                                     f'iClock out[{bit}]', f'iRunLoop 6 -sck out[{bit}]']
+                        expected += [f'iClock root({bit})',
+                                     f'iRunLoop {2 * divider} -sck root({bit})']
+                    commands += ['iClock oscillator', 'iRunLoop 2 -sck oscillator']
+                    expected += ['iClock oscillator', 'iRunLoop 2 -sck oscillator']
+                    started = time.monotonic()
+                    output = self.replay(source, '; '.join(commands) + '\n')
+                    elapsed = time.monotonic() - started
+                    self.assertEqual([line for line in output.splitlines()
+                                      if line.startswith(('iClockOverride ', 'iClock ', 'iRunLoop '))],
+                                     expected)
+                    self.assertLess(elapsed, 10)
+                    print(json.dumps(dict(clock_targets=count, updates=updates, forms=5,
+                                          retained_oscillators=1, normalized_overrides=1,
+                                          seconds=elapsed)))
+
     def test_level_zero_numeric_formals(self):
         for formals, period, arguments, expected in (
                 ('p', '$p', '20', '20 ns'), ('p', '$p us', '20', '20 us'),

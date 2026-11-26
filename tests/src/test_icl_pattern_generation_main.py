@@ -44,6 +44,7 @@ class Generator(unittest.TestCase):
         help_text = self.run_tool("--help").stdout
         self.assertIn("--icl", help_text)
         self.assertIn("source overrides expand native ICL defaults", help_text)
+        self.assertIn("Independent clock paths may use root-relative lowering.", help_text)
         self.assertNotIn("source overrides require source and both frequency factors", help_text)
         self.assertIn("icl-pattern-generation", self.run_tool("--version").stdout)
 

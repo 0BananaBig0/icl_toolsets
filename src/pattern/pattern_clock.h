@@ -24,6 +24,9 @@ class SystemClocks {
   void Override(const Operation& operation, z3::context& context,
                 Operation* normalized = nullptr);
   std::string TargetName(const std::string& target) const;
+  // Prepare the complete stream; real operations retain operand validation.
+  void RetainClockPrograms(const std::vector<Operation>& operations);
+  bool RetainsClockProgram(const std::string& target) const;
   std::string Check(const std::string& target, const ScanScheduler& scheduler);
   std::pair<std::string, uint64_t> Wait(
       const std::string& target, uint64_t cycles,
@@ -65,6 +68,7 @@ class SystemClocks {
   bool time_ready_ = false;
   std::set<Bit> unsafe_;
   std::map<Bit, std::set<Bit>> fanout_;
+  std::set<Bit> lowered_programs_;
   size_t version_ = 0, cache_version_ = 0;
   std::map<Bit, std::vector<Definition>> overrides_;
   std::map<Bit, Checked> checked_;

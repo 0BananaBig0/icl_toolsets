@@ -397,6 +397,7 @@ std::string Generate(
                            : pattern::ResourceReservations(netlist);
   pattern::SystemClocks clocks =
       initial_clocks ? *initial_clocks : pattern::SystemClocks(netlist);
+  if (retain_clocks && !initial_clocks) clocks.RetainClockPrograms(operations);
   z3::context context;
   pattern::QueuedAccesses pending;
   std::map<std::tuple<bool, std::string, std::string>, pattern::Operation>
@@ -687,10 +688,13 @@ std::string Generate(
         pending_scan_bits = 0;
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iClockOverride") {
+        const bool retained =
+            retain_clocks &&
+            (operation.arguments.empty() ||
+             clocks.RetainsClockProgram(operation.arguments.front()));
         pattern::Operation normalized;
-        clocks.Override(operation, context,
-                        retain_clocks ? &normalized : nullptr);
-        if (retain_clocks) {
+        clocks.Override(operation, context, retained ? &normalized : nullptr);
+        if (retained) {
           normalized.arguments.insert(normalized.arguments.begin(),
                                       normalized.command);
           result += Command(normalized.arguments);
@@ -698,8 +702,10 @@ std::string Generate(
       } else if (operation.command == "iClock") {
         const auto& target = operation.arguments.at(0);
         const auto root = clocks.Check(target, scheduler);
-        result += Command(
-            {"iClock", retain_clocks ? clocks.TargetName(target) : root});
+        const bool retained =
+            retain_clocks && clocks.RetainsClockProgram(target);
+        result +=
+            Command({"iClock", retained ? clocks.TargetName(target) : root});
       } else if (operation.command == "iRunLoop") {
         const auto caller_values =
             reservations.CallbackValues(operation, pending);
@@ -746,10 +752,12 @@ std::string Generate(
           } else {
             const auto wait =
                 clocks.Wait(system_clock, cycles, scheduler, preserved);
+            const bool retained =
+                retain_clocks && clocks.RetainsClockProgram(system_clock);
             result += Command(
-                {"iRunLoop",
-                 std::to_string(retain_clocks ? cycles : wait.second), "-sck",
-                 retain_clocks ? clocks.TargetName(system_clock) : wait.first});
+                {"iRunLoop", std::to_string(retained ? cycles : wait.second),
+                 "-sck",
+                 retained ? clocks.TargetName(system_clock) : wait.first});
           }
         }
       } else if (operation.command == "iState") {
@@ -959,8 +967,9 @@ int main(int argc, char** argv) {
            "support\n"
            "relative clock-only routes, differential partners, Period "
            "oscillators and versioned iClockOverride, including -period.\n"
-           "Period-bearing programs retain logical clock statements; mixed\n"
+           "Period-connected paths retain logical clock statements; mixed\n"
            "source overrides expand native ICL defaults when representable.\n"
+           "Independent clock paths may use root-relative lowering.\n"
            "Absolute-time waits require models without storage, clock-driven "
            "data,\n"
            "or forwarded test clocks.\n"
