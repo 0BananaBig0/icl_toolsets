@@ -1,10 +1,14 @@
 iPDLLevel 0
 iProcsForModule Top
 iReset
+iNote -comment "modeled raw history omitted iScan client 8 -si 0b00000001 -so 0b00000000"
 iScan client 8 -si 0b00000001 -so 0b00000000
 iApply
+iNote -comment "modeled dynamic child raw history client child.local 0b00000000"
+iNote -comment "modeled raw history omitted iScan client 16 -si 0b1010010100000001 -so 0b00000000xxxxxxxx"
 iScan client 16 -si 0b1010010100000001 -so 0b00000000xxxxxxxx
 iApply
+iNote -comment "modeled dynamic child raw history client sibling.local 0b00000000"
 iWrite child.value 0b00000001
 iWrite sibling.value 0b10100101
 iRead child.value 0b00000001

@@ -1554,3 +1554,44 @@ Python logic and the three native binaries retain their qualified identities.
 The owned task branch is deleted;the reused worktree is detached;117stashes
 are preserved. Six inherited findings are resolved and31remain deferred.
 Broader original requirements and excluded1 remain open.
+
+## Task187 readback factory compatibility and golden repair
+
+The explicit three-argument MakeModeledReadback overload is restored. Its
+function-pointer signature is source-compatible again;it forwards to the same
+four-argument model owner with no history-output pointer. Removing the fourth
+parameter default keeps ordinary three-argument calls unambiguous.
+
+The existing native status-preview test reproduces the compiler failure before
+the fix and passes afterward. Typed one/two/three/four-argument pointers and
+null outputs return actual data with the expected failure counts. Native
+readback, formatting and whitespace pass. Full make check initially exited2
+on inherited tessent-golden-check failures, with 198 passing Python suite
+executions/3127 methods. All77directional outputs are byte-identical between
+the qualified baseline and candidate;both fail the same five old child-history
+snapshots because new history notes are missing. Five fresh licensed Tessent
+exports and new record/check certificates repair those exact snapshots. The
+failed target now passes, including all77directional snapshots;passing unchanged
+project checks are retained. A fresh all-green full-command rerun is not claimed.
+Compiler/static-linker warnings from unchanged files remain in the check log.
+No performance claim, dependency, scheduler behavior or limit is added.
+The inherited Task177 API finding is resolved:31minus1=30 deferred Minors.
+Broader original inventory and excluded1 remain open;final review/integration
+are pending.
+
+The final review found0Critical/1Important/1Minor. Its Important verification
+gap is resolved. A fresh full command passed every prerequisite, then reached
+the main recipe and failed its source-inventory test:coverage.SOURCES omitted
+pattern_readback.cc. The existing seven-test reader suite reproduces that
+failure and passes after adding the missing source. Excluded item1 thresholds
+remain unchanged. The entire main recipe then passes with completed unchanged
+prerequisites retained (15 Python suite executions/139 methods).
+CLI/regression/fuzz/LSP/grammar/Vim commands all execute;their retained log records
+any optional skips. Five optional ANTLR comparison tests are skipped. The full
+rerun exit2 and resumed-main exit0 are reported
+separately;a fresh all-green single invocation is not claimed. Five fresh vendor
+certificates remain verified. One new Minor is deferred:the preview test could
+detect split model ownership by clearing publication status then checking
+preview returns zero. No production defect was found in the factory repair.
+Current inherited31minus1resolved plus1new=31deferred Minors. No rereview is
+requested;integration remains next.

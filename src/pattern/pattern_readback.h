@@ -42,9 +42,11 @@ bool CanUsePrimaryCallbackReadback(const Netlist& netlist);
 // Replay follows supplied operation order; observed merges must retain it.
 Runtime::Readback MakeModeledReadback(const Netlist& netlist);
 Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical);
+Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical,
+                                      Runtime::StatusReadback* status_readback);
 Runtime::Readback MakeModeledReadback(
     const Netlist& netlist, bool physical,
     Runtime::StatusReadback* status_readback,
-    Runtime::HistoryReadback* history_readback = nullptr);
+    Runtime::HistoryReadback* history_readback);
 }  // namespace pattern
 #endif  // ICL_TOOLSETS_SRC_PATTERN_PATTERN_READBACK_H_

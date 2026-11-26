@@ -6,9 +6,11 @@ iProc oracle {} {
    iWrite open 0b1
    iApply
 
+   iNote -comment "modeled raw history omitted iScan client 9 -si 0b100101101 -so 0b00000000x"
    iScan client -chain default 9 -si 0b100101101 -so 0b00000000X
    iApply
 
+   iNote -comment "modeled dynamic child raw history client child.local 0b00000000"
    iWrite child.value[7:0] 0b10010110
    iRead  child.value[7:0] 0b10010110
    iWrite open 0b1
@@ -19,8 +21,10 @@ iProc oracle {} {
    iWrite open 0b1
    iApply
 
+   iNote -comment "modeled raw history omitted iScan client 9 -si 0b001111001 -so 0b10010111x"
    iScan client -chain default 9 -si 0b001111001 -so 0b10010111X
    iApply
 
+   iNote -comment "modeled dynamic child raw history client child.local 0b10010111"
 
 }

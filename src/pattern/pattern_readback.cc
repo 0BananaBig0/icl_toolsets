@@ -512,6 +512,11 @@ Runtime::Readback MakeModeledReadback(const Netlist& netlist, bool physical) {
 }
 Runtime::Readback MakeModeledReadback(
     const Netlist& netlist, bool physical,
+    Runtime::StatusReadback* status_readback) {
+  return MakeModeledReadback(netlist, physical, status_readback, nullptr);
+}
+Runtime::Readback MakeModeledReadback(
+    const Netlist& netlist, bool physical,
     Runtime::StatusReadback* status_readback,
     Runtime::HistoryReadback* history_readback) {
   auto model = std::make_shared<std::unique_ptr<ModelReadback>>();

@@ -33,21 +33,21 @@
       "design_0.icl": "f42970875b4a6d0e2fee4b1ae563c5bd79470b4fad9918f71932ac713da3983f",
       "source_0.pdl": "84fcdd08b7c851c961971ada659c4cfd7c65bea1d7425273fe1b2a110bbf2880",
       "run.tcl": "1b5d03e1febcd7c4b1afed75efd93b50f593fa4823c211df6e8e1760bf0b1e27",
-      "ours.pdl": "5c586019e7dc6b7c82090868bbf7f938245efef87e33083e0ec77fdb1f4f803e"
+      "ours.pdl": "307fa9c1fe690f52d4609a69e3c9aa29b637752be1d707d592e0e0f2f6d5b84f"
     },
     "generator_command": [
-      "/tmp/icl-typed-control-inversion-candidate-20261114/build/icl-pattern-generation",
+      "/home/banana/cpp_workspace/icl-format/.worktrees/bsdl-defaults/build/icl-pattern-generation",
       "--icl",
-      "/tmp/icl-mixed-child-raw-roundtrip-20261116/mixed_child_raw_preparation/forward/test_mixed_child_raw_preparation/design_0.icl",
+      "/home/banana/cpp_workspace/icl-format/build/readback-factory-compatibility-20261126/fresh-vendor/forward-bundle/test_mixed_child_raw_preparation/design_0.icl",
       "--pdl",
-      "/tmp/icl-mixed-child-raw-roundtrip-20261116/mixed_child_raw_preparation/forward/test_mixed_child_raw_preparation/source_0.pdl",
+      "/home/banana/cpp_workspace/icl-format/build/readback-factory-compatibility-20261126/fresh-vendor/forward-bundle/test_mixed_child_raw_preparation/source_0.pdl",
       "--top_module",
       "MixedChildTop",
       "--output",
-      "/tmp/icl-mixed-child-raw-roundtrip-20261116/mixed_child_raw_preparation/forward/test_mixed_child_raw_preparation/ours.pdl"
+      "/home/banana/cpp_workspace/icl-format/build/readback-factory-compatibility-20261126/fresh-vendor/forward-bundle/test_mixed_child_raw_preparation/ours.pdl"
     ],
     "generator_exit": 0,
-    "generator_seconds": 0.0342388772405684,
+    "generator_seconds": 0.11481395410373807,
     "tessent_pdl_inputs": [
       "ours.pdl"
     ],
@@ -65,9 +65,9 @@
       "tessent.log"
     ],
     "exit_code": 0,
-    "seconds": 6.529928878881037,
+    "seconds": 6.630096280016005,
     "outcome": "ok",
-    "result_sha256": "6abe0d2d4f5894a66f80a99de7f4309a1e97cbb1b5969ed9d0718f676543436c",
+    "result_sha256": "19a907b829863f66f81f7a894388d6bf4da37323d01a3d149dcabd5cf534c3a5",
     "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
     "expectation_met": true
   },
@@ -411,10 +411,10 @@
       }
     ]
   },
-  "binary_sha256": "e99b9e0355b73fb92ddbea99877e5e204aa1071301dbf6625a7293df61a6c362",
-  "vendor_console_sha256": "a12c7f76aa2b32fd4c7bf7690c5a089f438cb0b325fdd6d35a79088edd7b4c8f",
+  "binary_sha256": "d3e1150f314302b0526567d2aa08c9ea390d4a501e93bef7de848e43af1a975e",
+  "vendor_console_sha256": "f9bc1ab41e8e930aeabb3cbfa50f118742a1772c9d235c8effdf1381bffa81a6",
   "artifacts": {
-    "flat.pdl": "5c586019e7dc6b7c82090868bbf7f938245efef87e33083e0ec77fdb1f4f803e",
-    "vendor.pdl": "6abe0d2d4f5894a66f80a99de7f4309a1e97cbb1b5969ed9d0718f676543436c"
+    "flat.pdl": "307fa9c1fe690f52d4609a69e3c9aa29b637752be1d707d592e0e0f2f6d5b84f",
+    "vendor.pdl": "19a907b829863f66f81f7a894388d6bf4da37323d01a3d149dcabd5cf534c3a5"
   }
 }
