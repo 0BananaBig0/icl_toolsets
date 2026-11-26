@@ -11660,5 +11660,7 @@ match, and every matrix/control coordinate is required exactly once. Four
 negative controls reject altered bytes, divergent pairs and missing workloads;
 the real bundle passes. Source/product identities are unchanged, so the full
 qualification and recorded vendor runs are reused. Three Minors are deferred,
-bringing the total to41. Integration remains pending. Evidence:
+bringing the total to41. Task196 is merged and pushed to master as e9b66af.
+All nine merged-result checks pass on identical source/product identities; the
+task branch is deleted and117 stashes are preserved. Evidence:
 build/oscillator-default-restore-20261127/.
