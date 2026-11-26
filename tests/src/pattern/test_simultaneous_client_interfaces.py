@@ -118,6 +118,108 @@ iNote [iGetReadData low -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
                                                            extra=('--model_readback', '--pdl', str(tail)))
                                     self.assertEqual(self.notes(output), expected)
 
+    def assert_prefix_notes(self, source, prefix, tail, expected):
+        icl, pdl, continuation = (self.root / n for n in
+                                  ('source.icl', 'prefix.pdl', 'tail.pdl'))
+        icl.write_text(source)
+        pdl.write_text('iPDLLevel 1\niProcsForModule Chains\n' + prefix)
+        continuation.write_text('iPDLLevel 1\n' + tail)
+        for modeled in (False, True):
+            with self.subTest(modeled=modeled):
+                self.run_tool(icl, pdl, 'prefix-generated.pdl',
+                              extra=('--model_readback',) if modeled else ())
+                for model in (icl, self.root / 'debug/Chains.icl'):
+                    for commands in (pdl, self.root / 'prefix-generated.pdl'):
+                        output = self.run_tool(model, commands, 'history/result.pdl',
+                                               extra=('--model_readback', '--pdl',
+                                                      str(continuation)))
+                        self.assertEqual(self.notes(output), expected)
+
+    def test_routed_comparison_preserves_logical_history_and_failure(self):
+        source = helpers.network().replace(
+            'ScanRegister value', "DataRegister obs[$W-1:0] {WriteDataSource 4'b1010; "
+            'ResetValue 10;} ScanRegister value').replace('CaptureSource value;',
+                                                         'CaptureSource obs;')
+        source = source.replace('Module Chains {', 'Module Chains { Alias pair[7:0] = '
+                                'c0.value,c1.value {AccessTogether;}')
+        self.assert_prefix_notes(source, 'iReset; iWrite c0.value 13; iWrite c1.value 6; '
+                                 'iApply; iRead pair[0] 0bx; iRead c0.obs[3] 0; iApply;\n',
+                                 'iNote actual=[iGetReadData c0.obs -bin]; '
+                                 'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                                 [b'actual=0b1xxx', b'status=1', b'status=0'])
+
+    def test_other_client_sparse_read_preserves_its_own_frame(self):
+        source = helpers.network(3).replace('Module Chains {', 'Module Chains { '
+                                           'Alias pair[7:0] = c0.value,c1.value {AccessTogether;}')
+        self.assert_prefix_notes(source, 'iReset; iWrite c0.value 13; iWrite c1.value 6; '
+                                 'iWrite c2.value 11; iApply; iRead pair[7:6] 0bx; '
+                                 'iRead c2.value[3] 0bx; iApply;\n',
+                                 'iNote actual=[iGetReadData c2.value -bin]; '
+                                 'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                                 [b'actual=0b1xxx', b'status=0', b'status=0'])
+
+    def test_grouped_primary_slice_preserves_history_and_failure(self):
+        source = helpers.network().replace('Module Chains {', 'Module Chains { '
+                                           'DataOutPort obs[3:0] {Source c0.q;} '
+                                           'Alias pair[7:0] = c0.value,c1.value {AccessTogether;}')
+        self.assert_prefix_notes(source, 'iReset; iWrite c0.value 13; iWrite c1.value 6; '
+                                 'iApply; iRead pair[0] 0bx; iRead obs[3] 0; iApply;\n',
+                                 'iNote actual=[iGetReadData obs -bin]; '
+                                 'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                                 [b'actual=0b1xxx', b'status=1', b'status=0'])
+
+    def test_write_group_with_direct_sparse_read_preserves_history(self):
+        self.assert_prefix_notes(helpers.network(),
+                                 'iReset; iWrite c0.value 13; iWrite c1.value 6; iApply; '
+                                 'iWrite c0.value 3; iWrite c1.value 4; '
+                                 'iRead c0.value[3] 0; iApply -together;\n',
+                                 'iNote actual=[iGetReadData c0.value -bin]; '
+                                 'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                                 [b'actual=0b1xxx', b'status=1', b'status=0'])
+
+    def test_parallel_preparation_preserves_hidden_toggle(self):
+        source = helpers.network().replace('ScanInSource si; CaptureSource value;',
+                                           'ScanInSource gate; CaptureSource value;')
+        source = source.replace('ScanRegister value', '''
+ ScanRegister gate {ScanInSource si; CaptureSource gate; ResetValue 0;}
+ ScanMux ret SelectedBy gate {1'b0:gate;1'b1:value[0];}
+ ScanRegister value''').replace('Source value[0];', 'Source ret;')
+        source = '''Module Hidden {
+ ScanInPort si; ScanOutPort so {Source value;}
+ SelectPort selected; CaptureEnPort capture; ShiftEnPort shift;
+ UpdateEnPort update; TCKPort clock;
+ ScanRegister value {ScanInSource si; CaptureSource ~value; ResetValue 0;}
+ DataOutPort q {Source value;}
+ ScanInterface client {Port si;Port so;Port selected;Port capture;Port shift;Port update;Port clock;}
+}
+''' + source.replace('Module Chains {', '''Module Chains {
+ LogicSignal both {sel[0] & sel[1];}
+ Instance hidden Of Hidden {
+  InputPort si = 1'b0; InputPort selected = both;
+  InputPort capture = ce; InputPort shift = 1'b0;
+  InputPort update = ue; InputPort clock = ck;
+ }
+ DataOutPort observed {Source hidden.q;}
+''')
+        self.assert_prefix_notes(source, 'iReset; iWrite c0.value 13; iWrite c1.value 6; '
+                                 'iApply -together;\n',
+                                 'iRead observed 0; iApply; iNote actual=[iGetReadData observed -bin]; '
+                                 'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                                 [b'actual=0b0', b'status=0', b'status=0'])
+        plain = helpers.CELL.replace('Module Cell', 'Module Plain').replace(
+            'SelectPort sel;', 'SelectPort sel; ResetPort rst {ActivePolarity 0;}')
+        reset_source = plain + source.replace('Instance c1 Of Cell {',
+                                               'Instance c1 Of Plain {InputPort rst = rst_gate;')
+        reset_source = reset_source.replace('Module Chains {', '''Module Chains {
+ ResetPort global {ActivePolarity 0;}
+ DataMux rst_gate SelectedBy sel[1] {1'b0:1'b0;1'b1:global;}
+ Alias pair[7:0] = c0.value,c1.value {AccessTogether;}
+''')
+        self.assert_prefix_notes(reset_source, 'iReset; iRead pair 0; iApply;\n',
+                                 'iRead observed 0; iApply; iNote actual=[iGetReadData observed -bin]; '
+                                 'iNote status=[iGetStatus -clear]; iNote status=[iGetStatus];\n',
+                                 [b'actual=0b1', b'status=1', b'status=0'])
+
     def test_named_chain_group_and_second_client_update_together(self):
         source = helpers.network(3).replace('InputPort sel = sel[2]', 'InputPort sel = sel[0]')
         source = source.replace('Port si[0]; Port so0;',

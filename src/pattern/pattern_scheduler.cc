@@ -6916,6 +6916,7 @@ class ScanScheduler::Impl {
     const auto [access_context, grouped_reads, read_order,
                 independent_instructions] = CheckAccessGroups(groups);
     std::set<size_t> client_group;
+    std::map<std::pair<size_t, bool>, std::set<size_t>> client_read_groups;
     for (const auto& [key, group] : groups) {
       std::set<size_t> owners;
       bool eligible = true;
@@ -6929,12 +6930,14 @@ class ScanScheduler::Impl {
       }
       if (eligible && owners.size() > 1) {
         client_group.insert(owners.begin(), owners.end());
+        if (group.read) client_read_groups.emplace(key, std::move(owners));
       }
     }
     const bool scoped_reads =
         (independent_instructions || !client_group.empty()) &&
-        std::any_of(groups.begin(), groups.end(),
-                    [](const auto& entry) { return entry.second.read; });
+        std::any_of(
+            operations.begin(), operations.end(),
+            [](const auto& operation) { return operation.command == "iRead"; });
     std::set<Key> read_scope;
     if (scoped_reads) {
       for (const auto& operation : operations) {
@@ -7588,6 +7591,7 @@ class ScanScheduler::Impl {
                       &touched);
         ConstrainPreserved(solver, after, preserved, desired_preserved,
                            reserved_changed);
+        auto client_capture = context_.bool_val(false);
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           auto complete = context_.bool_val(true);
@@ -7619,8 +7623,43 @@ class ScanScheduler::Impl {
               }
             }
           }
+          const auto clients = client_read_groups.find(key);
+          if (clients != client_read_groups.end()) {
+            auto represented = complete;
+            for (size_t i = 0; i < frame.clients.size(); ++i) {
+              if (!clients->second.count(i)) {
+                represented = represented && !frame.clients[i];
+              }
+            }
+            client_capture = client_capture || represented;
+          }
           simultaneous[group_index] = simultaneous[group_index] || complete;
           ++group_index;
+        }
+        if (!client_group.empty()) {
+          std::vector<z3::expr> writable(frame.clients.size(),
+                                         context_.bool_val(false));
+          for (const auto& [id, owner] : independent_clients_) {
+            if (!frame.loads.count(id)) continue;
+            const auto& node = netlist_.nodes[id];
+            auto active = frame.active.at(id);
+            if (node.reset) {
+              active = active &&
+                       Known(update_values.Read(*node.reset), false) &&
+                       Known(after.Read(*node.reset), false);
+            }
+            writable[owner] = writable[owner] || active;
+          }
+          auto represented = context_.bool_val(true);
+          auto count = context_.int_val(0);
+          for (size_t i = 0; i < frame.clients.size(); ++i) {
+            represented =
+                represented && z3::implies(frame.clients[i], writable[i]);
+            count = count + z3::ite(frame.clients[i], context_.int_val(1),
+                                    context_.int_val(0));
+          }
+          // Multiple selections need common writes or one capture alias.
+          solver.add(count <= 1 || represented || client_capture);
         }
         // Each emitted TAP scan finishes in Run-Test/Idle, where IR select is
         // inactive. A following parallel frame must see that idle snapshot.
@@ -7744,12 +7783,31 @@ class ScanScheduler::Impl {
           }
           if (!bits.empty()) observe(bits, replay.ReadBits(bits));
         }
-        std::optional<std::map<std::string, std::string>> grouped_comparisons;
+        step.together =
+            step.together ||
+            std::count_if(frame.clients.begin(), frame.clients.end(),
+                          [&](const auto& selected) {
+                            return model.eval(selected, true).is_true();
+                          }) > 1;
         if (scoped_reads) {
-          grouped_comparisons = step.expected;
+          // Physical capture routes are not logical observation requests.
+          step.expected.clear();
+          for (const auto& [id, bits] : expected) {
+            if (model.eval(frame.read.at(id), true).is_true()) {
+              AppendReadScope(netlist_.nodes[id], bits, read_scope,
+                              &step.expected);
+            }
+          }
+          for (const auto& [id, requested] : data_reads) {
+            if (!model.eval(frame.read.at(id), true).is_true()) continue;
+            const auto& node = netlist_.nodes[id];
+            std::string comparison(node.Width(), 'x');
+            for (const auto& [index, bit] : requested) {
+              comparison.at(Offset(node, index)) = bit;
+            }
+            AppendReadScope(node, comparison, read_scope, &step.expected);
+          }
         }
-        const auto& compared =
-            grouped_comparisons ? *grouped_comparisons : step.expected;
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           bool complete = true;
@@ -7761,7 +7819,8 @@ class ScanScheduler::Impl {
                     complete && model.eval(frame.read.at(id), true).is_true();
               } else {
                 complete = complete && step.loads.count(name) &&
-                           (!group.requested.count(id) || compared.count(name));
+                           (!group.requested.count(id) ||
+                            model.eval(frame.read.at(id), true).is_true());
               }
             } else {
               if (data_plan.writes.count(id) || port_drivers.count(id)) {
@@ -7780,28 +7839,20 @@ class ScanScheduler::Impl {
             // Preserve the verified update grouping after alias names are
             // inlined.
             step.together = step.together || !group.read;
-            if (group.read && grouped_comparisons &&
-                std::all_of(group.members.begin(), group.members.end(),
-                            [&](size_t id) {
-                              return netlist_.nodes[id].kind == "ScanRegister";
-                            })) {
-              for (size_t id : group.members) {
-                const auto& node = netlist_.nodes[id];
-                const auto found = compared.find(node.name);
-                if (found == compared.end()) continue;
-                step.expected.erase(node.name);
-                AppendReadScope(node, found->second, read_scope,
-                                &step.expected);
-              }
+            if (group.read && scoped_reads) {
               const auto& alias = netlist_.nodes[key.first];
               const auto target = ResolvePdlTarget(netlist_, alias.name);
               std::string comparison;
               for (const auto& bit : target.bits) {
                 const auto& node = netlist_.nodes[bit.node];
-                const auto found = compared.find(node.name);
-                char value = found == compared.end()
+                const auto found = expected.find(bit.node);
+                char value = found == expected.end()
                                  ? 'x'
                                  : found->second.at(Offset(node, bit.index));
+                const auto data = data_reads.find(bit.node);
+                if (data != data_reads.end() && data->second.count(bit.index)) {
+                  value = data->second.at(bit.index);
+                }
                 if (bit.inverted && value != 'x') {
                   value = value == '0' ? '1' : '0';
                 }

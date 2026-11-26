@@ -58,11 +58,11 @@ generated PDL command syntax remain compatible.
 - [x] Step5: Reconcile all three current guidance records;read the selected
   patch,commit and run completion contract. Expected: checks and claims agree.
 
-Implementation verification: python3 /tmp/simultaneous-client-interfaces-check.py
+Implementation verification: python3 /tmp/simultaneous-client-interfaces-postreview-check.py
 
 ## Branch review and integration
 
-- [ ] Obtain one fresh final review;grade every finding/declined area;fix blockers once.
+- [x] Obtain one fresh final review;grade every finding/declined area;fix blockers once.
 - [ ] Merge,verify merged result,push,detach/delete owned branch,archive own ledger.
 
 Self-review: one scheduler deliverable plus its proof and consumers. Static

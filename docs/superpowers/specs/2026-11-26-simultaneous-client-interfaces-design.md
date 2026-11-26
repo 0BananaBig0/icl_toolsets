@@ -24,6 +24,10 @@ only for that case, and count the selected clients' actual declared routes.
 Preserve one-client prerequisites and constrain unrelated clients out of a
 multiple-client frame. Use the existing concrete event model and retain read
 aliases when emitted writes alone cannot preserve a capture group.
+Every generated multi-client frame,including preparation,must retain common
+writes or a capture alias covering all selected clients. Reconstruct original
+logical read targets,masks and selected observation frames;physical capture
+routes are not logical observation requests.
 
 Globally allowing multiple clients would change ordinary selection/reset
 semantics. A second scheduler would duplicate state and replay. The existing
@@ -37,6 +41,9 @@ held members, local reset, unrequested held lanes and cross-client reset/capture
 Generated prefixes must preserve sparse read-history scope on later continuation,
 including ascending/inverted aliases,overlapping groups,known old history and
 both default/modeled producers consumed through original/flat models.
+Retain cared routed DataRegister comparisons and exact histories for other-frame,
+primary and write-group reads. Hidden toggles must agree after parallel or
+selection-driven reset-held preparation.
 Reject overlapping/shared serial resources and incompatible clocks/controls
 without changing a previous output. Prove common native update events and retain
 the old one-client/shared-storage tests. IEEE1687-2014 7.9.14(c) and6.5.2 retain

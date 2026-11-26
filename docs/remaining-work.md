@@ -1675,31 +1675,41 @@ Both Important review findings and the Minor wording issue are resolved;
 Task189 supports bounded local simultaneous groups across statically disjoint
 standalone clients with shared root phase/TCK pins and uniquely selectable root
 SelectPorts. All declared root clients must satisfy the proof. Ordinary requests
-and shared-storage switching retain one-client behavior. Captures, hidden events,
-reset-held alias reads, original/flat/generated replay and once-only modeled
-status are covered;no physical-output or vendor-equivalence claim is made.
+and shared-storage switching retain one-client behavior. Generated preparations
+retain their simultaneous selected clients. Each combined frame must be
+expressible through common writes or a capture alias covering those clients.
+Logical read targets,requested bits,cared comparisons and observation frames
+survive original/flat/generated continuation;physical capture routes do not
+become logical history requests. No physical/vendor-equivalence claim is made.
 
-All36qualification commands pass, including9C++style checks,15leak-enabled
-sanitizer native suites,18new-client functional methods,12mixed-TAP methods,
-20existing non-scale multi-TAP methods and seven focused sanitizer suites.
-Full make check passes:217Python suites report3334tests with5optional real ANTLR
-skips (ICL_REF_DIR unset). Both20-method normal/static suites,source packaging
-and both model/source audits pass. The final manifests bind4092inputs and
-44selected executables;the audit retains1334files/1763effective modules,
+One final independent review found1Critical/2Important/0Minor findings.
+Five maintained reproductions fail first (10failures across both producer modes),
+then pass in one repair pass. The Critical routed-comparison false PASS is fixed;
+parallel preparation events and other-frame/primary/write-group sparse histories
+are fixed. A selection-driven reset-held preparation subcase also passes.
+There is no rereview;31inherited Minors remain deferred.
+
+All36fresh post-repair qualification commands pass,including9C++quality checks,
+15leak-enabled sanitizer native suites,23new-client functional methods,
+12mixed-TAP methods,20existing non-scale multi-TAP methods and seven focused
+sanitizer suites. Full make check passes:217Python suites report3344tests with
+5optional real ANTLR skips (ICL_REF_DIR unset). Both25-method normal/static
+suites,source packaging and model/source audits pass. Final postreview manifests
+bind4092inputs/44selected executables;the audit retains1334files/1763modules,
 1032canonical/44unsupported serializations/687default elaboration failures.
 
-Three paired7-point rounds pass63points/252CLI replays. Ordinary parent/current
-controls remain byte-identical. The new simultaneous matrices take4.61-4.67s;
-their reported maximum RSS is118648KiB for the runner and its children,not a
-per-point native-only peak. The slowest four-form point is2.886s. All measured
-points meet10s/four forms and512MiB reported RSS. Parent simultaneous requests
-are unsupported,so no speedup over that parent mode is claimed.
+Three fresh paired7-point rounds pass63points/252CLI replays. Ordinary controls
+remain byte-identical to the frozen parent. New simultaneous matrices take5.20-5.91s,
+with118492KiB maximum reported runner/children RSS,not a native-only per-point peak.
+The slowest four-form point is3.706s. All measured points meet10s/four forms and
+512MiB reported RSS. The parent rejects new simultaneous groups;no speedup over
+that unsupported parent mode is claimed. Original qualification,prehistory
+failures and initial forced-event measurements remain historical evidence.
 
 Fresh Tessent2026.2 accepts the ordinary two-client control,finds no solution for
-the same ICL's simultaneous write,and rejects AccessTogether in the separate
-alias probe at parse time. Those failures remain explicit and no new certificate
-is added. Prior parent-matched16/32TAP sanitizer scale limits remain unqualified;
-new scale matrices run normal/static without a sanitizer memory guarantee.
-
-Final review and integration are pending.31inherited Minors,broader original
-requirements and excluded1 remain open.
+the same ICL's simultaneous write,and rejects AccessTogether in a separate parse
+probe. No new certificate is added. Prior parent-matched16/32TAP sanitizer scale
+limits remain unqualified;new scale matrices run normal/static without a
+sanitizer memory guarantee. The separate parent ordinary-only sparse-prefix
+history defect remains follow-up work. Broader original requirements and
+excluded1 remain open. Integration is pending.
