@@ -1842,3 +1842,9 @@ Additional 4- and 256-bit requested-controller prefix cases pass 20 CLI processe
 plus one runner. The slowest producer and four continuations take 0.4146 s;
 runner/children peak RSS is 113,624 KiB. These checks retain the 10 s/512 MiB
 bounds and prove real controller programming without freeing unrelated bits.
+
+Task191 is merged into master at 31e97ee and pushed. All seven merged-result
+checks pass on 4,122 identical source/test inputs and ten copied qualified
+executables, including native scheduler state/rollback and both CLI variants.
+The owned task branch is deleted, the reused worktree is detached, and all 117
+stashes are preserved. The broader inventory and 32 deferred Minors remain open.

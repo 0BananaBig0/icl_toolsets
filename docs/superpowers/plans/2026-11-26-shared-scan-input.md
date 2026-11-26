@@ -58,7 +58,7 @@ per-register modeled observations.
 
 - [x] Obtain one fresh whole-branch review. Grade every finding and declined area;
   fix Critical/Important once with RED→GREEN plus a green full suite; defer Minors.
-- [ ] Merge into recorded parent master, verify merged source/product identity
+- [x] Merge into recorded parent master, verify merged source/product identity
   and focused checks, push and delete the owned branch. Archive only this ledger.
 
 Review repair: selector and disabled data-consumer omitted loads reproduce the
