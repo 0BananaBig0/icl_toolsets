@@ -4,8 +4,8 @@
 PDL procedures and Tcl computations and schedules single-path scans, shared
 output observations, simultaneous named client chains, independently selected
 standalone clients, inferred disjoint interface-free scan lanes (including vector
-one-hot returns), indexed vector inputs and TAP instruction/data scans on
-equivalent clocks. Mixed IR/DR simultaneous groups can use distinct TMS pins
+one-hot returns and fixed equal-length lanes sharing an input), indexed vector
+inputs and TAP instruction/data scans on equivalent clocks. Mixed IR/DR simultaneous groups can use distinct TMS pins
 across different TAPs; see [the phase constraints below](#independent-ir-and-dr-phases-across-taps-2026-11-26).
 It also schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
@@ -565,7 +565,16 @@ client interfaces selected individually or combined in qualified simultaneous
 groups with disjoint lanes and shared phase/TCK pins. Each client may have one
 path or disjoint named chains. Interface-free networks can infer independent lanes when all static
 routes from each output reach one distinct input bit and no graph vertex is
-shared between lanes. Vector one-hot returns use these same lanes. TAPs and
+shared between lanes. Fixed ungated lanes of equal nonzero length may also
+share a ScanInPort bit when their storage is disjoint. Their loads must produce
+the same physical input stream after accounting for every serial inversion.
+For two four-bit banks directly connected to one input, writing both to 9 works;
+writing one to 9 and the other to 6 cannot be scheduled. An omitted bank retains
+its current load, so writing only one bank to a different value also fails.
+Captures and logical read histories remain separate for each bank. Unequal or
+empty shared lanes, switched/gated shared paths and shared-input named/client/TAP
+interfaces retain their existing guards. Vector one-hot returns use the
+independent-input lanes. TAPs and
 effective interfaces require their existing supported event/chain models.
 Multiple scalar or vector output bits may also observe one path through transparent forwarding,
 including inversion. Equivalent ungated observations use the first sorted
