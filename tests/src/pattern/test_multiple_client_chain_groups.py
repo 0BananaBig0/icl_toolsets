@@ -112,11 +112,9 @@ class MultipleClientChains(unittest.TestCase):
         pdl.write_text('iReset;\n')
         self.assertIn('repeated ScanInterface port', self.run_tool(icl, pdl, ok=False))
 
-    def test_together_cannot_span_different_clients(self):
-        icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
-        icl.write_text(network())
-        pdl.write_text('iReset; iWrite c0_0.value 9; iWrite c1_0.value 6; iApply -together;\n')
-        self.run_tool(icl, pdl, ok=False)
+    def test_together_spans_disjoint_client_groups(self):
+        self.replay(network(), 'iReset; iWrite c0_0.value 9; iWrite c1_0.value 6; '
+                    'iApply -together; iRead c0_0.value 9; iRead c1_0.value 6; iApply;\n')
 
     def test_group_scale(self):
         groups = (2,) * 8

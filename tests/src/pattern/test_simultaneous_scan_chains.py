@@ -33,10 +33,10 @@ class SimultaneousChains(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.root = pathlib.Path(temp.name)
 
-    def run_tool(self, icl, pdl, output='result.pdl', ok=True):
+    def run_tool(self, icl, pdl, output='result.pdl', ok=True, extra=()):
         result = subprocess.run([str(BIN), '--icl', str(icl), '--pdl', str(pdl),
                                  '--top_module', 'Chains', '--output', str(self.root / output),
-                                 '--debug'], capture_output=True, text=True, timeout=45)
+                                 '--debug', *extra], capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode == 0, ok, result.stdout + result.stderr)
         return (self.root / output).read_bytes() if ok else result.stdout + result.stderr
 

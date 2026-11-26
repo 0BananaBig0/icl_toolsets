@@ -354,6 +354,79 @@ class ScanScheduler::Impl {
         parallel_chains_ = true;
       }
     }
+    if (!clients_.empty() && netlist.taps.empty()) {
+      std::map<std::string, std::set<Key>> common;
+      std::vector<std::set<Key>> selectors;
+      bool compatible = true;
+      for (const auto* client : clients) {
+        std::map<std::string, std::set<Key>> controls;
+        std::set<Key> selection;
+        bool selected = false;
+        for (const auto& port : client->ports) {
+          const auto& node = netlist.nodes[port.node];
+          selected = selected || node.kind == "SelectPort";
+          if (node.kind == "SelectPort") {
+            selection.emplace(port.node, port.index);
+            compatible =
+                compatible && node.scope == 0 && !node.inputs.count("Source");
+          }
+          if (node.kind == "CaptureEnPort" || node.kind == "ShiftEnPort" ||
+              node.kind == "UpdateEnPort" || node.kind == "TCKPort") {
+            controls[node.kind].emplace(port.node, port.index);
+            compatible =
+                compatible && node.scope == 0 && !node.inputs.count("Source");
+          }
+        }
+        compatible = compatible && selected && controls.size() == 4 &&
+                     std::all_of(controls.begin(), controls.end(),
+                                 [](const auto& entry) {
+                                   return entry.second.size() == 1;
+                                 });
+        if (common.empty()) common = controls;
+        compatible = compatible && controls == common;
+        selectors.push_back(std::move(selection));
+      }
+      // shortcut: bound selector proof to 1M entries; revisit beyond 16
+      // clients.
+      size_t selection_work = 1048576;
+      for (size_t i = 0; compatible && i < selectors.size(); ++i) {
+        for (size_t j = 0; j < selectors.size(); ++j) {
+          if (i == j) continue;
+          const size_t work = selectors[i].size() + selectors[j].size();
+          if (work > selection_work) {
+            compatible = false;
+            break;
+          }
+          selection_work -= work;
+          // IEEE1687 6.4.16(m): every interface must be uniquely selectable.
+          if (std::includes(selectors[i].begin(), selectors[i].end(),
+                            selectors[j].begin(), selectors[j].end())) {
+            compatible = false;
+            break;
+          }
+        }
+      }
+      std::map<Key, Key> inputs;
+      for (const auto& [output, routes] : client_routes_) {
+        compatible = compatible && routes.size() == 1;
+        if (routes.size() == 1) inputs.emplace(output, routes.front().second);
+      }
+      if (compatible) {
+        std::map<size_t, size_t> owners;
+        try {
+          CheckIndependentChains(inputs, &owners);
+          for (const auto& [id, root] : owners) {
+            const auto& output = graph_[root].bit;
+            independent_clients_.emplace(
+                id,
+                client_routes_.at({output.node, output.index}).front().first);
+          }
+        } catch (const std::runtime_error&) {
+          // Shared lanes retain the existing one-client selection model.
+          independent_clients_.clear();
+        }
+      }
+    }
     BuildEndStates();
     initial_fill_ = fill_;
     BuildResetOrder();
@@ -445,7 +518,9 @@ class ScanScheduler::Impl {
     }
   }
 
-  void CheckIndependentChains(const std::map<Key, Key>& inputs) const {
+  void CheckIndependentChains(
+      const std::map<Key, Key>& inputs,
+      std::map<size_t, size_t>* registers = nullptr) const {
     std::vector<size_t> owner(graph_.size(), kMissing);
     for (size_t root : roots_) owner[root] = root;
     for (auto it = order_.rbegin(); it != order_.rend(); ++it) {
@@ -467,6 +542,15 @@ class ScanScheduler::Impl {
               "scheduling");
         }
         owner[edge.next] = owner[id];
+      }
+    }
+    if (registers) {
+      for (size_t id = 0; id < graph_.size(); ++id) {
+        const auto node = graph_[id].bit.node;
+        if (owner[id] != kMissing && node != kMissing &&
+            netlist_.nodes[node].kind == "ScanRegister") {
+          registers->emplace(node, owner[id]);
+        }
       }
     }
   }
@@ -3448,6 +3532,34 @@ class ScanScheduler::Impl {
       previous = actual;
     }
   }
+  void AppendReadScope(const NetlistNode& node, const std::string& comparison,
+                       const std::set<Key>& scope,
+                       std::map<std::string, std::string>* expected) const {
+    const auto target = ResolvePdlTarget(netlist_, node.name);
+    const auto requested = [&](size_t i) {
+      return scope.count({target.bits[i].node, target.bits[i].index});
+    };
+    const auto index = [&](size_t i) {
+      return node.left + (node.left <= node.right ? static_cast<int64_t>(i)
+                                                  : -static_cast<int64_t>(i));
+    };
+    for (size_t begin = 0; begin < target.bits.size();) {
+      if (!requested(begin)) {
+        ++begin;
+        continue;
+      }
+      size_t end = begin + 1;
+      while (end < target.bits.size() && requested(end)) ++end;
+      std::string name = node.name;
+      if (begin != 0 || end != target.bits.size()) {
+        name += "[" + std::to_string(index(begin));
+        if (end != begin + 1) name += ":" + std::to_string(index(end - 1));
+        name += "]";
+      }
+      expected->insert_or_assign(name, comparison.substr(begin, end - begin));
+      begin = end;
+    }
+  }
   struct AccessGroup {
     bool read = false;
     std::set<size_t> members, requested;
@@ -5087,6 +5199,7 @@ class ScanScheduler::Impl {
     std::map<size_t, z3::expr> known_data_writes;
     std::map<Key, std::pair<z3::expr, z3::expr>> inputs;
     std::vector<z3::expr> selected, clients;
+    std::set<size_t> client_group;
   };
   void SettleResets(Values* state, Values* fills = nullptr,
                     const z3::expr* event = nullptr,
@@ -5197,10 +5310,21 @@ class ScanScheduler::Impl {
             frame.parallel ? !*frame.parallel : context_.bool_val(true),
             enabled == frame.clients.at(i)));
       }
-      solver.add(count == (frame.parallel
-                               ? z3::ite(*frame.parallel, context_.int_val(0),
-                                         context_.int_val(1))
-                               : context_.int_val(1)));
+      if (frame.client_group.empty()) {
+        solver.add(count == (frame.parallel
+                                 ? z3::ite(*frame.parallel, context_.int_val(0),
+                                           context_.int_val(1))
+                                 : context_.int_val(1)));
+      } else {
+        solver.add(frame.parallel
+                       ? z3::ite(*frame.parallel, count == 0, count >= 1)
+                       : count >= 1);
+        for (size_t i = 0; i < clients_.size(); ++i) {
+          if (!frame.client_group.count(i)) {
+            solver.add(z3::implies(count > 1, !frame.clients[i]));
+          }
+        }
+      }
     }
     const bool paired_inputs =
         std::any_of(client_route_counts_.begin(), client_route_counts_.end(),
@@ -5281,7 +5405,7 @@ class ScanScheduler::Impl {
           count + z3::ite(selected, context_.int_val(1), context_.int_val(0));
     }
     auto chains = context_.int_val(parallel_chains_ ? roots_.size() : 1);
-    if (paired_inputs) {
+    if (paired_inputs || !frame.client_group.empty()) {
       chains = context_.int_val(0);
       for (size_t i = 0; i < clients_.size(); ++i) {
         chains = chains + z3::ite(frame.clients.at(i),
@@ -5888,6 +6012,7 @@ class ScanScheduler::Impl {
       Frame selected;
       selected.parallel = frame.parallel;
       selected.clients = frame.clients;
+      selected.client_group = frame.client_group;
       SelectScan(solver, during, time, selected);
       for (const auto& [id, active] : frame.active) {
         solver.add(active == selected.active.at(id));
@@ -5943,7 +6068,7 @@ class ScanScheduler::Impl {
       solver.add(z3::implies(emitted && overridden, represented));
     }
   }
-  bool NeedsScanEvents() {
+  bool NeedsScanEvents(const std::set<size_t>& client_group = {}) {
     Values state;
     for (size_t id = 0; id < netlist_.nodes.size(); ++id) {
       const auto& node = netlist_.nodes[id];
@@ -5963,6 +6088,7 @@ class ScanScheduler::Impl {
     parameters.set("timeout", 250U);
     solver.set(parameters);
     Frame frame;
+    frame.client_group = client_group;
     SelectClients(frame, 0);
     if (tap_) {
       for (const auto& [id, tap] : instruction_registers_) {
@@ -6789,6 +6915,36 @@ class ScanScheduler::Impl {
     }
     const auto [access_context, grouped_reads, read_order,
                 independent_instructions] = CheckAccessGroups(groups);
+    std::set<size_t> client_group;
+    for (const auto& [key, group] : groups) {
+      std::set<size_t> owners;
+      bool eligible = true;
+      for (size_t id : group.members) {
+        const auto found = independent_clients_.find(id);
+        if (found == independent_clients_.end()) {
+          eligible = false;
+          break;
+        }
+        owners.insert(found->second);
+      }
+      if (eligible && owners.size() > 1) {
+        client_group.insert(owners.begin(), owners.end());
+      }
+    }
+    const bool scoped_reads =
+        (independent_instructions || !client_group.empty()) &&
+        std::any_of(groups.begin(), groups.end(),
+                    [](const auto& entry) { return entry.second.read; });
+    std::set<Key> read_scope;
+    if (scoped_reads) {
+      for (const auto& operation : operations) {
+        if (operation.command != "iRead") continue;
+        for (const auto& bit :
+             ResolvePdlTarget(netlist_, operation.arguments[0]).bits) {
+          read_scope.emplace(bit.node, bit.index);
+        }
+      }
+    }
     CheckScanConnectivity(required);
     const auto desired_preserved =
         DesiredPreserved(preserved, end_goals, explicit_writes, operations);
@@ -6910,7 +7066,10 @@ class ScanScheduler::Impl {
       throw std::runtime_error(
           "physical PDL requires one exact physical TAP CSU");
     }
-    bool events = independent_instructions || event_mode.value_or(false);
+    const bool client_events =
+        !client_group.empty() && NeedsScanEvents(client_group);
+    bool events =
+        independent_instructions || client_events || event_mode.value_or(false);
     if (!event_mode) {
       const bool native_groups = std::all_of(
           groups.begin(), groups.end(),
@@ -6922,8 +7081,9 @@ class ScanScheduler::Impl {
                                     permitted_tap_data, observe);
         if (native) return std::move(*native);
       }
-      events = independent_instructions ||
-               ((tap_ || client_controls_) && NeedsScanEvents());
+      events = independent_instructions || client_events ||
+               (client_group.empty() && (tap_ || client_controls_) &&
+                NeedsScanEvents());
       if (events) {
         auto regular = TryRegularReads(operations, together, preserved,
                                        explicit_writes, observe);
@@ -7004,6 +7164,7 @@ class ScanScheduler::Impl {
       auto cycles = context_.int_val(0), changes = context_.int_val(0);
       for (size_t time = 0; time < horizon; ++time) {
         Frame frame;
+        frame.client_group = client_group;
         SelectClients(frame, time);
         auto scan = context_.bool_val(true);
         auto any_drive = context_.bool_val(false);
@@ -7583,6 +7744,12 @@ class ScanScheduler::Impl {
           }
           if (!bits.empty()) observe(bits, replay.ReadBits(bits));
         }
+        std::optional<std::map<std::string, std::string>> grouped_comparisons;
+        if (scoped_reads) {
+          grouped_comparisons = step.expected;
+        }
+        const auto& compared =
+            grouped_comparisons ? *grouped_comparisons : step.expected;
         size_t group_index = 0;
         for (const auto& [key, group] : groups) {
           bool complete = true;
@@ -7593,9 +7760,8 @@ class ScanScheduler::Impl {
                 complete =
                     complete && model.eval(frame.read.at(id), true).is_true();
               } else {
-                complete =
-                    complete && step.loads.count(name) &&
-                    (!group.requested.count(id) || step.expected.count(name));
+                complete = complete && step.loads.count(name) &&
+                           (!group.requested.count(id) || compared.count(name));
               }
             } else {
               if (data_plan.writes.count(id) || port_drivers.count(id)) {
@@ -7614,14 +7780,26 @@ class ScanScheduler::Impl {
             // Preserve the verified update grouping after alias names are
             // inlined.
             step.together = step.together || !group.read;
-            if (group.read && independent_instructions) {
+            if (group.read && grouped_comparisons &&
+                std::all_of(group.members.begin(), group.members.end(),
+                            [&](size_t id) {
+                              return netlist_.nodes[id].kind == "ScanRegister";
+                            })) {
+              for (size_t id : group.members) {
+                const auto& node = netlist_.nodes[id];
+                const auto found = compared.find(node.name);
+                if (found == compared.end()) continue;
+                step.expected.erase(node.name);
+                AppendReadScope(node, found->second, read_scope,
+                                &step.expected);
+              }
               const auto& alias = netlist_.nodes[key.first];
               const auto target = ResolvePdlTarget(netlist_, alias.name);
               std::string comparison;
               for (const auto& bit : target.bits) {
                 const auto& node = netlist_.nodes[bit.node];
-                const auto found = step.expected.find(node.name);
-                char value = found == step.expected.end()
+                const auto found = compared.find(node.name);
+                char value = found == compared.end()
                                  ? 'x'
                                  : found->second.at(Offset(node, bit.index));
                 if (bit.inverted && value != 'x') {
@@ -7629,8 +7807,8 @@ class ScanScheduler::Impl {
                 }
                 comparison += value;
               }
-              // Writes alone cannot group a read member held in reset.
-              step.expected.emplace(alias.name, comparison);
+              // Retain capture grouping without exposing unrequested history.
+              AppendReadScope(alias, comparison, read_scope, &step.expected);
             }
             simultaneous_replayed[group_index] = true;
           }
@@ -8234,6 +8412,7 @@ class ScanScheduler::Impl {
   size_t reset_passes_ = 0, reset_work_ = 0;
   std::vector<std::vector<Key>> clients_;
   std::vector<size_t> client_route_counts_;
+  std::map<size_t, size_t> independent_clients_;
   std::map<Key, std::vector<size_t>> client_selectors_, client_inputs_;
   std::map<Key, std::vector<std::pair<size_t, Key>>> client_routes_;
   std::map<size_t, std::string> client_pins_;
