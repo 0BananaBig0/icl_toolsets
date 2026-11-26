@@ -26,6 +26,9 @@ class TapExecution {
       const {
     return register_ports_;
   }
+  const std::map<size_t, std::set<size_t>>& RegisterOwners() const {
+    return owned_registers_;
+  }
   // Existing hardware selection, including inactive and unknown entries.
   std::map<size_t, char> ActiveDataRegisters(const std::string& tap) const {
     return Active(netlist_.taps.at(tap));

@@ -4,13 +4,15 @@
 PDL procedures and Tcl computations and schedules single-path scans, shared
 output observations, simultaneous named client chains, independently selected
 standalone clients, inferred disjoint interface-free scan lanes (including vector
-one-hot returns), indexed vector inputs and common-phase TAP instruction/data scans.
+one-hot returns), indexed vector inputs and TAP instruction/data scans on
+equivalent clocks. Mixed IR/DR simultaneous groups can use distinct TMS pins
+across different TAPs; see [the phase constraints below](#independent-ir-and-dr-phases-across-taps-2026-11-26).
 It also schedules supported primary-pin and mixed primary/scan DataRegister operations. It is
 **not yet the complete retargeter described in the requirements**.
 
 ## Current verification
 
-Latest: Task167 supports actual native logical merge histories and preserves
+Task167 supports actual native logical merge histories and preserves
 their source-time event order in generated patterns.
 15 fresh normal/15 sanitizer native suites, normal/static77x1243 methods and
 all 378 matched observations/replays pass; 36 wide-PIO memory misses remain.
@@ -557,7 +559,8 @@ broader syntax support and never execute PDL.
   Native idle replay includes any explicitly enabled storage events; it does
   not infer BIST completion or live hardware readback.
 
-The backend accepts common-phase TAPs on equivalent root TCKs, or standalone
+The backend accepts TAPs on equivalent root TCKs, including qualified mixed
+IR/DR groups across distinct TMS pins, or standalone
 client interfaces selected one at a time, each with one path or disjoint named
 chains. Interface-free networks can infer independent lanes when all static
 routes from each output reach one distinct input bit and no graph vertex is
@@ -573,7 +576,8 @@ path proves complete-scan equivalence; bounded event planning also tracks hidden
 capture/shift/update storage when that proof does not hold. Unbound vector control lanes retain
 their state, and parallel input frames do not pulse scan controls.
 It rejects
-independent TAP phases, shared serial storage, overlapping paths within a selected chain group, intermediate serial taps,
+general independent TAP state/clock phases beyond the qualified mixed IR/DR case,
+shared serial storage, overlapping paths within a selected chain group, intermediate serial taps,
 general serial- or phase-dependent reset events,
 stateful absolute-time waits, unsupported reservation types and other unsupported
 operations. Transactions needing general independently gated
@@ -3486,8 +3490,9 @@ where needed. Synchronous TAP reset does not invent an asynchronous TRST pulse.
 The batched pin snapshot also stages every lane's TMS/TDI before the common edge.
 A native gated-reset case proves that reversing TAP names cannot lose a reset.
 
-IR-only and DR-only AccessTogether groups can span TAPs. A simultaneous group
-mixing IR and DR still requires independent-phase work. One joint solver and
+IR-only and DR-only AccessTogether groups can span TAPs. The original common-phase
+implementation could not mix IR and DR; the [independent phase extension](#independent-ir-and-dr-phases-across-taps-2026-11-26)
+adds mixed groups across different TAPs with distinct TMS pins. One joint solver and
 concrete state retain cross-TAP reset, capture/control and resource dependencies;
 no per-TAP state partition is introduced. Generated applies also preserve
 ScanRegister end-state overrides only when that frame represents their write.
@@ -11243,3 +11248,104 @@ Python logic and the three native binaries retain their qualified identities.
 The owned task branch is deleted;the reused worktree is detached;117stashes
 are preserved. Six inherited findings are resolved and31remain deferred.
 Broader original requirements and excluded1 remain open.
+
+### Independent IR and DR phases across TAPs (2026-11-26)
+
+A simultaneous group may update one TAP's instruction register and an instrument
+ScanRegister in another TAP's data path. The controllers need distinct TMS pins and the
+existing equivalent-clock, disjoint-lane and explicit-reset conditions.
+AccessTogether aliases can also group the mixed accesses. A same-TAP IR/DR
+group or a mixed group behind shared TMS remains impossible and is rejected.
+
+For example, with the two-TAP fixture's `tapA`, `tapB` and instrument `b`:
+
+```tcl
+iPDLLevel 0
+iProcsForModule MultiTapTop
+iReset
+iWrite tapB.INSTRUCTION 3
+iApply
+iWrite tapA.INSTRUCTION 3
+iWrite b.value 13
+iApply -together
+iRead b.value 13
+iApply
+```
+
+The IR and DR paths align their capture/shift/update boundaries and update on
+one falling TCK edge. The extra DR idle cycle does not authorize changing held
+storage. Generated PDL retains a simultaneous group even when the original
+AccessTogether group only requested reads. IR reads observe the BSDL capture
+pattern, which can differ from the held instruction.
+
+Modeled readback uses executed captures; it does not turn a requested write or
+expected comparison into observed data. A known instrument capture still needs
+an appropriate CaptureSource. The new regression includes exact asymmetric
+actual values, cross-TAP capture control, status clearing, local-reset replay and
+original/flat/generated fixed points.
+
+This is an extension of logical scheduling. Arbitrary clock phases, shared
+serial storage, overlapping/intermediate returns and physical multi-TAP output
+remain outside this qualified case. Fresh Tessent2026.2 probes of the existing
+two-TAP fixture crash at set_current_design before PDL, including the ordinary
+control. Those probes do not establish vendor equivalence for this extension.
+
+## Task188 independent TAP IR/DR phases
+
+Task188 pre-review qualification: full make check passes, including CLI/regression/fuzz/
+LSP/grammar/Vim;215Python suite executions report3290tests, with5optional real
+ANTLR integrations skipped (ICL_REF_DIR unset). There are37successful check
+commands and15C++style checks. All15leak-enabled sanitizer native suites and
+focused functional suites pass, including10new-phase and20non-scale existing
+multiple-TAP methods. Source packaging and both corpus audits pass.
+
+Three paired7-point measurement rounds retain byte-identical parent/current
+common-phase controls. All63points/252CLI replay processes pass. Independent
+matrices take12.86-13.73s;their runner/child-process-tree peak is359240KiB. The
+slowest measured independent point is2TAPs by256bits, four forms in6.397s.
+No speedup over the unsupported parent mixed mode is claimed.
+
+The22-method sanitizer multiple-TAP run fails three16/32TAP scale subcases at
+the existing solver limit;fresh parent and candidate builds fail the same three.
+Those instrumented scale cases remain unqualified;no limit is raised and no
+sanitizer512MiB scale guarantee is claimed. Three Tessent2026.2 probes crash at
+elaboration before PDL, including the ordinary control;vendor equivalence is
+unqualified. All failures, optional skips and raw evidence remain recorded.
+
+Final help-only wording was followed by fresh normal/static12-method CLI runs,
+sanitizer10-method functional replay, help checks and source-package validation.
+The final manifest binds4091inputs and44selected executables. The model audit
+retains1334files/1763effective modules:1032canonical,44unsupported serialization
+forms and687default elaboration failures. No model/default acceptance is added.
+The pre-review result is superseded by the post-review qualification below.
+31inherited Minors, broader original requirements and excluded1remain open.
+
+### Task188 post-review qualification
+
+Final review found0Critical/2Important/1Minor. One repair pass preserves the
+AccessTogether read alias when a reset-held DR emits no write, and prepares an
+unselected DR owner's instruction through a real common-phase scan before the
+mixed access. Planning snapshots only propose routes;concrete replay verifies
+the preparation and original goals before publishing state or observations.
+The three/four-TAP cases now require no manual setup. Both contradictory
+overview statements were corrected;no new Minor is deferred.
+
+Fresh post-fix full make check passes:215Python suites report3294tests, with the
+same5optional ANTLR skips. All33qualification commands pass, including15C++style
+checks,15leak-enabled sanitizer native suites,12new-phase functional methods and
+20existing non-scale multiple-TAP methods. Both normal/static14-method suites,
+source packaging and both corpus audits pass. The final manifests bind4091inputs
+and44selected executables.
+
+Three fresh paired7-point scale rounds pass63points/252CLI replays. Parent and
+candidate common-phase outputs remain byte-identical. Independent matrices take
+13.62-14.06s with362336KiB maximum runner/child-process-tree RSS;the slowest
+2TAP-by256bit point takes6.723s for four forms. These replace the pre-review
+measurements above;no unsupported-parent speedup is claimed.
+
+The earlier three parent-matched instrumented scale limits remain explicit;
+those large sanitizer cases are unqualified. This repair applies to mixed groups
+and preserves common-phase scheduling. The three pre-PDL vendor elaboration
+crashes still prevent new vendor equivalence. No resource limit is increased.
+Integration is pending;31inherited Minors, broader original requirements and
+excluded1 remain open.
