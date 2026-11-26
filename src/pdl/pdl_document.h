@@ -5,6 +5,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -15,6 +16,9 @@
 namespace pdl {
 // Tcl list syntax is shared by static validation and generator execution.
 std::vector<std::string> SplitList(const std::string& text, bool* valid);
+std::string NormalizeClockPeriod(
+    const std::string& value,
+    const std::optional<std::string>& unit = std::nullopt);
 
 struct CommandSpec {
   int minimum, maximum, level;

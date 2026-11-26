@@ -11518,3 +11518,36 @@ native state/readback,both CLI variants,all77directional certificates and corpus
 audit. The owned branch is deleted;the reused worktree is detached;117stashes
 are preserved. No Critical or Important review finding remains unresolved.
 31deferred Minors,broader original requirements and excluded1 remain open.
+
+### Explicit clock period overrides (Task193)
+
+`iClockOverride target -period value [unit]` sets an explicit positive oscillator
+model for one ToClockPort bit. A missing unit means ns; attached and separate
+units use the existing PDL time-literal grammar, including decimal values and
+supported negative scientific exponents. Supported units are s, ms, us, ns, ps,
+fs and as. The period form cannot include source or frequency options.
+An explicitly empty unit is invalid. Simple level-0 procedure arguments may
+supply the value or unit; their concrete values are validated at invocation.
+
+For example, `iClockOverride pll.osc -period 20 ns; iClock fast;
+iRunLoop 7 -sck fast` emits the compact period `20ns` and retains the logical
+clock target and wait. If any period override executes, the whole generated
+clock program retains its definitions, checks and logical waits. Targets checked
+before an override retain their earlier definition until checked again; reset
+and procedure return preserve this history. Hierarchical, indexed and associated
+flat names use the existing target mapping. Local-reset rendering uses the same
+preservation rule, including procedure groups preceding the first override.
+
+In such a period-bearing program, other overrides must explicitly specify
+`-source`, `-freqMultiplier` and `-freqDivider`. Partial mixed forms reject:
+the v2023.4 manual's omitted-field behavior differs from established native
+restoration of ICL defaults. Ordinary programs without period overrides keep
+their existing normalization and omission rules. No elapsed-time engine or
+physical clock event is inferred from period metadata.
+
+Pending-write, unsafe fanout, differential, physical-PDL, modeled raw/opaque and
+stateful absolute-time guards remain. Modeled readback still rejects clock
+histories; independent PIO readback is tested separately. Invalid input preserves
+existing output artifacts. This increment uses the local Tessent Shell Reference
+Manual v2023.4 iClockOverride/iClock topics as technical guidance; native replay
+evidence does not establish vendor equivalence or hardware timing signoff.
