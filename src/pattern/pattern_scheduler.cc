@@ -3622,15 +3622,25 @@ class ScanScheduler::Impl {
       const std::vector<Operation>& operations,
       const std::map<size_t, std::string>& goals,
       const std::map<size_t, std::string>& expected,
-      const std::set<size_t>& required, bool together,
-      const std::map<size_t, std::string>& preserved,
+      const std::set<size_t>& required, const std::set<Key>& read_scope,
+      bool together, const std::map<size_t, std::string>& preserved,
       const std::map<size_t, std::string>& desired_preserved,
       std::optional<size_t> permitted_tap_data = std::nullopt,
       const Observation& observe = {}) {
     if (tap_) {
-      return TryNativeTapScan(goals, expected, required, together, preserved,
-                              desired_preserved, false, permitted_tap_data,
-                              observe);
+      auto result = TryNativeTapScan(goals, expected, required, together,
+                                     preserved, desired_preserved, false,
+                                     permitted_tap_data, observe);
+      if (result && !permitted_tap_data) {
+        for (auto& step : *result) {
+          const auto physical = std::move(step.expected);
+          for (const auto& [name, bits] : physical) {
+            AppendReadScope(netlist_.nodes[netlist_.node_ids.at(name)], bits,
+                            read_scope, &step.expected);
+          }
+        }
+      }
+      return result;
     }
     if (global_resets_ != "00" || (goals.empty() && expected.empty())) {
       return std::nullopt;
@@ -3672,7 +3682,11 @@ class ScanScheduler::Impl {
                       InvertBits(bits, profile.inverted != suffix));
         const auto read = expected.find(id);
         if (read != expected.end()) {
-          step.expected.emplace(node.name, read->second);
+          if (permitted_tap_data) {
+            step.expected.emplace(node.name, read->second);
+          } else {
+            AppendReadScope(node, read->second, read_scope, &step.expected);
+          }
           compare.replace(profile.offsets[i], node.Width(),
                           InvertBits(read->second, suffix));
         }
@@ -4737,6 +4751,8 @@ class ScanScheduler::Impl {
         }
         SymbolicNetwork observed(netlist_, context_, std::move(concrete),
                                  global_resets_);
+        std::map<size_t, std::string> logical_reads;
+        std::set<Key> read_scope;
         for (const auto& choice : frame.reads) {
           if (!model.eval(choice.selected, true).is_true()) continue;
           if (observe) {
@@ -4750,17 +4766,19 @@ class ScanScheduler::Impl {
                   "symbolic/concrete data read route mismatch");
             }
           }
-          char expected = reads.at(choice.bit.first).at(choice.bit.second);
-          if (expected != 'x' && route.output.inverted) {
-            expected = expected == '1' ? '0' : '1';
-          }
-          const auto& output = netlist_.nodes[route.output.node];
+          const char expected =
+              reads.at(choice.bit.first).at(choice.bit.second);
+          const auto& target = netlist_.nodes[choice.bit.first];
           auto& comparisons =
-              step.expected.try_emplace(output.name, output.Width(), 'x')
+              logical_reads.try_emplace(choice.bit.first, target.Width(), 'x')
                   .first->second;
+          read_scope.insert(choice.bit);
           if (expected != 'x') {
-            comparisons.at(Offset(output, route.output.index)) = expected;
+            comparisons.at(Offset(target, choice.bit.second)) = expected;
           }
+        }
+        for (const auto& [id, bits] : logical_reads) {
+          AppendReadScope(netlist_.nodes[id], bits, read_scope, &step.expected);
         }
         for (const auto& [id, value] : frame.state) {
           if (replay.Value(id) != decode(value)) {
@@ -6933,11 +6951,11 @@ class ScanScheduler::Impl {
         if (group.read) client_read_groups.emplace(key, std::move(owners));
       }
     }
-    const bool scoped_reads =
-        (independent_instructions || !client_group.empty()) &&
-        std::any_of(
-            operations.begin(), operations.end(),
-            [](const auto& operation) { return operation.command == "iRead"; });
+    const bool scoped_reads = !physical && !permitted_tap_data &&
+                              std::any_of(operations.begin(), operations.end(),
+                                          [](const auto& operation) {
+                                            return operation.command == "iRead";
+                                          });
     std::set<Key> read_scope;
     if (scoped_reads) {
       for (const auto& operation : operations) {
@@ -7079,9 +7097,9 @@ class ScanScheduler::Impl {
           [](const auto& entry) { return entry.first.first == kMissing; });
       if (fixed_loads.empty() && !mixed && data_plan.order.empty() &&
           end_states_.empty() && data_reads.empty() && native_groups) {
-        auto native = TryNativeScan(operations, goals, expected, required,
-                                    together, preserved, desired_preserved,
-                                    permitted_tap_data, observe);
+        auto native = TryNativeScan(
+            operations, goals, expected, required, read_scope, together,
+            preserved, desired_preserved, permitted_tap_data, observe);
         if (native) return std::move(*native);
       }
       events = independent_instructions || client_events ||
@@ -7791,13 +7809,22 @@ class ScanScheduler::Impl {
                           }) > 1;
         if (scoped_reads) {
           // Physical capture routes are not logical observation requests.
-          step.expected.clear();
-          for (const auto& [id, bits] : expected) {
-            if (model.eval(frame.read.at(id), true).is_true()) {
-              AppendReadScope(netlist_.nodes[id], bits, read_scope,
-                              &step.expected);
+          std::map<std::string, std::string> logical_reads;
+          for (const auto& [name, bits] : step.expected) {
+            const auto id = netlist_.node_ids.at(name);
+            const auto requested = expected.find(id);
+            if (requested != expected.end() &&
+                model.eval(frame.read.at(id), true).is_true()) {
+              AppendReadScope(netlist_.nodes[id], requested->second, read_scope,
+                              &logical_reads);
+            } else if (!independent_instructions && client_group.empty() &&
+                       instruction_registers_.count(id) &&
+                       requested == expected.end()) {
+              // Ordinary TAP scans retain their implicit IR capture checks.
+              logical_reads.emplace(name, bits);
             }
           }
+          step.expected = std::move(logical_reads);
           for (const auto& [id, requested] : data_reads) {
             if (!model.eval(frame.read.at(id), true).is_true()) continue;
             const auto& node = netlist_.nodes[id];

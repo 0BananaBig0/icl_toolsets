@@ -45,6 +45,118 @@ class RoundTrips(unittest.TestCase):
         rt.record(self.root, self.bundle, 'Example', 'forward', self.work / 'forward',
                   self.trace, self.binaries['icl-pattern-generation'])
 
+    def read_evidence(self, value='X'):
+        (self.root / 'input.icl').write_text(
+            'Module M{DataInPort data;DataInPort enable;DataRegister value{'
+            'WriteDataSource data;WriteEnSource enable;ResetValue 0;}'
+            'DataOutPort observed{Source value;}}\n')
+        (self.root / 'input.pdl').write_text(f'iProcsForModule M\niRead value 0b{value};iApply\n')
+        self.vendor_evidence(self.prepared())
+        data = f'iProcsForModule M\niProc oracle {{}} {{iRead observed 0b{value};iApply}}\n'.encode()
+        for job in ('Example', 'Example-icl-pattern-generation'):
+            self.alter_export(job, data)
+
+    def test_source_vendor_equivalence_preserves_distinct_logical_read_trace(self):
+        self.read_evidence()
+        snapshot = self.work / 'source-equivalence'
+        try:
+            cert = rt.record(self.root, self.bundle, 'Example', 'forward', snapshot,
+                             self.trace, self.binaries['icl-pattern-generation'],
+                             source_bundle=self.bundle)
+        except (TypeError, ValueError) as error:
+            self.fail('equivalent vendor readback must certify: ' + str(error))
+        self.assertNotEqual(cert['native_trace'], cert['trace'])
+        self.assertIn('iRead value', (snapshot / 'flat.pdl.expected').read_text())
+        rt.check(self.root, snapshot, self.binaries['icl-pattern-generation'], self.trace)
+
+    def test_source_vendor_equivalence_rejects_different_apply_groups(self):
+        self.vendor_evidence(self.prepared())
+        for body in ('iWrite data 1;iApply;iApply', 'iWrite data 0;iApply'):
+            self.alter_export('Example',
+                              ('iProcsForModule M\niProc oracle {} {' + body + '}\n').encode())
+            with self.assertRaisesRegex(ValueError, 'differ'):
+                rt.record(self.root, self.bundle, 'Example', 'forward', self.work / 'bad',
+                          self.trace, self.binaries['icl-pattern-generation'],
+                          source_bundle=self.bundle)
+            self.assertFalse((self.work / 'bad').exists())
+
+    def test_source_vendor_equivalence_rejects_changed_cared_read(self):
+        self.read_evidence('1')
+        self.alter_export('Example',
+                          b'iProcsForModule M\niProc oracle {} {iRead observed 0b0;iApply}\n')
+        with self.assertRaisesRegex(ValueError, 'differ'):
+            rt.record(self.root, self.bundle, 'Example', 'forward', self.work / 'bad',
+                      self.trace, self.binaries['icl-pattern-generation'], source_bundle=self.bundle)
+        self.assertFalse((self.work / 'bad').exists())
+
+    def test_certified_generated_reference_retains_its_provenance(self):
+        self.vendor_evidence(self.prepared())
+        previous = rt.record(self.root, self.bundle, 'Example', 'forward', self.work / 'previous',
+                             self.trace, self.binaries['icl-pattern-generation'])
+        current_bundle = self.bundle
+        self.bundle = self.work / 'reference'
+        report = rt.prepare(self.root, [self.case], self.bundle,
+                            self.binaries['icl-pattern-generation'], 'forward')
+        report['reference_certificates'] = {'Example': previous}
+        (self.bundle / 'bundle.json').write_text(json.dumps(report))
+        self.vendor_evidence(report)
+        reference_bundle = self.bundle
+        self.bundle = current_bundle
+        snapshot = self.work / 'reference-equivalence'
+        cert = rt.record(self.root, self.bundle, 'Example', 'forward', snapshot, self.trace,
+                         self.binaries['icl-pattern-generation'], source_bundle=reference_bundle)
+        self.assertEqual(cert['source_reference'], previous)
+        rt.check(self.root, snapshot, self.binaries['icl-pattern-generation'], self.trace)
+        cert['source_reference']['artifacts']['flat.pdl'] = 'forged'
+        (snapshot / 'snapshot.json').write_text(json.dumps(cert))
+        with self.assertRaisesRegex(ValueError, 'reference'):
+            rt.check(self.root, snapshot, self.binaries['icl-pattern-generation'], self.trace)
+        report['reference_certificates']['Example']['artifacts']['flat.pdl'] = 'forged'
+        (reference_bundle / 'bundle.json').write_text(json.dumps(report))
+        (reference_bundle / 'results.json').write_text(json.dumps(report))
+        # Preserve actual successful results while changing the certificate in
+        # both prepared/result metadata, so provenance validation must catch it.
+        self.bundle = reference_bundle
+        self.vendor_evidence(report)
+        self.bundle = current_bundle
+        with self.assertRaisesRegex(ValueError, 'reference'):
+            rt.record(self.root, self.bundle, 'Example', 'forward', self.work / 'bad-reference',
+                      self.trace, self.binaries['icl-pattern-generation'], source_bundle=reference_bundle)
+
+    def test_source_vendor_equivalence_rejects_stale_or_mutated_evidence(self):
+        self.read_evidence()
+        snapshot = self.work / 'source-equivalence'
+        rt.record(self.root, self.bundle, 'Example', 'forward', snapshot,
+                  self.trace, self.binaries['icl-pattern-generation'], source_bundle=self.bundle)
+        path = snapshot / 'snapshot.json'
+        original = path.read_text()
+        for field in ('source_top', 'source_inputs', 'native_trace', 'source_trace', 'direction'):
+            cert = json.loads(original)
+            if field == 'source_top':
+                cert['source_job']['top'] = 'Wrong'
+            elif field == 'source_inputs':
+                cert['source_job']['tessent_pdl_inputs'] = ['flat.pdl']
+            elif field == 'native_trace':
+                cert['native_trace']['operations'] = []
+            elif field == 'source_trace':
+                p = snapshot / 'source_vendor.pdl.expected'
+                p.write_bytes(p.read_bytes().replace(b'iApply', b'iApply;iApply'))
+                cert['artifacts']['source_vendor.pdl'] = hashlib.sha256(p.read_bytes()).hexdigest()
+                cert['source_job']['result_sha256'] = cert['artifacts']['source_vendor.pdl']
+            else:
+                cert['direction'] = 'reverse'
+            path.write_text(json.dumps(cert))
+            with self.assertRaises(ValueError, msg=field):
+                rt.check(self.root, snapshot, self.binaries['icl-pattern-generation'], self.trace)
+            if field == 'source_trace':
+                p.write_bytes(p.read_bytes().replace(b'iApply;iApply', b'iApply'))
+        path.write_text(original)
+        staged = self.bundle / 'test_Example/source_0.pdl'
+        staged.write_bytes(staged.read_bytes() + b'\n')
+        with self.assertRaisesRegex(ValueError, 'hash|changed'):
+            rt.record(self.root, self.bundle, 'Example', 'forward', self.work / 'stale',
+                      self.trace, self.binaries['icl-pattern-generation'], source_bundle=self.bundle)
+
     def test_forward_rejects_extra_apply_and_changed_value(self):
         self.vendor_evidence(self.prepared())
         for body in ('iWrite data 1;iApply;iApply', 'iWrite data 0;iApply'):

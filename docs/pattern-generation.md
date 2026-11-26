@@ -11463,3 +11463,30 @@ native state/readback and both CLI variants plus the corpus audit. The owned
 task branch is deleted;the reused worktree is detached;117stashes are preserved.
 The Critical and both Important review findings are resolved;
 31inherited Minors, broader original requirements and excluded1 remain open.
+
+## Ordinary logical read scope (2026-11-26)
+
+Ordinary generated reads retain the requested logical target, bits and cared
+comparison on the selected observation frame. An explicit X read still observes
+its requested bits; it does not turn surrounding bits into history reads. For
+example, writing `13` and reading only bit3 with X leaves history `1xxx` when
+the other bits have not been read. Existing history outside that slice remains.
+This applies to qualified primary, interface-free, standalone-client and single-
+TAP logical routes, including routed DataRegisters. Exact raw/physical masks and
+documented implicit TAP instruction-capture checks keep their existing behavior.
+
+The maintained continuation tests exercise original/flat inputs and original/
+generated prefixes from both default and modeled producers. They retain actual
+physical event/state assertions; logical read identity does not substitute a
+desired value for an observation. General internal monitor histories, independently
+gated routes and larger scheduling workloads remain open under item6.
+
+Five directional certificates use schema4 reference-vendor equivalence: fresh
+Tessent exports of the previously certified program and the current program
+must have equal physical values, writes, reads and ordered apply boundaries.
+The current native logical trace is stored separately and must regenerate
+exactly, including local idempotency. The previous certificate and both jobs'
+input/output provenance are retained. Original-source schedules need not be
+identical; the queued-state source still has unsupported pending-iState commands.
+
+See [Task190 qualification and limits](remaining-work.md#task190-ordinary-logical-read-scope).

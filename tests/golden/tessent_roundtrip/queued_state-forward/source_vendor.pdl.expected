@@ -1,0 +1,28 @@
+iProcsForModule DataStateSnapshot
+
+iProc oracle {} {
+
+   iReset
+   iState enable 0b0
+   iState value[3] 0b1
+   iState value[2] 0b0
+   iState value[1] 0b0
+   iState value[0] 0b1
+   iRead q[3] 0b1
+   iRead q[2] 0b0
+   iRead q[1] 0b0
+   iRead q[0] 0b1
+   iApply
+
+   iState value[3] 0b0
+   iState value[2] 0b1
+   iState value[1] 0b1
+   iState value[0] 0b0
+   iRead q[3] 0b0
+   iRead q[2] 0b1
+   iRead q[1] 0b1
+   iRead q[0] 0b0
+   iApply
+
+
+}

@@ -71,7 +71,7 @@ class MergeObservations(unittest.TestCase):
         output = self.generate(self.program('iRead a[0] 0; iApply',
                                             'iWrite b 10; iApply'), '--debug')
         self.assertEqual(len(self.groups(output)), 1)
-        self.assertIn('iRead a 0bxxx0', output)
+        self.assertIn('iRead {a[0]} 0b0', output)
         self.replay(output)
 
     def test_aliased_observations_use_physical_registers(self):
@@ -81,13 +81,13 @@ class MergeObservations(unittest.TestCase):
   Alias nested[1:0] = reversed[0:1];
 ''')
         (self.root / 'source.icl').write_text(source)
-        for first in ('iRead nested 3; iApply',
-                      'iRead reversed; iApply',
-                      'iRead reversed[3:0] 15; iApply'):
+        for first, expected in (('iRead nested 3; iApply', 'iRead {a[1:0]} 0b00'),
+                                ('iRead reversed; iApply', 'iRead a 0bxxxx'),
+                                ('iRead reversed[3:0] 15; iApply', 'iRead a 0b0000')):
             with self.subTest(first=first):
                 output = self.generate(self.program(first, 'iWrite b 10; iApply'), '--debug')
                 self.assertEqual(len(self.groups(output)), 1)
-                self.assertIn('iRead a ', output)
+                self.assertIn(expected, output)
                 self.replay(output)
 
     def test_alias_conflicts_and_access_together_keep_order(self):
@@ -111,8 +111,8 @@ class MergeObservations(unittest.TestCase):
             'iRead a[0] 0; iApply; iRead a[3]; iApply',
             'iWrite b 10; iApply; iWrite b 11; iApply'), '--debug')
         self.assertEqual(self.groups(output), [{'a': 0, 'b': 10}, {'a': 0, 'b': 11}])
-        self.assertIn('iRead a 0bxxx0', output.split('iApply\n')[0])
-        self.assertIn('iRead a 0bxxxx', output.split('iApply\n')[1])
+        self.assertIn('iRead {a[0]} 0b0', output.split('iApply\n')[0])
+        self.assertIn('iRead {a[3]} 0bx', output.split('iApply\n')[1])
         self.replay(output)
 
     def test_notes_and_resource_ownership_remain_barriers(self):

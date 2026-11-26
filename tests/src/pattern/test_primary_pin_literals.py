@@ -98,7 +98,7 @@ if {[iGetReadData z1 -bin] ne "0b1"} {error "read-enable history changed"}
         self.assertIn(b'iWrite e1 0b1\n', output)
         self.assertNotIn(b'iWrite e0 ', output)
 
-    def test_equally_preferred_physical_read_routes(self):
+    def test_equally_preferred_routes_keep_logical_read_identity(self):
         model = '''Module Chains {
  DataInPort p;
  DataRegister value[2:0] {
@@ -109,10 +109,11 @@ if {[iGetReadData z1 -bin] ne "0b1"} {error "read-enable history changed"}
 }'''
         output = self.check(model, '''iReset; iWrite p 1; iRead value 0; iApply
 iNote [iGetReadData value -bin]
+iNote [iGetReadData q0 -bin]; iNote [iGetReadData q1 -bin]
 ''')
-        self.assertEqual(self.notes(output), [b'0b000'])
+        self.assertEqual(self.notes(output), [b'0b000', b'0bxxx', b'0bxxx'])
         reads = [line for line in output.splitlines() if line.startswith(b'iRead ')]
-        self.assertEqual(reads, [b'iRead q0 0b0x0', b'iRead q1 0bx0x'])
+        self.assertEqual(reads, [b'iRead value 0b000'])
 
     def test_reservations_and_end_state(self):
         model = history.BASE.replace(' Alias inverted', '''

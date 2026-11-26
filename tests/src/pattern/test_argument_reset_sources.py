@@ -322,8 +322,8 @@ Module Network {
                   'if {$count != 2} {error duplicate_arguments}\n')
         rewritten, output = self.check(source, self.opposing_resets())
         self.assertIn('switch -exact', rewritten)
-        self.assertIn('iRead b.value 0bxx01', output)
-        self.assertIn('iRead a.value 0bxx10', output)
+        self.assertIn('iRead {b.value[1:0]} 0b01', output)
+        self.assertIn('iRead {a.value[1:0]} 0b10', output)
 
     def test_varying_calls_across_input_files(self):
         definition = ('iPDLLevel 1\niProcsForModule Cell\n'

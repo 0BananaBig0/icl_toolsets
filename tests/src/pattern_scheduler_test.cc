@@ -5104,7 +5104,7 @@ void TestMixedIoPhases() {
       bool observed = false, controller_updated = false;
       for (const auto* group : {&first, &second}) {
         for (const auto& step : *group) {
-          if (step.expected.count("observed")) {
+          if (step.expected.count(target)) {
             Require(step.writes.empty() && replay.Value("observed") == "0101",
                     "parallel observation precedes the stored-value change");
             observed = true;

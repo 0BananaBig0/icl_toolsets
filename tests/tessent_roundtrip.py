@@ -13,6 +13,7 @@ import tessent_oracle as oracle
 
 ROOT = golden.ROOT
 POLICY = 'resolved-bits-ordered-applies-v1'
+SOURCE_POLICY = 'reference-vendor-equivalence-ordered-applies-v1'
 DIRECTIONS = ('forward', 'reverse')
 
 
@@ -59,7 +60,7 @@ def regenerate(directory, job, case, direction, generator):
     return directory / 'flat.pdl'
 
 
-def record(root, bundle, case_id, direction, output, trace, generator):
+def record(root, bundle, case_id, direction, output, trace, generator, source_bundle=None):
     if direction not in DIRECTIONS:
         raise ValueError('invalid round-trip direction')
     if output.exists() or output.is_symlink():
@@ -88,6 +89,36 @@ def record(root, bundle, case_id, direction, output, trace, generator):
             f'source_{i}.pdl' for i in range(len(case['pdl']))]:
         raise ValueError('reverse requires the original source PDL sequence')
     vendor = grouped(trace, directory, job, directory / 'result.pdl', 'oracle')
+    source_job = source_directory = source_reference = None
+    if source_bundle is not None:
+        if direction != 'forward':
+            raise ValueError('source-vendor equivalence requires forward direction')
+        source_prepared = json.loads((source_bundle / 'bundle.json').read_text())
+        source_report = json.loads((source_bundle / 'results.json').read_text())
+        if (source_prepared.get('golden_cases') != source_report.get('golden_cases')
+                or case not in source_prepared.get('golden_cases', [])):
+            raise ValueError('changed source case definitions')
+        source_job, source_directory = golden.verified_job(
+            root, source_bundle, source_report, source_prepared, case, case_id)
+        source_reference = source_prepared.get('reference_certificates', {}).get(case_id)
+        if source_reference is not None:
+            if (source_report.get('reference_certificates') != source_prepared['reference_certificates']
+                    or source_reference.get('schema') != 3 or source_reference.get('policy') != POLICY
+                    or source_reference.get('direction') != 'forward'
+                    or source_reference['case'] != case
+                    or source_reference['source_hashes'] != source_job['source_hashes']
+                    or len(source_job['tessent_pdl_inputs']) != 1
+                    or source_job['inputs'].get(source_job['tessent_pdl_inputs'][0])
+                    != source_reference['artifacts']['flat.pdl']
+                    or source_reference['trace'] != vendor):
+                raise ValueError('changed previously certified reference input/trace')
+        if (source_job['top'] != job['top']
+                or (source_reference is None and source_job['tessent_pdl_inputs'] != [
+                    f'source_{i}.pdl' for i in range(len(case['pdl']))])):
+            raise ValueError('source requires original context and PDL sequence')
+        if grouped(trace, source_directory, source_job,
+                   source_directory / 'result.pdl', 'oracle') != vendor:
+            raise ValueError('source and generated vendor apply groups differ')
     with tempfile.TemporaryDirectory(prefix='icl-roundtrip-') as temp:
         work = Path(temp)
         for name in job['inputs']:
@@ -103,7 +134,8 @@ def record(root, bundle, case_id, direction, output, trace, generator):
         generated = regenerate(work, job, case, direction, generator)
         if before is not None and generated.read_bytes() != before:
             raise ValueError('changed generator output: fresh vendor evidence required')
-        if grouped(trace, work, job, generated, '') != vendor:
+        native_trace = grouped(trace, work, job, generated, '')
+        if source_job is None and native_trace != vendor:
             raise ValueError(f'{direction} round-trip apply groups differ')
         artifact = generated.read_bytes()
     certificate = dict(schema=3, policy=POLICY, direction=direction, case=case,
@@ -112,6 +144,13 @@ def record(root, bundle, case_id, direction, output, trace, generator):
                        vendor_console_sha256=golden.digest(directory / 'console.log'),
                        artifacts={'flat.pdl': hashlib.sha256(artifact).hexdigest(),
                                   'vendor.pdl': job['result_sha256']})
+    if source_job is not None:
+        certificate.update(schema=4, policy=SOURCE_POLICY, source_job=source_job,
+                           native_trace=native_trace,
+                           source_vendor_console_sha256=golden.digest(source_directory / 'console.log'))
+        certificate['artifacts']['source_vendor.pdl'] = source_job['result_sha256']
+        if source_reference is not None:
+            certificate['source_reference'] = source_reference
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.roundtrip-', dir=output.parent) as temp:
         staged = Path(temp) / 'snapshot'
@@ -121,6 +160,13 @@ def record(root, bundle, case_id, direction, output, trace, generator):
                 oracle.input_path(directory, name).read_bytes())
         (staged / 'flat.pdl.expected').write_bytes(artifact)
         (staged / 'vendor.pdl.expected').write_bytes((directory / 'result.pdl').read_bytes())
+        if source_job is not None:
+            (staged / 'source_inputs').mkdir()
+            for name in source_job['inputs']:
+                (staged / 'source_inputs' / (name + '.expected')).write_bytes(
+                    oracle.input_path(source_directory, name).read_bytes())
+            (staged / 'source_vendor.pdl.expected').write_bytes(
+                (source_directory / 'result.pdl').read_bytes())
         (staged / 'snapshot.json').write_text(json.dumps(certificate, indent=2) + '\n')
         if output.exists() or output.is_symlink():
             raise FileExistsError(f'snapshot already exists: {output}')
@@ -130,8 +176,10 @@ def record(root, bundle, case_id, direction, output, trace, generator):
 
 def check(root, snapshot, generator, trace):
     cert = json.loads((snapshot / 'snapshot.json').read_text())
-    if (cert.get('schema') != 3 or cert.get('policy') != POLICY
-            or cert.get('direction') not in DIRECTIONS):
+    source_equivalence = (cert.get('schema') == 4 and cert.get('policy') == SOURCE_POLICY
+                          and cert.get('direction') == 'forward')
+    if not (source_equivalence or (cert.get('schema') == 3 and cert.get('policy') == POLICY
+                                  and cert.get('direction') in DIRECTIONS)):
         raise ValueError('unsupported round-trip certificate')
     case, job = cert['case'], cert['job']
     oracle.validate(root, [case])
@@ -139,7 +187,30 @@ def check(root, snapshot, generator, trace):
         raise ValueError('changed certified context/binding')
     if golden.source_hashes(root, case) != cert['source_hashes']:
         raise ValueError('changed source: explicit vendor recertification required')
-    if (set(cert['artifacts']) != {'flat.pdl', 'vendor.pdl'}
+    artifacts = {'flat.pdl', 'vendor.pdl'}
+    if source_equivalence:
+        artifacts.add('source_vendor.pdl')
+        source_job = cert['source_job']
+        source_reference = cert.get('source_reference')
+        if source_reference is not None:
+            if (source_reference.get('schema') != 3 or source_reference.get('policy') != POLICY
+                    or source_reference.get('direction') != 'forward'
+                    or source_reference['case'] != case
+                    or source_reference['source_hashes'] != cert['source_hashes']
+                    or len(source_job['tessent_pdl_inputs']) != 1
+                    or source_job['inputs'].get(source_job['tessent_pdl_inputs'][0])
+                    != source_reference['artifacts']['flat.pdl']
+                    or source_reference['trace'] != cert['trace']):
+                raise ValueError('changed previously certified reference input/trace')
+        if (source_job['top'] != case['top']
+                or source_job['source_hashes'] != cert['source_hashes']
+                or source_job['result_sha256'] != cert['artifacts']['source_vendor.pdl']
+                or (source_reference is None and source_job['tessent_pdl_inputs'] != [
+                    f'source_{i}.pdl' for i in range(len(case['pdl']))])):
+            raise ValueError('changed certified source context/input')
+        golden.verify(snapshot / 'source_inputs', {
+            n + '.expected': h for n, h in source_job['inputs'].items()})
+    if (set(cert['artifacts']) != artifacts
             or cert['artifacts']['vendor.pdl'] != job['result_sha256']
             or cert['source_hashes'] != job['source_hashes']):
         raise ValueError('changed certified hashes/context')
@@ -158,10 +229,22 @@ def check(root, snapshot, generator, trace):
         (work / 'vendor.pdl').write_bytes((snapshot / 'vendor.pdl.expected').read_bytes())
         if grouped(trace, work, job, work / 'vendor.pdl', 'oracle') != cert['trace']:
             raise ValueError('changed certified vendor trace')
+        if source_equivalence:
+            source_work = work / 'source'
+            source_work.mkdir()
+            for name in source_job['inputs']:
+                (source_work / name).write_bytes(oracle.input_path(
+                    snapshot / 'source_inputs', name + '.expected').read_bytes())
+            (source_work / 'vendor.pdl').write_bytes(
+                (snapshot / 'source_vendor.pdl.expected').read_bytes())
+            if grouped(trace, source_work, source_job,
+                       source_work / 'vendor.pdl', 'oracle') != cert['trace']:
+                raise ValueError('source and generated vendor apply groups differ')
         generated = regenerate(work, job, case, cert['direction'], generator)
         if golden.digest(generated) != cert['artifacts']['flat.pdl']:
             raise ValueError('changed golden output')
-        if grouped(trace, work, job, generated, '') != cert['trace']:
+        if grouped(trace, work, job, generated, '') != cert[
+                'native_trace' if source_equivalence else 'trace']:
             raise ValueError('round-trip apply groups differ')
         # A stable directional result must also be stable under local replay.
         (work / 'generator.log').unlink()
@@ -180,6 +263,8 @@ def main():
     parser.add_argument('--manifest', type=Path, default=ROOT / 'tests/cases/ours/tessent_golden/cases.json')
     parser.add_argument('--direction', choices=DIRECTIONS)
     parser.add_argument('--bundle', type=Path)
+    parser.add_argument('--source-bundle', type=Path,
+                        help='fresh source or previously certified program export for forward equivalence')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--case')
     parser.add_argument('--goldens', type=Path, default=ROOT / 'tests/golden/tessent_roundtrip')
@@ -197,7 +282,8 @@ def main():
         if args.action == 'record':
             if not all((args.bundle, args.case, args.direction, args.output)):
                 raise ValueError('record requires --bundle --case --direction --output')
-            record(args.root, args.bundle, args.case, args.direction, args.output, trace, generator)
+            record(args.root, args.bundle, args.case, args.direction, args.output, trace, generator,
+                   source_bundle=args.source_bundle)
             print(f'certified {args.case}/{args.direction}: {args.output}')
         else:
             snapshots = sorted(args.goldens.glob('*/snapshot.json'))

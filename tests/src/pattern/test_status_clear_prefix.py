@@ -20,12 +20,14 @@ class StatusClearPrefix(unittest.TestCase):
         script.write_text('iPDLLevel 1\niProcsForModule Chains\n'+body)
         generated = self.run_tool(icl,script,label+'-prefix.pdl')
         tail.write_text('''iPDLLevel 1
-iNote [iGetReadData observed -dec]; iNote [iGetStatus]
+iNote [iGetReadData d -dec]; iNote [iGetReadData observed -dec]; iNote [iGetStatus]
 ''')
         replay = self.run_tool(icl,self.root/(label+'-prefix.pdl'),label+'-replay.pdl',
                                extra=('--pdl',str(tail)))
         hardware = [line for line in generated.splitlines() if not line.startswith(b'iNote ')]
-        return generated,hardware,self.notes(replay)[-2:]
+        actual = self.notes(replay)[-3:]
+        self.assertEqual(actual[1], b'X')
+        return generated,hardware,[actual[0],actual[2]]
 
     def test_rejected_status_note_keeps_unobserved_merge_trajectory(self):
         program = merged.MergedReadback.event_program(self)

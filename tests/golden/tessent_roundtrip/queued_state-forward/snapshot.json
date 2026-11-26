@@ -1,6 +1,6 @@
 {
-  "schema": 3,
-  "policy": "resolved-bits-ordered-applies-v1",
+  "schema": 4,
+  "policy": "reference-vendor-equivalence-ordered-applies-v1",
   "direction": "forward",
   "case": {
     "id": "queued_state",
@@ -33,21 +33,21 @@
       "design_0.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
       "source_0.pdl": "11c4af7f9171cbfff5dc31c003328281da63aaa9bd302875474289e75e53a255",
       "run.tcl": "b6d9697651ba7d8fa9289370dbd0b529b9aac42a6a717ec8989908247c537575",
-      "ours.pdl": "5c711b9cef9bb8087456199a975eaa2afe3fa0806b72c82e83f1b7359f0feb21"
+      "ours.pdl": "f1a9089544b13d9c80acffda42570af5ab7ab6d366407314ecca604d8a13a014"
     },
     "generator_command": [
-      "/tmp/icl-queued-state-build/icl-pattern-generation",
+      "/home/banana/cpp_workspace/icl-format/.worktrees/bsdl-defaults/build/icl-pattern-generation",
       "--icl",
-      "/home/banana/cpp_workspace/icl-format/build/queued-state-observed-forward-bundle/test_queued_state/design_0.icl",
+      "/home/banana/cpp_workspace/icl-format/build/ordinary-read-scope-20261126/fresh-vendor/forward-bundle/test_queued_state/design_0.icl",
       "--pdl",
-      "/home/banana/cpp_workspace/icl-format/build/queued-state-observed-forward-bundle/test_queued_state/source_0.pdl",
+      "/home/banana/cpp_workspace/icl-format/build/ordinary-read-scope-20261126/fresh-vendor/forward-bundle/test_queued_state/source_0.pdl",
       "--top_module",
       "DataStateSnapshot",
       "--output",
-      "/home/banana/cpp_workspace/icl-format/build/queued-state-observed-forward-bundle/test_queued_state/ours.pdl"
+      "/home/banana/cpp_workspace/icl-format/build/ordinary-read-scope-20261126/fresh-vendor/forward-bundle/test_queued_state/ours.pdl"
     ],
     "generator_exit": 0,
-    "generator_seconds": 0.11503116297535598,
+    "generator_seconds": 0.11495717987418175,
     "tessent_pdl_inputs": [
       "ours.pdl"
     ],
@@ -65,7 +65,7 @@
       "tessent.log"
     ],
     "exit_code": 0,
-    "seconds": 6.880841285921633,
+    "seconds": 6.930292296223342,
     "outcome": "ok",
     "result_sha256": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de",
     "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
@@ -188,10 +188,379 @@
       }
     ]
   },
-  "binary_sha256": "9b2ad349222989dc40bf147d6ceebfe31591b3b5b744f1487a0125f85d0d3ac1",
-  "vendor_console_sha256": "48f3f1aad594b8c845191fd4c376a3434f99d53e3ce137ed73b4d89d58af610f",
+  "binary_sha256": "cb53f322428a1a3359a77681abe38e0d9fe6cd50aeeb3a761142c62f471636fa",
+  "vendor_console_sha256": "6c950c5c3e0dd3618c8e96c9feada13b5f6272e2f3a52b70217dff3b55b94c75",
   "artifacts": {
-    "flat.pdl": "5c711b9cef9bb8087456199a975eaa2afe3fa0806b72c82e83f1b7359f0feb21",
-    "vendor.pdl": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de"
+    "flat.pdl": "f1a9089544b13d9c80acffda42570af5ab7ab6d366407314ecca604d8a13a014",
+    "vendor.pdl": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de",
+    "source_vendor.pdl": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de"
+  },
+  "source_job": {
+    "id": "queued_state",
+    "top": "DataStateSnapshot",
+    "icl": [
+      "tests/cases/ours/pattern_generation/data_register_state.icl"
+    ],
+    "pdl": [
+      "tests/cases/ours/pattern_generation/queued_state.pdl"
+    ],
+    "requires_local_reset": false,
+    "expected": "ok",
+    "inputs": {
+      "design_0.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+      "source_0.pdl": "11c4af7f9171cbfff5dc31c003328281da63aaa9bd302875474289e75e53a255",
+      "run.tcl": "b6d9697651ba7d8fa9289370dbd0b529b9aac42a6a717ec8989908247c537575",
+      "ours.pdl": "5c711b9cef9bb8087456199a975eaa2afe3fa0806b72c82e83f1b7359f0feb21"
+    },
+    "generator_command": [
+      "/home/banana/cpp_workspace/icl-format/.worktrees/bsdl-defaults/build/icl-pattern-generation",
+      "--icl",
+      "/home/banana/cpp_workspace/icl-format/build/ordinary-read-scope-20261126/fresh-vendor/certified-reference-bundle/test_queued_state/design_0.icl",
+      "--pdl",
+      "/home/banana/cpp_workspace/icl-format/build/ordinary-read-scope-20261126/fresh-vendor/certified-reference-bundle/test_queued_state/source_0.pdl",
+      "--top_module",
+      "DataStateSnapshot",
+      "--output",
+      "/home/banana/cpp_workspace/icl-format/build/ordinary-read-scope-20261126/fresh-vendor/certified-reference-bundle/test_queued_state/ours.pdl"
+    ],
+    "generator_exit": 0,
+    "generator_seconds": 0.11519167688675225,
+    "tessent_pdl_inputs": [
+      "ours.pdl"
+    ],
+    "status": "reference_pass",
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_register_state.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+      "tests/cases/ours/pattern_generation/queued_state.pdl": "11c4af7f9171cbfff5dc31c003328281da63aaa9bd302875474289e75e53a255"
+    },
+    "tessent_command": [
+      "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+      "-shell",
+      "-dofile",
+      "run.tcl",
+      "-logfile",
+      "tessent.log"
+    ],
+    "exit_code": 0,
+    "seconds": 6.880325125530362,
+    "outcome": "ok",
+    "result_sha256": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de",
+    "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+    "expectation_met": true
+  },
+  "native_trace": {
+    "binding": "DataStateSnapshot",
+    "operations": [
+      [
+        "iReset"
+      ],
+      {
+        "iState": [
+          [
+            "enable",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            0,
+            "1"
+          ],
+          [
+            "value",
+            1,
+            "0"
+          ],
+          [
+            "value",
+            2,
+            "0"
+          ],
+          [
+            "value",
+            3,
+            "1"
+          ]
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "value",
+            0,
+            "1"
+          ],
+          [
+            "value",
+            1,
+            "0"
+          ],
+          [
+            "value",
+            2,
+            "0"
+          ],
+          [
+            "value",
+            3,
+            "1"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      },
+      {
+        "iState": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "1"
+          ],
+          [
+            "value",
+            2,
+            "1"
+          ],
+          [
+            "value",
+            3,
+            "0"
+          ]
+        ]
+      },
+      {
+        "writes": [],
+        "reads": [
+          [
+            "value",
+            0,
+            "0"
+          ],
+          [
+            "value",
+            1,
+            "1"
+          ],
+          [
+            "value",
+            2,
+            "1"
+          ],
+          [
+            "value",
+            3,
+            "0"
+          ]
+        ],
+        "apply": [
+          "iApply"
+        ]
+      }
+    ]
+  },
+  "source_vendor_console_sha256": "d9306decf475eb258b143f7e8000e068264beaf84a4e7b58932bc12d784e0e96",
+  "source_reference": {
+    "schema": 3,
+    "policy": "resolved-bits-ordered-applies-v1",
+    "direction": "forward",
+    "case": {
+      "id": "queued_state",
+      "top": "DataStateSnapshot",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_register_state.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/queued_state.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok"
+    },
+    "source_hashes": {
+      "tests/cases/ours/pattern_generation/data_register_state.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+      "tests/cases/ours/pattern_generation/queued_state.pdl": "11c4af7f9171cbfff5dc31c003328281da63aaa9bd302875474289e75e53a255"
+    },
+    "job": {
+      "id": "queued_state",
+      "top": "DataStateSnapshot",
+      "icl": [
+        "tests/cases/ours/pattern_generation/data_register_state.icl"
+      ],
+      "pdl": [
+        "tests/cases/ours/pattern_generation/queued_state.pdl"
+      ],
+      "requires_local_reset": false,
+      "expected": "ok",
+      "inputs": {
+        "design_0.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+        "source_0.pdl": "11c4af7f9171cbfff5dc31c003328281da63aaa9bd302875474289e75e53a255",
+        "run.tcl": "b6d9697651ba7d8fa9289370dbd0b529b9aac42a6a717ec8989908247c537575",
+        "ours.pdl": "5c711b9cef9bb8087456199a975eaa2afe3fa0806b72c82e83f1b7359f0feb21"
+      },
+      "generator_command": [
+        "/tmp/icl-queued-state-build/icl-pattern-generation",
+        "--icl",
+        "/home/banana/cpp_workspace/icl-format/build/queued-state-observed-forward-bundle/test_queued_state/design_0.icl",
+        "--pdl",
+        "/home/banana/cpp_workspace/icl-format/build/queued-state-observed-forward-bundle/test_queued_state/source_0.pdl",
+        "--top_module",
+        "DataStateSnapshot",
+        "--output",
+        "/home/banana/cpp_workspace/icl-format/build/queued-state-observed-forward-bundle/test_queued_state/ours.pdl"
+      ],
+      "generator_exit": 0,
+      "generator_seconds": 0.11503116297535598,
+      "tessent_pdl_inputs": [
+        "ours.pdl"
+      ],
+      "status": "reference_pass",
+      "source_hashes": {
+        "tests/cases/ours/pattern_generation/data_register_state.icl": "6bb5c558fd08ffaaa887206cac140eecb46481b7098cd6dababc0974f0a12b67",
+        "tests/cases/ours/pattern_generation/queued_state.pdl": "11c4af7f9171cbfff5dc31c003328281da63aaa9bd302875474289e75e53a255"
+      },
+      "tessent_command": [
+        "/data/eda/mentor/tessent_2026/tessent_2026.2/bin/tessent",
+        "-shell",
+        "-dofile",
+        "run.tcl",
+        "-logfile",
+        "tessent.log"
+      ],
+      "exit_code": 0,
+      "seconds": 6.880841285921633,
+      "outcome": "ok",
+      "result_sha256": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de",
+      "version": "//  Tessent Shell  2026.2    Thu May 21 21:09:45 GMT 2026",
+      "expectation_met": true
+    },
+    "trace": {
+      "binding": "DataStateSnapshot",
+      "operations": [
+        [
+          "iReset"
+        ],
+        {
+          "iState": [
+            [
+              "enable",
+              0,
+              "0"
+            ],
+            [
+              "value",
+              0,
+              "1"
+            ],
+            [
+              "value",
+              1,
+              "0"
+            ],
+            [
+              "value",
+              2,
+              "0"
+            ],
+            [
+              "value",
+              3,
+              "1"
+            ]
+          ]
+        },
+        {
+          "writes": [],
+          "reads": [
+            [
+              "q",
+              0,
+              "1"
+            ],
+            [
+              "q",
+              1,
+              "0"
+            ],
+            [
+              "q",
+              2,
+              "0"
+            ],
+            [
+              "q",
+              3,
+              "1"
+            ]
+          ],
+          "apply": [
+            "iApply"
+          ]
+        },
+        {
+          "iState": [
+            [
+              "value",
+              0,
+              "0"
+            ],
+            [
+              "value",
+              1,
+              "1"
+            ],
+            [
+              "value",
+              2,
+              "1"
+            ],
+            [
+              "value",
+              3,
+              "0"
+            ]
+          ]
+        },
+        {
+          "writes": [],
+          "reads": [
+            [
+              "q",
+              0,
+              "0"
+            ],
+            [
+              "q",
+              1,
+              "1"
+            ],
+            [
+              "q",
+              2,
+              "1"
+            ],
+            [
+              "q",
+              3,
+              "0"
+            ]
+          ],
+          "apply": [
+            "iApply"
+          ]
+        }
+      ]
+    },
+    "binary_sha256": "9b2ad349222989dc40bf147d6ceebfe31591b3b5b744f1487a0125f85d0d3ac1",
+    "vendor_console_sha256": "48f3f1aad594b8c845191fd4c376a3434f99d53e3ce137ed73b4d89d58af610f",
+    "artifacts": {
+      "flat.pdl": "5c711b9cef9bb8087456199a975eaa2afe3fa0806b72c82e83f1b7359f0feb21",
+      "vendor.pdl": "e8caec2288bcf7b8a260394047c2ee00e8190f003844dd49a9e5f49f42d951de"
+    }
   }
 }

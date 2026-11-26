@@ -161,7 +161,7 @@ Module Bank {
     def test_capture_before_update(self):
         text = self.run_tool('iReset\niWrite value 9\niApply\n'
                              'iRead value 9\niWrite value 6\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0b1001', text)
+        self.assertIn('iRead value 0b1001', text)
         self.assertIn('iWrite bus 0b10110', text)
         self.assertEqual(text.count('iApply\n'), 2)
         self.replay(text)
@@ -171,7 +171,7 @@ Module Bank {
         self.icl.write_text((FIXTURES / 'selectable.icl').read_text().replace(
             'CaptureSource value;', 'CaptureSource ~value;').replace("ResetValue 4'b0;", ''))
         text = self.run_tool('iRead value[2:1] 1\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0bx10x', text)
+        self.assertIn('iRead {value[2:1]} 0b01', text)
         self.assertNotIn('iWrite bus', text)
         self.replay(text)
 
@@ -182,7 +182,7 @@ Module Bank {
                 'CaptureSource value;', 'CaptureSource mux;'))
         text = self.run_tool('iReset\niRead value 0\niApply\n', extra=('--debug',))
         self.assertEqual(text.count('iApply\n'), 2)
-        self.assertIn('iRead observed 0b0000', text)
+        self.assertIn('iRead value 0b0000', text)
         self.replay(text)
 
     def test_unobservable_capture_is_atomic_error(self):
@@ -219,7 +219,7 @@ Module Bank {
         extra = ('--debug', '--bsdl', 'AccessProbe', str(ROOT / 'tests/cases/ours/pattern_generation/access_link/simple.bsdl'))
         text = self.run_tool('iReset\niWrite core.value 9\niApply\n'
                              'iRead core.value 9\niWrite core.value 6\niApply\n', extra=extra)
-        self.assertIn('iRead core.observed 0b1001', text)
+        self.assertIn('iRead core.value 0b1001', text)
         self.assertIn('iWrite core.bus 0b10110', text)
         self.assertEqual(text, self.run_tool(source='result.pdl', output='replay.pdl', extra=extra[1:]))
 
@@ -267,27 +267,27 @@ Module Bank {
   DataOutPort out[3:0] { Source group; }
 }""")
         text = self.run_tool('iReset\niRead bank.a 9\niRead bank.b 6\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0b1001', text)
-        self.assertIn('iRead observed 0b0110', text)
+        self.assertIn('iRead bank.a 0b1001', text)
+        self.assertIn('iRead bank.b 0b0110', text)
         self.assertEqual(text.count('iApply\n'), 3)
         self.replay(text)
 
     def test_together_only_synchronizes_writes(self):
         text = self.run_tool('iReset\niRead value 9\niRead observed 6\niApply -together\n', extra=('--debug',))
         self.assertEqual(text.count('iApply\n'), 2)
-        self.assertIn('iRead observed 0b1001', text)
+        self.assertIn('iRead value 0b1001', text)
         self.assertIn('iRead observed 0b0110', text)
         self.replay(text)
 
     def test_repeated_read_last_comparison_wins(self):
         text = self.run_tool('iReset\niRead value 9\niRead value 6\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0b0110', text)
-        self.assertNotIn('iRead observed 0b1001', text)
+        self.assertIn('iRead value 0b0110', text)
+        self.assertNotIn('iRead value 0b1001', text)
         self.replay(text)
 
     def test_unqualified_read_replaces_prior_comparison(self):
         text = self.run_tool('iReset\niRead value 9\niRead value\niApply\n', extra=('--debug',))
-        self.assertIn('iRead observed 0bxxxx', text)
+        self.assertIn('iRead value 0bxxxx', text)
         self.replay(text)
 
     def test_unchanged_data_goal_updates_its_scan_controller(self):

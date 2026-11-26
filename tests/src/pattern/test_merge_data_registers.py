@@ -69,8 +69,8 @@ class MergeDataRegisters(unittest.TestCase):
         self.assertEqual(groups[1], {})
         self.assertEqual((groups[0]['da'], groups[2]['da']), (5, 6))
         self.assertEqual((groups[0]['db'], groups[2]['db']), (10, 11))
-        self.assertIn('iRead oa 0b0101', output.split('iApply\n')[1])
-        self.assertIn('iRead ob 0b1010', output.split('iApply\n')[1])
+        self.assertIn('iRead a 0b0101', output.split('iApply\n')[1])
+        self.assertIn('iRead b 0b1010', output.split('iApply\n')[1])
         self.replay(output)
 
     def test_serial_registers_share_scans(self):
@@ -79,8 +79,8 @@ class MergeDataRegisters(unittest.TestCase):
             'iWrite a 5; iApply; iRead a 5; iWrite a 6; iApply',
             'iWrite b 10; iApply; iRead b 10; iWrite b 11; iApply'), '--debug')
         self.assertEqual(len(self.groups(output)), 2)
-        self.assertIn('iRead ba 0bx0101', output)
-        self.assertIn('iRead bb 0bx1010', output)
+        self.assertIn('iRead a 0b0101', output)
+        self.assertIn('iRead b 0b1010', output)
         self.replay(output)
 
     def test_partial_masked_and_inverted_aliases(self):
@@ -108,8 +108,8 @@ class MergeDataRegisters(unittest.TestCase):
             'iWrite b 10; iApply; iRead b 10; iApply'), '--debug')
         self.assertIn('iWrite da 0b0101', output)
         self.assertIn('iWrite bb 0b11010', output)
-        self.assertIn('iRead oa 0b0101', output)
-        self.assertIn('iRead bb 0bx1010', output)
+        self.assertIn('iRead a 0b0101', output)
+        self.assertIn('iRead b 0b1010', output)
         self.replay(output)
 
     def test_addressed_data_registers(self):
@@ -121,8 +121,8 @@ class MergeDataRegisters(unittest.TestCase):
             'iWrite b 10; iApply; iRead b 10; iApply'), '--debug')
         self.assertIn('iWrite data 0b0101', output)
         self.assertIn('iWrite data 0b1010', output)
-        self.assertIn('iRead observed 0b0101', output)
-        self.assertIn('iRead observed 0b1010', output)
+        self.assertIn('iRead a 0b0101', output)
+        self.assertIn('iRead b 0b1010', output)
         self.replay(output)
 
     def test_same_physical_storage_stays_ordered(self):
@@ -150,8 +150,8 @@ class MergeDataRegisters(unittest.TestCase):
             'iWrite b 10; iApply; iRead b 10; iApply'), '--debug')
         self.assertIn('iWrite da 0b0101', output)
         self.assertIn('iWrite da 0b1010', output)
-        self.assertIn('iRead oa 0b0101', output)
-        self.assertIn('iRead ob 0b1010', output)
+        self.assertIn('iRead a 0b0101', output)
+        self.assertIn('iRead b 0b1010', output)
         self.replay(output)
 
     def test_invalid_operand_preserves_output(self):
@@ -177,7 +177,7 @@ class MergeDataRegisters(unittest.TestCase):
             with self.subTest(reserved=bool(final)):
                 source = self.program(first, second) + f'iRead child.value {final}; iApply\n'
                 output = self.generate(source, '--debug')
-                self.assertIn(f'iRead observed 0b{final:04b}', output)
+                self.assertIn(f'iRead child.value 0b{final:04b}', output)
                 self.replay(output)
 
     def test_many_independent_registers(self):
