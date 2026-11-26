@@ -5028,7 +5028,13 @@ class ScanScheduler::Impl {
     return ids_.at(requested);
   }
   void AddControl(BitReference initial) {
-    std::vector<BitReference> pending{initial};
+    CollectControls({initial}, control_masks_, &data_control_masks_,
+                    control_seen_);
+  }
+  void CollectControls(std::vector<BitReference> pending,
+                       std::map<size_t, std::string>& scan_masks,
+                       std::map<size_t, std::string>* data_masks,
+                       std::set<Key>& seen) const {
     while (!pending.empty()) {
       const auto bit = pending.back();
       pending.pop_back();
@@ -5037,21 +5043,17 @@ class ScanScheduler::Impl {
         throw std::runtime_error(
             "multiple TAPs require explicit reset connectivity");
       }
-      if (bit.node == kMissing ||
-          !control_seen_.insert({bit.node, bit.index}).second) {
+      if (bit.node == kMissing || !seen.insert({bit.node, bit.index}).second) {
         continue;
       }
       const auto& node = netlist_.nodes.at(bit.node);
-      if (node.kind == "DataRegister") {
+      if (data_masks && node.kind == "DataRegister") {
         auto& mask =
-            data_control_masks_.try_emplace(bit.node, node.Width(), '0')
-                .first->second;
+            data_masks->try_emplace(bit.node, node.Width(), '0').first->second;
         mask.at(Offset(node, bit.index)) = '1';
       }
       if (node.kind == "ScanRegister") {
-        auto entry =
-            control_masks_.emplace(bit.node, std::string(node.Width(), '0'))
-                .first;
+        auto entry = scan_masks.try_emplace(bit.node, node.Width(), '0').first;
         entry->second.at(Offset(node, bit.index)) = '1';
         continue;
       }
@@ -6978,6 +6980,85 @@ class ScanScheduler::Impl {
         if (explicit_goals.count(id)) data_write_goals.push_back(id);
       }
     }
+    std::set<size_t> shared_registers;
+    std::map<size_t, std::string> requested_controls;
+    if (!shared_input_paths_.empty()) {
+      for (const auto& paths : shared_input_paths_) {
+        for (const auto& path : paths) {
+          for (const auto& [id, suffix] : path.registers) {
+            shared_registers.insert(id);
+          }
+        }
+      }
+      // Unrelated consumers cannot make an omitted shared load writable.
+      std::vector<BitReference> roots;
+      const auto append = [&](const auto& refs) {
+        roots.insert(roots.end(), refs.begin(), refs.end());
+      };
+      std::set<size_t> nodes;
+      for (const auto& vertex : graph_) {
+        if (vertex.bit.node != kMissing) nodes.insert(vertex.bit.node);
+      }
+      if (routes) {
+        for (const auto& [id, bits] : data_reads) {
+          for (const auto& [index, value] : bits) {
+            for (const auto& route : routes->routes.at({id, index})) {
+              for (const auto& guard : route.guards) nodes.insert(guard.node);
+            }
+          }
+        }
+      }
+      for (size_t id : nodes) {
+        const auto& node = netlist_.nodes[id];
+        for (const auto* property : {"SelectedBy", "Enable"}) {
+          const auto found = node.inputs.find(property);
+          if (found != node.inputs.end()) append(found->second);
+        }
+        for (const auto& source : node.one_hot_sources) {
+          for (const auto& access : one_hot_.Resolve(source)) {
+            roots.push_back(access.enable);
+            if (access.signals) append(*access.signals);
+          }
+        }
+      }
+      for (size_t id : required) {
+        if (netlist_.nodes[id].reset) {
+          roots.push_back(*netlist_.nodes[id].reset);
+        }
+      }
+      for (const auto& [id, bits] : goals) {
+        if (netlist_.nodes[id].reset) {
+          roots.push_back(*netlist_.nodes[id].reset);
+        }
+      }
+      for (size_t id : data_write_goals) {
+        append(netlist_.nodes[id].inputs.at("WriteDataSource"));
+        const auto& access = data_plan.writes.at(id);
+        roots.push_back(access.enable);
+        if (access.signals) append(*access.signals);
+      }
+      for (size_t id : port_goals) {
+        const auto& node = netlist_.nodes[id];
+        for (size_t offset = 0; offset < node.Width(); ++offset) {
+          roots.push_back(
+              {id, node.left + (node.left <= node.right
+                                    ? static_cast<int64_t>(offset)
+                                    : -static_cast<int64_t>(offset))});
+        }
+      }
+      for (const auto& [id, bits] : end_goals) {
+        const auto& node = netlist_.nodes[id];
+        for (size_t offset = 0; offset < bits.size(); ++offset) {
+          if (bits[offset] == 'x') continue;
+          roots.push_back(
+              {id, node.left + (node.left <= node.right
+                                    ? static_cast<int64_t>(offset)
+                                    : -static_cast<int64_t>(offset))});
+        }
+      }
+      std::set<Key> seen;
+      CollectControls(std::move(roots), requested_controls, nullptr, seen);
+    }
     const auto [access_context, grouped_reads, read_order,
                 independent_instructions] = CheckAccessGroups(groups);
     std::set<size_t> client_group;
@@ -7339,10 +7420,11 @@ class ScanScheduler::Impl {
           const auto loaded = context_.bv_const(
               ("load_" + std::to_string(time) + "_" + node.name).c_str(),
               node.Width());
+          const auto& masks =
+              shared_registers.count(id) ? requested_controls : control_masks_;
           const auto allowed = SymbolicValue::Literal(
-              context_, control_masks_.count(id)
-                            ? control_masks_.at(id)
-                            : std::string(node.Width(), '0'));
+              context_,
+              masks.count(id) ? masks.at(id) : std::string(node.Width(), '0'));
           auto requested = goals.count(id)
                                ? SymbolicValue::Literal(context_, goals.at(id))
                                : fills.at(id);

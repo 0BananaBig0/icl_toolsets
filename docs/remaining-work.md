@@ -1807,9 +1807,9 @@ overlap, intermediate taps, unequal/empty lanes and switched/gated shared routes
 remain pending under the broader items 2/3/6/8.
 
 All 40 final qualification commands pass: the full normal/static check reports
-221 Python suite runs and 3,405 tests (five optional ANTLR reference skips), all 15
+221 Python suite runs and 3,413 tests (five optional ANTLR reference skips), all 15
 native sanitizer suites and 12 affected CLI/corpus checks pass, six changed-code
-C++ quality checks pass, and source packaging passes. Eleven new CLI methods
+C++ quality checks pass, and source packaging passes. Fifteen new CLI methods
 cover four replay forms and prefix histories; a native independent scalar shift
 oracle checks the literal common input, separate physical capture streams,
 final bank/pin state, copies and ownership rollback. The initial primary-only,
@@ -1820,9 +1820,25 @@ historical failures, separately from the final untraced pass.
 Three rounds of nine shared-input cases and 18 matched parent/current disjoint
 controls cover 45 measured points and 180 CLI processes, plus three Python
 runners. The largest shared case is 32 lanes of 256 bits; the slowest four-form
-shared replay is 0.3300 s and the runner/children peak is 93,088 KiB. All points meet
+shared replay is 0.3486 s and the runner/children peak is 96,324 KiB. All points meet
 10 s/512 MiB; all disjoint control outputs are byte-identical to master. These are
 bounded measurements, without an isolated speedup or wider topology claim.
 Evidence and hashes for 4,122 source/test inputs and 44 executables are retained
 under build/shared-scan-input-20261126/. No fresh vendor or hardware
 qualification is claimed. Coverage item 1 remains excluded.
+
+Independent review found zero Critical, one Important and one Minor issue.
+One test-first repair scopes shared-bank automatic load permissions to the
+current operation's control dependencies. Unrelated muxes and disabled data
+consumers no longer authorize omitted-bank writes; actual requested controllers
+remain programmable. Four new CLI methods reproduce 14 incorrect publications
+on the pre-fix executable across both producer modes, then pass after repair.
+Native tests verify failed-write state rollback and compatible explicit writes.
+The full post-review qualification above is fresh; no second review was used.
+The topology-negative-test precision Minor is deferred (32 total, including
+31 inherited findings); no Critical or Important finding remains unresolved.
+
+Additional 4- and 256-bit requested-controller prefix cases pass 20 CLI processes
+plus one runner. The slowest producer and four continuations take 0.4146 s;
+runner/children peak RSS is 113,624 KiB. These checks retain the 10 s/512 MiB
+bounds and prove real controller programming without freeing unrelated bits.

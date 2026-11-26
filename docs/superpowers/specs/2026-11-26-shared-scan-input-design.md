@@ -34,3 +34,10 @@ Authorization: the approved completion-program design and repeated instructions
 to proceed, finish items 2–15 except 1, and integrate each finished branch cover
 this maintenance increment. Continue native execution in the existing isolated
 worktree; merge into master, push and delete only this owned branch after review.
+
+The review repair preserves control bits consumed only by unrelated logic.
+For shared lanes, derive automatic load permissions from the scan network and
+current requested write, read-route, port, reset and end-state dependencies.
+Reuse the existing control traversal with a separate visited set; preserve the
+existing permissions for independent lanes. Genuine requested data controllers
+remain programmable without freeing their unrelated bits.

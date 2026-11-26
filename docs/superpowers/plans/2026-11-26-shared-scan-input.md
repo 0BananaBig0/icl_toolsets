@@ -56,7 +56,15 @@ per-register modeled observations.
 
 ## Branch completion
 
-- [ ] Obtain one fresh whole-branch review. Grade every finding and declined area;
+- [x] Obtain one fresh whole-branch review. Grade every finding and declined area;
   fix Critical/Important once with RED→GREEN plus a green full suite; defer Minors.
 - [ ] Merge into recorded parent master, verify merged source/product identity
   and focused checks, push and delete the owned branch. Archive only this ledger.
+
+Review repair: selector and disabled data-consumer omitted loads reproduce the
+Important failure before implementation. Scope shared control permissions to
+current operation dependencies, retaining real 4/256-bit controllers and their
+unrelated bits. Four new CLI methods and native rollback/explicit-write checks
+pass, then the full 40-command qualification passes with 221 suite runs and
+3,413 reported tests (five optional skips). One negative-fixture precision Minor
+is deferred; the single Important is resolved in one pass without rereview.

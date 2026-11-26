@@ -108,12 +108,74 @@ Module Chains { ScanInPort si;
                                  'iNote [iGetReadData q -bin]; iNote [iGetStatus];\n',
                                  [b'0b1', b'0'])
 
-    def reject(self, source, body, diagnostic=None):
+    def test_omitted_selector_bank_keeps_its_load(self):
+        source = NETWORK.replace(' ScanOutPort oa', '''
+ DataMux unused SelectedBy b[0] {1'b0:1'b0;1'b1:1'b1;}
+ DataOutPort observer {Source unused;}
+ ScanOutPort oa''')
+        for setup in ('', 'iWrite a 8; iWrite b 8; iApply; '):
+            for read in ('', 'iRead observer 0bx; '):
+                for modeled in (False, True):
+                    with self.subTest(setup=setup, read=read, modeled=modeled):
+                        self.reject(source, setup + 'iWrite a[0] 1; ' + read + 'iApply;',
+                                    'no schedule within', modeled)
+        self.assert_prefix_notes(source, 'iReset; iWrite a 9; iWrite b 9; iApply; '
+                                 'iRead a 0bx; iRead b 0bx; iApply;\n',
+                                 'iNote [iGetReadData a -bin]; iNote [iGetReadData b -bin];\n',
+                                 [b'0b1001', b'0b1001'])
+
+    def test_disabled_data_consumer_does_not_authorize_bank_changes(self):
+        source = NETWORK.replace(' ScanOutPort oa', '''
+ DataRegister unused[3:0] {WriteDataSource b; WriteEnSource 1'b0; ResetValue 0;}
+ DataOutPort q {Source 1'b0;}
+ ScanOutPort oa''')
+        for setup in ('', 'iWrite a 8; iWrite b 8; iApply; '):
+            for modeled in (False, True):
+                with self.subTest(setup=setup, modeled=modeled):
+                    self.reject(source, setup + 'iWrite a 9; iRead q 0bx; iApply;',
+                                'no schedule within', modeled)
+
+    def test_requested_data_controller_is_still_programmable(self):
+        for width in (4, 256):
+            with self.subTest(width=width):
+                source = NETWORK.replace(' ScanOutPort oa', '''
+ DataRegister sink[3:0] {WriteDataSource b; WriteEnSource 1'b1; ResetValue 0;}
+ DataOutPort q[3:0] {Source sink;}
+ ScanOutPort oa''').replace('[3:0]', f'[{width-1}:0]')
+                value = ('0b' + '0' * (width-4) + '1001').encode()
+                self.assertTrue(self.assert_prefix_notes(
+                    source, 'iReset; iWrite a 9; iWrite sink 9; iApply; '
+                    'iRead a 0bx; iRead b 0bx; iRead q 0bx; iApply;\n',
+                    'iNote [iGetReadData a -bin]; iNote [iGetReadData b -bin]; '
+                    'iNote [iGetReadData q -bin]; iNote [iGetStatus];\n',
+                    [value, value, value, b'0']))
+                self.assertLess(max(self.prefix_producer_seconds), 10)
+                print(json.dumps(dict(controller_width=width,
+                                      producer_seconds=self.prefix_producer_seconds)))
+
+    def test_requested_controller_does_not_free_unrelated_bits(self):
+        source = NETWORK.replace(' ScanOutPort oa', '''
+ DataRegister sink {WriteDataSource b[0]; WriteEnSource 1'b1; ResetValue 0;}
+ DataOutPort q {Source sink;}
+ DataMux unused SelectedBy b[1] {1'b0:1'b0;1'b1:1'b1;}
+ DataOutPort observer {Source unused;}
+ ScanOutPort oa''')
+        for modeled in (False, True):
+            with self.subTest(modeled=modeled):
+                self.reject(source, 'iWrite a 3; iWrite sink 1; iApply;',
+                            'no schedule within', modeled)
+        self.assert_prefix_notes(source, 'iReset; iWrite a 1; iWrite sink 1; iApply; '
+                                 'iRead a 0bx; iRead b 0bx; iRead q 0bx; iApply;\n',
+                                 'iNote [iGetReadData a -bin]; iNote [iGetReadData b -bin]; '
+                                 'iNote [iGetReadData q -bin]; iNote [iGetStatus];\n',
+                                 [b'0b0001', b'0b0001', b'0b1', b'0'])
+
+    def reject(self, source, body, diagnostic=None, modeled=True):
         icl, pdl = self.root / 'source.icl', self.root / 'source.pdl'
         icl.write_text(source)
         pdl.write_text('iPDLLevel 1\niProcsForModule Chains\niReset; ' + body)
         (self.root / 'result.pdl').write_bytes(b'previous output\n')
-        error = self.run_tool(icl, pdl, ok=False, extra=('--model_readback',))
+        error = self.run_tool(icl, pdl, ok=False, extra=('--model_readback',) if modeled else ())
         if diagnostic:
             self.assertIn(diagnostic, error)
         self.assertEqual((self.root / 'result.pdl').read_bytes(), b'previous output\n')

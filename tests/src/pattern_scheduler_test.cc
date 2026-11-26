@@ -4465,6 +4465,40 @@ Module MergeBudget {
                    .count()
             << '\n';
 }
+void TestSharedControlLoadPreservation() {
+  for (const auto* consumer :
+       {"DataMux unused SelectedBy b[0] {1'b0:1'b0;1'b1:1'b1;} "
+        "DataOutPort q {Source unused;}",
+        "DataRegister unused[3:0] {WriteDataSource b; "
+        "WriteEnSource 1'b0; ResetValue 0;}"}) {
+    pattern::Design design;
+    design.AddIcl("shared-controls.icl",
+                  std::string("Module SharedTop {ScanInPort si; ") +
+                      "ScanRegister a[3:0] {ScanInSource si; CaptureSource a; "
+                      "ResetValue 0;} "
+                      "ScanRegister b[3:0] {ScanInSource si; CaptureSource b; "
+                      "ResetValue 0;} " +
+                      consumer +
+                      "ScanOutPort oa {Source a[0];} "
+                      "ScanOutPort ob {Source b[0];}} ");
+    const auto netlist = pattern::Elaborate(design, "SharedTop");
+    pattern::ScanScheduler scheduler(netlist);
+    scheduler.Reset();
+    bool rejected = false;
+    try {
+      scheduler.Apply({{"iWrite", {"a[0]", "1"}, "omitted", {}}});
+    } catch (const std::exception&) {
+      rejected = true;
+    }
+    Require(rejected && scheduler.Value("a") == "0000" &&
+                scheduler.Value("b") == "0000",
+            "unrelated control consumers cannot authorize omitted bank writes");
+    scheduler.Apply({{"iWrite", {"a", "9"}, "explicit", {}},
+                     {"iWrite", {"b", "9"}, "explicit", {}}});
+    Require(scheduler.Value("a") == "1001" && scheduler.Value("b") == "1001",
+            "compatible explicit control-bank writes remain supported");
+  }
+}
 void TestSharedScanInputs() {
   pattern::Design design;
   design.AddIcl("shared-input.icl", R"(
@@ -7638,6 +7672,7 @@ int main(int argc, char* argv[]) {
       TestPrimaryLimits();
       return 0;
     }
+    TestSharedControlLoadPreservation();
     TestPhysicalTapResetLoads();
     TestNoIdBuiltinBypassAliases();
     TestRawTapUnknownInput();

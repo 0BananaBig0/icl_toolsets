@@ -569,8 +569,12 @@ shared between lanes. Fixed ungated lanes of equal nonzero length may also
 share a ScanInPort bit when their storage is disjoint. Their loads must produce
 the same physical input stream after accounting for every serial inversion.
 For two four-bit banks directly connected to one input, writing both to 9 works;
-writing one to 9 and the other to 6 cannot be scheduled. An omitted bank retains
-its current load, so writing only one bank to a different value also fails.
+writing one to 9 and the other to 6 cannot be scheduled. Unrequested payload bits retain
+their current loads, including bits consumed only by unrelated logic. Automatic
+setup uses controllers on the scan network and requested data/read/write paths;
+a DataRegister write can still program its scan-backed data source. Other bits
+of that controller remain preserved. Writing only one ordinary bank to a
+different value therefore fails.
 Captures and logical read histories remain separate for each bank. Unequal or
 empty shared lanes, switched/gated shared paths and shared-input named/client/TAP
 interfaces retain their existing guards. Vector one-hot returns use the
