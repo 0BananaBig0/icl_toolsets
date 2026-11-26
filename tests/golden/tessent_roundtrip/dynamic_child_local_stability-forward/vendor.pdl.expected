@@ -3,12 +3,16 @@ iProcsForModule Top
 iProc oracle {} {
 
    iReset
+   iNote -comment "modeled raw history omitted iScan client 8 -si 0b00000001 -so 0b00000000"
    iScan client -chain default 8 -si 0b00000001 -so 0b00000000
    iApply
 
+   iNote -comment "modeled dynamic child raw history client child.local 0b00000000"
+   iNote -comment "modeled raw history omitted iScan client 16 -si 0b1010010100000001 -so 0b00000000xxxxxxxx"
    iScan client -chain default 16 -si 0b1010010100000001 -so 0b00000000XXXXXXXX
    iApply
 
+   iNote -comment "modeled dynamic child raw history client sibling.local 0b00000000"
    iWrite sibling.value[7:0] 0b10100101
    iRead  sibling.value[7:0] 0b10100101
    iWrite child.value[7:0] 0b00000001

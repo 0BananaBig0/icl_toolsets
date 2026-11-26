@@ -3,14 +3,22 @@ iProcsForModule Top
 iReset
 iScan client 1 -si 0b1 -so 0bx
 iApply
+iNote -comment "modeled raw history omitted iScan client 2 -si 0b11 -so 0b0x"
 iScan client 2 -si 0b11 -so 0b0x
 iApply
+iNote -comment "modeled dynamic child raw history client child.local 0b0"
+iNote -comment "modeled raw history omitted iScan client 10 -si 0b1010010111 -so 0b000000001x"
 iScan client 10 -si 0b1010010111 -so 0b000000001x
 iApply
+iNote -comment "modeled dynamic child raw history client child.local 0b000000001"
+iNote -comment "modeled raw history omitted iScan client 10 -si 0b0011110001 -so 0bxxxxxxxxxx"
 iScan client 10 -si 0b0011110001 -so 0bxxxxxxxxxx
 iApply
+iNote -comment "modeled dynamic child raw history client child.local 0bxxxxxxxxx"
+iNote -comment "modeled raw history omitted iScan client 2 -si 0b11 -so 0bxx"
 iScan client 2 -si 0b11 -so 0bxx
 iApply
+iNote -comment "modeled dynamic child raw history client child.local 0bx"
 iWrite child.enable 0b1
 iWrite child.leaf.value 0b00111100
 iWrite open 0b1

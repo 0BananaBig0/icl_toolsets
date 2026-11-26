@@ -253,11 +253,30 @@ Module Top {
 )");
   const auto netlist = pattern::Elaborate(design, "Top");
   pattern::Runtime::StatusReadback preview;
-  const auto readback = pattern::MakeModeledReadback(netlist, false, &preview);
+  using Factory = pattern::Runtime::Readback (*)(
+      const pattern::Netlist&, bool, pattern::Runtime::StatusReadback*);
+  const Factory factory = &pattern::MakeModeledReadback;
+  const auto readback = factory(netlist, false, &preview);
   std::vector<pattern::Operation> operations{
       {"iState", {"r", "15"}, "test", {}},
       {"iRead", {"r", "0"}, "test", {}},
       {"iApply", {}, "test", {}}};
+  using Factory1 = pattern::Runtime::Readback (*)(const pattern::Netlist&);
+  using Factory2 =
+      pattern::Runtime::Readback (*)(const pattern::Netlist&, bool);
+  using Factory4 = pattern::Runtime::Readback (*)(
+      const pattern::Netlist&, bool, pattern::Runtime::StatusReadback*,
+      pattern::Runtime::HistoryReadback*);
+  const Factory1 one = &pattern::MakeModeledReadback;
+  const Factory2 two = &pattern::MakeModeledReadback;
+  const Factory4 four = &pattern::MakeModeledReadback;
+  for (const auto& provider :
+       {one(netlist), two(netlist, false), factory(netlist, false, nullptr),
+        four(netlist, false, nullptr, nullptr)}) {
+    const auto* update = provider(operations, false);
+    Require(update->bits.size() == 4 && update->failures == 4,
+            "typed factory overloads retain actual readback with null outputs");
+  }
   Require(preview(operations) == 4 && preview(operations) == 4,
           "status previews do not recount failures");
   const auto* update = readback(operations, false);

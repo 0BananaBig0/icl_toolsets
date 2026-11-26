@@ -1554,3 +1554,27 @@ Python logic and the three native binaries retain their qualified identities.
 The owned task branch is deleted;the reused worktree is detached;117stashes
 are preserved. Six inherited findings are resolved and31remain deferred.
 Broader original requirements and excluded1 remain open.
+
+## Task187 readback factory compatibility and golden repair
+
+The explicit three-argument MakeModeledReadback overload is restored. Its
+function-pointer signature is source-compatible again;it forwards to the same
+four-argument model owner with no history-output pointer. Removing the fourth
+parameter default keeps ordinary three-argument calls unambiguous.
+
+The existing native status-preview test reproduces the compiler failure before
+the fix and passes afterward. Typed one/two/three/four-argument pointers and
+null outputs return actual data with the expected failure counts. Native
+readback, formatting and whitespace pass. Full make check initially exited2
+on inherited tessent-golden-check failures, with 198 passing Python suite
+executions/3127 methods. All77directional outputs are byte-identical between
+the qualified baseline and candidate;both fail the same five old child-history
+snapshots because new history notes are missing. Five fresh licensed Tessent
+exports and new record/check certificates repair those exact snapshots. The
+failed target now passes, including all77directional snapshots;passing unchanged
+project checks are retained. A fresh all-green full-command rerun is not claimed.
+Compiler/static-linker warnings from unchanged files remain in the check log.
+No performance claim, dependency, scheduler behavior or limit is added.
+The inherited Task177 API finding is resolved:31minus1=30 deferred Minors.
+Broader original inventory and excluded1 remain open;final review/integration
+are pending.
