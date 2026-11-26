@@ -58,7 +58,7 @@ for that bounded class; all other models retain their existing paths.
   quality, affected SAN CLI, retained/new scale matrices, corpus, guides and
   packaging. Expected: all bounds and exact provenance pass, no false parent
   modeled-history or global optimality claim.
-- [ ] Step5: Read selected patch, commit and get one fresh final review. Grade
+- [x] Step5: Read selected patch, commit and get one fresh final review. Grade
   every finding/declined area; repair blockers once RED→GREEN/full suite, defer
   Minors. Expected: no unresolved Critical/Important, no rereview.
 - [ ] Step6: Merge/push to master, verify merged checks, detach reused tree,

@@ -1473,3 +1473,33 @@ controls use their original frozen pre-feature binary. No physical transport,
 unconfigured sanitizer budget or larger planner-scale completion is claimed.
 Independent final review is pending; excluded1,36inherited deferred Minors and
 broader original inventory requirements remain open.
+
+The one independent final review found0Critical/2Important/1Minor on29abfcc.
+Both Important findings are repaired together in one test-first pass. Final
+automatic-history validation now processes the remaining provider suffix even
+without a getter, rejecting unsupported timed operations and unknown actual
+read routes before publishing main/debug/local-reset artifacts. General solver
+comparisons retain the selected route, including AccessTogether aliases, for
+the same actual-state validation used by ordinary primary reads.
+
+Nine CLI reproductions and a native grouped replay fail first. All19focused
+methods and the native replay then pass, covering an already-observed prefix,
+ordinary grouped reads with zero callbacks, automatic grouped reads, inverted
+aliases and unknown grouped selectors. Full post-repair qualification is in
+progress. The API planning-precondition documentation Minor is deferred as37;
+the36inherited Minors and broader/excluded work retain their status. No rereview
+is requested. The earlier118gate receipt is preserved as pre-repair evidence.
+
+Both Important review findings are resolved in one test-first pass. All118
+post-repair qualification gates pass fresh, including91suites/1468methods per
+normal/static generator,30native/SAN suites,2static-native suites and21C++
+quality checks. The19automatic-primary methods,6reporter methods, unchanged
+source audits,32guide processes and source packaging pass. No rereview is used.
+
+The final validator confirms4090qualified inputs,42products and2577maintained
+measurement rows, including555live generated-history runs. Maximum measured
+wall time is6.9861s and peak RSS470692KiB across those rows. The documented new-matrix
+sanitizer configuration and larger-scale exclusions remain unchanged.
+Review result:0Critical/2Important/1Minor found;zero unresolved Critical or
+Important. The API documentation Minor is deferred;total deferred Minors37.
+Original broader items and excluded1 remain open. Merge/integration is next.

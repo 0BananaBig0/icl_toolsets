@@ -7384,10 +7384,12 @@ void TestActualPrimaryReplay() {
   design.AddIcl("actual_primary.icl", R"(
 Module Top {
  DataInPort en; DataInPort p[3:0];
+ DataInPort spare[3:0]; DataOutPort spare_out[3:0] {Source spare;}
  DataRegister value[3:0] {WriteCallBack Top store <D>; ResetValue 0;}
  DataRegister dest[3:0] {WriteDataSource value; WriteEnSource en; ResetValue 0;}
  DataOutPort endpoint[3:0] {Source p;}
  DataOutPort q[3:0] {Source dest;}
+ Alias pair[7:0] = endpoint, spare_out {AccessTogether;}
 })");
   const auto netlist = pattern::Elaborate(design, "Top");
   pattern::ScanScheduler ordinary(netlist);
@@ -7468,6 +7470,25 @@ Module Top {
   }
   Require(rejected && calls == 1 && actual.Value("p") == "0010",
           "subscriber failure retains committed actual input state");
+  run({{"iWrite", {"p", "9"}, "test", {}},
+       {"iWrite", {"spare", "5"}, "test", {}}});
+  const std::vector<pattern::Operation> group{
+      {"iRead", {"pair", "149"}, "test", {}}};
+  const auto group_steps = plan(group);
+  std::map<std::pair<size_t, int64_t>, char> grouped;
+  actual.ReplayPrimary(
+      group, group_steps, {}, [&](const auto& bits, const auto& values) {
+        for (size_t i = 0; i < bits.size(); ++i) {
+          grouped.emplace(std::make_pair(bits[i].node, bits[i].index),
+                          values[i]);
+        }
+      });
+  std::string pair;
+  for (const auto& bit : pattern::ResolvePdlTarget(netlist, "pair").bits) {
+    pair += grouped.at({bit.node, bit.index});
+  }
+  Require(pair == "10010101",
+          "general grouped frames retain selected logical primary routes");
 }
 }  // namespace
 int main(int argc, char* argv[]) {

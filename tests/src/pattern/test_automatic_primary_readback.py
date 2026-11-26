@@ -200,6 +200,60 @@ iNote [iGetReadData endpoint -dec]; iNote [iGetReadData q -bin]
 iNote [iGetReadData remote_out -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
 ''',[b'9',b'0bxxxx',b'0bxxxx',b'0',b'0'])
 
+    def rejected_suffix(self,source,prefix,suffix,diagnostic):
+        for observed in (False,True):
+            with self.subTest(observed_prefix=observed):
+                icl,pdl,out=(self.root/n for n in ('source.icl','source.pdl','protected.pdl'))
+                icl.write_text(source)
+                query='iRead endpoint 0bx; iApply; iNote [iGetReadData endpoint -bin]\n' if observed else ''
+                pdl.write_text('iPDLLevel 1\niProcsForModule Chains\n'+PROCS+prefix+query+suffix)
+                artifacts=(out,self.root/'debug/Chains.icl',self.root/'reset.pdl')
+                for path in artifacts:
+                    path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'keep output\n')
+                self.assertIn(diagnostic,self.run_tool(icl,pdl,'protected.pdl',ok=False,
+                    extra=('--local_reset',str(artifacts[-1]))))
+                for path in artifacts:self.assertEqual(path.read_bytes(),b'keep output\n')
+
+    def test_final_history_rejects_timed_suffix_without_a_getter(self):
+        self.rejected_suffix(MODEL,'iReset; iWrite dest 9; iApply\n',
+            'iRunLoop 1 -tck; iRead endpoint 9; iApply\n','iRunLoop histories')
+
+    def test_final_history_rejects_unknown_route_without_a_getter(self):
+        source=MODEL.replace(' DataOutPort q[3:0] {Source dest;}', '''
+ DataMux choice[3:0] SelectedBy value[0] {1'b0: dest; 1'b1: other;}
+ DataOutPort q[3:0] {Source choice;}''')
+        self.rejected_suffix(source,'iReset; iWrite dest 6; iApply\n',
+            'iRead dest 0bx; iApply\n','actual primary read route')
+
+    def test_access_together_preserves_existing_and_automatic_histories(self):
+        for automatic in (False,True):
+            for inverted in (False,True):
+                with self.subTest(automatic=automatic,inverted=inverted):
+                    source=MODEL.replace(' Alias inverse',
+                        ' Alias pair[7:0] = '+('~' if inverted else '')+'endpoint, spare_out {AccessTogether;}\n Alias inverse')
+                    prefix='iReset; iWrite spare 5; '+('iWrite dest 9' if automatic else 'iWrite p 9')+'; iApply\n'
+                    prefix+='if {$::calls != %d} {error {callback count}}\n'%automatic
+                    word='01100101' if inverted else '10010101'
+                    self.continued(source,PROCS+prefix,'''iRead pair 0b%s; iRead q 0bx; iApply
+iNote [iGetReadData pair -bin]; iNote [iGetMiscompares pair -bin]
+iNote [iGetReadData q -bin]; iNote [iGetStatus -clear]; iNote [iGetStatus]
+'''%word,[('0b'+word).encode(),b'0b00000000',b'0bxxxx',b'0',b'0'])
+
+    def test_grouped_logical_route_uses_actual_callback_selector(self):
+        source=MODEL.replace(' DataOutPort q[3:0] {Source dest;}', '''
+ DataMux choice[3:0] SelectedBy value[0] {1'b0: dest; 1'b1: other;}
+ DataOutPort q[3:0] {Source choice;}
+ Alias grouped[7:0] = dest, spare_out {AccessTogether;}''')
+        icl,pdl,out=(self.root/n for n in ('source.icl','source.pdl','protected.pdl'))
+        icl.write_text(source)
+        pdl.write_text('iPDLLevel 1\niProcsForModule Chains\n'+PROCS+'''
+iReset; iWrite spare 5; iWrite dest 6; iApply
+iRead grouped 0bx; iApply; iGetReadData grouped -bin
+''')
+        out.write_bytes(b'keep output\n')
+        self.assertIn('actual primary read route',self.run_tool(icl,pdl,'protected.pdl',ok=False))
+        self.assertEqual(out.read_bytes(),b'keep output\n')
+
     def test_independent_known_care_counts_clear_once_with_unknown_dont_care_data(self):
         self.continued(MODEL,PROCS+'iReset; iWrite dest 13; iApply\n','''
 iRead endpoint 0; iRead q 0bx; iApply

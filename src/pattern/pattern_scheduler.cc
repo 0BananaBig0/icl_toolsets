@@ -5040,6 +5040,7 @@ class ScanScheduler::Impl {
     Key target;
     char expected;
     z3::expr selected;
+    size_t route;
   };
   struct Frame {
     Values state, loads, fill;
@@ -7080,7 +7081,7 @@ class ScanScheduler::Impl {
                                        ? (expected == '1' ? '0' : '1')
                                        : expected;
               frame.comparisons.push_back(
-                  {path.output, {id, index}, compare, selected});
+                  {path.output, {id, index}, compare, selected, route});
               if (compare != 'x') {
                 const auto key = std::make_pair(
                     Key{path.output.node, path.output.index}, compare);
@@ -7410,6 +7411,13 @@ class ScanScheduler::Impl {
           }
         }
         if (observe && parallel) {
+          for (const auto& comparison : frame.comparisons) {
+            if (model.eval(comparison.selected, true).is_true()) {
+              step.primary_reads.push_back(
+                  {{comparison.target.first, comparison.target.second},
+                   comparison.route});
+            }
+          }
           std::vector<BitReference> bits;
           for (const auto& [id, requested] : data_reads) {
             if (!model.eval(frame.read.at(id), true).is_true()) continue;
