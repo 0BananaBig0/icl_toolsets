@@ -11538,12 +11538,17 @@ and procedure return preserve this history. Hierarchical, indexed and associated
 flat names use the existing target mapping. Local-reset rendering uses the same
 preservation rule, including procedure groups preceding the first override.
 
-In such a period-bearing program, other overrides must explicitly specify
-`-source`, `-freqMultiplier` and `-freqDivider`. Partial mixed forms reject:
-the v2023.4 manual's omitted-field behavior differs from established native
-restoration of ICL defaults. Ordinary programs without period overrides keep
-their existing normalization and omission rules. No elapsed-time engine or
-physical clock event is inferred from period metadata.
+In a period-bearing program, source/ratio overrides emit explicit `-source`,
+`-freqMultiplier` and `-freqDivider` fields. If `-source` is omitted, its ICL
+default must be a non-inverted ClockPort/ToClockPort bit. Omitted fields restore
+the ICL defaults on each native override, regardless of earlier overrides.
+For example, a port declared with source `root` and factors 3/2 emits
+`-source root -freqMultiplier 3 -freqDivider 5` for a divider-only override to 5.
+This explicit output avoids the v2023.4 vendor dialect's different omitted-field
+rules. A default mux, alias, inverted or missing source still requires an explicit
+representable source; source-free oscillator forms remain guarded. Ordinary
+programs without period overrides keep their existing normalization and omission
+rules. No elapsed-time engine or physical clock event is inferred from metadata.
 
 Pending-write, unsafe fanout, differential, physical-PDL, modeled raw/opaque and
 stateful absolute-time guards remain. Modeled readback still rejects clock
@@ -11573,3 +11578,22 @@ and refreshing all measurements. The change is merged and pushed to master;
 all nine merged-result checks pass. Use the canonical main PDL for vendor loading. Reset-only output
 preserves original source and procedure definitions; if it contains native input
 spellings, run it through native generation to obtain canonical main PDL first.
+
+### Mixed clock defaults (Task195)
+
+Representable partial source/ratio overrides retain logical clock histories and
+emit complete native ICL defaults, including through indexed procedure calls and
+reset-source replay. Native defaults follow IEEE1687-2014 section7.9.16(c–e),
+printed175/PDF189. The Tessent Shell Reference Manual v2023.4 iClockOverride topic
+describes different omission behavior; a vendor reference must explicitly set
+the intended native fields. Six fresh configured Tessent2026.2 jobs pass with three byte-identical explicit-reference/generated exports and
+expected relative-operation traces. These references explicitly implement native
+defaults; original partial inputs retain the vendor dialect difference.
+
+All 39 final qualification commands pass: 227 Python suites report 3,482 tests,
+with five optional ANTLR skips; all 22 sanitizer checks, nine changed-code C++
+checks, corpus acceptance, editor checks and source packaging pass. The compiled
+help description has a maintained RED→GREEN check on both generators. The first
+qualification is archived under pre-help-*; the full suite was rerun after that
+help-only correction. The final frozen inputs and binaries also bind all 45
+measurements and six vendor jobs. Independent review and integration remain.

@@ -687,19 +687,6 @@ std::string Generate(
         pending_scan_bits = 0;
         result += synchronous ? "iReset -sync\n" : "iReset\n";
       } else if (operation.command == "iClockOverride") {
-        if (retain_clocks && (operation.arguments.size() < 2 ||
-                              operation.arguments[1] != "-period")) {
-          for (const auto* option :
-               {"-source", "-freqMultiplier", "-freqDivider"}) {
-            if (std::find(operation.arguments.begin(),
-                          operation.arguments.end(),
-                          option) == operation.arguments.end()) {
-              throw std::runtime_error(
-                  "period-bearing clock programs require explicit source and "
-                  "both frequency factors");
-            }
-          }
-        }
         pattern::Operation normalized;
         clocks.Override(operation, context,
                         retain_clocks ? &normalized : nullptr);
@@ -973,7 +960,7 @@ int main(int argc, char** argv) {
            "relative clock-only routes, differential partners, Period "
            "oscillators and versioned iClockOverride, including -period.\n"
            "Period-bearing programs retain logical clock statements; mixed\n"
-           "source overrides require source and both frequency factors.\n"
+           "source overrides expand native ICL defaults when representable.\n"
            "Absolute-time waits require models without storage, clock-driven "
            "data,\n"
            "or forwarded test clocks.\n"

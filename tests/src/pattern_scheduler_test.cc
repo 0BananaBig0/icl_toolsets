@@ -3930,6 +3930,9 @@ void TestClockPeriodOverrideSnapshots() {
   }
   Module Top {
     ClockPort root;
+    DataInPort mode;
+    ClockMux choose SelectedBy mode {1'b0:root;1'b1:root;}
+    ToClockPort dynamic {Source choose; FreqMultiplier 3; FreqDivider 2;}
     Instance pll Of Pll {InputPort ck=root;}
     ToClockPort slow {Source pll.osc; FreqDivider 2;}
     ToClockPort fast {Source pll.osc; FreqMultiplier 3;}
@@ -3999,6 +4002,54 @@ void TestClockPeriodOverrideSnapshots() {
               clocks.Wait("fast", 6, scheduler).second == 2 &&
               scheduler.Value("value") == "1010",
           "an explicit empty unit rejects without publishing any state");
+  clocks.Override(
+      {"iClockOverride", {"pll.osc", "-freqDivider", "5"}, "mixed:1", {}},
+      context, &normalized);
+  Require(normalized.arguments ==
+                  std::vector<std::string>({"pll.osc", "-source", "pll.ck",
+                                            "-freqMultiplier", "3",
+                                            "-freqDivider", "5"}) &&
+              clocks.Check("slow", scheduler) == "root" &&
+              clocks.Wait("slow", 6, scheduler).second == 20 &&
+              clocks.Wait("fast", 6, scheduler).second == 2,
+          "mixed normalization expands ICL defaults without changing older "
+          "checked periods");
+  clocks.Override({"iClockOverride", {"pll.osc"}, "mixed:2", {}}, context,
+                  &normalized);
+  Require(normalized.arguments ==
+                  std::vector<std::string>({"pll.osc", "-source", "pll.ck",
+                                            "-freqMultiplier", "3",
+                                            "-freqDivider", "2"}) &&
+              clocks.Check("slow", scheduler) == "root" &&
+              clocks.Wait("slow", 6, scheduler).second == 8,
+          "empty source-based override restores all ICL defaults");
+  scheduler.Assume("mode", "0");
+  clocks.Check("dynamic", scheduler);
+  normalized.arguments = {"sentinel"};
+  rejected = false;
+  try {
+    clocks.Override(
+        {"iClockOverride", {"dynamic", "-freqDivider", "5"}, "mixed:3", {}},
+        context, &normalized);
+  } catch (const std::runtime_error& error) {
+    rejected = std::string(error.what()).find("source") != std::string::npos;
+  }
+  Require(rejected &&
+              normalized.arguments == std::vector<std::string>({"sentinel"}) &&
+              clocks.Check("dynamic", scheduler) == "root" &&
+              clocks.Wait("dynamic", 6, scheduler).second == 4 &&
+              scheduler.Value("value") == "1010" &&
+              scheduler.Value("mode") == "0",
+          "unrepresentable normalization leaves the definition, output and "
+          "hardware unchanged");
+  clocks.Override(
+      {"iClockOverride", {"dynamic", "-source", "root"}, "mixed:4", {}},
+      context, &normalized);
+  Require(normalized.arguments ==
+              std::vector<std::string>({"dynamic", "-source", "root",
+                                        "-freqMultiplier", "3", "-freqDivider",
+                                        "2"}),
+          "explicit source recovers after rejected default-source expansion");
 }
 void TestClockOverrideScale() {
   std::string source =

@@ -41,7 +41,10 @@ class Generator(unittest.TestCase):
         return result
 
     def test_help_version(self):
-        self.assertIn("--icl", self.run_tool("--help").stdout)
+        help_text = self.run_tool("--help").stdout
+        self.assertIn("--icl", help_text)
+        self.assertIn("source overrides expand native ICL defaults", help_text)
+        self.assertNotIn("source overrides require source and both frequency factors", help_text)
         self.assertIn("icl-pattern-generation", self.run_tool("--version").stdout)
 
     def test_argument_errors_preserve_outputs(self):
